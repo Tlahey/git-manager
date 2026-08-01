@@ -151,6 +151,24 @@ describe('useNotchQueue — the surface decision', () => {
 })
 
 describe('useNotchQueue', () => {
+  // A reload of the main window runs no React cleanup, and the notch is a separate OS window that
+  // outlives it — so a card that was up at that moment used to stay on screen forever, owned by
+  // nobody: the fresh mount starts with an empty queue and cannot recognise it as something to
+  // close. Found by an e2e run where a card left by one scenario was still on screen during the
+  // next one.
+  it('reclaims a window orphaned by a reload of the main window', async () => {
+    renderHook(() => useNotchQueue())
+
+    await waitFor(() => expect(closeWindow).toHaveBeenCalled())
+  })
+
+  it('does not open anything just because it swept on mount', async () => {
+    renderHook(() => useNotchQueue())
+    await act(async () => {})
+
+    expect(openWindow).not.toHaveBeenCalled()
+  })
+
   it('opens a window for the card that becomes current', async () => {
     renderHook(() => useNotchQueue())
     enqueue(request('a'))

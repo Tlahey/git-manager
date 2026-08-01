@@ -11,6 +11,7 @@ import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
+import { useNotchQueueStore } from './stores/notchQueue.store'
 import { hideAppSplash } from './lib/appSplash'
 import '@git-manager/ui/globals.css'
 import '@git-manager/editor/styles.css'
@@ -41,6 +42,14 @@ if (import.meta.env.VITE_E2E === 'true') {
   // whatever a previous scenario last set live (e.g. the theme-picker scenario ending on "dark").
   ;(window as unknown as { __e2eSettingsStore: typeof useSettingsStore }).__e2eSettingsStore =
     useSettingsStore
+  // Exposed for the git-hooks e2e steps: a refused hook's card lands on the notch, which is a
+  // *separate* WebviewWindow, and driving a second window over this provider is fragile enough
+  // (a click in it throws, and the command after it self-closes) to make it the wrong place to
+  // assert from. The queue in this window is where the card is actually produced — real hook,
+  // real AppError, real parse, real enqueue — so reading it here tests the whole chain and stops
+  // exactly at the window boundary.
+  ;(window as unknown as { __e2eNotchQueueStore: typeof useNotchQueueStore }).__e2eNotchQueueStore =
+    useNotchQueueStore
 }
 
 // Initialize i18n before rendering, honoring the persisted language choice
