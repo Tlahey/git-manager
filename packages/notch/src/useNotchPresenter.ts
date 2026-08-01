@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   animateValue,
-  easeInCubic,
-  easeOutCubic,
   ENTER_MS,
   EXIT_FADE_AT,
   EXIT_MS,
+  linear,
   SLIDE_DISTANCE,
   type FrameScheduler,
 } from './notchAnimation'
@@ -99,7 +98,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
         from: restY,
         to: restY - SLIDE_DISTANCE,
         durationMs: EXIT_MS,
-        ease: easeInCubic,
+        ease: linear,
         onFrame: (y, progress) => {
           host.setY(y)
           if (fading || progress < EXIT_FADE_AT) return
@@ -109,6 +108,16 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
         ...(scheduler ? { scheduler } : {}),
         isCancelled: () => cancelledRef.current,
       })
+      // The tween's per-frame `setY` is fire-and-forget — deliberately, or the slide would run at
+      // IPC speed instead of frame speed. The cost is that the last positions can still be in
+      // flight when the tween resolves, and closing the surface right then tears it down while it
+      // is visibly still travelling: the card vanishes before the slide finishes, which is exactly
+      // what it must not do. This is the one point where waiting for a round trip buys something.
+      try {
+        await host.setY(restY - SLIDE_DISTANCE)
+      } catch (e) {
+        console.warn('Notch: failed to settle the surface at the end of its slide:', e)
+      }
     }
     // Whatever happened above — no entrance to reverse, or a tween cancelled before the card had
     // travelled far enough to start fading — the card must not be left showing.
@@ -190,7 +199,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
           from: restY - SLIDE_DISTANCE,
           to: restY,
           durationMs: ENTER_MS,
-          ease: easeOutCubic,
+          ease: linear,
           onFrame: (y) => host.setY(y),
           ...(scheduler ? { scheduler } : {}),
           // A dismissal mid-slide-in stops the entrance where it stands rather than fighting the

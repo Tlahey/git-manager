@@ -1,11 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import {
-  animateValue,
-  easeInCubic,
-  easeOutCubic,
-  rafScheduler,
-  type FrameScheduler,
-} from './notchAnimation'
+import { animateValue, linear, rafScheduler, type FrameScheduler } from './notchAnimation'
 
 /**
  * A scheduler whose clock only moves when the test says so. Frames are drained explicitly, so
@@ -30,6 +24,12 @@ function manualScheduler(): FrameScheduler & { advance: (ms: number) => void } {
 }
 
 describe('frame progress', () => {
+  // The card's own slides are linear, where progress and distance covered are the same number.
+  // This asserts against a deliberately non-linear curve anyway: `progress` exists so a caller
+  // timing a second effect against the slide keeps working if the curve ever stops being linear —
+  // which is the bug it was introduced for.
+  const accelerating = (t: number) => t ** 3
+
   it('reports raw progress alongside the eased value', () => {
     const scheduler = manualScheduler()
     const frames: Array<[number, number]> = []
@@ -37,17 +37,16 @@ describe('frame progress', () => {
       from: 0,
       to: 100,
       durationMs: 100,
-      ease: easeInCubic,
+      ease: accelerating,
       onFrame: (value, progress) => frames.push([value, progress]),
       scheduler,
     })
 
     scheduler.advance(50)
 
-    // Progress is the *time* fraction, deliberately not the eased one — which is the whole reason
-    // a caller coordinating a second effect needs it: half way through this tween the value has
-    // moved barely an eighth of the way, so "a third there" and "a third through" are different
-    // moments entirely.
+    // Progress is the *time* fraction, not the eased one: half way through this tween the value
+    // has moved barely an eighth of the way, so "a third there" and "a third through" are
+    // different moments entirely.
     const [value, progress] = frames.at(-1)!
     expect(progress).toBeCloseTo(0.5)
     expect(value).toBeCloseTo(12.5)
@@ -59,7 +58,7 @@ describe('frame progress', () => {
       from: 0,
       to: 100,
       durationMs: 0,
-      ease: easeInCubic,
+      ease: accelerating,
       onFrame: (value, progress) => frames.push([value, progress]),
     })
 
@@ -67,20 +66,14 @@ describe('frame progress', () => {
   })
 })
 
-describe('easing', () => {
-  it('pins both curves to the 0→1 unit interval', () => {
-    for (const ease of [easeOutCubic, easeInCubic]) {
-      expect(ease(0)).toBe(0)
-      expect(ease(1)).toBe(1)
-    }
-  })
-
-  it('starts fast and ends slow for the entrance', () => {
-    expect(easeOutCubic(0.5)).toBeGreaterThan(0.5)
-  })
-
-  it('starts slow and ends fast for the exit', () => {
-    expect(easeInCubic(0.5)).toBeLessThan(0.5)
+describe('linear', () => {
+  it('covers ground at the rate time passes', () => {
+    // The card slides at a constant speed on purpose. An accelerating exit was what made it look
+    // like it vanished mid-slide: it sat almost still for most of the animation, then bolted.
+    expect(linear(0)).toBe(0)
+    expect(linear(0.25)).toBe(0.25)
+    expect(linear(0.5)).toBe(0.5)
+    expect(linear(1)).toBe(1)
   })
 })
 

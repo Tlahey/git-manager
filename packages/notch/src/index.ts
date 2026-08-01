@@ -41,10 +41,11 @@ export type { NotchDevicePreset, NotchPlacement, NotchRect } from './notchGeomet
 
 export {
   animateValue,
-  easeInCubic,
-  easeOutCubic,
+  CONTENT_FADE_MS,
   ENTER_MS,
+  EXIT_FADE_AT,
   EXIT_MS,
+  linear,
   rafScheduler,
   SLIDE_DISTANCE,
 } from './notchAnimation'

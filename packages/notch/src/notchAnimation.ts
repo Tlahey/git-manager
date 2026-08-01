@@ -38,12 +38,17 @@ export const CONTENT_FADE_MS = 300
  */
 export const EXIT_FADE_AT = 0.6
 
-export function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3
-}
-
-export function easeInCubic(t: number): number {
-  return t ** 3
+/**
+ * Constant speed, and the only curve the card uses.
+ *
+ * An accelerating exit was the reason the card looked like it vanished mid-slide: at 60 % of the
+ * duration a cubic ease-in has covered barely 21 % of the distance, so the card sat almost still
+ * for most of the animation and then bolted. Travelled at a constant rate, the time elapsed and
+ * the ground covered are the same number, which is what makes the movement readable — and what
+ * lets the contents' fade be timed against the slide at all.
+ */
+export function linear(t: number): number {
+  return t
 }
 
 /**
