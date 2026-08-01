@@ -264,6 +264,10 @@ export const checkoutBranch = (path: string, refName: string, force = false) =>
 export const deleteBranch = (path: string, name: string, force = false, deleteRemote = false) =>
   invoke<void>('delete_branch', { path, name, force, deleteRemote })
 
+/** Deletes branch `branchName` on `remote` (default "origin") — `git push origin :refs/heads/<name>`. */
+export const deleteRemoteBranch = (path: string, branchName: string, remote?: string) =>
+  invoke<void>('delete_remote_branch', { path, branchName, remote })
+
 export const mergeBranch = (path: string, source: string, target: string) =>
   invoke<void>('merge_branch', { path, source, target })
 

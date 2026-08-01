@@ -59,9 +59,9 @@ use commands::rebase::{
     abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit, skip_rebase,
 };
 use commands::remote::{
-    add_remote, delete_remote_tag, fetch_remote, get_branch_web_url, get_commit_web_url,
-    get_remotes, get_tag_web_url, pull_branch, push_branch, push_branch_to, push_tag,
-    remove_remote,
+    add_remote, delete_remote_branch, delete_remote_tag, fetch_remote, get_branch_web_url,
+    get_commit_web_url, get_remotes, get_tag_web_url, pull_branch, push_branch, push_branch_to,
+    push_tag, remove_remote,
 };
 use commands::repo::{
     clone_repo, get_pending_operation, get_repo_files, get_repo_readme, get_repo_status,
@@ -285,6 +285,7 @@ pub fn run() {
             get_commit_web_url,
             get_tag_web_url,
             get_branch_web_url,
+            delete_remote_branch,
             delete_remote_tag,
             push_tag,
             // Rollback

@@ -32,7 +32,9 @@ import {
   buildCommitMenuSpec,
   buildWipMenuSpec,
   buildStashMenuSpec,
+  remoteBranchTarget,
   type BranchMenuActions,
+  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
@@ -130,6 +132,8 @@ export function useGitGraphActions({
   // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
   // top bar when that column is hidden), plus whether the tag should be annotated. `null` = idle.
   const [tagDraft, setTagDraft] = useState<{ oid: string; annotated: boolean } | null>(null)
+  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
+    useState<PendingDeleteRemoteBranch>(null)
 
   function refreshLogAndStatus() {
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
@@ -499,11 +503,19 @@ export function useGitGraphActions({
       onExplainBranch: (ref) => openBranchAiPanel(ref, 'branch'),
       onReviewBranch: (ref) => openBranchAiPanel(ref, 'reviewBranch'),
       onRenameBranch: (ref) => setPendingAction({ kind: 'renameBranch', branch: ref.shortName }),
-      onDeleteBranch: (ref) =>
+      // A remote ref is never deleted outright from the menu: it needs a real network push
+      // (`git push origin :refs/heads/<name>`), so it goes through a confirmation dialog instead —
+      // unlike a local branch, which stays instant (git itself already refuses an unmerged one).
+      onDeleteBranch: (ref) => {
+        if (ref.type === 'remote') {
+          setPendingDeleteRemoteBranch(remoteBranchTarget(ref))
+          return
+        }
         void run(
           () => apiDeleteBranch(repoPath, ref.shortName, { targetOid: ref.commitOid }),
           t('gitTree.branchMenu.deleted', relParams(ref))
-        ),
+        )
+      },
       onCopyBranchName: (ref) => void handleCopyBranchName(ref.shortName),
       onCopyBranchLink: (ref) => void handleCopyBranchLink(ref),
       onPinToLeft: (ref) => {
@@ -596,5 +608,7 @@ export function useGitGraphActions({
     openMenuAt,
     handleCommitWip,
     openFixupWindow,
+    pendingDeleteRemoteBranch,
+    setPendingDeleteRemoteBranch,
   }
 }

@@ -32,6 +32,7 @@ vi.mock('../lib/tauri', async () => {
     stashList: vi.fn(),
     checkoutBranch: vi.fn(),
     deleteBranch: vi.fn(),
+    deleteRemoteBranch: vi.fn(),
     createBranch: vi.fn(),
     createTag: vi.fn(),
     getTags: vi.fn(),
@@ -548,6 +549,26 @@ describe('apiDeleteBranch', () => {
       upstream: 'origin/feat',
     })
     expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'sha-feat')
+  })
+})
+
+describe('apiDeleteRemoteBranch', () => {
+  it('forwards the branch name and remote to the backend', async () => {
+    const path = freshPath()
+    mocked.deleteRemoteBranch.mockResolvedValue(undefined)
+
+    await api.apiDeleteRemoteBranch(path, 'feat', 'upstream')
+
+    expect(mocked.deleteRemoteBranch).toHaveBeenCalledWith(path, 'feat', 'upstream')
+  })
+
+  it('defaults the remote to whatever the backend defaults to (origin)', async () => {
+    const path = freshPath()
+    mocked.deleteRemoteBranch.mockResolvedValue(undefined)
+
+    await api.apiDeleteRemoteBranch(path, 'feat')
+
+    expect(mocked.deleteRemoteBranch).toHaveBeenCalledWith(path, 'feat', undefined)
   })
 })
 

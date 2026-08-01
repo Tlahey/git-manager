@@ -808,6 +808,49 @@ pub fn push_to(
     Ok(())
 }
 
+/// Deletes branch `branch_name` on `remote` (defaults to "origin") by pushing an empty-source
+/// refspec (`:refs/heads/<name>`), the porcelain equivalent of `git push origin :refs/heads/<name>`.
+/// Reuses the same auth callbacks as `push` to keep credentials on the Rust side.
+///
+/// The pre-push hook's ref name is `refs/heads/<name>` (what the ref is called on the *remote* —
+/// `refs/remotes/` is a purely local tracking-ref namespace, never sent to a hook). Its oid,
+/// though, is read from this repository's `refs/remotes/<remote>/<name>` — unlike a tag, a
+/// branch's local ref and its remote-tracking ref are different refs that can point at different
+/// commits, and the remote-tracking ref is the closest thing to "what is about to be removed"
+/// without a network round trip in front of a hook whose job may be to stop the push.
+pub fn delete_remote_branch(
+    repo: &Repository,
+    remote: Option<String>,
+    branch_name: &str,
+    skip_hooks: bool,
+) -> Result<(), AppError> {
+    let remote_name = resolve_remote_name(repo, remote);
+
+    if !skip_hooks {
+        let remote_ref = format!("refs/heads/{branch_name}");
+        let remote_oid = last_known_remote_branch_oid(repo, &remote_name, branch_name);
+        run_pre_push_hook(
+            repo,
+            &remote_name,
+            &PrePushUpdate::delete(remote_ref, remote_oid),
+        )?;
+    }
+
+    let refspec = format!(":refs/heads/{branch_name}");
+
+    let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
+
+    let callbacks = make_auth_callbacks();
+    let mut push_opts = PushOptions::new();
+    push_opts.remote_callbacks(callbacks);
+
+    remote_obj
+        .push(&[refspec.as_str()], Some(&mut push_opts))
+        .map_err(AppError::Git)?;
+
+    Ok(())
+}
+
 /// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source
 /// refspec (`:refs/tags/<name>`), the porcelain equivalent of `git push origin :refs/tags/<name>`.
 /// Reuses the same auth callbacks as `push` to keep credentials on the Rust side.
@@ -1710,6 +1753,58 @@ mod tests {
             format!("{PRE_PUSH_DELETE_REF} {PRE_PUSH_ZERO_OID} refs/tags/v1.0.0 {tag_oid}\n")
         );
         assert_eq!(remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_a_remote_branch_deletion() {
+        let f = push_fixture("pre-push-branch-delete-fails");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let branch_oid = remote_ref_oid(&f.origin_dir, &format!("refs/heads/{branch}")).unwrap();
+        write_hook(
+            &f.local,
+            "pre-push",
+            "echo 'branch is protected' >&2\nexit 1",
+        );
+
+        let err = delete_remote_branch(&f.local, None, &branch, false).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("branch is protected")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, &format!("refs/heads/{branch}")),
+            Some(branch_oid),
+            "the branch should still be on the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_branch_deletion_reaches_the_hook_the_way_git_describes_one() {
+        // Same delete shape as a tag: no local ref to name, so the literal `(delete)` and an
+        // all-zero local oid. Unlike a tag, the remote side is read from the remote-tracking ref
+        // (`refs/remotes/<remote>/<branch>`), not from `refs/heads/<branch>` — a branch's local ref
+        // and its remote counterpart are different refs that can point at different commits.
+        let f = push_fixture("pre-push-branch-delete-stdin");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let branch_oid = remote_ref_oid(&f.origin_dir, &format!("refs/heads/{branch}")).unwrap();
+        recording_hook(&f.local);
+
+        delete_remote_branch(&f.local, None, &branch, false).unwrap();
+
+        assert_eq!(
+            recorded_stdin(&f.local),
+            format!("{PRE_PUSH_DELETE_REF} {PRE_PUSH_ZERO_OID} refs/heads/{branch} {branch_oid}\n")
+        );
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, &format!("refs/heads/{branch}")),
+            None
+        );
     }
 
     #[test]

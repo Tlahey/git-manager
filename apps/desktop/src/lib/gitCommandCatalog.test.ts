@@ -88,6 +88,13 @@ describe('describeGitCommand', () => {
     expect(lines('fetch_remote', {})).toEqual(['git fetch origin'])
   })
 
+  it('renders a remote branch deletion as a delete-refspec push', () => {
+    expect(lines('delete_remote_branch', { branchName: 'feat/x', remote: 'upstream' })).toEqual([
+      'git push upstream :refs/heads/feat/x',
+    ])
+    expect(lines('delete_remote_branch', {})).toEqual(['git push origin :refs/heads/<branch>'])
+  })
+
   it('maps each pull strategy to its option, and the default to none', () => {
     expect(lines('pull_branch', { strategy: 'rebase' })).toEqual(['git pull --rebase origin'])
     expect(lines('pull_branch', { strategy: 'fast-forward-only' })).toEqual([

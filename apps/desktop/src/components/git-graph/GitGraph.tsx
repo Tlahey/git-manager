@@ -28,6 +28,7 @@ import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
 import { TagMenuProvider } from './TagMenuContext'
 import { TagDialogsManager } from './components/TagDialogsManager'
+import { DeleteRemoteBranchDialog } from './DeleteRemoteBranchDialog'
 import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -552,6 +553,8 @@ export function GitGraph({
     openMenuAt,
     handleCommitWip,
     openFixupWindow,
+    pendingDeleteRemoteBranch,
+    setPendingDeleteRemoteBranch,
   } = useGitGraphActions({
       repoPath,
       nodes,
@@ -1277,6 +1280,18 @@ export function GitGraph({
         pendingTagAction={pendingTagAction}
         onClearPendingTagAction={() => setPendingTagAction(null)}
       />
+
+      {/* Remote branch delete confirmation, driven by the branch menus' Delete item on a remote ref */}
+      {pendingDeleteRemoteBranch && (
+        <DeleteRemoteBranchDialog
+          key={`${pendingDeleteRemoteBranch.remote}/${pendingDeleteRemoteBranch.branchName}`}
+          repoPath={repoPath}
+          branchName={pendingDeleteRemoteBranch.branchName}
+          remote={pendingDeleteRemoteBranch.remote}
+          open
+          onClose={() => setPendingDeleteRemoteBranch(null)}
+        />
+      )}
       </div>
      </TagMenuProvider>
     </RefDropProvider>

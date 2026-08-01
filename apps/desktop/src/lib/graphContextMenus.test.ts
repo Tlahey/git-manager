@@ -12,6 +12,7 @@ import {
   buildTagMenuSpec,
   buildSidebarBranchMenuSpec,
   isMainBranchName,
+  remoteBranchTarget,
   type BranchMenuActions,
   type CommitMenuActions,
   type GraphCommitMenuContext,
@@ -114,6 +115,20 @@ describe('isMainBranchName', () => {
     expect(isMainBranchName('origin/master')).toBe(true)
     expect(isMainBranchName('feature/main-menu')).toBe(false)
     expect(isMainBranchName('maintenance')).toBe(false)
+  })
+})
+
+describe('remoteBranchTarget', () => {
+  it('splits a remote-qualified short name into its remote and branch parts', () => {
+    expect(
+      remoteBranchTarget(ref({ shortName: 'origin/main', type: 'remote' }))
+    ).toEqual({ remote: 'origin', branchName: 'main' })
+  })
+
+  it('keeps every slash after the first as part of the branch name', () => {
+    expect(
+      remoteBranchTarget(ref({ shortName: 'origin/feat/nested-thing', type: 'remote' }))
+    ).toEqual({ remote: 'origin', branchName: 'feat/nested-thing' })
   })
 })
 
@@ -262,9 +277,12 @@ describe('buildBranchSubmenu — remote branch', () => {
     expect(labels).not.toContain('Set upstream')
   })
 
-  it('shows Delete but disabled — remote deletion has no confirm flow yet', () => {
-    const { items: nodes } = submenuFor(origin(), ctx({ currentBranch: 'feat' }))
-    expect(item(nodes, 'Delete origin/main')?.enabled).toBe(false)
+  it('offers a real (enabled) Delete on a remote branch, routed through the confirm dialog', () => {
+    const { items: nodes, actions } = submenuFor(origin(), ctx({ currentBranch: 'feat' }))
+    const deleteItem = item(nodes, 'Delete origin/main')
+    expect(deleteItem?.enabled).not.toBe(false)
+    deleteItem?.action?.()
+    expect(actions.onDeleteBranch).toHaveBeenCalledWith(origin())
   })
 
   it('omits the PR entry when HEAD is detached', () => {
@@ -337,10 +355,10 @@ describe('buildSidebarBranchMenuSpec — remote branch', () => {
   })
 
   // Same rules as everywhere else: they are the shared sections, not a second copy of them.
-  it('keeps the shared gates — no sync section, Delete disabled, no PR on a detached HEAD', () => {
+  it('keeps the shared gates — no sync section, a real Delete, no PR on a detached HEAD', () => {
     const { nodes } = menu()
     expect(texts(nodes)).not.toContain('Push')
-    expect(item(nodes, 'Delete origin/main')?.enabled).toBe(false)
+    expect(item(nodes, 'Delete origin/main')?.enabled).not.toBe(false)
 
     const detached = menu({ currentBranch: null, isDetached: true })
     expect(texts(detached.nodes).some((l) => l.includes('pull request'))).toBe(false)
@@ -909,7 +927,7 @@ describe('buildCommitMenuSpec', () => {
     expect(labels).toContain('Rename main')
   })
 
-  it('flat layout on a single remote branch offers PR/link entries and a disabled Delete', () => {
+  it('flat layout on a single remote branch offers PR/link entries and a real Delete', () => {
     const spec = build(
       ctx({
         refs: [ref({ shortName: 'origin/main', type: 'remote' })],
@@ -920,7 +938,7 @@ describe('buildCommitMenuSpec', () => {
     expect(labels).toContain('Push feat and start a pull request to origin/main')
     expect(labels).toContain('Copy link to branch: origin/main')
     expect(labels).not.toContain('Rename origin/main')
-    expect(item(spec, 'Delete origin/main')?.enabled).toBe(false)
+    expect(item(spec, 'Delete origin/main')?.enabled).not.toBe(false)
   })
 
   it('flattens a pushed branch tip (local + its remote tracking) with the local branch', () => {
@@ -940,7 +958,7 @@ describe('buildCommitMenuSpec', () => {
     // Local-branch flat menu: sync + rename + a real (enabled) delete on a non-current branch.
     expect(labels).toContain('Pull (fast-forward if possible)')
     expect(labels).toContain('Rename main')
-    expect(item(spec, 'Delete main')?.enabled).toBe(true)
+    expect(item(spec, 'Delete main')?.enabled).not.toBe(false)
   })
 
   it('gives the local main/master a "Copy link to branch" pointing at its remote counterpart', () => {

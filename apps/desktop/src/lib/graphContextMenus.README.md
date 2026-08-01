@@ -108,7 +108,7 @@ Create tag / Create annotated tag
 | **Push … start a pull request** | Shown only for a **remote** branch with a current branch. |
 | **Explain branch changes (LLM)** / **Review branch changes (LLM)** | Shown only when the clicked commit **actually carries that branch** (`isOnClickedCommit`) — on the current-branch fallback below, "the branch" would be whichever one is checked out, not what was pointed at. Disabled when the AI master switch is off, never hidden, so the capability stays discoverable. |
 | **Rename `<branch>`** | Local branches only. |
-| **Delete `<branch>`** | Hidden on the **current** branch; **disabled** on **remote** branches (no confirm flow yet); enabled on other local branches. |
+| **Delete `<branch>`** | Hidden on the **current** branch; enabled on both local and **remote** branches. A local delete runs straight away (undo/redo covers it); a remote delete opens `DeleteRemoteBranchDialog` first (real `git push <remote> :refs/heads/<name>`). |
 | **Copy link to branch** | Shown for a **remote** branch, or for the local **`main`/`master`** (→ `origin/<name>`). Not shown for other local branches. |
 | **Solo** | Always enabled. Isolates the branch in the graph via `useSoloModeStore` (`onSolo` → `enable([shortName])`), from both this menu and the sidebar's. |
 
@@ -144,7 +144,8 @@ Every graph/sidebar menu is now composed by a pure `build*MenuSpec` builder in
 - **Ref-drop menu** (`buildRefDropMenuSpec`, `useRefDrop` — drag a badge onto another): Fast-forward
   / Merge / Rebase / Interactive rebase · Push · Reset ▸ · Start a pull request.
 - **Sidebar branch menu** (`buildBranchMenuSpec`, `useSidebarBranchMenu`): reuses the **same** branch
-  sections as the graph, so the two stay in sync. Rename opens `RenameBranchDialog`.
+  sections as the graph, so the two stay in sync. Rename opens `RenameBranchDialog`; a remote
+  Delete opens `DeleteRemoteBranchDialog`.
 
 ---
 
@@ -156,8 +157,8 @@ Ranked roughly by user impact.
 1. **Set upstream** — needs a backend command to set a branch's upstream.
 2. ~~**Explain branch changes** / **Explain working changes**~~ — **shipped**, along with their
    *Review* counterparts. See [docs/ai](../../../../docs/ai/README.md).
-3. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
-   (mirror of the remote-tag deletion already shipped).
+3. ~~**Delete a remote branch**~~ — **shipped**: `DeleteRemoteBranchDialog` confirms, then
+   `delete_remote_branch` pushes `:refs/heads/<name>` (mirror of the remote-tag deletion).
 
 ### Real functional gaps
 5. **Merge-commit–specific items** — `isMergeCommit` is threaded through the context but unused. No
