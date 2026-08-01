@@ -341,6 +341,35 @@ test-connection button already established:
   `github.rs` have no `#[serde(rename_all = "camelCase")]`, unlike their sibling commands) — the
   mocked payloads match that exactly.
 
+### 9. Branch rename ✅
+
+`RenameBranchDialog.tsx` is only reachable from a native macOS context menu — the graph's commit
+menu (`useGitGraphActions.ts`'s `onRenameBranch`) and the sidebar's branch menu
+(`useSidebarBranchMenu.ts`), both real OS menus WebDriver can't open (see the "Native context
+menus" gotcha below). Rather than faking a menu click, `branch-rename.feature` dispatches straight
+into the `pendingGraphAction` store bridge (`repoUI.store.ts`) the same way the ⌘K palette's own
+dialog-based commands (reset/revert/create-branch/tag) do:
+`window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'renameBranch', branch })` —
+`GitGraph.tsx`'s own effect picks it up and forwards it into `GitGraphOverlayManager`, which
+renders the *exact* `RenameBranchDialog` the native menu would have opened. That effect requires a
+commit already selected in the graph (`primaryOid`) — the dialog resolves its target node from
+`nodes`, not from the action payload — so each scenario selects one first via the shared "I select
+the `<ref>` commit in the graph" step. From the dialog opening onward everything driven is real:
+typing the new name, clicking confirm, the real `rename_branch` Tauri command, and the branch
+actually moving.
+
+- Setup: `fixture:feature-branches` (`main` + `feature/login`).
+- **Renaming a branch updates it on disk**: renames `feature/login` → `feature/authentication`,
+  asserted via `git branch --list` on both names (the old one gone, the new one present).
+- **Protected-branch guard**: `git_branch.rs`'s `rename_branch` refuses `main`/`master`
+  (`is_protected_branch_name`) before touching anything. Renaming `main` → `renamed-main` is
+  asserted to leave an inline error in the still-open dialog (`.text-destructive`, no dedicated
+  testid on the message itself) and `main` untouched on disk.
+- **Not covered** (out of scope for this pass, both native-menu-only): the sidebar branch menu's
+  own rename entry point (`RepoView.tsx`'s separate `renameTarget` local state, not routed through
+  the store bridge — a second, un-e2e-tested way to reach the same dialog) and delete (see the
+  table above).
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -348,7 +377,7 @@ test-connection button already established:
 | Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
