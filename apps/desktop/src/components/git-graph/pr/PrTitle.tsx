@@ -71,7 +71,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
             onClick={() => void save()}
             disabled={pending}
             data-testid="pr-title-save"
-            className="rounded p-1.5 text-green-500 hover:bg-accent disabled:opacity-50"
+            className="cursor-pointer rounded p-1.5 text-green-500 hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             title={t('pr.title.save')}
           >
             {pending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
@@ -79,7 +79,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
           <button
             onClick={cancel}
             disabled={pending}
-            className="rounded p-1.5 text-muted-foreground hover:bg-accent disabled:opacity-50"
+            className="cursor-pointer rounded p-1.5 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             title={t('pr.title.cancel')}
           >
             <X className="h-4 w-4" />

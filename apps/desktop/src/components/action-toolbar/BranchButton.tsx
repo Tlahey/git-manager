@@ -4,12 +4,12 @@ import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-ma
 import { useTranslation } from '@git-manager/i18n'
 
 interface BranchButtonProps {
-  /** Référence de départ (branche courante ou HEAD si detached). */
+  /** Starting reference (current branch, or HEAD if detached). */
   fromRef: string
   onCreate: (name: string) => Promise<void>
 }
 
-/** Bouton `Branch` : ouvre un popover pour créer une branche depuis HEAD. */
+/** `Branch` button: opens a popover to create a branch from HEAD. */
 export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
   const { t } = useTranslation('git')
   const [open, setOpen] = useState(false)
@@ -37,7 +37,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
           type="button"
           title={t('toolbar.createBranch')}
           data-testid="toolbar-branch-button"
-          className="group flex min-w-[40px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
+          className="group flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
         >
           <span className="flex h-4 w-4 items-center justify-center">
             <GitBranch className="h-4 w-4 text-amber-400" />
@@ -67,7 +67,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               {t('toolbar.cancel')}
             </button>
@@ -75,7 +75,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
               type="submit"
               disabled={!name.trim() || busy}
               data-testid="toolbar-branch-create-button"
-              className="flex items-center gap-1.5 rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy && <Spinner className="h-3 w-3" />}
               {t('toolbar.create')}

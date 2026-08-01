@@ -73,7 +73,7 @@ export function MergeTargetIndicator({ repoPath, onOpenSettings }: MergeTargetIn
             aria-label={summary}
             data-testid="merge-target-indicator"
             data-state-tone={conflicting ? 'conflict' : 'clean'}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors hover:bg-accent"
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded transition-colors hover:bg-accent"
           >
             <Goal
               className={`h-4 w-4 ${conflicting ? 'text-amber-500' : 'text-muted-foreground'}`}
@@ -138,7 +138,7 @@ export function MergeTargetIndicator({ repoPath, onOpenSettings }: MergeTargetIn
                 setOpen(false)
                 onOpenSettings()
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {t('mergeTarget.openSettings')}

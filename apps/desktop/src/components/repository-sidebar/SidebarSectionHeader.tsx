@@ -95,7 +95,7 @@ export function SidebarSectionHeader({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                    className="mr-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                     aria-label={t('sidebar.branchActions')}
                     title={t('sidebar.branchActions')}
                     data-testid="branch-actions-menu-trigger"
@@ -140,7 +140,7 @@ export function SidebarSectionHeader({
             {onCreateBranch && (
               <button
                 onClick={onCreateBranch}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-1 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.createBranch')}
                 title={t('sidebar.createBranch')}
               >
@@ -158,7 +158,7 @@ export function SidebarSectionHeader({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                    className="mr-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                     aria-label={t('sidebar.worktreeActions')}
                     title={t('sidebar.worktreeActions')}
                     data-testid="worktree-actions-menu-trigger"
@@ -203,7 +203,7 @@ export function SidebarSectionHeader({
             {onAddWorktree && (
               <button
                 onClick={onAddWorktree}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-1 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.addWorktree')}
                 title={t('sidebar.addWorktree')}
                 data-testid="worktree-add-button"
@@ -217,7 +217,7 @@ export function SidebarSectionHeader({
             {onAddPrFilter && (
               <button
                 onClick={onAddPrFilter}
-                className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.prFilters.add')}
                 title={t('sidebar.prFilters.add')}
                 data-testid="pr-filter-add-button"
@@ -228,7 +228,7 @@ export function SidebarSectionHeader({
             {onCreatePr && (
               <button
                 onClick={onCreatePr}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-1 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.createPullRequest')}
                 title={t('sidebar.createPullRequest')}
                 data-testid="pr-create-button"
@@ -242,7 +242,7 @@ export function SidebarSectionHeader({
             {onAddIssueFilter && (
               <button
                 onClick={onAddIssueFilter}
-                className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-0.5 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.issueFilters.add')}
                 title={t('sidebar.issueFilters.add')}
                 data-testid="issue-filter-add-button"
@@ -253,7 +253,7 @@ export function SidebarSectionHeader({
             {onCreateIssue && (
               <button
                 onClick={onCreateIssue}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                className="mr-1 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent"
                 aria-label={t('sidebar.createIssue.action')}
                 title={t('sidebar.createIssue.action')}
                 data-testid="issue-create-button"

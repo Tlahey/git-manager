@@ -58,4 +58,58 @@ describe('Switch', () => {
     expect(html).not.toContain('peer-checked:bg-primary')
     expect(html).not.toContain('bg-background')
   })
+
+  // Regression guard. jsdom has no layout or hit-testing, so a test cannot literally click the
+  // painted track/thumb — but the invariant that broke is structural and can be pinned: the input
+  // must stretch over the whole control. When it was `sr-only` the browser clipped it to 1px, and
+  // since the track/thumb are `pointer-events-none`, a `<Switch>` used outside a `<label>` had no
+  // clickable surface at all — see Checkbox's identical regression test/fix for the same bug class.
+  it('stretches the input over the whole control so the visible track is the hit area', () => {
+    render(<Switch aria-label="Notifications" />)
+    const input = screen.getByRole('switch', { name: 'Notifications' })
+    expect(input.className).not.toContain('sr-only')
+    expect(input.className).toContain('absolute')
+    expect(input.className).toContain('inset-0')
+    expect(input.className).toContain('h-full')
+    expect(input.className).toContain('w-full')
+    expect(input.className).toContain('cursor-pointer')
+  })
+
+  it('keeps the input invisible without removing it from the accessibility tree', () => {
+    render(<Switch aria-label="Notifications" />)
+    const input = screen.getByRole('switch', { name: 'Notifications' })
+    // opacity-0, never display:none/hidden — it must stay focusable and exposed to AT.
+    expect(input.className).toContain('opacity-0')
+    expect(input.className).not.toContain('hidden')
+    expect(input).toBeVisible()
+  })
+
+  it('toggles from a click without needing a wrapping label', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Switch aria-label="Notifications" checked={false} onChange={onChange} />)
+    await user.click(screen.getByRole('switch', { name: 'Notifications' }))
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('still toggles exactly once when wrapped in a label', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <label>
+        <Switch aria-label="Notifications" checked={false} onChange={onChange} />
+        <span>Enable notifications</span>
+      </label>
+    )
+    // Clicking the text goes through the label; the input must not also fire a second time.
+    await user.click(screen.getByText('Enable notifications'))
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the not-allowed cursor and dims the track/thumb when disabled', () => {
+    const { container } = render(<Switch aria-label="Notifications" disabled />)
+    const input = screen.getByRole('switch', { name: 'Notifications' })
+    expect(input.className).toContain('disabled:cursor-not-allowed')
+    expect(container.innerHTML).toContain('peer-disabled:opacity-50')
+  })
 })

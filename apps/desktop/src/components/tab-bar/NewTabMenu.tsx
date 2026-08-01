@@ -73,7 +73,7 @@ export function NewTabMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="flex h-8 w-8 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             title={t('tabBar.newTab')}
           >
             <Plus className="h-4 w-4" />

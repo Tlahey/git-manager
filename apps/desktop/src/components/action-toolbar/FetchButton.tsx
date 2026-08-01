@@ -27,7 +27,7 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
         disabled={loading}
         title={t('remote.fetch')}
         data-testid="toolbar-fetch-button"
-        className="group flex min-w-[40px] flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span className="flex h-4 w-4 items-center justify-center">
           {loading ? (
@@ -47,7 +47,7 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
             type="button"
             disabled={loading}
             aria-label={t('toolbar.fetchAll')}
-            className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex cursor-pointer items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>

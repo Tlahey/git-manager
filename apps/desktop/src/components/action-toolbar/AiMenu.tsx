@@ -58,7 +58,7 @@ export function AiMenu({ repoPath }: AiMenuProps) {
           disabled={disabled}
           aria-label={t('ai.menu')}
           data-testid="toolbar-ai-button"
-          className="group relative flex min-w-[40px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+          className="group relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="flex h-4 w-4 items-center justify-center">
             <LlmIcon className="h-4 w-4 text-primary" />

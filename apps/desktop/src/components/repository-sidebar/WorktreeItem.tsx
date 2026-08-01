@@ -127,7 +127,7 @@ export function WorktreeItem({
           <DropdownMenuTrigger asChild>
             <button
               onClick={(e) => e.stopPropagation()}
-              className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
+              className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
               aria-label={t('sidebar.worktreeActions')}
               title={t('sidebar.worktreeActions')}
               data-testid={`worktree-actions-button-${wt.path}`}

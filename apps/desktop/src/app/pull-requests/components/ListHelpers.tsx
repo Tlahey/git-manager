@@ -45,7 +45,7 @@ export function GroupHeader({
   return (
     <button
       onClick={onToggle}
-      className="flex w-full shrink-0 items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-2 transition-colors hover:bg-muted/30"
+      className="flex w-full shrink-0 cursor-pointer items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-2 transition-colors hover:bg-muted/30"
     >
       {open ? (
         <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -74,7 +74,7 @@ export function LoadMore({ total, shown, onLoadMore }: LoadMoreProps) {
     <div className="flex shrink-0 items-center justify-center border-t border-border/30 py-3">
       <button
         onClick={onLoadMore}
-        className="flex items-center gap-2 rounded-lg border border-border px-4 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
+        className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
       >
         <RefreshCw className="h-3 w-3" /> {t('loadMore', { count: total - shown })}
       </button>

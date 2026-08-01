@@ -157,7 +157,7 @@ export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
               onClick={() => setTraceId(null)}
               aria-label={t('activityLogs.trace.clear')}
               data-testid="activity-trace-clear"
-              className="ml-0.5 rounded hover:text-foreground"
+              className="ml-0.5 cursor-pointer rounded hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>

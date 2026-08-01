@@ -240,7 +240,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             onClick={() => void openActionJournalWindow()}
             aria-label={t('footer.actionJournal')}
             data-testid="footer-action-journal-button"
-            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+            className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
           >
             <GraduationCap className="h-3.5 w-3.5" />
           </button>
@@ -250,7 +250,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             onClick={onOpenActivityLogs}
             aria-label={t('footer.activityLogs')}
             data-testid="footer-activity-logs-button"
-            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+            className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
           >
             <Activity className="h-3.5 w-3.5" />
           </button>
@@ -260,7 +260,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             onClick={() => setIsShortcutOpen(true)}
             aria-label={t('footer.keyboardShortcuts')}
             data-testid="footer-shortcuts-button"
-            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+            className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
           >
             <Keyboard className="h-3.5 w-3.5" />
           </button>

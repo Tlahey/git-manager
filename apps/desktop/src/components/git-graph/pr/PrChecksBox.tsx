@@ -93,7 +93,7 @@ export function PrChecksBox({ repoPath, prNumber, pr, mergeability, isLoading }:
               <button
                 onClick={() => setExpanded((v) => !v)}
                 data-testid="pr-checks-toggle"
-                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 aria-label={t('pr.checks.toggle')}
               >
                 {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

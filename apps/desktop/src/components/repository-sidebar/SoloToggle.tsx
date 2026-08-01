@@ -31,7 +31,7 @@ export function SoloToggle({ isSoloed, onToggle }: SoloToggleProps) {
         e.stopPropagation()
         e.preventDefault()
       }}
-      className="absolute left-1 z-content flex h-4 w-4 shrink-0 items-center justify-center rounded p-0.5 transition-colors hover:bg-sidebar-accent/80"
+      className="absolute left-1 z-content flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded p-0.5 transition-colors hover:bg-sidebar-accent/80"
       title={label}
       aria-label={label}
       aria-pressed={isSoloed}

@@ -36,7 +36,7 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
         <button
           onClick={onClose}
           data-testid="pr-detail-back"
-          className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           {t('pr.view.back')}
@@ -50,7 +50,7 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           data-testid="pr-open-github"
           title={t('pr.view.openOnGitHub')}
           aria-label={t('pr.view.openOnGitHub')}
-          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+          className="ml-auto flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:enabled:bg-accent hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           <span>{t('pr.view.openOnGitHub')}</span>
@@ -61,7 +61,7 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           data-testid="pr-toggle-files"
           aria-pressed={prFilesVisible}
           title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
-          className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {prFilesVisible ? (
             <PanelRightClose className="h-3.5 w-3.5" />

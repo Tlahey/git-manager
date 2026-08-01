@@ -104,7 +104,7 @@ export function PrComposerExpander({
         </span>
         <button
           onClick={() => setBaseDialogOpen(true)}
-          className="ml-1 rounded px-1 py-0.5 text-primary hover:bg-accent"
+          className="ml-1 cursor-pointer rounded px-1 py-0.5 text-primary hover:bg-accent"
           data-testid="pr-composer-change-base"
           title={t('pr.publish.changeBase')}
         >
@@ -140,7 +140,7 @@ export function PrComposerExpander({
             <button
               onClick={aiFill}
               disabled={isGenerating || !baseRef}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:bg-accent disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="pr-composer-ai-fill"
             >
               {isGenerating ? <Spinner className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}

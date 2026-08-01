@@ -40,7 +40,7 @@ export function ToolbarButton({
       disabled={disabled || loading}
       title={title ?? label}
       data-testid={dataTestId}
-      className="group relative flex min-w-[40px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+      className="group relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
     >
       <span className="relative flex h-4 w-4 items-center justify-center">
         {loading ? <Spinner className="h-4 w-4 text-muted-foreground" /> : icon}

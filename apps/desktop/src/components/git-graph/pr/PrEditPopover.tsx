@@ -86,7 +86,7 @@ export function PrEditPopover({
         <button
           onClick={onClose}
           data-testid="pr-edit-close"
-          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label={t('pr.edit.close')}
         >
           <X className="h-3.5 w-3.5" />
@@ -107,7 +107,7 @@ export function PrEditPopover({
                 onClick={() => onRemove(o.key)}
                 disabled={busy}
                 data-testid={`pr-edit-remove-${o.key}`}
-                className="rounded-full hover:text-destructive disabled:opacity-50"
+                className="cursor-pointer rounded-full hover:enabled:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={t('pr.edit.remove')}
               >
                 <X className="h-3 w-3" />
@@ -141,7 +141,7 @@ export function PrEditPopover({
                   onClick={() => onAdd(o.key)}
                   disabled={busy}
                   data-testid={`pr-edit-add-${o.key}`}
-                  className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs hover:bg-accent disabled:opacity-50"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <OptionGlyph option={o} />
                   <span className="truncate text-foreground">{o.label}</span>

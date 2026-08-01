@@ -116,7 +116,7 @@ function ToastCard({ item }: { item: ToastItem }) {
       <button
         type="button"
         onClick={() => dismiss(item.id)}
-        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground shrink-0 cursor-pointer rounded p-0.5 transition-colors"
       >
         <X className="h-3 w-3" />
         <span className="sr-only">Dismiss</span>

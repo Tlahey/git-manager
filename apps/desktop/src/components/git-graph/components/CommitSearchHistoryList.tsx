@@ -68,7 +68,7 @@ export function CommitSearchHistoryList({
             <button
               type="button"
               onClick={() => onOpen(run)}
-              className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+              className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
             >
               <span className="truncate text-xs text-foreground">{run.question}</span>
               <span className="text-[10px] text-muted-foreground">

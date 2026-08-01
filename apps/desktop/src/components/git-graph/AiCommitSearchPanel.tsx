@@ -162,7 +162,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
           </h3>
           <button
             onClick={onClose}
-            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label={t('actions.close')}
             data-testid="commit-search-close-panel"
           >

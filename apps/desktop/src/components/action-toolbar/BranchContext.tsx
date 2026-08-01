@@ -47,8 +47,8 @@ export function BranchContext() {
 
   if (!activeRepo) return null
 
-  // La branche/workspace affiché(e) vient en priorité du log des branches (toujours à jour après
-  // un checkout) / de la liste des worktrees, avec repli sur le cache repo (head / detached).
+  // The displayed branch/workspace comes primarily from the branch log (always up to date after
+  // a checkout) / the worktree list, falling back to the repo cache (head / detached).
   const branchLabel =
     headBranch?.shortName ?? (repo?.isDetached ? repo.head.slice(0, 10) : (repo?.head ?? '—'))
   const currentLabel = activeWorkspacePath ? (activeWorkspace?.branch ?? '—') : branchLabel
@@ -116,7 +116,7 @@ export function BranchContext() {
           aria-label={t('toolbar.exitWorkspace')}
           title={t('toolbar.exitWorkspace')}
           data-testid="workspace-exit-button"
-          className="flex h-5 w-5 shrink-0 items-center justify-center self-end rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center self-end rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -130,7 +130,7 @@ export function BranchContext() {
             <button
               type="button"
               data-testid="branch-context-trigger"
-              className="flex h-5 min-w-0 max-w-[200px] items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
+              className="flex h-5 min-w-0 max-w-[200px] cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
             >
               <span data-testid="branch-context-label" className="min-w-0 flex-1 text-left">
                 <TruncatedLabel label={currentLabel} placement="bottom" />
@@ -189,7 +189,7 @@ export function BranchContext() {
                         : handleCheckout(entry.name)
                     }
                     disabled={busy !== null}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors enabled:hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {entry.kind === 'workspace' ? (
                       <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

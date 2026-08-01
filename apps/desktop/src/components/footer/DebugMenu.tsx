@@ -42,7 +42,7 @@ export function DebugMenu() {
           onClick={() => setOpen(true)}
           aria-label="Debug menu"
           data-testid="footer-debug-button"
-          className="flex items-center justify-center rounded border border-transparent p-1 text-amber-500/80 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-amber-400 active:scale-95"
+          className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 text-amber-500/80 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-amber-400 active:scale-95"
         >
           <Bug className="h-3.5 w-3.5" />
         </button>
@@ -127,7 +127,7 @@ function QueueReadout() {
         <button
           onClick={() => clear()}
           data-testid="debug-queue-clear"
-          className="shrink-0 rounded border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="shrink-0 cursor-pointer rounded border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           Clear
         </button>
@@ -221,7 +221,7 @@ function SurfaceButton({
     <button
       data-testid={testId}
       onClick={onClick}
-      className="rounded border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-accent"
+      className="cursor-pointer rounded border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-accent"
     >
       {children}
     </button>
@@ -325,7 +325,7 @@ function PrSimulator() {
       <button
         onClick={() => simulateChange(prId, action)}
         data-testid="debug-sim-run"
-        className="flex h-7 items-center justify-center gap-1 rounded bg-primary text-[10px] font-medium text-primary-foreground transition-colors hover:bg-primary/95"
+        className="flex h-7 cursor-pointer items-center justify-center gap-1 rounded bg-primary text-[10px] font-medium text-primary-foreground transition-colors hover:bg-primary/95"
       >
         <Play className="h-2.5 w-2.5 fill-current" />
         <span>{t('notifications.runSim')}</span>

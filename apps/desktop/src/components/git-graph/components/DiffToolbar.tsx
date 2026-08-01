@@ -304,7 +304,7 @@ function ViewTab({
         aria-label={label}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'diff-toolbar-tab flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+          'diff-toolbar-tab flex cursor-pointer items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
           isActive
             ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
             : 'text-muted-foreground hover:text-foreground'

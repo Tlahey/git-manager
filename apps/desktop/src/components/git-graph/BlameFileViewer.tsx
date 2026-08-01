@@ -166,7 +166,7 @@ export function BlameFileViewer({
                 onClick={() => handleAvatarClick(block.commitOid)}
                 onMouseEnter={() => setHovered({ block, top })}
                 onMouseLeave={() => setHovered(null)}
-                className="absolute left-0"
+                className="absolute left-0 cursor-pointer"
                 style={{ top }}
               >
                 <CommitAvatar

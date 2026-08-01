@@ -193,7 +193,7 @@ export function WorktreeWipRow({
             e.stopPropagation()
             onOpenWorktree?.()
           }}
-          className="flex shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/20 px-2 py-0.5 text-[10px] font-medium text-foreground transition-colors hover:bg-primary/30"
+          className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-primary/40 bg-primary/20 px-2 py-0.5 text-[10px] font-medium text-foreground transition-colors hover:bg-primary/30"
         >
           <FolderGit2 className="h-3 w-3" />
           {t('gitTree.wip.openWorktree')}

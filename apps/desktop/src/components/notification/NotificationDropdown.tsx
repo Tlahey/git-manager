@@ -37,7 +37,7 @@ export function NotificationDropdown() {
       <PopoverTrigger asChild>
         <button
           data-testid="notification-bell-button"
-          className={`relative flex h-7 w-7 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+          className={`relative flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
             menuOpen ? 'bg-sidebar-accent text-sidebar-foreground' : ''
           }`}
           title={t('notifications.title')}
@@ -71,7 +71,7 @@ export function NotificationDropdown() {
                 <button
                   onClick={markAllAsRead}
                   data-testid="notification-mark-all-read"
-                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   title={t('notifications.markAllAsRead')}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
@@ -79,7 +79,7 @@ export function NotificationDropdown() {
                 <button
                   onClick={clearNotifications}
                   data-testid="notification-clear-all"
-                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
                   title={t('notifications.clearAll')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -108,7 +108,7 @@ export function NotificationDropdown() {
                     key={notif.id}
                     data-testid={`notification-item-${notif.id}`}
                     onClick={() => handleNotificationClick(notif)}
-                    className={`flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/40 ${
+                    className={`flex w-full cursor-pointer items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/40 ${
                       !notif.read ? 'bg-primary/5' : ''
                     }`}
                   >

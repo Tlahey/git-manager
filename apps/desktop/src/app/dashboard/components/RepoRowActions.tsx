@@ -22,7 +22,7 @@ interface RepoRowActionsProps {
 }
 
 const BUTTON_BASE =
-  'flex h-7 w-7 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  'flex h-7 w-7 cursor-pointer items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 const BUTTON_IDLE =
   'border-border text-muted-foreground hover:border-border/80 hover:bg-accent/60 hover:text-foreground'
 const BUTTON_ACTIVE = 'border-primary/40 bg-primary/15 text-primary hover:bg-primary/20'

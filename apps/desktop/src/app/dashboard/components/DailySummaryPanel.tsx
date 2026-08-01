@@ -61,7 +61,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label={t('dashboard.summary.close')}
               data-testid="daily-summary-close-button"
             >

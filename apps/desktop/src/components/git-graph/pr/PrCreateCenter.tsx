@@ -30,7 +30,7 @@ export function PrCreateCenter({ repoPath }: PrCreateCenterProps) {
         <button
           onClick={flow.cancel}
           disabled={flow.busy}
-          className="rounded p-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
+          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           data-testid="pr-create-close"
           title={t('pr.publish.cancel')}
         >

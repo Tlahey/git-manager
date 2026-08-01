@@ -86,7 +86,7 @@ export function PackageHealthCenter({ repoPath }: { repoPath: string }) {
         <button
           type="button"
           onClick={close}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label={t('actions.close')}
           data-testid="package-health-close"
         >

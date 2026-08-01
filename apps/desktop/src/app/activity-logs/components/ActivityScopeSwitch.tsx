@@ -21,7 +21,7 @@ export function ActivityScopeSwitch({
   const { t } = useTranslation('common')
 
   const base =
-    'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors'
+    'flex cursor-pointer items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors'
   const active = 'bg-button text-button-foreground shadow-sm'
   const inactive = 'text-muted-foreground hover:bg-accent hover:text-foreground'
 
