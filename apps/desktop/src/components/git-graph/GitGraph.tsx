@@ -182,7 +182,7 @@ export function GitGraph({
       } else {
         new WebviewWindow(safeLabel, {
           url,
-          title: `Conflict Resolution - ${conflictFilePath}`,
+          title: `Merge Revision for ${conflictFilePath}`,
           width: 1200,
           height: 800,
           minWidth: 900,

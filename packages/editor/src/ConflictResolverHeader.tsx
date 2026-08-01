@@ -139,8 +139,10 @@ export function ConflictResolverHeader({
     <div className="flex w-full select-none flex-col border-b border-border bg-card font-sans text-foreground">
       {/* 1. TOP TOOLBAR */}
       <div className="flex h-9 min-w-0 items-center justify-between border-b border-border/60 px-3">
-        {/* Left container: Delta navigation and Apply changes module */}
-        <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+        {/* Left container: navigation, apply-changes module, smart-resolve, and the
+            filter/comfort toggles all flow together on the left so the stats block below can sit
+            flush against the right edge of the toolbar. */}
+        <div className="flex min-w-0 shrink items-center gap-1.5 overflow-x-auto">
           {/* A. Left: delta navigation & global merge */}
           {showNavigation && (
             <div className="flex shrink-0 items-center gap-0.5">
@@ -180,9 +182,9 @@ export function ConflictResolverHeader({
             </div>
           )}
 
-          {/* B. Center: "Apply non-conflicting changes" module */}
+          {/* B. "Apply non-conflicting changes" module, ending with the smart-resolve wand */}
           {showApply && (
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5">
               <span className="mr-1 truncate text-[11px] text-muted-foreground/70">
                 {applyNonConflictingText}
               </span>
@@ -217,88 +219,96 @@ export function ConflictResolverHeader({
                   <Wand2 className="h-3.5 w-3.5" />
                 </button>
               )}
-
-              <div className="mx-1.5 h-4 w-px shrink-0 bg-border" />
             </div>
+          )}
+
+          {/* C. Filters and comfort toggles, right after the smart-resolve wand */}
+          {(showWhitespace ||
+            showHighlight ||
+            actions.collapseUnchanged !== false ||
+            showReset ||
+            showRecalculate) && (
+            <>
+              <div className="mx-1.5 h-4 w-px shrink-0 bg-border" />
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                {/* Whitespace Dropdown */}
+                {showWhitespace && (
+                  <HeaderDropdown
+                    options={['compare', 'ignore', 'trim'] as const}
+                    value={whitespaceMode}
+                    onChange={setWhitespaceMode}
+                    labels={whitespaceLabels}
+                    menuWidthClass="w-52"
+                    testId="merge-whitespace-dropdown-btn"
+                  />
+                )}
+
+                {/* Highlight Mode Dropdown */}
+                {showHighlight && (
+                  <HeaderDropdown
+                    options={['words', 'lines'] as const}
+                    value={highlightMode}
+                    onChange={setHighlightMode}
+                    labels={highlightLabels}
+                    menuWidthClass="w-44"
+                    testId="merge-highlight-dropdown-btn"
+                  />
+                )}
+
+                {/* Collapse Unchanged Toggle */}
+                {actions.collapseUnchanged !== false && (
+                  <button
+                    onClick={() => setCollapseUnchanged(!collapseUnchanged)}
+                    className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
+                      collapseUnchanged
+                        ? 'border-primary bg-primary/15 text-primary'
+                        : 'border-border bg-secondary text-muted-foreground/80 hover:bg-accent hover:text-accent-foreground active:bg-accent/70'
+                    }`}
+                    title={collapseUnchangedTitle}
+                    data-testid="merge-collapse-unchanged-btn"
+                  >
+                    <FoldVertical className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {/* Reset button (X) */}
+                {showReset && (
+                  <button
+                    onClick={onReset}
+                    className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                    title={resetTitle}
+                    data-testid="merge-reset-btn"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {/* Sync / Force Recalculate button */}
+                {showRecalculate && (
+                  <button
+                    onClick={onRecalculate}
+                    className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                    title={recalculateTitle}
+                    data-testid="merge-recalc-btn"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
 
-        {/* D. Center: conflict state */}
+        {/* D. Right edge: conflict state, glued to the right side of the toolbar */}
         {showStats && (
           <div
-            className="hidden select-none whitespace-nowrap px-4 text-[11px] font-medium text-muted-foreground/85 md:block"
+            className="hidden shrink-0 select-none whitespace-nowrap pl-4 text-[11px] font-medium text-muted-foreground/85 md:block"
             data-testid="merge-stats"
           >
             {changesLabel(changesCount)}. {conflictsLabel(conflictsCount)}.
           </div>
         )}
-
-        {/* C. Center-right: filters and comfort toggles */}
-        <div className="flex shrink-0 items-center gap-1.5">
-          {/* Whitespace Dropdown */}
-          {showWhitespace && (
-            <HeaderDropdown
-              options={['compare', 'ignore', 'trim'] as const}
-              value={whitespaceMode}
-              onChange={setWhitespaceMode}
-              labels={whitespaceLabels}
-              menuWidthClass="w-52"
-              testId="merge-whitespace-dropdown-btn"
-            />
-          )}
-
-          {/* Highlight Mode Dropdown */}
-          {showHighlight && (
-            <HeaderDropdown
-              options={['words', 'lines'] as const}
-              value={highlightMode}
-              onChange={setHighlightMode}
-              labels={highlightLabels}
-              menuWidthClass="w-44"
-              testId="merge-highlight-dropdown-btn"
-            />
-          )}
-
-          {/* Collapse Unchanged Toggle */}
-          {actions.collapseUnchanged !== false && (
-            <button
-              onClick={() => setCollapseUnchanged(!collapseUnchanged)}
-              className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
-                collapseUnchanged
-                  ? 'border-primary bg-primary/15 text-primary'
-                  : 'border-border bg-secondary text-muted-foreground/80 hover:bg-accent hover:text-accent-foreground active:bg-accent/70'
-              }`}
-              title={collapseUnchangedTitle}
-              data-testid="merge-collapse-unchanged-btn"
-            >
-              <FoldVertical className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          {/* Reset button (X) */}
-          {showReset && (
-            <button
-              onClick={onReset}
-              className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
-              title={resetTitle}
-              data-testid="merge-reset-btn"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          {/* Sync / Force Recalculate button */}
-          {showRecalculate && (
-            <button
-              onClick={onRecalculate}
-              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
-              title={recalculateTitle}
-              data-testid="merge-recalc-btn"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
       </div>
 
       {/* 2. STATUS & CONTEXT BAR — only when the host actually supplied at least one status;

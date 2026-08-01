@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { Wand2, AlertCircle } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { AlertCircle } from 'lucide-react'
 import {
   Button,
   Spinner,
@@ -33,18 +33,11 @@ export function ConflictMergeWindowContent({
   const { t } = useTranslation('git')
   const mergeEditorRef = useRef<ThreeWayMergeEditorRef>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isAutoMerging, setIsAutoMerging] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [confirmSide, setConfirmSide] = useState<'left' | 'right' | null>(null)
 
   const { data: view, isLoading } = useMergeView(repoPath, filePath)
-
-  const parsedPath = useMemo(() => {
-    const lastSlash = filePath.lastIndexOf('/')
-    if (lastSlash === -1) return { dir: '', name: filePath }
-    return { dir: filePath.substring(0, lastSlash + 1), name: filePath.substring(lastSlash + 1) }
-  }, [filePath])
 
   async function handleKeepSide(side: 'ours' | 'theirs') {
     setIsSaving(true)
@@ -57,15 +50,6 @@ export function ConflictMergeWindowContent({
       setError(String(err))
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  async function handleApplyNonConflicting() {
-    setIsAutoMerging(true)
-    try {
-      await mergeEditorRef.current?.applyAutoMerge()
-    } finally {
-      setIsAutoMerging(false)
     }
   }
 
@@ -110,53 +94,6 @@ export function ConflictMergeWindowContent({
       data-testid="merge-editor-window"
       className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background"
     >
-      {/* HEADER / TOOLBAR */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex min-w-0 flex-col">
-            {parsedPath.dir && (
-              <span className="mb-0.5 truncate font-mono text-[10px] leading-none text-muted-foreground/60">
-                {parsedPath.dir}
-              </span>
-            )}
-            <span className="select-all truncate font-mono text-xs font-semibold leading-tight text-foreground">
-              {parsedPath.name}
-            </span>
-          </div>
-        </div>
-
-        {view?.renderable && (
-          <div className="flex shrink-0 items-center gap-3">
-            {error && (
-              <span className="flex items-center gap-1 text-xs font-medium text-destructive">
-                <AlertCircle className="h-3.5 w-3.5" />
-                {error}
-              </span>
-            )}
-            <span className="rounded border border-border/40 bg-muted/65 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {t('conflictEditor.conflictsRemaining', { count: pendingCount })}
-            </span>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 px-2.5 text-[10px] font-bold"
-              onClick={handleApplyNonConflicting}
-              disabled={isAutoMerging || isSaving}
-              title={t('conflictEditor.applyNonConflicting')}
-              data-testid="merge-auto-merge-button"
-            >
-              {isAutoMerging ? (
-                <Spinner className="h-3.5 w-3.5" />
-              ) : (
-                <Wand2 className="h-3.5 w-3.5" />
-              )}
-              {t('conflictEditor.applyNonConflicting')}
-            </Button>
-          </div>
-        )}
-      </div>
-
       {/* CONTENT AREA */}
       <div className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs">
         {isLoading && (
@@ -175,7 +112,6 @@ export function ConflictMergeWindowContent({
                   ? t('conflictEditor.binaryConflict')
                   : t('conflictEditor.deleteConflict')}
               </p>
-              {error && <p className="text-xs font-medium text-destructive">{error}</p>}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -204,19 +140,27 @@ export function ConflictMergeWindowContent({
         )}
 
         {!isLoading && view && view.renderable && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-            <div className="animate-in fade-in zoom-in-95 flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background animate-duration-100">
-              <ThreeWayMergeEditor
-                ref={mergeEditorRef}
-                repoPath={repoPath}
-                filePath={filePath}
-                view={view}
-                onPendingCountChange={setPendingCount}
-              />
-            </div>
+          <div className="animate-in fade-in zoom-in-95 flex min-h-0 flex-1 flex-col overflow-hidden border border-border/80 bg-background animate-duration-100">
+            <ThreeWayMergeEditor
+              ref={mergeEditorRef}
+              repoPath={repoPath}
+              filePath={filePath}
+              view={view}
+              onPendingCountChange={setPendingCount}
+            />
           </div>
         )}
       </div>
+
+      {error && (
+        <div
+          className="flex shrink-0 items-center gap-1.5 border-t border-border bg-destructive/10 px-4 py-2 text-xs font-medium text-destructive"
+          data-testid="merge-error-banner"
+        >
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{error}</span>
+        </div>
+      )}
 
       {/* FOOTER */}
       <div className="flex shrink-0 select-none items-center justify-between border-t border-border bg-card px-4 py-3 shadow-md">
