@@ -119,21 +119,41 @@
    (touched); deletion/modification/conflict never produce a center accent marker, so those
    token variants aren't defined here. */
 .merge-marker-top-addition {
-  background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.6) 0, rgba(34, 197, 94, 0.6) 1px, transparent 1px) !important;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(34, 197, 94, 0.6) 0,
+    rgba(34, 197, 94, 0.6) 1px,
+    transparent 1px
+  ) !important;
   transform: translateY(-1px);
 }
 .merge-marker-top-deletion,
 .merge-marker-top-resolved {
-  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.6) 0, rgba(148, 163, 184, 0.6) 1px, transparent 1px) !important;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(148, 163, 184, 0.6) 0,
+    rgba(148, 163, 184, 0.6) 1px,
+    transparent 1px
+  ) !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-addition {
-  background-image: linear-gradient(to top, rgba(34, 197, 94, 0.6) 0, rgba(34, 197, 94, 0.6) 1px, transparent 1px) !important;
+  background-image: linear-gradient(
+    to top,
+    rgba(34, 197, 94, 0.6) 0,
+    rgba(34, 197, 94, 0.6) 1px,
+    transparent 1px
+  ) !important;
   transform: translateY(1px);
 }
 .merge-marker-bottom-deletion,
 .merge-marker-bottom-resolved {
-  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.6) 0, rgba(148, 163, 184, 0.6) 1px, transparent 1px) !important;
+  background-image: linear-gradient(
+    to top,
+    rgba(148, 163, 184, 0.6) 0,
+    rgba(148, 163, 184, 0.6) 1px,
+    transparent 1px
+  ) !important;
   transform: translateY(1px);
 }
 
@@ -201,25 +221,49 @@
 
 /* Resolved marker styles: dotted representation */
 .merge-marker-top-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 2px, transparent 2px, transparent 4px) !important;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(34, 197, 94, 0.6),
+    rgba(34, 197, 94, 0.6) 2px,
+    transparent 2px,
+    transparent 4px
+  ) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 2px, transparent 2px, transparent 4px) !important;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(34, 197, 94, 0.6),
+    rgba(34, 197, 94, 0.6) 2px,
+    transparent 2px,
+    transparent 4px
+  ) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
 }
 .merge-marker-top-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 2px, transparent 2px, transparent 4px) !important;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(148, 163, 184, 0.6),
+    rgba(148, 163, 184, 0.6) 2px,
+    transparent 2px,
+    transparent 4px
+  ) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 2px, transparent 2px, transparent 4px) !important;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(148, 163, 184, 0.6),
+    rgba(148, 163, 184, 0.6) 2px,
+    transparent 2px,
+    transparent 4px
+  ) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
@@ -390,7 +434,7 @@
 .merge-connector-edge.merge-resolved,
 .merge-connector-flat.merge-resolved {
   fill: none !important;
-  stroke-dasharray: 2,2;
+  stroke-dasharray: 2, 2;
   stroke-width: 2;
 }
 
@@ -477,12 +521,18 @@
 }
 
 /* Wavy line marking the collapsed region — brightens on hover instead of the old
-   background/border treatment, since the banner itself carries no fill or border anymore. */
+   background/border treatment, since the banner itself carries no fill or border anymore.
+   `--description-foreground` (packages/theme/src/themes.css, Tier 3 component token) is a
+   dedicated neutral gray for this decorative wave — the theme's own `--muted-foreground` is
+   often hue-tinted (e.g. ocean's teal-navy cast), which reads visibly differently between this
+   CSS-mask rendering and the connector's SVG-stroke rendering (MergeConnectorOverlay.tsx) of the
+   exact same value, at this size. Defaults to `var(--muted-foreground)`; themes override it only
+   where that mismatch was actually confirmed (currently just ocean.css). */
 .monaco-collapsed-zone-banner::before {
-  content: "" !important;
+  content: '' !important;
   position: absolute !important;
   inset: 0 !important;
-  background-color: var(--vscode-descriptionForeground, hsl(var(--muted-foreground))) !important;
+  background-color: hsl(var(--description-foreground)) !important;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M0,10 Q5,5 10,10 T20,10' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M0,10 Q5,5 10,10 T20,10' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   -webkit-mask-repeat: repeat-x !important;
@@ -499,7 +549,7 @@
    once, in every pane and gap it spans. */
 .monaco-collapsed-zone-banner:hover::before,
 .monaco-collapsed-zone-banner.is-hovered::before {
-  background-color: var(--vscode-foreground, hsl(var(--foreground))) !important;
+  background-color: hsl(var(--foreground)) !important;
 }
 
 /* Line-count label — hidden until hover, sitting above the (now-highlighted) wave via z-index.
@@ -516,13 +566,14 @@
   z-index: 1 !important;
   opacity: 0 !important;
   background-color: var(--merge-editor-background, hsl(var(--background))) !important;
-  color: var(--vscode-foreground, hsl(var(--foreground))) !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  color: hsl(var(--foreground)) !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
   font-size: 11px !important;
   font-weight: 500 !important;
   padding: 2px 8px !important;
   border-radius: 4px !important;
-  border: 1px solid var(--vscode-widget-border, hsl(var(--border))) !important;
+  border: 1px solid hsl(var(--border)) !important;
   pointer-events: none !important;
   transition: opacity 0.15s ease !important;
 }
@@ -549,7 +600,7 @@
    line threading through the gap rather than two different decorations. */
 .merge-connector-collapsed-wave {
   fill: none !important;
-  stroke: var(--vscode-descriptionForeground, hsl(var(--muted-foreground))) !important;
+  stroke: hsl(var(--description-foreground)) !important;
   stroke-width: 2px !important;
   stroke-linecap: round !important;
   stroke-linejoin: round !important;
@@ -559,7 +610,7 @@
 
 .merge-connector-collapsed-wave.is-hovered,
 g.is-hovered .merge-connector-collapsed-wave {
-  stroke: var(--vscode-foreground, hsl(var(--foreground))) !important;
+  stroke: hsl(var(--foreground)) !important;
 }
 
 .merge-connector-overlay {
@@ -572,7 +623,3 @@ g.is-hovered .merge-connector-collapsed-wave {
   height: 100% !important;
   overflow: hidden !important;
 }
-
-
-
-

@@ -616,12 +616,14 @@ describe('ConflictResolver — collapse-unchanged toggle', () => {
       expect(ranges[0]).toMatchObject({ startLineNumber: 4, endLineNumber: 7 })
     })
 
+    // The visible "N lines collapsed" banner is a Monaco overlay widget (viewport-width, doesn't
+    // scroll with content) — the view zone itself is now just an invisible space-reserving spacer.
     const banner = fakeEditors
       .get(theirsPath)!
-      .viewZones.find((z) => z.domNode.getAttribute('data-collapsed-block-id') === '1')
+      .overlayWidgets.find((w) => w.getDomNode().getAttribute('data-collapsed-block-id') === '1')
     expect(banner).toBeDefined()
 
-    fireEvent.click(banner!.domNode)
+    fireEvent.click(banner!.getDomNode())
 
     await waitFor(() => {
       expect(fakeEditors.get(theirsPath)!.hiddenAreas).toEqual([])
@@ -986,7 +988,10 @@ describe('ConflictResolver — StrictMode double-mount', () => {
     render(
       <StrictMode>
         <ConflictResolver
-          panels={[{ content: 'line1\noriginal line\nline3' }, { content: 'line1\nmodified line\nline3' }]}
+          panels={[
+            { content: 'line1\noriginal line\nline3' },
+            { content: 'line1\nmodified line\nline3' },
+          ]}
           modelPathPrefix={DIFF_PREFIX}
           editor={{ component: FakeMonacoEditor }}
         />
