@@ -23,9 +23,11 @@ import {
   apiGetCommitWebUrl,
   apiGetBranchWebUrl,
   apiCreatePatch,
+  apiSetBranchUpstream,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
+import { resolveDefaultUpstream } from '../lib/branchUpstream'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
@@ -75,6 +77,9 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // The branch whose "Set upstream" picker is open, or null — only reached when no default is
+  // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.
+  const [setUpstreamTarget, setSetUpstreamTarget] = useState<string | null>(null)
   // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
   // rename dialog above — there is nothing for the caller to render: the graph already shows it.
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
@@ -184,6 +189,19 @@ export function useSidebarBranchMenu(repoPath: string) {
     return {
       onPull: () => void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
       onPush: () => void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
+      // Mirrors the graph menu's own onSetUpstream: an unambiguous default applies directly,
+      // anything else opens the picker.
+      onSetUpstream: (r) => {
+        const target = resolveDefaultUpstream(r.shortName, branches ?? [])
+        if (target) {
+          void run(
+            () => apiSetBranchUpstream(repoPath, r.shortName, target),
+            t('gitTree.branchMenu.upstreamSet', { branch: r.shortName, upstream: target })
+          )
+        } else {
+          setSetUpstreamTarget(r.shortName)
+        }
+      },
       onFastForward: (r) =>
         void run(
           () => apiFastForwardBranch(repoPath, r.shortName, currentBranch as string),
@@ -306,5 +324,5 @@ export function useSidebarBranchMenu(repoPath: string) {
     ).catch(console.error)
   }
 
-  return { openBranchMenu, renameTarget, setRenameTarget }
+  return { openBranchMenu, renameTarget, setRenameTarget, setUpstreamTarget, setSetUpstreamTarget }
 }

@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('../../api/git.api', () => ({ apiCompareCommitToWorkdir: vi.fn() }))
 
 import { apiCompareCommitToWorkdir } from '../../api/git.api'
@@ -40,18 +34,19 @@ afterEach(() => {
 })
 
 describe('CompareToWorkdirDialog', () => {
-  it('shows a spinner while loading', () => {
+  it('names the commit it is comparing while the diff loads', () => {
     mockedCompare.mockReturnValue(new Promise(() => {}))
     renderDialog()
-    expect(screen.getByText('gitTree.contextMenu.compareToWorkdir')).toBeInTheDocument()
-    expect(screen.getByText('gitTree.createBranch.from:{"sha":"abc123d"}')).toBeInTheDocument()
+    expect(screen.getByText('Compare commit against working directory')).toBeInTheDocument()
+    expect(screen.getByText('From commit abc123d')).toBeInTheDocument()
+    expect(screen.getByTestId('diff-files-loading')).toBeInTheDocument()
   })
 
   it('shows a "no differences" message once loaded with no files', async () => {
     mockedCompare.mockResolvedValue({ files: [] })
     renderDialog()
     await waitFor(() =>
-      expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument()
+      expect(screen.getByText('No differences with the working directory')).toBeInTheDocument()
     )
   })
 
@@ -93,7 +88,7 @@ describe('CompareToWorkdirDialog', () => {
     const onClose = vi.fn()
     renderDialog({ onClose })
     await waitFor(() =>
-      expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument()
+      expect(screen.getByText('No differences with the working directory')).toBeInTheDocument()
     )
     screen
       .getByRole('dialog')

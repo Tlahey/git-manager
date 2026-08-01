@@ -141,7 +141,9 @@ describe('read-only pass-throughs', () => {
     ['apiGetCommitWebUrl', 'getCommitWebUrl', [PATH, 'oid1', 'origin']],
     ['apiGetRepoStatus', 'getRepoStatus', [PATH]],
     ['apiGetBranches', 'getBranches', [PATH, true]],
-    ['apiGetCommitDiff', 'getCommitDiff', [PATH, 'oid1']],
+    // `parentIndex` is explicit here: only a merge commit has a second parent, and the graph's
+    // "compare against parent N" entries are what pass one.
+    ['apiGetCommitDiff', 'getCommitDiff', [PATH, 'oid1', 1]],
     ['apiGetCommitsMergedDiff', 'getCommitsMergedDiff', [PATH, 'base1', 'head1']],
     ['apiCompareCommitToWorkdir', 'compareCommitToWorkdir', [PATH, 'oid1']],
     ['apiCompareRefs', 'compareRefs', [PATH, 'main', 'feature']],

@@ -5,6 +5,7 @@ vi.mock('../lib/tauri', () => ({
   scanRepos: vi.fn(),
   getRepoSummary: vi.fn(),
   openInEditor: vi.fn(),
+  revealPathInFinder: vi.fn(),
   getRepoReadme: vi.fn(),
   cloneRepo: vi.fn(),
   initRepo: vi.fn(),
@@ -61,6 +62,12 @@ describe('repo.api pass-throughs', () => {
     mocked.openInEditor.mockResolvedValue(undefined)
     await api.apiOpenInEditor(PATH, '/Applications/Sublime Text.app')
     expect(mocked.openInEditor).toHaveBeenCalledWith(PATH, '/Applications/Sublime Text.app')
+  })
+
+  it('apiRevealPathInFinder delegates to revealPathInFinder', async () => {
+    mocked.revealPathInFinder.mockResolvedValue(undefined)
+    await api.apiRevealPathInFinder('/repo/other-worktree')
+    expect(mocked.revealPathInFinder).toHaveBeenCalledWith('/repo/other-worktree')
   })
 
   it('apiGetRepoReadme delegates to getRepoReadme', async () => {

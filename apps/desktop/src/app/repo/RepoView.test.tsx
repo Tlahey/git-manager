@@ -7,13 +7,15 @@ import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 const { apiOpenRepo } = vi.hoisted(() => ({ apiOpenRepo: vi.fn() }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo }))
 
-const { apiDeleteBranch, apiCompareRefs } = vi.hoisted(() => ({
+const { apiDeleteBranch, apiCompareRefs, apiSetBranchUpstream } = vi.hoisted(() => ({
   apiDeleteBranch: vi.fn(),
   apiCompareRefs: vi.fn(),
+  apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../../api/git.api', () => ({
   apiDeleteBranch,
   apiCompareRefs,
+  apiSetBranchUpstream,
   apiPullBranch: vi.fn(),
   apiPushBranch: vi.fn(),
   apiFastForwardBranch: vi.fn(),
@@ -36,9 +38,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...actual, useQueryClient: () => ({ invalidateQueries }) }
 })
 
-// Pulled in by the sidebar branch menu (AI explanation base resolution). Stubbed rather than
-// wrapped in a QueryClientProvider — this file renders RepoView without one on purpose.
-vi.mock('../../hooks/useBranches', () => ({ useBranches: () => ({ data: [] }) }))
+// Pulled in by the sidebar branch menu (AI explanation base resolution, and the "Set upstream"
+// default). Stubbed rather than wrapped in a QueryClientProvider — this file renders RepoView
+// without one on purpose. A controllable mock (not a fixed `{ data: [] }`) so the set-upstream
+// tests can feed a branch list without every other test having to care.
+const { useBranchesMock } = vi.hoisted(() => ({ useBranchesMock: vi.fn() }))
+vi.mock('../../hooks/useBranches', () => ({ useBranches: useBranchesMock }))
 
 vi.mock('../../components/git-graph/GitGraph', () => ({
   GitGraph: (props: { repoPath: string; branch?: string; searchQuery: string }) => (
@@ -161,6 +166,7 @@ beforeEach(() => {
   useCommitSearchStore.setState({ open: false, query: '' })
   apiOpenRepo.mockResolvedValue(repo())
   vi.spyOn(useUndoHistoryStore.getState(), 'validateAndPrune').mockResolvedValue(undefined)
+  useBranchesMock.mockReturnValue({ data: [] })
 })
 
 describe('RepoView — no active repo', () => {
@@ -348,5 +354,42 @@ describe('RepoView — branch context menu', () => {
     await waitFor(() =>
       expect(apiCompareRefs).toHaveBeenCalledWith('/repo', 'local-branch', 'main')
     )
+  })
+
+  it('the set-upstream item opens the picker dialog when no default is unambiguous', async () => {
+    // Default mock (see beforeEach) has no branches at all, so there is nothing to default to.
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Set upstream')!.action!())
+    expect(await screen.findByTestId('set-upstream-dialog')).toBeInTheDocument()
+    expect(apiSetBranchUpstream).not.toHaveBeenCalled()
+  })
+
+  it('the set-upstream item applies an unambiguous origin/<name> match directly, no dialog', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [
+        {
+          name: 'origin/local-branch',
+          shortName: 'local-branch',
+          isHead: false,
+          isRemote: true,
+          commitOid: 'sha123',
+          commitMessage: 'msg',
+          commitTimestamp: 0,
+          aheadCount: 0,
+          behindCount: 0,
+        },
+      ],
+    })
+    apiSetBranchUpstream.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Set upstream')!.action!())
+    expect(apiSetBranchUpstream).toHaveBeenCalledWith('/repo', 'local-branch', 'origin/local-branch')
+    expect(screen.queryByTestId('set-upstream-dialog')).not.toBeInTheDocument()
   })
 })

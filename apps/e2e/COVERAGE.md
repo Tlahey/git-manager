@@ -341,6 +341,86 @@ test-connection button already established:
   `github.rs` have no `#[serde(rename_all = "camelCase")]`, unlike their sibling commands) — the
   mocked payloads match that exactly.
 
+### 9. Branch rename ✅
+
+`RenameBranchDialog.tsx` is only reachable from a native macOS context menu — the graph's commit
+menu (`useGitGraphActions.ts`'s `onRenameBranch`) and the sidebar's branch menu
+(`useSidebarBranchMenu.ts`), both real OS menus WebDriver can't open (see the "Native context
+menus" gotcha below). Rather than faking a menu click, `branch-rename.feature` dispatches straight
+into the `pendingGraphAction` store bridge (`repoUI.store.ts`) the same way the ⌘K palette's own
+dialog-based commands (reset/revert/create-branch/tag) do:
+`window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'renameBranch', branch })` —
+`GitGraph.tsx`'s own effect picks it up and forwards it into `GitGraphOverlayManager`, which
+renders the *exact* `RenameBranchDialog` the native menu would have opened. That effect requires a
+commit already selected in the graph (`primaryOid`) — the dialog resolves its target node from
+`nodes`, not from the action payload — so each scenario selects one first via the shared "I select
+the `<ref>` commit in the graph" step. From the dialog opening onward everything driven is real:
+typing the new name, clicking confirm, the real `rename_branch` Tauri command, and the branch
+actually moving.
+
+- Setup: `fixture:feature-branches` (`main` + `feature/login`).
+- **Renaming a branch updates it on disk**: renames `feature/login` → `feature/authentication`,
+  asserted via `git branch --list` on both names (the old one gone, the new one present).
+- **Protected-branch guard**: `git_branch.rs`'s `rename_branch` refuses `main`/`master`
+  (`is_protected_branch_name`) before touching anything. Renaming `main` → `renamed-main` is
+  asserted to leave an inline error in the still-open dialog (`.text-destructive`, no dedicated
+  testid on the message itself) and `main` untouched on disk.
+- **Not covered** (out of scope for this pass, both native-menu-only): the sidebar branch menu's
+  own rename entry point (`RepoView.tsx`'s separate `renameTarget` local state, not routed through
+  the store bridge — a second, un-e2e-tested way to reach the same dialog) and delete (see the
+  table above).
+
+### 10. Merge commit actions (revert with mainline, compare against parent) ✅🟡
+
+`merge-commit-actions.feature` (`@mergecommit`), covering the feature added for #130: a merge
+commit has no single "before" state, so `git revert -m` refuses to run without being told which
+parent is the mainline, and the commit-details diff panel always shows the first-parent reading.
+Both new entries — "Revert merge" and "Compare against parent 1/2" — live on the commit's native
+right-click menu, which this suite cannot drive (`tag-menu.steps.ts`'s comment). Investigating
+found the two land very differently once that's ruled out:
+
+- **Revert: fully reachable, no bypass needed.** `useCommitCommands.ts`'s `commit-revert` ⌘K
+  command dispatches the exact same `pendingGraphAction: { kind: 'revert' }` the palette already
+  used for a plain commit (`command-palette.feature`'s existing revert scenario) — it carries no
+  merge-specific branch at all. `RevertDialog` decides on its own whether to show the mainline
+  `RadioGroup` (`isMerge = parents.length > 1`), and `GitGraphOverlayManager` always resolves
+  `parents` from the selected node's `parentOids` regardless of which action opened it. So
+  selecting a merge commit and running "Revert" from ⌘K reaches the real mainline picker with zero
+  test-only wiring — the same path a human using the palette would take. Covered: both mainlines,
+  each asserted by reading the fixture **off disk** after confirming — the expected side's files
+  are gone/present and the other side's content is untouched (not just "a new commit exists").
+- **Compare against parent: reachable, but only via a direct store dispatch, not the palette.**
+  `compareParent` is a real `GraphCommitAction` variant (`repoUI.store.ts`) and `GitGraph.tsx`'s
+  `pendingGraphAction` bridge forwards *any* such action into the graph's own dialog routing — the
+  same generic mechanism the palette's dialog commands use. But `useCommitCommands.ts` (the ⌘K
+  command list) has no `commit-compare-parent-1`/`-2` entries wired to it: grepping the frontend
+  confirms `compareParent` is only ever set from `useGitGraphActions.ts`'s native-menu handler
+  (`onCompareToParent`). So unlike revert, there is currently no non-native **UI** path to this
+  action — only the native menu (blocked) or writing the store field directly. These scenarios do
+  the latter, through the same e2e-exposed `__e2eRepoUIStore` hook `blame-history.steps.ts`
+  already uses for `setActiveDiffFile`: `store.getState().setPendingGraphAction({ kind:
+  'compareParent', parentNumber })`. This exercises the real `GitGraphOverlayManager` routing,
+  `CompareToParentDialog`, `DiffFilesPanel` and the backend's `get_commit_diff` with a
+  merge-specific `parentIndex` — everything except the one native menu click that would normally
+  trigger it. **Honest gap**: if a future change removed the palette's generic
+  `pendingGraphAction` bridge (or `compareParent` specifically) without anyone wiring a command to
+  it, this suite would keep passing — it doesn't prove a user can reach the dialog today, only that
+  the dialog and its data are correct once reached. Adding `commit-compare-parent-1`/`-2` commands
+  to `useCommitCommands.ts` would close this gap and let these scenarios drive it through the
+  palette like revert does; that's a small, separate frontend change, not an e2e-only fix, so it
+  wasn't made here.
+- **Fixture and commit choice**: `showcase` (`tools/git-fixtures/scenarios/showcase.sh`) has two
+  real `git merge --no-ff` commits, tagged `v0.1.0` ("Merge branch 'feat/ai-commit'") and `v0.2.0`
+  ("Merge branch 'feat/rollback'"). These scenarios use **v0.2.0**, not v0.1.0: v0.1.0's mainline
+  side is a change to `README.md`, and a *later* main commit (`docs: add readme badges`) touches
+  `README.md` again before the fixture's `HEAD` — so reverting v0.1.0 with `-m 2` against the
+  fixture's tip hits a real 3-way-merge conflict (the reverse patch's context no longer matches),
+  which `repo.revert()` in `git_rollback.rs` correctly refuses to resolve silently. v0.2.0's two
+  sides — `rollback.ts`/`rollback.test.ts` on the branch, `README.md`'s "Badges!" line on main —
+  are never touched again afterwards, so both mainlines revert cleanly. Verified directly with
+  `git revert -m 1` / `-m 2` against a built copy of the fixture before writing the assertions, not
+  just inferred from the script.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -348,13 +428,16 @@ test-connection button already established:
 | Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native) |
+| Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
 | Compare two branches                    | branch        | remote-ahead      | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
 | Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |
 | Revert a commit                         | rollback      | rollback-history  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)     |
+| Revert a MERGE commit (mainline picker) | rollback      | showcase          | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below) |
+| Compare a merge commit against parent 1/2 | rollback    | showcase          | —        | 🟡 (dialog + diff content ✅, but only reachable via a direct store dispatch, not the palette — see "10. Merge commit actions" below) |
 | Stash apply / pop / drop                | stash         | stash-stack       | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas) |
 | Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
 | Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
@@ -507,7 +590,26 @@ DOM value:
   palette command yet): interactive rebase, create-branch/tag from a *multi-selection*,
   drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
   `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
-  via keyboard. **"Compare `<branch>` with…"** (graph branch pill / sidebar branch row) is a fourth
+  via keyboard.
+- **Branch-scoped dialog actions (rename, set upstream, …) have no command-palette entry at all** —
+  neither the graph's branch submenu nor the sidebar's branch row menu routes through it (the ⌘K
+  palette only offers commit/stash actions today, see `useCommitCommands.ts`/`useStashCommands.ts`).
+  But the
+  native handler for these still only calls `setPendingGraphAction({ kind: 'renameBranch' | ... })`
+  on the repoUI store the same way the palette's commit-scoped actions do — `ai-commit-recompose.
+  steps.ts` proved the pattern first for its own native-menu-only entry (`recompose`), and
+  `branch-upstream.steps.ts` reuses it for **Set upstream**: `window.__e2eRepoUIStore.getState()
+  .setPendingGraphAction(...)` after selecting any commit (`GitGraph.tsx`'s bridge effect requires
+  a non-null `primaryOid`, unrelated to which branch the action targets), which opens the real
+  `SetUpstreamDialog` exactly as a menu click would. **Not covered by this**: the "unambiguous
+  default" shortcut (`resolveDefaultUpstream` in `lib/branchUpstream.ts`) that applies the upstream
+  directly with *no* dialog when exactly one `origin/<branch>` exists — that branch of
+  `onSetUpstream` lives entirely inside the native-menu closure in `useGitGraphActions.ts`/
+  `useSidebarBranchMenu.ts` and is never reached without a real menu click, so it stays untested by
+  e2e (unit-tested instead, see `branchUpstream.test.ts`). The dialog path e2e drives calls the
+  identical `apiSetBranchUpstream` → `set_branch_upstream` backend command either way, which is what
+  actually needed proving (the command didn't exist before this feature).
+- **"Compare `<branch>` with…"** (graph branch pill / sidebar branch row) is a fourth
   shape: it has no ⌘K equivalent at all (it's about a *pair* of refs, not a commit/stash action the
   palette's `pendingGraphAction` bridge is shaped for), so `compare-branches.feature` instead jumps
   straight to `RepoView`'s mounted `CompareBranchesDialog` via

@@ -8,6 +8,7 @@ import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
 import { CompareBranchesDialog } from '../../components/git-graph/CompareBranchesDialog'
+import { SetUpstreamDialog } from '../../components/git-graph/SetUpstreamDialog'
 import { ActionToolbar } from '../../components/action-toolbar'
 import type { Section, Scope } from '../settings/SettingsPage'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -94,7 +95,8 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
 
   const branchMenuPath = effectiveRepoPath ?? activeRepo ?? ''
-  const { openBranchMenu, renameTarget, setRenameTarget } = useSidebarBranchMenu(branchMenuPath)
+  const { openBranchMenu, renameTarget, setRenameTarget, setUpstreamTarget, setSetUpstreamTarget } =
+    useSidebarBranchMenu(branchMenuPath)
   // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
   // unmounted while the file explorer is open, and a tag row has to stay actionable there.
   const { openTagMenu, pendingTagAction, setPendingTagAction } = useSidebarTagMenu(branchMenuPath)
@@ -186,6 +188,16 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
           open
           onChangeRefs={(baseRef, headRef) => setCompareRefsTarget({ baseRef, headRef })}
           onClose={() => setCompareRefsTarget(null)}
+        />
+      )}
+
+      {setUpstreamTarget && (
+        <SetUpstreamDialog
+          key={setUpstreamTarget}
+          repoPath={branchMenuPath}
+          branch={setUpstreamTarget}
+          open
+          onClose={() => setSetUpstreamTarget(null)}
         />
       )}
     </div>

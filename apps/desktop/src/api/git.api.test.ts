@@ -33,6 +33,7 @@ vi.mock('../lib/tauri', async () => {
     checkoutBranch: vi.fn(),
     deleteBranch: vi.fn(),
     createBranch: vi.fn(),
+    setBranchUpstream: vi.fn(),
     createTag: vi.fn(),
     getTags: vi.fn(),
     getRemotes: vi.fn(),
@@ -331,6 +332,17 @@ describe('clearRedo-only actions', () => {
 
     await api.apiRebaseOntoCommit(path, 'some-sha')
 
+    expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
+  })
+
+  it('apiSetBranchUpstream sets the upstream and clears the redo tail', async () => {
+    const path = freshPath()
+    await withPriorRedoTail(path)
+    mocked.setBranchUpstream.mockResolvedValue(undefined)
+
+    await api.apiSetBranchUpstream(path, 'feat', 'origin/feat')
+
+    expect(mocked.setBranchUpstream).toHaveBeenCalledWith(path, 'feat', 'origin/feat')
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
   })
 })

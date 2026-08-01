@@ -8,6 +8,7 @@ import {
   NOTCH_CARD_WIDTH,
   NotchNotification,
   useNotchPresenter,
+  type FrameScheduler,
 } from '@git-manager/notch'
 import { useSettingsStore } from '../../stores/settings.store'
 import {
@@ -40,7 +41,13 @@ export function NotchWindow({
   windowY,
   bandHeight,
   housingHalfWidth,
-}: NotchPayload) {
+  // Not part of `NotchPayload`: that type travels through the window's URL and must stay
+  // serializable, so a function can never live on it. This is the same seam
+  // `useNotchPresenter`'s own `scheduler` option offers — undefined in the real app (real
+  // `requestAnimationFrame`), and the tests' one way to replace real animation frames with a
+  // deterministic one, instead of racing jsdom's rAF shim across `vi.waitFor` polls.
+  scheduler,
+}: NotchPayload & { scheduler?: FrameScheduler }) {
   const { t } = useTranslation('common')
 
   // The card can be replaced in place while it is up — that is what makes a progress card tick
@@ -91,6 +98,7 @@ export function NotchWindow({
     // Returned, not fired and forgotten: the presenter awaits this before closing the window, and
     // closing the window destroys the webview this emit travels out of.
     onDismissed: () => apiEmitNotchDismissed({ notchId: model.id }),
+    ...(scheduler ? { scheduler } : {}),
   })
 
   useEffect(() => {

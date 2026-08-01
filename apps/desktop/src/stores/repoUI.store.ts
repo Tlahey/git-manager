@@ -49,8 +49,18 @@ export type GraphCommitAction =
   | { kind: 'revert' }
   | { kind: 'branch' }
   | { kind: 'renameBranch'; branch: string }
+  /** Opens the upstream picker for `branch` — reached only when no default is unambiguous (see
+   *  `resolveDefaultUpstream`); an unambiguous default is applied straight away, no dialog. */
+  | { kind: 'setUpstream'; branch: string }
   | { kind: 'tag'; annotated: boolean }
   | { kind: 'compare' }
+  /**
+   * Diff a MERGE commit against one specific parent (`parentNumber` is 1-based, as in `git revert
+   * -m`). Its own kind rather than a flag on `compare`, because the two answer different questions:
+   * `compare` reads a commit against the working directory, this one against one side of a merge —
+   * the reading the details panel cannot show, since it always takes the first parent.
+   */
+  | { kind: 'compareParent'; parentNumber: number }
   | { kind: 'fixup' }
   /**
    * Rewrite commit messages with the model, reviewed before anything is applied.

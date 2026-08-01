@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { HALO_MARGIN, measureCardHeight, type NotchModel } from '@git-manager/notch'
+import {
+  HALO_MARGIN,
+  measureCardHeight,
+  type FrameScheduler,
+  type NotchModel,
+} from '@git-manager/notch'
 import { NotchWindow } from './NotchWindow'
 import {
   NOTCH_ACTION_EVENT,
@@ -61,6 +66,17 @@ vi.mock('../../lib/notifications/tauriNotchHost', () => ({
   },
 }))
 
+/**
+ * Completes any tween in a single frame instead of racing real `requestAnimationFrame` — which, in
+ * jsdom, keeps firing across test boundaries within a file (see `notchAnimation.ts`'s
+ * `FrameScheduler` doc comment) and is what made the dismiss-event assertion below flaky under
+ * load. Mirrors `useNotchPresenter.test.ts`'s own `instantScheduler`.
+ */
+const instantScheduler: FrameScheduler = {
+  now: () => 0,
+  request: (callback) => callback(1_000_000),
+}
+
 const payload: NotchPayload = {
   model: {
     kind: 'event',
@@ -90,7 +106,7 @@ const payload: NotchPayload = {
 }
 
 async function renderWindow(overrides: Partial<NotchPayload> = {}) {
-  render(<NotchWindow {...payload} {...overrides} />)
+  render(<NotchWindow {...payload} scheduler={instantScheduler} {...overrides} />)
   // Let the presenter's awaited host calls settle so the card is on screen.
   await act(async () => {
     await Promise.resolve()
@@ -275,6 +291,7 @@ describe('NotchWindow', () => {
     render(
       <NotchWindow
         {...payload}
+        scheduler={instantScheduler}
         model={{
           kind: 'progress',
           id: 'clone',
