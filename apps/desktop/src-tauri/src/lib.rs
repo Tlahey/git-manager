@@ -44,7 +44,8 @@ use commands::github::{
 };
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{
-    compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
+    compare_commit_to_workdir, compare_refs, get_commit_diff, get_commit_file,
+    get_commits_merged_diff, get_log,
 };
 use commands::merge_target::get_merge_target_status;
 use commands::notification::{get_tray_icon_rect, play_system_sound, send_native_notification};
@@ -226,6 +227,7 @@ pub fn run() {
             get_commits_merged_diff,
             get_commit_file,
             compare_commit_to_workdir,
+            compare_refs,
             // Blame / File history
             git_blame_file,
             get_file_history,

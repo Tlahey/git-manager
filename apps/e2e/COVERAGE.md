@@ -430,6 +430,7 @@ found the two land very differently once that's ruled out:
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
 | Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native) |
 | Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
+| Compare two branches                    | branch        | remote-ahead      | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
@@ -608,6 +609,14 @@ DOM value:
   e2e (unit-tested instead, see `branchUpstream.test.ts`). The dialog path e2e drives calls the
   identical `apiSetBranchUpstream` → `set_branch_upstream` backend command either way, which is what
   actually needed proving (the command didn't exist before this feature).
+- **"Compare `<branch>` with…"** (graph branch pill / sidebar branch row) is a fourth
+  shape: it has no ⌘K equivalent at all (it's about a *pair* of refs, not a commit/stash action the
+  palette's `pendingGraphAction` bridge is shaped for), so `compare-branches.feature` instead jumps
+  straight to `RepoView`'s mounted `CompareBranchesDialog` via
+  `__e2eRepoUIStore.getState().setCompareRefsTarget({ baseRef, headRef })` — the same "seed the
+  live store, skip the trigger" technique blame-history.steps.ts's `setActiveDiffFile` already uses
+  for a different native surface. Everything past that call is real: the real `compare_refs`
+  backend, the dialog's own `NativeSelect`s for re-picking either side, and its swap button.
 - **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
   WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —

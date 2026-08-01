@@ -7,12 +7,14 @@ import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 const { apiOpenRepo } = vi.hoisted(() => ({ apiOpenRepo: vi.fn() }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo }))
 
-const { apiDeleteBranch, apiSetBranchUpstream } = vi.hoisted(() => ({
+const { apiDeleteBranch, apiCompareRefs, apiSetBranchUpstream } = vi.hoisted(() => ({
   apiDeleteBranch: vi.fn(),
+  apiCompareRefs: vi.fn(),
   apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../../api/git.api', () => ({
   apiDeleteBranch,
+  apiCompareRefs,
   apiSetBranchUpstream,
   apiPullBranch: vi.fn(),
   apiPushBranch: vi.fn(),
@@ -330,6 +332,28 @@ describe('RepoView — branch context menu', () => {
     await user.click(screen.getByText('context-menu-local'))
     await act(async () => menuItemByText('Rename local-branch')!.action!())
     expect(await screen.findByTestId('rename-branch-dialog')).toBeInTheDocument()
+  })
+
+  // The comparison dialog is mounted here rather than in the graph, so that it opens from a sidebar
+  // row even while the graph is unmounted (file explorer open) — the whole reason it doesn't travel
+  // through the graph's pending-action bridge.
+  it('the compare item opens the branch comparison dialog on the row and the current branch', async () => {
+    const user = userEvent.setup()
+    apiCompareRefs.mockResolvedValue({ files: [], totalAdditions: 0, totalDeletions: 0 })
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo({ head: 'main' }) } })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Compare local-branch with…')!.action!())
+
+    expect(useRepoUIStore.getState().compareRefsTarget).toEqual({
+      baseRef: 'local-branch',
+      headRef: 'main',
+    })
+    expect(await screen.findByTestId('compare-branches-dialog')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(apiCompareRefs).toHaveBeenCalledWith('/repo', 'local-branch', 'main')
+    )
   })
 
   it('the set-upstream item opens the picker dialog when no default is unambiguous', async () => {

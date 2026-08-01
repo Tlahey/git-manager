@@ -71,6 +71,7 @@ const branchActions = (): BranchMenuActions => ({
   onCheckoutBranch: vi.fn(),
   onOpenWorktreeFrom: vi.fn(),
   onStartPr: vi.fn(),
+  onCompareWithBranch: vi.fn(),
   onExplainBranch: vi.fn(),
   onReviewBranch: vi.fn(),
   onRenameBranch: vi.fn(),
@@ -173,6 +174,46 @@ describe('buildBranchSubmenu — review branch changes', () => {
     expect(labels.indexOf('Review branch changes (LLM)')).toBe(
       labels.indexOf('Explain branch changes (LLM)') + 1
     )
+  })
+})
+
+describe('compare with another branch', () => {
+  const feat = () => ref({ shortName: 'feat' })
+
+  it('calls onCompareWithBranch with the branch it belongs to', () => {
+    const branchRef = feat()
+    const { items: nodes, actions } = submenuFor(branchRef, ctx({ currentBranch: 'main' }))
+    item(nodes, 'Compare feat with…')?.action?.()
+    expect(actions.onCompareWithBranch).toHaveBeenCalledWith(branchRef)
+  })
+
+  // Comparing changes nothing and asks no model, so none of the usual gates apply to it.
+  it('stays enabled on the current branch, while detached, and with AI switched off', () => {
+    const cases = [
+      ctx({ currentBranch: 'feat' }),
+      ctx({ currentBranch: null, isDetached: true }),
+      ctx({ aiEnabled: false }),
+    ]
+    for (const context of cases) {
+      const { items: nodes } = submenuFor(feat(), context)
+      expect(item(nodes, 'Compare feat with…')?.enabled).not.toBe(false)
+    }
+  })
+
+  it('is offered from the sidebar branch row too, on a remote branch as well', () => {
+    const origin = ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
+    const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        origin,
+        { ...ctx({ currentBranch: 'feat', refs: [origin] }), isHidden: false },
+        actions,
+        commitActions(),
+        t
+      )
+    )
+    item(nodes, 'Compare origin/main with…')?.action?.()
+    expect(actions.onCompareWithBranch).toHaveBeenCalledWith(origin)
   })
 })
 
@@ -335,6 +376,7 @@ describe('buildSidebarBranchMenuSpec — remote branch', () => {
       'Hide the branch',
       'Pin to left',
       'Solo',
+      'Compare origin/main with…',
       'Compare commit against working directory',
       'Create tag here',
       'Create annotated tag here…',
@@ -429,6 +471,7 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
       'Hide the branch',
       'Pin to left',
       'Solo',
+      'Compare feat/login with…',
       'Create tag here',
       'Create annotated tag here…',
     ])
@@ -532,6 +575,7 @@ describe('buildSidebarBranchMenuSpec — the trunk', () => {
       'Hide the branch',
       'Pin to left',
       'Solo',
+      'Compare main with…',
       'Create tag here',
       'Create annotated tag here…',
     ])
@@ -1030,6 +1074,8 @@ describe('buildCommitMenuSpec', () => {
       'Cherry-pick this commit',
       '▸ Reset main to this commit',
       'Revert this commit',
+      '— separator',
+      'Compare feat with…',
       '— separator',
       'Explain this commit (LLM)',
       'Explain branch changes (LLM)',

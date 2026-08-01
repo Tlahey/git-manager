@@ -108,6 +108,17 @@ export type AiPanelTarget =
   | { kind: 'search' }
 
 /**
+ * The two sides of the branch comparison dialog: the diff shown is `git diff <baseRef> <headRef>`,
+ * so `baseRef` is the "from" state and `headRef` the "to" one — swapping them is a different diff,
+ * not a cosmetic change. Both are ref *names* (`main`, `origin/main`, a tag), never OIDs: the dialog
+ * lets the user re-pick either side from the branch list, which is named the same way.
+ */
+export interface CompareRefsTarget {
+  baseRef: string
+  headRef: string
+}
+
+/**
  * Handoff for the PR-creation composer, set once "ship from here" has made the local commit (and, on
  * a protected branch, the new branch). Held here — not in the WIP staging column that triggered it —
  * because that commit clears the working tree, which unmounts the WIP panel; the composer instead
@@ -235,6 +246,18 @@ interface RepoUIState {
   aiPanelTarget: AiPanelTarget | null
   setAiPanelTarget: (target: AiPanelTarget | null) => void
   /**
+   * The two refs the branch comparison dialog is showing, or `null` when it is closed.
+   *
+   * Held here — rather than in the graph's `pendingGraphAction` bridge like the commit-scoped
+   * dialogs — because a comparison has no commit: routing it through that bridge would make it
+   * depend on a *selected graph row* that exists in the loaded page, and it would then silently do
+   * nothing while the graph is unmounted (with the file explorer open). `RepoView` renders the
+   * dialog from this state instead, the same reasoning that put the tag dialogs there.
+   * Session-scoped, not persisted: a dialog should not reopen itself on the next launch.
+   */
+  compareRefsTarget: CompareRefsTarget | null
+  setCompareRefsTarget: (target: CompareRefsTarget | null) => void
+  /**
    * Bridge for triggering graph-row selection (e.g. the synthetic "CONFLICT" row) from outside
    * `GitGraph.tsx` — the toolbar lives in a separate branch of the component tree and has no
    * direct access to `useCommitSelection`'s local `selectSingle`. `GitGraph.tsx` watches this
@@ -310,6 +333,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       editingOid: null,
       conflictFilePath: null,
       aiPanelTarget: null,
+      compareRefsTarget: null,
       pendingGraphSelection: null,
       selectedCommitOid: null,
       selectedStashIndex: null,
@@ -407,6 +431,8 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setAiPanelTarget: (target) => set({ aiPanelTarget: target }),
 
+      setCompareRefsTarget: (target) => set({ compareRefsTarget: target }),
+
       setPendingGraphSelection: (oid) => set({ pendingGraphSelection: oid }),
 
       setSelectedCommitOid: (oid) => set({ selectedCommitOid: oid }),
@@ -434,6 +460,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedHistoryOid: null,
           conflictFilePath: null,
           aiPanelTarget: null,
+          compareRefsTarget: null,
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,
@@ -458,6 +485,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedHistoryOid: null,
           conflictFilePath: null,
           aiPanelTarget: null,
+          compareRefsTarget: null,
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,

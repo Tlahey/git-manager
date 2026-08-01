@@ -187,7 +187,12 @@ function clickEvent() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null, activeWorkspacePath: null })
+  useRepoUIStore.setState({
+    editingOid: null,
+    aiPanelTarget: null,
+    compareRefsTarget: null,
+    activeWorkspacePath: null,
+  })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   // clearAllMocks() also wipes .mockResolvedValue()-configured implementations, so these need
@@ -564,6 +569,41 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
 
     act(() => getItem('gitTree.contextMenu.revert').action!())
     expect(result.current.pendingAction).toEqual({ kind: 'revert' })
+  })
+
+  it('onCompareWithBranch opens the branch comparison from the clicked branch to HEAD', async () => {
+    const node = commitNode('a', {
+      refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
+    } as Partial<GitGraphNode>)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ nodes: [node], currentBranch: 'main' }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    act(() => getItem('gitTree.branchMenu.compareWith').action!())
+    // Not a pending graph action: the dialog is mounted by RepoView from this shared state, so it
+    // stays reachable when the graph itself is unmounted.
+    expect(useRepoUIStore.getState().compareRefsTarget).toEqual({
+      baseRef: 'feat',
+      headRef: 'main',
+    })
+    expect(result.current.pendingAction).toBeNull()
+  })
+
+  it('onCompareWithBranch starts on the same ref twice while HEAD is detached', async () => {
+    const node = commitNode('a', {
+      refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
+    } as Partial<GitGraphNode>)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ nodes: [node], currentBranch: null, isDetached: true }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    act(() => getItem('gitTree.branchMenu.compareWith').action!())
+    expect(useRepoUIStore.getState().compareRefsTarget).toEqual({
+      baseRef: 'feat',
+      headRef: 'feat',
+    })
   })
 
   it('offers no merge-specific entry on a single-parent commit', async () => {

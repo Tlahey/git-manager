@@ -330,6 +330,26 @@ pub async fn compare_commit_to_workdir(path: String, oid: String) -> Result<GitD
     .map_err(Into::into)
 }
 
+/// Diffs two arbitrary refs against each other (branch vs branch, but also tags or SHAs) — the
+/// "compare two branches" view. See `git_diff::diff_refs` for why this is the direct two-dot diff
+/// and not a merge-base one.
+///
+/// Runs on a blocking-pool thread — the diff scales with how far apart the two refs have drifted.
+#[tauri::command]
+pub async fn compare_refs(
+    path: String,
+    base_ref: String,
+    head_ref: String,
+) -> Result<GitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_diff::diff_refs(&repo, &base_ref, &head_ref)
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
+    .map_err(Into::into)
+}
+
 /// Returns a file's raw content at a given commit
 #[tauri::command]
 pub async fn get_commit_file(

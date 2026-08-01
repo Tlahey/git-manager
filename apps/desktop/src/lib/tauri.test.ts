@@ -96,6 +96,12 @@ const cases: {
     args: { path: '/repo', oid: 'abc' },
   },
   {
+    name: 'compareRefs',
+    call: () => tauri.compareRefs('/repo', 'main', 'feature'),
+    command: 'compare_refs',
+    args: { path: '/repo', baseRef: 'main', headRef: 'feature' },
+  },
+  {
     name: 'getCommitFile',
     call: () => tauri.getCommitFile('/repo', 'abc', 'a.ts'),
     command: 'get_commit_file',
