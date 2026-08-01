@@ -370,6 +370,57 @@ actually moving.
   the store bridge — a second, un-e2e-tested way to reach the same dialog) and delete (see the
   table above).
 
+### 10. Merge commit actions (revert with mainline, compare against parent) ✅🟡
+
+`merge-commit-actions.feature` (`@mergecommit`), covering the feature added for #130: a merge
+commit has no single "before" state, so `git revert -m` refuses to run without being told which
+parent is the mainline, and the commit-details diff panel always shows the first-parent reading.
+Both new entries — "Revert merge" and "Compare against parent 1/2" — live on the commit's native
+right-click menu, which this suite cannot drive (`tag-menu.steps.ts`'s comment). Investigating
+found the two land very differently once that's ruled out:
+
+- **Revert: fully reachable, no bypass needed.** `useCommitCommands.ts`'s `commit-revert` ⌘K
+  command dispatches the exact same `pendingGraphAction: { kind: 'revert' }` the palette already
+  used for a plain commit (`command-palette.feature`'s existing revert scenario) — it carries no
+  merge-specific branch at all. `RevertDialog` decides on its own whether to show the mainline
+  `RadioGroup` (`isMerge = parents.length > 1`), and `GitGraphOverlayManager` always resolves
+  `parents` from the selected node's `parentOids` regardless of which action opened it. So
+  selecting a merge commit and running "Revert" from ⌘K reaches the real mainline picker with zero
+  test-only wiring — the same path a human using the palette would take. Covered: both mainlines,
+  each asserted by reading the fixture **off disk** after confirming — the expected side's files
+  are gone/present and the other side's content is untouched (not just "a new commit exists").
+- **Compare against parent: reachable, but only via a direct store dispatch, not the palette.**
+  `compareParent` is a real `GraphCommitAction` variant (`repoUI.store.ts`) and `GitGraph.tsx`'s
+  `pendingGraphAction` bridge forwards *any* such action into the graph's own dialog routing — the
+  same generic mechanism the palette's dialog commands use. But `useCommitCommands.ts` (the ⌘K
+  command list) has no `commit-compare-parent-1`/`-2` entries wired to it: grepping the frontend
+  confirms `compareParent` is only ever set from `useGitGraphActions.ts`'s native-menu handler
+  (`onCompareToParent`). So unlike revert, there is currently no non-native **UI** path to this
+  action — only the native menu (blocked) or writing the store field directly. These scenarios do
+  the latter, through the same e2e-exposed `__e2eRepoUIStore` hook `blame-history.steps.ts`
+  already uses for `setActiveDiffFile`: `store.getState().setPendingGraphAction({ kind:
+  'compareParent', parentNumber })`. This exercises the real `GitGraphOverlayManager` routing,
+  `CompareToParentDialog`, `DiffFilesPanel` and the backend's `get_commit_diff` with a
+  merge-specific `parentIndex` — everything except the one native menu click that would normally
+  trigger it. **Honest gap**: if a future change removed the palette's generic
+  `pendingGraphAction` bridge (or `compareParent` specifically) without anyone wiring a command to
+  it, this suite would keep passing — it doesn't prove a user can reach the dialog today, only that
+  the dialog and its data are correct once reached. Adding `commit-compare-parent-1`/`-2` commands
+  to `useCommitCommands.ts` would close this gap and let these scenarios drive it through the
+  palette like revert does; that's a small, separate frontend change, not an e2e-only fix, so it
+  wasn't made here.
+- **Fixture and commit choice**: `showcase` (`tools/git-fixtures/scenarios/showcase.sh`) has two
+  real `git merge --no-ff` commits, tagged `v0.1.0` ("Merge branch 'feat/ai-commit'") and `v0.2.0`
+  ("Merge branch 'feat/rollback'"). These scenarios use **v0.2.0**, not v0.1.0: v0.1.0's mainline
+  side is a change to `README.md`, and a *later* main commit (`docs: add readme badges`) touches
+  `README.md` again before the fixture's `HEAD` — so reverting v0.1.0 with `-m 2` against the
+  fixture's tip hits a real 3-way-merge conflict (the reverse patch's context no longer matches),
+  which `repo.revert()` in `git_rollback.rs` correctly refuses to resolve silently. v0.2.0's two
+  sides — `rollback.ts`/`rollback.test.ts` on the branch, `README.md`'s "Badges!" line on main —
+  are never touched again afterwards, so both mainlines revert cleanly. Verified directly with
+  `git revert -m 1` / `-m 2` against a built copy of the fixture before writing the assertions, not
+  just inferred from the script.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -384,6 +435,8 @@ actually moving.
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
 | Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |
 | Revert a commit                         | rollback      | rollback-history  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)     |
+| Revert a MERGE commit (mainline picker) | rollback      | showcase          | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below) |
+| Compare a merge commit against parent 1/2 | rollback    | showcase          | —        | 🟡 (dialog + diff content ✅, but only reachable via a direct store dispatch, not the palette — see "10. Merge commit actions" below) |
 | Stash apply / pop / drop                | stash         | stash-stack       | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas) |
 | Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
 | Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |

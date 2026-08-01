@@ -5,8 +5,10 @@ import { SetUpstreamDialog } from '../SetUpstreamDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
 import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
+import { CompareToParentDialog } from '../CompareToParentDialog'
 import { RecomposeDialog } from './RecomposeDialog'
 import type { GitGraphNode } from '@git-manager/git-types'
+import type { RevertParent } from '../../rollback/RevertDialog'
 import type { PendingAction } from '../../../hooks/useGitGraphActions'
 
 interface GitGraphOverlayManagerProps {
@@ -47,6 +49,21 @@ export function GitGraphOverlayManager({
 
   const closeDialog = () => setActiveDialog(null)
 
+  /**
+   * The commit's parents as the revert dialog wants them. Resolved against the loaded page, so a
+   * parent scrolled out of it keeps its position (that is what `-m` names) and simply shows its
+   * short sha with no subject — the picker must still list every parent, or the mainline the user
+   * needs could be the one missing from it.
+   */
+  const parents: RevertParent[] = activeNode.commit.parentOids.map((parentOid) => {
+    const node = nodes.find((n) => n.commit.oid === parentOid)
+    return {
+      oid: parentOid,
+      shortOid: node?.commit.shortOid ?? parentOid.slice(0, 7),
+      subject: node?.commit.subject ?? '',
+    }
+  })
+
   switch (activeDialog?.kind) {
     case 'reset':
       return (
@@ -79,6 +96,7 @@ export function GitGraphOverlayManager({
           repoPath={repoPath}
           commitOid={activeNode.commit.oid}
           commitSubject={activeNode.commit.subject}
+          parents={parents}
           open
           onClose={closeDialog}
           onSuccess={closeDialog}
@@ -122,6 +140,20 @@ export function GitGraphOverlayManager({
           repoPath={repoPath}
           oid={activeNode.commit.oid}
           shortOid={activeNode.commit.shortOid}
+          open
+          onClose={closeDialog}
+        />
+      )
+    case 'compareParent':
+      return (
+        // Keyed on the parent so picking the other one refetches instead of showing the first diff.
+        <CompareToParentDialog
+          key={activeDialog.parentNumber}
+          repoPath={repoPath}
+          oid={activeNode.commit.oid}
+          shortOid={activeNode.commit.shortOid}
+          parentNumber={activeDialog.parentNumber}
+          parentShortOid={parents[activeDialog.parentNumber - 1]?.shortOid}
           open
           onClose={closeDialog}
         />

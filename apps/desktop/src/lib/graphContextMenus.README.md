@@ -187,9 +187,7 @@ Ranked roughly by user impact.
    (mirror of the remote-tag deletion already shipped).
 
 ### Real functional gaps
-5. **Merge-commit–specific items** — `isMergeCommit` is threaded through the context but unused. No
-   "Revert merge (-m 1/2)", no "compare against parent 1/2". Reverting a merge currently uses the
-   plain revert path, which can fail on merges.
+None currently open — see "Done since the first report" below.
 
 ### Done since the first report
 - **Copy link to branch for any pushed branch** — no longer restricted to `main`/`master`; any
@@ -205,3 +203,8 @@ Ranked roughly by user impact.
 - **`WIP:<path>` (other worktree) row** — now has a menu (`buildOtherWorktreeMenuSpec`): Open
   worktree / Stash there / Reveal in Finder.
 - **CONFLICT row** — now has a menu (`buildConflictMenuSpec`, issue #132): Continue / Skip / Abort.
+- **Merge-commit–specific items** — `isMergeCommit` now relabels the revert entry ("Revert this
+  merge commit" — the dialog then asks which parent is the mainline, i.e. `git revert -m`) and adds
+  "Compare against parent 1/2" (issue #130). The octopus case is deliberately partial: the compare
+  entries stop at the second parent, while the revert picker lists every parent, because `-m` has to
+  name the real one.

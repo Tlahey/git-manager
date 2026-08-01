@@ -566,6 +566,25 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     expect(result.current.pendingAction).toEqual({ kind: 'revert' })
   })
 
+  it('offers no merge-specific entry on a single-parent commit', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    expect(findItem('gitTree.contextMenu.revertMerge')).toBeUndefined()
+    expect(findItem('gitTree.contextMenu.compareToParent')).toBeUndefined()
+  })
+
+  it('marks a two-parent commit as a merge and offers both compare-vs-parent entries', async () => {
+    const merge = commitNode('m', { commit: { ...commitNode('m').commit, parentOids: ['a', 'b'] } })
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ nodes: [merge, commitNode('a'), commitNode('b')] }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'm'))
+
+    expect(getItem('gitTree.contextMenu.revertMerge')).toBeDefined()
+    act(() => getItem('gitTree.contextMenu.compareToParent:{"parent":2}').action!())
+    expect(result.current.pendingAction).toEqual({ kind: 'compareParent', parentNumber: 2 })
+  })
+
   it('onCreateTag/onCreateAnnotatedTag start an inline tag draft on the clicked commit', async () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))

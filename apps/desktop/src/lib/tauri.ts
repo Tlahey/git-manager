@@ -222,8 +222,10 @@ export const getLog = (
   }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
-export const getCommitDiff = (path: string, oid: string) =>
-  invoke<GitDiff>('get_commit_diff', { path, oid })
+/** A commit vs. one of its parents. `parentIndex` is 0-based and defaults to the first parent —
+ *  only a merge commit has another (see the Rust `git_diff::commit_diff`). */
+export const getCommitDiff = (path: string, oid: string, parentIndex?: number) =>
+  invoke<GitDiff>('get_commit_diff', { path, oid, parentIndex })
 
 /** Merged diff across a multi-commit selection: `baseOid^..headOid` (see the Rust command). */
 export const getCommitsMergedDiff = (path: string, baseOid: string, headOid: string) =>
@@ -822,8 +824,10 @@ export interface CommitSummary {
   timestamp: number
 }
 
-export const revertCommit = (path: string, oid: string, noCommit = false) =>
-  invoke<string>('revert_commit', { path, oid, noCommit })
+/** `mainline` is `git revert -m`: the 1-based parent a MERGE commit is reverted relative to. It is
+ *  required for a merge and ignored otherwise (see the Rust `git_rollback::revert_commit`). */
+export const revertCommit = (path: string, oid: string, noCommit = false, mainline?: number) =>
+  invoke<string>('revert_commit', { path, oid, noCommit, mainline })
 
 export const resetToCommit = (path: string, oid: string, mode: 'soft' | 'mixed' | 'hard') =>
   invoke<void>('reset_to_commit', { path, oid, mode })

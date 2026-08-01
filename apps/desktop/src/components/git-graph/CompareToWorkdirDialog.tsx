@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
-import { ScrollArea, Spinner } from '@git-manager/ui'
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,7 @@ import {
   DialogDescription,
 } from '@git-manager/ui'
 import { apiCompareCommitToWorkdir } from '../../api/git.api'
-import { DiffViewer } from './DiffViewer'
+import { DiffFilesPanel } from './components/DiffFilesPanel'
 
 interface CompareToWorkdirDialogProps {
   repoPath: string
@@ -19,7 +18,7 @@ interface CompareToWorkdirDialogProps {
   onClose: () => void
 }
 
-/** Compare l'arbre d'un commit avec le répertoire de travail actuel (pas l'index). */
+/** Compares a commit's tree with the current working directory (not the index). */
 export function CompareToWorkdirDialog({
   repoPath,
   oid,
@@ -41,29 +40,20 @@ export function CompareToWorkdirDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col">
+      <DialogContent
+        className="flex max-h-[80vh] max-w-3xl flex-col"
+        data-testid="compare-workdir-dialog"
+      >
         <DialogHeader>
           <DialogTitle>{t('gitTree.contextMenu.compareToWorkdir')}</DialogTitle>
           <DialogDescription>{t('gitTree.createBranch.from', { sha: shortOid })}</DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner className="h-5 w-5" />
-          </div>
-        ) : (
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-3 pr-3">
-              {diff?.files.length ? (
-                diff.files.map((file, i) => <DiffViewer key={i} file={file} />)
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {t('gitTree.contextMenu.noDifferences')}
-                </p>
-              )}
-            </div>
-          </ScrollArea>
-        )}
+        <DiffFilesPanel
+          diff={diff}
+          isLoading={isLoading}
+          emptyMessage={t('gitTree.contextMenu.noDifferences')}
+        />
       </DialogContent>
     </Dialog>
   )

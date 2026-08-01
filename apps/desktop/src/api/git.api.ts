@@ -393,7 +393,17 @@ export async function apiGetPendingFixups(path: string) {
   return getPendingFixups(path)
 }
 
-export async function apiRevertCommit(path: string, oid: string, noCommit = false) {
+/**
+ * `mainline` is `git revert -m` — which parent a MERGE commit is reverted relative to (1-based).
+ * The backend refuses a merge without it and ignores it everywhere else, so a caller that has no
+ * merge on its hands can keep leaving it out.
+ */
+export async function apiRevertCommit(
+  path: string,
+  oid: string,
+  noCommit = false,
+  mainline?: number
+) {
   let previousOid: string | null = null
   if (!noCommit) {
     try {
@@ -404,7 +414,7 @@ export async function apiRevertCommit(path: string, oid: string, noCommit = fals
     }
   }
 
-  const result = await revertCommit(path, oid, noCommit)
+  const result = await revertCommit(path, oid, noCommit, mainline)
 
   if (noCommit) {
     // With no commit, revert only modifies the index/working dir — no new commit to replay via
@@ -857,8 +867,10 @@ export async function apiGetBranches(path: string, includeRemote = true) {
   return getBranches(path, includeRemote)
 }
 
-export async function apiGetCommitDiff(path: string, oid: string) {
-  return getCommitDiff(path, oid)
+/** `parentIndex` is 0-based and defaults to the first parent — the graph's "Compare against
+ *  parent N" entries are the only callers that pass another, since only a merge commit has one. */
+export async function apiGetCommitDiff(path: string, oid: string, parentIndex?: number) {
+  return getCommitDiff(path, oid, parentIndex)
 }
 
 export async function apiGetCommitsMergedDiff(path: string, baseOid: string, headOid: string) {
