@@ -1,31 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
-import { useCommitSearchStore } from '../../stores/commitSearch.store'
-import { useSoloModeStore } from '../../stores/soloMode.store'
-import { GitGraph } from '../../components/git-graph/GitGraph'
-import { RepositorySidebar } from '../../components/repository-sidebar'
-import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
 import { ActionToolbar } from '../../components/action-toolbar'
 import type { Section, Scope } from '../settings/SettingsPage'
-import { useSettingsStore } from '../../stores/settings.store'
-import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
-import { useSidebarTagMenu } from '../../hooks/useSidebarTagMenu'
-import { TagDialogsManager } from '../../components/git-graph/components/TagDialogsManager'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { apiOpenRepo } from '../../api/repo.api'
-import { ProjectFilesView } from '../../components/file-explorer/ProjectFilesView'
-import { FileTreeSidebar } from '../../components/file-explorer/FileTreeSidebar'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
-import { TimelineBar } from '../../components/timeline/TimelineBar'
 import { BisectBanner } from '../../components/bisect/BisectBanner'
 import { BisectResultBanner } from '../../components/bisect/BisectResultBanner'
-import { BisectSetupBanner } from '../../components/bisect/BisectSetupBanner'
 import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
 import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashConfirm'
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
+import { useRepoViewTabsStore } from '../../stores/repoViewTabs.store'
+import { RepoViewTabs } from './components/RepoViewTabs'
+import { RepoGraphWorkspace } from './components/RepoGraphWorkspace'
+import { RepoTerminalView } from './components/RepoTerminalView'
+import { RepoSettingsView } from './components/RepoSettingsView'
 
 interface RepoViewProps {
   /** Opens Settings on a given page/scope — forwarded to the toolbar, whose merge-target popover
@@ -33,23 +25,25 @@ interface RepoViewProps {
   onOpenSettings?: (section?: Section, scope?: Scope) => void
 }
 
+/**
+ * One repo tab's content: the repo-wide toolbar and notices, the strip of view tabs, and whichever
+ * view that tab is on (graph / terminal / settings — see `repoViewTabs.store.ts`).
+ */
 export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const { repoCache, setRepoCache } = useRepoDataStore()
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
-  const searchQuery = useCommitSearchStore((s) => s.query)
-  // Solo mode: when active, the graph is isolated to the soloed branches (see soloMode.store.ts).
-  const soloActive = useSoloModeStore((s) => s.active)
-  const soloed = useSoloModeStore((s) => s.soloed)
 
-  const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
-  const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
   const syncFileExplorerRepo = useFileExplorerStore((s) => s.actions.syncRepo)
 
   // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
   // displayed. See repoUI.store.ts's `activeWorkspacePath` doc comment for why.
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
+
+  // The view tabs are keyed by the tab's own repo path, not the worktree being viewed in it: a
+  // workspace is a swap *inside* one tab, so it inherits that tab's view rather than getting a
+  // second selection of its own.
+  const activeView = useRepoViewTabsStore((s) => s.activeViewFor(activeRepo ?? ''))
 
   // The repo cache isn't persisted: (re)open the active repo/worktree when needed to feed
   // head/isDetached/isDirty/remotes (toolbar, status badges…).
@@ -84,15 +78,6 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
     setTerminalTheme({ background: terminalBackground, foreground: terminalForeground })
   }, [terminalBackground, terminalForeground])
 
-  const github = useSettingsStore((s) => s.settings.github)
-  const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
-
-  const branchMenuPath = effectiveRepoPath ?? activeRepo ?? ''
-  const { openBranchMenu, renameTarget, setRenameTarget } = useSidebarBranchMenu(branchMenuPath)
-  // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
-  // unmounted while the file explorer is open, and a tag row has to stay actionable there.
-  const { openTagMenu, pendingTagAction, setPendingTagAction } = useSidebarTagMenu(branchMenuPath)
-
   if (!activeRepo) return null
 
   const repoPath = effectiveRepoPath ?? activeRepo
@@ -101,74 +86,24 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
     <div data-testid="repo-view" className="flex h-full flex-col">
       <ActionToolbar onOpenSettings={onOpenSettings} />
 
+      <RepoViewTabs tabPath={activeRepo} />
+
+      {/* Repo-wide notices: shown whichever view is open — a paused bisect or a pending fixup is
+          still true while the user is in a terminal. */}
       <PendingFixupsBanner repoPath={activeRepo} />
       <BisectBanner repoPath={repoPath} />
 
-      {/* ── Main layout: sidebar | central area ─────────────────── */}
-      <div className="relative flex flex-1 overflow-hidden">
-        {/* Branch sidebar — resizable */}
-        <RepositorySidebar
-          repoPath={repoPath}
-          remoteUrls={repoCache[activeRepo]?.remotes ?? []}
-          selectedBranch={selectedBranch}
-          onSelectBranch={(name) => setSelectedBranch(name)}
-          // A tag isn't a filterable ref: instead of reloading the whole log, scroll to and select
-          // its commit in the current graph via the graph-selection bridge.
-          onSelectTag={(commitOid) =>
-            useRepoUIStore.getState().setPendingGraphSelection(commitOid)
-          }
-          onOpenPr={(pr) => {
-            setSelectedBranch(pr.headRef)
-            useRepoUIStore.getState().setActivePrNumber(pr.number)
-          }}
-          currentUser={activeAccount?.user?.login}
-          githubToken={activeAccount?.token ?? undefined}
-          onContextMenu={openBranchMenu}
-          onRemoteBranchContextMenu={openBranchMenu}
-          onTagContextMenu={openTagMenu}
-        />
-
-        {/* Central area — full-width history, or the file explorer */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {isFileExplorerOpen ? (
-            <ProjectFilesView />
-          ) : (
-            <GitGraph
-              repoPath={repoPath}
-              branch={selectedBranch ?? undefined}
-              soloBranches={soloActive ? Array.from(soloed) : undefined}
-              searchQuery={searchQuery}
-            />
-          )}
-        </div>
-
-        {isFileExplorerOpen && isSidebarOpen && <FileTreeSidebar />}
-
-        <TimelineBar repoPath={repoPath} />
-
-        <BisectSetupBanner repoPath={repoPath} />
-      </div>
+      {activeView === 'terminal' ? (
+        <RepoTerminalView path={repoPath} />
+      ) : activeView === 'settings' ? (
+        <RepoSettingsView />
+      ) : (
+        <RepoGraphWorkspace repoPath={repoPath} activeRepo={activeRepo} />
+      )}
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />
       <CheckoutStashConfirm />
-
-      <TagDialogsManager
-        repoPath={branchMenuPath}
-        pendingTagAction={pendingTagAction}
-        onClearPendingTagAction={() => setPendingTagAction(null)}
-      />
-
-      {renameTarget && (
-        <RenameBranchDialog
-          key={renameTarget}
-          repoPath={branchMenuPath}
-          branch={renameTarget}
-          open
-          onClose={() => setRenameTarget(null)}
-        />
-      )}
-
     </div>
   )
 }
