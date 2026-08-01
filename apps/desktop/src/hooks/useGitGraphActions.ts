@@ -28,9 +28,11 @@ import {
   apiCreateTag,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
+import { apiRevealPathInFinder } from '../api/repo.api'
 import {
   buildCommitMenuSpec,
   buildWipMenuSpec,
+  buildOtherWorktreeMenuSpec,
   buildStashMenuSpec,
   type BranchMenuActions,
 } from '../lib/graphContextMenus'
@@ -117,6 +119,11 @@ export function useGitGraphActions({
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // Entering a linked worktree from the graph is a view switch, not a new tab — see
+  // `repoUI.store.ts`'s `activeWorkspacePath` doc comment. The `WIP:<path>` row's own "Open
+  // Worktree" button and the sidebar's worktree row already use this; the context menu's "Open
+  // worktree" item reuses it too, so there is exactly one meaning of "open" a worktree in the app.
+  const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
@@ -266,9 +273,9 @@ export function useGitGraphActions({
     e?.preventDefault()
     e?.stopPropagation()
 
-    // The local WIP row gets its own menu (stash / stage / unstage the work in progress). The
-    // other synthetic rows (a worktree's `WIP:<path>`, the CONFLICT row) are not commit-action
-    // targets — no menu.
+    // The local WIP row gets its own menu (stash / stage / unstage the work in progress), and a
+    // worktree's `WIP:<path>` row gets a smaller one scoped to that other path (below). The
+    // CONFLICT row is not a commit-action target — no menu.
     if (oid === 'WIP') {
       async function runWip(fn: () => Promise<unknown>, successMsg?: string) {
         try {
@@ -304,7 +311,38 @@ export function useGitGraphActions({
       ).catch(console.error)
       return
     }
-    if (oid === 'CONFLICT' || oid.startsWith('WIP:')) return
+    // A linked worktree's own uncommitted changes — every action here targets THAT worktree's path,
+    // never the active repo (see `buildOtherWorktreeMenuSpec`'s doc comment for why the menu stays
+    // smaller than the local WIP row's).
+    if (oid.startsWith('WIP:')) {
+      const otherPath = oid.slice('WIP:'.length)
+      async function runOtherWorktreeStash(includeUntracked: boolean) {
+        try {
+          await apiStashPush(otherPath, undefined, includeUntracked)
+          // The pushed stash lands in the shared `refs/stash`, so it also shows up back in the
+          // active repo's own graph/stash list — refreshed here like the local WIP row's stash.
+          refreshLogAndStatus()
+          mutate(['git-stashes', repoPath])
+          mutate(['worktree-wip-statuses', repoPath])
+          toast.success(t('gitTree.otherWorktreeMenu.stashed'))
+        } catch (err) {
+          toast.error(String(err))
+        }
+      }
+      void showNativeMenu(
+        buildOtherWorktreeMenuSpec(
+          {
+            onOpenWorktree: () => setActiveWorkspacePath(otherPath),
+            onStash: (includeUntracked) => void runOtherWorktreeStash(includeUntracked),
+            onRevealInFinder: () =>
+              apiRevealPathInFinder(otherPath).catch((err) => toast.error(String(err))),
+          },
+          t
+        )
+      ).catch(console.error)
+      return
+    }
+    if (oid === 'CONFLICT') return
 
     // Check if this is a stash commit
     const clickedNode = nodes.find((n) => n.commit.oid === oid)

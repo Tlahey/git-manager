@@ -66,7 +66,7 @@ use commands::remote::{
 use commands::repo::{
     clone_repo, get_pending_operation, get_repo_files, get_repo_readme, get_repo_status,
     get_repo_summary, get_terminal_commands, init_repo, list_tracked_files, open_in_editor,
-    open_in_terminal, open_repo, scan_repos,
+    open_in_terminal, open_repo, reveal_path_in_finder, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
@@ -210,6 +210,7 @@ pub fn run() {
             get_repo_readme,
             open_in_terminal,
             get_terminal_commands,
+            reveal_path_in_finder,
             // Tasks
             run_task_in_terminal,
             get_project_commands,

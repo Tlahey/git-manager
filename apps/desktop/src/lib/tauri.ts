@@ -1030,6 +1030,9 @@ export const getRepoSummary = (path: string) => invoke<GitRepoSummary>('get_repo
 export const openInEditor = (path: string, command: string) =>
   invoke<void>('open_in_editor', { path, command })
 
+/** Reveals an arbitrary filesystem path in the Finder — e.g. a linked worktree's directory. */
+export const revealPathInFinder = (path: string) => invoke<void>('reveal_path_in_finder', { path })
+
 export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 
 export const getTerminalCommands = () => invoke<string[]>('get_terminal_commands')

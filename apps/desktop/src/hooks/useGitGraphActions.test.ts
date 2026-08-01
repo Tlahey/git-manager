@@ -68,6 +68,7 @@ vi.mock('../api/git.api', () => ({
   apiCreateTag: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
+vi.mock('../api/repo.api', () => ({ apiRevealPathInFinder: vi.fn() }))
 
 const webviewGetByLabel = vi.fn()
 const WebviewWindowCtor = vi.fn()
@@ -82,12 +83,14 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
 
 import * as gitApi from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
+import { apiRevealPathInFinder } from '../api/repo.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useGitGraphActions } from './useGitGraphActions'
 
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 const mockedAddWorktree = apiAddWorktree as unknown as ReturnType<typeof vi.fn>
+const mockedRevealPathInFinder = apiRevealPathInFinder as unknown as ReturnType<typeof vi.fn>
 
 const t = (key: string, opts?: Record<string, unknown>) =>
   opts ? `${key}:${JSON.stringify(opts)}` : key
@@ -180,7 +183,7 @@ function clickEvent() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null })
+  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null, activeWorkspacePath: null })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   // clearAllMocks() also wipes .mockResolvedValue()-configured implementations, so these need
@@ -297,11 +300,63 @@ describe('useGitGraphActions — openMenuAt: WIP row', () => {
     expect(mocked.apiUnstageAll).toHaveBeenCalledWith(REPO)
   })
 
-  it('shows no menu for the CONFLICT row and a worktree WIP row', async () => {
+  it('shows no menu for the CONFLICT row', async () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
-    await act(async () => result.current.openMenuAt(clickEvent(), 'WIP:/some/worktree'))
     expect(showNativeMenu).not.toHaveBeenCalled()
+  })
+})
+
+describe('useGitGraphActions — openMenuAt: other-worktree WIP row', () => {
+  const OTHER_PATH = '/some/worktree'
+
+  it('opens the other-worktree menu with open/stash/reveal items', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    expect(getItem('gitTree.otherWorktreeMenu.openWorktree')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.stash')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.stashIncludeUntracked')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.revealInFinder')).toBeDefined()
+  })
+
+  it('"Open worktree" switches the view to the OTHER worktree path, not the active repo', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.openWorktree').action!())
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe(OTHER_PATH)
+  })
+
+  it('the stash items push a stash on the OTHER worktree path and refresh the active repo', async () => {
+    mocked.apiStashPush.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stash').action!())
+    expect(mocked.apiStashPush).toHaveBeenCalledWith(OTHER_PATH, undefined, false)
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stashIncludeUntracked').action!())
+    expect(mocked.apiStashPush).toHaveBeenCalledWith(OTHER_PATH, undefined, true)
+    // The active repo's own graph/stash list are refreshed — the new stash entry lands in the
+    // shared refs/stash and shows up there too.
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', REPO] })
+    expect(swrMutate).toHaveBeenCalledWith(['git-stashes', REPO])
+    expect(swrMutate).toHaveBeenCalledWith(['worktree-wip-statuses', REPO])
+    expect(toastSuccess).toHaveBeenCalledWith('gitTree.otherWorktreeMenu.stashed')
+  })
+
+  it('toasts an error when stashing the other worktree fails', async () => {
+    mocked.apiStashPush.mockRejectedValue(new Error('stash failed'))
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stash').action!())
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('stash failed'))
+  })
+
+  it('"Reveal in Finder" reveals the OTHER worktree path', async () => {
+    mockedRevealPathInFinder.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.revealInFinder').action!())
+    expect(mockedRevealPathInFinder).toHaveBeenCalledWith(OTHER_PATH)
   })
 })
 
