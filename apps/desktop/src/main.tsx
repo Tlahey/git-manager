@@ -88,13 +88,25 @@ e2eSetup
     } else if (windowKind === 'actions') {
       // No parameter: the journal is app-wide, reading the activity log rather than a repository.
       content = <ActionJournalWindow />
-    } else if (windowKind === 'notch' && payload) {
+    } else if (windowKind === 'notch') {
+      // Never <App /> from here, whatever is wrong with the payload — the two ways that used to
+      // happen (a payload that would not parse, and no payload at all, which fell through to the
+      // branch below) both put the *entire application* inside a small, transparent,
+      // always-on-top window sitting over the menu bar, with no way to dismiss it. Showing
+      // nothing is strictly better than that, and a card whose content cannot be read is a card
+      // with nothing to draw. The window is closed rather than left blank, since nothing else
+      // would ever retire it: an empty card never announces a dismissal.
+      let parsed: NotchPayload | null = null
       try {
-        content = <NotchWindow {...(JSON.parse(payload) as NotchPayload)} />
+        parsed = payload ? (JSON.parse(payload) as NotchPayload) : null
       } catch (e) {
         console.error('Invalid notch payload:', e)
-        content = <App />
-        isAppWindow = true
+      }
+      content = parsed ? <NotchWindow {...parsed} /> : null
+      if (!parsed) {
+        void import('@tauri-apps/api/window')
+          .then(({ getCurrentWindow }) => getCurrentWindow().close())
+          .catch((e) => console.warn('Failed to close an empty notch window:', e))
       }
     } else {
       content = <App />

@@ -40,6 +40,17 @@ vi.mock('./components/rebase-editor/RebasingCommitWindow', () => ({
   ),
 }))
 
+vi.mock('./app/notch/NotchWindow', () => ({
+  NotchWindow: (props: { model?: { id?: string } }) => (
+    <div data-testid="fake-notch-window" data-model-id={props.model?.id ?? ''} />
+  ),
+}))
+
+const closeCurrentWindow = vi.fn(() => Promise.resolve())
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ close: closeCurrentWindow }),
+}))
+
 function setSearch(search: string) {
   window.history.pushState({}, '', `/${search}`)
 }
@@ -87,6 +98,38 @@ describe('main entry', () => {
     await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
     expect(initI18nMock).toHaveBeenCalledWith('fr')
+  })
+
+  // ─── the notch window ─────────────────────────────────────────────────────
+  // This window is small, transparent, always-on-top and sits over the menu bar. Falling back to
+  // <App /> in it — which a payload that would not parse used to do, and a missing payload did by
+  // falling through to the default branch — puts the entire application inside that card, with no
+  // way to dismiss it. Showing nothing is strictly better.
+
+  it('renders the notch card for a payload it can read', async () => {
+    const payload = encodeURIComponent(JSON.stringify({ model: { id: 'hook:repo:pre-commit' } }))
+    setSearch(`?window=notch&payload=${payload}`)
+    await import('./main')
+
+    const el = await waitFor(() => screen.getByTestId('fake-notch-window'))
+    expect(el).toHaveAttribute('data-model-id', 'hook:repo:pre-commit')
+  })
+
+  it('shows nothing, not the whole app, when the notch payload will not parse', async () => {
+    setSearch('?window=notch&payload=%7Bnot-json')
+    await import('./main')
+
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fake-notch-window')).not.toBeInTheDocument()
+  })
+
+  it('shows nothing, not the whole app, when the notch payload is missing entirely', async () => {
+    setSearch('?window=notch')
+    await import('./main')
+
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
   })
 
   it('renders the merge window when windowKind=merge with repoPath and filePath', async () => {
