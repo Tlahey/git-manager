@@ -2,7 +2,31 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useNotchPresenter } from './useNotchPresenter'
 import { createRecordingNotchHost, type NotchHost } from './notchHost'
-import { SLIDE_DISTANCE, type FrameScheduler } from './notchAnimation'
+import {
+  ENTER_MS,
+  EXIT_FADE_AT,
+  EXIT_MS,
+  SLIDE_DISTANCE,
+  type FrameScheduler,
+} from './notchAnimation'
+
+/** A scheduler whose clock only moves when the test says so, for asserting mid-tween state. */
+function manualScheduler(): FrameScheduler & { advance: (ms: number) => void } {
+  let time = 0
+  let pending: ((now: number) => void)[] = []
+  return {
+    now: () => time,
+    request: (callback) => {
+      pending.push(callback)
+    },
+    advance(ms: number) {
+      time += ms
+      const due = pending
+      pending = []
+      for (const callback of due) callback(time)
+    },
+  }
+}
 
 /**
  * Completes any tween in a single frame: the callback is invoked with a time far past the
@@ -118,6 +142,54 @@ describe('auto-dismiss', () => {
     })
 
     expect(host.calls).not.toContain('close')
+  })
+
+  // The exit used to drop the opacity in the same breath as starting the slide. Over a 180ms
+  // slide and a 200ms CSS fade the two cancelled out: the card was transparent before it had
+  // visibly gone anywhere, so it read as being switched off rather than sliding away. Reported
+  // from real use as "it just hides".
+  it('keeps the card on screen while it slides, and fades it only on the way out', async () => {
+    const scheduler = manualScheduler()
+    const { result, host } = setup({ scheduler, autoDismissMs: null })
+    // Let the entrance's awaited host calls settle so its tween is the one holding a frame.
+    await flush()
+    await flush()
+    await flush()
+    await act(async () => {
+      scheduler.advance(ENTER_MS)
+    })
+    expect(result.current.visible).toBe(true)
+
+    act(() => {
+      result.current.dismiss()
+    })
+
+    // Early in the exit: already moving, and still on screen — this is the part that was missing.
+    await act(async () => {
+      scheduler.advance(EXIT_MS * (EXIT_FADE_AT / 2))
+    })
+    expect(result.current.visible).toBe(true)
+    expect(host.positions.at(-1)).toBeLessThan(REST_Y)
+
+    // Past the fade point, with slide left to run, so the fade plays *during* the movement.
+    await act(async () => {
+      scheduler.advance(EXIT_MS * EXIT_FADE_AT)
+    })
+    expect(result.current.visible).toBe(false)
+  })
+
+  it('hides a card dismissed before it ever slid in', async () => {
+    // No entrance to reverse means no tween to hang the fade off — it must still not be left
+    // showing.
+    const scheduler = manualScheduler()
+    const { result } = setup({ scheduler, autoDismissMs: null })
+
+    act(() => {
+      result.current.dismiss()
+    })
+    await flush()
+
+    expect(result.current.visible).toBe(false)
   })
 
   it('slides back up before closing', async () => {

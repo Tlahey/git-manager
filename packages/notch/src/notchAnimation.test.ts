@@ -29,6 +29,44 @@ function manualScheduler(): FrameScheduler & { advance: (ms: number) => void } {
   }
 }
 
+describe('frame progress', () => {
+  it('reports raw progress alongside the eased value', () => {
+    const scheduler = manualScheduler()
+    const frames: Array<[number, number]> = []
+    void animateValue({
+      from: 0,
+      to: 100,
+      durationMs: 100,
+      ease: easeInCubic,
+      onFrame: (value, progress) => frames.push([value, progress]),
+      scheduler,
+    })
+
+    scheduler.advance(50)
+
+    // Progress is the *time* fraction, deliberately not the eased one — which is the whole reason
+    // a caller coordinating a second effect needs it: half way through this tween the value has
+    // moved barely an eighth of the way, so "a third there" and "a third through" are different
+    // moments entirely.
+    const [value, progress] = frames.at(-1)!
+    expect(progress).toBeCloseTo(0.5)
+    expect(value).toBeCloseTo(12.5)
+  })
+
+  it('reports a completed progress for a zero-length tween', () => {
+    const frames: Array<[number, number]> = []
+    void animateValue({
+      from: 0,
+      to: 100,
+      durationMs: 0,
+      ease: easeInCubic,
+      onFrame: (value, progress) => frames.push([value, progress]),
+    })
+
+    expect(frames).toEqual([[100, 1]])
+  })
+})
+
 describe('easing', () => {
   it('pins both curves to the 0→1 unit interval', () => {
     for (const ease of [easeOutCubic, easeInCubic]) {

@@ -4,6 +4,7 @@ import {
   easeInCubic,
   easeOutCubic,
   ENTER_MS,
+  EXIT_FADE_AT,
   EXIT_MS,
   SLIDE_DISTANCE,
   type FrameScheduler,
@@ -85,22 +86,33 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     if (dismissingRef.current) return
     dismissingRef.current = true
     clearTimer()
-    setVisible(false)
 
     const { host, restY, scheduler, onDismissed } = latest.current
     // Only animate out if it ever animated in — a card dismissed before its entrance finished
     // would otherwise slide from a position it never reached.
     if (slidInRef.current) {
+      // The fade is started from inside the tween rather than before it, and rather than off a
+      // second timer: driven by the card's own travel it cannot desync from the movement, and it
+      // stays deterministic under the injected scheduler the tests step by hand.
+      let fading = false
       await animateValue({
         from: restY,
         to: restY - SLIDE_DISTANCE,
         durationMs: EXIT_MS,
         ease: easeInCubic,
-        onFrame: (y) => host.setY(y),
+        onFrame: (y, progress) => {
+          host.setY(y)
+          if (fading || progress < EXIT_FADE_AT) return
+          fading = true
+          setVisible(false)
+        },
         ...(scheduler ? { scheduler } : {}),
         isCancelled: () => cancelledRef.current,
       })
     }
+    // Whatever happened above — no entrance to reverse, or a tween cancelled before the card had
+    // travelled far enough to start fading — the card must not be left showing.
+    setVisible(false)
     // Announced before the surface is closed, and awaited — see `onDismissed`. Guarded on its own
     // so a failed announcement still lets the card go: an orphan surface stuck on screen is worse
     // than an owner that has to find out some other way.
@@ -162,7 +174,12 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       } catch (e) {
         console.warn('Notch: failed to reveal the surface:', e)
       }
-      if (cancelledRef.current) return
+      // `dismissing` as well as `cancelled`: the entrance is several awaited native calls long,
+      // and a dismissal can land in the middle of it (focus lost, or the queue dropping the card).
+      // Without this check the entrance carries on afterwards and reveals a card that has already
+      // been dismissed and closed — the exit, having found `slidIn` still false, has by then
+      // decided there was nothing to animate away.
+      if (cancelledRef.current || dismissingRef.current) return
 
       setVisible(true)
       slidInRef.current = true
@@ -176,7 +193,9 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
           ease: easeOutCubic,
           onFrame: (y) => host.setY(y),
           ...(scheduler ? { scheduler } : {}),
-          isCancelled: () => cancelledRef.current,
+          // A dismissal mid-slide-in stops the entrance where it stands rather than fighting the
+          // exit for the same coordinate.
+          isCancelled: () => cancelledRef.current || dismissingRef.current,
         })
       } catch (e) {
         console.warn('Notch: slide-in failed, snapping to the resting spot:', e)
