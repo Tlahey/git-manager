@@ -245,15 +245,20 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const scheduleRecomputeIndirectionRef = useRef<() => void>(() => {})
     const stableScheduleRecompute = useCallback(() => scheduleRecomputeIndirectionRef.current(), [])
 
-    const { collapseUnchanged, setCollapseUnchanged, expandedBlocks, expandBlock } =
-      useCollapseUnchanged({
-        editors,
-        blocks: viewToUse.blocks,
-        placements,
-        scheduleRecompute: stableScheduleRecompute,
-        defaultCollapseUnchanged,
-        editorsReady,
-      })
+    const {
+      collapseUnchanged,
+      setCollapseUnchanged,
+      expandedBlocks,
+      expandBlock,
+      applyStickyBanners,
+    } = useCollapseUnchanged({
+      editors,
+      blocks: viewToUse.blocks,
+      placements,
+      scheduleRecompute: stableScheduleRecompute,
+      defaultCollapseUnchanged,
+      editorsReady,
+    })
 
     /** A line's top Y offset in a pane's content space, accounting for collapsed (hidden)
      * regions and every alignment/banner view zone above it — the shared geometry basis for
@@ -531,6 +536,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           attachScrollSync(editorInstance, paneIndex)
           editorInstance.onDidScrollChange(() => {
             applyScrollOffset()
+            applyStickyBanners()
             if (pane === 'center') {
               updateActiveBlockIndex()
             }
@@ -581,6 +587,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             // Panes normally mount already scrolled to the top, but seed the paths from
             // whatever the panes actually report rather than assuming 0.
             applyScrollOffset()
+            applyStickyBanners()
             updateActiveBlockIndex()
             // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
             // three editors report ready, in case the very first layout pass (and thus the very
@@ -598,6 +605,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         scheduleRecomputeRef,
         handleCenterContentEvent,
         applyScrollOffset,
+        applyStickyBanners,
         updateActiveBlockIndex,
         triggerUndo,
         triggerRedo,

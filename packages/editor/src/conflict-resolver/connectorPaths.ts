@@ -1,5 +1,5 @@
 import { buildCollapsedWavePath, type ConnectorSegment } from '../MergeConnectorOverlay'
-import { GAP_WIDTH } from '../mergeViewConfig'
+import { GAP_WIDTH, stickyTopCorrection } from '../mergeViewConfig'
 
 /** Scroll-driven imperative repaint of one gap's connector overlay: rewrites every `<path d>`
  * (and repositions the action-button containers) in viewport space, bypassing React so the
@@ -31,18 +31,30 @@ export function updateConnectorPaths(
     const rightY1 = seg.rightY1 - scrollTopRight
 
     if (seg.colorClass === 'merge-connector-collapsed') {
+      // Keep this end glued to the pane banner it feeds, which useCollapseUnchanged's
+      // applyStickyBanners pins to the pane's own viewport top for as long as its scroll
+      // position sits inside the collapsed span — without the same correction here, the wave
+      // would keep sliding away from a banner that has stopped moving.
+      const bannerHeight = seg.leftY1 - seg.leftY0
+      const leftCorrection = stickyTopCorrection(scrollTopLeft, seg.leftY0, bannerHeight)
+      const rightCorrection = stickyTopCorrection(scrollTopRight, seg.rightY0, bannerHeight)
+      const stickyLeftY0 = leftY0 + leftCorrection
+      const stickyLeftY1 = stickyLeftY0 + bannerHeight
+      const stickyRightY0 = rightY0 + rightCorrection
+      const stickyRightY1 = stickyRightY0 + bannerHeight
+
       // Mirrors the <g> the JSX renders: fill path (closed quadrilateral, invisible hit-target)
       // then the wave stroke — in that order.
       const d = [
-        `M 0,${leftY0}`,
-        `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
-        `L ${width},${rightY1}`,
-        `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+        `M 0,${stickyLeftY0}`,
+        `C ${half},${stickyLeftY0} ${half},${stickyRightY0} ${width},${stickyRightY0}`,
+        `L ${width},${stickyRightY1}`,
+        `C ${half},${stickyRightY1} ${half},${stickyLeftY1} 0,${stickyLeftY1}`,
         'Z',
       ].join(' ')
       const dWave = buildCollapsedWavePath(
-        (leftY0 + leftY1) / 2,
-        (rightY0 + rightY1) / 2,
+        (stickyLeftY0 + stickyLeftY1) / 2,
+        (stickyRightY0 + stickyRightY1) / 2,
         width,
         wavePhaseOffset
       )

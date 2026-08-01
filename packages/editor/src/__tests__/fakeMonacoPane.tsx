@@ -160,6 +160,12 @@ export interface FakeViewZone {
   domNode: HTMLElement
 }
 
+export interface FakeOverlayWidget {
+  getId: () => string
+  getDomNode: () => HTMLElement
+  getPosition: () => unknown
+}
+
 export interface FakeEditorInstance {
   path: string
   getModel: () => FakeModel
@@ -186,6 +192,8 @@ export interface FakeEditorInstance {
   getScrollTop: () => number
   setScrollTop: (val: number) => void
   getTopForLineNumber: (line: number) => number
+  addOverlayWidget: (widget: FakeOverlayWidget) => void
+  removeOverlayWidget: (widget: FakeOverlayWidget) => void
   addCommand: (keybinding: number, handler: () => void) => void
   focus: () => void
   trigger: (source: string, actionId: string, payload: unknown) => void
@@ -199,6 +207,8 @@ export interface FakeEditorInstance {
   decorations: unknown[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
   viewZones: FakeViewZone[]
+  /** Test-only: the currently-live overlay widgets (adds minus removes). */
+  overlayWidgets: FakeOverlayWidget[]
   /** Test-only: map of registered commands for testing undo/redo key bindings. */
   commands: Map<number, () => void>
   /** Test-only: the most recent ranges passed to `setHiddenAreas` (collapse-unchanged). */
@@ -258,6 +268,12 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       scrollTop = val
     },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
+    addOverlayWidget: (widget) => {
+      instance.overlayWidgets.push(widget)
+    },
+    removeOverlayWidget: (widget) => {
+      instance.overlayWidgets = instance.overlayWidgets.filter((w) => w.getId() !== widget.getId())
+    },
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
     },
@@ -298,6 +314,7 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     },
     decorations: [],
     viewZones: [],
+    overlayWidgets: [],
     commands,
     hiddenAreas: [],
     lastRevealedLine: null,

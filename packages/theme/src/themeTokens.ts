@@ -75,19 +75,44 @@ export interface ContrastPair extends TokenContrastPair {
 }
 
 export const CONTRAST_PAIRS: ContrastPair[] = [
-  { label: 'foreground/background', fg: '--foreground', bg: '--background', minRatio: AA_NORMAL_TEXT },
+  {
+    label: 'foreground/background',
+    fg: '--foreground',
+    bg: '--background',
+    minRatio: AA_NORMAL_TEXT,
+  },
   { label: 'card', fg: '--card-foreground', bg: '--card', minRatio: AA_NORMAL_TEXT },
   { label: 'popover', fg: '--popover-foreground', bg: '--popover', minRatio: AA_NORMAL_TEXT },
   { label: 'primary', fg: '--primary-foreground', bg: '--primary', minRatio: AA_NORMAL_TEXT },
   { label: 'secondary', fg: '--secondary-foreground', bg: '--secondary', minRatio: AA_NORMAL_TEXT },
   { label: 'accent', fg: '--accent-foreground', bg: '--accent', minRatio: AA_NORMAL_TEXT },
-  { label: 'destructive', fg: '--destructive-foreground', bg: '--destructive', minRatio: AA_NORMAL_TEXT },
+  {
+    label: 'destructive',
+    fg: '--destructive-foreground',
+    bg: '--destructive',
+    minRatio: AA_NORMAL_TEXT,
+  },
   { label: 'success', fg: '--success-foreground', bg: '--success', minRatio: AA_NORMAL_TEXT },
   { label: 'muted-foreground', fg: '--muted-foreground', bg: '--muted', minRatio: AA_LARGE_TEXT },
   // muted-foreground is also commonly rendered directly on the base background.
-  { label: 'muted-foreground/background', fg: '--muted-foreground', bg: '--background', minRatio: AA_LARGE_TEXT },
-  { label: 'sidebar', fg: '--sidebar-foreground', bg: '--sidebar-background', minRatio: AA_NORMAL_TEXT },
-  { label: 'sidebar-accent', fg: '--sidebar-accent-foreground', bg: '--sidebar-accent', minRatio: AA_NORMAL_TEXT },
+  {
+    label: 'muted-foreground/background',
+    fg: '--muted-foreground',
+    bg: '--background',
+    minRatio: AA_LARGE_TEXT,
+  },
+  {
+    label: 'sidebar',
+    fg: '--sidebar-foreground',
+    bg: '--sidebar-background',
+    minRatio: AA_NORMAL_TEXT,
+  },
+  {
+    label: 'sidebar-accent',
+    fg: '--sidebar-accent-foreground',
+    bg: '--sidebar-accent',
+    minRatio: AA_NORMAL_TEXT,
+  },
 ]
 
 // ─── Tier 3: component tokens (per-component override surface) ────────────────
@@ -144,6 +169,16 @@ export const COMPONENT_TOKEN_DEFAULTS: Record<string, string> = {
   // before the token existed, so no existing theme moves; `glass` re-points it to
   // a full capsule for the Liquid Glass geometry.
   '--control-radius': 'calc(var(--radius) - 2px)',
+  // A dedicated, VS-Code-"descriptionForeground"-style neutral gray for decorative hint
+  // elements (currently: the merge/diff editor's collapsed-region wave, see
+  // packages/editor/src/styles.css) — distinct from --muted-foreground because that token is
+  // often hue-tinted per theme, which reads as a visibly different color once rendered through
+  // a different pipeline (CSS mask vs SVG stroke) at small sizes, even though the value is
+  // identical. Defaults to --muted-foreground; a theme overrides it only once that mismatch has
+  // actually been confirmed for it. Not in COMPONENT_CONTRAST_PAIRS/GRAPHICAL_CONTRAST_PAIRS:
+  // it's a thin decorative line, not body text, same reasoning as --muted-foreground's own
+  // large-text-only grading in CONTRAST_PAIRS.
+  '--description-foreground': 'var(--muted-foreground)',
 }
 
 /**
@@ -154,12 +189,37 @@ export const COMPONENT_TOKEN_DEFAULTS: Record<string, string> = {
  */
 export const COMPONENT_CONTRAST_PAIRS: TokenContrastPair[] = [
   { label: 'button', fg: '--button-foreground', bg: '--button-bg', minRatio: AA_NORMAL_TEXT },
-  { label: 'button-secondary', fg: '--button-secondary-foreground', bg: '--button-secondary-bg', minRatio: AA_NORMAL_TEXT },
-  { label: 'button-destructive', fg: '--button-destructive-foreground', bg: '--button-destructive-bg', minRatio: AA_NORMAL_TEXT },
-  { label: 'button-success', fg: '--button-success-foreground', bg: '--button-success-bg', minRatio: AA_NORMAL_TEXT },
+  {
+    label: 'button-secondary',
+    fg: '--button-secondary-foreground',
+    bg: '--button-secondary-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
+  {
+    label: 'button-destructive',
+    fg: '--button-destructive-foreground',
+    bg: '--button-destructive-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
+  {
+    label: 'button-success',
+    fg: '--button-success-foreground',
+    bg: '--button-success-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
   { label: 'badge', fg: '--badge-foreground', bg: '--badge-bg', minRatio: AA_NORMAL_TEXT },
-  { label: 'badge-secondary', fg: '--badge-secondary-foreground', bg: '--badge-secondary-bg', minRatio: AA_NORMAL_TEXT },
-  { label: 'badge-destructive', fg: '--badge-destructive-foreground', bg: '--badge-destructive-bg', minRatio: AA_NORMAL_TEXT },
+  {
+    label: 'badge-secondary',
+    fg: '--badge-secondary-foreground',
+    bg: '--badge-secondary-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
+  {
+    label: 'badge-destructive',
+    fg: '--badge-destructive-foreground',
+    bg: '--badge-destructive-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
 ]
 
 // ─── Non-text (graphical) contrast — WCAG 1.4.11 ─────────────────────────────
@@ -177,8 +237,18 @@ export const GRAPHICAL_CONTRAST_PAIRS: TokenContrastPair[] = [
   // The destructive badge fill is a status chip too — it must pop off the page,
   // not just carry readable text. (The secondary badge is deliberately NOT graded
   // here: it is a *subtle* chip that rides the secondary surface by design.)
-  { label: 'badge-destructive-fill/background', fg: '--badge-destructive-bg', bg: '--background', minRatio: AA_LARGE_TEXT },
-  { label: 'badge-destructive-fill/card', fg: '--badge-destructive-bg', bg: '--card', minRatio: AA_LARGE_TEXT },
+  {
+    label: 'badge-destructive-fill/background',
+    fg: '--badge-destructive-bg',
+    bg: '--background',
+    minRatio: AA_LARGE_TEXT,
+  },
+  {
+    label: 'badge-destructive-fill/card',
+    fg: '--badge-destructive-bg',
+    bg: '--card',
+    minRatio: AA_LARGE_TEXT,
+  },
 ]
 
 // ─── APCA (WCAG 3 draft) readable-contrast thresholds ────────────────────────
@@ -243,8 +313,12 @@ export function parseThemeTokens(css: string): Map<string, ThemeTokens> {
     const body = block[2]
     // Only blocks that target a theme root: the data-theme selector must not be
     // followed by a descendant/combinator (space, ., >, etc.) before the brace.
-    const ids = [...selector.matchAll(/html\[data-theme="([a-z0-9-]+)"\]\s*(?=,|\{|$)/g)].map(
-      (m) => m[1],
+    // Quote-agnostic (["']): the repo's prettier config (singleQuote: true) rewrites
+    // `data-theme="x"` to `data-theme='x'` if these files are ever formatted — a
+    // double-quote-only pattern here silently drops every theme the moment that
+    // happens (caught only by this test suite, not by prettier itself).
+    const ids = [...selector.matchAll(/html\[data-theme=["']([a-z0-9-]+)["']\]\s*(?=,|\{|$)/g)].map(
+      (m) => m[1]
     )
     if (ids.length === 0) continue
 
@@ -279,7 +353,7 @@ export function parseThemeTokens(css: string): Map<string, ThemeTokens> {
 export function resolveTokenValue(
   all: ThemeTokens,
   value: string,
-  seen: Set<string> = new Set(),
+  seen: Set<string> = new Set()
 ): string {
   const trimmed = value.trim()
   const m = trimmed.match(/^var\(\s*(--[a-z0-9-]+)\s*(?:,\s*([\s\S]+))?\)$/i)
@@ -408,9 +482,7 @@ export interface ThemeValidation {
 /** True when a validation found nothing wrong. */
 export function isThemeValid(v: ThemeValidation): boolean {
   return (
-    v.missingTokens.length === 0 &&
-    v.nonHslTokens.length === 0 &&
-    v.contrastFailures.length === 0
+    v.missingTokens.length === 0 && v.nonHslTokens.length === 0 && v.contrastFailures.length === 0
   )
 }
 

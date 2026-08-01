@@ -49,6 +49,11 @@
     --secondary-foreground: var(--neutral-950);
     --muted: var(--neutral-200);
     --muted-foreground: var(--neutral-500);
+    /* --description-foreground: this theme's own --muted-foreground lightness, fully
+       desaturated to a neutral gray (component token, see themes.css). Formula-derived, not
+       individually eyeballed against a live render like ocean's override — revisit if this
+       theme's merge-editor collapsed-region wave still looks off. */
+    --description-foreground: 0 0% 32%;
     --accent: var(--neutral-200);
     --accent-foreground: var(--neutral-950);
     --destructive: var(--danger-500);

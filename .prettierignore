@@ -4,3 +4,11 @@ dist
 build
 target
 *.tsbuildinfo
+
+# Hand-tuned theme token CSS: prettier's singleQuote:true rewrites this repo's
+# double-quoted `data-theme="x"` attribute selectors to single quotes, which used
+# to silently break themeTokens.ts's parser regex (now quote-agnostic as a second
+# line of defense — see that file). Kept out of prettier's reach so these
+# carefully-wrapped comments/alignment don't churn on an unrelated format pass.
+packages/theme/src/themes.css
+packages/theme/src/themes/*.css

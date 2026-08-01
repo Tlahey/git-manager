@@ -64,6 +64,16 @@
     /* Not a colour: the pill radius of buttons + the selection capsule. The default
        reproduces the `rounded-md` these controls carried before the token existed. */
     --control-radius: calc(var(--radius) - 2px);
+    /* A dedicated, VS-Code-"descriptionForeground"-style neutral gray for decorative hint
+       elements (currently: the merge/diff editor's collapsed-region wave, see
+       packages/editor/src/styles.css) — distinct from --muted-foreground because that token is
+       often hue-tinted per theme (e.g. ocean's teal-navy cast), which reads as a visibly
+       different color once rendered through a different pipeline (CSS mask vs SVG stroke) at
+       small sizes, even though the value is identical. Defaults to --muted-foreground; a theme
+       overrides it only once that mismatch has actually been confirmed for it. Not in
+       COMPONENT_CONTRAST_PAIRS/GRAPHICAL_CONTRAST_PAIRS: it's a thin decorative line, not body
+       text, same reasoning as --muted-foreground's own large-text-only grading. */
+    --description-foreground: var(--muted-foreground);
   }
 }
 

@@ -39,6 +39,11 @@
        muted shade the other dark themes carry does not clear. Verified ≥76.7Lc
        against --card/--muted/--background/--sidebar-background. */
     --muted-foreground: 207.2 29.6% 83%;
+    /* --muted-foreground's teal-navy cast reads as a visibly different color than the merge
+       editor's SVG-rendered wave once painted through the CSS-mask pipeline at that decoration's
+       size (component token, see themes.css) — a plain neutral avoids the mismatch. Confirmed by
+       eye against a live render; not graded (see themes.css's own comment on this token). */
+    --description-foreground: 0 0% 57%;
     --accent: 217 64.4% 14.3%;
     --accent-foreground: 195 53.3% 94.1%;
     --destructive: 353.1 100% 65.7%;

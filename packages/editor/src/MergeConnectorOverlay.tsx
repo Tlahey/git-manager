@@ -1,6 +1,11 @@
 import { forwardRef } from 'react'
 import { setCollapsedBlockHover } from './conflict-resolver/collapsedRegions'
-import { DEFAULT_LINE_HEIGHT, WAVE_AMPLITUDE, WAVE_HALF_PERIOD } from './mergeViewConfig'
+import {
+  DEFAULT_LINE_HEIGHT,
+  WAVE_AMPLITUDE,
+  WAVE_HALF_PERIOD,
+  stickyTopCorrection,
+} from './mergeViewConfig'
 
 /** The collapsed-region connector's own version of the wavy line each pane's banner draws via a
  * CSS mask — built from the *same* alternating-quadratic-Bezier curve family as that mask
@@ -228,16 +233,27 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
               // (buildCollapsedWavePath) threads through the vertical middle, continuing each pane
               // banner's own wave across the gap instead of leaving a plain filled shape between
               // them.
+              //
+              // Each end also gets the same sticky-pin correction useCollapseUnchanged's
+              // applyStickyBanners applies to the pane banner itself, so the wave stays glued to
+              // it instead of sliding away once that banner is pinned to the pane's viewport top.
+              const bannerHeight = seg.leftY1 - seg.leftY0
+              const leftCorrection = stickyTopCorrection(scrollTopLeft, seg.leftY0, bannerHeight)
+              const rightCorrection = stickyTopCorrection(scrollTopRight, seg.rightY0, bannerHeight)
+              const stickyLeftY0 = leftY0 + leftCorrection
+              const stickyLeftY1 = stickyLeftY0 + bannerHeight
+              const stickyRightY0 = rightY0 + rightCorrection
+              const stickyRightY1 = stickyRightY0 + bannerHeight
               const d = [
-                `M 0,${leftY0}`,
-                `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
-                `L ${width},${rightY1}`,
-                `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+                `M 0,${stickyLeftY0}`,
+                `C ${half},${stickyLeftY0} ${half},${stickyRightY0} ${width},${stickyRightY0}`,
+                `L ${width},${stickyRightY1}`,
+                `C ${half},${stickyRightY1} ${half},${stickyLeftY1} 0,${stickyLeftY1}`,
                 'Z',
               ].join(' ')
               const dWave = buildCollapsedWavePath(
-                (leftY0 + leftY1) / 2,
-                (rightY0 + rightY1) / 2,
+                (stickyLeftY0 + stickyLeftY1) / 2,
+                (stickyRightY0 + stickyRightY1) / 2,
                 width,
                 wavePhaseOffset
               )
@@ -251,7 +267,16 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
                   onMouseLeave={() => setCollapsedBlockHover(seg.id, false)}
                 >
                   <path d={d} className="merge-connector-collapsed-fill" />
-                  <path d={dWave} className="merge-connector-collapsed-wave" />
+                  {/* Also carries its own data-collapsed-block-id — setCollapsedBlockHover's
+                      querySelectorAll toggles `.is-hovered` on the wave directly this way, not
+                      just on the <g> wrapper, so the `.merge-connector-collapsed-wave.is-hovered`
+                      rule in styles.css (the one that doesn't depend on a `g.is-hovered` ancestor
+                      match) has a real element to land on. */}
+                  <path
+                    d={dWave}
+                    className="merge-connector-collapsed-wave"
+                    data-collapsed-block-id={seg.id}
+                  />
                 </g>
               )
             }
