@@ -36,6 +36,6 @@ apps/docs/.vitepress/sidebar.json
 apps/docs/.vitepress/landing-css.json
 apps/docs/.vitepress/cache/
 
-# Regenerated at the end of every wdio run — a snapshot of the last run on this machine.
-apps/e2e/REPORT.md
+# Raw per-worker wdio logs and the timing rows REPORT.md is built from. The report itself IS
+# committed — see apps/e2e/REPORT.md.
 apps/e2e/logs/
