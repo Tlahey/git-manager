@@ -260,7 +260,7 @@ Restent volontairement non traités, et non bloquants :
 
 ## 16. Chaînes en dur en français (trouvé le 2026-08-02, NON corrigé)
 
-Découvert en balayant les commentaires : 9 chaînes **visibles par l'utilisateur** sont écrites en dur en français dans le JSX, au lieu de passer par `t()`. Elles s'affichent donc en français même quand l'application est en anglais — c'est un bug utilisateur, pas une question de style, et ça viole l'invariant i18n du CLAUDE.md.
+Découvert en balayant les commentaires : 8 chaînes **visibles par l'utilisateur** sont écrites en dur en français dans le JSX, au lieu de passer par `t()`. Elles s'affichent donc en français même quand l'application est en anglais — c'est un bug utilisateur, pas une question de style, et ça viole l'invariant i18n du CLAUDE.md.
 
 | Fichier | Ligne | Chaîne |
 | --- | --- | --- |
@@ -272,8 +272,9 @@ Découvert en balayant les commentaires : 9 chaînes **visibles par l'utilisateu
 | [GeneralSection.tsx](apps/desktop/src/app/settings/components/GeneralSection.tsx#L84) | 84 | `<Highlight text="Identité Git par défaut" />` |
 | [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L112) | 112 | `label="Succès & Trophées"` |
 | [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L237) | 237 | `title="Réglages"` |
-| [WipStagingPanel.tsx](apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx#L386) | 386 | `defaultValue: 'Amender le commit précédent'` |
 
 Non corrigé ici parce que ce n'est pas un renommage : chacune demande une clé i18n ajoutée **dans les deux locales**, et les deux `<Highlight text=…>` alimentent en plus la recherche des réglages, dont il faut vérifier qu'elle reste cohérente une fois le libellé traduit. À traiter comme un lot séparé.
+
+Un neuvième cas a été écarté après vérification : [WipStagingPanel.tsx:386](apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx#L386) passe `defaultValue: 'Amender le commit précédent'` à `t('conflictEditor.amendPreviousCommit')`, mais cette clé existe dans les deux locales — le fallback n'est donc jamais atteint. C'est du code mort en français, pas un bug d'affichage ; à nettoyer, sans urgence.
 
 À noter, à ne PAS confondre avec ce qui précède : les props `match={...}` des sections de réglages contiennent volontairement des mots-clés français (`thème`, `identité`, `profondeur`…). Ce sont des synonymes de recherche, pas du texte affiché — les laisser tels quels.
