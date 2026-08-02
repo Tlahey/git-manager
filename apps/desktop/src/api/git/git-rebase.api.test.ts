@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { GitBranch, RebaseState } from '@git-manager/git-types'
-import { useUndoHistoryStore } from '../stores/undoHistory.store'
-import { getActiveSession, resetActivitySessions } from '../lib/activityCorrelation'
+import { useUndoHistoryStore } from '../../stores/undoHistory.store'
+import { getActiveSession, resetActivitySessions } from '../../lib/activityCorrelation'
 
-vi.mock('../lib/tauri', async () => {
-  const actual = await vi.importActual<typeof import('../lib/tauri')>('../lib/tauri')
+vi.mock('../../lib/tauri', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/tauri')>('../../lib/tauri')
   return {
     ...actual,
     getBranches: vi.fn(),
@@ -22,8 +22,11 @@ vi.mock('../lib/tauri', async () => {
   }
 })
 
-import * as tauri from '../lib/tauri'
-import * as api from './git.api'
+import * as tauri from '../../lib/tauri'
+import * as api from './git-rebase.api'
+// apiCreateCommit builds the prior redo tail 'clearRedo-only actions' below undoes — a genuine
+// cross-domain setup, not a layering bypass.
+import { apiCreateCommit } from '../git.api'
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 
@@ -140,7 +143,7 @@ describe('clearRedo-only actions', () => {
   async function withPriorRedoTail(path: string) {
     mocked.getBranches.mockResolvedValue(headBranch('prev-sha'))
     mocked.createCommit.mockResolvedValue({ oid: 'sha-1', shortOid: 'sha-1' })
-    await api.apiCreateCommit(path, 'first')
+    await apiCreateCommit(path, 'first')
     await useUndoHistoryStore.getState().undo(path)
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(true)
   }
@@ -161,7 +164,7 @@ function sessionFor(path: string, command: string) {
   return getActiveSession(path, command)
 }
 
-describe('activity-log sessions for multi-step operations', () => {
+describe('activity-log sessions for rebase', () => {
   it('opens a rebase session and closes it once the rebase lands', async () => {
     const path = freshPath()
     mocked.rebaseOntoCommit.mockResolvedValue(undefined)
