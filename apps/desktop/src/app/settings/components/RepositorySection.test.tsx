@@ -50,7 +50,7 @@ describe('RepositorySection — appearance page', () => {
     const user = userEvent.setup()
     render(<RepositorySection category="appearance" />)
     await user.click(screen.getByTestId('repo-override-theme-override'))
-    expect(useSettingsStore.getState().settings.repoOverrides[REPO]).toEqual({ theme: 'dark' })
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]).toEqual({ theme: 'system' })
     expect(screen.getByTestId('repo-theme-select')).toBeEnabled()
   })
 

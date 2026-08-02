@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     autoFetchIntervalMinutes: 1,
   },
   appearance: {
-    theme: 'dark',
+    theme: 'system',
     fontSize: 14,
     density: 'normal',
     showAvatars: true,

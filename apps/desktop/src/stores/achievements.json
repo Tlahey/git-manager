@@ -34,7 +34,9 @@
     "difficulty": "beginner",
     "kind": "pair",
     "startEvent": "stage",
-    "endEvent": "unstage"
+    "endEvent": "unstage",
+    "effects": [{ "type": "theme", "id": "solarized-light" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_status",
@@ -44,7 +46,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git status"
+    "commandKeyword": "git status",
+    "effects": [{ "type": "theme", "id": "github-light" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_log",
@@ -54,7 +58,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git log"
+    "commandKeyword": "git log",
+    "effects": [{ "type": "theme", "id": "github-dark" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "commit_50",
@@ -94,7 +100,9 @@
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "action",
-    "event": "discard"
+    "event": "discard",
+    "effects": [{ "type": "theme", "id": "twilight" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "fixup",
@@ -186,7 +194,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git bisect"
+    "commandKeyword": "git bisect",
+    "effects": [{ "type": "theme", "id": "nord" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_cherry_pick",
@@ -196,7 +206,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git cherry-pick"
+    "commandKeyword": "git cherry-pick",
+    "effects": [{ "type": "theme", "id": "dracula" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_rebase_i",
@@ -216,7 +228,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git worktree"
+    "commandKeyword": "git worktree",
+    "effects": [{ "type": "theme", "id": "catppuccin-mocha" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_submodule",
@@ -236,7 +250,9 @@
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git filter"
+    "commandKeyword": "git filter",
+    "effects": [{ "type": "theme", "id": "glass" }],
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_verify_pack",

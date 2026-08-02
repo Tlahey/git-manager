@@ -28,11 +28,12 @@ describe('AppearanceSection — theme picker', () => {
     expect(screen.getByTestId('theme-card-light')).toBeInTheDocument()
   })
 
-  it('hides an achievement-gated theme until its achievement unlocks', () => {
+  it('shows an achievement-gated theme with a locked badge until its achievement unlocks', () => {
     // "forest" is gated by achievement "pr_10" (see achievements.json); all achievements start
-    // unlocked: false in the default game store, so it should not show up yet.
+    // unlocked: false in the default game store, so it renders locked rather than hidden.
     const { rerender } = render(<AppearanceSection />)
-    expect(screen.queryByTestId('theme-card-forest')).not.toBeInTheDocument()
+    expect(screen.getByTestId('theme-card-forest')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-locked-badge-forest')).toBeInTheDocument()
 
     useGameStore.setState({
       achievements: useGameStore
@@ -41,6 +42,15 @@ describe('AppearanceSection — theme picker', () => {
     })
     rerender(<AppearanceSection />)
     expect(screen.getByTestId('theme-card-forest')).toBeInTheDocument()
+    expect(screen.queryByTestId('theme-locked-badge-forest')).not.toBeInTheDocument()
+  })
+
+  it('does not change the active theme when clicking a locked theme card', async () => {
+    const user = userEvent.setup()
+    render(<AppearanceSection />)
+    const before = useSettingsStore.getState().settings.appearance.theme
+    await user.click(screen.getByTestId('theme-card-forest'))
+    expect(useSettingsStore.getState().settings.appearance.theme).toBe(before)
   })
 
   it('lists custom user themes with a "custom" badge', () => {
