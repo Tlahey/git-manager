@@ -109,7 +109,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         {rewardsEnabled && (
           <PinnedTab
             icon={<Trophy className="h-3.5 w-3.5 text-amber-500" />}
-            label="Succès & Trophées"
+            label={t('tabs.rewards')}
             active={activeTab === REWARDS_TAB}
             onClick={() => setActiveTab(REWARDS_TAB)}
             hideLabel={true}
@@ -234,7 +234,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           <button
             onClick={() => onOpenSettings('general')}
             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            title="Réglages"
+            title={t('tabs.settings')}
           >
             <Settings className="h-3.5 w-3.5" />
           </button>

@@ -1,3 +1,4 @@
+import { useTranslation } from '@git-manager/i18n'
 import { Button, Separator } from '@git-manager/ui'
 import { FileCode, FolderOpen, Terminal, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -11,6 +12,7 @@ function appLabel(path: string): string {
 }
 
 export function ExternalToolsSection() {
+  const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
 
   const tools = settings.externalTools || { externalTerminalCommand: '' }
@@ -36,12 +38,12 @@ export function ExternalToolsSection() {
   }
 
   async function handlePickEditorApp() {
-    const selected = await pickApplication("Sélectionner l'application de l'éditeur")
+    const selected = await pickApplication(t('settings.externalTools.pickEditorDialog'))
     if (selected) updateGit({ externalEditorCommand: selected })
   }
 
   async function handlePickTerminalApp() {
-    const selected = await pickApplication("Sélectionner l'application du terminal")
+    const selected = await pickApplication(t('settings.externalTools.pickTerminalDialog'))
     if (selected) updateTools({ externalTerminalCommand: selected })
   }
 
@@ -55,7 +57,7 @@ export function ExternalToolsSection() {
       >
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <FileCode className="h-4 w-4 text-muted-foreground" />
-          <Highlight text="Éditeur de code externe" />
+          <Highlight text={t('settings.externalTools.editorTitle')} />
         </h4>
         {git.externalEditorCommand ? (
           <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
@@ -75,7 +77,7 @@ export function ExternalToolsSection() {
                 data-testid="externalEditor-change"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Changer
+                {t('settings.externalTools.change')}
               </Button>
               <Button
                 type="button"
@@ -83,7 +85,7 @@ export function ExternalToolsSection() {
                 variant="ghost"
                 className="h-7 w-7 p-0 text-muted-foreground"
                 onClick={() => updateGit({ externalEditorCommand: '' })}
-                title="Retirer l'application"
+                title={t('settings.externalTools.remove')}
                 data-testid="externalEditor-clear"
               >
                 <X className="h-3.5 w-3.5" />
@@ -100,7 +102,7 @@ export function ExternalToolsSection() {
             data-testid="externalEditor-select"
           >
             <FolderOpen className="h-3.5 w-3.5" />
-            Sélectionner mon éditeur…
+            {t('settings.externalTools.selectEditor')}
           </Button>
         )}
       </FilterableSetting>
@@ -114,7 +116,7 @@ export function ExternalToolsSection() {
         <Separator className="mb-3" />
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <Terminal className="h-4 w-4 text-muted-foreground" />
-          <Highlight text="Terminal externe" />
+          <Highlight text={t('settings.externalTools.terminalTitle')} />
         </h4>
         {tools.externalTerminalCommand ? (
           <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
@@ -134,7 +136,7 @@ export function ExternalToolsSection() {
                 data-testid="externalTerminal-change"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Changer
+                {t('settings.externalTools.change')}
               </Button>
               <Button
                 type="button"
@@ -142,7 +144,7 @@ export function ExternalToolsSection() {
                 variant="ghost"
                 className="h-7 w-7 p-0 text-muted-foreground"
                 onClick={() => updateTools({ externalTerminalCommand: '' })}
-                title="Retirer l'application"
+                title={t('settings.externalTools.remove')}
                 data-testid="externalTerminal-clear"
               >
                 <X className="h-3.5 w-3.5" />
@@ -159,7 +161,7 @@ export function ExternalToolsSection() {
             data-testid="externalTerminal-select"
           >
             <FolderOpen className="h-3.5 w-3.5" />
-            Sélectionner mon terminal…
+            {t('settings.externalTools.selectTerminal')}
           </Button>
         )}
       </FilterableSetting>

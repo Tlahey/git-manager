@@ -258,23 +258,14 @@ Restent volontairement non traités, et non bloquants :
 - **Chaînes visibles par l'utilisateur codées en dur en français** — un problème *différent* et plus grave, découvert pendant ce balayage : 9 occurrences violent l'invariant i18n et s'affichent en français quelle que soit la langue choisie. Voir la liste en §16.
 - `packages/components`'s `InnerTab` reste utilisé : il rend les 6 onglets de la page Pull Requests / Launchpad ([PullRequestsPage.tsx:307](apps/desktop/src/app/pull-requests/PullRequestsPage.tsx#L307)). Le retrait des onglets de vue ne lui a enlevé qu'un consommateur sur deux.
 
-## 16. Chaînes en dur en français (trouvé le 2026-08-02, NON corrigé)
+## 16. Chaînes en dur en français — CORRIGÉ le 2026-08-02
 
-Découvert en balayant les commentaires : 8 chaînes **visibles par l'utilisateur** sont écrites en dur en français dans le JSX, au lieu de passer par `t()`. Elles s'affichent donc en français même quand l'application est en anglais — c'est un bug utilisateur, pas une question de style, et ça viole l'invariant i18n du CLAUDE.md.
+Découvert en balayant les commentaires, puis corrigé : des chaînes **visibles par l'utilisateur** étaient écrites en dur en français dans le JSX au lieu de passer par `t()`. Elles s'affichaient en français même quand l'application était en anglais — un bug utilisateur, pas une question de style.
 
-| Fichier | Ligne | Chaîne |
-| --- | --- | --- |
-| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L39) | 39 | `pickApplication("Sélectionner l'application de l'éditeur")` |
-| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L44) | 44 | `pickApplication("Sélectionner l'application du terminal")` |
-| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L58) | 58 | `<Highlight text="Éditeur de code externe" />` |
-| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L103) | 103 | `Sélectionner mon éditeur…` |
-| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L162) | 162 | `Sélectionner mon terminal…` |
-| [GeneralSection.tsx](apps/desktop/src/app/settings/components/GeneralSection.tsx#L84) | 84 | `<Highlight text="Identité Git par défaut" />` |
-| [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L112) | 112 | `label="Succès & Trophées"` |
-| [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L237) | 237 | `title="Réglages"` |
+Le décompte initial (8) était **sous-estimé** : il venait d'un `grep` sur des accents, qui ratait `Changer`, `Retirer l'application` et `Terminal externe`. Le compte réel est de **12**, dont 10 dans le seul [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx) — ce fichier n'était tout simplement jamais passé par l'i18n. Leçon : chercher des accents trouve du français, mais ne prouve pas son absence.
 
-Non corrigé ici parce que ce n'est pas un renommage : chacune demande une clé i18n ajoutée **dans les deux locales**, et les deux `<Highlight text=…>` alimentent en plus la recherche des réglages, dont il faut vérifier qu'elle reste cohérente une fois le libellé traduit. À traiter comme un lot séparé.
+11 nouvelles clés ajoutées dans les deux locales (`settings.externalTools.*`, `settings.git.identityTitle`, `tabs.rewards`, `tabs.settings`).
 
-Un neuvième cas a été écarté après vérification : [WipStagingPanel.tsx:386](apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx#L386) passe `defaultValue: 'Amender le commit précédent'` à `t('conflictEditor.amendPreviousCommit')`, mais cette clé existe dans les deux locales — le fallback n'est donc jamais atteint. C'est du code mort en français, pas un bug d'affichage ; à nettoyer, sans urgence.
+Le point de vigilance annoncé — la recherche des réglages — tient, et est maintenant verrouillé par deux tests dans `ExternalToolsSection.test.tsx` : une requête anglaise surligne bien le libellé désormais anglais, et une requête française (`editeur`) trouve toujours le réglage, parce que les mots-clés `match={...}` restent volontairement bilingues. **Ne pas traduire ces `match`** : ce sont des synonymes de recherche, pas du texte affiché.
 
-À noter, à ne PAS confondre avec ce qui précède : les props `match={...}` des sections de réglages contiennent volontairement des mots-clés français (`thème`, `identité`, `profondeur`…). Ce sont des synonymes de recherche, pas du texte affiché — les laisser tels quels.
+Un cas écarté après vérification : [WipStagingPanel.tsx:386](apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx#L386) passe `defaultValue: 'Amender le commit précédent'` à `t('conflictEditor.amendPreviousCommit')`, mais cette clé existe dans les deux locales — le fallback n'est jamais atteint. Du code mort en français, pas un bug d'affichage.

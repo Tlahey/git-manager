@@ -109,6 +109,8 @@
   "footer.activityLogs": "Journal d’activité",
   "footer.level": "Niv. {{level}}",
   "footer.rewardsTooltip": "Consulter vos succès et récompenses Git",
+  "tabs.rewards": "Succès & Trophées",
+  "tabs.settings": "Réglages",
   "footer.shortcutsDescription": "Raccourcis clavier globaux pour naviguer plus rapidement.",
   "footer.noShortcutsMatch": "Aucun raccourci ne correspond à « {{query}} ».",
   "footer.shortcutsCategoryGeneral": "Général",
