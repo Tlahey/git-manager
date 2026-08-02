@@ -23,6 +23,7 @@ import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
 import { useGraphScrollSync } from '../../hooks/useGraphScrollSync'
+import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
@@ -162,34 +163,7 @@ export function GitGraph({
     useBisectUIStore.getState().pickCommit(oid)
   }
 
-  useEffect(() => {
-    if (!conflictFilePath) return
-
-    const openMergeWindow = async () => {
-      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-      const safeLabel = `merge-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${conflictFilePath.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-      const url = `/?window=merge&repoPath=${encodeURIComponent(repoPath)}&filePath=${encodeURIComponent(conflictFilePath)}`
-
-      const existing = await WebviewWindow.getByLabel(safeLabel)
-      if (existing) {
-        await existing.show()
-        await existing.setFocus()
-      } else {
-        new WebviewWindow(safeLabel, {
-          url,
-          title: `Merge Revision for ${conflictFilePath}`,
-          width: 1200,
-          height: 800,
-          minWidth: 900,
-          minHeight: 600,
-          decorations: true,
-        })
-      }
-      setConflictFilePath(null)
-    }
-
-    openMergeWindow()
-  }, [conflictFilePath, repoPath, setConflictFilePath])
+  useConflictMergeWindow(repoPath, conflictFilePath, setConflictFilePath)
 
   // While the undo/redo timeline overlay is open for this repo, the previewed commit's changes take
   // over the center (contentview) and the native right-hand detail panel is suppressed — the
