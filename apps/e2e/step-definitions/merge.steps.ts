@@ -61,8 +61,12 @@ When(/^I open the merge editor for "([^"]*)"$/, async (filePath: string) => {
   const origin = await browser.execute(() => window.location.origin)
   const url = `${origin}/?window=merge&repoPath=${encodeURIComponent(currentRepoPath)}&filePath=${encodeURIComponent(filePath)}`
   await browser.url(url)
-  // merge-auto-merge-button appears once get_merge_view resolves and the view is renderable.
-  await $('[data-testid="merge-auto-merge-button"]').waitForDisplayed({ timeout: 20000 })
+  // `merge-accept-left` is rendered on `view.renderable`, i.e. exactly once get_merge_view has
+  // resolved into something the editor can draw. The auto-merge wand is NOT a readiness signal:
+  // it is behind `showAutoMerge`, so it only appears when the file happens to have one-sided
+  // blocks to merge — waiting on it conflates "the editor is up" with "this fixture has
+  // auto-mergeable content".
+  await $('[data-testid="merge-accept-left"]').waitForDisplayed({ timeout: 20000 })
 })
 
 Then(/^the merge editor is shown$/, async () => {
@@ -70,13 +74,13 @@ Then(/^the merge editor is shown$/, async () => {
 })
 
 Then(/^the merge editor offers to auto-merge the non-conflicting blocks$/, async () => {
-  await expect($('[data-testid="merge-auto-merge-button"]')).toBeDisplayed()
+  await expect($('[data-testid="merge-wand-btn"]')).toBeDisplayed()
 })
 
 // The merge editor content (file path, conflict count, the three Monaco panes) is fixture-stable
 // — no shas/dates. Give Monaco a beat to finish laying out all panes + syntax highlighting.
 Then(/^the merge editor matches the visual snapshot "([^"]*)"$/, async (tag: string) => {
-  await $('[data-testid="merge-auto-merge-button"]').waitForDisplayed({ timeout: 20000 })
+  await $('[data-testid="merge-accept-left"]').waitForDisplayed({ timeout: 20000 })
   await browser.pause(1500)
   await stabiliseForSnapshot()
   // The rebased commit's short SHA is baked fresh into the fixture on every rebuild (a new commit
@@ -144,7 +148,7 @@ When(/^I click the conflicted file "([^"]*)" to resolve it$/, async (filePath: s
   mergeWindowHandle = after.find((h) => !before.includes(h))!
   await browser.switchToWindow(mergeWindowHandle)
   await $('[data-testid="merge-editor-window"]').waitForDisplayed({ timeout: 20000 })
-  await $('[data-testid="merge-auto-merge-button"]').waitForDisplayed({ timeout: 20000 })
+  await $('[data-testid="merge-accept-left"]').waitForDisplayed({ timeout: 20000 })
   // The connector overlay's geometry only settles once all three Monaco panes report ready —
   // ConflictResolver.tsx schedules its own follow-up recomputes up to 250ms after that (belt-
   // and-suspenders for a layout pass that lands before first paint) — so the accept/reject
@@ -180,7 +184,7 @@ When(/^I click the conflicted file "([^"]*)" to resolve it$/, async (filePath: s
 // well before that promise (and the resulting re-render) settles.
 When(/^I click the merge editor auto-merge wand$/, async () => {
   await ensureMergeWindow()
-  await clickViaJs('merge-auto-merge-button')
+  await clickViaJs('merge-wand-btn')
   await browser.pause(1000)
 })
 

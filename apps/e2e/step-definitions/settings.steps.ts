@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
+import { clickViaJs } from '../support/interactions.js'
 
 // W3C WebDriver key value for Meta (Command on macOS) — the value webdriverio exposes as
 // `Key.Command`. Inlined to avoid depending on the `webdriverio` package (only `@wdio/globals`
@@ -114,12 +115,16 @@ Then(/^the AI provider connection status is reported$/, async () => {
   expect(reportsAKnownState).toBe(true)
 })
 
+// `Switch` renders its real <input> as a full-size transparent overlay (`opacity-0`), which this
+// WebKit provider's isDisplayed() reports as not displayed — so wait on existence and click in the
+// page. See support/interactions.ts.
 When(/^I toggle the AI setting (on|off)$/, async (state: string) => {
   const toggle = $('[data-testid="ai-enabled-toggle"]')
-  await toggle.waitForDisplayed({ timeout: 10000 })
+  await toggle.waitForExist({ timeout: 10000 })
+  // `isSelected()` reads the input's `checked` property, which transparency doesn't affect.
   const isOn = await toggle.isSelected()
   if (isOn !== (state === 'on')) {
-    await toggle.click()
+    await clickViaJs('ai-enabled-toggle')
   }
 })
 
@@ -180,9 +185,8 @@ Then(/^the rewards setting is "(on|off)"$/, async (state: string) => {
 })
 
 When(/^I open the SSH key generator$/, async () => {
-  const toggle = $('[data-testid="ssh-generator-toggle"]')
-  await toggle.waitForDisplayed({ timeout: 10000 })
-  await toggle.click()
+  // Same transparent-input shape as the AI switch above.
+  await clickViaJs('ssh-generator-toggle')
   await $('[data-testid="ssh-generate-path-input"]').waitForDisplayed({ timeout: 10000 })
 })
 

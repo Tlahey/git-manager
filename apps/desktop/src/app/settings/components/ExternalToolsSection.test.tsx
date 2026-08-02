@@ -83,7 +83,7 @@ describe.each(SECTIONS)(
       expect(sliceField(slice, commandKey)).toBe('')
     })
 
-    it('once configured, shows the app name plus Changer/clear controls, no dropdown', () => {
+    it('once configured, shows the app name plus Change/clear controls, no dropdown', () => {
       withCommand(slice, commandKey, '/Applications/Some App.app')
       render(<ExternalToolsSection />)
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
@@ -93,7 +93,7 @@ describe.each(SECTIONS)(
       expect(screen.getByTestId(clearTestId)).toBeInTheDocument()
     })
 
-    it('"Changer" opens the picker again and replaces the stored path', async () => {
+    it('"Change" opens the picker again and replaces the stored path', async () => {
       withCommand(slice, commandKey, '/Applications/Old App.app')
       openMock.mockResolvedValue('/Applications/New App.app')
       const user = userEvent.setup()
@@ -123,6 +123,35 @@ describe('ExternalToolsSection — in-page search filtering', () => {
     )
     expect(screen.getByTestId('setting-external-terminal')).toBeInTheDocument()
     expect(screen.queryByTestId('setting-external-editor')).not.toBeInTheDocument()
+  })
+
+  it('highlights the query inside the now-translated label, not just filtering on it', () => {
+    // The visible titles used to be hardcoded French. Now that they come from `t()`, an English
+    // query has to reach the English label — otherwise the setting would show up unhighlighted.
+    const { container } = render(
+      <SettingsSearchProvider query="editor">
+        <ExternalToolsSection />
+      </SettingsSearchProvider>
+    )
+    const mark = container.querySelector('mark')
+    expect(mark).not.toBeNull()
+    expect(mark).toHaveTextContent('editor')
+    // The label is split around the <mark>, so read the heading as a whole rather than by text.
+    expect(screen.getByTestId('setting-external-editor').querySelector('h4')).toHaveTextContent(
+      'External code editor'
+    )
+  })
+
+  it('still matches the French synonyms kept in the `match` keywords', () => {
+    // `match` deliberately carries both languages, so a French query keeps finding the setting even
+    // when the UI (and therefore the label) is English. Translating the label must not break that.
+    render(
+      <SettingsSearchProvider query="editeur">
+        <ExternalToolsSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-external-editor')).toBeInTheDocument()
+    expect(screen.queryByTestId('setting-external-terminal')).not.toBeInTheDocument()
   })
 
   it('shows both settings when the query is empty', () => {

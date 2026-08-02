@@ -24,15 +24,11 @@ import { buildStashMenuSpec } from '../../lib/graphContextMenus'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
-import { AddWorktreeDialog } from './AddWorktreeDialog'
-import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
-import { PruneWorktreesDialog } from './PruneWorktreesDialog'
-import { RemoveMergedWorktreesDialog } from './RemoveMergedWorktreesDialog'
-import { RemoveMergedBranchesDialog } from './RemoveMergedBranchesDialog'
-import { PruneBranchesDialog } from './PruneBranchesDialog'
-import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
-import { CreateIssueDialog } from './CreateIssueDialog'
-import { SavedFilterDialog } from './SavedFilterDialog'
+import { SidebarDialogsManager } from './SidebarDialogsManager'
+import {
+  resolveSectionHeaderActions,
+  type SectionHeaderActionHandlers,
+} from './sectionHeaderActions.config'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
 import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
@@ -231,6 +227,28 @@ export function RepositorySidebar({
 
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))
+
+  // Every section header action this component can wire, regardless of which section is currently
+  // rendering — `resolveSectionHeaderActions` (below, in the JSX) narrows this down to the ones
+  // the section actually owns. `onCreatePr` stays gated on `githubToken` here: that's the action's
+  // own precondition, not a decision about which section shows it.
+  const sectionHeaderActionHandlers: SectionHeaderActionHandlers = {
+    onCreateBranch: onCreateBranch ?? (() => setCreateBranchOpen(true)),
+    onPruneBranches: () => setPruneBranchesOpen(true),
+    onRemoveMergedBranches: () => setRemoveMergedBranches('all'),
+    onRemoveMyMergedBranches: () => setRemoveMergedBranches('mine'),
+    onAddWorktree: () => {
+      setWorktreeBranch(null)
+      setAddWorktreeOpen(true)
+    },
+    onPruneWorktrees: () => setPruneWorktreesOpen(true),
+    onRemoveMergedWorktrees: () => setRemoveMergedWorktrees('all'),
+    onRemoveMyMergedWorktrees: () => setRemoveMergedWorktrees('mine'),
+    onCreatePr: githubToken ? () => setPrCreateOpen(true) : undefined,
+    onCreateIssue: () => setCreateIssueOpen(true),
+    onAddIssueFilter: () => setFilterDialog({ kind: 'issues', filter: null }),
+    onAddPrFilter: () => setFilterDialog({ kind: 'prs', filter: null }),
+  }
 
   const onTogglePin = (shortName: string) => {
     const isPinned = overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
@@ -444,53 +462,7 @@ export function RepositorySidebar({
               count={section.count}
               isOpen={section.isOpen}
               onToggle={() => toggleOpen(`section:${section.key}`, section.isOpen)}
-              onCreateBranch={
-                section.key === 'local'
-                  ? (onCreateBranch ?? (() => setCreateBranchOpen(true)))
-                  : undefined
-              }
-              onPruneBranches={
-                section.key === 'local' ? () => setPruneBranchesOpen(true) : undefined
-              }
-              onRemoveMergedBranches={
-                section.key === 'local' ? () => setRemoveMergedBranches('all') : undefined
-              }
-              onRemoveMyMergedBranches={
-                section.key === 'local' ? () => setRemoveMergedBranches('mine') : undefined
-              }
-              onAddWorktree={
-                section.key === 'worktrees'
-                  ? () => {
-                      setWorktreeBranch(null)
-                      setAddWorktreeOpen(true)
-                    }
-                  : undefined
-              }
-              onPruneWorktrees={
-                section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
-              }
-              onRemoveMergedWorktrees={
-                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('all') : undefined
-              }
-              onRemoveMyMergedWorktrees={
-                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('mine') : undefined
-              }
-              onCreatePr={
-                section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
-              }
-              onCreateIssue={
-                section.key === 'issues' ? () => setCreateIssueOpen(true) : undefined
-              }
-              onAddIssueFilter={
-                section.key === 'issues'
-                  ? () => setFilterDialog({ kind: 'issues', filter: null })
-                  : undefined
-              }
-              onAddPrFilter={
-                section.key === 'prs'
-                  ? () => setFilterDialog({ kind: 'prs', filter: null })
-                  : undefined
-              }
+              {...resolveSectionHeaderActions(section.key, sectionHeaderActionHandlers)}
               isFiltered={isFilterActive}
             />
             {section.isOpen && (
@@ -553,71 +525,37 @@ export function RepositorySidebar({
       {/* Resize handle */}
       <SidebarResizeHandle {...resizeHandleProps} />
 
-      <AddWorktreeDialog
+      <SidebarDialogsManager
         repoPath={repoPath}
-        open={addWorktreeOpen}
-        initialBranch={worktreeBranch ?? undefined}
-        onClose={() => setAddWorktreeOpen(false)}
-      />
-      <RemoveWorktreeDialog
-        repoPath={repoPath}
-        worktree={worktreeToRemove}
-        deleteBranch={removeWithBranch}
-        onClose={() => setWorktreeToRemove(null)}
-      />
-      <PruneWorktreesDialog
-        repoPath={repoPath}
-        worktrees={prunableWorktrees}
-        open={pruneWorktreesOpen}
-        onClose={() => setPruneWorktreesOpen(false)}
-      />
-      <RemoveMergedWorktreesDialog
-        repoPath={repoPath}
+        remoteUrls={remoteUrls}
+        currentUser={currentUser}
+        githubToken={githubToken}
         worktrees={worktrees}
-        remoteUrls={remoteUrls}
-        githubToken={githubToken}
-        mineOnly={removeMergedWorktrees === 'mine'}
-        currentUser={currentUser}
-        open={removeMergedWorktrees !== null}
-        onClose={() => setRemoveMergedWorktrees(null)}
-      />
-      <RemoveMergedBranchesDialog
-        repoPath={repoPath}
-        branches={allLocalBranches}
-        worktreeBranches={worktrees.map((w) => w.branch)}
-        remoteUrls={remoteUrls}
-        githubToken={githubToken}
-        mineOnly={removeMergedBranches === 'mine'}
-        currentUser={currentUser}
-        open={removeMergedBranches !== null}
-        onClose={() => setRemoveMergedBranches(null)}
-      />
-      <PruneBranchesDialog
-        repoPath={repoPath}
-        branches={allLocalBranches}
-        worktreeBranches={worktrees.map((w) => w.branch)}
-        open={pruneBranchesOpen}
-        onClose={() => setPruneBranchesOpen(false)}
-      />
-      <CreateBranchHereDialog
-        repoPath={repoPath}
-        oid={createBranchOid}
-        shortOid={createBranchShortOid}
-        open={createBranchOpen}
-        onClose={() => setCreateBranchOpen(false)}
-      />
-      <CreateIssueDialog
-        repoPath={repoPath}
-        open={createIssueOpen}
-        onClose={() => setCreateIssueOpen(false)}
-        onCreated={refreshIssues}
-      />
-      <SavedFilterDialog
-        open={filterDialog !== null}
-        kind={filterDialog?.kind ?? 'issues'}
-        filter={filterDialog?.filter ?? null}
-        useStore={filterDialog?.kind === 'prs' ? usePrFiltersStore : useIssueFiltersStore}
-        onClose={() => setFilterDialog(null)}
+        prunableWorktrees={prunableWorktrees}
+        allLocalBranches={allLocalBranches}
+        refreshIssues={refreshIssues}
+        addWorktreeOpen={addWorktreeOpen}
+        onCloseAddWorktree={() => setAddWorktreeOpen(false)}
+        worktreeBranch={worktreeBranch}
+        worktreeToRemove={worktreeToRemove}
+        onCloseRemoveWorktree={() => setWorktreeToRemove(null)}
+        removeWithBranch={removeWithBranch}
+        pruneWorktreesOpen={pruneWorktreesOpen}
+        onClosePruneWorktrees={() => setPruneWorktreesOpen(false)}
+        removeMergedWorktrees={removeMergedWorktrees}
+        onCloseRemoveMergedWorktrees={() => setRemoveMergedWorktrees(null)}
+        removeMergedBranches={removeMergedBranches}
+        onCloseRemoveMergedBranches={() => setRemoveMergedBranches(null)}
+        pruneBranchesOpen={pruneBranchesOpen}
+        onClosePruneBranches={() => setPruneBranchesOpen(false)}
+        createBranchOpen={createBranchOpen}
+        onCloseCreateBranch={() => setCreateBranchOpen(false)}
+        createBranchOid={createBranchOid}
+        createBranchShortOid={createBranchShortOid}
+        createIssueOpen={createIssueOpen}
+        onCloseCreateIssue={() => setCreateIssueOpen(false)}
+        filterDialog={filterDialog}
+        onCloseFilterDialog={() => setFilterDialog(null)}
       />
     </div>
   )

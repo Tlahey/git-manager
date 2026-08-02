@@ -2,11 +2,12 @@ import { useMemo } from 'react'
 import type { GitGraphNode, GitGraphEdge } from '@git-manager/git-types'
 import { getWaterlineBucket, bucketLabel } from '../components/git-graph/waterlineBuckets'
 import type { WorktreeWipStatus } from './useWorktreeWipStatuses'
+import { isSyntheticRow, isWipRow } from '../components/git-graph/syntheticRows'
 
 interface WaterlineMark {
   id: string
   label: string
-  /** Index du commit (frontière) sur lequel l'overlay est positionné. */
+  /** Index of the commit (boundary) the overlay sits on. */
   index: number
 }
 
@@ -23,12 +24,6 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
 /** Stable empty default so an omitted author filter doesn't create a fresh Set every render. */
 const EMPTY_AUTHOR_SET: Set<string> = new Set()
-
-/** True for every row this hook splices into the graph itself (primary WIP, paused rebase, and the
- * per-worktree `WIP:<path>` rows) — i.e. rows that carry no real commit. */
-function isSyntheticRow(oid: string): boolean {
-  return oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')
-}
 
 /** Fixed color for every "// WIP" synthetic row (own repo and other worktrees alike) — always
  * this violet, never the target branch's own color, so a WIP row reads as "not a real commit"
@@ -257,8 +252,8 @@ function assignColumnsToSyntheticNodes(
 }
 
 /**
- * Dérive les données d'affichage du graphe (nœud WIP, nœud conflit, filtrage recherche,
- * paliers temporels, position de origin/main) à partir des commits bruts.
+ * Derives the graph's display data (WIP node, conflict node, search filtering, time buckets,
+ * position of origin/main) from the raw commits.
  */
 export function useGitGraphNodes(
   nodes: GitGraphNode[],
@@ -420,7 +415,7 @@ export function useGitGraphNodes(
     if (!search) return null
     return filteredNodes
       .filter((node) => {
-        if (node.commit.oid === 'WIP' || node.commit.oid.startsWith('WIP:')) {
+        if (isWipRow(node.commit.oid)) {
           return 'wip'.includes(search)
         }
         if (node.commit.oid === 'CONFLICT') {
@@ -453,15 +448,14 @@ export function useGitGraphNodes(
     return filteredNodes
       .filter((node) => {
         const { oid } = node.commit
-        if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return true
+        if (isSyntheticRow(oid)) return true
         return selectedAuthorEmails.has((node.commit.author?.email ?? '').trim().toLowerCase())
       })
       .map((node) => node.commit.oid)
   }, [filteredNodes, selectedAuthorEmails])
 
-  // Waterlines : émises de façon MONOTONE (rang croissant) : un palier n'apparaît
-  // qu'en entrant dans une période plus ancienne, jamais en arrière (commits pas
-  // toujours triés).
+  // Waterlines are emitted MONOTONICALLY (increasing rank): a bucket only appears when entering
+  // an older period, never going back (the commits aren't always sorted).
   const waterlines = useMemo<WaterlineMark[]>(() => {
     const out: WaterlineMark[] = []
     let maxRank = -1
@@ -550,7 +544,7 @@ export function useGitGraphNodes(
       // The anchor is NOT always the row directly below the WIP: several worktree WIP rows can
       // stack above one shared anchor commit, so resolve the anchor's real display index rather
       // than assuming `syntheticIndex + 1` (which would target the next WIP row and, since its
-      // column differs, silently drop the connector — the "décalage" bug where the top WIP never
+      // column differs, silently drop the connector — the offset bug where the top WIP never
       // links down to main).
       const anchorIndex = filteredNodes.indexOf(anchor)
       if (syntheticIndex === -1 || anchorIndex === -1) continue

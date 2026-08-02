@@ -1,6 +1,5 @@
-// Définition des colonnes du tableau virtuel de la zone centrale (GitGraphView).
-// L'ordre est fixe (pas de réordonnancement). La visibilité et la largeur sont
-// persistées via `stores/gitGraphColumns.store.ts`.
+// Column definitions for the central area's virtual table (GitGraphView). The order is fixed (no
+// reordering); visibility and width are persisted through `stores/gitGraphColumns.store.ts`.
 
 import { GRAPH_MIN_WIDTH } from './graphLayout'
 
@@ -8,24 +7,24 @@ export type ColumnKey = 'refs' | 'graph' | 'message' | 'author' | 'date' | 'sha'
 
 export interface ColumnDef {
   key: ColumnKey
-  /** Clé i18n (namespace `git`) du libellé affiché dans l'en-tête / le menu. */
+  /** i18n key (namespace `git`) of the label shown in the header / the menu. */
   labelKey: string
-  /** Largeur par défaut en px (ignorée pour une colonne `flex`). */
+  /** Default width in px (ignored for a `flex` column). */
   defaultWidth: number
-  /** Largeur minimale en px lors du redimensionnement. */
+  /** Minimum width in px while resizing. */
   minWidth: number
-  /** Visible par défaut au premier lancement. */
+  /** Visible by default on first launch. */
   defaultVisible: boolean
-  /** La colonne absorbe l'espace restant (pas de largeur fixe, pas de poignée). */
+  /** The column absorbs the remaining space (no fixed width, no resize handle). */
   flex?: boolean
 }
 
-/** Ordre d'affichage fixe des colonnes (gauche → droite). */
+/** Fixed display order of the columns (left → right). */
 export const COLUMN_ORDER: ColumnKey[] = ['refs', 'graph', 'message', 'author', 'date', 'sha']
 
 /**
- * Largeur par défaut de chaque colonne au premier lancement (px). Ignorée pour la
- * colonne `flex` (message), qui absorbe l'espace restant.
+ * Default width of each column on first launch (px). Ignored for the `flex` column (message),
+ * which absorbs the remaining space.
  */
 export const COLUMN_DEFAULT_WIDTH: Record<ColumnKey, number> = {
   refs: 160,
@@ -37,19 +36,18 @@ export const COLUMN_DEFAULT_WIDTH: Record<ColumnKey, number> = {
 }
 
 /**
- * Largeur minimale de chaque colonne lors du redimensionnement (px). Appliquée
- * aussi comme plancher de la colonne `flex` (message) pour qu'elle ne s'effondre
- * pas sous son contenu.
+ * Minimum width of each column while resizing (px). Also applied as the floor of the `flex` column
+ * (message) so it can't collapse below its content.
  */
 export const COLUMN_MIN_WIDTH: Record<ColumnKey, number> = {
   refs: 100,
-  // Un avatar (32) + un peu d'air autour + la marge droite de la cellule (8) : le mode
-  // `compact` de `graphColumnSizing.ts` n'affiche alors plus que le marqueur de chaque commit.
+  // One avatar (32) + a little room around it + the cell's right margin (8): `graphColumnSizing.ts`'s
+  // `compact` mode then shows nothing but each commit's marker.
   graph: GRAPH_MIN_WIDTH,
   message: 100,
   author: 100,
-  // date et sha basculent leur libellé d'en-tête en icône sous ~72px (voir
-  // GraphHeader) : min plus serré pour que cet état compact soit atteignable.
+  // date and sha swap their header label for an icon below ~72px (see GraphHeader): a tighter min
+  // so that compact state is actually reachable.
   date: 60,
   sha: 60,
 }
@@ -100,10 +98,10 @@ export const COLUMN_DEFS: Record<ColumnKey, ColumnDef> = {
   },
 }
 
-/** Colonne résolue (def + état courant) prête à être rendue. */
+/** A resolved column (def + current state), ready to render. */
 export interface ResolvedColumn extends ColumnDef {
   width: number
-  /** Largeur maximale dynamique (px) lors du redimensionnement — calculée par rendu pour la
-   * colonne `graph` (voir `graphColumnSizing.getGraphMaxWidth`), absente pour les autres. */
+  /** Dynamic maximum width (px) while resizing — computed per render for the `graph` column (see
+   * `graphColumnSizing.getGraphMaxWidth`), absent for the others. */
   maxWidth?: number
 }

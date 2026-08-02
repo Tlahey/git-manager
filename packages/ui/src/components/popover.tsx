@@ -7,10 +7,10 @@ const PopoverTrigger = PopoverPrimitive.Trigger
 const PopoverAnchor = PopoverPrimitive.Anchor
 
 /**
- * Pour du contenu riche (formulaires, champs de recherche, listes non-menu) où
- * `DropdownMenu` ne convient pas : ce dernier gère le focus/typeahead au clavier
- * comme une liste de `menuitem`s, ce qui vole les frappes d'un `<input>` interne.
- * Même positionnement collision-aware que `DropdownMenuContent` (voir dropdown-menu.tsx).
+ * For rich content (forms, search fields, non-menu lists) where `DropdownMenu` doesn't fit:
+ * it drives keyboard focus/typeahead as a list of `menuitem`s, which steals the keystrokes
+ * meant for an `<input>` inside it.
+ * Same collision-aware positioning as `DropdownMenuContent` (see dropdown-menu.tsx).
  */
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,

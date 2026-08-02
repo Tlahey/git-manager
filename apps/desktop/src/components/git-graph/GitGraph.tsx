@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
-import { Spinner, toast } from '@git-manager/ui'
+import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -16,20 +15,22 @@ import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
-import { useGraphColumnScroll } from '../../hooks/useGraphColumnScroll'
+import { useGraphLayout } from '../../hooks/useGraphLayout'
 import { useHorizontalResize } from '@git-manager/components'
-import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
+import { useGitGraphNodes } from '../../hooks/useGitGraphNodes'
 import type { RebaseProgressStep } from '@git-manager/git-types'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
-import { apiGetRebaseState } from '../../api/git.api'
+import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
+import { useGraphScrollSync } from '../../hooks/useGraphScrollSync'
+import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
+import { useSearchNavigation } from '../../hooks/useSearchNavigation'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
 import { TagMenuProvider } from './TagMenuContext'
 import { TagDialogsManager } from './components/TagDialogsManager'
 import { DeleteRemoteBranchDialog } from './DeleteRemoteBranchDialog'
-import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
@@ -58,16 +59,14 @@ import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
 import { buildBisectStatusMap } from './bisectStatus'
+import { isSyntheticRow } from './syntheticRows'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { RebaseProgressCenter } from '../rebase-progress/RebaseProgressCenter'
-import { useRebaseViewStore } from '../../stores/rebaseView.store'
 import { Waterline } from './Waterline'
-import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
-import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
+import { GraphSidePanel } from './GraphSidePanel'
 import { collectGraphAuthors } from './graphAuthors'
-import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
 import { TerminalPanel } from '../terminal/TerminalPanel'
@@ -80,7 +79,7 @@ interface GitGraphProps {
   /** Solo mode: branch shortNames to isolate — the graph loads only commits reachable from these,
    * taking precedence over the single-branch `branch` filter. */
   soloBranches?: string[]
-  /** Recherche globale issue de la barre d'actions (Partie 2). */
+  /** Global search coming from the action toolbar. */
   searchQuery?: string
   onSelectCommit?: (oid: string) => void
 }
@@ -163,38 +162,11 @@ export function GitGraph({
   // During graph-driven setup, a commit click fills the active bisect slot instead of selecting it.
   // Synthetic rows (WIP / CONFLICT) are not valid bisect targets.
   function handleBisectPick(oid: string) {
-    if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return
+    if (isSyntheticRow(oid)) return
     useBisectUIStore.getState().pickCommit(oid)
   }
 
-  useEffect(() => {
-    if (!conflictFilePath) return
-
-    const openMergeWindow = async () => {
-      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-      const safeLabel = `merge-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${conflictFilePath.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-      const url = `/?window=merge&repoPath=${encodeURIComponent(repoPath)}&filePath=${encodeURIComponent(conflictFilePath)}`
-
-      const existing = await WebviewWindow.getByLabel(safeLabel)
-      if (existing) {
-        await existing.show()
-        await existing.setFocus()
-      } else {
-        new WebviewWindow(safeLabel, {
-          url,
-          title: `Merge Revision for ${conflictFilePath}`,
-          width: 1200,
-          height: 800,
-          minWidth: 900,
-          minHeight: 600,
-          decorations: true,
-        })
-      }
-      setConflictFilePath(null)
-    }
-
-    openMergeWindow()
-  }, [conflictFilePath, repoPath, setConflictFilePath])
+  useConflictMergeWindow(repoPath, conflictFilePath, setConflictFilePath)
 
   // While the undo/redo timeline overlay is open for this repo, the previewed commit's changes take
   // over the center (contentview) and the native right-hand detail panel is suppressed — the
@@ -208,10 +180,6 @@ export function GitGraph({
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const setSelectedCommitOid = useRepoUIStore((s) => s.setSelectedCommitOid)
   const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
-  const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
-  const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
-  const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
-  const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
   // from the log entirely — this only suppresses the badge, so it is filtered here at render time.
@@ -221,45 +189,18 @@ export function GitGraph({
     useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
-  // ── Rebase state (for the synthetic conflict row in the graph) ─────────────
-  const { data: rebaseState } = useQuery({
-    queryKey: ['rebase-state', repoPath],
-    queryFn: () => apiGetRebaseState(repoPath),
-    enabled: !!repoPath,
-    refetchInterval: 4000,
-  })
-  const isRebasePaused = rebaseState?.kind === 'conflict' || rebaseState?.kind === 'edit_pause'
-  const conflictInfo: ConflictRowInfo | null = isRebasePaused
-    ? {
-        count: rebaseState?.conflictedFiles?.length ?? 0,
-        branchName: rebaseState?.branchName,
-        currentStep: rebaseState?.currentStep,
-        totalSteps: rebaseState?.totalSteps,
-      }
-    : null
-
-  // ── Rebase progress view (center panel) ────────────────────────────────────
-  // Any running rebase — not just a paused one — takes the center over with its step rail, so the
-  // user can see where they are in the plan. Dismissing it hands the center back to the graph,
-  // where the CONFLICT row banners the rebase and clicking it comes back here. `isRebasing` is
-  // listed positively rather than as `!== 'idle'`: `kind` crosses IPC as a string, and an
-  // unrecognized value must not hand the center panel to a view with nothing to show.
-  const isRebasing = isRebasePaused || rebaseState?.kind === 'in_progress'
-  const rebaseProgressHidden = useRebaseViewStore((s) => s.views[repoPath]?.progressHidden ?? false)
-  const rebaseFilesHidden = useRebaseViewStore((s) => s.views[repoPath]?.filesHidden ?? false)
-  const resetRebaseView = useRebaseViewStore((s) => s.reset)
-  const showRebaseProgress = useRebaseViewStore((s) => s.showProgress)
-  const showRebaseFiles = useRebaseViewStore((s) => s.showFiles)
-  const hideRebaseFiles = useRebaseViewStore((s) => s.hideFiles)
-  const toggleRebaseFiles = useRebaseViewStore((s) => s.toggleFiles)
-  const rebaseViewOpen = isRebasing && !rebaseProgressHidden
-  // A dismissal only applies to the rebase that was on screen: once the repo stops rebasing,
-  // forget it so the next one surfaces the view again. Gated on the state having actually loaded —
-  // while the query is still in flight there's no rebase *yet*, and clearing on that would
-  // resurrect the view on every remount (tab switch, worktree switch…).
-  useEffect(() => {
-    if (rebaseState && !isRebasing) resetRebaseView(repoPath)
-  }, [rebaseState, isRebasing, repoPath, resetRebaseView])
+  // ── Rebase state (for the synthetic conflict row in the graph, and the rebase progress view) ──
+  const {
+    rebaseState,
+    isRebasePaused,
+    conflictInfo,
+    rebaseViewOpen,
+    rebaseFilesHidden,
+    showRebaseProgress,
+    showRebaseFiles,
+    hideRebaseFiles,
+    toggleRebaseFiles,
+  } = useRebaseGraphView(repoPath)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -304,10 +245,10 @@ export function GitGraph({
   // render data for (see repoUI.store.ts's `activeWorkspacePath`).
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
 
-  // ── Colonnes ──────────────────────────────────────────────────────────────
+  // ── Columns ────────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
 
-  // ── Filtre par auteur (colonne « auteur ») ─────────────────────────────────
+  // ── Author filter (the "author" column) ─────────────────────────────────────
   const selectedAuthors = useGraphAuthorFilterStore((s) => s.selected)
   const clearAuthorFilter = useGraphAuthorFilterStore((s) => s.clear)
   // ── Solo mode (branch-visibility filter, driven from the sidebar) ───────────
@@ -369,129 +310,37 @@ export function GitGraph({
     selectedAuthors
   )
 
-  // Largest lane occupied by the graph (nodes + connection lines): determines the width beyond
-  // which widening the graph column brings nothing, and the display mode (full / overflow /
-  // compact) shared by every row.
-  const graphMaxColumn = useMemo(() => {
-    let max = 0
-    for (const n of renderNodes) {
-      if (n.column > max) max = n.column
-      for (const c of n.connections) {
-        if (c.fromColumn > max) max = c.fromColumn
-        if (c.toColumn > max) max = c.toColumn
-      }
-    }
-    return max
-  }, [renderNodes])
-
-  // For a commit that carries no ref badge of its own, we still hint — faintly, on hover — which
-  // branch's lane it sits on. Ownership is derived by walking first-parent chains from branch tips
-  // (see computeLaneBranchByOid); lane colour can't be used because the backend palette recycles.
-  const laneRefByOid = useMemo(() => computeLaneBranchByOid(nodes), [nodes])
-
-  const avatarSize = rowHeight === 32 ? 24 : 32
-  const visibleColumns: ResolvedColumn[] = useMemo(() => {
-    // The graph column never exceeds the graph's actually useful width, even if a wider value
-    // was persisted (the flex `message` column absorbs the difference).
-    const graphMaxWidth = Math.max(
-      getGraphMaxWidth(graphMaxColumn, avatarSize),
-      COLUMN_DEFS.graph.minWidth
-    )
-    return COLUMN_ORDER.filter((k) => columnState[k].visible).map((k) =>
-      k === 'graph'
-        ? {
-            ...COLUMN_DEFS[k],
-            width: Math.min(columnState[k].width, graphMaxWidth),
-            maxWidth: graphMaxWidth,
-          }
-        : { ...COLUMN_DEFS[k], width: columnState[k].width }
-    )
-  }, [columnState, graphMaxColumn, avatarSize])
-
   // The commit list's scroll container — shared by the virtualizer (vertical) and the graph
   // column's own horizontal panning.
   const parentRef = useRef<HTMLDivElement | null>(null)
 
-  // Where the graph column sits in a row — its x-offset is the width of everything to its left,
-  // i.e. the refs column's width when visible and 0 when hidden. Same convention as GraphRow
-  // (band/markers) to stay pixel-aligned. A hidden graph column reports a width of 0.
-  const { refsWidth, graphWidth } = useMemo(() => {
-    const graphCol = visibleColumns.find((c) => c.key === 'graph')
-    const refsCol = visibleColumns.find((c) => c.key === 'refs')
-    return { refsWidth: refsCol ? refsCol.width : 0, graphWidth: graphCol ? graphCol.width : 0 }
-  }, [visibleColumns])
-
-  // Footprint of the graph column inside the list (its `mx-2` margins included) and how far its
-  // lanes can be panned sideways — the two things the wheel gesture is bounded by.
-  const graphColumnBounds = useMemo(
-    () => ({
-      left: refsWidth,
-      width: graphWidth === 0 ? 0 : graphWidth + 16,
-      maxScrollX:
-        graphWidth === 0
-          ? 0
-          : getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize).maxScrollX,
-    }),
-    [refsWidth, graphWidth, graphMaxColumn, avatarSize]
-  )
-
-  const graphScrollX = useGraphColumnScroll(parentRef, graphColumnBounds)
-
-  // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
-  // segment per row left a one-pixel shadowless seam between rows). Its left counterpart renders
-  // nothing — no shadow — so the pinning/clipping geometry alone stands for it.
-  const graphOverflowZone = useMemo(() => {
-    if (graphWidth === 0) return null
-    const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize, graphScrollX)
-    if (layout.overlayOpacity <= 0) return null
-    return {
-      left: refsWidth + 8 + layout.overlayStart,
-      // The zone grows with the width deficit (overlayStart recedes progressively) and stops
-      // 3px before the column's edge to keep the colored border-right visible.
-      width: Math.max(0, layout.innerWidth - layout.overlayStart - 3),
-      // Shadow fade while the zone grows and over the compact range.
-      opacity: layout.overlayOpacity,
-    }
-  }, [refsWidth, graphWidth, graphMaxColumn, avatarSize, graphScrollX])
-
-  // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
-  // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
-  const matchSet = useMemo(
-    () => (matchingOids ? new Set(matchingOids) : null),
-    [matchingOids]
-  )
-  const totalMatches = matchingOids?.length ?? 0
-
-  // Same O(1) lookup set for the AUTHOR column filter — `null` when no author is selected.
-  const authorMatchSet = useMemo(
-    () => (authorMatchingOids ? new Set(authorMatchingOids) : null),
-    [authorMatchingOids]
-  )
-
-  // While a ref badge is drag-hovered as a drop target, highlight that ref's *own* lane commits
-  // (first-parent attribution — not the shared ancestors below the fork, nor any children) and dim
-  // the rest, the same muting the search uses. The sticky hover ref lives in the drag store.
-  const dragHoverRef = useRefDragStore((s) => s.hoverRef)
-  const dragHighlightSet = useMemo(
-    () => collectRefDropHighlight(dragHoverRef, laneRefByOid),
-    [dragHoverRef, laneRefByOid]
-  )
+  // Column layout geometry (lane count, resolved widths, scroll/overflow zone), the branch-lane
+  // hint map, and the search/author-filter/drag-highlight lookup sets — see useGraphLayout.
+  const {
+    laneRefByOid,
+    graphMaxColumn,
+    visibleColumns,
+    graphScrollX,
+    graphOverflowZone,
+    matchSet,
+    totalMatches,
+    authorMatchSet,
+    dragHighlightSet,
+  } = useGraphLayout({
+    nodes,
+    renderNodes,
+    columnState,
+    rowHeight,
+    matchingOids,
+    authorMatchingOids,
+    parentRef,
+  })
 
   // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
-  const [activeMatchIndex, setActiveMatchIndex] = useState(0)
-  // Jump back to the first match whenever the query itself changes (find-as-you-type).
-  useEffect(() => {
-    setActiveMatchIndex(0)
-  }, [searchQuery])
-  const clampedMatchIndex = totalMatches === 0 ? 0 : Math.min(activeMatchIndex, totalMatches - 1)
-  function goToNextMatch() {
-    if (totalMatches === 0) return
-    setActiveMatchIndex((i) => (i + 1) % totalMatches)
-  }
-  function goToPreviousMatch() {
-    if (totalMatches === 0) return
-    setActiveMatchIndex((i) => (i - 1 + totalMatches) % totalMatches)
-  }
+  const { clampedMatchIndex, goToNextMatch, goToPreviousMatch } = useSearchNavigation(
+    searchQuery,
+    totalMatches
+  )
 
   // ── Selection (multiple) hook ───────────────────────────────────────────────
   const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
@@ -513,8 +362,7 @@ export function GitGraph({
   // into a "Maximum update depth exceeded" loop. Memoizing to a primitive here means the effect
   // only re-publishes when the actual stash index changes, not on every `nodes` reference churn.
   const derivedStashIndex = useMemo(() => {
-    if (!primaryOid || primaryOid === 'WIP' || primaryOid === 'CONFLICT' || primaryOid.startsWith('WIP:'))
-      return null
+    if (!primaryOid || isSyntheticRow(primaryOid)) return null
     const stashRef = nodes
       .find((n) => n.commit.oid === primaryOid)
       ?.refs.find((r) => r.type === 'stash')
@@ -526,11 +374,7 @@ export function GitGraph({
   // it. The synthetic WIP/CONFLICT rows aren't valid commit-action targets → publish null. Cleared
   // on unmount so a closed tab doesn't leave a stale selection behind.
   useEffect(() => {
-    const isRealCommit =
-      !!primaryOid &&
-      primaryOid !== 'WIP' &&
-      primaryOid !== 'CONFLICT' &&
-      !primaryOid.startsWith('WIP:')
+    const isRealCommit = !!primaryOid && !isSyntheticRow(primaryOid)
     setSelectedCommitOid(isRealCommit ? primaryOid : null)
     setSelectedStashIndex(derivedStashIndex)
   }, [primaryOid, derivedStashIndex, setSelectedCommitOid, setSelectedStashIndex])
@@ -547,12 +391,10 @@ export function GitGraph({
     pendingAction,
     setPendingAction,
     tagDraft,
-    setTagDraft,
     submitTagDraft,
     cancelTagDraft,
     openMenuAt,
     handleCommitWip,
-    openFixupWindow,
     pendingDeleteRemoteBranch,
     setPendingDeleteRemoteBranch,
   } = useGitGraphActions({
@@ -561,6 +403,7 @@ export function GitGraph({
       selected,
       setPrimaryOid,
       selectSingle,
+      primaryOid,
       hiddenStashes,
       toggleStashVisibility,
       status,
@@ -580,146 +423,25 @@ export function GitGraph({
     t,
   })
 
-  // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
-  // currently selected commit. Dialog-based actions forward into the graph's own `setPendingAction`
-  // (which opens the matching dialog against `primaryOid`); `fixup` instead opens the dedicated
-  // "Commit Changes" window directly (same as the native menu's `onFixup`), since there's no
-  // in-page dialog to route it through. Either way, we clear the pending action once handled.
-  useEffect(() => {
-    if (pendingGraphAction && primaryOid) {
-      if (pendingGraphAction.kind === 'fixup') {
-        void openFixupWindow(primaryOid).catch(console.error)
-      } else if (pendingGraphAction.kind === 'tag') {
-        // Tag creation is an inline input on the row (or top bar), not a dialog.
-        setTagDraft({ oid: primaryOid, annotated: pendingGraphAction.annotated })
-      } else {
-        setPendingAction(pendingGraphAction)
-      }
-      setPendingGraphAction(null)
-    }
-  }, [
-    pendingGraphAction,
-    primaryOid,
-    setPendingAction,
-    setTagDraft,
-    setPendingGraphAction,
-    openFixupWindow,
-  ])
-
-  // The sidebar's tag rows ask for a commit's full menu through the store rather than rebuilding
-  // it: the menu is assembled from this graph's loaded page, so the request comes here instead of
-  // the menu going there. The commit is selected first, so the dialogs its items raise (reset,
-  // revert, create branch) act on the tag's commit and not on whatever was selected before.
-  useEffect(() => {
-    if (!pendingCommitMenuOid) return
-    selectSingle(pendingCommitMenuOid)
-    void openMenuAt(undefined, pendingCommitMenuOid)
-    setPendingCommitMenuOid(null)
-  }, [pendingCommitMenuOid, selectSingle, openMenuAt, setPendingCommitMenuOid])
-
-  // ── Virtualisation ─────────────────────────────────────────────────────────
+  // ── Virtualisation + scroll sync ──────────────────────────────────────────
   // (the scroll container's ref is declared with the graph column's scroll geometry above)
-  const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({
-    branch: undefined,
-    repoPath: '',
+  const { virtualizer } = useGraphScrollSync({
+    parentRef,
+    rowHeight,
+    nodes,
+    filteredNodes,
+    conflictNode,
+    isRebasePaused,
+    branch,
+    repoPath,
+    primaryOid,
+    selectSingle,
+    matchingOids,
+    clampedMatchIndex,
+    pendingGraphSelection,
+    setPendingGraphSelection,
+    t,
   })
-
-  const virtualizer = useVirtualizer({
-    count: filteredNodes.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => rowHeight,
-    overscan: 20,
-  })
-
-  // Select and scroll the currently focused search match into view — as if it had been clicked —
-  // whenever the up/down navigation (or a fresh query) moves it.
-  useEffect(() => {
-    if (!matchingOids || matchingOids.length === 0) return
-    const oid = matchingOids[clampedMatchIndex]
-    selectSingle(oid)
-    const index = filteredNodes.findIndex((n) => n.commit.oid === oid)
-    if (index !== -1) {
-      virtualizer.scrollToIndex(index, { align: 'center' })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clampedMatchIndex, matchingOids])
-
-  // Bridge: lets out-of-tree UI (the command palette's SHA lookup, the toolbar's conflict indicator)
-  // select a graph row by OID. A pasted SHA may be abbreviated, so resolve it to a loaded commit by
-  // prefix; the synthetic 'WIP'/'CONFLICT' rows pass through untouched. On a hit we select and scroll
-  // the row into view, exactly as a click would; a SHA outside the loaded window reports "not found".
-  useEffect(() => {
-    if (!pendingGraphSelection) return
-    const raw = pendingGraphSelection
-    const isSynthetic = raw === 'CONFLICT' || raw === 'WIP' || raw.startsWith('WIP:')
-    // Wait for the log to load before resolving a real SHA, so a selection dispatched just before
-    // the graph mounts isn't dropped against an empty list.
-    if (!isSynthetic && filteredNodes.length === 0) return
-    setPendingGraphSelection(null)
-    const prefix = raw.toLowerCase()
-    const target = isSynthetic
-      ? raw
-      : filteredNodes.find((n) => n.commit.oid.toLowerCase().startsWith(prefix))?.commit.oid
-    if (!target) {
-      toast.error(t('gitTree.commitNotFound', { sha: raw.slice(0, 12) }))
-      return
-    }
-    selectSingle(target)
-    const index = filteredNodes.findIndex((n) => n.commit.oid === target)
-    if (index !== -1) virtualizer.scrollToIndex(index, { align: 'center' })
-  }, [pendingGraphSelection, filteredNodes, virtualizer, selectSingle, setPendingGraphSelection, t])
-
-  // One-shot guard so the conflict panel auto-opens once per pause (below) without snapping
-  // back to the CONFLICT row every time the user navigates away to inspect another commit.
-  const autoOpenedConflictRef = useRef(false)
-  useEffect(() => {
-    if (!isRebasePaused) autoOpenedConflictRef.current = false
-  }, [isRebasePaused])
-
-  // Auto-select commit when branch/reference or repository changes
-  useEffect(() => {
-    if (!nodes || nodes.length === 0) return
-
-    // When a rebase pauses on a conflict, surface the resolution panel automatically by
-    // selecting the synthetic CONFLICT row — otherwise the user only sees conflict markers in
-    // the diff and no obvious way forward (no Continue/Abort). Done once per pause; while paused
-    // we also suppress the branch-head auto-select below so a background refetch can't snap the
-    // user off the conflict row (or off a commit they navigated to) mid-resolution.
-    if (isRebasePaused && conflictNode) {
-      if (!autoOpenedConflictRef.current) {
-        autoOpenedConflictRef.current = true
-        selectSingle('CONFLICT')
-      }
-      return
-    }
-
-    const currentSelected = branch || primaryOid
-    // Find a node that has a ref matching the branch name, or matches by OID (stashes)
-    const matchNode =
-      nodes.find(
-        (node) =>
-          node.commit.oid === currentSelected ||
-          node.refs.some((r) => r.name === currentSelected || r.shortName === currentSelected)
-      ) || nodes[0]
-
-    if (matchNode && matchNode.commit.oid !== 'WIP') {
-      selectSingle(matchNode.commit.oid)
-
-      if (
-        lastScrolledRef.current.branch !== branch ||
-        lastScrolledRef.current.repoPath !== repoPath
-      ) {
-        lastScrolledRef.current = { branch, repoPath }
-        const index = filteredNodes.findIndex((n) => n.commit.oid === matchNode.commit.oid)
-        if (index !== -1) {
-          setTimeout(() => {
-            virtualizer.scrollToIndex(index, { align: 'center' })
-          }, 50)
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, repoPath, nodes, isRebasePaused, conflictNode])
 
   const primaryNode = useMemo(() => {
     if (!primaryOid) return null
@@ -735,9 +457,7 @@ export function GitGraph({
     if (selected.size < 2) return []
     return filteredNodes.filter((n) => {
       const oid = n.commit.oid
-      return (
-        selected.has(oid) && oid !== 'WIP' && oid !== 'CONFLICT' && !oid.startsWith('WIP:')
-      )
+      return selected.has(oid) && !isSyntheticRow(oid)
     })
   }, [selected, filteredNodes])
   const isMultiSelect = selectedCommitNodes.length > 1
@@ -753,7 +473,7 @@ export function GitGraph({
     const set = new Set<string>()
     for (let i = 0; i < tipIndex; i++) {
       const oid = renderNodes[i].commit.oid
-      if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) continue
+      if (isSyntheticRow(oid)) continue
       set.add(oid)
     }
     return set
@@ -806,8 +526,7 @@ export function GitGraph({
   }
 
   const isSelectedCommitHead = useMemo(() => {
-    if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT')
-      return false
+    if (!primaryNode || isSyntheticRow(primaryNode.commit.oid)) return false
     // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
     const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
     // Strategy 2: the commit carries the branch that HEAD currently points to
@@ -1101,167 +820,100 @@ export function GitGraph({
       {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
           resolution, or commit details */}
       {bisectActive ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <BisectPanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <BisectPanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : aiPanelTarget ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            {/* Keyed on the subject so switching remounts with that subject's remembered
-                explanation instead of the previous one's. */}
-            {aiPanelTarget.kind === 'search' ? (
-              <AiCommitSearchPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'working' ? (
-              <WorkingExplanationPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'branch' ? (
-              <BranchExplanationPanel
-                key={`branch:${aiPanelTarget.branch}`}
-                repoPath={repoPath}
-                branch={aiPanelTarget.branch}
-                baseRef={aiPanelTarget.baseRef}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'summaries' ? (
-              <DailySummariesPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'reviewWorking' ? (
-              <CodeReviewPanel
-                repoPath={repoPath}
-                target={{ scope: 'working' }}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'reviewBranch' ? (
-              <CodeReviewPanel
-                key={`review:${aiPanelTarget.branch}`}
-                repoPath={repoPath}
-                target={{ scope: 'branch', branch: aiPanelTarget.branch }}
-                baseRef={aiPanelTarget.baseRef}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : (
-              <CommitExplanationPanel
-                key={`commit:${aiPanelTarget.oid}`}
-                repoPath={repoPath}
-                commit={aiPanelTarget}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            )}
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          {/* Keyed on the subject so switching remounts with that subject's remembered
+              explanation instead of the previous one's. */}
+          {aiPanelTarget.kind === 'search' ? (
+            <AiCommitSearchPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'working' ? (
+            <WorkingExplanationPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'branch' ? (
+            <BranchExplanationPanel
+              key={`branch:${aiPanelTarget.branch}`}
+              repoPath={repoPath}
+              branch={aiPanelTarget.branch}
+              baseRef={aiPanelTarget.baseRef}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'summaries' ? (
+            <DailySummariesPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'reviewWorking' ? (
+            <CodeReviewPanel
+              repoPath={repoPath}
+              target={{ scope: 'working' }}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'reviewBranch' ? (
+            <CodeReviewPanel
+              key={`review:${aiPanelTarget.branch}`}
+              repoPath={repoPath}
+              target={{ scope: 'branch', branch: aiPanelTarget.branch }}
+              baseRef={aiPanelTarget.baseRef}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : (
+            <CommitExplanationPanel
+              key={`commit:${aiPanelTarget.oid}`}
+              repoPath={repoPath}
+              commit={aiPanelTarget}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          )}
+        </GraphSidePanel>
       ) : patchMode ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <PatchWorkspacePanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <PatchWorkspacePanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : healthOpen ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <PackageHealthPanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <PackageHealthPanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : activePrNumber != null ? (
         prFilesVisible ? (
-          <>
-            <div
-              {...resizeProps}
-              className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-            >
-              <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-            </div>
-            <div
-              className="h-full min-w-[350px] shrink-0 overflow-hidden"
-              style={{ width: panelWidthState }}
-            >
-              <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
-            </div>
-          </>
+          <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+            <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
+          </GraphSidePanel>
         ) : null
       ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
-        <>
-          {/* Handle de redimensionnement */}
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            {isConflictPanelOpen ? (
-              <ConflictResolutionPanel
-                repoPath={repoPath}
-                activeFile={conflictFilePath}
-                onSelectFile={setConflictFilePath}
-                onClose={closeConflictPanel}
-              />
-            ) : isMultiSelect ? (
-              <MultiCommitDetailsPanel
-                nodes={selectedCommitNodes}
-                repoPath={repoPath}
-                onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                onClose={clearSelection}
-              />
-            ) : (
-              <CommitDetailsPanel
-                node={primaryNode}
-                repoPath={repoPath}
-                isHead={isSelectedCommitHead}
-                onSelectCommit={selectSingle}
-                onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                onClose={clearSelection}
-              />
-            )}
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          {isConflictPanelOpen ? (
+            <ConflictResolutionPanel
+              repoPath={repoPath}
+              activeFile={conflictFilePath}
+              onSelectFile={setConflictFilePath}
+              onClose={closeConflictPanel}
+            />
+          ) : isMultiSelect ? (
+            <MultiCommitDetailsPanel
+              nodes={selectedCommitNodes}
+              repoPath={repoPath}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClose={clearSelection}
+            />
+          ) : (
+            <CommitDetailsPanel
+              node={primaryNode}
+              repoPath={repoPath}
+              isHead={isSelectedCommitHead}
+              onSelectCommit={selectSingle}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClose={clearSelection}
+            />
+          )}
+        </GraphSidePanel>
       ) : null}
 
       {/* Overlays (dialogs triggered by the native menu) */}

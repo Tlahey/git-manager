@@ -263,7 +263,7 @@ pub struct BisectState {
 }
 
 // ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
-// Miroir exact de MergeBlockKind / MergeBlock / ThreeWayMergeView dans packages/git-types.
+// Exact mirror of MergeBlockKind / MergeBlock / ThreeWayMergeView in packages/git-types.
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
@@ -317,9 +317,9 @@ pub struct AiProviderStatus {
 }
 
 // ─── Diff ─────────────────────────────────────────────────────────────────────
-// Miroir exact de GitDiff / GitDiffFile / GitDiffHunk / GitDiffLine dans
-// packages/git-types. Source unique — ne pas redéfinir ces structs localement
-// dans commands/commit.rs ou commands/log.rs.
+// Exact mirror of GitDiff / GitDiffFile / GitDiffHunk / GitDiffLine in
+// packages/git-types. Single source — do not redefine these structs locally
+// in commands/commit.rs or commands/log.rs.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

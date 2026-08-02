@@ -229,15 +229,20 @@ When(/^I click the paused-rebase banner in the graph$/, async () => {
   await banner.click()
 })
 
+// Continue/abort live on the CONFLICT row's own panel (`ConflictResolutionPanel`, reached by
+// clicking the paused-rebase banner above), not on the rebase progress view — despite what these
+// steps' wording says. The `rebase-progress-continue`/`-abort` testids they used to look for exist
+// nowhere in the app any more; the panel's are `conflict-panel-continue-button` /
+// `conflict-panel-abort-button`.
 When(/^I continue the rebase from the progress view$/, async () => {
-  const button = $('[data-testid="rebase-progress-continue"]')
+  const button = $('[data-testid="conflict-panel-continue-button"]')
   await button.waitForDisplayed({ timeout: 10000 })
   await button.waitForEnabled({ timeout: 10000 })
   await button.click()
 })
 
 When(/^I abort the rebase from the progress view$/, async () => {
-  const button = $('[data-testid="rebase-progress-abort"]')
+  const button = $('[data-testid="conflict-panel-abort-button"]')
   await button.waitForDisplayed({ timeout: 15000 })
   await button.waitForEnabled({ timeout: 10000 })
   await button.click()

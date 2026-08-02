@@ -9,12 +9,6 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('./GraphSvg', () => ({ GraphSvg: () => <div data-testid="graph-svg" /> }))
 
 const { lastRefLabelGroupProps } = vi.hoisted(() => ({
@@ -488,7 +482,7 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     expect(screen.getByText('feature-x').closest('[title]')).toHaveAttribute('title', 'feature-x')
     expect(
-      screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })
+      screen.queryByRole('button', { name: 'Open Worktree' })
     ).not.toBeInTheDocument()
   })
 
@@ -512,7 +506,7 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       isSelected: true,
     })
     // The i18n mock echoes back the raw key for calls without interpolation opts.
-    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    await user.click(screen.getByRole('button', { name: 'Open Worktree' }))
     expect(onOpenWorktree).toHaveBeenCalledWith('/repo-worktree')
   })
 
@@ -532,7 +526,7 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       ],
       isPrimary: true,
     })
-    expect(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Worktree' })).toBeInTheDocument()
   })
 
   it('renders a worktree WIP row with no branch tag when its status is missing', () => {
@@ -583,7 +577,7 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       isSelected: true,
     })
     // The i18n mock echoes back the raw key for calls without interpolation opts.
-    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    await user.click(screen.getByRole('button', { name: 'Open Worktree' }))
     expect(onSelect).not.toHaveBeenCalled()
   })
 })
@@ -596,7 +590,7 @@ describe('GraphRow — message column: CONFLICT', () => {
       conflictInfo: { count: 2, branchName: 'feature-x' },
     })
     expect(
-      screen.getByText('gitTree.contextMenu.conflictBannerMessage:{"count":2,"branch":"feature-x"}')
+      screen.getByText('2 file conflicts were found when attempting to merge into feature-x')
     ).toBeInTheDocument()
   })
 })
@@ -1044,4 +1038,29 @@ describe('GraphRow — background band alignment', () => {
     const withoutRefs = bandLeft([col('graph'), col('message')])
     expect(withRefs - withoutRefs).toBe(160)
   })
+})
+
+describe('GraphRow — bisect annotation', () => {
+  it('renders no bisect marker or tint when the row carries no bisect status', () => {
+    const { container } = renderRow({ columns: [col('message')] })
+    expect(screen.queryByTestId('bisect-row-marker')).not.toBeInTheDocument()
+    expect(container.querySelector('[class*="bg-red-500/15"]')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['firstBad', 'bg-red-600', 'bg-red-500/15', 'First bad commit'],
+    ['current', 'bg-amber-500', 'bg-amber-500/15', 'Under test'],
+    ['bad', 'bg-red-500', 'bg-red-500/10', 'Bad'],
+    ['good', 'bg-green-500', 'bg-green-500/10', 'Good'],
+    ['skip', 'bg-muted-foreground', 'bg-muted-foreground/10', 'Skipped'],
+  ] as const)(
+    'gives a %s row its stripe colour, row tint and accessible label',
+    (status, stripe, rowBg, label) => {
+      const { container } = renderRow({ columns: [col('message')], bisectStatus: status })
+      const marker = screen.getByTestId('bisect-row-marker')
+      expect(marker).toHaveClass(stripe)
+      expect(marker).toHaveAttribute('aria-label', label)
+      expect(container.querySelector(`[class*="${rowBg}"]`)).toBeInTheDocument()
+    }
+  )
 })

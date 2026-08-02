@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { GitGraphNode, WorktreeAgentActivity } from '@git-manager/git-types'
-import { GraphCell, isWipRow } from './GraphCell'
+import { GraphCell } from './GraphCell'
 import { getGraphColumnLayout, getMarkerPlacement } from '../graphColumnSizing'
 import { useSettingsStore } from '../../../stores/settings.store'
 
@@ -64,15 +64,6 @@ function renderCell(
 beforeEach(() => {
   lastGraphSvgProps.current = null
   useSettingsStore.setState(INITIAL_SETTINGS, true)
-})
-
-describe('isWipRow', () => {
-  it('matches the primary WIP row and per-worktree WIP rows only', () => {
-    expect(isWipRow('WIP')).toBe(true)
-    expect(isWipRow('WIP:/some/path')).toBe(true)
-    expect(isWipRow('CONFLICT')).toBe(false)
-    expect(isWipRow('abc123')).toBe(false)
-  })
 })
 
 describe('GraphCell — full mode', () => {

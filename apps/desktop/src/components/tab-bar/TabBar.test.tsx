@@ -172,7 +172,7 @@ describe('TabBar — settings/profile', () => {
     const onOpenSettings = vi.fn()
     const user = userEvent.setup()
     render(<TabBar onOpenSettings={onOpenSettings} />)
-    await user.click(screen.getByTitle('Réglages'))
+    await user.click(screen.getByTitle('Settings'))
     expect(onOpenSettings).toHaveBeenCalledWith('general')
   })
 

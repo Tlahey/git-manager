@@ -8,6 +8,7 @@ import { TagCreationInput } from './TagCreationInput'
 import { useTagMenuHandler } from './TagMenuContext'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
 import type { BisectRowStatus } from './bisectStatus'
+import { BISECT_ROW_STYLES } from './bisectRow.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
 import {
   REF_CONNECTOR_LINE_OPACITY_HEX,
@@ -26,7 +27,8 @@ import {
   ConflictRowMessage,
   type WipRef,
 } from './components/GraphMessageCells'
-import { GraphCell, isWipRow } from './components/GraphCell'
+import { GraphCell } from './components/GraphCell'
+import { isSyntheticRow, worktreeWipPath } from './syntheticRows'
 import { AuthorAvatar } from './components/AuthorAvatar'
 
 export { GraphAvatarTooltip } from './components/GraphAvatarTooltip'
@@ -163,7 +165,7 @@ function CellContent({
       if (filteredRefs.length === 0) {
         // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
         // Never on the synthetic WIP / conflict rows.
-        const isRealCommit = !isWipRow(commit.oid) && commit.oid !== 'CONFLICT'
+        const isRealCommit = !isSyntheticRow(commit.oid)
         if (!isRealCommit || !laneRef) return null
         return (
           <div
@@ -207,8 +209,8 @@ function CellContent({
           />
         )
       }
-      if (node.commit.oid.startsWith('WIP:')) {
-        const path = node.commit.oid.slice('WIP:'.length)
+      const path = worktreeWipPath(node.commit.oid)
+      if (path !== null) {
         const wip = worktreeWipStatuses?.find((w) => w.path === path)
         return (
           <WorktreeWipRow
@@ -263,7 +265,7 @@ function CellContent({
     }
 
     case 'author': {
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <div className="flex min-w-0 items-center gap-1.5">
           <AuthorAvatar
@@ -284,7 +286,7 @@ function CellContent({
     }
 
     case 'date':
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <span
           className={cn(
@@ -298,7 +300,7 @@ function CellContent({
       )
 
     case 'sha':
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <code
           className={cn(
@@ -314,33 +316,6 @@ function CellContent({
 }
 
 // ── GraphRow ──────────────────────────────────────────────────────────────────
-
-/** Left-stripe color per bisect status. */
-const BISECT_STRIPE: Record<BisectRowStatus, string> = {
-  firstBad: 'bg-red-600',
-  current: 'bg-amber-500',
-  bad: 'bg-red-500',
-  good: 'bg-green-500',
-  skip: 'bg-muted-foreground',
-}
-
-/** Full-row background tint per bisect status, so a marked commit reads at a glance. */
-const BISECT_ROW_BG: Record<BisectRowStatus, string> = {
-  firstBad: 'bg-red-500/15',
-  current: 'bg-amber-500/15',
-  bad: 'bg-red-500/10',
-  good: 'bg-green-500/10',
-  skip: 'bg-muted-foreground/10',
-}
-
-/** i18n key (git namespace) for each bisect status, used as the stripe's accessible label. */
-const BISECT_LABEL: Record<BisectRowStatus, string> = {
-  firstBad: 'bisect.status.firstBad',
-  current: 'bisect.status.current',
-  bad: 'bisect.status.bad',
-  good: 'bisect.status.good',
-  skip: 'bisect.status.skip',
-}
 
 export const GraphRow = memo(function GraphRow({
   node,
@@ -390,9 +365,10 @@ export const GraphRow = memo(function GraphRow({
   const rowAgent =
     oid === 'WIP'
       ? wipAgentActivity
-      : oid.startsWith('WIP:')
-        ? worktreeAgentActivity?.find((a) => a.path === oid.slice('WIP:'.length))
-        : undefined
+      : (() => {
+          const path = worktreeWipPath(oid)
+          return path ? worktreeAgentActivity?.find((a) => a.path === path) : undefined
+        })()
   // Start the band at the row marker's vertical line (the avatar/point center), so the left half
   // of the marker stays clear. Marker center in row coords = refsWidth + 8px cell margin + x.
   // Once the column is scrolled, a band belonging to a marker pinned on the left keeps its tint —
@@ -435,14 +411,17 @@ export const GraphRow = memo(function GraphRow({
         <>
           <span
             aria-hidden
-            className={cn('pointer-events-none absolute inset-0', BISECT_ROW_BG[bisectStatus])}
+            className={cn(
+              'pointer-events-none absolute inset-0',
+              BISECT_ROW_STYLES[bisectStatus].rowBg
+            )}
           />
           <span
             data-testid="bisect-row-marker"
-            aria-label={t(BISECT_LABEL[bisectStatus])}
+            aria-label={t(BISECT_ROW_STYLES[bisectStatus].labelKey)}
             className={cn(
               'pointer-events-none absolute inset-y-0 left-0 z-graph-row-hover w-[3px] rounded-r',
-              BISECT_STRIPE[bisectStatus]
+              BISECT_ROW_STYLES[bisectStatus].stripe
             )}
           />
         </>

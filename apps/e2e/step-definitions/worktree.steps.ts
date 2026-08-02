@@ -165,16 +165,26 @@ When(/^I confirm the remove-worktree dialog$/, async () => {
 })
 
 When(/^I check the force-remove checkbox$/, async () => {
-  const checkbox = $('[data-testid="worktree-remove-force-checkbox"]')
-  await checkbox.waitForDisplayed({ timeout: 10000 })
-  await checkbox.click()
+  // Same opacity-0 input as above — go through the injected click rather than the driver's.
+  await clickViaJs('worktree-remove-force-checkbox')
 })
 
 Then(/^the remove-worktree dialog warns about uncommitted changes$/, async () => {
   const button = $('[data-testid="worktree-remove-confirm-button"]')
   await button.waitForDisplayed({ timeout: 10000 })
   await expect(button).not.toBeEnabled()
-  await expect($('[data-testid="worktree-remove-force-checkbox"]')).toBeDisplayed()
+  // `waitForExist`, not `toBeDisplayed`: `Checkbox` renders its real <input> at `opacity-0` on
+  // purpose (checkbox.tsx says it must never go back to `sr-only`, which would clip it to 1px and
+  // shrink the hit area), and this WebKit provider's isDisplayed() follows the classic Selenium
+  // algorithm, where opacity 0 counts as not displayed — the same gotcha `clickViaJs` above exists
+  // for. The element is really there and really clickable.
+  await $('[data-testid="worktree-remove-force-checkbox"]').waitForExist({ timeout: 10000 })
+  // Assert the warning the user actually reads, which a display check on a transparent input never
+  // covered: this is what makes the step live up to its name.
+  await expect($('[data-testid="worktree-remove-dialog"]')).toHaveText(
+    'This worktree has uncommitted changes. Removing it will discard them.',
+    { containing: true }
+  )
 })
 
 Then(/^the fixture repo no longer has the linked worktree on disk$/, async () => {

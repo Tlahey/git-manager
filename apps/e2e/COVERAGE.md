@@ -77,28 +77,19 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
 
 ---
 
-## Repo tab views (Graph / Terminal / Settings) ✅ 📷
+## File explorer ✅
 
-The `role="tablist"` strip (`RepoViewTabs.tsx`, `data-testid="repo-view-tabs"`, built on
-`@git-manager/components`'s `InnerTab`) that lets one repo tab switch its whole content area
-between the commit graph, a full-height integrated terminal, and the app's own Settings page
-embedded in place — each mounted exclusively via a ternary in `RepoView.tsx`, backed by the
-session-only `repoViewTabs.store.ts` (one active view per repo-tab path, not persisted).
+The toolbar's Files button (`toolbar-files-button`) swapping the graph for `ProjectFilesView` — a
+`FileTreeSidebar` on the left, the current directory in the middle.
 
-- Setup: **`fixture:feature-branches`** — this feature doesn't depend on any particular git
-  history, so the simplest already-proven fixture was enough.
-- Covered (`repo-view-tabs.feature`): the graph view shown by default on a freshly opened repo
-  (`repo-view-tab-graph`'s `aria-selected="true"`); clicking the Terminal tab shows
-  `repo-terminal-view` and the graph (`repo-graph-view`) unmounts; clicking Settings shows the
-  embedded `repo-settings-view` (`SettingsPage` with `embedded`/`initialScope="local"`) and the
-  terminal unmounts; clicking back to Graph restores it; and — since `repoViewTabs.store.ts`'s own
-  doc comment states the selection is deliberately session-scoped, not persisted (a terminal view
-  restored onto dead PTY sessions after a relaunch would be a dead end) — a reload resets the tab
-  back to Graph, asserted directly rather than just trusted from the source comment.
-- **Doc scenario**: `InnerTab` is a plain `<button>`, not a Radix trigger, so the click-driven
-  scenario needed none of the pointerdown/`clickViaJs` workarounds worktree/fixup rows do — a
-  reminder that those exist because of the *specific* control, not because this suite's clicks are
-  generally unreliable. Placed under "Reading your repository" in `docs.config.ts` (`doc-repo-view-tabs.png`).
+- Setup: **`fixture:feature-branches`**. On `main` its working tree holds exactly one file
+  (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
+  it" distinguishable from "it was never there".
+- Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), closing
+  puts the graph back, the tree filter (`file-tree-search-input`) narrows the tree, and hiding the
+  sidebar leaves `file-explorer-show-sidebar` behind — asserted explicitly, since a hide with no way
+  back would make the sidebar unreachable for the rest of the session.
+- No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
 
 ---
 
@@ -507,6 +498,22 @@ DOM value:
 ---
 
 ## Known blockers / gotchas
+
+- **The suite shares one app window, and a per-scenario reset is NOT the fix — measured, 2026-08-02.**
+  Every spec that fails only in a whole-suite run passes on its own, so the obvious cure is to reset
+  the volatile view state between scenarios (the `Before` hook already re-seeds settings and graph
+  columns, but not the file explorer, solo mode, commit search, timeline, rebase-view dismissals or
+  the Launchpad search — and a leftover Launchpad search filters out the very PR the next feature
+  asserts on). That was implemented and **reverted**: adding a single extra `browser.execute` per
+  scenario — to call an app-side reset — put the driver into a run-long storm of
+  `No window could be found`, taking whole features down that had been green. Moving the call from
+  the start of the hook to the end (after three executes that had just succeeded) did not help:
+  9 failures over 51 files became 17 window errors over 5. The harness cannot absorb an extra
+  driver round-trip per scenario, so a working fix has to ride inside a command the hook already
+  issues (e.g. folded into `forceLiveSettings`' own `execute`) rather than adding one. Verified
+  separately that this was the reset and not the `main.tsx` window guard shipped in the same build:
+  with the reset call removed and the same binary, the same specs run with zero window errors.
+
 
 - **A step can "find" a control that changed shape under it.** Three of the five silently-broken
   feature files broke this way, all invisible to a testid-existence check:

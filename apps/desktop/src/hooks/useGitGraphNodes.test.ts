@@ -326,7 +326,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     // Regression: the anchor is a merge commit. A branch merging into it arrives as a *diagonal*
     // edge (fromColumn 2 → toColumn 0, the anchor's own column). The old copy only kept
     // `fromColumn === toColumn` verticals, so that incoming lane was dropped and its line was cut
-    // at the inserted WIP row (the reported "ligne verte coupée" at the WIP-33 row). It must now
+    // at the inserted WIP row (the reported "broken green line" at the WIP-33 row). It must now
     // flow straight up through the synthetic row at its own column (2), keeping its color.
     const nodes = [
       // A real commit above `m`, so its incoming column-0 edge is history rather than the reserved
@@ -393,7 +393,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     )
     const wtNode = result.current.filteredNodes[1] // index 0 is primary WIP, index 1 is worktree WIP
     expect(wtNode.column).toBe(3) // not the occupied column 2
-    // The occupied lane keeps flowing through the inserted row (no gap / no décalage).
+    // The occupied lane keeps flowing through the inserted row (no gap / no offset).
     expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#16a34a' })
     // Own dashed connector sits on the free lane, out of every other line's path.
     expect(wtNode.connections).toContainEqual({

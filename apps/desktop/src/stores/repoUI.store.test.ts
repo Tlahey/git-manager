@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useRepoUIStore, isNewTab, DASHBOARD_TAB } from './repoUI.store'
-import { useRepoViewTabsStore } from './repoViewTabs.store'
 
 const INITIAL = {
   openTabs: [] as string[],
@@ -25,7 +24,6 @@ const INITIAL = {
 
 beforeEach(() => {
   useRepoUIStore.setState(INITIAL)
-  useRepoViewTabsStore.setState({ byPath: {} })
   localStorage.clear()
 })
 
@@ -537,33 +535,6 @@ describe('useRepoUIStore — clearTabStateForRemovedRepo', () => {
     expect(state.activeTab).toBe('/repo/b')
   })
 
-  it('forgets the removed repo’s view selection', () => {
-    useRepoUIStore.getState().openTab('/repo/a')
-    useRepoViewTabsStore.getState().setActiveView('/repo/a', 'terminal')
-    useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
-    expect(useRepoViewTabsStore.getState().byPath).toEqual({})
-  })
-})
-
-describe('useRepoUIStore — per-tab view selection', () => {
-  it('closing a tab forgets its view, so reopening it starts on the graph', () => {
-    useRepoUIStore.getState().openTab('/repo/a')
-    useRepoViewTabsStore.getState().setActiveView('/repo/a', 'terminal')
-    useRepoUIStore.getState().closeTab('/repo/a')
-    expect(useRepoViewTabsStore.getState().activeViewFor('/repo/a')).toBe('graph')
-  })
-
-  it('merely switching tabs keeps every tab’s view', () => {
-    useRepoUIStore.getState().openTab('/repo/a')
-    useRepoUIStore.getState().openTab('/repo/b')
-    useRepoViewTabsStore.getState().setActiveView('/repo/a', 'terminal')
-    useRepoViewTabsStore.getState().setActiveView('/repo/b', 'settings')
-    useRepoUIStore.getState().setActiveTab('/repo/a')
-    expect(useRepoViewTabsStore.getState().byPath).toEqual({
-      '/repo/a': 'terminal',
-      '/repo/b': 'settings',
-    })
-  })
 })
 
 describe('useRepoUIStore — empty "New Tab" placeholders', () => {

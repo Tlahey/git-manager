@@ -1,18 +1,17 @@
 /**
  * Layout editor — the sprite-sheet → JSON workflow:
  *
- *   1. le sheet du package (`assets/sprites.png`) et son layout
- *      (`assets/layout.json`) sont chargés au démarrage — l'état initial de
- *      l'éditeur EST le rig actuel (un autre PNG peut être chargé par-dessus),
- *   2. définis/ajuste des zones dessus (glisser pour tracer, nommer, typer),
- *   3. place chaque zone sur la scène 1000×1000 (drag, échelle, rotation,
- *      flip, opacité, pivot + params d'animation), avec la référence de
- *      marque en surimpression alignée ; le panneau « Couches » liste les
- *      placements en ordre de peinture (haut = devant) et se réordonne par
- *      drag-and-drop,
- *   4. exporte le JSON → `assets/layout.json`, puis
- *      `pnpm --filter @git-manager/mascot generate` régénère
- *      `src/generated/{sprites,layout}.ts` consommés par les apps.
+ *   1. the package's sheet (`assets/sprites.png`) and its layout
+ *      (`assets/layout.json`) are loaded on startup — the editor's initial state
+ *      IS the current rig (another PNG can be loaded over it),
+ *   2. define/adjust regions on it (drag to draw, name them, type them),
+ *   3. place each region on the 1000×1000 stage (drag, scale, rotation, flip,
+ *      opacity, pivot + animation params), with the brand reference aligned as
+ *      an overlay; the "Layers" panel lists the placements in paint order
+ *      (top = front) and reorders by drag-and-drop,
+ *   4. export the JSON → `assets/layout.json`, then
+ *      `pnpm --filter @git-manager/mascot generate` regenerates
+ *      `src/generated/{sprites,layout}.ts`, which the apps consume.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -58,7 +57,7 @@ interface Doc {
     chroma: { color: string | null; t0: number; t1: number }
   }
   stage: { width: number; height: number }
-  /** paint order: first = tout derrière, last = tout devant */
+  /** paint order: first = furthest back, last = furthest front */
   placements: Placement[]
   zones: Zone[]
 }

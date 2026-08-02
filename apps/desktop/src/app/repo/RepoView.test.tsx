@@ -139,19 +139,7 @@ vi.mock('../../components/bisect/BisectStashDialog', () => ({
   BisectStashDialog: () => <div data-testid="fake-bisect-stash-dialog" />,
 }))
 
-// The two relocated views have their own tests; here only the switching matters (and the terminal
-// one would spawn a real PTY through the API layer).
-vi.mock('./components/RepoTerminalView', () => ({
-  RepoTerminalView: (props: { path: string }) => (
-    <div data-testid="fake-terminal-view">{props.path}</div>
-  ),
-}))
-vi.mock('./components/RepoSettingsView', () => ({
-  RepoSettingsView: () => <div data-testid="fake-settings-view" />,
-}))
-
 import { RepoView } from './RepoView'
-import { useRepoViewTabsStore } from '../../stores/repoViewTabs.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -180,7 +168,6 @@ beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useSettingsStore.setState(INITIAL_SETTINGS, true)
   useCommitSearchStore.setState({ open: false, query: '' })
-  useRepoViewTabsStore.setState({ byPath: {} })
   apiOpenRepo.mockResolvedValue(repo())
   vi.spyOn(useUndoHistoryStore.getState(), 'validateAndPrune').mockResolvedValue(undefined)
   useBranchesMock.mockReturnValue({ data: [] })
@@ -434,62 +421,5 @@ describe('RepoView — branch context menu', () => {
     await act(async () => menuItemByText('Set upstream')!.action!())
     expect(apiSetBranchUpstream).toHaveBeenCalledWith('/repo', 'local-branch', 'origin/local-branch')
     expect(screen.queryByTestId('set-upstream-dialog')).not.toBeInTheDocument()
-  })
-})
-
-describe('RepoView — view tabs', () => {
-  it('opens on the graph view', () => {
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    expect(screen.getByTestId('repo-view-tabs')).toBeInTheDocument()
-    expect(screen.getByTestId('fake-git-graph')).toBeInTheDocument()
-    expect(screen.queryByTestId('fake-terminal-view')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('fake-settings-view')).not.toBeInTheDocument()
-  })
-
-  it('swaps the graph for the terminal view when its tab is clicked', async () => {
-    const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    await user.click(screen.getByRole('tab', { name: 'Terminal' }))
-    expect(screen.getByTestId('fake-terminal-view')).toBeInTheDocument()
-    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
-    expect(useRepoViewTabsStore.getState().activeViewFor('/repo')).toBe('terminal')
-  })
-
-  it('swaps the graph for the settings view when its tab is clicked', async () => {
-    const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    await user.click(screen.getByRole('tab', { name: 'Settings' }))
-    expect(screen.getByTestId('fake-settings-view')).toBeInTheDocument()
-    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
-  })
-
-  it('restores the view this tab was left on', () => {
-    useRepoViewTabsStore.setState({ byPath: { '/repo': 'settings', '/other': 'terminal' } })
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    expect(screen.getByTestId('fake-settings-view')).toBeInTheDocument()
-  })
-
-  it('keeps the toolbar and the repo-wide banners in every view', async () => {
-    const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    await user.click(screen.getByRole('tab', { name: 'Terminal' }))
-    expect(screen.getByTestId('fake-action-toolbar')).toBeInTheDocument()
-    expect(screen.getByTestId('fake-pending-fixups-banner')).toBeInTheDocument()
-    expect(screen.getByTestId('fake-bisect-banner')).toBeInTheDocument()
-  })
-
-  it('gives the terminal view the worktree being viewed, not the tab’s own repo', async () => {
-    const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo', activeWorkspacePath: '/repo-wt' })
-    render(<RepoView />)
-    await user.click(screen.getByRole('tab', { name: 'Terminal' }))
-    expect(screen.getByTestId('fake-terminal-view')).toHaveTextContent('/repo-wt')
-    // …while the selection itself stays keyed on the tab, not on the worktree.
-    expect(useRepoViewTabsStore.getState().byPath).toEqual({ '/repo': 'terminal' })
   })
 })

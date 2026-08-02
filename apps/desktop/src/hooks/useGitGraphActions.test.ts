@@ -171,6 +171,7 @@ function baseParams(overrides: Partial<Parameters<typeof useGitGraphActions>[0]>
     selected: new Set<string>(),
     setPrimaryOid: vi.fn(),
     selectSingle: vi.fn(),
+    primaryOid: null as string | null,
     hiddenStashes: [] as string[],
     toggleStashVisibility: vi.fn(),
     status: status(),
@@ -192,6 +193,8 @@ beforeEach(() => {
     aiPanelTarget: null,
     compareRefsTarget: null,
     activeWorkspacePath: null,
+    pendingGraphAction: null,
+    pendingCommitMenuOid: null,
   })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
@@ -1072,5 +1075,66 @@ describe('useGitGraphActions — fixup window', () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openFixupWindow('a'))
     await waitFor(() => expect(WebviewWindowCtor).toHaveBeenCalledOnce())
+  })
+})
+
+describe('useGitGraphActions — pending graph action bridge', () => {
+  // Lets out-of-tree UI (the command palette) trigger a commit-scoped action on the currently
+  // selected commit, without rebuilding the native menu's own dialog wiring.
+  it('does nothing while no commit is selected', () => {
+    renderHook(() => useGitGraphActions(baseParams({ primaryOid: null })))
+    act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'revert' } }))
+
+    expect(useRepoUIStore.getState().pendingGraphAction).toEqual({ kind: 'revert' })
+  })
+
+  it('opens the fixup window directly, since there is no in-page dialog for it', async () => {
+    webviewGetByLabel.mockResolvedValue(null)
+    renderHook(() => useGitGraphActions(baseParams({ primaryOid: 'a' })))
+
+    act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'fixup' } }))
+
+    await waitFor(() => expect(WebviewWindowCtor).toHaveBeenCalledOnce())
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+  })
+
+  it('drafts an inline tag on the selected commit for a tag action', () => {
+    const { result, rerender } = renderHook(() => useGitGraphActions(baseParams({ primaryOid: 'a' })))
+
+    act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'tag', annotated: true } }))
+    rerender()
+
+    expect(result.current.tagDraft).toEqual({ oid: 'a', annotated: true })
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+  })
+
+  it('forwards any other action kind to setPendingAction, opening its matching dialog', () => {
+    const { result, rerender } = renderHook(() => useGitGraphActions(baseParams({ primaryOid: 'a' })))
+
+    act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'revert' } }))
+    rerender()
+
+    expect(result.current.pendingAction).toEqual({ kind: 'revert' })
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+  })
+})
+
+describe('useGitGraphActions — pending commit menu bridge', () => {
+  // The sidebar's tag rows ask for a commit's full menu through the store, since the menu is
+  // assembled from the graph's own loaded page.
+  it('selects the requested commit and opens its menu', async () => {
+    const selectSingle = vi.fn()
+    renderHook(() => useGitGraphActions(baseParams({ nodes: [commitNode('a')], selectSingle })))
+
+    act(() => useRepoUIStore.setState({ pendingCommitMenuOid: 'a' }))
+
+    expect(selectSingle).toHaveBeenCalledWith('a')
+    await waitFor(() => expect(showNativeMenu).toHaveBeenCalledOnce())
+    expect(useRepoUIStore.getState().pendingCommitMenuOid).toBeNull()
+  })
+
+  it('does nothing while no commit menu is requested', () => {
+    renderHook(() => useGitGraphActions(baseParams()))
+    expect(showNativeMenu).not.toHaveBeenCalled()
   })
 })

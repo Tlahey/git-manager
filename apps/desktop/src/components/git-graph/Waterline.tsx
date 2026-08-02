@@ -3,9 +3,8 @@ interface WaterlineProps {
 }
 
 /**
- * Séparateur temporel pleine largeur (« il y a 2 heures »…). Rendu en OVERLAY
- * sur la frontière entre deux commits : il n'occupe pas de hauteur dans le flux
- * et le graphe reste continu derrière lui.
+ * Full-width time separator ("2 hours ago"…). Rendered as an OVERLAY on the boundary between
+ * two commits: it takes up no height in the flow, so the graph stays continuous behind it.
  */
 export function Waterline({ label }: WaterlineProps) {
   return (

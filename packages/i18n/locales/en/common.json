@@ -109,6 +109,8 @@
   "footer.activityLogs": "Activity Logs",
   "footer.level": "Lvl {{level}}",
   "footer.rewardsTooltip": "View your Git achievements and rewards",
+  "tabs.rewards": "Achievements & Trophies",
+  "tabs.settings": "Settings",
   "footer.shortcutsDescription": "Global keyboard shortcuts for faster navigation.",
   "footer.noShortcutsMatch": "No shortcut matches \"{{query}}\".",
   "footer.shortcutsCategoryGeneral": "General",

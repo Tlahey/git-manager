@@ -27,12 +27,10 @@ interface RepoGraphWorkspaceProps {
 }
 
 /**
- * The Graph view of a repo tab: branch sidebar, the commit graph (or the file explorer that takes
- * its place), the timeline rail, and the dialogs the sidebar's own menus open.
- *
- * Split out of `RepoView` when the tab gained sibling views: everything here is graph-scoped, so it
- * unmounts with the view — which is also what keeps a rename/tag dialog from outliving the view it
- * was opened from.
+ * The body of a repo tab: branch sidebar, the commit graph (or the file explorer that takes its
+ * place), the timeline rail, and the dialogs the sidebar's own menus open. Kept out of `RepoView`,
+ * which owns only the toolbar and the repo-wide banners, so everything graph-scoped — including a
+ * rename/tag dialog — mounts and unmounts as one unit.
  */
 export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceProps) {
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
@@ -68,13 +66,7 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
   return (
     <>
       {/* ── Main layout: sidebar | central area ─────────────────── */}
-      <div
-        id="repo-view-panel-graph"
-        role="tabpanel"
-        aria-labelledby="repo-view-tab-graph"
-        data-testid="repo-graph-view"
-        className="relative flex flex-1 overflow-hidden"
-      >
+      <div data-testid="repo-graph-view" className="relative flex flex-1 overflow-hidden">
         {/* Branch sidebar — resizable */}
         <RepositorySidebar
           repoPath={repoPath}

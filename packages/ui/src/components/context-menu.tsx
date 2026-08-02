@@ -6,9 +6,9 @@ const ContextMenu = ContextMenuPrimitive.Root
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 
 /**
- * Menu ancré au curseur (clic droit) plutôt qu'à un bouton trigger. Même
- * positionnement collision-aware que `DropdownMenuContent` (voir dropdown-menu.tsx),
- * mais l'ancre est le point de clic au lieu du rect d'un élément.
+ * Menu anchored to the cursor (right click) rather than to a trigger button. Same
+ * collision-aware positioning as `DropdownMenuContent` (see dropdown-menu.tsx), except the
+ * anchor is the click point instead of an element's rect.
  */
 const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,

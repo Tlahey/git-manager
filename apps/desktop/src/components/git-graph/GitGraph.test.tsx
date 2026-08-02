@@ -1165,50 +1165,8 @@ describe('GitGraph — conflict merge window', () => {
   })
 })
 
-describe('GitGraph — commit menu requested from outside (sidebar tag rows)', () => {
-  // The sidebar can't build this menu: it is assembled from the graph's loaded page. So the
-  // request travels in through the store instead of the menu travelling out.
-  it('opens the commit menu for the requested oid and selects that commit first', () => {
-    const nodes = [commitNode('a'), commitNode('b')]
-    const openMenuAt = vi.fn()
-    const selectSingle = vi.fn()
-    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
-    useGitGraphActions.mockReturnValue(actionsState({ openMenuAt }))
-    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
-
-    renderGraph()
-    act(() => useRepoUIStore.getState().setPendingCommitMenuOid('b'))
-
-    // Selecting first is what makes the menu's dialogs (reset, revert, create branch) act on the
-    // tag's commit rather than on whatever happened to be selected before.
-    expect(selectSingle).toHaveBeenCalledWith('b')
-    expect(openMenuAt).toHaveBeenCalledWith(undefined, 'b')
-  })
-
-  it('clears the request so the menu does not reopen on the next render', () => {
-    const nodes = [commitNode('a')]
-    const openMenuAt = vi.fn()
-    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
-    useGitGraphActions.mockReturnValue(actionsState({ openMenuAt }))
-
-    renderGraph()
-    act(() => useRepoUIStore.getState().setPendingCommitMenuOid('a'))
-
-    expect(useRepoUIStore.getState().pendingCommitMenuOid).toBeNull()
-    expect(openMenuAt).toHaveBeenCalledTimes(1)
-  })
-
-  it('opens nothing while no commit has been requested', () => {
-    const nodes = [commitNode('a')]
-    const openMenuAt = vi.fn()
-    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
-    useGitGraphActions.mockReturnValue(actionsState({ openMenuAt }))
-
-    renderGraph()
-
-    expect(openMenuAt).not.toHaveBeenCalled()
-  })
-})
+// The "commit menu requested from outside (sidebar tag rows)" bridge (pendingCommitMenuOid) and
+// the "trigger a commit-scoped action from outside" bridge (pendingGraphAction) used to live here,
+// as effects reading useGitGraphActions' return values. Both moved into useGitGraphActions itself
+// (2026-08 retrofit) — see useGitGraphActions.test.ts's 'pending commit menu bridge' and 'pending
+// graph action bridge' describes, which is where their tests moved too.

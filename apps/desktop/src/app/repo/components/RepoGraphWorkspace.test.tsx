@@ -62,11 +62,9 @@ beforeEach(() => {
 })
 
 describe('RepoGraphWorkspace', () => {
-  it('is the graph tab panel, and shows the graph by default', () => {
+  it('shows the graph by default', () => {
     render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
-    const panel = screen.getByTestId('repo-graph-view')
-    expect(panel).toHaveAttribute('role', 'tabpanel')
-    expect(panel).toHaveAttribute('aria-labelledby', 'repo-view-tab-graph')
+    expect(screen.getByTestId('repo-graph-view')).toBeInTheDocument()
     expect(screen.getByTestId('fake-git-graph')).toBeInTheDocument()
     expect(screen.queryByTestId('fake-project-files')).not.toBeInTheDocument()
   })

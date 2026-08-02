@@ -32,7 +32,7 @@ export function usePullRequests({
   const resolvedToken = githubToken || (activeAccount?.token ?? undefined)
   const resolvedUser = currentUser || (activeAccount?.user?.login ?? undefined)
 
-  // Détecte le premier remote GitHub
+  // Find the first GitHub remote
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
 
   const isGithub = ownerRepo !== null

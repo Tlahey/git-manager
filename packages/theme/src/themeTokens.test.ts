@@ -135,7 +135,7 @@ describe('resolveTokenValue / resolveThemeTokens', () => {
 const KNOWN_CONTRAST_FAILURES = new Set<string>([])
 
 describe('theme contrast (WCAG AA)', () => {
-  // Full ratio table, printed once for visibility ("dresser l'état actuel").
+  // Full ratio table, printed once for visibility (a snapshot of the current state).
   it('reports the contrast ratio of every semantic pair', () => {
     const lines: string[] = []
     for (const id of themeIds) {

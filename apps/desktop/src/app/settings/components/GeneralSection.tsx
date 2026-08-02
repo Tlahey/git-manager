@@ -81,7 +81,7 @@ export function GeneralSection() {
       >
         <Separator className="mb-4" />
         <h4 className="text-xs font-semibold text-foreground">
-          <Highlight text="Identité Git par défaut" />
+          <Highlight text={t('settings.git.identityTitle')} />
         </h4>
 
         <div className="space-y-1.5">
