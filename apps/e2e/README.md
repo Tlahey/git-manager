@@ -98,7 +98,10 @@ Scope lives in two places, both kept up to date for different reasons:
   Hand-written, because the *why* cannot be generated.
 - **[REPORT.md](REPORT.md)** — regenerated at the end of every `wdio run`, so it cannot go stale.
   Per feature file and per scenario: how long it took, how much of that was inside steps, and what
-  failed. Not committed; it describes the last run on this machine.
+  failed. Committed, so the repo carries a reference point without anyone having to sit through an
+  18-minute suite first — which does mean it shows up as a diff whenever someone runs the suite.
+  Read the shape (which files dominate, how little sits inside steps), not the absolute numbers:
+  they are one machine's.
 
 The report exists because the suite's cost is not where you would guess. A measured full run spent
 **under four of its sixty-two minutes inside step execution**, and launching the app is ~0.1s per
