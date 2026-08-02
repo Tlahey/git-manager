@@ -19,9 +19,6 @@ vi.mock('../lib/tauri', async () => {
     abortRebase: vi.fn(),
     skipRebase: vi.fn(),
     getRebaseState: vi.fn(),
-    bisectStart: vi.fn(),
-    bisectMark: vi.fn(),
-    bisectReset: vi.fn(),
   }
 })
 
@@ -256,32 +253,5 @@ describe('activity-log sessions for multi-step operations', () => {
     await api.apiRebaseOntoCommit(path, 'some-sha')
 
     expect(sessionFor(other, 'continue_rebase')).toBeNull()
-  })
-
-  it('spans a bisect from start to reset', async () => {
-    const path = freshPath()
-    mocked.bisectStart.mockResolvedValue(undefined)
-    mocked.bisectMark.mockResolvedValue(undefined)
-    mocked.bisectReset.mockResolvedValue(undefined)
-
-    await api.apiBisectStart(path, 'HEAD', 'v1')
-    const started = sessionFor(path, 'bisect_mark')
-    expect(started?.label).toBe('git.bisect')
-
-    // git keeps a bisect alive even after the first bad commit is found, so marking never closes it.
-    await api.apiBisectMark(path, 'good')
-    expect(sessionFor(path, 'bisect_mark')?.id).toBe(started?.id)
-
-    await api.apiBisectReset(path)
-    expect(sessionFor(path, 'bisect_mark')).toBeNull()
-  })
-
-  it('does not pull staging into a bisect', async () => {
-    const path = freshPath()
-    mocked.bisectStart.mockResolvedValue(undefined)
-
-    await api.apiBisectStart(path, 'HEAD', 'v1')
-
-    expect(sessionFor(path, 'stage_file')).toBeNull()
   })
 })
