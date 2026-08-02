@@ -78,6 +78,8 @@ describe('main entry', () => {
   beforeEach(() => {
     vi.resetModules()
     initI18nMock.mockClear()
+    // Without this, a `toHaveBeenCalled()` on it passes on the strength of an earlier test's call.
+    closeCurrentWindow.mockClear()
     document.body.innerHTML = '<div id="root"></div>'
     pendingFrames.clear()
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -140,10 +142,11 @@ describe('main entry', () => {
     expect(el).toHaveAttribute('data-file-path', 'src/foo.ts')
   })
 
-  it('falls back to App when windowKind=merge is missing filePath', async () => {
+  it('closes the window, rather than showing the whole app, when merge is missing filePath', async () => {
     setSearch('?window=merge&repoPath=%2Ftmp%2Frepo')
     await import('./main')
-    await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
   })
 
   it('renders the rebase window when windowKind=rebase with repoPath and baseOid', async () => {
@@ -154,10 +157,11 @@ describe('main entry', () => {
     expect(el).toHaveAttribute('data-base-oid', 'abc123')
   })
 
-  it('falls back to App when windowKind=rebase is missing baseOid', async () => {
+  it('closes the window, rather than showing the whole app, when rebase is missing baseOid', async () => {
     setSearch('?window=rebase&repoPath=%2Ftmp%2Frepo')
     await import('./main')
-    await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
   })
 
   it('renders the fixup window with provided shortOid and subject', async () => {
@@ -179,10 +183,28 @@ describe('main entry', () => {
     expect(el).toHaveAttribute('data-target-subject', '')
   })
 
-  it('falls back to App when windowKind=fixup is missing oid', async () => {
+  it('closes the window, rather than showing the whole app, when fixup is missing oid', async () => {
+    // The reported symptom: the "Commit Changes" window came back showing the Launchpad, i.e. the
+    // entire application inside a window titled and sized for one commit.
     setSearch('?window=fixup&repoPath=%2Ftmp%2Frepo')
     await import('./main')
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fake-fixup-window')).not.toBeInTheDocument()
+  })
+
+  it('closes the window for a `window=` value it does not know', async () => {
+    setSearch('?window=whatever-this-is')
+    await import('./main')
+    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
+    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
+  })
+
+  it('still renders App for an empty `window=` value, which is not a named window', async () => {
+    setSearch('?window=')
+    await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+    expect(closeCurrentWindow).not.toHaveBeenCalled()
   })
 
   it('fades out and removes the static splash markup once a dedicated window mounts', async () => {

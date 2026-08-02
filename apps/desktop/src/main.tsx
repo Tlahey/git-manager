@@ -72,6 +72,25 @@ e2eSetup
     // useAppReadySplash); the dedicated merge/rebase/fixup windows have no such
     // startup load, so they drop the splash on their first frame.
     let isAppWindow = false
+
+    /**
+     * Closes a secondary window that cannot render what it was opened for.
+     *
+     * A `?window=` value states what this window IS. Whenever one of them can't be honoured —
+     * missing `repoPath`/`oid`, an unparseable notch payload, a kind we don't know — the only
+     * outcome that must never happen is falling through to `<App />`: that puts the *entire
+     * application* inside a window sized and titled for something else. It has now happened
+     * twice — once in the notch (the whole app in a small transparent always-on-top strip over
+     * the menu bar, undismissable), and once in the "Commit Changes" window, which came back
+     * showing the Launchpad. Rendering nothing and closing is strictly better than either.
+     */
+    function closeUnrenderableWindow(reason: string) {
+      console.error(`Closing the "${windowKind}" window: ${reason}`)
+      void import('@tauri-apps/api/window')
+        .then(({ getCurrentWindow }) => getCurrentWindow().close())
+        .catch((e) => console.warn('Failed to close an unrenderable window:', e))
+    }
+
     if (windowKind === 'merge' && repoPath && filePath) {
       content = <ConflictMergeWindow repoPath={repoPath} filePath={filePath} />
     } else if (windowKind === 'rebase' && repoPath && baseOid) {
@@ -89,13 +108,9 @@ e2eSetup
       // No parameter: the journal is app-wide, reading the activity log rather than a repository.
       content = <ActionJournalWindow />
     } else if (windowKind === 'notch') {
-      // Never <App /> from here, whatever is wrong with the payload — the two ways that used to
-      // happen (a payload that would not parse, and no payload at all, which fell through to the
-      // branch below) both put the *entire application* inside a small, transparent,
-      // always-on-top window sitting over the menu bar, with no way to dismiss it. Showing
-      // nothing is strictly better than that, and a card whose content cannot be read is a card
-      // with nothing to draw. The window is closed rather than left blank, since nothing else
-      // would ever retire it: an empty card never announces a dismissal.
+      // A card whose content cannot be read is a card with nothing to draw. The window is closed
+      // rather than left blank, since nothing else would ever retire it: an empty card never
+      // announces a dismissal.
       let parsed: NotchPayload | null = null
       try {
         parsed = payload ? (JSON.parse(payload) as NotchPayload) : null
@@ -103,11 +118,12 @@ e2eSetup
         console.error('Invalid notch payload:', e)
       }
       content = parsed ? <NotchWindow {...parsed} /> : null
-      if (!parsed) {
-        void import('@tauri-apps/api/window')
-          .then(({ getCurrentWindow }) => getCurrentWindow().close())
-          .catch((e) => console.warn('Failed to close an empty notch window:', e))
-      }
+      if (!parsed) closeUnrenderableWindow('its payload is missing or unparseable')
+    } else if (windowKind) {
+      // A named window whose parameters didn't survive (a reload that dropped the query string, a
+      // navigation into an existing window, a malformed URL). See `closeUnrenderableWindow`.
+      content = null
+      closeUnrenderableWindow('it is unknown, or its required parameters are missing')
     } else {
       content = <App />
       isAppWindow = true
