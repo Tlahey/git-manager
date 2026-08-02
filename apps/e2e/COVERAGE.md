@@ -499,6 +499,22 @@ DOM value:
 
 ## Known blockers / gotchas
 
+- **The suite shares one app window, and a per-scenario reset is NOT the fix — measured, 2026-08-02.**
+  Every spec that fails only in a whole-suite run passes on its own, so the obvious cure is to reset
+  the volatile view state between scenarios (the `Before` hook already re-seeds settings and graph
+  columns, but not the file explorer, solo mode, commit search, timeline, rebase-view dismissals or
+  the Launchpad search — and a leftover Launchpad search filters out the very PR the next feature
+  asserts on). That was implemented and **reverted**: adding a single extra `browser.execute` per
+  scenario — to call an app-side reset — put the driver into a run-long storm of
+  `No window could be found`, taking whole features down that had been green. Moving the call from
+  the start of the hook to the end (after three executes that had just succeeded) did not help:
+  9 failures over 51 files became 17 window errors over 5. The harness cannot absorb an extra
+  driver round-trip per scenario, so a working fix has to ride inside a command the hook already
+  issues (e.g. folded into `forceLiveSettings`' own `execute`) rather than adding one. Verified
+  separately that this was the reset and not the `main.tsx` window guard shipped in the same build:
+  with the reset call removed and the same binary, the same specs run with zero window errors.
+
+
 - **A step can "find" a control that changed shape under it.** Three of the five silently-broken
   feature files broke this way, all invisible to a testid-existence check:
   - **⌘P is not ⌘K.** `useKeyboardShortcuts` opens the *same* palette dialog in two modes — ⌘K
