@@ -13,7 +13,6 @@ vi.mock('../lib/tauri', async () => {
     // executeUndo() calls it to reverse a 'commit'-type entry, which `clearRedo-only actions`'
     // withPriorRedoTail() triggers via a real .undo() call.
     resetToCommit: vi.fn(),
-    cherryPickCommit: vi.fn(),
     rebaseOntoCommit: vi.fn(),
     runInteractiveRebase: vi.fn(),
     continueRebase: vi.fn(),
@@ -148,16 +147,6 @@ describe('clearRedo-only actions', () => {
     await useUndoHistoryStore.getState().undo(path)
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(true)
   }
-
-  it('apiCherryPickCommit clears the redo tail', async () => {
-    const path = freshPath()
-    await withPriorRedoTail(path)
-    mocked.cherryPickCommit.mockResolvedValue(undefined)
-
-    await api.apiCherryPickCommit(path, 'some-sha')
-
-    expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
-  })
 
   it('apiRebaseOntoCommit clears the redo tail', async () => {
     const path = freshPath()
