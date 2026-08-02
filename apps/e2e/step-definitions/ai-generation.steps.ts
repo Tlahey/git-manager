@@ -1,6 +1,7 @@
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
 import { startFakeAiServer, type FakeAiServerHandle } from '../support/fakeAiServer.js'
+import { clickViaJs } from '../support/interactions.js'
 
 // "When I select the working-tree changes in the graph" is shared — see commit.steps.ts.
 
@@ -78,10 +79,14 @@ When(/^I apply the AI commit batch$/, async () => {
   await button.click()
 })
 
+// Injected click, not the driver's: this button swaps its icon (Sparkles <-> Square) the moment
+// generation starts, and the *second* press — the one that cancels — consistently fails the native
+// click with a bare "A JavaScript exception occurred when running element/<uuid>/click". The first
+// press, against a settled button, is fine. Re-querying the element first was tried and did not
+// help, so it is the driver's own click path rather than a stale reference.
 When(/^I click the commit-generate button$/, async () => {
-  const button = $('[data-testid="commit-generate-button"]')
-  await button.waitForEnabled({ timeout: 10000 })
-  await button.click()
+  await $('[data-testid="commit-generate-button"]').waitForEnabled({ timeout: 10000 })
+  await clickViaJs('commit-generate-button')
 })
 
 Then(/^the commit message becomes "([^"]*)"$/, async (expected: string) => {
@@ -110,10 +115,14 @@ Then(/^the sent prompt's user message contains "([^"]*)"$/, (text: string) => {
   expect(userMessage?.content).toContain(text)
 })
 
+// Re-queries the whole selector on every poll instead of holding the button element and asking it
+// for a child: the button re-renders when generation starts (Sparkles -> Square), which detaches
+// the captured reference, and the next `button.$(...)` against it raises a bare "A JavaScript
+// exception occurred when running element/<uuid>" — a stale-element error that reads like the app
+// crashed rather than like the element was replaced.
 Then(/^the generate button shows a stop state$/, async () => {
-  const button = $('[data-testid="commit-generate-button"]')
   await browser.waitUntil(
-    async () => await button.$('.lucide-square').isExisting(),
+    async () => await $('[data-testid="commit-generate-button"] .lucide-square').isExisting(),
     { timeout: 10000, timeoutMsg: 'Generate button never switched to its stop state' }
   )
 })
