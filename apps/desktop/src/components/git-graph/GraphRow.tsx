@@ -8,6 +8,7 @@ import { TagCreationInput } from './TagCreationInput'
 import { useTagMenuHandler } from './TagMenuContext'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
 import type { BisectRowStatus } from './bisectStatus'
+import { BISECT_ROW_STYLES } from './bisectRow.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
 import {
   REF_CONNECTOR_LINE_OPACITY_HEX,
@@ -315,33 +316,6 @@ function CellContent({
 
 // ── GraphRow ──────────────────────────────────────────────────────────────────
 
-/** Left-stripe color per bisect status. */
-const BISECT_STRIPE: Record<BisectRowStatus, string> = {
-  firstBad: 'bg-red-600',
-  current: 'bg-amber-500',
-  bad: 'bg-red-500',
-  good: 'bg-green-500',
-  skip: 'bg-muted-foreground',
-}
-
-/** Full-row background tint per bisect status, so a marked commit reads at a glance. */
-const BISECT_ROW_BG: Record<BisectRowStatus, string> = {
-  firstBad: 'bg-red-500/15',
-  current: 'bg-amber-500/15',
-  bad: 'bg-red-500/10',
-  good: 'bg-green-500/10',
-  skip: 'bg-muted-foreground/10',
-}
-
-/** i18n key (git namespace) for each bisect status, used as the stripe's accessible label. */
-const BISECT_LABEL: Record<BisectRowStatus, string> = {
-  firstBad: 'bisect.status.firstBad',
-  current: 'bisect.status.current',
-  bad: 'bisect.status.bad',
-  good: 'bisect.status.good',
-  skip: 'bisect.status.skip',
-}
-
 export const GraphRow = memo(function GraphRow({
   node,
   columns,
@@ -435,14 +409,17 @@ export const GraphRow = memo(function GraphRow({
         <>
           <span
             aria-hidden
-            className={cn('pointer-events-none absolute inset-0', BISECT_ROW_BG[bisectStatus])}
+            className={cn(
+              'pointer-events-none absolute inset-0',
+              BISECT_ROW_STYLES[bisectStatus].rowBg
+            )}
           />
           <span
             data-testid="bisect-row-marker"
-            aria-label={t(BISECT_LABEL[bisectStatus])}
+            aria-label={t(BISECT_ROW_STYLES[bisectStatus].labelKey)}
             className={cn(
               'pointer-events-none absolute inset-y-0 left-0 z-graph-row-hover w-[3px] rounded-r',
-              BISECT_STRIPE[bisectStatus]
+              BISECT_ROW_STYLES[bisectStatus].stripe
             )}
           />
         </>

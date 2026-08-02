@@ -1039,3 +1039,28 @@ describe('GraphRow — background band alignment', () => {
     expect(withRefs - withoutRefs).toBe(160)
   })
 })
+
+describe('GraphRow — bisect annotation', () => {
+  it('renders no bisect marker or tint when the row carries no bisect status', () => {
+    const { container } = renderRow({ columns: [col('message')] })
+    expect(screen.queryByTestId('bisect-row-marker')).not.toBeInTheDocument()
+    expect(container.querySelector('[class*="bg-red-500/15"]')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['firstBad', 'bg-red-600', 'bg-red-500/15', 'First bad commit'],
+    ['current', 'bg-amber-500', 'bg-amber-500/15', 'Under test'],
+    ['bad', 'bg-red-500', 'bg-red-500/10', 'Bad'],
+    ['good', 'bg-green-500', 'bg-green-500/10', 'Good'],
+    ['skip', 'bg-muted-foreground', 'bg-muted-foreground/10', 'Skipped'],
+  ] as const)(
+    'gives a %s row its stripe colour, row tint and accessible label',
+    (status, stripe, rowBg, label) => {
+      const { container } = renderRow({ columns: [col('message')], bisectStatus: status })
+      const marker = screen.getByTestId('bisect-row-marker')
+      expect(marker).toHaveClass(stripe)
+      expect(marker).toHaveAttribute('aria-label', label)
+      expect(container.querySelector(`[class*="${rowBg}"]`)).toBeInTheDocument()
+    }
+  )
+})
