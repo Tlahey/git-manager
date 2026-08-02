@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
 import { Spinner, toast } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
@@ -18,11 +18,11 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useGraphLayout } from '../../hooks/useGraphLayout'
 import { useHorizontalResize } from '@git-manager/components'
-import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
+import { useGitGraphNodes } from '../../hooks/useGitGraphNodes'
 import type { RebaseProgressStep } from '@git-manager/git-types'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
-import { apiGetRebaseState } from '../../api/git.api'
+import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
@@ -61,7 +61,6 @@ import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { RebaseProgressCenter } from '../rebase-progress/RebaseProgressCenter'
-import { useRebaseViewStore } from '../../stores/rebaseView.store'
 import { Waterline } from './Waterline'
 import { collectGraphAuthors } from './graphAuthors'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
@@ -217,45 +216,18 @@ export function GitGraph({
     useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
-  // ── Rebase state (for the synthetic conflict row in the graph) ─────────────
-  const { data: rebaseState } = useQuery({
-    queryKey: ['rebase-state', repoPath],
-    queryFn: () => apiGetRebaseState(repoPath),
-    enabled: !!repoPath,
-    refetchInterval: 4000,
-  })
-  const isRebasePaused = rebaseState?.kind === 'conflict' || rebaseState?.kind === 'edit_pause'
-  const conflictInfo: ConflictRowInfo | null = isRebasePaused
-    ? {
-        count: rebaseState?.conflictedFiles?.length ?? 0,
-        branchName: rebaseState?.branchName,
-        currentStep: rebaseState?.currentStep,
-        totalSteps: rebaseState?.totalSteps,
-      }
-    : null
-
-  // ── Rebase progress view (center panel) ────────────────────────────────────
-  // Any running rebase — not just a paused one — takes the center over with its step rail, so the
-  // user can see where they are in the plan. Dismissing it hands the center back to the graph,
-  // where the CONFLICT row banners the rebase and clicking it comes back here. `isRebasing` is
-  // listed positively rather than as `!== 'idle'`: `kind` crosses IPC as a string, and an
-  // unrecognized value must not hand the center panel to a view with nothing to show.
-  const isRebasing = isRebasePaused || rebaseState?.kind === 'in_progress'
-  const rebaseProgressHidden = useRebaseViewStore((s) => s.views[repoPath]?.progressHidden ?? false)
-  const rebaseFilesHidden = useRebaseViewStore((s) => s.views[repoPath]?.filesHidden ?? false)
-  const resetRebaseView = useRebaseViewStore((s) => s.reset)
-  const showRebaseProgress = useRebaseViewStore((s) => s.showProgress)
-  const showRebaseFiles = useRebaseViewStore((s) => s.showFiles)
-  const hideRebaseFiles = useRebaseViewStore((s) => s.hideFiles)
-  const toggleRebaseFiles = useRebaseViewStore((s) => s.toggleFiles)
-  const rebaseViewOpen = isRebasing && !rebaseProgressHidden
-  // A dismissal only applies to the rebase that was on screen: once the repo stops rebasing,
-  // forget it so the next one surfaces the view again. Gated on the state having actually loaded —
-  // while the query is still in flight there's no rebase *yet*, and clearing on that would
-  // resurrect the view on every remount (tab switch, worktree switch…).
-  useEffect(() => {
-    if (rebaseState && !isRebasing) resetRebaseView(repoPath)
-  }, [rebaseState, isRebasing, repoPath, resetRebaseView])
+  // ── Rebase state (for the synthetic conflict row in the graph, and the rebase progress view) ──
+  const {
+    rebaseState,
+    isRebasePaused,
+    conflictInfo,
+    rebaseViewOpen,
+    rebaseFilesHidden,
+    showRebaseProgress,
+    showRebaseFiles,
+    hideRebaseFiles,
+    toggleRebaseFiles,
+  } = useRebaseGraphView(repoPath)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
