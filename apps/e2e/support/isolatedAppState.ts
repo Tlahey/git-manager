@@ -1,4 +1,4 @@
-import { copyFileSync, chmodSync, mkdirSync, rmSync } from 'node:fs'
+import { symlinkSync, rmSync as rmFile, mkdirSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 /** Scratch home the whole run lives in, next to the git fixtures. */
@@ -45,7 +45,12 @@ export function useIsolatedHome(): string {
  */
 export function isolatedAppBinary(builtBinaryPath: string): string {
   const isolated = join(dirname(builtBinaryPath), 'git-manager-e2e')
-  copyFileSync(builtBinaryPath, isolated)
-  chmodSync(isolated, 0o755)
+  // A symlink, not a copy: a renamed *copy* of the binary is a new, unsigned file, and macOS
+  // re-verifies it from scratch on every launch — which made the whole suite roughly three times
+  // slower and turned ordinary "click, then wait for the dialog" steps into timeouts. The symlink
+  // keeps the original file (and its signature) while still presenting `git-manager-e2e` as the
+  // process name, which is all WebKit keys its store off.
+  rmFile(isolated, { force: true })
+  symlinkSync(builtBinaryPath, isolated)
   return isolated
 }

@@ -22,19 +22,6 @@ Before(async () => {
   // "the AI provider is pointed at a fake server" step, same as before.
   const ai = { enabled: true, url: SUITE_WIDE_FAKE_AI_URL, model: 'fake-model' }
 
-  // Seeded into localStorage, so it lands before that scenario's first reload (fixture-open,
-  // fixture-build + window nav, etc.) if it has one — the same "seed before reload" mechanism
-  // seedSettings' other callers already rely on.
-  // Clears the volatile persisted slices (rewards, notifications, undo history, Launchpad
-  // filters, AI caches) and seeds the settings in the same round trip — see the helper's own note on
-  // why this must not become a second command.
-  // English, suite-wide. The app's factory default is `fr` (settings.store.ts), and 44 of the 51
-  // feature files already set it per-scenario — the other seven assert English copy while never
-  // asking for it, and only passed because a developer's install happened to be in English. Once
-  // the run stopped inheriting that install, rewards.feature failed on a trophy toast reading
-  // "Premier Pas". No scenario relies on the French default; the ones that want another language
-  // still set it themselves.
-  await seedSettingsFromCleanState({ appearance, ai, language: 'en' })
   // AND forced onto the live store directly: the suite shares one app window across every
   // feature, and a scenario whose own Given steps never navigate (e.g. "the git-manager
   // application is running", used by most Settings scenarios) never rehydrates from localStorage
@@ -42,6 +29,13 @@ Before(async () => {
   // theme-switching scenario (settings.feature's "per-theme cards", ending on "dark") used to leak
   // into unrelated screenshots taken right after it.
   await forceLiveSettings({ appearance, ai })
+
+  // AFTER forceLiveSettings, not before: patching the live store makes zustand-persist write the
+  // whole live settings object straight back to localStorage — including `language`, still at the
+  // app's French factory default — which silently undid the seed below and left rewards.feature
+  // asserting English copy against a French trophy toast. The localStorage write has to be the
+  // last one to land, since it is what the scenario's own reload reads.
+  await seedSettingsFromCleanState({ appearance, ai, language: 'en' })
 
   // Every column visible, and `graph` wide enough that no fixture's lane count ever pushes it
   // into its `overflow`/`compact` modes (see `graphColumnSizing.ts`) — a real per-repo maximum is
