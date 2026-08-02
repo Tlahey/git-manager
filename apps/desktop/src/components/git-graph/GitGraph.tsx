@@ -16,7 +16,7 @@ import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
-import { useGraphColumnScroll } from '../../hooks/useGraphColumnScroll'
+import { useGraphLayout } from '../../hooks/useGraphLayout'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import type { RebaseProgressStep } from '@git-manager/git-types'
@@ -29,7 +29,6 @@ import { RefDropProvider } from './RefDropContext'
 import { TagMenuProvider } from './TagMenuContext'
 import { TagDialogsManager } from './components/TagDialogsManager'
 import { DeleteRemoteBranchDialog } from './DeleteRemoteBranchDialog'
-import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
@@ -64,10 +63,7 @@ import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { RebaseProgressCenter } from '../rebase-progress/RebaseProgressCenter'
 import { useRebaseViewStore } from '../../stores/rebaseView.store'
 import { Waterline } from './Waterline'
-import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
-import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 import { collectGraphAuthors } from './graphAuthors'
-import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
 import { TerminalPanel } from '../terminal/TerminalPanel'
@@ -369,113 +365,31 @@ export function GitGraph({
     selectedAuthors
   )
 
-  // Largest lane occupied by the graph (nodes + connection lines): determines the width beyond
-  // which widening the graph column brings nothing, and the display mode (full / overflow /
-  // compact) shared by every row.
-  const graphMaxColumn = useMemo(() => {
-    let max = 0
-    for (const n of renderNodes) {
-      if (n.column > max) max = n.column
-      for (const c of n.connections) {
-        if (c.fromColumn > max) max = c.fromColumn
-        if (c.toColumn > max) max = c.toColumn
-      }
-    }
-    return max
-  }, [renderNodes])
-
-  // For a commit that carries no ref badge of its own, we still hint — faintly, on hover — which
-  // branch's lane it sits on. Ownership is derived by walking first-parent chains from branch tips
-  // (see computeLaneBranchByOid); lane colour can't be used because the backend palette recycles.
-  const laneRefByOid = useMemo(() => computeLaneBranchByOid(nodes), [nodes])
-
-  const avatarSize = rowHeight === 32 ? 24 : 32
-  const visibleColumns: ResolvedColumn[] = useMemo(() => {
-    // The graph column never exceeds the graph's actually useful width, even if a wider value
-    // was persisted (the flex `message` column absorbs the difference).
-    const graphMaxWidth = Math.max(
-      getGraphMaxWidth(graphMaxColumn, avatarSize),
-      COLUMN_DEFS.graph.minWidth
-    )
-    return COLUMN_ORDER.filter((k) => columnState[k].visible).map((k) =>
-      k === 'graph'
-        ? {
-            ...COLUMN_DEFS[k],
-            width: Math.min(columnState[k].width, graphMaxWidth),
-            maxWidth: graphMaxWidth,
-          }
-        : { ...COLUMN_DEFS[k], width: columnState[k].width }
-    )
-  }, [columnState, graphMaxColumn, avatarSize])
-
   // The commit list's scroll container — shared by the virtualizer (vertical) and the graph
   // column's own horizontal panning.
   const parentRef = useRef<HTMLDivElement | null>(null)
 
-  // Where the graph column sits in a row — its x-offset is the width of everything to its left,
-  // i.e. the refs column's width when visible and 0 when hidden. Same convention as GraphRow
-  // (band/markers) to stay pixel-aligned. A hidden graph column reports a width of 0.
-  const { refsWidth, graphWidth } = useMemo(() => {
-    const graphCol = visibleColumns.find((c) => c.key === 'graph')
-    const refsCol = visibleColumns.find((c) => c.key === 'refs')
-    return { refsWidth: refsCol ? refsCol.width : 0, graphWidth: graphCol ? graphCol.width : 0 }
-  }, [visibleColumns])
-
-  // Footprint of the graph column inside the list (its `mx-2` margins included) and how far its
-  // lanes can be panned sideways — the two things the wheel gesture is bounded by.
-  const graphColumnBounds = useMemo(
-    () => ({
-      left: refsWidth,
-      width: graphWidth === 0 ? 0 : graphWidth + 16,
-      maxScrollX:
-        graphWidth === 0
-          ? 0
-          : getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize).maxScrollX,
-    }),
-    [refsWidth, graphWidth, graphMaxColumn, avatarSize]
-  )
-
-  const graphScrollX = useGraphColumnScroll(parentRef, graphColumnBounds)
-
-  // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
-  // segment per row left a one-pixel shadowless seam between rows). Its left counterpart renders
-  // nothing — no shadow — so the pinning/clipping geometry alone stands for it.
-  const graphOverflowZone = useMemo(() => {
-    if (graphWidth === 0) return null
-    const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize, graphScrollX)
-    if (layout.overlayOpacity <= 0) return null
-    return {
-      left: refsWidth + 8 + layout.overlayStart,
-      // The zone grows with the width deficit (overlayStart recedes progressively) and stops
-      // 3px before the column's edge to keep the colored border-right visible.
-      width: Math.max(0, layout.innerWidth - layout.overlayStart - 3),
-      // Shadow fade while the zone grows and over the compact range.
-      opacity: layout.overlayOpacity,
-    }
-  }, [refsWidth, graphWidth, graphMaxColumn, avatarSize, graphScrollX])
-
-  // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
-  // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
-  const matchSet = useMemo(
-    () => (matchingOids ? new Set(matchingOids) : null),
-    [matchingOids]
-  )
-  const totalMatches = matchingOids?.length ?? 0
-
-  // Same O(1) lookup set for the AUTHOR column filter — `null` when no author is selected.
-  const authorMatchSet = useMemo(
-    () => (authorMatchingOids ? new Set(authorMatchingOids) : null),
-    [authorMatchingOids]
-  )
-
-  // While a ref badge is drag-hovered as a drop target, highlight that ref's *own* lane commits
-  // (first-parent attribution — not the shared ancestors below the fork, nor any children) and dim
-  // the rest, the same muting the search uses. The sticky hover ref lives in the drag store.
-  const dragHoverRef = useRefDragStore((s) => s.hoverRef)
-  const dragHighlightSet = useMemo(
-    () => collectRefDropHighlight(dragHoverRef, laneRefByOid),
-    [dragHoverRef, laneRefByOid]
-  )
+  // Column layout geometry (lane count, resolved widths, scroll/overflow zone), the branch-lane
+  // hint map, and the search/author-filter/drag-highlight lookup sets — see useGraphLayout.
+  const {
+    laneRefByOid,
+    graphMaxColumn,
+    visibleColumns,
+    graphScrollX,
+    graphOverflowZone,
+    matchSet,
+    totalMatches,
+    authorMatchSet,
+    dragHighlightSet,
+  } = useGraphLayout({
+    nodes,
+    renderNodes,
+    columnState,
+    rowHeight,
+    matchingOids,
+    authorMatchingOids,
+    parentRef,
+  })
 
   // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
