@@ -24,15 +24,7 @@ import { buildStashMenuSpec } from '../../lib/graphContextMenus'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
-import { AddWorktreeDialog } from './AddWorktreeDialog'
-import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
-import { PruneWorktreesDialog } from './PruneWorktreesDialog'
-import { RemoveMergedWorktreesDialog } from './RemoveMergedWorktreesDialog'
-import { RemoveMergedBranchesDialog } from './RemoveMergedBranchesDialog'
-import { PruneBranchesDialog } from './PruneBranchesDialog'
-import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
-import { CreateIssueDialog } from './CreateIssueDialog'
-import { SavedFilterDialog } from './SavedFilterDialog'
+import { SidebarDialogsManager } from './SidebarDialogsManager'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
 import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
@@ -553,71 +545,37 @@ export function RepositorySidebar({
       {/* Resize handle */}
       <SidebarResizeHandle {...resizeHandleProps} />
 
-      <AddWorktreeDialog
+      <SidebarDialogsManager
         repoPath={repoPath}
-        open={addWorktreeOpen}
-        initialBranch={worktreeBranch ?? undefined}
-        onClose={() => setAddWorktreeOpen(false)}
-      />
-      <RemoveWorktreeDialog
-        repoPath={repoPath}
-        worktree={worktreeToRemove}
-        deleteBranch={removeWithBranch}
-        onClose={() => setWorktreeToRemove(null)}
-      />
-      <PruneWorktreesDialog
-        repoPath={repoPath}
-        worktrees={prunableWorktrees}
-        open={pruneWorktreesOpen}
-        onClose={() => setPruneWorktreesOpen(false)}
-      />
-      <RemoveMergedWorktreesDialog
-        repoPath={repoPath}
+        remoteUrls={remoteUrls}
+        currentUser={currentUser}
+        githubToken={githubToken}
         worktrees={worktrees}
-        remoteUrls={remoteUrls}
-        githubToken={githubToken}
-        mineOnly={removeMergedWorktrees === 'mine'}
-        currentUser={currentUser}
-        open={removeMergedWorktrees !== null}
-        onClose={() => setRemoveMergedWorktrees(null)}
-      />
-      <RemoveMergedBranchesDialog
-        repoPath={repoPath}
-        branches={allLocalBranches}
-        worktreeBranches={worktrees.map((w) => w.branch)}
-        remoteUrls={remoteUrls}
-        githubToken={githubToken}
-        mineOnly={removeMergedBranches === 'mine'}
-        currentUser={currentUser}
-        open={removeMergedBranches !== null}
-        onClose={() => setRemoveMergedBranches(null)}
-      />
-      <PruneBranchesDialog
-        repoPath={repoPath}
-        branches={allLocalBranches}
-        worktreeBranches={worktrees.map((w) => w.branch)}
-        open={pruneBranchesOpen}
-        onClose={() => setPruneBranchesOpen(false)}
-      />
-      <CreateBranchHereDialog
-        repoPath={repoPath}
-        oid={createBranchOid}
-        shortOid={createBranchShortOid}
-        open={createBranchOpen}
-        onClose={() => setCreateBranchOpen(false)}
-      />
-      <CreateIssueDialog
-        repoPath={repoPath}
-        open={createIssueOpen}
-        onClose={() => setCreateIssueOpen(false)}
-        onCreated={refreshIssues}
-      />
-      <SavedFilterDialog
-        open={filterDialog !== null}
-        kind={filterDialog?.kind ?? 'issues'}
-        filter={filterDialog?.filter ?? null}
-        useStore={filterDialog?.kind === 'prs' ? usePrFiltersStore : useIssueFiltersStore}
-        onClose={() => setFilterDialog(null)}
+        prunableWorktrees={prunableWorktrees}
+        allLocalBranches={allLocalBranches}
+        refreshIssues={refreshIssues}
+        addWorktreeOpen={addWorktreeOpen}
+        onCloseAddWorktree={() => setAddWorktreeOpen(false)}
+        worktreeBranch={worktreeBranch}
+        worktreeToRemove={worktreeToRemove}
+        onCloseRemoveWorktree={() => setWorktreeToRemove(null)}
+        removeWithBranch={removeWithBranch}
+        pruneWorktreesOpen={pruneWorktreesOpen}
+        onClosePruneWorktrees={() => setPruneWorktreesOpen(false)}
+        removeMergedWorktrees={removeMergedWorktrees}
+        onCloseRemoveMergedWorktrees={() => setRemoveMergedWorktrees(null)}
+        removeMergedBranches={removeMergedBranches}
+        onCloseRemoveMergedBranches={() => setRemoveMergedBranches(null)}
+        pruneBranchesOpen={pruneBranchesOpen}
+        onClosePruneBranches={() => setPruneBranchesOpen(false)}
+        createBranchOpen={createBranchOpen}
+        onCloseCreateBranch={() => setCreateBranchOpen(false)}
+        createBranchOid={createBranchOid}
+        createBranchShortOid={createBranchShortOid}
+        createIssueOpen={createIssueOpen}
+        onCloseCreateIssue={() => setCreateIssueOpen(false)}
+        filterDialog={filterDialog}
+        onCloseFilterDialog={() => setFilterDialog(null)}
       />
     </div>
   )
