@@ -13,11 +13,7 @@ import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
 import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashConfirm'
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
-import { useRepoViewTabsStore } from '../../stores/repoViewTabs.store'
-import { RepoViewTabs } from './components/RepoViewTabs'
 import { RepoGraphWorkspace } from './components/RepoGraphWorkspace'
-import { RepoTerminalView } from './components/RepoTerminalView'
-import { RepoSettingsView } from './components/RepoSettingsView'
 
 interface RepoViewProps {
   /** Opens Settings on a given page/scope — forwarded to the toolbar, whose merge-target popover
@@ -26,8 +22,7 @@ interface RepoViewProps {
 }
 
 /**
- * One repo tab's content: the repo-wide toolbar and notices, the strip of view tabs, and whichever
- * view that tab is on (graph / terminal / settings — see `repoViewTabs.store.ts`).
+ * One repo tab's content: the repo-wide toolbar, the repo-wide notices, and the graph workspace.
  */
 export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
@@ -39,11 +34,6 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
   // displayed. See repoUI.store.ts's `activeWorkspacePath` doc comment for why.
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
-
-  // The view tabs are keyed by the tab's own repo path, not the worktree being viewed in it: a
-  // workspace is a swap *inside* one tab, so it inherits that tab's view rather than getting a
-  // second selection of its own.
-  const activeView = useRepoViewTabsStore((s) => s.activeViewFor(activeRepo ?? ''))
 
   // The repo cache isn't persisted: (re)open the active repo/worktree when needed to feed
   // head/isDetached/isDirty/remotes (toolbar, status badges…).
@@ -86,20 +76,10 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
     <div data-testid="repo-view" className="flex h-full flex-col">
       <ActionToolbar onOpenSettings={onOpenSettings} />
 
-      <RepoViewTabs tabPath={activeRepo} />
-
-      {/* Repo-wide notices: shown whichever view is open — a paused bisect or a pending fixup is
-          still true while the user is in a terminal. */}
       <PendingFixupsBanner repoPath={activeRepo} />
       <BisectBanner repoPath={repoPath} />
 
-      {activeView === 'terminal' ? (
-        <RepoTerminalView path={repoPath} />
-      ) : activeView === 'settings' ? (
-        <RepoSettingsView />
-      ) : (
-        <RepoGraphWorkspace repoPath={repoPath} activeRepo={activeRepo} />
-      )}
+      <RepoGraphWorkspace repoPath={repoPath} activeRepo={activeRepo} />
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />

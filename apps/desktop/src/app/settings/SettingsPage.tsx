@@ -62,20 +62,11 @@ export type Scope = 'general' | 'local'
 type LocalSection = 'gitflow' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 
 interface SettingsPageProps {
-  /** Dismisses the full-window page. Unused (and unnecessary) when `embedded`. */
-  onClose?: () => void
+  onClose: () => void
   initialSection?: Section
   /** Opens straight on the Repository (local) scope instead of the global one — used by callers
    * pointing at a per-repo setting, e.g. the toolbar's merge-target popover. */
   initialScope?: Scope
-  /**
-   * Renders the same page inside an already-chromed container — the repo tab's Settings view — so it
-   * sizes to its parent instead of the window and drops the title bar: the repo tab strip above it
-   * is already what closes it, and a second draggable header inside the window would be one too
-   * many. Everything below the header is unchanged, which is the point: there is one Settings page,
-   * shown in two places.
-   */
-  embedded?: boolean
 }
 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
@@ -134,12 +125,7 @@ function NavItem({
   )
 }
 
-export function SettingsPage({
-  onClose,
-  initialSection,
-  initialScope,
-  embedded = false,
-}: SettingsPageProps) {
+export function SettingsPage({ onClose, initialSection, initialScope }: SettingsPageProps) {
   const { t } = useTranslation('settings')
   const [scope, setScope] = useState<Scope>(initialScope ?? 'general')
   const [activeSection, setActiveSection] = useState<Section>(initialSection || 'general')
@@ -333,27 +319,20 @@ export function SettingsPage({
     !supportMatches
 
   return (
-    <div
-      data-testid="settings-page"
-      className={`flex flex-col bg-background text-foreground ${
-        embedded ? 'h-full min-h-0 flex-1' : 'h-screen'
-      }`}
-    >
-      {/* Header — the window-level page only; embedded, the repo tab strip already frames it. */}
-      {!embedded && (
-        <header
-          data-tauri-drag-region
-          className={`chrome-surface flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-3 ${
-            isMac ? 'pl-[72px]' : ''
-          }`}
-        >
-          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onClose}>
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {t('settings.back')}
-          </Button>
-          <h1 className="text-sm font-semibold">{t('settings.title')}</h1>
-        </header>
-      )}
+    <div data-testid="settings-page" className="flex h-screen flex-col bg-background text-foreground">
+      {/* Header */}
+      <header
+        data-tauri-drag-region
+        className={`chrome-surface flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-3 ${
+          isMac ? 'pl-[72px]' : ''
+        }`}
+      >
+        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onClose}>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {t('settings.back')}
+        </Button>
+        <h1 className="text-sm font-semibold">{t('settings.title')}</h1>
+      </header>
 
       {/* Body — a single side panel holds both the Global and the Repository configuration groups
           (the top-level scope tab bar was removed in favour of this grouped nav). */}

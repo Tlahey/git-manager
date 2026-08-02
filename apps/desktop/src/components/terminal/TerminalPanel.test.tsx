@@ -88,32 +88,9 @@ describe('TerminalPanel', () => {
     expect(closeAllSessions).toHaveBeenCalledTimes(1)
   })
 
-  it('sizes itself from the store and offers the resize handle as a dock', () => {
+  it('sizes itself from the store and offers the resize handle', () => {
     render(<TerminalPanel path="/repo" />)
-    const panel = screen.getByTestId('terminal-panel')
-    expect(panel).toHaveAttribute('data-variant', 'dock')
-    expect(panel).toHaveStyle({ height: '260px' })
+    expect(screen.getByTestId('terminal-panel')).toHaveStyle({ height: '260px' })
     expect(screen.getByTestId('terminal-resize-handle')).toBeInTheDocument()
-  })
-})
-
-describe('TerminalPanel — view variant', () => {
-  it('drops the dock-only chrome (resize handle, hide button) and the fixed height', () => {
-    render(<TerminalPanel path="/repo" variant="view" />)
-    const panel = screen.getByTestId('terminal-panel')
-    expect(panel).toHaveAttribute('data-variant', 'view')
-    expect(panel.style.height).toBe('')
-    expect(screen.queryByTestId('terminal-resize-handle')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('terminal-hide')).not.toBeInTheDocument()
-  })
-
-  it('keeps the same sessions and their controls', async () => {
-    const user = userEvent.setup()
-    render(<TerminalPanel path="/repo" variant="view" />)
-    expect(screen.getByTestId('xterm-a')).toBeInTheDocument()
-    await user.click(screen.getByTestId('terminal-tab-b'))
-    expect(useTerminalStore.getState().tabsFor('/repo').activeId).toBe('b')
-    await user.click(screen.getByTestId('terminal-new-tab'))
-    expect(addSession).toHaveBeenCalledTimes(1)
   })
 })
