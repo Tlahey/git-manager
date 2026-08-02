@@ -52,6 +52,7 @@ import { useAiEnabled } from './useAiEnabled'
 import { useBranches } from './useBranches'
 import { useBranchCheckout } from './useBranchCheckout'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
+import { worktreeWipPath } from '../components/git-graph/syntheticRows'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -343,9 +344,11 @@ export function useGitGraphActions({
     // A linked worktree's own uncommitted changes — every action here targets THAT worktree's path,
     // never the active repo (see `buildOtherWorktreeMenuSpec`'s doc comment for why the menu stays
     // smaller than the local WIP row's).
-    if (oid.startsWith('WIP:')) {
-      const otherPath = oid.slice('WIP:'.length)
-      async function runOtherWorktreeStash(includeUntracked: boolean) {
+    const otherPath = worktreeWipPath(oid)
+    if (otherPath !== null) {
+      // An arrow const rather than a hoisted `function`: TypeScript only keeps `otherPath` narrowed
+      // to a string across the closure for the former.
+      const runOtherWorktreeStash = async (includeUntracked: boolean) => {
         try {
           await apiStashPush(otherPath, undefined, includeUntracked)
           // The pushed stash lands in the shared `refs/stash`, so it also shows up back in the

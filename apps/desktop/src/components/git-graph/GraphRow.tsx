@@ -27,7 +27,8 @@ import {
   ConflictRowMessage,
   type WipRef,
 } from './components/GraphMessageCells'
-import { GraphCell, isWipRow } from './components/GraphCell'
+import { GraphCell } from './components/GraphCell'
+import { isSyntheticRow, worktreeWipPath } from './syntheticRows'
 import { AuthorAvatar } from './components/AuthorAvatar'
 
 export { GraphAvatarTooltip } from './components/GraphAvatarTooltip'
@@ -164,7 +165,7 @@ function CellContent({
       if (filteredRefs.length === 0) {
         // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
         // Never on the synthetic WIP / conflict rows.
-        const isRealCommit = !isWipRow(commit.oid) && commit.oid !== 'CONFLICT'
+        const isRealCommit = !isSyntheticRow(commit.oid)
         if (!isRealCommit || !laneRef) return null
         return (
           <div
@@ -208,8 +209,8 @@ function CellContent({
           />
         )
       }
-      if (node.commit.oid.startsWith('WIP:')) {
-        const path = node.commit.oid.slice('WIP:'.length)
+      const path = worktreeWipPath(node.commit.oid)
+      if (path !== null) {
         const wip = worktreeWipStatuses?.find((w) => w.path === path)
         return (
           <WorktreeWipRow
@@ -264,7 +265,7 @@ function CellContent({
     }
 
     case 'author': {
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <div className="flex min-w-0 items-center gap-1.5">
           <AuthorAvatar
@@ -285,7 +286,7 @@ function CellContent({
     }
 
     case 'date':
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <span
           className={cn(
@@ -299,7 +300,7 @@ function CellContent({
       )
 
     case 'sha':
-      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
+      if (isSyntheticRow(node.commit.oid)) return null
       return (
         <code
           className={cn(
@@ -364,9 +365,10 @@ export const GraphRow = memo(function GraphRow({
   const rowAgent =
     oid === 'WIP'
       ? wipAgentActivity
-      : oid.startsWith('WIP:')
-        ? worktreeAgentActivity?.find((a) => a.path === oid.slice('WIP:'.length))
-        : undefined
+      : (() => {
+          const path = worktreeWipPath(oid)
+          return path ? worktreeAgentActivity?.find((a) => a.path === path) : undefined
+        })()
   // Start the band at the row marker's vertical line (the avatar/point center), so the left half
   // of the marker stays clear. Marker center in row coords = refsWidth + 8px cell margin + x.
   // Once the column is scrolled, a band belonging to a marker pinned on the left keeps its tint —

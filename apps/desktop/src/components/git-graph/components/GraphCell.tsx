@@ -16,11 +16,7 @@ import { GraphSvg } from '../GraphSvg'
 import type { GraphColumnLayout, MarkerPlacement } from '../graphColumnSizing'
 import { GraphAvatarTooltip } from './GraphAvatarTooltip'
 import { AgentLogo, agentColor, agentLabel } from './AgentLogo'
-
-/** True for both the primary WIP row (`'WIP'`) and per-worktree WIP rows (`'WIP:<path>'`). */
-export function isWipRow(oid: string): boolean {
-  return oid === 'WIP' || oid.startsWith('WIP:')
-}
+import { isSyntheticRow } from '../syntheticRows'
 
 interface GraphCellProps {
   node: GitGraphNode
@@ -48,7 +44,7 @@ export function GraphCell({
   agentActivity,
 }: GraphCellProps) {
   const isStash = node.refs.some((r) => r.type === 'stash')
-  const isWipLike = isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT'
+  const isWipLike = isSyntheticRow(node.commit.oid)
   // Show the agent glyph on a WIP ring (never on the CONFLICT ring, which owns the warning icon).
   // Narrowed to a nullable value (not a boolean) so property access below type-checks.
   const agent = agentActivity && node.commit.oid !== 'CONFLICT' ? agentActivity : null

@@ -1,5 +1,5 @@
 import type { GitGraphNode } from '@git-manager/git-types'
-import { isWipRow } from './components/GraphCell'
+import { isSyntheticRow } from './syntheticRows'
 
 /** One selectable author in the AUTHOR column filter popover. */
 export interface AuthorOption {
@@ -21,7 +21,7 @@ export function collectGraphAuthors(nodes: GitGraphNode[]): AuthorOption[] {
 
   for (const node of nodes) {
     const { oid } = node.commit
-    if (isWipRow(oid) || oid === 'CONFLICT') continue
+    if (isSyntheticRow(oid)) continue
     const email = (node.commit.author?.email ?? '').trim().toLowerCase()
     const name = (node.commit.author?.name ?? '').trim()
     if (!email) continue

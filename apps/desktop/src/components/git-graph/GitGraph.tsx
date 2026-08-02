@@ -59,6 +59,7 @@ import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
 import { buildBisectStatusMap } from './bisectStatus'
+import { isSyntheticRow } from './syntheticRows'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
@@ -161,7 +162,7 @@ export function GitGraph({
   // During graph-driven setup, a commit click fills the active bisect slot instead of selecting it.
   // Synthetic rows (WIP / CONFLICT) are not valid bisect targets.
   function handleBisectPick(oid: string) {
-    if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return
+    if (isSyntheticRow(oid)) return
     useBisectUIStore.getState().pickCommit(oid)
   }
 
@@ -361,8 +362,7 @@ export function GitGraph({
   // into a "Maximum update depth exceeded" loop. Memoizing to a primitive here means the effect
   // only re-publishes when the actual stash index changes, not on every `nodes` reference churn.
   const derivedStashIndex = useMemo(() => {
-    if (!primaryOid || primaryOid === 'WIP' || primaryOid === 'CONFLICT' || primaryOid.startsWith('WIP:'))
-      return null
+    if (!primaryOid || isSyntheticRow(primaryOid)) return null
     const stashRef = nodes
       .find((n) => n.commit.oid === primaryOid)
       ?.refs.find((r) => r.type === 'stash')
@@ -374,11 +374,7 @@ export function GitGraph({
   // it. The synthetic WIP/CONFLICT rows aren't valid commit-action targets → publish null. Cleared
   // on unmount so a closed tab doesn't leave a stale selection behind.
   useEffect(() => {
-    const isRealCommit =
-      !!primaryOid &&
-      primaryOid !== 'WIP' &&
-      primaryOid !== 'CONFLICT' &&
-      !primaryOid.startsWith('WIP:')
+    const isRealCommit = !!primaryOid && !isSyntheticRow(primaryOid)
     setSelectedCommitOid(isRealCommit ? primaryOid : null)
     setSelectedStashIndex(derivedStashIndex)
   }, [primaryOid, derivedStashIndex, setSelectedCommitOid, setSelectedStashIndex])
@@ -461,9 +457,7 @@ export function GitGraph({
     if (selected.size < 2) return []
     return filteredNodes.filter((n) => {
       const oid = n.commit.oid
-      return (
-        selected.has(oid) && oid !== 'WIP' && oid !== 'CONFLICT' && !oid.startsWith('WIP:')
-      )
+      return selected.has(oid) && !isSyntheticRow(oid)
     })
   }, [selected, filteredNodes])
   const isMultiSelect = selectedCommitNodes.length > 1
@@ -479,7 +473,7 @@ export function GitGraph({
     const set = new Set<string>()
     for (let i = 0; i < tipIndex; i++) {
       const oid = renderNodes[i].commit.oid
-      if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) continue
+      if (isSyntheticRow(oid)) continue
       set.add(oid)
     }
     return set
@@ -532,8 +526,7 @@ export function GitGraph({
   }
 
   const isSelectedCommitHead = useMemo(() => {
-    if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT')
-      return false
+    if (!primaryNode || isSyntheticRow(primaryNode.commit.oid)) return false
     // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
     const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
     // Strategy 2: the commit carries the branch that HEAD currently points to
