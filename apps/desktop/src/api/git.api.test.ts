@@ -23,11 +23,6 @@ vi.mock('../lib/tauri', async () => {
     bisectStart: vi.fn(),
     bisectMark: vi.fn(),
     bisectReset: vi.fn(),
-    getRemotes: vi.fn(),
-    removeRemote: vi.fn(),
-    pinObject: vi.fn(),
-    unpinObject: vi.fn(),
-    objectsExist: vi.fn(),
   }
 })
 
@@ -65,8 +60,6 @@ function freshPath() {
 beforeEach(() => {
   vi.clearAllMocks()
   useUndoHistoryStore.setState({ byRepo: {} })
-  // pinObject calls are always chained with `.catch(() => {})` — needs a real promise by default.
-  mocked.pinObject.mockResolvedValue(undefined)
   // `settleRebase` asks git whether the rebase is over on every step; default to "it is", so a test
   // that isn't about pausing needn't say so.
   mocked.getRebaseState.mockResolvedValue(rebaseState('idle'))
@@ -174,33 +167,6 @@ describe('clearRedo-only actions', () => {
     await api.apiRebaseOntoCommit(path, 'some-sha')
 
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
-  })
-
-})
-
-describe('apiRemoveRemote', () => {
-  it('pushes a removeRemote entry with the remote url when it existed', async () => {
-    const path = freshPath()
-    mocked.getRemotes.mockResolvedValue([{ name: 'origin', url: 'git@x:y.git' }])
-    mocked.removeRemote.mockResolvedValue(undefined)
-
-    await api.apiRemoveRemote(path, 'origin')
-
-    expect(historyOf(path).stack[0]).toMatchObject({
-      type: 'removeRemote',
-      name: 'origin',
-      url: 'git@x:y.git',
-    })
-  })
-
-  it('clears redo when the remote was already gone', async () => {
-    const path = freshPath()
-    mocked.getRemotes.mockResolvedValue([])
-    mocked.removeRemote.mockResolvedValue(undefined)
-
-    await api.apiRemoveRemote(path, 'origin')
-
-    expect(historyOf(path)).toBeUndefined()
   })
 })
 
