@@ -77,6 +77,22 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
 
 ---
 
+## File explorer ✅
+
+The toolbar's Files button (`toolbar-files-button`) swapping the graph for `ProjectFilesView` — a
+`FileTreeSidebar` on the left, the current directory in the middle.
+
+- Setup: **`fixture:feature-branches`**. On `main` its working tree holds exactly one file
+  (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
+  it" distinguishable from "it was never there".
+- Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), closing
+  puts the graph back, the tree filter (`file-tree-search-input`) narrows the tree, and hiding the
+  sidebar leaves `file-explorer-show-sidebar` behind — asserted explicitly, since a hide with no way
+  back would make the sidebar unreachable for the rest of the session.
+- No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
+
+---
+
 ## Priority backlog (the domains we actually want next)
 
 ### 1. Merge editor ✅ 📷 (opens + snapshotted + block resolution)
