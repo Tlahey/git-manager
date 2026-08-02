@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
@@ -24,6 +24,7 @@ import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
 import { useGraphScrollSync } from '../../hooks/useGraphScrollSync'
 import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
+import { useSearchNavigation } from '../../hooks/useSearchNavigation'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
@@ -338,20 +339,10 @@ export function GitGraph({
   })
 
   // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
-  const [activeMatchIndex, setActiveMatchIndex] = useState(0)
-  // Jump back to the first match whenever the query itself changes (find-as-you-type).
-  useEffect(() => {
-    setActiveMatchIndex(0)
-  }, [searchQuery])
-  const clampedMatchIndex = totalMatches === 0 ? 0 : Math.min(activeMatchIndex, totalMatches - 1)
-  function goToNextMatch() {
-    if (totalMatches === 0) return
-    setActiveMatchIndex((i) => (i + 1) % totalMatches)
-  }
-  function goToPreviousMatch() {
-    if (totalMatches === 0) return
-    setActiveMatchIndex((i) => (i - 1 + totalMatches) % totalMatches)
-  }
+  const { clampedMatchIndex, goToNextMatch, goToPreviousMatch } = useSearchNavigation(
+    searchQuery,
+    totalMatches
+  )
 
   // ── Selection (multiple) hook ───────────────────────────────────────────────
   const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
