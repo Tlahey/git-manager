@@ -25,6 +25,10 @@ import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
 import { SidebarDialogsManager } from './SidebarDialogsManager'
+import {
+  resolveSectionHeaderActions,
+  type SectionHeaderActionHandlers,
+} from './sectionHeaderActions.config'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
 import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
@@ -223,6 +227,28 @@ export function RepositorySidebar({
 
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))
+
+  // Every section header action this component can wire, regardless of which section is currently
+  // rendering — `resolveSectionHeaderActions` (below, in the JSX) narrows this down to the ones
+  // the section actually owns. `onCreatePr` stays gated on `githubToken` here: that's the action's
+  // own precondition, not a decision about which section shows it.
+  const sectionHeaderActionHandlers: SectionHeaderActionHandlers = {
+    onCreateBranch: onCreateBranch ?? (() => setCreateBranchOpen(true)),
+    onPruneBranches: () => setPruneBranchesOpen(true),
+    onRemoveMergedBranches: () => setRemoveMergedBranches('all'),
+    onRemoveMyMergedBranches: () => setRemoveMergedBranches('mine'),
+    onAddWorktree: () => {
+      setWorktreeBranch(null)
+      setAddWorktreeOpen(true)
+    },
+    onPruneWorktrees: () => setPruneWorktreesOpen(true),
+    onRemoveMergedWorktrees: () => setRemoveMergedWorktrees('all'),
+    onRemoveMyMergedWorktrees: () => setRemoveMergedWorktrees('mine'),
+    onCreatePr: githubToken ? () => setPrCreateOpen(true) : undefined,
+    onCreateIssue: () => setCreateIssueOpen(true),
+    onAddIssueFilter: () => setFilterDialog({ kind: 'issues', filter: null }),
+    onAddPrFilter: () => setFilterDialog({ kind: 'prs', filter: null }),
+  }
 
   const onTogglePin = (shortName: string) => {
     const isPinned = overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
@@ -436,53 +462,7 @@ export function RepositorySidebar({
               count={section.count}
               isOpen={section.isOpen}
               onToggle={() => toggleOpen(`section:${section.key}`, section.isOpen)}
-              onCreateBranch={
-                section.key === 'local'
-                  ? (onCreateBranch ?? (() => setCreateBranchOpen(true)))
-                  : undefined
-              }
-              onPruneBranches={
-                section.key === 'local' ? () => setPruneBranchesOpen(true) : undefined
-              }
-              onRemoveMergedBranches={
-                section.key === 'local' ? () => setRemoveMergedBranches('all') : undefined
-              }
-              onRemoveMyMergedBranches={
-                section.key === 'local' ? () => setRemoveMergedBranches('mine') : undefined
-              }
-              onAddWorktree={
-                section.key === 'worktrees'
-                  ? () => {
-                      setWorktreeBranch(null)
-                      setAddWorktreeOpen(true)
-                    }
-                  : undefined
-              }
-              onPruneWorktrees={
-                section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
-              }
-              onRemoveMergedWorktrees={
-                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('all') : undefined
-              }
-              onRemoveMyMergedWorktrees={
-                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('mine') : undefined
-              }
-              onCreatePr={
-                section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
-              }
-              onCreateIssue={
-                section.key === 'issues' ? () => setCreateIssueOpen(true) : undefined
-              }
-              onAddIssueFilter={
-                section.key === 'issues'
-                  ? () => setFilterDialog({ kind: 'issues', filter: null })
-                  : undefined
-              }
-              onAddPrFilter={
-                section.key === 'prs'
-                  ? () => setFilterDialog({ kind: 'prs', filter: null })
-                  : undefined
-              }
+              {...resolveSectionHeaderActions(section.key, sectionHeaderActionHandlers)}
               isFiltered={isFilterActive}
             />
             {section.isOpen && (
