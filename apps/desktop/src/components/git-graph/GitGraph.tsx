@@ -178,10 +178,6 @@ export function GitGraph({
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const setSelectedCommitOid = useRepoUIStore((s) => s.setSelectedCommitOid)
   const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
-  const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
-  const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
-  const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
-  const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
   // from the log entirely — this only suppresses the badge, so it is filtered here at render time.
@@ -398,12 +394,10 @@ export function GitGraph({
     pendingAction,
     setPendingAction,
     tagDraft,
-    setTagDraft,
     submitTagDraft,
     cancelTagDraft,
     openMenuAt,
     handleCommitWip,
-    openFixupWindow,
     pendingDeleteRemoteBranch,
     setPendingDeleteRemoteBranch,
   } = useGitGraphActions({
@@ -412,6 +406,7 @@ export function GitGraph({
       selected,
       setPrimaryOid,
       selectSingle,
+      primaryOid,
       hiddenStashes,
       toggleStashVisibility,
       status,
@@ -430,43 +425,6 @@ export function GitGraph({
     setPendingCommitAction: setPendingAction,
     t,
   })
-
-  // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
-  // currently selected commit. Dialog-based actions forward into the graph's own `setPendingAction`
-  // (which opens the matching dialog against `primaryOid`); `fixup` instead opens the dedicated
-  // "Commit Changes" window directly (same as the native menu's `onFixup`), since there's no
-  // in-page dialog to route it through. Either way, we clear the pending action once handled.
-  useEffect(() => {
-    if (pendingGraphAction && primaryOid) {
-      if (pendingGraphAction.kind === 'fixup') {
-        void openFixupWindow(primaryOid).catch(console.error)
-      } else if (pendingGraphAction.kind === 'tag') {
-        // Tag creation is an inline input on the row (or top bar), not a dialog.
-        setTagDraft({ oid: primaryOid, annotated: pendingGraphAction.annotated })
-      } else {
-        setPendingAction(pendingGraphAction)
-      }
-      setPendingGraphAction(null)
-    }
-  }, [
-    pendingGraphAction,
-    primaryOid,
-    setPendingAction,
-    setTagDraft,
-    setPendingGraphAction,
-    openFixupWindow,
-  ])
-
-  // The sidebar's tag rows ask for a commit's full menu through the store rather than rebuilding
-  // it: the menu is assembled from this graph's loaded page, so the request comes here instead of
-  // the menu going there. The commit is selected first, so the dialogs its items raise (reset,
-  // revert, create branch) act on the tag's commit and not on whatever was selected before.
-  useEffect(() => {
-    if (!pendingCommitMenuOid) return
-    selectSingle(pendingCommitMenuOid)
-    void openMenuAt(undefined, pendingCommitMenuOid)
-    setPendingCommitMenuOid(null)
-  }, [pendingCommitMenuOid, selectSingle, openMenuAt, setPendingCommitMenuOid])
 
   // ── Virtualisation + scroll sync ──────────────────────────────────────────
   // (the scroll container's ref is declared with the graph column's scroll geometry above)

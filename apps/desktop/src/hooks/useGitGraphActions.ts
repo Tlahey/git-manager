@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import { open, save } from '@tauri-apps/plugin-dialog'
@@ -93,6 +93,9 @@ interface UseGitGraphActionsParams {
   selected: Set<string>
   setPrimaryOid: (oid: string) => void
   selectSingle: (oid: string) => void
+  /** The currently selected commit — used to resolve the `pendingGraphAction` bridge below against
+   *  whichever commit is selected when the request arrives. */
+  primaryOid: string | null
   hiddenStashes: string[]
   toggleStashVisibility: (repoPath: string, oid: string) => void
   status: GitStatus | undefined
@@ -116,6 +119,7 @@ export function useGitGraphActions({
   selected,
   setPrimaryOid,
   selectSingle,
+  primaryOid,
   hiddenStashes,
   toggleStashVisibility,
   status,
@@ -127,6 +131,12 @@ export function useGitGraphActions({
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // Bridges: let out-of-tree UI (the command palette, the sidebar's tag rows) request a
+  // commit-scoped dialog/menu without rebuilding it — see the two effects below.
+  const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
+  const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
+  const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
+  const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
   // The branch comparison dialog is mounted by `RepoView`, not by the graph's overlay manager: it
   // is about two refs, not about the selected commit (see the store's `compareRefsTarget`).
   const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
@@ -161,34 +171,39 @@ export function useGitGraphActions({
     toast.success(t('gitTree.contextMenu.shaCopied'))
   }
 
-  /** Opens the dedicated "Commit Changes" fixup window (same pattern as the merge window). */
-  async function openFixupWindow(oid: string) {
-    const node = nodes.find((n) => n.commit.oid === oid)
-    if (!node) return
-    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-    const safeLabel = `fixup-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${node.commit.shortOid}`
-    const url =
-      `/?window=fixup&repoPath=${encodeURIComponent(repoPath)}` +
-      `&oid=${encodeURIComponent(oid)}` +
-      `&shortOid=${encodeURIComponent(node.commit.shortOid)}` +
-      `&subject=${encodeURIComponent(node.commit.subject)}`
+  /** Opens the dedicated "Commit Changes" fixup window (same pattern as the merge window).
+   *  Memoized: the `pendingGraphAction` bridge effect below depends on it, and it must not
+   *  re-run on every render just because this function was recreated. */
+  const openFixupWindow = useCallback(
+    async (oid: string) => {
+      const node = nodes.find((n) => n.commit.oid === oid)
+      if (!node) return
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+      const safeLabel = `fixup-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${node.commit.shortOid}`
+      const url =
+        `/?window=fixup&repoPath=${encodeURIComponent(repoPath)}` +
+        `&oid=${encodeURIComponent(oid)}` +
+        `&shortOid=${encodeURIComponent(node.commit.shortOid)}` +
+        `&subject=${encodeURIComponent(node.commit.subject)}`
 
-    const existing = await WebviewWindow.getByLabel(safeLabel)
-    if (existing) {
-      await existing.show()
-      await existing.setFocus()
-    } else {
-      new WebviewWindow(safeLabel, {
-        url,
-        title: `Commit Changes - fixup! ${node.commit.subject}`,
-        width: 1200,
-        height: 850,
-        minWidth: 900,
-        minHeight: 600,
-        decorations: true,
-      })
-    }
-  }
+      const existing = await WebviewWindow.getByLabel(safeLabel)
+      if (existing) {
+        await existing.show()
+        await existing.setFocus()
+      } else {
+        new WebviewWindow(safeLabel, {
+          url,
+          title: `Commit Changes - fixup! ${node.commit.subject}`,
+          width: 1200,
+          height: 850,
+          minWidth: 900,
+          minHeight: 600,
+          decorations: true,
+        })
+      }
+    },
+    [repoPath, nodes]
+  )
 
   /** Detaches HEAD onto `oid`. The hook refreshes the graph queries itself on success, and falls
    * back to the stash prompt when uncommitted changes block the checkout. */
@@ -702,6 +717,46 @@ export function useGitGraphActions({
       )
     ).catch(console.error)
   }
+
+  // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
+  // currently selected commit. Dialog-based actions forward into `setPendingAction` (which opens
+  // the matching dialog against `primaryOid`); `fixup` instead opens the dedicated "Commit
+  // Changes" window directly (same as the native menu's `onFixup`), since there's no in-page
+  // dialog to route it through. Either way, we clear the pending action once handled.
+  useEffect(() => {
+    if (pendingGraphAction && primaryOid) {
+      if (pendingGraphAction.kind === 'fixup') {
+        void openFixupWindow(primaryOid).catch(console.error)
+      } else if (pendingGraphAction.kind === 'tag') {
+        // Tag creation is an inline input on the row (or top bar), not a dialog.
+        setTagDraft({ oid: primaryOid, annotated: pendingGraphAction.annotated })
+      } else {
+        setPendingAction(pendingGraphAction)
+      }
+      setPendingGraphAction(null)
+    }
+  }, [
+    pendingGraphAction,
+    primaryOid,
+    setPendingAction,
+    setTagDraft,
+    setPendingGraphAction,
+    openFixupWindow,
+  ])
+
+  // The sidebar's tag rows ask for a commit's full menu through the store rather than rebuilding
+  // it: the menu is assembled from this graph's loaded page, so the request comes here instead of
+  // the menu going there. The commit is selected first, so the dialogs its items raise (reset,
+  // revert, create branch) act on the tag's commit and not on whatever was selected before.
+  useEffect(() => {
+    if (!pendingCommitMenuOid) return
+    selectSingle(pendingCommitMenuOid)
+    void openMenuAt(undefined, pendingCommitMenuOid)
+    setPendingCommitMenuOid(null)
+    // `openMenuAt` closes over nearly every param/store value this hook reads, so it's a new
+    // function every render — only `pendingCommitMenuOid` itself should retrigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCommitMenuOid])
 
   return {
     pendingAction,
