@@ -61,7 +61,7 @@ The frontend never talks to git directly — every git/filesystem/network operat
 
 Data fetching is in transition between two libraries — **new hooks should use `useSWR`** (per `.agents/AGENTS.md`); a number of older hooks (`useGitLog`, `useGitStatus`, `useBranches`, `useCommitDiff`, `useFileDiff`, `useFileRawContents`, `useSidebarRows`) still use `@tanstack/react-query` and haven't been migrated. Don't mix the two within one hook.
 
-Before adding non-trivial logic to a component, hook, or store, see [.claude/skills/architecture-guardian/SKILL.md](.claude/skills/architecture-guardian/SKILL.md) for the R1 (one file, one responsibility) / R2 (service/API layer) rules and known anti-patterns to avoid repeating.
+Before adding non-trivial logic to a component, hook, or store, see [.claude/skills/architecture-guardian/SKILL.md](.claude/skills/architecture-guardian/SKILL.md) for the R1 (one file, one responsibility) / R2 (service/API layer) / R3 (safely retrofitting a file that's already grown too large — test-mapped incremental extraction, reusing an existing manager pattern before inventing a new one, barrel re-exports for a multi-domain split) rules and known anti-patterns to avoid repeating.
 
 ### Frontend organization rules (from `.agents/AGENTS.md`)
 
@@ -69,6 +69,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 - Split logical child components into a local `components/` folder next to the page (e.g. `app/dashboard/components/`).
 - All Tauri IPC / HTTP calls go through `src/api/*.api.ts` files named by domain — never invoke `invoke()` or `fetch()` directly inside a component.
 - Add `data-testid` attributes to interactive/structural elements (buttons, rows, panels) to ease debugging — no test framework currently consumes these, but the convention is followed throughout the codebase.
+- When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [components/git-graph/columns.config.ts](apps/desktop/src/components/git-graph/columns.config.ts) for the existing shape to follow.
 - Do not attempt to browser-test this app (see note above) — it's Tauri-only.
 
 ### UI components: consume-first (do not re-invent primitives)
