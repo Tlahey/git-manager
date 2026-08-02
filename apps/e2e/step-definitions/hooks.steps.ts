@@ -1,6 +1,5 @@
 import { Before } from '@wdio/cucumber-framework'
-import { forceLiveSettings, seedSettingsFromCleanState } from '../support/settings.js'
-import { seedGraphColumns } from '../support/gitGraphColumns.js'
+import { applyBaseline } from '../support/scenarioBaseline.js'
 import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
 
 // The app's own factory default is 'dark' (settings.store.ts), but every capture this suite takes
@@ -22,33 +21,22 @@ Before(async () => {
   // "the AI provider is pointed at a fake server" step, same as before.
   const ai = { enabled: true, url: SUITE_WIDE_FAKE_AI_URL, model: 'fake-model' }
 
-  // AND forced onto the live store directly: the suite shares one app window across every
-  // feature, and a scenario whose own Given steps never navigate (e.g. "the git-manager
-  // application is running", used by most Settings scenarios) never rehydrates from localStorage
-  // — it would otherwise keep whatever a previous scenario last left live, which is exactly how a
-  // theme-switching scenario (settings.feature's "per-theme cards", ending on "dark") used to leak
-  // into unrelated screenshots taken right after it.
-  await forceLiveSettings({ appearance, ai })
-
-  // AFTER forceLiveSettings, not before: patching the live store makes zustand-persist write the
-  // whole live settings object straight back to localStorage — including `language`, still at the
-  // app's French factory default — which silently undid the seed below and left rewards.feature
-  // asserting English copy against a French trophy toast. The localStorage write has to be the
-  // last one to land, since it is what the scenario's own reload reads.
-  await seedSettingsFromCleanState({ appearance, ai, language: 'en' })
-
-  // Every column visible, and `graph` wide enough that no fixture's lane count ever pushes it
-  // into its `overflow`/`compact` modes (see `graphColumnSizing.ts`) — a real per-repo maximum is
-  // computed at render time from that specific repo's concurrent branch count, so there is no
-  // single "true max" to seed in advance; this fixed width is just generous enough (COL_WIDTH is
-  // 22px/lane) to comfortably fit every fixture in this suite without wasted space becoming
-  // noticeable on a 1600px-wide window.
-  await seedGraphColumns({
-    refs: { visible: true, width: 160 },
-    graph: { visible: true, width: 500 },
-    message: { visible: true, width: 400 },
-    author: { visible: true, width: 150 },
-    date: { visible: true, width: 110 },
-    sha: { visible: true, width: 80 },
+  // One driver command for the whole baseline — clearing the volatile persisted slices, patching
+  // the live settings store, and seeding settings + graph columns. It used to be three, and the
+  // hook runs before all 160 scenarios; a measured full run spent 58.6 of its 62 minutes outside
+  // step execution, with these round trips the dominant remaining candidate. See
+  // support/scenarioBaseline.ts for the ordering constraints inside it.
+  await applyBaseline({
+    settings: { appearance, ai, language: 'en' },
+    columns: {
+      refs: { visible: true, width: 160 },
+      // Wide enough that no fixture's lane count pushes the graph column into its
+      // `overflow`/`compact` modes (see `graphColumnSizing.ts`).
+      graph: { visible: true, width: 500 },
+      message: { visible: true, width: 400 },
+      author: { visible: true, width: 150 },
+      date: { visible: true, width: 110 },
+      sha: { visible: true, width: 80 },
+    },
   })
 })
