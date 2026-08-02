@@ -1,0 +1,199 @@
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const LOGS_DIR = join(__dirname, '../logs')
+/** One JSON object per finished scenario. Workers append; the launcher reads it at the end. */
+const RAW_PATH = join(LOGS_DIR, 'run-timings.jsonl')
+/** The human-readable summary, rewritten on every run. */
+export const REPORT_PATH = join(__dirname, '../REPORT.md')
+
+interface SessionRow {
+  kind: 'session'
+  feature: string
+  ms: number
+}
+
+interface ScenarioRow {
+  kind?: 'scenario'
+  feature: string
+  scenario: string
+  ms: number
+  passed: boolean
+  /** Sum of the scenario's own step durations — everything else is hook/fixture/reload time. */
+  stepMs: number
+}
+
+/** Wall-clock start of this worker's session, for the launch cost it pays before any scenario. */
+let sessionStart = 0
+/** Wall-clock start of the scenario currently running in this worker. */
+let scenarioStart = 0
+/** Step time accumulated for it, so the report can separate steps from everything around them. */
+let scenarioStepMs = 0
+
+export function resetRunReport(): void {
+  mkdirSync(LOGS_DIR, { recursive: true })
+  rmSync(RAW_PATH, { force: true })
+}
+
+export function startSession(): void {
+  sessionStart = Date.now()
+}
+
+/**
+ * Records what this worker spent getting a session up — launching the app, connecting the driver —
+ * before running anything.
+ *
+ * Split out because folding it into the first scenario is actively misleading: it made a
+ * one-scenario feature look like a minute of "hook time" when nearly all of it was the app
+ * starting. wdio gives each feature file its own worker, so this is paid once per file.
+ */
+export function endSession(specs: string[]): void {
+  const feature = (specs[0] ?? '').split('/').pop() ?? 'unknown'
+  appendFileSync(
+    RAW_PATH,
+    JSON.stringify({ kind: 'session', feature, ms: Date.now() - sessionStart }) + '\n'
+  )
+}
+
+export function startScenario(): void {
+  scenarioStart = Date.now()
+  scenarioStepMs = 0
+}
+
+export function recordStep(durationMs: number): void {
+  scenarioStepMs += durationMs
+}
+
+/**
+ * Called from `afterScenario`, in the worker.
+ *
+ * Times the scenario with a wall clock rather than trusting cucumber's `result.duration`: on this
+ * suite that field adds up to a couple of minutes across a run that really takes an hour, so it
+ * clearly measures something narrower than "how long this scenario took".
+ */
+export function endScenario(featureUri: string, scenario: string, passed: boolean): void {
+  const row: ScenarioRow = {
+    kind: 'scenario',
+    feature: featureUri.split('/').pop() ?? featureUri,
+    scenario,
+    ms: Date.now() - scenarioStart,
+    passed,
+    stepMs: Math.round(scenarioStepMs),
+  }
+  appendFileSync(RAW_PATH, JSON.stringify(row) + '\n')
+}
+
+function readAll(): (ScenarioRow | SessionRow)[] {
+  try {
+    return readFileSync(RAW_PATH, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as ScenarioRow | SessionRow)
+  } catch {
+    return []
+  }
+}
+
+const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`
+const mins = (ms: number) => `${(ms / 60000).toFixed(1)} min`
+
+/**
+ * Writes `REPORT.md` and prints a short table, from the launcher, once everything has finished.
+ *
+ * The split it reports — step time vs everything else — is the point of the whole file. A measured
+ * full run put under four of its sixty-two minutes inside step execution; the rest is fixture
+ * builds, app reloads, per-scenario hooks and the timeouts of steps that fail (`afterStep` never
+ * fires for those, so a step timer alone cannot see them). Anyone trying to make this suite faster
+ * should start from the "outside steps" column, not from the tests.
+ */
+export function writeRunReport(): void {
+  const all = readAll()
+  const rows = all.filter((r): r is ScenarioRow => r.kind !== 'session')
+  const sessions = all.filter((r): r is SessionRow => r.kind === 'session')
+  if (rows.length === 0) return
+  const sessionByFeature = new Map(sessions.map((r) => [r.feature, r.ms]))
+  const totalSessionMs = sessions.reduce((sum, r) => sum + r.ms, 0)
+
+  const byFeature = new Map<string, { ms: number; stepMs: number; n: number; failed: number }>()
+  for (const r of rows) {
+    const agg = byFeature.get(r.feature) ?? { ms: 0, stepMs: 0, n: 0, failed: 0 }
+    agg.ms += r.ms
+    agg.stepMs += r.stepMs
+    agg.n += 1
+    if (!r.passed) agg.failed += 1
+    byFeature.set(r.feature, agg)
+  }
+
+  const features = [...byFeature.entries()].sort((a, b) => b[1].ms - a[1].ms)
+  const totalMs = rows.reduce((s, r) => s + r.ms, 0)
+  const totalStepMs = rows.reduce((s, r) => s + r.stepMs, 0)
+  const failedRows = rows.filter((r) => !r.passed)
+
+  const lines: string[] = []
+  lines.push('# e2e run report')
+  lines.push('')
+  lines.push(
+    '_Regenerated by `onComplete` on every `wdio run`. Not committed state — a snapshot of the last run on this machine._'
+  )
+  lines.push('')
+  lines.push(
+    `**${rows.length} scenarios** across **${features.length} feature files** · ` +
+      `${failedRows.length} failing · **${mins(totalMs)}** of scenario time, ` +
+      `of which ${mins(totalStepMs)} (${((totalStepMs / totalMs) * 100).toFixed(0)}%) is inside steps.`
+  )
+  lines.push('')
+  lines.push(
+    `Plus **${mins(totalSessionMs)}** launching the app: wdio gives each feature file its own ` +
+      `worker, so that cost is paid ${sessions.length} times, ~${secs(totalSessionMs / Math.max(sessions.length, 1))} each.`
+  )
+  lines.push('')
+  lines.push(
+    'Read the last column first. "In steps" is what cucumber\'s `afterStep` reported, and it is a' +
+      ' **lower bound**: the hook does not fire for a step that throws, and it visibly under-reports' +
+      ' steps that reload the app (a fixture open lands at well under a second, which it cannot be).' +
+      ' So "outside steps" mixes genuine hook/fixture time with step time the timer missed — it is' +
+      ' the right place to start looking, not a precise attribution.'
+  )
+  lines.push('')
+  lines.push('## Feature files, slowest first')
+  lines.push('')
+  lines.push('| Feature | Scenarios | Failing | App launch | Scenarios | In steps | Outside steps |')
+  lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: |')
+  for (const [name, a] of features) {
+    const launch = sessionByFeature.get(name)
+    lines.push(
+      `| \`${name}\` | ${a.n} | ${a.failed || ''} | ${launch === undefined ? '—' : secs(launch)} | ` +
+        `${secs(a.ms)} | ${secs(a.stepMs)} | **${secs(a.ms - a.stepMs)}** |`
+    )
+  }
+  lines.push('')
+  lines.push('## Slowest individual scenarios')
+  lines.push('')
+  lines.push('| Scenario | Feature | Total | Outside steps |')
+  lines.push('| --- | --- | ---: | ---: |')
+  for (const r of [...rows].sort((a, b) => b.ms - a.ms).slice(0, 15)) {
+    lines.push(
+      `| ${r.scenario} | \`${r.feature}\` | ${secs(r.ms)} | ${secs(r.ms - r.stepMs)} |`
+    )
+  }
+  if (failedRows.length > 0) {
+    lines.push('')
+    lines.push('## Failing scenarios')
+    lines.push('')
+    for (const r of failedRows) lines.push(`- \`${r.feature}\` — ${r.scenario}`)
+  }
+  lines.push('')
+
+  writeFileSync(REPORT_PATH, lines.join('\n'))
+
+  console.log(`\n── e2e run report ─ ${REPORT_PATH}`)
+  console.log(
+    `   ${rows.length} scenarios · ${failedRows.length} failing · ${mins(totalMs)} in scenarios ` +
+      `(${((totalStepMs / totalMs) * 100).toFixed(0)}% inside steps) + ${mins(totalSessionMs)} launching the app`
+  )
+  for (const [name, a] of features.slice(0, 5)) {
+    console.log(`   ${secs(a.ms).padStart(8)}  ${name} (${a.n} scenarios)`)
+  }
+}

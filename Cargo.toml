@@ -1,3 +1,24 @@
 [workspace]
 members = ["apps/desktop/src-tauri"]
 resolver = "2"
+
+# Profiles MUST live here: cargo ignores `[profile]` in a workspace member and says so
+# ("profiles for the non root package will be ignored"). Worth knowing that
+# apps/desktop/src-tauri/Cargo.toml still carries a `[profile.release]` block — lto, opt-level "s",
+# strip, panic = "abort" — which has therefore never taken effect. Left alone here on purpose:
+# turning those on changes what ships, and that is a deliberate decision, not a side effect of a
+# test-speed fix.
+#
+# A debug build is what both `pnpm dev` and the e2e suite run, and at `opt-level = 0` that includes
+# `git2`/`libgit2-sys`, where the actual work happens. Measured: opening a fixture repository cost
+# ~30s per scenario in the e2e suite, essentially all of it the app rendering its repo view after a
+# reload, while the driver commands around it took 2-6ms.
+#
+# Dependencies get full optimisation, our own crate only a little: `opt-level = 1` keeps incremental
+# rebuilds of the app quick — that is what a dev loop actually recompiles — while third-party code
+# that never changes is built once at speed.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

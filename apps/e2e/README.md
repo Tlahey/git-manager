@@ -89,6 +89,22 @@ indirection, but the flag reaches `wdio` intact this way (verified). You can als
 `tags` in `wdio.conf.ts`'s `cucumberOpts`. WDIO still spins up one worker per `.feature` file;
 non-matching scenarios are reported as skipped.
 
+## What this suite covers, and what a run costs
+
+Scope lives in two places, both kept up to date for different reasons:
+
+- **[COVERAGE.md](COVERAGE.md)** — the written map: what each domain covers, what is deliberately
+  out of reach (native dialogs, real remotes), and the gotchas that cost someone a debugging round.
+  Hand-written, because the *why* cannot be generated.
+- **[REPORT.md](REPORT.md)** — regenerated at the end of every `wdio run`, so it cannot go stale.
+  Per feature file and per scenario: how long it took, how much of that was inside steps, and what
+  failed. Not committed; it describes the last run on this machine.
+
+The report exists because the suite's cost is not where you would guess. A measured full run spent
+**under four of its sixty-two minutes inside step execution**, and launching the app is ~0.1s per
+feature file — the service reuses one instance. Everything else is fixture rebuilds, app reloads and
+per-scenario hooks. Sort by the "outside steps" column before optimising anything.
+
 ## Running
 
 ```bash

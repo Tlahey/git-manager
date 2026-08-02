@@ -3,6 +3,16 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Services } from '@wdio/types'
 import { startFakeAiServer, SUITE_WIDE_FAKE_AI_PORT, type FakeAiServerHandle } from './support/fakeAiServer.ts'
+import { useIsolatedHome, isolatedAppBinary } from './support/isolatedAppState.js'
+import {
+  resetRunReport,
+  startSession,
+  endSession,
+  startScenario,
+  recordStep,
+  endScenario,
+  writeRunReport,
+} from './support/runReport.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -10,13 +20,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // e2e-only capability — see apps/desktop/src-tauri/Cargo.toml and tauri.e2e.conf.json). Never
 // the same binary as a normal `pnpm dev`/`pnpm build` output. The repo root Cargo.toml defines
 // the workspace, so cargo puts `target/` there rather than under src-tauri/.
-const appBinaryPath = join(__dirname, '../../target/debug/git-manager')
+const builtBinaryPath = join(__dirname, '../../target/debug/git-manager')
 
-if (!existsSync(appBinaryPath)) {
+if (!existsSync(builtBinaryPath)) {
   throw new Error(
-    `Tauri e2e binary not found at ${appBinaryPath}. Run "pnpm --filter @git-manager/desktop build:e2e" first.`
+    `Tauri e2e binary not found at ${builtBinaryPath}. Run "pnpm --filter @git-manager/desktop build:e2e" first.`
   )
 }
+
+// Run a differently-named copy: that is what keeps the suite out of the developer's real
+// localStorage (theme, saved repos, rewards). See support/isolatedAppState.ts.
+const appBinaryPath = isolatedAppBinary(builtBinaryPath)
 
 const driverProvider = 'embedded'
 
@@ -59,10 +73,19 @@ let suiteWideAiServer: FakeAiServerHandle | undefined
 export const config: WebdriverIO.Config = {
   runner: 'local',
   onPrepare: async function () {
+    // Before anything can touch the app's storage: own $HOME for the Rust-side state (activity log,
+    // AI logs, summaries, user themes). Pairs with the renamed binary above, which covers
+    // localStorage. See support/isolatedAppState.ts.
+    useIsolatedHome()
+    // Drop the previous run's per-scenario timings; workers append to it as they go.
+    resetRunReport()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })
   },
   onComplete: async function () {
     await suiteWideAiServer?.stop()
+    // Aggregates what the workers recorded into REPORT.md and prints the headline. See
+    // support/runReport.ts for why it times scenarios itself instead of trusting result.duration.
+    writeRunReport()
   },
   // Gherkin features; one worker per .feature file (like spec files were). Step definitions
   // live in ./step-definitions and are matched by text regardless of feature.
@@ -121,16 +144,27 @@ export const config: WebdriverIO.Config = {
   // shows up as a gap between one scenario's last [timing] step line and the next scenario's first.
   // beforeScenario/afterScenario below report the *whole* scenario's duration so that gap is
   // visible directly: (scenario duration) − (sum of its steps' durations) = hook-only overhead.
+  beforeSession: function () {
+    startSession()
+  },
+  // Runs once the session is up, so the delta is exactly what launching the app and connecting the
+  // driver cost this worker — kept out of the first scenario's time, where it used to hide.
+  before: function (_caps, specs) {
+    endSession(specs)
+  },
   beforeScenario: function (world) {
+    startScenario()
     console.log(`[timing] ▶ scenario — ${world.pickle.name}`)
   },
   afterScenario: function (world, result) {
     const durationMs = result.duration ?? 0
     const status = result.passed ? 'ok' : 'FAILED'
+    endScenario(world.pickle.uri ?? '', world.pickle.name, result.passed)
     console.log(`[timing] ◀ scenario ${status} in ${durationMs}ms — ${world.pickle.name}`)
   },
   afterStep: function (step, _scenario, result) {
     const durationMs = result.duration ?? 0
+    recordStep(durationMs)
     const flag = durationMs > 3000 ? ' [SLOW]' : ''
     const status = result.passed ? 'ok' : 'FAILED'
     console.log(`[timing]${flag} ${durationMs}ms ${status} — ${step.text}`)
