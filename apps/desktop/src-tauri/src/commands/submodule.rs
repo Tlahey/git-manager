@@ -12,9 +12,9 @@ pub struct GitSubmodule {
     pub head_oid: String,
 }
 
-// ─── Commande ─────────────────────────────────────────────────────────────────
+// ─── Command ──────────────────────────────────────────────────────────────────
 
-/// Liste les sous-modules du dépôt
+/// Lists the repository's submodules.
 #[tauri::command]
 pub async fn list_submodules(path: String) -> Result<Vec<GitSubmodule>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;

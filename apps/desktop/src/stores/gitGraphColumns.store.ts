@@ -50,8 +50,8 @@ export const useGitGraphColumnsStore = create<GitGraphColumnsState>()(
     }),
     {
       name: 'git-manager-git-graph-columns',
-      // Fusionne l'état persisté avec les valeurs par défaut pour garantir que
-      // toute nouvelle colonne ajoutée plus tard reçoit ses défauts.
+      // Merge the persisted state with the defaults, so any column added later still gets
+      // its own default values.
       merge: (persisted, current) => {
         const defaults = buildDefaults()
         const saved =

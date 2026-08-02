@@ -1,16 +1,16 @@
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
 export interface WaterlineBucket {
-  /** Rang croissant vers le passé (0 = aujourd'hui). Sert à garantir l'ordre. */
+  /** Rank increasing towards the past (0 = today). Used to keep the ordering. */
   rank: number
   key: string
   labelKey: string
 }
 
 /**
- * Paliers temporels « logiques » et grossiers, ordonnés du plus récent au plus
- * ancien. On évite les paliers fins (heures, X semaines) qui partent en
- * désordre quand les commits ne sont pas strictement triés par date.
+ * Coarse, "logical" time buckets, ordered from most recent to oldest. Fine-grained buckets
+ * (hours, X weeks) are deliberately avoided: they fall out of order whenever the commits aren't
+ * strictly sorted by date.
  */
 const BUCKETS: { maxDays: number; key: string }[] = [
   { maxDays: 1, key: 'today' },
@@ -23,7 +23,7 @@ const BUCKETS: { maxDays: number; key: string }[] = [
   { maxDays: Infinity, key: 'older' },
 ]
 
-/** Détermine le palier temporel logique d'un commit. */
+/** Resolves a commit's logical time bucket. */
 export function getWaterlineBucket(timestamp: number, now = Date.now() / 1000): WaterlineBucket {
   const days = Math.max(0, now - timestamp) / 86400
   const rank = BUCKETS.findIndex((b) => days < b.maxDays)
@@ -31,7 +31,7 @@ export function getWaterlineBucket(timestamp: number, now = Date.now() / 1000): 
   return { rank, key: bucket.key, labelKey: `gitTree.waterline.${bucket.key}` }
 }
 
-/** Libellé traduit d'un palier temporel. */
+/** Translated label of a time bucket. */
 export function bucketLabel(b: WaterlineBucket, t: TranslateFn): string {
   return t(b.labelKey)
 }

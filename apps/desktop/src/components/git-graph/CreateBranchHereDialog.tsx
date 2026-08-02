@@ -23,7 +23,7 @@ interface CreateBranchHereDialogProps {
   onClose: () => void
 }
 
-/** Crée une nouvelle branche pointant sur un commit donné (action « Créer une branche ici »). */
+/** Creates a new branch pointing at a given commit (the "Create branch here" action). */
 export function CreateBranchHereDialog({
   repoPath,
   oid,

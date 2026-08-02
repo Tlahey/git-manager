@@ -32,7 +32,7 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
       style={{ flexShrink: 0 }}
       className="overflow-visible"
     >
-      {/* Lignes de connexion (full-row, avec angles droits arrondis et background coloré) */}
+      {/* Connection lines (full-row, with rounded right angles and a coloured background) */}
       {connections.map((edge, i) => {
         const x1 = laneCenterX(edge.fromColumn, avatarSize)
         const x2 = laneCenterX(edge.toColumn, avatarSize)
@@ -46,7 +46,7 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
 
         let d = ''
         if (x1 === x2) {
-          // Ligne droite verticale : passe à travers toute la ligne pour assurer la continuité
+          // Straight vertical line: runs through the whole row to keep the lane continuous
           let yS = yStart
           let yE = yEnd
           // Structural segments (anchored at a node via starts/ends-at-node) always use the
@@ -54,10 +54,10 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
           // carry no structural anchor (WIP / HEAD / origin-main) use the special geometry below.
           if (edge.dashed && !edge.startsAtNode && !edge.endsAtNode) {
             if (isWip && edge.toColumn === column) {
-              // Dans la ligne WIP, la ligne part du bas du rond
+              // On the WIP row, the line starts at the bottom of the circle
               yS = nodeY + avatarRadius
             } else if (edge.toColumn === column) {
-              // Dans la ligne HEAD, la ligne vient du haut et s'arrête au haut du rond
+              // On the HEAD row, the line comes from the top and stops at the top of the circle
               yE = nodeY - avatarRadius
             }
           } else {
@@ -74,7 +74,7 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
             d = `M ${x1} ${yS} L ${x1} ${yE}`
           }
         } else {
-          // Transition droite avec angles arrondis (R = CORNER_RADIUS)
+          // Straight transition with rounded corners (R = CORNER_RADIUS)
           const sign = x2 > x1 ? 1 : -1
           const R = CORNER_RADIUS
 
@@ -95,11 +95,11 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
               // Pass-through diagonal
               d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
             } else if (edge.fromColumn === column) {
-              // Split (départ du milieu/avatar à y = nodeY)
+              // Split (starts from the centre/avatar at y = nodeY)
               const xStart = isStash ? x1 + avatarRadius * sign : x1
               d = `M ${xStart} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
             } else {
-              // Merge (arrivée au milieu/avatar à y = nodeY)
+              // Merge (arrives at the centre/avatar at y = nodeY)
               const xEnd = isStash ? x2 - avatarRadius * sign : x2
               d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${xEnd} ${nodeY}`
             }

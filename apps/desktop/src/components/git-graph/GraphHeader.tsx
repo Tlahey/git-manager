@@ -11,24 +11,22 @@ import type { ResolvedColumn } from './columns.config'
 import type { AuthorOption } from './graphAuthors'
 
 interface GraphHeaderProps {
-  /** Colonnes visibles, dans l'ordre, avec largeurs résolues. */
+  /** Visible columns, in order, with their resolved widths. */
   columns: ResolvedColumn[]
-  /** Auteurs uniques des commits chargés — alimente le filtre de la colonne « auteur ». */
+  /** Unique authors across the loaded commits — feeds the "author" column's filter. */
   authorOptions?: AuthorOption[]
 }
 
-/** En dessous de cette largeur (px), les colonnes date/sha affichent une icône
- * compacte à la place de leur libellé texte (même principe que la colonne graph
- * via `isGraphCompact`). */
+/** Below this width (px), the date/sha columns show a compact icon instead of their text label
+ * (same idea as the graph column's `isGraphCompact`). */
 const COMPACT_LABEL_MAX_WIDTH = 72
 
-/** Icône d'en-tête affichée en mode compact, par colonne. */
+/** Header icon shown in compact mode, per column. */
 const COMPACT_LABEL_ICON = { date: Calendar, sha: Hash } as const
 
 /**
- * En-tête du tableau virtuel : libellés des colonnes, poignées de
- * redimensionnement, et menu contextuel (clic droit) pour afficher / masquer
- * les colonnes.
+ * Header of the virtual table: column labels, resize handles, and the right-click context menu
+ * that shows / hides columns.
  */
 export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
   const { t } = useTranslation('git')
@@ -38,21 +36,20 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
 
   const rowRef = useRef<HTMLDivElement>(null)
 
-  // Largeur RÉELLEMENT rendue d'une colonne (celle de la colonne flex n'est pas
-  // fiable dans `col.width` — flexbox la calcule à l'affichage). On la mesure sur
-  // le DOM pour connaître la marge de rétrécissement du flex.
+  // A column's ACTUALLY rendered width (the flex column's isn't reliable in `col.width` — flexbox
+  // computes it at paint time). Measured off the DOM to know how much room the flex column has
+  // left to shrink.
   function renderedWidth(col: ResolvedColumn) {
     const el = rowRef.current?.querySelector<HTMLElement>(`[data-col-key="${col.key}"]`)
     const w = el?.getBoundingClientRect().width ?? 0
     return w > 0 ? w : col.width
   }
 
-  // Redimensionnement « splitter » : une poignée vit à la frontière entre deux
-  // colonnes adjacentes (`leftCol` | `rightCol`) et transfère la largeur de l'une
-  // à l'autre — `leftCol` grandit de `delta`, `rightCol` rétrécit d'autant. La
-  // somme reste constante, donc SEULE cette frontière bouge : aucune colonne
-  // distante ne se décale. Si l'un des deux côtés est la colonne flex (message),
-  // on ne touche que le côté fixe et le flex absorbe localement la différence.
+  // "Splitter" resizing: a handle lives on the boundary between two adjacent columns
+  // (`leftCol` | `rightCol`) and transfers width from one to the other — `leftCol` grows by
+  // `delta`, `rightCol` shrinks by as much. The sum stays constant, so ONLY that boundary moves:
+  // no distant column shifts. If either side is the flex column (message), only the fixed side is
+  // touched and the flex one absorbs the difference locally.
   function handleResizeDown(e: React.PointerEvent, leftCol: ResolvedColumn, rightCol: ResolvedColumn) {
     e.preventDefault()
     e.stopPropagation()
@@ -61,23 +58,23 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
     const startRight = rightCol.width
     const leftFixed = !leftCol.flex
     const rightFixed = !rightCol.flex
-    // Taille rendue de la colonne flex voisine (au plus une des deux l'est) au
-    // début du drag — sa marge de rétrécissement avant d'atteindre son minWidth.
+    // Rendered size of the neighbouring flex column (at most one of the two is) at the start of
+    // the drag — how much it can shrink before hitting its minWidth.
     const leftFlexStart = leftFixed ? 0 : renderedWidth(leftCol)
     const rightFlexStart = rightFixed ? 0 : renderedWidth(rightCol)
 
-    // Borne le delta pour que ni `leftCol` ni `rightCol` ne franchisse son min/max.
-    // Côté fixe : clamp sur son propre min/max. Côté flex : il absorbe la variation
-    // opposée (+delta à gauche, -delta à droite) et ne doit pas descendre sous son
-    // minWidth — sinon il ne peut plus absorber et la ligne déborde (date/sha
-    // sortent du contenu). C'est cette borne-là qui arrête le resize à la limite.
+    // Bound the delta so neither `leftCol` nor `rightCol` crosses its own min/max. Fixed side:
+    // clamp against its own min/max. Flex side: it absorbs the opposite variation (+delta on the
+    // left, -delta on the right) and must not drop below its minWidth — otherwise it can no longer
+    // absorb and the row overflows (date/sha spill out of the content). That bound is what stops
+    // the resize at the limit.
     function clampDelta(delta: number) {
       if (leftFixed) {
         const maxL = leftCol.maxWidth ?? Number.POSITIVE_INFINITY
         delta = Math.min(delta, maxL - startLeft)
         delta = Math.max(delta, leftCol.minWidth - startLeft)
       } else {
-        // leftCol (flex) varie de +delta → reste >= son minWidth.
+        // leftCol (flex) varies by +delta → keep it >= its minWidth.
         delta = Math.max(delta, leftCol.minWidth - leftFlexStart)
       }
       if (rightFixed) {
@@ -85,7 +82,7 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
         delta = Math.max(delta, startRight - maxR)
         delta = Math.min(delta, startRight - rightCol.minWidth)
       } else {
-        // rightCol (flex) varie de -delta → reste >= son minWidth.
+        // rightCol (flex) varies by -delta → keep it >= its minWidth.
         delta = Math.min(delta, rightFlexStart - rightCol.minWidth)
       }
       return delta
@@ -112,10 +109,10 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
           className="flex h-7 shrink-0 select-none items-stretch border-b border-border bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
         >
           {columns.map((col, idx) => {
-            // Poignée à la frontière avec la colonne suivante (aucune après la dernière).
+            // Handle on the boundary with the next column (none after the last one).
             const nextCol = columns[idx + 1]
-            // Sous une certaine largeur, on remplace le libellé texte par une icône :
-            // graph (marqueur seul) via `isGraphCompact`, date/sha via un seuil de largeur.
+            // Below a given width the text label is swapped for an icon: graph (marker only) via
+            // `isGraphCompact`, date/sha via a width threshold.
             const HeaderIcon =
               col.key === 'graph'
                 ? isGraphCompact(col.width, avatarSize)
@@ -129,11 +126,10 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
               <div
                 key={col.key}
                 data-col-key={col.key}
-                // Le box-model d'espacement doit être STRICTEMENT identique à celui des
-                // cellules de contenu (GraphRow) — mêmes marges/paddings par colonne — sinon
-                // l'en-tête et le contenu dérivent colonne après colonne (le `mx-2` ajoute
-                // 16px de plus que le `px-2` à chaque cellule) et les libellés ne tombent plus
-                // au-dessus de la bonne colonne.
+                // The spacing box-model must be STRICTLY identical to the content cells'
+                // (GraphRow) — same margins/paddings per column — otherwise the header and the
+                // content drift apart column after column (`mx-2` adds 16px more than `px-2` on
+                // each cell) and the labels stop sitting above the right column.
                 className={cn(
                   'relative flex min-w-0 items-center',
                   col.key === 'refs' ? 'justify-start pl-2' : 'mx-2',
@@ -151,22 +147,22 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
                   <span className="truncate">{t(col.labelKey)}</span>
                 )}
 
-                {/* Bouton de filtrage par auteur, poussé à droite de la colonne « auteur ». */}
+                {/* Author filter button, pushed to the right of the "author" column. */}
                 {col.key === 'author' && (
                   <span className="ml-auto pl-1">
                     <GraphHeaderAuthorFilter authors={authorOptions} />
                   </span>
                 )}
 
-                {/* Poignée de redimensionnement à la frontière `col` | `nextCol` (splitter). */}
+                {/* Resize handle on the `col` | `nextCol` boundary (splitter). */}
                 {nextCol &&
                   (() => {
-                    // `refs` n'a que la frontière refs|graph pour se redimensionner. Or `graph`
-                    // est plafonnée à sa largeur utile et ne peut pas absorber : la trade
-                    // refs↔graph se bloquait (refs ne pouvait pas rétrécir). Quand `graph` suit
-                    // directement `refs`, on redimensionne donc `refs` contre la colonne flex
-                    // (message) — refs grandit/rétrécit, le flex absorbe, `graph` garde sa
-                    // largeur. Sinon (graph masqué…), splitter normal avec `nextCol`.
+                    // `refs` only has the refs|graph boundary to resize against, but `graph` is
+                    // capped at its useful width and can't absorb anything: the refs↔graph trade
+                    // deadlocked (refs couldn't shrink). So when `graph` directly follows `refs`,
+                    // `refs` is resized against the flex column (message) instead — refs
+                    // grows/shrinks, the flex column absorbs it, and `graph` keeps its width.
+                    // Otherwise (graph hidden…), a normal splitter with `nextCol`.
                     const partner =
                       col.key === 'refs' && nextCol.key === 'graph'
                         ? (columns.find((c) => c.flex) ?? nextCol)

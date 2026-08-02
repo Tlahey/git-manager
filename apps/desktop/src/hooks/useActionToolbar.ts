@@ -25,9 +25,9 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
 
 /**
- * Actions et état dérivé de la barre d'actions principale : fetch/pull/push,
- * undo/redo, stash/pop, création de branche, terminal — plus l'état de
- * chargement par action. Les notifications passent par le toast global (@git-manager/ui).
+ * The main action bar's actions and derived state: fetch/pull/push, undo/redo, stash/pop, branch
+ * creation, terminal — plus the per-action loading state. Notifications go through the global
+ * toast (@git-manager/ui).
  */
 export function useActionToolbar(t: TranslateFn) {
   const queryClient = useQueryClient()
@@ -54,9 +54,9 @@ export function useActionToolbar(t: TranslateFn) {
   const { data: stashes } = useGitStashes(activeRepo)
   const { data: branches } = useBranches(activeRepo || '')
 
-  // Commits locaux non poussés (ahead) / commits distants non récupérés (behind) de la branche
-  // courante — alimente les pastilles des boutons Push/Pull. Après un fixup/rebase/commit local,
-  // `aheadCount` reflète directement ce qu'il reste à pousser.
+  // Local commits not yet pushed (ahead) / remote commits not yet fetched (behind) for the current
+  // branch — feeds the badges on the Push/Pull buttons. After a local fixup/rebase/commit,
+  // `aheadCount` directly reflects what is left to push.
   const headBranch = branches?.find((b) => b.isHead && !b.isRemote)
   const aheadCount = headBranch?.aheadCount ?? 0
   const behindCount = headBranch?.behindCount ?? 0

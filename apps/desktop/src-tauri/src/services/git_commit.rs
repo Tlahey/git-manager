@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscardResult {
-    /// OID d'un blob orphelin contenant le contenu du fichier avant le discard (pour undo).
-    /// `None` si le fichier n'existait pas sur disque (ex. déjà vide) ou était un dossier.
+    /// OID of an orphan blob holding the file's contents before the discard (for undo).
+    /// `None` when the file wasn't on disk (e.g. already empty) or was a directory.
     pub snapshot_blob_oid: Option<String>,
     pub was_untracked: bool,
     pub was_staged: bool,
@@ -23,7 +23,7 @@ pub struct CommitResult {
     pub short_oid: String,
 }
 
-/// Stage un fichier (ajouter à l'index), ou le retire de l'index s'il a été supprimé sur disque.
+/// Stages a file (adds it to the index), or removes it from the index if it was deleted on disk.
 pub fn stage_file(repo: &Repository, repo_path: &str, file_path: &str) -> Result<(), AppError> {
     let mut index = repo.index().map_err(AppError::Git)?;
 
@@ -33,7 +33,7 @@ pub fn stage_file(repo: &Repository, repo_path: &str, file_path: &str) -> Result
             .add_path(Path::new(file_path))
             .map_err(AppError::Git)?;
     } else {
-        // Fichier supprimé : le retirer de l'index
+        // Deleted file: drop it from the index
         index
             .remove_path(Path::new(file_path))
             .map_err(AppError::Git)?;
@@ -52,7 +52,7 @@ pub fn unstage_file(repo: &Repository, file_path: &str) -> Result<(), AppError> 
                 .map_err(AppError::Git)
         }
         Err(_) => {
-            // Repo initial sans commits : retirer directement de l'index
+            // Fresh repo with no commits: remove straight from the index
             let mut index = repo.index().map_err(AppError::Git)?;
             index
                 .remove_path(Path::new(file_path))
@@ -83,8 +83,8 @@ pub fn discard_file_changes(
         })
         .unwrap_or(false);
 
-    // Snapshot du contenu actuel (fichier régulier uniquement) avant toute modification,
-    // pour permettre un undo fidèle du discard.
+    // Snapshot the current contents (regular files only) before touching anything, so the
+    // discard can be undone faithfully.
     let full_path = Path::new(repo_path).join(file_path);
     let snapshot_blob_oid = if full_path.is_file() {
         let bytes = std::fs::read(&full_path).map_err(AppError::Io)?;
@@ -139,7 +139,7 @@ pub fn discard_file_changes(
     })
 }
 
-/// Stage tous les fichiers modifiés.
+/// Stages every modified file.
 pub fn stage_all(repo: &Repository) -> Result<(), AppError> {
     let mut index = repo.index().map_err(AppError::Git)?;
 
@@ -149,7 +149,7 @@ pub fn stage_all(repo: &Repository) -> Result<(), AppError> {
     index.write().map_err(AppError::Git)
 }
 
-/// Unstage tous les fichiers.
+/// Unstages every file.
 pub fn unstage_all(repo: &Repository) -> Result<(), AppError> {
     match repo.head() {
         Ok(head_ref) => {
@@ -157,7 +157,7 @@ pub fn unstage_all(repo: &Repository) -> Result<(), AppError> {
             let head_tree = head_commit.tree().map_err(AppError::Git)?;
             let index = repo.index().map_err(AppError::Git)?;
 
-            // Collecter tous les chemins stagés
+            // Collect every staged path
             let diff = repo
                 .diff_tree_to_index(Some(&head_tree), Some(&index), None)
                 .map_err(AppError::Git)?;
@@ -192,7 +192,7 @@ pub fn unstage_all(repo: &Repository) -> Result<(), AppError> {
             Ok(())
         }
         Err(_) => {
-            // Repo initial sans commits : vider l'index
+            // Fresh repo with no commits: clear the index
             let mut index = repo.index().map_err(AppError::Git)?;
             index.clear().map_err(AppError::Git)?;
             index.write().map_err(AppError::Git)
@@ -220,8 +220,8 @@ fn read_merge_parents(repo: &Repository) -> Vec<git2::Oid> {
         .collect()
 }
 
-/// Crée un commit avec les fichiers staged (ou amend un commit existant). Retourne l'OID
-/// complet et le short OID.
+/// Creates a commit from the staged files (or amends an existing one). Returns the full OID
+/// and the short OID.
 ///
 /// A plain (non-amend) commit finishes an interrupted merge when there is one: it takes `MERGE_HEAD`
 /// as additional parents and then clears the merge state, which is what `git commit` itself does.
@@ -288,18 +288,18 @@ pub fn create_commit(
     let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
 
     let oid = if amend && amend_oid.is_some() {
-        // Amend d'un commit spécifique - crée un nouveau commit avec le nouveau message
+        // Amending a specific commit: build a new commit carrying the new message
         let target_oid = git2::Oid::from_str(amend_oid.unwrap()).map_err(AppError::Git)?;
         let target_commit = repo.find_commit(target_oid).map_err(AppError::Git)?;
 
-        // Créer un nouveau commit avec le nouveau message et les mêmes parents
+        // Create a new commit with the new message and the same parents
         let parents: Vec<git2::Commit> = target_commit.parents().collect();
         let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
 
         repo.commit(None, &sig, &sig, message, &tree, &parent_refs)
             .map_err(AppError::Git)?
     } else if amend {
-        // Amend du HEAD (comportement existant)
+        // Amending HEAD (existing behaviour)
         let head = repo.head().map_err(AppError::Git)?;
         let head_oid = head
             .target()

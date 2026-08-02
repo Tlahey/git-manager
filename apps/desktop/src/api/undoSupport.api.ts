@@ -1,9 +1,9 @@
 import { unpinObject, objectsExist } from '../lib/tauri'
 
 /**
- * Wrappers dédiés pour `stores/undoHistory.store.ts`. Séparés de `git.api.ts`
- * pour éviter un import circulaire : `git.api.ts` importe déjà
- * `useUndoHistoryStore` depuis ce store (pour `pushAction`/`clearRedo`).
+ * Wrappers dedicated to `stores/undoHistory.store.ts`. Kept out of `git.api.ts` to avoid a
+ * circular import: `git.api.ts` already imports `useUndoHistoryStore` from that store (for
+ * `pushAction`/`clearRedo`).
  */
 
 export async function apiUnpinObject(path: string, refName: string) {

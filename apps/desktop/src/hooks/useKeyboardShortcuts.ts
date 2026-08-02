@@ -139,8 +139,8 @@ export function useKeyboardShortcuts({
         }
       }
 
-      // Undo / Redo : Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z — vérifié indépendamment de `isMod`
-      // ci-dessous (qui inclut Alt) pour ne pas déclencher sur Alt+Z.
+      // Undo / Redo: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z — checked independently of `isMod` below
+      // (which includes Alt) so Alt+Z doesn't trigger them.
       const isCtrlOrCmd = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
       if (isCtrlOrCmd && !e.altKey && e.key.toLowerCase() === 'z' && activeRepo) {
         e.preventDefault()

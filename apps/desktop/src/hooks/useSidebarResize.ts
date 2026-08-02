@@ -6,7 +6,7 @@ const DEFAULT_WIDTH = 240
 const MIN_WIDTH = 160
 const MAX_WIDTH = 480
 
-/** Largeur du rail (mode collapsed affichant uniquement les icônes). */
+/** Rail width (collapsed mode, showing the icons only). */
 export const RAIL_WIDTH = 48
 
 export function useSidebarResize() {
@@ -77,7 +77,7 @@ export function useSidebarResize() {
     }
   }, [width])
 
-  // Persistance état collapsed
+  // Persist the collapsed state
   useEffect(() => {
     try {
       localStorage.setItem(COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0')

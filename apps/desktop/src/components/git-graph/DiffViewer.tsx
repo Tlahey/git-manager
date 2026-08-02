@@ -55,7 +55,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
         <div className="overflow-x-auto">
           {file.hunks.map((hunk, hi) => (
             <div key={hi}>
-              {/* En-tête du hunk */}
+              {/* Hunk header */}
               <div className="bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400/80">
                 {hunk.header}
               </div>
@@ -69,7 +69,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
                     line.origin === '-' && 'bg-red-500/10'
                   )}
                 >
-                  {/* Numéros de lignes */}
+                  {/* Line numbers */}
                   <span className="w-10 shrink-0 select-none border-r border-border pr-2 text-right text-muted-foreground/50">
                     {line.oldLineno ?? ''}
                   </span>

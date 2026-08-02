@@ -2,22 +2,21 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface HoverExpandLabelProps {
-  /** Texte affiché (tronqué normalement, complet au survol s'il déborde). */
+  /** The text shown (truncated normally, full on hover when it overflows). */
   children: React.ReactNode
-  /** Classes appliquées au texte (tronqué ET overlay) pour rester cohérent. */
+  /** Classes applied to the text (BOTH the truncated one and the overlay) so they stay in sync. */
   className?: string
-  /** Classe supplémentaire sur le conteneur. */
+  /** Extra class on the container. */
   containerClassName?: string
 }
 
 /**
- * Affiche un texte tronqué qui révèle son contenu complet au survol **uniquement
- * s'il déborde réellement** (mesure `scrollWidth > clientWidth`).
+ * Shows truncated text that reveals its full contents on hover, **only when it actually
+ * overflows** (measured as `scrollWidth > clientWidth`).
  *
- * L'overlay complet est rendu en `position: fixed` via un portail au niveau du
- * `body`, positionné à partir du `getBoundingClientRect` du texte tronqué : il
- * échappe ainsi à tout `overflow: hidden` de la sidebar / ScrollArea et ne peut
- * pas être clippé ni « perdre » son état d'affichage.
+ * The full overlay is rendered `position: fixed` through a portal on `body`, positioned from the
+ * truncated text's `getBoundingClientRect`: that way it escapes any `overflow: hidden` on the
+ * sidebar / ScrollArea, and can neither be clipped nor "lose" its displayed state.
  */
 export function HoverExpandLabel({
   children,
@@ -29,7 +28,7 @@ export function HoverExpandLabel({
     top: number
     left: number
     height: number
-    /** Police calculée du texte de la ligne (le portail n'hérite pas du CSS). */
+    /** Computed font of the row's text (the portal doesn't inherit the CSS). */
     fontSize: string
     fontFamily: string
     fontWeight: string
@@ -38,11 +37,10 @@ export function HoverExpandLabel({
     lineHeight: string
   } | null>(null)
 
-  // Snapshot (position + police) du texte tronqué, afin que l'overlay (rendu dans
-  // un portail sur body) ait une police pixel-identique à la ligne. On lit les
-  // propriétés une par une car le raccourci `font` renvoie souvent "" sous WebKit.
-  // La hauteur/position verticale suivent la ligne entière (wrapper [data-index]
-  // du virtualizer) pour matcher la hauteur de l'élément sélectionné.
+  // Snapshot (position + font) of the truncated text, so the overlay — rendered in a portal on
+  // body — gets a pixel-identical font to the row. The properties are read one by one because the
+  // `font` shorthand often returns "" under WebKit. The height/vertical position follow the whole
+  // row (the virtualizer's [data-index] wrapper) to match the selected element's height.
   const measure = () => {
     const el = textRef.current
     if (!el) return null
@@ -66,14 +64,14 @@ export function HoverExpandLabel({
   const showOverlay = () => {
     const el = textRef.current
     if (!el) return
-    // Pas de débordement → pas d'overlay.
+    // No overflow → no overlay.
     if (el.scrollWidth <= el.clientWidth + 1) return
     setOverlay(measure())
   }
 
   const hideOverlay = () => setOverlay(null)
 
-  // Repositionne / masque l'overlay si la fenêtre bouge pendant le survol.
+  // Reposition / hide the overlay if the window moves while hovering.
   useLayoutEffect(() => {
     if (!overlay) return
     const update = () => setOverlay(measure())
@@ -97,12 +95,11 @@ export function HoverExpandLabel({
 
       {overlay &&
         createPortal(
-          // Base opaque = fond de la sidebar (bg-sidebar) pour masquer le contenu
-          // dessous, puis la couleur de hover par défaut (bg-sidebar-accent/60 +
-          // text-sidebar-foreground) par-dessus → même ligne, même design. La police
-          // est copiée du texte (le portail n'hérite pas du CSS → sinon taille du
-          // body, trop grande). La hauteur matche la ligne entière (élément
-          // sélectionné).
+          // Opaque base = the sidebar's own background (bg-sidebar) to hide the content
+          // underneath, then the default hover colour (bg-sidebar-accent/60 +
+          // text-sidebar-foreground) on top → same row, same design. The font is copied from the
+          // text (the portal doesn't inherit the CSS → otherwise it would take the body's, far too
+          // large). The height matches the whole row (the selected element).
           <span
             className="pointer-events-none fixed z-overlay flex items-center whitespace-nowrap bg-sidebar text-sidebar-foreground"
             style={{

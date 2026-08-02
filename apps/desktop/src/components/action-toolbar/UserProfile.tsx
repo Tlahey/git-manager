@@ -20,7 +20,7 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-/** Avatar miniature du compte Git/GitHub lié + menu compte. */
+/** Thumbnail avatar of the linked Git/GitHub account, plus the account menu. */
 export function UserProfile({ onOpenSettings }: UserProfileProps) {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()

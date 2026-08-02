@@ -23,7 +23,7 @@ interface CloneRepoDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-/** Dérive le nom de dossier depuis une URL Git (https ou ssh). */
+/** Derives the folder name from a Git URL (https or ssh). */
 function deriveFolderName(url: string): string {
   const cleaned = url
     .trim()

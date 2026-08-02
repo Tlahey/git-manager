@@ -11,7 +11,7 @@ function filePathFromPayload(payload: unknown): string {
 
 /**
  * Unlocks when `endEvent` fires for the same file that a prior `startEvent` recorded — e.g.
- * `stage_unstage` ("Indécis Indiscutable"): stage a file, then unstage that same file.
+ * `stage_unstage` ("Undeniably Indecisive"): stage a file, then unstage that same file.
  *
  * State (`ctx.pairTracking`) is keyed per achievement id, so several independent pair
  * achievements can coexist without sharing a tracking set. `track()` records `startEvent`

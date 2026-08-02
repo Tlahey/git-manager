@@ -605,8 +605,8 @@ export function useGitGraphActions({
         void checkoutBranchWithStashPrompt(repoPath, target)
       },
       onOpenWorktreeFrom: (ref) => void handleCreateWorktree(ref.commitOid),
-      // PR-create flow prefilled with head = current branch, base = the remote branch (sans
-      // remote prefix) — the flow itself handles pushing.
+      // PR-create flow prefilled with head = current branch, base = the remote branch (without
+      // its remote prefix) — the flow itself handles pushing.
       onStartPr: (ref) => {
         const base =
           ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName

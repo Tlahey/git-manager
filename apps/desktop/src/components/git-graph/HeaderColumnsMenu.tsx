@@ -4,7 +4,7 @@ import { ContextMenuContent, ContextMenuItem, ContextMenuLabel } from '@git-mana
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { COLUMN_DEFS, COLUMN_ORDER } from './columns.config'
 
-/** Menu (clic droit sur l'en-tête) pour afficher / masquer les colonnes. */
+/** Right-click menu on the header: show / hide columns. */
 export function HeaderColumnsMenu() {
   const { t } = useTranslation('git')
   const columns = useGitGraphColumnsStore((s) => s.columns)
@@ -17,7 +17,7 @@ export function HeaderColumnsMenu() {
       <ContextMenuLabel>{t('gitTree.columns.menuTitle')}</ContextMenuLabel>
       {COLUMN_ORDER.map((key) => {
         const isVisible = columns[key].visible
-        // Empêche de masquer la dernière colonne visible.
+        // Prevent hiding the last visible column.
         const disabled = isVisible && visibleCount === 1
         return (
           <ContextMenuItem

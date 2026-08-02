@@ -28,8 +28,8 @@ interface UndoHistoryState {
   canRedo: (repoPath: string) => boolean
   peekUndoLabel: (repoPath: string) => UndoLabel | null
   peekRedoLabel: (repoPath: string) => UndoLabel | null
-  /** Vérifie que les objets Git référencés par la pile existent toujours (démarrage / réouverture
-   * d'un dépôt) et retire silencieusement les entrées devenues invalides. */
+  /** Checks that the Git objects the stack references still exist (startup / reopening a repo)
+   * and silently drops the entries that have become invalid. */
   validateAndPrune: (repoPath: string) => Promise<void>
 }
 
@@ -164,7 +164,7 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
         try {
           existsList = await apiObjectsExist(repoPath, allOids)
         } catch {
-          // Dépôt introuvable ou erreur IPC transitoire : ne pas jeter l'historique sur un doute.
+          // Repo not found, or a transient IPC error: don't throw the history away on a doubt.
           return
         }
         const validOids = new Set(allOids.filter((_, i) => existsList[i]))

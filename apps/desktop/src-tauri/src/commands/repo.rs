@@ -530,7 +530,7 @@ pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
 
     let mut commands = Vec::new();
 
-    // Lecteur d'historique robuste acceptant le non-UTF-8
+    // Lenient history reader: tolerates non-UTF-8
     let mut read_history = |path: std::path::PathBuf| {
         if path.exists() {
             if let Ok(mut file) = File::open(&path) {

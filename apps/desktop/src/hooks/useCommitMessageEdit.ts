@@ -13,9 +13,9 @@ interface UseCommitMessageEditParams {
 }
 
 /**
- * Édition du message de commit (amend) ou de stash : ouverture via l'état
- * global `editingOid`, reset des champs au changement de commit sélectionné,
- * sauvegarde (amend commit ou renommage de stash selon le cas), copie du SHA.
+ * Editing a commit message (amend) or a stash's: opened through the global `editingOid` state,
+ * fields reset whenever the selected commit changes, saving (amending the commit or renaming the
+ * stash, whichever applies), and copying the SHA.
  */
 export function useCommitMessageEdit({
   commit,
