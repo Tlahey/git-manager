@@ -240,3 +240,19 @@ La méthode décrite en §7-11 (extraction mappée aux tests existants, réutili
 - **[CLAUDE.md](CLAUDE.md)** : pointeur étendu vers R3, + une nouvelle règle dans "Frontend organization rules" sur le pattern `*.config.ts` (référence : `columns.config.ts`).
 
 J'en ai profité pour corriger au passage une référence obsolète dans le skill : son étape 4 pointait vers `docs/architecture/2026-07-architecture-refactor-tracking.md` pour y logger les nouvelles violations trouvées, alors que ce fichier affiche lui-même en en-tête "Finished, and not to be updated" depuis juillet 2026 — exactement le genre d'erreur (une instruction qui pointe vers un document gelé) que cette mise à jour vise à éviter de reproduire. Ce document (`AUDIT.md`) reste un artefact ponctuel de cet audit, pas un document vivant à maintenir — c'est le skill et CLAUDE.md qui portent la règle dans la durée.
+
+## 15. Bilan d'exécution (2026-08-02)
+
+Les 9 étapes du §10 sont faites, un commit par étape, avec `typecheck` + `lint` + la suite de tests complète après chacune. Trois écarts par rapport au plan, tous dans le sens de l'ajout :
+
+- **`api/git/git-rollback.api.ts` n'était pas prévu.** Le découpage en 9 domaines du §8.2 avait oublié `apiRevertCommit`/`apiResetToCommit`, qui ne rentrent proprement dans aucun des 9 — ils reflètent le service Rust `git_rollback.rs`, qui est séparé pour la même raison. Dixième fichier, pas neuvième.
+- **L'étape 9, marquée optionnelle, a été faite.** Les commentaires de `columns.config.ts` sont traduits, et les 3 tables bisect de `GraphRow.tsx` fusionnées en une seule table `bisectRow.config.ts` — avec le test de rendu du marqueur bisect qui n'existait pas, ajouté *avant* le déplacement conformément à R3.
+- **Une duplication non trouvée par l'audit** l'a été en traitant l'angle mort du §12. Le prédicat « cette ligne n'est pas un vrai commit » (`WIP` / `WIP:<path>` / `CONFLICT`) était réécrit à 11 endroits sous trois formes différentes, dont deux qui omettaient le cas `WIP:`. Centralisé dans `syntheticRows.ts`. C'est le type de duplication que le §2 aurait dû lever : elle est invisible à un `grep` sur un nom de fonction, puisque chaque site réécrivait la condition à la main.
+
+Restent volontairement non traités, et non bloquants :
+
+- `handleBisectPick` et le calcul `wipAgentActivity`/`agentActivityPaths` de `GitGraph.tsx` (angle mort du §12) restent en place. `handleBisectPick` se réduit désormais à un appel de `isSyntheticRow` + un appel de store, donc il n'y a plus grand-chose à extraire ; les deux `useMemo` d'activité agent restent un candidat de hook si le fichier est rouvert.
+- L'idée `CENTER_VIEW_PRIORITY`/`SIDE_PANEL_PRIORITY` évoquée en §8.1 n'a jamais été planifiée en tâche et reste disponible.
+- `useGitGraphActions.ts` est passé de 719 à ~775 lignes en absorbant les deux ponts (étape 5). C'est une seule responsabilité cohérente, mais `openMenuAt` y fait à lui seul ~400 lignes et n'a jamais été examiné comme candidat à un découpage par catégorie d'action.
+- ~30 fichiers portent encore des commentaires en français hors du périmètre de cet audit (`GraphHeader.tsx`, `HoverExpandLabel.tsx`, `useGitGraphNodes.ts`… en tête). C'est un chantier à part entière, pas un reliquat de celui-ci.
+- `packages/components`'s `InnerTab` n'a plus aucun consommateur applicatif depuis le retrait des onglets de vue. Il est exporté et testé, donc c'est de la surface de package, pas du code mort au sens strict — à supprimer seulement sur décision explicite.
