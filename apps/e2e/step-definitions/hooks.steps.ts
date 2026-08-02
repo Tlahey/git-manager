@@ -28,7 +28,13 @@ Before(async () => {
   // Clears the volatile persisted slices (rewards, notifications, undo history, Launchpad
   // filters, AI caches) and seeds the settings in the same round trip — see the helper's own note on
   // why this must not become a second command.
-  await seedSettingsFromCleanState({ appearance, ai })
+  // English, suite-wide. The app's factory default is `fr` (settings.store.ts), and 44 of the 51
+  // feature files already set it per-scenario — the other seven assert English copy while never
+  // asking for it, and only passed because a developer's install happened to be in English. Once
+  // the run stopped inheriting that install, rewards.feature failed on a trophy toast reading
+  // "Premier Pas". No scenario relies on the French default; the ones that want another language
+  // still set it themselves.
+  await seedSettingsFromCleanState({ appearance, ai, language: 'en' })
   // AND forced onto the live store directly: the suite shares one app window across every
   // feature, and a scenario whose own Given steps never navigate (e.g. "the git-manager
   // application is running", used by most Settings scenarios) never rehydrates from localStorage

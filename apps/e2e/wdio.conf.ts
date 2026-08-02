@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Services } from '@wdio/types'
 import { startFakeAiServer, SUITE_WIDE_FAKE_AI_PORT, type FakeAiServerHandle } from './support/fakeAiServer.ts'
+import { useIsolatedHome, isolatedAppBinary } from './support/isolatedAppState.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -10,13 +11,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // e2e-only capability — see apps/desktop/src-tauri/Cargo.toml and tauri.e2e.conf.json). Never
 // the same binary as a normal `pnpm dev`/`pnpm build` output. The repo root Cargo.toml defines
 // the workspace, so cargo puts `target/` there rather than under src-tauri/.
-const appBinaryPath = join(__dirname, '../../target/debug/git-manager')
+const builtBinaryPath = join(__dirname, '../../target/debug/git-manager')
 
-if (!existsSync(appBinaryPath)) {
+if (!existsSync(builtBinaryPath)) {
   throw new Error(
-    `Tauri e2e binary not found at ${appBinaryPath}. Run "pnpm --filter @git-manager/desktop build:e2e" first.`
+    `Tauri e2e binary not found at ${builtBinaryPath}. Run "pnpm --filter @git-manager/desktop build:e2e" first.`
   )
 }
+
+// Run a differently-named copy: that is what keeps the suite out of the developer's real
+// localStorage (theme, saved repos, rewards). See support/isolatedAppState.ts.
+const appBinaryPath = isolatedAppBinary(builtBinaryPath)
 
 const driverProvider = 'embedded'
 
@@ -59,6 +64,10 @@ let suiteWideAiServer: FakeAiServerHandle | undefined
 export const config: WebdriverIO.Config = {
   runner: 'local',
   onPrepare: async function () {
+    // Before anything can touch the app's storage: own $HOME for the Rust-side state (activity log,
+    // AI logs, summaries, user themes). Pairs with the renamed binary above, which covers
+    // localStorage. See support/isolatedAppState.ts.
+    useIsolatedHome()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })
   },
   onComplete: async function () {
