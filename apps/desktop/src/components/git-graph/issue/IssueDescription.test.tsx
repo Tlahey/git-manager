@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('../../../hooks/useIssueEdit', () => ({ useIssueEdit: vi.fn() }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
 
 import { useIssueEdit } from '../../../hooks/useIssueEdit'
 import { IssueDescription } from './IssueDescription'
@@ -71,5 +74,24 @@ describe('IssueDescription', () => {
     await user.click(box)
 
     expect(update).not.toHaveBeenCalled()
+  })
+
+  it('opens the issue on GitHub when an image is dropped on the editor, since uploads have no API', async () => {
+    const user = userEvent.setup()
+    render(
+      <IssueDescription
+        repoPath="org/repo"
+        issueNumber={7}
+        body="old"
+        issueUrl="https://github.com/org/repo/issues/7"
+      />
+    )
+    await user.click(screen.getByTestId('issue-description-edit'))
+
+    fireEvent.drop(screen.getByTestId('issue-description-input'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/org/repo/issues/7')
   })
 })

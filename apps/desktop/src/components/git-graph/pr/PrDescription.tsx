@@ -5,19 +5,24 @@ import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
 import { usePrActions } from '../../../hooks/usePrActions'
 import { useMarkdownTaskToggle } from '../../../hooks/useMarkdownTaskToggle'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 
 interface PrDescriptionProps {
   repoPath: string
   prNumber: number
   body: string
+  /** The PR's GitHub URL, if already known — dropping an image/video onto the editor opens it there
+   * since GitHub has no API to upload the attachment from here. */
+  prUrl?: string
 }
 
 /** The PR description: a caption label with an edit button, rendering the body as markdown and, on
  * edit, an inline textarea saved via `PATCH /pulls/{n}`. Its task-list checkboxes stay clickable
  * while reading — ticking one saves the rewritten body through the same `PATCH`. */
-export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) {
+export function PrDescription({ repoPath, prNumber, body, prUrl }: PrDescriptionProps) {
   const { t } = useTranslation('git')
   const { updatePr, pending } = usePrActions(repoPath, prNumber)
+  const mediaDrop = useGithubMediaDropHandler(prUrl)
   const trimmed = body?.trim() ?? ''
   const [editing, setEditing] = useState(false)
 
@@ -66,6 +71,8 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onDragOver={mediaDrop.onDragOver}
+            onDrop={mediaDrop.onDrop}
             disabled={pending}
             rows={8}
             className="text-xs"

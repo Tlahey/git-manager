@@ -13,6 +13,7 @@ import {
 import { useTranslation } from '@git-manager/i18n'
 import { createIssue } from '../../api/github.api'
 import { useRepoGitHub } from '../../hooks/useRepoGitHub'
+import { useGithubMediaDropHandler } from '../../hooks/useGithubMediaDropHandler'
 
 interface CreateIssueDialogProps {
   repoPath: string
@@ -32,6 +33,8 @@ interface CreateIssueDialogProps {
 export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: CreateIssueDialogProps) {
   const { t } = useTranslation('git')
   const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const newIssueUrl = ownerRepo ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/issues/new` : null
+  const mediaDrop = useGithubMediaDropHandler(newIssueUrl)
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -112,6 +115,8 @@ export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: Create
               id="issue-create-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onDragOver={mediaDrop.onDragOver}
+              onDrop={mediaDrop.onDrop}
               placeholder={t('sidebar.createIssue.bodyPlaceholder')}
               data-testid="issue-create-body-input"
               disabled={!ownerRepo}

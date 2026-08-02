@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
 
 const { submitReviewMock } = vi.hoisted(() => ({ submitReviewMock: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
@@ -16,6 +12,9 @@ vi.mock('../../../hooks/usePrActions', () => ({
     error: null,
   }),
 }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
 
 import { PrReviewComposer } from './PrReviewComposer'
 
@@ -45,5 +44,15 @@ describe('PrReviewComposer', () => {
     render(<PrReviewComposer repoPath="/repo" prNumber={7} />)
     await user.click(screen.getByTestId('pr-review-comment'))
     expect(submitReviewMock).toHaveBeenCalledWith({ event: 'COMMENT', body: undefined })
+  })
+
+  it('opens the PR on GitHub when an image is dropped, since uploads have no API', () => {
+    render(<PrReviewComposer repoPath="/repo" prNumber={7} prUrl="https://github.com/o/r/pull/7" />)
+
+    fireEvent.drop(screen.getByTestId('pr-review-input'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/o/r/pull/7')
   })
 })

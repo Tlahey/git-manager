@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateIssueDialog } from './CreateIssueDialog'
 
@@ -10,11 +10,15 @@ const { createIssue, useRepoGitHub } = vi.hoisted(() => ({
 vi.mock('../../api/github.api', () => ({ createIssue }))
 vi.mock('../../hooks/useRepoGitHub', () => ({ useRepoGitHub }))
 
+const openUrl = vi.fn()
+vi.mock('../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
+
 const OWNER_REPO = { owner: 'owner', repo: 'repo' }
 
 beforeEach(() => {
   createIssue.mockReset().mockResolvedValue({ number: 99 })
   useRepoGitHub.mockReturnValue({ ownerRepo: OWNER_REPO, token: 'tok' })
+  openUrl.mockReset()
 })
 
 function renderDialog(props: Partial<React.ComponentProps<typeof CreateIssueDialog>> = {}) {
@@ -54,6 +58,16 @@ describe('CreateIssueDialog — form', () => {
     renderDialog()
     await user.type(screen.getByTestId('issue-create-title-input'), '   ')
     expect(screen.getByTestId('issue-create-confirm-button')).toBeDisabled()
+  })
+
+  it('opens the new-issue page on GitHub when an image is dropped, since uploads have no API', () => {
+    renderDialog()
+
+    fireEvent.drop(screen.getByTestId('issue-create-body-input'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/owner/repo/issues/new')
   })
 })
 

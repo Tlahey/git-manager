@@ -7,7 +7,9 @@ import { IssueTitle } from './IssueTitle'
 import { IssueDescription } from './IssueDescription'
 import { IssueMetaSidebar } from './IssueMetaSidebar'
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
+import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { openUrl } from '../../../app/pull-requests/utils'
+import { resolveGithubUrl } from '../../../lib/githubUrls'
 import type { MockIssue } from '../../../app/pull-requests/types'
 
 interface IssueDetailCenterProps {
@@ -33,12 +35,10 @@ export function IssueDetailCenter({
 }: IssueDetailCenterProps) {
   const { t } = useTranslation('git')
   const { issue: detail, isLoading } = useIssueDetail(repoPath, issueNumber)
+  const { ownerRepo } = useRepoGitHub(repoPath)
   const isOpen = detail?.state === 'open'
 
-  const issueUrl =
-    issue.url ||
-    detail?.html_url ||
-    (repoPath.includes('/') ? `https://github.com/${repoPath}/issues/${issueNumber}` : undefined)
+  const issueUrl = resolveGithubUrl('issues', ownerRepo, issueNumber, issue.url, detail?.html_url)
 
   return (
     <div data-testid="issue-detail-center" className="flex h-full flex-col overflow-hidden">
@@ -98,10 +98,11 @@ export function IssueDetailCenter({
               repoPath={repoPath}
               issueNumber={issueNumber}
               body={detail.body ?? ''}
+              issueUrl={issueUrl}
             />
 
             <PrComments repoPath={repoPath} prNumber={issueNumber} />
-            <PrCommentBox repoPath={repoPath} prNumber={issueNumber} />
+            <PrCommentBox repoPath={repoPath} prNumber={issueNumber} targetUrl={issueUrl} />
           </div>
 
           <div className="w-56 shrink-0 overflow-y-auto border-l border-border">

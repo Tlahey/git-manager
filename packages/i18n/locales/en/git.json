@@ -1351,5 +1351,7 @@
   "health.updates.updateInRangeTooltip": "Update to {{version}} — the newest your declared range allows",
   "health.updates.updateLatestTooltip": "Update to {{version}} — the newest published version",
   "health.updates.updateLatestMajorTooltip": "Update to {{version}} — crosses a major version, you'll be asked to confirm",
-  "health.changelog.showTooltip": "Read the release notes for {{from}} → {{to}}"
+  "health.changelog.showTooltip": "Read the release notes for {{from}} → {{to}}",
+  "mediaDrop.openedBrowser": "GitHub doesn't support uploading images or videos from here — opening your browser so you can drop it there.",
+  "mediaDrop.noTarget": "GitHub doesn't support uploading images or videos from here. You'll be able to add it directly on GitHub once this is created."
 }

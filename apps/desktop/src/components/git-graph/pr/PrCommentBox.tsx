@@ -2,16 +2,21 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner, Textarea } from '@git-manager/ui'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 
 interface PrCommentBoxProps {
   repoPath: string
   prNumber: number
+  /** The PR's or issue's GitHub URL, if already known — this box is reused for both. Dropping an
+   * image/video opens it there since GitHub has no API to upload the attachment from here. */
+  targetUrl?: string
 }
 
 /** A plain comment box (issue-style comment on the PR), separate from the formal review composer. */
-export function PrCommentBox({ repoPath, prNumber }: PrCommentBoxProps) {
+export function PrCommentBox({ repoPath, prNumber, targetUrl }: PrCommentBoxProps) {
   const { t } = useTranslation('git')
   const { comment, pending } = usePrActions(repoPath, prNumber)
+  const mediaDrop = useGithubMediaDropHandler(targetUrl)
   const [body, setBody] = useState('')
 
   async function submit() {
@@ -25,6 +30,8 @@ export function PrCommentBox({ repoPath, prNumber }: PrCommentBoxProps) {
       <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        onDragOver={mediaDrop.onDragOver}
+        onDrop={mediaDrop.onDrop}
         placeholder={t('pr.comment.placeholder')}
         rows={3}
         className="text-xs"

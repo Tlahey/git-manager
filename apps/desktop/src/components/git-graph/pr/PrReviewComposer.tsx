@@ -4,16 +4,21 @@ import { Button, Spinner, Textarea } from '@git-manager/ui'
 import { Check, X, MessageSquare } from 'lucide-react'
 import type { PrReviewEvent } from '../../../api/github.api'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 
 interface PrReviewComposerProps {
   repoPath: string
   prNumber: number
+  /** The PR's GitHub URL, if already known — dropping an image/video onto the editor opens it there
+   * since GitHub has no API to upload the attachment from here. */
+  prUrl?: string
 }
 
 /** GitHub-style "Submit a review": a body plus Approve / Request changes / Comment actions. */
-export function PrReviewComposer({ repoPath, prNumber }: PrReviewComposerProps) {
+export function PrReviewComposer({ repoPath, prNumber, prUrl }: PrReviewComposerProps) {
   const { t } = useTranslation('git')
   const { submitReview, pending } = usePrActions(repoPath, prNumber)
+  const mediaDrop = useGithubMediaDropHandler(prUrl)
   const [body, setBody] = useState('')
 
   async function submit(event: PrReviewEvent) {
@@ -27,6 +32,8 @@ export function PrReviewComposer({ repoPath, prNumber }: PrReviewComposerProps) 
       <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        onDragOver={mediaDrop.onDragOver}
+        onDrop={mediaDrop.onDrop}
         placeholder={t('pr.review.bodyPlaceholder')}
         rows={3}
         className="text-xs"
