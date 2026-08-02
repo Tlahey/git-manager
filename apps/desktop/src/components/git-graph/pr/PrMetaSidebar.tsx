@@ -6,7 +6,9 @@ import type { GhUser } from '../../../api/github.api'
 import { usePrDetail } from '../../../hooks/usePrDetail'
 import { usePrComments } from '../../../hooks/usePrComments'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { useAssignableUsers, useRepoLabels } from '../../../hooks/usePrEditCandidates'
+import { resolveGithubUrl } from '../../../lib/githubUrls'
 import { PrReviewComposer } from './PrReviewComposer'
 import { PrCodeSuggestions } from './PrCodeSuggestions'
 import { PrSidebarSection } from './PrSidebarSection'
@@ -31,8 +33,11 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
   const { comments } = usePrComments(repoPath, prNumber)
   const { requestReviewer, unrequestReviewer, assign, unassign, addLabel, deleteLabel, pending } =
     usePrActions(repoPath, prNumber)
+  const { ownerRepo } = useRepoGitHub(repoPath)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [editing, setEditing] = useState<EditTarget>(null)
+
+  const prUrl = resolveGithubUrl('pull', ownerRepo, prNumber, pr?.html_url)
 
   const usersEnabled = editing === 'reviewers' || editing === 'assignees'
   const { users, isLoading: usersLoading } = useAssignableUsers(repoPath, usersEnabled)
@@ -91,7 +96,7 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
           <MessageSquarePlus className="h-3.5 w-3.5" />
           {t('pr.review.submit')}
         </button>
-        {reviewOpen && <PrReviewComposer repoPath={repoPath} prNumber={prNumber} />}
+        {reviewOpen && <PrReviewComposer repoPath={repoPath} prNumber={prNumber} prUrl={prUrl} />}
       </div>
 
       <PrCodeSuggestions repoPath={repoPath} prNumber={prNumber} />

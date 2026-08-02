@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitBranch } from '@git-manager/git-types'
 
@@ -19,6 +19,14 @@ vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({
   }),
 }))
 vi.mock('../../../hooks/useBranches', () => ({ useBranches: useBranchesMock }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
+const toastInfo = vi.fn()
+vi.mock('@git-manager/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@git-manager/ui')>()
+  return { ...actual, toast: { ...actual.toast, info: (...a: unknown[]) => toastInfo(...a) } }
+})
 
 import { PrCreateForm } from './PrCreateForm'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -166,5 +174,16 @@ describe('PrCreateForm', () => {
     renderForm()
     expect(screen.queryByTestId('pr-create-ai')).not.toBeInTheDocument()
     expect(screen.getByTestId('pr-create-submit')).toBeInTheDocument()
+  })
+
+  it('only explains why on an image drop, without opening a browser (no PR exists yet)', () => {
+    renderForm()
+
+    fireEvent.drop(screen.getByTestId('pr-create-body'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).not.toHaveBeenCalled()
+    expect(toastInfo).toHaveBeenCalled()
   })
 })

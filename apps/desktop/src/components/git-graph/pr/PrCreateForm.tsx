@@ -8,6 +8,7 @@ import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGener
 import { SummaryProgressNotice } from '../components/SummaryProgressNotice'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 import type { CreatePrArgs } from '../../../hooks/usePrCreateFlow'
 
 interface PrCreateFormProps {
@@ -43,6 +44,9 @@ export function PrCreateForm({
   // `aiError` is distinct from the `error` prop: that one is the create-PR failure, this one is the
   // generation failing. Left unread, a stopped provider just cleared the body and said nothing.
   const { generate, status, error: aiError, progress } = usePrDescriptionGeneration(repoPath)
+  // No GitHub URL exists yet — the head branch isn't pushed until submit — so a drop only explains
+  // why it can't attach the file, rather than opening a browser tab that would 404.
+  const mediaDrop = useGithubMediaDropHandler(null)
 
   const localBranches = useMemo(() => branches.filter((b) => !b.isRemote), [branches])
 
@@ -196,6 +200,8 @@ export function PrCreateForm({
             setBody(e.target.value)
             setBodyTouched(true)
           }}
+          onDragOver={mediaDrop.onDragOver}
+          onDrop={mediaDrop.onDrop}
           placeholder={t('pr.publish.descriptionPlaceholder')}
           rows={8}
           className="text-xs"

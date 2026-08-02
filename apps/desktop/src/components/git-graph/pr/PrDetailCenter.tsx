@@ -3,7 +3,9 @@ import { Spinner } from '@git-manager/ui'
 import { ChevronLeft, ExternalLink, GitPullRequest, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
+import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { openUrl } from '../../../app/pull-requests/utils'
+import { resolveGithubUrl } from '../../../lib/githubUrls'
 import { PrTitle } from './PrTitle'
 import { PrMeta } from './PrMeta'
 import { PrDescription } from './PrDescription'
@@ -25,10 +27,11 @@ interface PrDetailCenterProps {
 export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterProps) {
   const { t } = useTranslation('git')
   const { pr, isLoading } = usePrDetail(repoPath, prNumber)
+  const { ownerRepo } = useRepoGitHub(repoPath)
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const togglePrFiles = useRepoUIStore((s) => s.togglePrFiles)
 
-  const prUrl = pr?.html_url ?? (repoPath.includes('/') ? `https://github.com/${repoPath}/pull/${prNumber}` : undefined)
+  const prUrl = resolveGithubUrl('pull', ownerRepo, prNumber, pr?.html_url)
 
   return (
     <div data-testid="pr-detail-center" className="flex h-full flex-col overflow-hidden">
@@ -81,10 +84,10 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           <div className="min-w-0 flex-1 overflow-y-auto">
             <PrTitle repoPath={repoPath} prNumber={prNumber} title={pr.title} />
             <PrMeta pr={pr} />
-            <PrDescription repoPath={repoPath} prNumber={prNumber} body={pr.body ?? ''} />
+            <PrDescription repoPath={repoPath} prNumber={prNumber} body={pr.body ?? ''} prUrl={prUrl} />
             <PrComments repoPath={repoPath} prNumber={prNumber} />
             <PrMergePanel repoPath={repoPath} prNumber={prNumber} pr={pr} />
-            <PrCommentBox repoPath={repoPath} prNumber={prNumber} />
+            <PrCommentBox repoPath={repoPath} prNumber={prNumber} targetUrl={prUrl} />
           </div>
           <div className="w-56 shrink-0 overflow-y-auto border-l border-border">
             <PrMetaSidebar repoPath={repoPath} prNumber={prNumber} />

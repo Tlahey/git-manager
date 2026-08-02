@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
 
 const { commentMock } = vi.hoisted(() => ({ commentMock: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
   usePrActions: () => ({ comment: commentMock, pending: false, merge: vi.fn(), submitReview: vi.fn(), error: null }),
 }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
 
 import { PrCommentBox } from './PrCommentBox'
 
@@ -29,5 +28,15 @@ describe('PrCommentBox', () => {
 
     await user.click(screen.getByTestId('pr-comment-submit'))
     expect(commentMock).toHaveBeenCalledWith('looks good')
+  })
+
+  it('opens the target on GitHub when an image is dropped, since uploads have no API', () => {
+    render(<PrCommentBox repoPath="/repo" prNumber={7} targetUrl="https://github.com/o/r/issues/7" />)
+
+    fireEvent.drop(screen.getByTestId('pr-comment-input'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/o/r/issues/7')
   })
 })

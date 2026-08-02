@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { usePrTemplateMock, generateMock, aiState } = vi.hoisted(() => ({
@@ -17,6 +17,14 @@ vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({
   }),
 }))
 vi.mock('./PrBaseBranchDialog', () => ({ PrBaseBranchDialog: () => <div data-testid="stub-base-dialog" /> }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
+const toastInfo = vi.fn()
+vi.mock('@git-manager/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@git-manager/ui')>()
+  return { ...actual, toast: { ...actual.toast, info: (...a: unknown[]) => toastInfo(...a) } }
+})
 
 import { PrComposerExpander } from './PrComposerExpander'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -125,5 +133,16 @@ describe('PrComposerExpander', () => {
     expect(screen.queryByTestId('pr-composer-ai-fill')).not.toBeInTheDocument()
     // The composer itself still works without AI.
     expect(screen.getByTestId('pr-composer-create')).toBeInTheDocument()
+  })
+
+  it('only explains why on an image drop, without opening a browser (no PR exists yet)', () => {
+    renderComposer()
+
+    fireEvent.drop(screen.getByTestId('pr-composer-body'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).not.toHaveBeenCalled()
+    expect(toastInfo).toHaveBeenCalled()
   })
 })

@@ -5,18 +5,23 @@ import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
 import { useIssueEdit } from '../../../hooks/useIssueEdit'
 import { useMarkdownTaskToggle } from '../../../hooks/useMarkdownTaskToggle'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 
 interface IssueDescriptionProps {
   repoPath: string
   issueNumber: number
   body: string
+  /** The issue's GitHub URL, if already known — dropping an image/video onto the editor opens it
+   * there since GitHub has no API to upload the attachment from here. */
+  issueUrl?: string
 }
 
 /** The issue description: markdown body with an edit button that swaps in an inline textarea, saved
  * via `PATCH /issues/{n}`. Mirrors {@link PrDescription}. */
-export function IssueDescription({ repoPath, issueNumber, body }: IssueDescriptionProps) {
+export function IssueDescription({ repoPath, issueNumber, body, issueUrl }: IssueDescriptionProps) {
   const { t } = useTranslation('git')
   const { update, pending, canEdit } = useIssueEdit(repoPath, issueNumber)
+  const mediaDrop = useGithubMediaDropHandler(issueUrl)
   const trimmed = body?.trim() ?? ''
   const [editing, setEditing] = useState(false)
 
@@ -65,6 +70,8 @@ export function IssueDescription({ repoPath, issueNumber, body }: IssueDescripti
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onDragOver={mediaDrop.onDragOver}
+            onDrop={mediaDrop.onDrop}
             disabled={pending}
             rows={8}
             className="text-xs"

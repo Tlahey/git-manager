@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { updatePr } = vi.hoisted(() => ({ updatePr: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
   usePrActions: () => ({ updatePr, pending: false }),
 }))
+
+const openUrl = vi.fn()
+vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
 
 import { PrDescription } from './PrDescription'
 
@@ -75,5 +78,17 @@ describe('PrDescription', () => {
 
     await waitFor(() => expect(screen.getByRole('checkbox')).not.toBeChecked())
     expect(screen.getByRole('checkbox')).toBeEnabled()
+  })
+
+  it('opens the PR on GitHub when an image is dropped on the editor, since uploads have no API', async () => {
+    const user = userEvent.setup()
+    render(<PrDescription repoPath="/repo" prNumber={1} body="old body" prUrl="https://github.com/o/r/pull/1" />)
+    await user.click(screen.getByTestId('pr-description-edit'))
+
+    fireEvent.drop(screen.getByTestId('pr-description-input'), {
+      dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,
+    })
+
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/o/r/pull/1')
   })
 })

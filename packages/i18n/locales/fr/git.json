@@ -1351,5 +1351,7 @@
   "health.updates.updateInRangeTooltip": "Passer en {{version}} — la version la plus récente que votre plage autorise",
   "health.updates.updateLatestTooltip": "Passer en {{version}} — la dernière version publiée",
   "health.updates.updateLatestMajorTooltip": "Passer en {{version}} — franchit une version majeure, une confirmation sera demandée",
-  "health.changelog.showTooltip": "Lire les notes de version pour {{from}} → {{to}}"
+  "health.changelog.showTooltip": "Lire les notes de version pour {{from}} → {{to}}",
+  "mediaDrop.openedBrowser": "GitHub ne permet pas d'envoyer des images ou vidéos depuis l'application — ouverture de votre navigateur pour pouvoir la déposer directement là-bas.",
+  "mediaDrop.noTarget": "GitHub ne permet pas d'envoyer des images ou vidéos depuis l'application. Vous pourrez l'ajouter directement sur GitHub une fois créé."
 }
