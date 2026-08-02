@@ -231,13 +231,13 @@ describe('RewardsTab — achievement card content', () => {
     useGameStore.setState({
       achievements: [
         achievement({ id: 'commit_1', rewardIsCosmetic: true, unlocked: false }),
-        achievement({ id: 'terminal_status', unlocked: false }),
+        achievement({ id: 'terminal_diff', unlocked: false }),
       ],
     })
     render(<RewardsTab />)
     const cosmeticCard = screen.getByTestId('achievement-card-commit_1')
     expect(within(cosmeticCard).getByText('Reward: ???')).toBeInTheDocument()
-    const xpCard = screen.getByTestId('achievement-card-terminal_status')
+    const xpCard = screen.getByTestId('achievement-card-terminal_diff')
     expect(within(xpCard).getByText('Reward: XP boost')).toBeInTheDocument()
   })
 

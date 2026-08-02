@@ -225,6 +225,8 @@
   "settings.appearance.theme.ocean": "Océan",
   "settings.appearance.theme.glass": "Glass",
   "settings.appearance.theme.custom": "Personnalisé",
+  "settings.appearance.theme.locked": "Verrouillé",
+  "settings.appearance.theme.unlockHint": "Se débloque avec : {{achievement}}",
   "settings.appearance.glassTransparency": "Transparence de la fenêtre",
   "settings.appearance.glassTransparency.opaque": "Opaque",
   "settings.appearance.glassTransparency.clear": "Transparent",

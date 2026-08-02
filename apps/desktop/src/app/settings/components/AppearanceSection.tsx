@@ -1,13 +1,14 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Checkbox, NativeSelect, Slider } from '@git-manager/ui'
-import { Monitor, Check } from 'lucide-react'
+import { Checkbox, NativeSelect, Slider, Tooltip } from '@git-manager/ui'
+import { Monitor, Check, Lock } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
-import { isEffectUnlocked } from '../../../lib/rewards/effects'
+import { findEffectGate, isEffectUnlocked } from '../../../lib/rewards/effects'
+import { achievementI18nKey } from '../../../lib/rewards/achievementI18n'
 
 interface ThemeCardProps {
   id: string
@@ -16,20 +17,34 @@ interface ThemeCardProps {
   isSystem?: boolean
   isActive: boolean
   isCustom?: boolean
+  locked?: boolean
+  lockedLabel?: string
+  unlockHint?: string
   onClick: () => void
 }
 
-function ThemeCard({ id, label, colors, isSystem, isActive, isCustom, onClick }: ThemeCardProps) {
-  return (
+function ThemeCard({
+  id,
+  label,
+  colors,
+  isSystem,
+  isActive,
+  isCustom,
+  locked,
+  lockedLabel,
+  unlockHint,
+  onClick,
+}: ThemeCardProps) {
+  const card = (
     <button
       type="button"
-      onClick={onClick}
+      onClick={locked ? undefined : onClick}
       data-testid={`theme-card-${id}`}
-      className={`relative flex cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
-        isActive
-          ? 'border-primary bg-primary/10 ring-1 ring-primary'
-          : 'border-border hover:border-muted-foreground/40 hover:bg-accent/50'
-      }`}
+      className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
+        locked
+          ? 'cursor-default border-border/60 opacity-60'
+          : 'cursor-pointer border-border hover:border-muted-foreground/40 hover:bg-accent/50'
+      } ${isActive && !locked ? 'border-primary bg-primary/10 ring-1 ring-primary' : ''}`}
     >
       {/* Swatch preview */}
       {isSystem ? (
@@ -38,7 +53,7 @@ function ThemeCard({ id, label, colors, isSystem, isActive, isCustom, onClick }:
         </div>
       ) : colors ? (
         <div
-          className="relative h-12 w-full overflow-hidden rounded-md border border-black/10"
+          className={`relative h-12 w-full overflow-hidden rounded-md border border-black/10 ${locked ? 'grayscale' : ''}`}
           style={{ background: colors.bg }}
         >
           <div className="flex h-full gap-0.5 p-1.5">
@@ -46,6 +61,11 @@ function ThemeCard({ id, label, colors, isSystem, isActive, isCustom, onClick }:
             <div className="flex-1 rounded-sm" style={{ background: colors.accent }} />
             <div className="flex-1 rounded-sm opacity-60" style={{ background: colors.fg }} />
           </div>
+          {locked && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <Lock className="h-4 w-4 text-white" />
+            </div>
+          )}
         </div>
       ) : (
         <div className="relative flex h-12 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
@@ -64,11 +84,24 @@ function ThemeCard({ id, label, colors, isSystem, isActive, isCustom, onClick }:
               custom
             </span>
           )}
-          {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+          {locked && (
+            <span
+              data-testid={`theme-locked-badge-${id}`}
+              className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
+            >
+              <Lock className="h-2.5 w-2.5" />
+              {lockedLabel}
+            </span>
+          )}
+          {isActive && !locked && <Check className="h-3.5 w-3.5 text-primary" />}
         </div>
       </div>
     </button>
   )
+
+  if (!locked || !unlockHint) return card
+
+  return <Tooltip content={unlockHint}>{card}</Tooltip>
 }
 
 export function AppearanceSection() {
@@ -81,11 +114,8 @@ export function AppearanceSection() {
 
   // Which achievement (if any) gates a given theme id is declared in achievements.json
   // (`effects: [{ type: 'theme', id: ... }]`), not hardcoded here — a new locked theme only
-  // needs a JSON entry, see docs/architecture/15-rewards-system-refactor-plan.md.
-  // Locked themes are hidden entirely rather than shown disabled.
-  const unlockedBuiltinThemes = BUILTIN_THEMES.filter((theme) =>
-    isEffectUnlocked(achievements, 'theme', theme.id)
-  )
+  // needs a JSON entry, see docs/architecture/2026-07-rewards-system-refactor.md. Locked themes
+  // are shown (not hidden) with a lock badge, so the picker doubles as a preview of what's earnable.
 
   // SWR hook replaces manual useEffect
   const { data: userThemesData } = useUserThemes()
@@ -126,17 +156,30 @@ export function AppearanceSection() {
           <OverriddenBadge field="theme" />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {unlockedBuiltinThemes.map((theme) => (
-            <ThemeCard
-              key={theme.id}
-              id={theme.id}
-              label={t(theme.labelKey)}
-              colors={theme.colors}
-              isSystem={theme.id === 'system'}
-              isActive={appearance.theme === theme.id}
-              onClick={() => updateAppearance({ theme: theme.id })}
-            />
-          ))}
+          {BUILTIN_THEMES.map((theme) => {
+            const locked = !isEffectUnlocked(achievements, 'theme', theme.id)
+            const gate = locked ? findEffectGate(achievements, 'theme', theme.id) : null
+            return (
+              <ThemeCard
+                key={theme.id}
+                id={theme.id}
+                label={t(theme.labelKey)}
+                colors={theme.colors}
+                isSystem={theme.id === 'system'}
+                isActive={appearance.theme === theme.id}
+                locked={locked}
+                lockedLabel={t('settings.appearance.theme.locked')}
+                unlockHint={
+                  gate
+                    ? t('settings.appearance.theme.unlockHint', {
+                        achievement: t(`launchpad:${achievementI18nKey(gate.id, 'title')}`),
+                      })
+                    : undefined
+                }
+                onClick={() => updateAppearance({ theme: theme.id })}
+              />
+            )
+          })}
           {userThemes.map((theme) => (
             <ThemeCard
               key={theme.id}

@@ -15,7 +15,7 @@ beforeEach(() => {
 
 describe('useSettingsStore', () => {
   it('starts with sensible defaults', () => {
-    expect(useSettingsStore.getState().settings.appearance.theme).toBe('dark')
+    expect(useSettingsStore.getState().settings.appearance.theme).toBe('system')
     expect(useSettingsStore.getState().settings.language).toBe('fr')
   })
 
