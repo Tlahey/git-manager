@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { GitGraphNode, GitGraphEdge } from '@git-manager/git-types'
 import { getWaterlineBucket, bucketLabel } from '../components/git-graph/waterlineBuckets'
 import type { WorktreeWipStatus } from './useWorktreeWipStatuses'
+import { isSyntheticRow, isWipRow } from '../components/git-graph/syntheticRows'
 
 interface WaterlineMark {
   id: string
@@ -23,12 +24,6 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
 /** Stable empty default so an omitted author filter doesn't create a fresh Set every render. */
 const EMPTY_AUTHOR_SET: Set<string> = new Set()
-
-/** True for every row this hook splices into the graph itself (primary WIP, paused rebase, and the
- * per-worktree `WIP:<path>` rows) — i.e. rows that carry no real commit. */
-function isSyntheticRow(oid: string): boolean {
-  return oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')
-}
 
 /** Fixed color for every "// WIP" synthetic row (own repo and other worktrees alike) — always
  * this violet, never the target branch's own color, so a WIP row reads as "not a real commit"
@@ -420,7 +415,7 @@ export function useGitGraphNodes(
     if (!search) return null
     return filteredNodes
       .filter((node) => {
-        if (node.commit.oid === 'WIP' || node.commit.oid.startsWith('WIP:')) {
+        if (isWipRow(node.commit.oid)) {
           return 'wip'.includes(search)
         }
         if (node.commit.oid === 'CONFLICT') {
@@ -453,7 +448,7 @@ export function useGitGraphNodes(
     return filteredNodes
       .filter((node) => {
         const { oid } = node.commit
-        if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return true
+        if (isSyntheticRow(oid)) return true
         return selectedAuthorEmails.has((node.commit.author?.email ?? '').trim().toLowerCase())
       })
       .map((node) => node.commit.oid)

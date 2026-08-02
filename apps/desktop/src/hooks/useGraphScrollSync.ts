@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { toast } from '@git-manager/ui'
 import type { GitGraphNode } from '@git-manager/git-types'
+import { isSyntheticRow } from '../components/git-graph/syntheticRows'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -80,7 +81,7 @@ export function useGraphScrollSync({
   useEffect(() => {
     if (!pendingGraphSelection) return
     const raw = pendingGraphSelection
-    const isSynthetic = raw === 'CONFLICT' || raw === 'WIP' || raw.startsWith('WIP:')
+    const isSynthetic = isSyntheticRow(raw)
     // Wait for the log to load before resolving a real SHA, so a selection dispatched just before
     // the graph mounts isn't dropped against an empty list.
     if (!isSynthetic && filteredNodes.length === 0) return
