@@ -64,6 +64,7 @@ import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { RebaseProgressCenter } from '../rebase-progress/RebaseProgressCenter'
 import { Waterline } from './Waterline'
+import { GraphSidePanel } from './GraphSidePanel'
 import { collectGraphAuthors } from './graphAuthors'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
@@ -77,7 +78,7 @@ interface GitGraphProps {
   /** Solo mode: branch shortNames to isolate — the graph loads only commits reachable from these,
    * taking precedence over the single-branch `branch` filter. */
   soloBranches?: string[]
-  /** Recherche globale issue de la barre d'actions (Partie 2). */
+  /** Global search coming from the action toolbar. */
   searchQuery?: string
   onSelectCommit?: (oid: string) => void
 }
@@ -243,10 +244,10 @@ export function GitGraph({
   // render data for (see repoUI.store.ts's `activeWorkspacePath`).
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
 
-  // ── Colonnes ──────────────────────────────────────────────────────────────
+  // ── Columns ────────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
 
-  // ── Filtre par auteur (colonne « auteur ») ─────────────────────────────────
+  // ── Author filter (the "author" column) ─────────────────────────────────────
   const selectedAuthors = useGraphAuthorFilterStore((s) => s.selected)
   const clearAuthorFilter = useGraphAuthorFilterStore((s) => s.clear)
   // ── Solo mode (branch-visibility filter, driven from the sidebar) ───────────
@@ -826,167 +827,100 @@ export function GitGraph({
       {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
           resolution, or commit details */}
       {bisectActive ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <BisectPanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <BisectPanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : aiPanelTarget ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            {/* Keyed on the subject so switching remounts with that subject's remembered
-                explanation instead of the previous one's. */}
-            {aiPanelTarget.kind === 'search' ? (
-              <AiCommitSearchPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'working' ? (
-              <WorkingExplanationPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'branch' ? (
-              <BranchExplanationPanel
-                key={`branch:${aiPanelTarget.branch}`}
-                repoPath={repoPath}
-                branch={aiPanelTarget.branch}
-                baseRef={aiPanelTarget.baseRef}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'summaries' ? (
-              <DailySummariesPanel
-                repoPath={repoPath}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'reviewWorking' ? (
-              <CodeReviewPanel
-                repoPath={repoPath}
-                target={{ scope: 'working' }}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : aiPanelTarget.kind === 'reviewBranch' ? (
-              <CodeReviewPanel
-                key={`review:${aiPanelTarget.branch}`}
-                repoPath={repoPath}
-                target={{ scope: 'branch', branch: aiPanelTarget.branch }}
-                baseRef={aiPanelTarget.baseRef}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            ) : (
-              <CommitExplanationPanel
-                key={`commit:${aiPanelTarget.oid}`}
-                repoPath={repoPath}
-                commit={aiPanelTarget}
-                onClose={() => setAiPanelTarget(null)}
-              />
-            )}
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          {/* Keyed on the subject so switching remounts with that subject's remembered
+              explanation instead of the previous one's. */}
+          {aiPanelTarget.kind === 'search' ? (
+            <AiCommitSearchPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'working' ? (
+            <WorkingExplanationPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'branch' ? (
+            <BranchExplanationPanel
+              key={`branch:${aiPanelTarget.branch}`}
+              repoPath={repoPath}
+              branch={aiPanelTarget.branch}
+              baseRef={aiPanelTarget.baseRef}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'summaries' ? (
+            <DailySummariesPanel
+              repoPath={repoPath}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'reviewWorking' ? (
+            <CodeReviewPanel
+              repoPath={repoPath}
+              target={{ scope: 'working' }}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : aiPanelTarget.kind === 'reviewBranch' ? (
+            <CodeReviewPanel
+              key={`review:${aiPanelTarget.branch}`}
+              repoPath={repoPath}
+              target={{ scope: 'branch', branch: aiPanelTarget.branch }}
+              baseRef={aiPanelTarget.baseRef}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          ) : (
+            <CommitExplanationPanel
+              key={`commit:${aiPanelTarget.oid}`}
+              repoPath={repoPath}
+              commit={aiPanelTarget}
+              onClose={() => setAiPanelTarget(null)}
+            />
+          )}
+        </GraphSidePanel>
       ) : patchMode ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <PatchWorkspacePanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <PatchWorkspacePanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : healthOpen ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <PackageHealthPanel repoPath={repoPath} />
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          <PackageHealthPanel repoPath={repoPath} />
+        </GraphSidePanel>
       ) : activePrNumber != null ? (
         prFilesVisible ? (
-          <>
-            <div
-              {...resizeProps}
-              className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-            >
-              <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-            </div>
-            <div
-              className="h-full min-w-[350px] shrink-0 overflow-hidden"
-              style={{ width: panelWidthState }}
-            >
-              <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
-            </div>
-          </>
+          <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+            <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
+          </GraphSidePanel>
         ) : null
       ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
-        <>
-          {/* Handle de redimensionnement */}
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            {isConflictPanelOpen ? (
-              <ConflictResolutionPanel
-                repoPath={repoPath}
-                activeFile={conflictFilePath}
-                onSelectFile={setConflictFilePath}
-                onClose={closeConflictPanel}
-              />
-            ) : isMultiSelect ? (
-              <MultiCommitDetailsPanel
-                nodes={selectedCommitNodes}
-                repoPath={repoPath}
-                onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                onClose={clearSelection}
-              />
-            ) : (
-              <CommitDetailsPanel
-                node={primaryNode}
-                repoPath={repoPath}
-                isHead={isSelectedCommitHead}
-                onSelectCommit={selectSingle}
-                onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                onClose={clearSelection}
-              />
-            )}
-          </div>
-        </>
+        <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+          {isConflictPanelOpen ? (
+            <ConflictResolutionPanel
+              repoPath={repoPath}
+              activeFile={conflictFilePath}
+              onSelectFile={setConflictFilePath}
+              onClose={closeConflictPanel}
+            />
+          ) : isMultiSelect ? (
+            <MultiCommitDetailsPanel
+              nodes={selectedCommitNodes}
+              repoPath={repoPath}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClose={clearSelection}
+            />
+          ) : (
+            <CommitDetailsPanel
+              node={primaryNode}
+              repoPath={repoPath}
+              isHead={isSelectedCommitHead}
+              onSelectCommit={selectSingle}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClose={clearSelection}
+            />
+          )}
+        </GraphSidePanel>
       ) : null}
 
       {/* Overlays (dialogs triggered by the native menu) */}
