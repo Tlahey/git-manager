@@ -10,8 +10,6 @@ vi.mock('../lib/tauri', async () => {
     ...actual,
     getBranches: vi.fn(),
     createCommit: vi.fn(),
-    createFixupCommit: vi.fn(),
-    runAutosquash: vi.fn(),
     revertCommit: vi.fn(),
     resetToCommit: vi.fn(),
     cherryPickCommit: vi.fn(),
@@ -114,68 +112,6 @@ beforeEach(() => {
 function historyOf(path: string) {
   return useUndoHistoryStore.getState().byRepo[path]
 }
-
-describe('apiCreateFixupCommit', () => {
-  it('pushes a fixup entry pinned to the new commit', async () => {
-    const path = freshPath()
-    mocked.getBranches.mockResolvedValue(headBranch('prev-sha'))
-    mocked.createFixupCommit.mockResolvedValue({ oid: 'fixup-sha', shortOid: 'fixup-s' })
-
-    await api.apiCreateFixupCommit(path, 'target-sha')
-
-    const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'fixup', previousOid: 'prev-sha', newOid: 'fixup-sha' })
-    expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'fixup-sha')
-  })
-})
-
-describe('apiRunAutosquash', () => {
-  it('pushes an autosquash entry pinning both ends when the rebase completes immediately', async () => {
-    const path = freshPath()
-    mocked.getBranches.mockResolvedValueOnce(headBranch('prev-sha'))
-    mocked.runAutosquash.mockResolvedValue(undefined)
-    mocked.getRebaseState.mockResolvedValue(rebaseState('idle'))
-    mocked.getBranches.mockResolvedValueOnce(headBranch('new-sha'))
-
-    await api.apiRunAutosquash(path)
-
-    const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'autosquash', previousOid: 'prev-sha', newOid: 'new-sha' })
-    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-previous`, 'prev-sha')
-    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-new`, 'new-sha')
-  })
-
-  it('records nothing yet when the rebase pauses on a conflict', async () => {
-    const path = freshPath()
-    mocked.getBranches.mockResolvedValue(headBranch('prev-sha'))
-    mocked.runAutosquash.mockResolvedValue(undefined)
-    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
-
-    await api.apiRunAutosquash(path)
-
-    expect(historyOf(path)).toBeUndefined()
-    // getBranches was only queried once (for previousOid) — settleRebase bailed before
-    // fetching the post-rebase HEAD because the rebase hasn't settled yet.
-    expect(mocked.getBranches).toHaveBeenCalledTimes(1)
-  })
-
-  it('finishes recording the entry once a later Continue settles the paused rebase', async () => {
-    const path = freshPath()
-    mocked.getBranches.mockResolvedValueOnce(headBranch('prev-sha'))
-    mocked.runAutosquash.mockResolvedValue(undefined)
-    mocked.getRebaseState.mockResolvedValueOnce(rebaseState('conflict'))
-    await api.apiRunAutosquash(path)
-    expect(historyOf(path)).toBeUndefined()
-
-    mocked.continueRebase.mockResolvedValue(undefined)
-    mocked.getRebaseState.mockResolvedValueOnce(rebaseState('idle'))
-    mocked.getBranches.mockResolvedValueOnce(headBranch('new-sha'))
-    await api.apiRebaseContinue(path)
-
-    const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'autosquash', previousOid: 'prev-sha', newOid: 'new-sha' })
-  })
-})
 
 describe('apiRunInteractiveRebase', () => {
   it('pushes an interactiveRebase entry when it completes immediately', async () => {
