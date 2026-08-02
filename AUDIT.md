@@ -254,5 +254,26 @@ Restent volontairement non traités, et non bloquants :
 - `handleBisectPick` et le calcul `wipAgentActivity`/`agentActivityPaths` de `GitGraph.tsx` (angle mort du §12) restent en place. `handleBisectPick` se réduit désormais à un appel de `isSyntheticRow` + un appel de store, donc il n'y a plus grand-chose à extraire ; les deux `useMemo` d'activité agent restent un candidat de hook si le fichier est rouvert.
 - L'idée `CENTER_VIEW_PRIORITY`/`SIDE_PANEL_PRIORITY` évoquée en §8.1 n'a jamais été planifiée en tâche et reste disponible.
 - `useGitGraphActions.ts` est passé de 719 à ~775 lignes en absorbant les deux ponts (étape 5). C'est une seule responsabilité cohérente, mais `openMenuAt` y fait à lui seul ~400 lignes et n'a jamais été examiné comme candidat à un découpage par catégorie d'action.
-- ~30 fichiers portent encore des commentaires en français hors du périmètre de cet audit (`GraphHeader.tsx`, `HoverExpandLabel.tsx`, `useGitGraphNodes.ts`… en tête). C'est un chantier à part entière, pas un reliquat de celui-ci.
+- ~~Les commentaires français hors périmètre~~ — finalement traités : 24 fichiers balayés sur tout le dépôt (Rust inclus). La détection par accents seule était insuffisante, plusieurs commentaires français n'en portent aucun ; il a fallu un second passage sur les mots-outils français.
+- **Chaînes visibles par l'utilisateur codées en dur en français** — un problème *différent* et plus grave, découvert pendant ce balayage : 9 occurrences violent l'invariant i18n et s'affichent en français quelle que soit la langue choisie. Voir la liste en §16.
 - `packages/components`'s `InnerTab` reste utilisé : il rend les 6 onglets de la page Pull Requests / Launchpad ([PullRequestsPage.tsx:307](apps/desktop/src/app/pull-requests/PullRequestsPage.tsx#L307)). Le retrait des onglets de vue ne lui a enlevé qu'un consommateur sur deux.
+
+## 16. Chaînes en dur en français (trouvé le 2026-08-02, NON corrigé)
+
+Découvert en balayant les commentaires : 9 chaînes **visibles par l'utilisateur** sont écrites en dur en français dans le JSX, au lieu de passer par `t()`. Elles s'affichent donc en français même quand l'application est en anglais — c'est un bug utilisateur, pas une question de style, et ça viole l'invariant i18n du CLAUDE.md.
+
+| Fichier | Ligne | Chaîne |
+| --- | --- | --- |
+| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L39) | 39 | `pickApplication("Sélectionner l'application de l'éditeur")` |
+| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L44) | 44 | `pickApplication("Sélectionner l'application du terminal")` |
+| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L58) | 58 | `<Highlight text="Éditeur de code externe" />` |
+| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L103) | 103 | `Sélectionner mon éditeur…` |
+| [ExternalToolsSection.tsx](apps/desktop/src/app/settings/components/ExternalToolsSection.tsx#L162) | 162 | `Sélectionner mon terminal…` |
+| [GeneralSection.tsx](apps/desktop/src/app/settings/components/GeneralSection.tsx#L84) | 84 | `<Highlight text="Identité Git par défaut" />` |
+| [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L112) | 112 | `label="Succès & Trophées"` |
+| [TabBar.tsx](apps/desktop/src/components/tab-bar/TabBar.tsx#L237) | 237 | `title="Réglages"` |
+| [WipStagingPanel.tsx](apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx#L386) | 386 | `defaultValue: 'Amender le commit précédent'` |
+
+Non corrigé ici parce que ce n'est pas un renommage : chacune demande une clé i18n ajoutée **dans les deux locales**, et les deux `<Highlight text=…>` alimentent en plus la recherche des réglages, dont il faut vérifier qu'elle reste cohérente une fois le libellé traduit. À traiter comme un lot séparé.
+
+À noter, à ne PAS confondre avec ce qui précède : les props `match={...}` des sections de réglages contiennent volontairement des mots-clés français (`thème`, `identité`, `profondeur`…). Ce sont des synonymes de recherche, pas du texte affiché — les laisser tels quels.
