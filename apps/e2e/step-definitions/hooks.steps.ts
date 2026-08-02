@@ -1,5 +1,5 @@
 import { Before } from '@wdio/cucumber-framework'
-import { forceLiveSettings, seedSettings } from '../support/settings.js'
+import { forceLiveSettings, seedSettingsFromCleanState } from '../support/settings.js'
 import { seedGraphColumns } from '../support/gitGraphColumns.js'
 import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
 
@@ -25,7 +25,10 @@ Before(async () => {
   // Seeded into localStorage, so it lands before that scenario's first reload (fixture-open,
   // fixture-build + window nav, etc.) if it has one — the same "seed before reload" mechanism
   // seedSettings' other callers already rely on.
-  await seedSettings({ appearance, ai })
+  // Clears the volatile persisted slices (rewards, notifications, undo history, Launchpad
+  // filters, AI caches) and seeds the settings in the same round trip — see the helper's own note on
+  // why this must not become a second command.
+  await seedSettingsFromCleanState({ appearance, ai })
   // AND forced onto the live store directly: the suite shares one app window across every
   // feature, and a scenario whose own Given steps never navigate (e.g. "the git-manager
   // application is running", used by most Settings scenarios) never rehydrates from localStorage
