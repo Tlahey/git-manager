@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (23 feature files / ~490 steps, 8 visual snapshots)
+## Covered today (51 feature files / 160 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -47,6 +47,41 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | **Repo tab views**: switch Graph ↔ Terminal ↔ Settings            | navigation | fixture:feature-branches | 📷 (doc)                          | ✅ (see "Repo tab views" below)                              |
 
 ---
+
+## Not covered today
+
+Audited 2026-08-03, against the full `generate_handler!` command list in `lib.rs` and the app's
+`src/app` + `src/components` surface. What the suite does **not** exercise, split by why. This is
+the section REPORT.md points at —
+REPORT.md itself is regenerated on every run and can only say how the *existing* scenarios did;
+what's missing has to live here, where a human maintains it.
+
+### Real gaps — testable with today's harness, just not written yet
+
+| Missing                                    | Commands / UI involved                                                       | Notes |
+| ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
+| **Integrated terminal** (I/O)              | `terminal_open/write/resize/close`, `components/terminal`                    | Only the Graph ↔ Terminal ↔ Settings tab *switch* is covered; nothing types into a shell or asserts output. |
+| **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. |
+| **Merge a branch / fast-forward**          | `merge_branch`, `fast_forward_branch`, `get_merge_target_status`             | The merge *editor* (conflict resolution) and merge-commit *actions* are covered; the act of merging branch B into A from the UI is not. |
+| **Discard file changes**                   | `discard_file_changes`                                                       | Staging/unstaging/bulk both ways are covered; the destructive discard path (and its confirm) is not. |
+| **Stash creation + message edit**          | `stash_push`, `edit_stash_message`                                           | Fixtures pre-create the stashes; the app's own "stash my changes" action and message editing are never driven. |
+| **Dashboard README / repo summary panels** | `get_repo_readme`, `get_repo_summary`                                        | dashboard.feature only covers pinning. |
+| **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
+| **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |
+| **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. |
+| **User themes**                            | `get_user_themes`                                                            | Built-in theme selection is covered; a theme loaded from the user's themes directory is not. |
+| **Worktree agent activity**                | `get_worktree_agent_activity`                                                | The sidebar's agent-activity badge on worktree rows. |
+| **Undo/redo breadth**                      | undo stack beyond checkout / reset / commit                                  | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage. |
+| **GitLab / Bitbucket accounts**            | settings `gitlabAccounts` / `bitbucketAccounts`                              | No scenario touches either provider's settings UI. |
+
+### Blocked by the harness (documented, deliberate)
+
+| Missing                                   | Why |
+| ----------------------------------------- | --- |
+| **Interactive rebase editor** (reword/squash/drop) | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas"). |
+| **Branch delete**                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted. |
+| **Native OS surfaces**                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them. |
+| **The notch window's own rendering**      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. |
 
 ## Rebase progress view ✅ 📷
 
@@ -456,8 +491,8 @@ found the two land very differently once that's ruled out:
 | Revert a MERGE commit (mainline picker) | rollback      | showcase          | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below) |
 | Compare a merge commit against parent 1/2 | rollback    | showcase          | —        | 🟡 (dialog + diff content ✅, but only reachable via a direct store dispatch, not the palette — see "10. Merge commit actions" below) |
 | Stash apply / pop / drop                | stash         | stash-stack       | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas) |
-| Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
-| Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
+| Remote: fetch / pull / push             | remote        | remote-ahead/behind | —      | ✅ (file-based remote fixtures — fetch badge, pull fast-forward, push publish, rejected non-FF push, new-branch upstream; see `remote-fetch-pull.feature` / `remote-push.feature`. Tag push/delete and remote-branch delete still uncovered — see "Not covered today") |
+| Clone a repo                            | repo          | seeded picker     | —        | ✅ (`open-repo.feature` — clone via the picker against a local path URL; folder open + init covered the same way. Network clones/credentials stay out of reach) |
 | Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
 | AI commit-message generation            | AI            | fake HTTP server  | —        | ✅ (streaming + prompt-wiring + cancel + settings dropdown — see "AI generation" below) |
 | GitHub OAuth device flow                | github        | mock + real call  | —        | ✅ (real device-code request + cancel via Settings; poll contract mocked — see "GitHub OAuth" below) |
