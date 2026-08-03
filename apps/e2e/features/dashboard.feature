@@ -25,3 +25,22 @@ Feature: Your projects at a glance
     Then the README panel is shown
     And the interface has settled
     And a full-window screenshot is saved as "doc-dashboard"
+
+  @doc @screenshots
+  Scenario: Reading a project's README without opening it
+    The README opens in the dashboard's right-hand panel, rendered, so a
+    project can be identified — or its setup steps followed — without opening
+    the repository at all. The toggle in the panel header switches between
+    the rendered view and the raw Markdown source, for the times you want to
+    see exactly what the file says.
+    Given the app language is English
+    And AI features are turned off
+    And the "showcase" and "feature-branches" fixture repositories are listed in the dashboard
+    When I open the dashboard
+    And I open the "showcase" project's README
+    Then the README panel is shown
+    And the README panel shows "Showcase"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-readme"
+    When I switch the README panel to its source view
+    Then the README source shows "# Showcase"

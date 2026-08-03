@@ -36,7 +36,10 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
   }, [cachedRepo])
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
+    <div
+      data-testid="readme-panel"
+      className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl"
+    >
       {/* Pane Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/10 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -121,7 +124,9 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
             {content}
           </pre>
         ) : (
-          <Markdown content={content} repoPath={path} />
+          <div data-testid="readme-rendered-content">
+            <Markdown content={content} repoPath={path} />
+          </div>
         )}
       </div>
     </div>

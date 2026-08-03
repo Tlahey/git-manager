@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (53 feature files / 168 scenarios)
+## Covered today (53 feature files / 169 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -65,8 +65,7 @@ what's missing has to live here, where a human maintains it.
 | ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
 | **Integrated terminal** (I/O)              | `terminal_open/write/resize/close`, `components/terminal`                    | Only the Graph ↔ Terminal ↔ Settings tab *switch* is covered; nothing types into a shell or asserts output. |
 | **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. |
-| **Merge a branch / fast-forward**          | `merge_branch`, `fast_forward_branch`, `get_merge_target_status`             | The merge *editor* (conflict resolution) and merge-commit *actions* are covered; the act of merging branch B into A from the UI is not. |
-| **Dashboard README / repo summary panels** | `get_repo_readme`, `get_repo_summary`                                        | dashboard.feature only covers pinning. |
+| **Dashboard repo summary panel**           | `get_repo_summary`                                                           | The README panel is covered (opened, rendered content, raw/rendered toggle); the *summary* panel is not. |
 | **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
 | **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |
 | **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. |
@@ -80,6 +79,7 @@ what's missing has to live here, where a human maintains it.
 | Missing                                   | Why |
 | ----------------------------------------- | --- |
 | **Interactive rebase editor** (reword/squash/drop) | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas"). |
+| **Merge a branch / fast-forward** (`merge_branch`, `fast_forward_branch`) | Native branch context menu only, and — unlike "set upstream" or "compare with" — its handlers call the API **directly**, with no `pendingGraphAction` store write to dispatch instead (`useGitGraphActions.ts`'s `onMergeInto`/`onFastForward`). Driving it e2e would mean giving the app a palette entry or a bridge kind first, i.e. a feature change, not a test. The merge *editor* and merge-*commit* actions are covered. |
 | **Branch delete**                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted. |
 | **Native OS surfaces**                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them. |
 | **The notch window's own rendering**      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. |

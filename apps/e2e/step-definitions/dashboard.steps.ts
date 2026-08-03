@@ -71,3 +71,32 @@ When(/^I open the "([^"]*)" project's README$/, async (name: string) => {
 Then(/^the README panel is shown$/, async () => {
   await $('[data-testid="readme-panel-close-button"]').waitForDisplayed({ timeout: 15000 })
 })
+
+/**
+ * Asserts the panel actually rendered the repository's own README, not just that it opened: the
+ * text has to have come through `get_repo_readme` and the Markdown renderer.
+ */
+Then(/^the README panel shows "([^"]*)"$/, async (text: string) => {
+  const body = $('[data-testid="readme-rendered-content"]')
+  await body.waitForDisplayed({ timeout: 15000 })
+  await browser.waitUntil(async () => (await body.getText()).includes(text), {
+    timeout: 10000,
+    timeoutMsg: `the rendered README never showed "${text}"`,
+  })
+})
+
+When(/^I switch the README panel to its source view$/, async () => {
+  const toggle = $('[data-testid="readme-toggle-mode"]')
+  await toggle.waitForClickable({ timeout: 10000 })
+  await toggle.click()
+})
+
+/** The raw view shows the file verbatim — Markdown syntax included, which is the point of it. */
+Then(/^the README source shows "([^"]*)"$/, async (text: string) => {
+  const raw = $('[data-testid="readme-raw-content"]')
+  await raw.waitForDisplayed({ timeout: 10000 })
+  await browser.waitUntil(async () => (await raw.getText()).includes(text), {
+    timeout: 10000,
+    timeoutMsg: `the README source never showed "${text}"`,
+  })
+})
