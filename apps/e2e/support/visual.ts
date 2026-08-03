@@ -91,6 +91,24 @@ export async function stabiliseForSnapshot(): Promise<void> {
     reverse: true,
     timeoutMsg: 'The global loading overlay was still up when trying to take a visual snapshot',
   })
+  // The footer's AI pill resolves its liveness check asynchronously (unknown → checking →
+  // connected), so a full-window capture races it: sometimes the muted "checking" pill,
+  // sometimes the green "connected" one. Every scenario's baseline points the provider at the
+  // suite-wide fake server, which answers /v1/models immediately — so rather than mocking the
+  // status command, just wait out the short transient. Absent pill (AI off) settles instantly.
+  await browser.waitUntil(
+    async () =>
+      await browser.execute(() => {
+        const pill = document.querySelector('[data-testid="footer-ai-status"]')
+        if (!pill) return true
+        const state = pill.getAttribute('data-state')
+        return state !== 'unknown' && state !== 'checking'
+      }),
+    {
+      timeout: 10000,
+      timeoutMsg: 'The footer AI status pill never left its transient checking state',
+    }
+  )
   await browser.execute(async () => {
     await document.fonts.ready
   })

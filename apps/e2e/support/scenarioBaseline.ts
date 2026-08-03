@@ -40,14 +40,25 @@ export interface Baseline {
  * show — nor `repos`/`repos-ui`, which hold the tabs a non-navigating scenario relies on, nor
  * `settings`/`git-graph-columns`, which this very call re-seeds moments later.
  */
-export async function applyBaseline(baseline: Baseline): Promise<void> {
-  await browser.execute(
+export async function applyBaseline(baseline: Baseline): Promise<boolean> {
+  return await browser.execute(
     (raw: string) => {
       const { settings, columns, volatileKeys } = JSON.parse(raw) as {
         settings: Record<string, unknown>
         columns: Record<string, unknown>
         volatileKeys: string[]
       }
+
+      // 0. Retire a live trophy toast left by the previous scenario: achievements unlock as a side
+      // effect of ordinary git actions and the toast outlives its scenario (4.5s), bleeding into
+      // the next one's visual captures. The persisted game key is cleared below, but the toast
+      // renders from the LIVE store's `recentUnlock`.
+      const gameStore = (
+        window as unknown as {
+          __e2eGameStore?: { getState: () => { clearRecentUnlock: () => void } }
+        }
+      ).__e2eGameStore
+      gameStore?.getState().clearRecentUnlock()
 
       // 1. Live settings first — see the note above on why this cannot come after the seed.
       const store = (
@@ -86,6 +97,12 @@ export async function applyBaseline(baseline: Baseline): Promise<void> {
         'git-manager-git-graph-columns',
         JSON.stringify({ state: { columns }, version: 0 })
       )
+
+      // Reports whether React is still mounted. A render crash (e.g. the WebKit `NotFoundError:
+      // The object can not be found here` seen mid-run) unmounts everything under #root, and a
+      // scenario that never navigates would otherwise inherit that blank page and time out on
+      // every element — the caller recovers by reloading when this comes back true.
+      return (document.getElementById('root')?.childElementCount ?? 0) === 0
     },
     JSON.stringify({ ...baseline, volatileKeys: VOLATILE_PERSISTED_KEYS })
   )

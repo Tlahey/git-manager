@@ -45,7 +45,7 @@ Before(async () => {
   // hook runs before all 160 scenarios; a measured full run spent 58.6 of its 62 minutes outside
   // step execution, with these round trips the dominant remaining candidate. See
   // support/scenarioBaseline.ts for the ordering constraints inside it.
-  await applyBaseline({
+  const baseline = {
     settings: { appearance, ai, notifications, dailySummary, language: 'en' },
     columns: {
       refs: { visible: true, width: 160 },
@@ -57,7 +57,30 @@ Before(async () => {
       date: { visible: true, width: 110 },
       sha: { visible: true, width: 80 },
     },
-  })
+  }
+
+  const rootEmpty = await applyBaseline(baseline)
+
+  // A React render crash (observed as WebKit's "NotFoundError: The object can not be found here",
+  // with a Monaco "Canceled" rejection alongside) unmounts everything under #root. The app window
+  // is shared by the whole run, and scenarios that never navigate (all of settings.feature, for
+  // one) would inherit that blank page and fail on every element for the rest of their feature.
+  // Reload onto a fresh document instead, so one crash costs one scenario, not a dozen.
+  if (rootEmpty) {
+    console.warn('[e2e] #root was empty at scenario start — reloading to recover from a crash')
+    const origin = await browser.execute(() => window.location.origin)
+    await browser.url(`${origin}/?e2e=recover-${Date.now()}`)
+    await browser.waitUntil(
+      async () =>
+        await browser.execute(
+          () => (document.getElementById('root')?.childElementCount ?? 0) > 0
+        ),
+      { timeout: 15000, timeoutMsg: 'The app did not remount after a crash-recovery reload' }
+    )
+    // The seeds above landed in the crashed document; the reload rehydrated from them, but the
+    // live-store patch must be re-applied against the new document's stores.
+    await applyBaseline(baseline)
+  }
 })
 
 /**
