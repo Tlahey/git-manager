@@ -32,15 +32,20 @@ describe('activityCorrelation', () => {
     expect(ids[0]).toBe(ids[1])
   })
 
-  it('restores the previous correlation when nested', async () => {
+  // The outermost call is the user's gesture: "create a branch here" runs apiCreateBranch and
+  // apiCheckoutBranch, each of which wraps itself, and all of it is one thing the user did. This
+  // is load-bearing beyond the log — the undo stack groups on this id, so a gesture split across
+  // several ids came apart one operation at a time (and for create-branch, failed outright).
+  it('keeps the outer correlation when nested, label included', async () => {
     await runActivity('outer', async () => {
       const outerId = getActiveCorrelation()!.id
       await runActivity('inner', async () => {
-        expect(getActiveCorrelation()!.label).toBe('inner')
-        expect(getActiveCorrelation()!.id).not.toBe(outerId)
+        expect(getActiveCorrelation()!.label).toBe('outer')
+        expect(getActiveCorrelation()!.id).toBe(outerId)
       })
       expect(getActiveCorrelation()!.id).toBe(outerId)
     })
+    expect(getActiveCorrelation()).toBeNull()
   })
 
   it('restores correlation even when the action throws', async () => {

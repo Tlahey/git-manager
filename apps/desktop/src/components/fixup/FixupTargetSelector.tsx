@@ -13,8 +13,8 @@ interface FixupTargetSelectorProps {
   onSelect: (targetOid: string, targetSubject: string) => void
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+function formatDate(timestamp: number, locale: string): string {
+  return new Date(timestamp * 1000).toLocaleDateString(locale, {
     day: '2-digit',
     month: 'short',
   })
@@ -26,7 +26,7 @@ export function FixupTargetSelector({
   onClose,
   onSelect,
 }: FixupTargetSelectorProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [selectedOid, setSelectedOid] = useState<string | null>(null)
@@ -107,7 +107,7 @@ export function FixupTargetSelector({
                     <code className="shrink-0 font-mono">{n.commit.shortOid}</code>
                     <span className="flex-1 truncate">{n.commit.subject}</span>
                     <span className="shrink-0 opacity-60">
-                      {formatDate(n.commit.author.timestamp)}
+                      {formatDate(n.commit.author.timestamp, i18n.language)}
                     </span>
                   </button>
                 )

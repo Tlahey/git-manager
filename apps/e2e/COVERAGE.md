@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (51 feature files / 160 scenarios)
+## Covered today (53 feature files / 170 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -30,6 +30,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
 | **Command palette (⌘K)**: 12 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
+| **Interface chrome tour**: tab bar / toolbar / footer, each with a zone-cropped doc capture | app shell | fixture:feature-branches | 📷 (doc, per-zone) | ✅ (`interface-overview.feature` — also the reference for the "area screenshot" step) |
 | Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
 | Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |
@@ -62,27 +63,22 @@ what's missing has to live here, where a human maintains it.
 
 | Missing                                    | Commands / UI involved                                                       | Notes |
 | ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
-| **Integrated terminal** (I/O)              | `terminal_open/write/resize/close`, `components/terminal`                    | Only the Graph ↔ Terminal ↔ Settings tab *switch* is covered; nothing types into a shell or asserts output. |
-| **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. |
-| **Merge a branch / fast-forward**          | `merge_branch`, `fast_forward_branch`, `get_merge_target_status`             | The merge *editor* (conflict resolution) and merge-commit *actions* are covered; the act of merging branch B into A from the UI is not. |
-| **Discard file changes**                   | `discard_file_changes`                                                       | Staging/unstaging/bulk both ways are covered; the destructive discard path (and its confirm) is not. |
-| **Stash creation + message edit**          | `stash_push`, `edit_stash_message`                                           | Fixtures pre-create the stashes; the app's own "stash my changes" action and message editing are never driven. |
-| **Dashboard README / repo summary panels** | `get_repo_readme`, `get_repo_summary`                                        | dashboard.feature only covers pinning. |
-| **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
-| **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |
-| **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. |
-| **User themes**                            | `get_user_themes`                                                            | Built-in theme selection is covered; a theme loaded from the user's themes directory is not. |
-| **Worktree agent activity**                | `get_worktree_agent_activity`                                                | The sidebar's agent-activity badge on worktree rows. |
+| **Running a task** (`run_task_in_terminal`) | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The *listing* half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`). |
+| **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. The one genuinely open item on this list. |
 | **Undo/redo breadth**                      | undo stack beyond checkout / reset / commit                                  | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage. |
-| **GitLab / Bitbucket accounts**            | settings `gitlabAccounts` / `bitbucketAccounts`                              | No scenario touches either provider's settings UI. |
 
 ### Blocked by the harness (documented, deliberate)
 
 | Missing                                   | Why |
 | ----------------------------------------- | --- |
 | **Interactive rebase editor** (reword/squash/drop) | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas"). |
+| **Package updates** (`update_packages`, `check_outdated_packages`) | Updating shells out to the project's real package manager (`services/package_update.rs`): network, minutes, and a mutated `node_modules`/lockfile in the fixture. A suite that runs in seven minutes and touches nothing outside `/tmp` should not do that; the health *scan* and its counts are covered. |
+| **GitLab / Bitbucket accounts** | Connecting validates against the provider's real API with a real token — the same wall GitHub's OAuth hits, where only the device-code request is covered and the poll is mocked. Worth noting separately: `IntegrationSection.tsx` carries **no `data-testid` at all**, so even the form-rendering half would need those added first (the project's own convention asks for them on interactive elements). |
+| **Patch from commits** (`create_commits_patch`, `create_patch`) | Native commit context menu only, with no palette entry — the same blocker as merge below. The *dialog* half is no longer in the way: all three of `useGitGraphActions`'s native pickers now go through `pickSaveDestination`/`pickFolder`, which an e2e build swaps for an in-webview picker, so the moment a palette entry exists these are drivable. patch-workspace.feature covers create-from-working-tree and apply-external. |
+| **Merge a branch / fast-forward** (`merge_branch`, `fast_forward_branch`) | Native branch context menu only, and — unlike "set upstream" or "compare with" — its handlers call the API **directly**, with no `pendingGraphAction` store write to dispatch instead (`useGitGraphActions.ts`'s `onMergeInto`/`onFastForward`). Driving it e2e would mean giving the app a palette entry or a bridge kind first, i.e. a feature change, not a test. The merge *editor* and merge-*commit* actions are covered. |
 | **Branch delete**                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted. |
 | **Native OS surfaces**                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them. |
+| **Worktree agent activity** (`get_worktree_agent_activity`) | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`. |
 | **The notch window's own rendering**      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. |
 
 ## Rebase progress view ✅ 📷
@@ -485,7 +481,7 @@ found the two land very differently once that's ruled out:
 | Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native — investigated for the remote-delete confirmation flow specifically and confirmed genuinely blocked, not just unattempted; see "Known blockers / gotchas" below) |
 | Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
 | Compare two branches                    | branch        | remote-ahead      | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`) |
-| Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
+| Tags: create / shown in graph            | tag           | rollback-history · showcase | —  | ✅ (`tags.feature` tells the whole tag story in one place — **create lightweight + annotated via ⌘K palette**, asserted via `git log`/`git cat-file -t`; the graph ref badge and its context-menu marker; published as one doc page) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
 | Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |

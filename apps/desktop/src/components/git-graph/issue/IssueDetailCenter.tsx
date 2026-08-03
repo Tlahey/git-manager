@@ -33,7 +33,7 @@ export function IssueDetailCenter({
   onClose,
   onChanged,
 }: IssueDetailCenterProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const { issue: detail, isLoading } = useIssueDetail(repoPath, issueNumber)
   const { ownerRepo } = useRepoGitHub(repoPath)
   const isOpen = detail?.state === 'open'
@@ -89,7 +89,7 @@ export function IssueDetailCenter({
                   {isOpen ? t('issue.view.stateOpen') : t('issue.view.stateClosed')}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {detail.user?.login ?? '—'} · {new Date(detail.created_at).toLocaleDateString()}
+                  {detail.user?.login ?? '—'} · {new Date(detail.created_at).toLocaleDateString(i18n.language)}
                 </span>
               </div>
             </div>

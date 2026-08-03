@@ -27,6 +27,11 @@ export const DOC_TAG = '@doc'
 /** Matches the step that exports the PNG, capturing the name it is saved under. */
 const SCREENSHOT_STEP = /^a full-window screenshot is saved as "([^"]+)"$/
 
+/** The zone variant — same contract, but the PNG is cropped to one element (its testid is the
+ * first capture, irrelevant here; the saved name is the second). Used by pages documenting a
+ * single piece of the chrome, where a full window would bury the subject. */
+const AREA_SCREENSHOT_STEP = /^a screenshot of the "[^"]+" area is saved as "([^"]+)"$/
+
 /**
  * The Connextra user-story lines conventionally opening a `Feature:` description.
  * They describe the *test's* actor, not the reader of the docs, so they are
@@ -118,7 +123,7 @@ function toDocScenario(scenario: Scenario): DocScenario {
   const outcomes: DocStep[] = []
 
   for (const step of steps) {
-    const shot = SCREENSHOT_STEP.exec(step.text)
+    const shot = SCREENSHOT_STEP.exec(step.text) ?? AREA_SCREENSHOT_STEP.exec(step.text)
     if (shot) {
       screenshot = shot[1]
       continue

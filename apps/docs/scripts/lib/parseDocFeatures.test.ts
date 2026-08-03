@@ -79,6 +79,20 @@ describe('parseDocFeature', () => {
     expect(feature.scenarios[0].screenshot).toBe('doc-merge-editor')
   })
 
+  it('joins an area screenshot the same way, and keeps it out of the outcomes', () => {
+    const areaFeature = parseDocFeature(
+      FEATURE.replace(
+        'And a full-window screenshot is saved as "doc-merge-editor"',
+        'And a screenshot of the "action-toolbar" area is saved as "doc-toolbar"'
+      ),
+      'apps/e2e/features/merge-editor.feature'
+    )
+    expect(areaFeature?.scenarios[0].screenshot).toBe('doc-toolbar')
+    expect(areaFeature?.scenarios[0].outcomes.map((s) => s.text)).toEqual([
+      'the merge editor is shown',
+    ])
+  })
+
   it('keeps only the steps the reader performs as actions', () => {
     // "the interface has settled" is a test-timing step, not something to do.
     expect(feature.scenarios[0].actions.map((s) => s.text)).toEqual([

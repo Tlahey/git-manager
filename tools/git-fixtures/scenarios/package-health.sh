@@ -30,6 +30,10 @@ cat > package.json <<'EOF'
   "name": "dashboard-tools",
   "private": true,
   "packageManager": "pnpm@11.12.0",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
   "devDependencies": {
     "typescript": "catalog:"
   }

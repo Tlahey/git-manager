@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
+import { formatExactDate } from '../../../lib/relativeDate'
 import { Lock } from 'lucide-react'
 import { ScrollArea, Spinner } from '@git-manager/ui'
 import type { GitCommit } from '@git-manager/git-types'
@@ -25,7 +26,7 @@ interface RebaseCommitDetailsProps {
  * selected commit changes, so all local state resets naturally.
  */
 export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
 
   const { data: diff, isLoading: filesLoading } = useQuery({
@@ -136,7 +137,7 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
             </div>
             <div>
               <span className="font-medium text-foreground/80">{t('rebaseEditor.date')}</span>{' '}
-              {new Date(commit.author.timestamp * 1000).toLocaleString()}
+              {formatExactDate(commit.author.timestamp, i18n.language)}
             </div>
             <div className="font-mono text-[10px] text-muted-foreground/70">{commit.oid}</div>
           </div>

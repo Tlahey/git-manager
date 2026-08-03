@@ -24,12 +24,17 @@ apps/docs/docs/features/*.md  +  .vitepress/sidebar.json
 the pages artifact
 ```
 
-Three Markdown files are **not** generated and are edited by hand:
-[`index.md`](./index.md) (the landing page host),
-[`docs/index.md`](./docs/index.md) (the documentation's introduction), and
-[`docs/download.md`](./docs/download.md) (how to get the app — the one page
-with nothing to generate it from, since there's no scenario for "download a
-release"). Only `docs/features/` is wiped and rewritten on each run.
+A handful of Markdown files are **not** generated and are edited by hand — the pages with
+nothing to run a scenario against: [`index.md`](./index.md) (the landing page host),
+[`docs/index.md`](./docs/index.md) (the documentation's introduction),
+[`docs/download.md`](./docs/download.md) (how to get the app),
+[`docs/privacy.md`](./docs/privacy.md) (what can leave the machine, exhaustively),
+[`docs/ai-setup.md`](./docs/ai-setup.md) (pointing the app at Ollama or any OpenAI-compatible
+endpoint), [`docs/shortcuts.md`](./docs/shortcuts.md) (the keyboard reference — check
+`useKeyboardShortcuts.ts` before editing it, that hook is the source of truth) and
+[`docs/troubleshooting.md`](./docs/troubleshooting.md). They are linked from the hand-curated
+sections of `.vitepress/config.ts`'s sidebar. Only `docs/features/` is wiped and rewritten on
+each run.
 
 ## The home page is the landing page
 

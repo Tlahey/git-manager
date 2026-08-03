@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitGraphNode } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const useGitLogMock = vi.fn()
 vi.mock('../../hooks/useGitLog', () => ({ useGitLog: () => useGitLogMock() }))
 
@@ -83,7 +81,7 @@ describe('FixupTargetSelector', () => {
   it('filters commits by subject or short oid', async () => {
     const user = userEvent.setup()
     renderSelector()
-    await user.type(screen.getByPlaceholderText('fixup.searchCommits'), 'fix')
+    await user.type(screen.getByPlaceholderText('Search commits...'), 'fix')
     expect(screen.getByText('Fix bug')).toBeInTheDocument()
     expect(screen.queryByText('Add feature')).not.toBeInTheDocument()
   })
@@ -91,9 +89,9 @@ describe('FixupTargetSelector', () => {
   it('disables confirm until a commit is selected', async () => {
     const user = userEvent.setup()
     renderSelector()
-    expect(screen.getAllByRole('button', { name: 'fixup.createTitle' })[0]).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Create fixup commit' })[0]).toBeDisabled()
     await user.click(screen.getByText('Add feature'))
-    expect(screen.getAllByRole('button', { name: 'fixup.createTitle' })[0]).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: 'Create fixup commit' })[0]).toBeEnabled()
   })
 
   it('confirms the fixup, invalidates queries, and calls onSelect + onClose', async () => {
@@ -104,7 +102,7 @@ describe('FixupTargetSelector', () => {
     renderSelector({ onSelect, onClose })
 
     await user.click(screen.getByText('Add feature'))
-    await user.click(screen.getAllByRole('button', { name: 'fixup.createTitle' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Create fixup commit' })[0])
 
     await waitFor(() => expect(onSelect).toHaveBeenCalledWith('abc1234', 'Add feature'))
     expect(mockedCreateFixup).toHaveBeenCalledWith('/repo', 'abc1234')
@@ -118,7 +116,7 @@ describe('FixupTargetSelector', () => {
     renderSelector({ onClose })
 
     await user.click(screen.getByText('Add feature'))
-    await user.click(screen.getAllByRole('button', { name: 'fixup.createTitle' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Create fixup commit' })[0])
 
     await waitFor(() => expect(screen.getByText(/fixup failed/)).toBeInTheDocument())
     expect(onClose).not.toHaveBeenCalled()

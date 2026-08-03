@@ -104,9 +104,16 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: DOCS_ENTRY },
           { text: 'Download & Install', link: DOCS_DOWNLOAD },
+          { text: 'Private by design', link: `${DOCS_ROUTE}/privacy` },
+          { text: 'Set up your AI provider', link: `${DOCS_ROUTE}/ai-setup` },
+          { text: 'Keyboard shortcuts', link: `${DOCS_ROUTE}/shortcuts` },
         ],
       },
       ...featureSidebar,
+      {
+        text: 'Help',
+        items: [{ text: 'Troubleshooting', link: `${DOCS_ROUTE}/troubleshooting` }],
+      },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/Tlahey/git-manager' }],
     search: { provider: 'local' },

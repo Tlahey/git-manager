@@ -45,3 +45,25 @@ Feature: Undo and redo a branch checkout
     Then the repository HEAD commit subject is "chore: bump counter to 4"
     When I redo the last undone action
     Then the repository HEAD commit subject is "chore: bump counter to 2"
+
+  # Undo covers more than the checkout and reset above, and a gesture that performed several git
+  # operations has to come back as one: "create branch here" creates the ref *and* checks it out,
+  # so a single ⌘Z has to take both back. Before they were correlated, undo tried to delete a
+  # branch git had just made HEAD, was refused, and failed silently.
+  Scenario: Undoing a branch creation takes back the checkout with it
+    Given the "rollback-history" fixture repository is opened
+    When I select the "HEAD~1" commit in the graph
+    And I open the command palette
+    And I run the command palette action "commit-branch"
+    Then the create branch dialog is shown
+    When I enter the branch name "feature/undo-me"
+    And I confirm the branch creation
+    Then the branch "feature/undo-me" exists
+    And the branch indicator reads "feature/undo-me"
+    When I undo the last action
+    Then the branch "feature/undo-me" no longer exists
+    And the branch indicator reads "main"
+    And no error notification is displayed
+    When I redo the last undone action
+    Then the branch "feature/undo-me" exists
+    And the branch indicator reads "feature/undo-me"

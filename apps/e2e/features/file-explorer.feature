@@ -11,13 +11,21 @@ Feature: Browse the repository's files
   where it was.
 
   Background:
-    Given the "feature-branches" fixture repository is opened
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
 
+  @doc @screenshots
   Scenario: Opening the file explorer lists the working tree
+    The Files button swaps the commit graph for a browser over the same
+    repository: a filterable tree on the left, the current folder's contents
+    in the middle. It shows the working tree as it is on disk right now — not
+    a commit — and closing it puts the graph back exactly where it was.
     When I open the file explorer
     Then the file explorer is shown
     And the file tree sidebar is shown
     And the file explorer lists the file "app.txt"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-file-explorer"
 
   Scenario: Closing the file explorer puts the graph back
     When I open the file explorer

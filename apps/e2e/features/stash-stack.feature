@@ -24,3 +24,29 @@ Feature: Stash list
     And the interface has settled
     Then the sidebar lists 2 stashes
     And a full-window screenshot is saved as "doc-stash-sidebar"
+
+  @doc @screenshots
+  Scenario: Stashing puts your work aside and clears the tree
+    The toolbar's Stash button takes everything you have in progress —
+    including untracked files — and parks it, leaving a clean working tree to
+    switch branches or pull. Whatever you typed in the graph's work-in-progress
+    row becomes the stash's own message, so the pile stays readable; leave it
+    empty and it is named after the branch you were on.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
+    When I name the work in progress "wip: half-finished config work"
+    And I stash the working changes
+    Then the repository has 3 stashes
+    And the newest stash is named "wip: half-finished config work"
+    And the working tree is clean
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-stash-created"
+    And no error notification is displayed
+
+  Scenario: Renaming a stash rewrites its message
+    Given the "stash-stack" fixture repository is opened
+    When I expand the "stashes" sidebar section
+    And I rename the newest stash to "reviewed: keep for later"
+    Then the newest stash is named "reviewed: keep for later"
+    And the repository has 2 stashes

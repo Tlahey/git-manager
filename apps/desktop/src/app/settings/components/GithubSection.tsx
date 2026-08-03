@@ -18,7 +18,7 @@ import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
 import type { GitHubUser } from '@git-manager/git-types'
 
 export function GithubSection() {
-  const { t } = useTranslation('settings')
+  const { t, i18n } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
   const github = settings.github || { accounts: [], activeAccountId: null }
 
@@ -483,7 +483,7 @@ export function GithubSection() {
                         </p>
                       )}
                       <p className="font-mono text-[9px] text-muted-foreground/60">
-                        Updated {new Date(repo.updatedAt).toLocaleDateString()}
+                        Updated {new Date(repo.updatedAt).toLocaleDateString(i18n.language)}
                       </p>
                     </div>
 

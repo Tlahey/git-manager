@@ -8,7 +8,7 @@ import { achievementI18nKey } from '../../../lib/rewards/achievementI18n'
 type StatusFilter = 'all' | 'in_progress' | 'completed'
 
 export function RewardsTab() {
-  const { t } = useTranslation('launchpad')
+  const { t, i18n } = useTranslation('launchpad')
   const {
     achievements,
     points,
@@ -349,7 +349,7 @@ export function RewardsTab() {
                           {item.unlockedAt && (
                             <span className="text-[8px] text-muted-foreground/60">
                               {t('rewards.obtainedOn')}{' '}
-                              {new Date(item.unlockedAt).toLocaleDateString()}
+                              {new Date(item.unlockedAt).toLocaleDateString(i18n.language)}
                             </span>
                           )}
                         </div>

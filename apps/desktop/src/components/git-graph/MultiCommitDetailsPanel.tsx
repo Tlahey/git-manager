@@ -17,8 +17,8 @@ interface MultiCommitDetailsPanelProps {
   onClose?: () => void
 }
 
-function formatShortDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString(undefined, {
+function formatShortDate(timestamp: number, locale: string): string {
+  return new Date(timestamp * 1000).toLocaleString(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -33,7 +33,7 @@ export function MultiCommitDetailsPanel({
   onSelectFileDiff,
   onClose,
 }: MultiCommitDetailsPanelProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
 
   // Newest is first in graph order, oldest is last. The merged diff spans `baseOid^..headOid`.
   const headOid = nodes[0]?.commit.oid ?? null
@@ -126,7 +126,7 @@ export function MultiCommitDetailsPanel({
                         {commit.subject}
                       </span>
                       <span className="truncate text-[10px] text-muted-foreground/70">
-                        {commit.author.name} · {formatShortDate(commit.author.timestamp)}
+                        {commit.author.name} · {formatShortDate(commit.author.timestamp, i18n.language)}
                       </span>
                     </div>
                     <code className="shrink-0 rounded border border-border/40 bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">

@@ -131,6 +131,7 @@ function CellContent({
   onSubmitTag?: (name: string) => void
   onCancelTag?: () => void
 }) {
+  const { i18n } = useTranslation('git')
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
   const { data: stashes } = useGitStashes(activeRepo)
@@ -293,7 +294,7 @@ function CellContent({
             'truncate text-[10px] text-muted-foreground/70',
             dimmed && 'italic text-muted-foreground/40'
           )}
-          title={formatExactDate(commit.author.timestamp)}
+          title={formatExactDate(commit.author.timestamp, i18n.language)}
         >
           {formatRelativeDate(commit.author.timestamp)}
         </span>

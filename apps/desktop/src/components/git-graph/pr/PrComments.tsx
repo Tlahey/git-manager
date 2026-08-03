@@ -12,7 +12,7 @@ interface PrCommentsProps {
 /** The PR conversation: a caption label with a refresh button and one card per issue comment
  * (avatar, author, date, markdown body). Read-only here — posting lives in {@link PrCommentBox}. */
 export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const { comments, isLoading, refresh } = usePrComments(repoPath, prNumber)
 
   return (
@@ -48,7 +48,7 @@ export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
                 )}
                 <span className="text-[11px] font-medium text-foreground">{c.user?.login ?? '—'}</span>
                 <span className="text-[10px] text-muted-foreground">
-                  {new Date(c.created_at).toLocaleDateString()}
+                  {new Date(c.created_at).toLocaleDateString(i18n.language)}
                 </span>
               </div>
               <div className="text-xs">

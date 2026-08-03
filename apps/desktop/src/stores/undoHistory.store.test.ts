@@ -20,12 +20,13 @@ import { useUndoHistoryStore, type UndoAction } from './undoHistory.store'
 
 const REPO = '/repo/a'
 
-function action(id: string, pinnedRefs: string[] = []): UndoAction {
+function action(id: string, pinnedRefs: string[] = [], correlationId?: string): UndoAction {
   return {
     id,
     label: { key: `label.${id}` },
     timestamp: 0,
     pinnedRefs,
+    ...(correlationId ? { correlationId } : {}),
     type: 'commit',
     previousOid: 'p',
     newOid: 'n',
@@ -214,5 +215,68 @@ describe('useUndoHistoryStore — validateAndPrune', () => {
   it('is a no-op for a repo with no history', async () => {
     await expect(useUndoHistoryStore.getState().validateAndPrune(REPO)).resolves.toBeUndefined()
     expect(apiObjectsExist).not.toHaveBeenCalled()
+  })
+})
+
+// One user gesture routinely performs several git operations — "create a branch here" creates the
+// ref and checks it out — and `pushAction` stamps each with the gesture's correlation id. Undo has
+// to take the whole gesture back at once: undoing half of it left the repository in a state where
+// the other half could not be undone at all (git refuses to delete a branch it has just made HEAD).
+describe('useUndoHistoryStore — correlated gestures undo as one', () => {
+  const store = () => useUndoHistoryStore.getState()
+
+  function pushGesture() {
+    store().push(REPO, action('create', [], 'corr-1'))
+    store().push(REPO, action('checkout', [], 'corr-1'))
+  }
+
+  it('undoes every entry of the gesture, newest operation first', async () => {
+    pushGesture()
+    await store().undo(REPO)
+
+    expect(executeUndo).toHaveBeenCalledTimes(2)
+    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'checkout' })
+    expect(executeUndo.mock.calls[1]![1]).toMatchObject({ id: 'create' })
+    expect(store().canUndo(REPO)).toBe(false)
+  })
+
+  it('redoes them in the order they originally happened', async () => {
+    pushGesture()
+    await store().undo(REPO)
+    await store().redo(REPO)
+
+    expect(executeRedo.mock.calls.map((c) => (c[1] as { id: string }).id)).toEqual([
+      'create',
+      'checkout',
+    ])
+    expect(store().canRedo(REPO)).toBe(false)
+  })
+
+  it('names the gesture, not its last step', () => {
+    pushGesture()
+    expect(store().peekUndoLabel(REPO)).toEqual({ key: 'label.create' })
+  })
+
+  it('leaves an uncorrelated action as a group of its own', async () => {
+    store().push(REPO, action('lonely'))
+    store().push(REPO, action('create', [], 'corr-1'))
+    store().push(REPO, action('checkout', [], 'corr-1'))
+
+    await store().undo(REPO)
+    expect(executeUndo).toHaveBeenCalledTimes(2)
+
+    executeUndo.mockClear()
+    await store().undo(REPO)
+    expect(executeUndo).toHaveBeenCalledTimes(1)
+    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'lonely' })
+  })
+
+  it('does not merge two gestures that happen to be adjacent', async () => {
+    store().push(REPO, action('a1', [], 'corr-1'))
+    store().push(REPO, action('b1', [], 'corr-2'))
+
+    await store().undo(REPO)
+    expect(executeUndo).toHaveBeenCalledTimes(1)
+    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'b1' })
   })
 })

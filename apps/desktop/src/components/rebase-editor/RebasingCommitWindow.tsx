@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
+import { formatShortDate } from '../../lib/relativeDate'
 import { ChevronDown, Pencil, Combine, Trash2, Undo2 } from 'lucide-react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
@@ -45,7 +46,7 @@ interface RebasingCommitWindowProps {
  * runs the plan via `run_interactive_rebase`.
  */
 function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindowProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
 
   const { data: commits, isLoading } = useQuery({
     queryKey: ['rebase-commits', repoPath, baseOid],
@@ -221,7 +222,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
                       ? step.message.split('\n')[0]
                       : step.commit.subject
                   }
-                  subtitle={`${step.commit.author.name} · ${new Date(step.commit.author.timestamp * 1000).toLocaleDateString()}`}
+                  subtitle={`${step.commit.author.name} · ${formatShortDate(step.commit.author.timestamp, i18n.language)}`}
                   badgeLabel={step.action}
                   badgeVariant={badgeVariantForAction(step.action)}
                   trailingCaption={step.commit.shortOid}
@@ -246,6 +247,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
                         variant="ghost"
                         size="sm"
                         className="h-6 text-[10px]"
+                        data-testid="rebase-reword-cancel"
                         onClick={() => setRewordingOid(null)}
                       >
                         {t('rebaseEditor.cancelEdit')}

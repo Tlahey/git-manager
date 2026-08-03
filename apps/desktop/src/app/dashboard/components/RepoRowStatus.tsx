@@ -82,7 +82,9 @@ export function RepoRowStatus({ summary, isLoading, hasError }: RepoRowStatusPro
       <Tooltip content={summary.head}>
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-border/30 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
           <GitBranch className="h-3 w-3 shrink-0 text-primary/60" />
-          <span className="max-w-[110px] truncate">{summary.head}</span>
+          <span data-testid="repo-row-branch" className="max-w-[110px] truncate">
+            {summary.head}
+          </span>
         </div>
       </Tooltip>
 
