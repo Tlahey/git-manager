@@ -17,9 +17,13 @@ Feature: Settings
     And the general settings tab is available
 
   @visual
+  # Opens the tab explicitly rather than trusting the default: the suite reuses one app instance,
+  # so whichever section the previous scenario — or the previous *run* — left selected is still
+  # selected here, and the sidebar's highlight is part of the snapshot.
   Scenario: The settings screen matches the reference snapshot
     Given the git-manager application is running
     When I open the settings
+    And I open the "general" settings tab
     Then the settings screen matches the visual snapshot "settings-general"
 
   @visual
@@ -178,3 +182,20 @@ Feature: Settings
     Then the changelog shows at least one release entry
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-changelog"
+
+  @doc @screenshots
+  Scenario: A theme dropped into the themes folder shows up alongside the built-in ones
+    Themes are not limited to the ones that ship with the app: any `.css` file
+    placed in `~/.git-manager/themes` becomes a theme of its own, named after
+    the file, listed with the built-in ones and applied the same way. The file
+    holds plain CSS variables — the app wraps them in the right selector — so a
+    palette you like is a few lines and a restart-free reload away.
+    Given the app language is English
+    And a user theme file named "e2e-midnight" exists
+    When I open the settings
+    And I open the "ui_customization" settings tab
+    Then the theme "e2e-midnight" is offered
+    When I select the "e2e-midnight" theme
+    Then the active theme is "e2e-midnight"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-user-theme"

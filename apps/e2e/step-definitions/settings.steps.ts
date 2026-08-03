@@ -1,8 +1,8 @@
-import { existsSync, mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
-import { When, Then } from '@wdio/cucumber-framework'
+import { After, Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { clickViaJs } from '../support/interactions.js'
 import { navigateAndSettle } from '../support/navigation.js'
@@ -347,4 +347,35 @@ Then(/^the sponsor button is shown$/, async () => {
 // asserting its testid rather than a specific version number keeps this stable across releases.
 Then(/^the changelog shows at least one release entry$/, async () => {
   await $('[data-testid="changelog-entry-Unreleased"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// ─── User themes ──────────────────────────────────────────────────────────────
+
+/** Themes written by a scenario, removed afterwards so the machine keeps only its own. */
+const createdUserThemes: string[] = []
+
+/**
+ * Any `.css` file under `~/.git-manager/themes` is a theme, named after the file (`themes.rs`
+ * derives both id and label from the stem). Written straight to disk rather than through the app,
+ * because dropping a file in a folder *is* the feature — there is no in-app editor to drive.
+ *
+ * The file is removed after the scenario (see the `@settings` After hook below) so a developer's
+ * own themes folder is left as it was found.
+ */
+Given(/^a user theme file named "([^"]*)" exists$/, async (id: string) => {
+  const dir = join(homedir(), '.git-manager', 'themes')
+  mkdirSync(dir, { recursive: true })
+  // Plain variables: the backend wraps them in the `[data-theme="<id>"]` selector itself.
+  writeFileSync(join(dir, `${id}.css`), '--background: #0b1020;\n--foreground: #e6edf3;\n', 'utf8')
+  createdUserThemes.push(join(dir, `${id}.css`))
+})
+
+Then(/^the theme "([^"]*)" is offered$/, async (id: string) => {
+  await $(`[data-testid="theme-card-${id}"]`).waitForDisplayed({ timeout: 15000 })
+})
+
+After({ tags: '@settings' }, () => {
+  for (const file of createdUserThemes.splice(0)) {
+    rmSync(file, { force: true })
+  }
 })
