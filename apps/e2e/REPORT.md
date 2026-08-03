@@ -9,6 +9,8 @@ the absolute numbers as indicative._
 
 Plus **0.1 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 51 times, ~0.1s each.
 
+This is a report on the scenarios that **exist**. What the suite does *not* cover — the untested command surface, and what is deliberately out of reach — lives in [COVERAGE.md § Not covered today](COVERAGE.md#not-covered-today).
+
 Read the last column first. "In steps" is what cucumber's `afterStep` reported, and it is a **lower bound**: the hook does not fire for a step that throws, and it visibly under-reports steps that reload the app (a fixture open lands at well under a second, which it cannot be). So "outside steps" mixes genuine hook/fixture time with step time the timer missed — it is the right place to start looking, not a precise attribution.
 
 ## Feature files, slowest first

@@ -149,6 +149,14 @@ export function writeRunReport(): void {
       `worker, so that cost is paid ${sessions.length} times, ~${secs(totalSessionMs / Math.max(sessions.length, 1))} each.`
   )
   lines.push('')
+  // This report can only describe the scenarios that exist; the inverse — the app surface with
+  // NO scenario — is hand-maintained where a human can keep it honest.
+  lines.push(
+    'This is a report on the scenarios that **exist**. What the suite does *not* cover — the ' +
+      'untested command surface, and what is deliberately out of reach — lives in ' +
+      '[COVERAGE.md § Not covered today](COVERAGE.md#not-covered-today).'
+  )
+  lines.push('')
   lines.push(
     'Read the last column first. "In steps" is what cucumber\'s `afterStep` reported, and it is a' +
       ' **lower bound**: the hook does not fire for a step that throws, and it visibly under-reports' +
