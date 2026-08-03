@@ -6,6 +6,7 @@ import { After, Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { clickViaJs } from '../support/interactions.js'
 import { navigateAndSettle } from '../support/navigation.js'
+import { seedSettings } from '../support/settings.js'
 
 // W3C WebDriver key value for Meta (Command on macOS) — the value webdriverio exposes as
 // `Key.Command`. Inlined to avoid depending on the `webdriverio` package (only `@wdio/globals`
@@ -437,6 +438,14 @@ async function fillControlledInput(testid: string, value: string) {
   )
 }
 
+// The editor command lives in the `git` group, the terminal one in `externalTools` (see
+// ExternalToolsSection) — both are replaced whole so the capture shows the pristine "Select…"
+// state whatever the machine running the suite has configured. Neither group is in the suite
+// baseline, so without this a locally-picked editor would leak into the screenshot.
+Given(/^no external tools are configured$/, async () => {
+  await seedSettings({ externalTools: {}, git: {} })
+})
+
 When(/^I name the repository task "([^"]*)"$/, async (name: string) => {
   await fillControlledInput('run-tasks-name', name)
 })
@@ -487,6 +496,12 @@ When(/^I save the repository task$/, async () => {
     throw new Error(`${(err as Error).message}\n[probe] ${await taskRowProbe()}`)
   }
   await save.click()
+})
+
+Then(/^the external tools section offers editor and terminal pickers$/, async () => {
+  for (const id of ['externalEditor-select', 'externalTerminal-select']) {
+    await $(`[data-testid="${id}"]`).waitForDisplayed({ timeout: 10000 })
+  }
 })
 
 When(/^I go back from the settings$/, async () => {
