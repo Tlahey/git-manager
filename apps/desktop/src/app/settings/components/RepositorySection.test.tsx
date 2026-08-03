@@ -155,7 +155,9 @@ describe('RepositorySection — GitFlow page', () => {
     const input = screen.getByTestId('repo-default-branch-input')
     await user.clear(input)
     await user.type(input, 'trunk')
-    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.defaultBranchName).toBe('trunk')
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.defaultBranchName).toBe(
+      'trunk'
+    )
   })
 
   it('seeds the merge-target branches from the built-in defaults', () => {

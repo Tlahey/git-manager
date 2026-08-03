@@ -104,7 +104,13 @@ describe('usePrCreateFlow — createPr', () => {
     const { result } = renderHook(() => usePrCreateFlow(REPO))
     await act(async () => {
       await expect(
-        result.current.createPr({ head: 'feature-x', base: 'main', title: 'T', body: '', draft: false })
+        result.current.createPr({
+          head: 'feature-x',
+          base: 'main',
+          title: 'T',
+          body: '',
+          draft: false,
+        })
       ).rejects.toThrow()
     })
     expect(m.createPr).not.toHaveBeenCalled()
@@ -116,7 +122,13 @@ describe('usePrCreateFlow — createPr', () => {
     useRepoGitHubMock.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
     const { result } = renderHook(() => usePrCreateFlow(REPO))
     await act(async () => {
-      await result.current.createPr({ head: 'feature-x', base: 'main', title: 'T', body: '', draft: false })
+      await result.current.createPr({
+        head: 'feature-x',
+        base: 'main',
+        title: 'T',
+        body: '',
+        draft: false,
+      })
     })
     expect(m.push).not.toHaveBeenCalled()
     expect(m.createPr).not.toHaveBeenCalled()

@@ -1,6 +1,12 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
-import { ChevronLeft, ExternalLink, GitPullRequest, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import {
+  ChevronLeft,
+  ExternalLink,
+  GitPullRequest,
+  PanelRightClose,
+  PanelRightOpen,
+} from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
@@ -84,7 +90,12 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           <div className="min-w-0 flex-1 overflow-y-auto">
             <PrTitle repoPath={repoPath} prNumber={prNumber} title={pr.title} />
             <PrMeta pr={pr} />
-            <PrDescription repoPath={repoPath} prNumber={prNumber} body={pr.body ?? ''} prUrl={prUrl} />
+            <PrDescription
+              repoPath={repoPath}
+              prNumber={prNumber}
+              body={pr.body ?? ''}
+              prUrl={prUrl}
+            />
             <PrComments repoPath={repoPath} prNumber={prNumber} />
             <PrMergePanel repoPath={repoPath} prNumber={prNumber} pr={pr} />
             <PrCommentBox repoPath={repoPath} prNumber={prNumber} targetUrl={prUrl} />

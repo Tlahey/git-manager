@@ -1,8 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('./GithubSection', () => ({ GithubSection: () => <div data-testid="github-section" /> }))
+
+// Built, tested, and deliberately not listed — see `AVAILABLE_PROVIDERS`. Mocked so this file
+// asserts what the screen *offers*, not what those panels do (they have their own tests).
+vi.mock('./GitlabPanel', () => ({
+  GitlabPanel: () => <div data-testid="integration-panel-gitlab" />,
+}))
+vi.mock('./TokenProviderPanel', () => ({
+  TokenProviderPanel: (props: { provider: string }) => (
+    <div data-testid={`integration-panel-${props.provider}`} />
+  ),
+}))
+vi.mock('../../../api/integrations.api', () => ({ apiBitbucketGetUser: vi.fn() }))
 
 import { IntegrationSection } from './IntegrationSection'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -10,201 +21,29 @@ import { useSettingsStore } from '../../../stores/settings.store'
 const INITIAL_SETTINGS = useSettingsStore.getState()
 
 beforeEach(() => {
+  vi.clearAllMocks()
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
-describe('IntegrationSection — provider navigation', () => {
-  it('shows GitHub by default', () => {
+describe('IntegrationSection', () => {
+  it('shows GitHub', () => {
     render(<IntegrationSection />)
     expect(screen.getByTestId('github-section')).toBeInTheDocument()
   })
 
-  it('switches to GitLab and Bitbucket, hiding GitHub', async () => {
-    const user = userEvent.setup()
+  // GitLab needs an OAuth application nobody has registered yet, and nothing in the app reads
+  // either account — so both would offer to connect and then do nothing with the result.
+  it('does not offer GitLab or Bitbucket while they are unavailable', () => {
     render(<IntegrationSection />)
-    await user.click(screen.getByText('GitLab'))
-    expect(screen.getByText('GitLab Integration')).toBeInTheDocument()
-    expect(screen.queryByTestId('github-section')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('integration-provider-gitlab')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('integration-provider-bitbucket')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('integration-panel-gitlab')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('integration-panel-bitbucket')).not.toBeInTheDocument()
+  })
 
-    await user.click(screen.getByText('Bitbucket'))
-    expect(screen.getByText('Bitbucket Integration')).toBeInTheDocument()
-    expect(screen.queryByText('GitLab Integration')).not.toBeInTheDocument()
+  // A column headed "Providers" listing a single entry is a chooser with nothing to choose.
+  it('hides the provider rail while only one provider is available', () => {
+    render(<IntegrationSection />)
+    expect(screen.queryByTestId('integration-providers')).not.toBeInTheDocument()
   })
 })
-
-describe.each([
-  {
-    provider: 'gitlab' as const,
-    navLabel: 'GitLab',
-    connectLabel: 'Add GitLab account',
-    emptyLabel: 'No GitLab account connected',
-    userPlaceholder: 'Your username',
-    tokenPlaceholder: 'glpat-...',
-    accountsKey: 'gitlabAccounts' as const,
-    activeKey: 'gitlabActiveAccountId' as const,
-    defaultHost: 'https://gitlab.com',
-  },
-  {
-    provider: 'bitbucket' as const,
-    navLabel: 'Bitbucket',
-    connectLabel: 'Add Bitbucket account',
-    emptyLabel: 'No Bitbucket account connected',
-    userPlaceholder: 'Your username',
-    tokenPlaceholder: 'Enter your app password',
-    accountsKey: 'bitbucketAccounts' as const,
-    activeKey: 'bitbucketActiveAccountId' as const,
-    defaultHost: 'https://bitbucket.org',
-  },
-])(
-  'IntegrationSection — $provider',
-  ({
-    navLabel,
-    connectLabel,
-    emptyLabel,
-    userPlaceholder,
-    tokenPlaceholder,
-    accountsKey,
-    activeKey,
-    defaultHost,
-  }) => {
-    async function openProvider() {
-      const user = userEvent.setup()
-      render(<IntegrationSection />)
-      await user.click(screen.getByText(navLabel))
-      return user
-    }
-
-    it('shows an empty state with no accounts', async () => {
-      await openProvider()
-      expect(screen.getByText(emptyLabel)).toBeInTheDocument()
-    })
-
-    it('disables the connect button until both username and token are filled', async () => {
-      const user = await openProvider()
-      const button = screen.getByText(connectLabel).closest('button')!
-      expect(button).toBeDisabled()
-      await user.type(screen.getByPlaceholderText(userPlaceholder), 'someone')
-      expect(button).toBeDisabled()
-      await user.type(screen.getByPlaceholderText(tokenPlaceholder), 'secret-token')
-      expect(button).toBeEnabled()
-    })
-
-    it('connects a new account after a simulated delay, clears the form, and marks it active', async () => {
-      vi.useFakeTimers()
-      render(<IntegrationSection />)
-      fireEvent.click(screen.getByText(navLabel))
-      fireEvent.change(screen.getByPlaceholderText(userPlaceholder), {
-        target: { value: 'someone' },
-      })
-      fireEvent.change(screen.getByPlaceholderText(tokenPlaceholder), {
-        target: { value: 'secret-token' },
-      })
-      fireEvent.click(screen.getByText(connectLabel).closest('button')!)
-
-      expect(screen.getByText('Connecting...')).toBeInTheDocument()
-      await act(async () => vi.advanceTimersByTime(800))
-
-      const accounts = useSettingsStore.getState().settings.integrations![accountsKey]
-      expect(accounts).toEqual([
-        {
-          id: `someone@${defaultHost.replace('https://', '')}`,
-          host: defaultHost,
-          username: 'someone',
-          token: 'secret-token',
-        },
-      ])
-      expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe(accounts[0].id)
-      expect(screen.getByPlaceholderText(userPlaceholder)).toHaveValue('')
-      vi.useRealTimers()
-    })
-
-    it('lists connected accounts, activates an inactive one, and removes an account', async () => {
-      const accountId = `someone@gitlab.example.com`
-      useSettingsStore.setState({
-        settings: {
-          ...INITIAL_SETTINGS.settings,
-          integrations: {
-            gitlabAccounts: [],
-            gitlabActiveAccountId: null,
-            bitbucketAccounts: [],
-            bitbucketActiveAccountId: null,
-            [accountsKey]: [
-              {
-                id: accountId,
-                host: 'https://gitlab.example.com',
-                username: 'someone',
-                token: 't',
-              },
-              { id: 'other@host.com', host: 'https://host.com', username: 'other', token: 't2' },
-            ],
-            [activeKey]: 'other@host.com',
-          },
-        },
-      })
-      const user = await openProvider()
-      expect(screen.getByText('someone')).toBeInTheDocument()
-      expect(screen.getByText('Active')).toBeInTheDocument() // only the active one shows this badge
-
-      await user.click(screen.getByText('Set Active'))
-      expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe(accountId)
-
-      const removeButtons = screen
-        .getAllByRole('button', { name: '' })
-        .filter((b) => b.querySelector('.lucide-trash2'))
-      await user.click(removeButtons[0])
-      expect(
-        useSettingsStore.getState().settings.integrations![accountsKey].map((a) => a.id)
-      ).toEqual(['other@host.com'])
-    })
-
-    it('falls back to another remaining account when the active one is removed', async () => {
-      useSettingsStore.setState({
-        settings: {
-          ...INITIAL_SETTINGS.settings,
-          integrations: {
-            gitlabAccounts: [],
-            gitlabActiveAccountId: null,
-            bitbucketAccounts: [],
-            bitbucketActiveAccountId: null,
-            [accountsKey]: [
-              { id: 'a@host.com', host: 'https://host.com', username: 'a', token: 't' },
-              { id: 'b@host.com', host: 'https://host.com', username: 'b', token: 't2' },
-            ],
-            [activeKey]: 'a@host.com',
-          },
-        },
-      })
-      const user = await openProvider()
-      const removeButtons = screen
-        .getAllByRole('button', { name: '' })
-        .filter((b) => b.querySelector('.lucide-trash2'))
-      await user.click(removeButtons[0])
-      expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe('b@host.com')
-    })
-
-    it('falls back to null when the only (active) account is removed', async () => {
-      useSettingsStore.setState({
-        settings: {
-          ...INITIAL_SETTINGS.settings,
-          integrations: {
-            gitlabAccounts: [],
-            gitlabActiveAccountId: null,
-            bitbucketAccounts: [],
-            bitbucketActiveAccountId: null,
-            [accountsKey]: [
-              { id: 'a@host.com', host: 'https://host.com', username: 'a', token: 't' },
-            ],
-            [activeKey]: 'a@host.com',
-          },
-        },
-      })
-      const user = await openProvider()
-      const removeButton = screen
-        .getAllByRole('button', { name: '' })
-        .find((b) => b.querySelector('.lucide-trash2'))!
-      await user.click(removeButton)
-      expect(useSettingsStore.getState().settings.integrations![activeKey]).toBeNull()
-      expect(screen.getByText(emptyLabel)).toBeInTheDocument()
-    })
-  }
-)

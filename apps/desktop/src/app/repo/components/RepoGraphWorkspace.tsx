@@ -46,18 +46,17 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
 
-  const {
-    openBranchMenu,
-    renameTarget,
-    setRenameTarget,
-    pendingDeleteRemoteBranch,
-    setPendingDeleteRemoteBranch,
-    setUpstreamTarget,
-    setSetUpstreamTarget,
-  } = useSidebarBranchMenu(repoPath)
-  // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
-  // unmounted while the file explorer is open, and a tag row has to stay actionable there.
-  const { openTagMenu, pendingTagAction, setPendingTagAction } = useSidebarTagMenu(repoPath)
+  const { openBranchMenu, renameTarget, setRenameTarget, setUpstreamTarget, setSetUpstreamTarget } =
+    useSidebarBranchMenu(repoPath)
+  const { openTagMenu } = useSidebarTagMenu(repoPath)
+  // The ref-scoped dialogs are mounted *here*, and only here, for the reason the comparison dialog
+  // below already gives: this component stays mounted while the file explorer replaces the graph,
+  // so a dialog opened from a tag badge does not vanish the moment the user opens it. Both the
+  // graph's menus and the sidebar's write the same shared state (`repoUI.store`).
+  const pendingTagAction = useRepoUIStore((s) => s.pendingTagDialog)
+  const setPendingTagAction = useRepoUIStore((s) => s.setPendingTagDialog)
+  const pendingDeleteRemoteBranch = useRepoUIStore((s) => s.pendingRemoteBranchDelete)
+  const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
   // The two refs the branch comparison dialog is showing (set by the graph's and the sidebar's
   // branch menus alike), or null when it is closed.
   const compareRefsTarget = useRepoUIStore((s) => s.compareRefsTarget)

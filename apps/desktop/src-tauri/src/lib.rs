@@ -17,6 +17,7 @@ use commands::ai::{
 use commands::bisect::{
     bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
 };
+use commands::bitbucket::bitbucket_get_user;
 use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
@@ -42,6 +43,7 @@ use commands::github::{
     get_pr_template, github_commit_avatars, github_device_code, github_get_user, github_list_repos,
     github_poll_token,
 };
+use commands::gitlab::{gitlab_device_code, gitlab_get_user, gitlab_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{
     compare_commit_to_workdir, compare_refs, get_commit_diff, get_commit_file,
@@ -80,8 +82,9 @@ use commands::tasks::{get_project_commands, run_task_in_terminal};
 use commands::terminal::{terminal_close, terminal_open, terminal_resize, terminal_write};
 use commands::themes::get_user_themes;
 use commands::undo::{
-    objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
-    snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
+    objects_exist, pin_object, recreate_branch_ref, resolve_revision, restore_file_blob,
+    restore_worktree_snapshot, snapshot_file, snapshot_worktree, snapshot_worktree_always,
+    unpin_object,
 };
 use commands::window::{
     clear_window_backdrop, get_notch_metrics, raise_above_menu_bar, set_window_vibrancy,
@@ -322,6 +325,10 @@ pub fn run() {
             github_device_code,
             github_poll_token,
             github_get_user,
+            gitlab_device_code,
+            gitlab_poll_token,
+            gitlab_get_user,
+            bitbucket_get_user,
             github_list_repos,
             github_commit_avatars,
             get_pr_template,
@@ -344,6 +351,7 @@ pub fn run() {
             restore_worktree_snapshot,
             recreate_branch_ref,
             pin_object,
+            resolve_revision,
             unpin_object,
             objects_exist,
             // Worktree

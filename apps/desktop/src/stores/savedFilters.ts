@@ -83,7 +83,8 @@ export function createSavedFiltersStore(persistName: string, defaults: SavedFilt
             }),
           })),
 
-        removeFilter: (id) => set((state) => ({ filters: state.filters.filter((f) => f.id !== id) })),
+        removeFilter: (id) =>
+          set((state) => ({ filters: state.filters.filter((f) => f.id !== id) })),
 
         moveFilter: (id, direction) =>
           set((state) => {

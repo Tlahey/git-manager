@@ -50,12 +50,12 @@ export function ToolbarButton({
       disabled={disabled || loading}
       title={title ?? label}
       data-testid={dataTestId}
-      className={`group relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`group hover:enabled:bg-accent relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         trailing ? 'rounded-l' : 'rounded'
       }`}
     >
       <span className="relative flex h-4 w-4 items-center justify-center">
-        {loading ? <Spinner className="h-4 w-4 text-muted-foreground" /> : icon}
+        {loading ? <Spinner className="text-muted-foreground h-4 w-4" /> : icon}
         {showBadge && (
           <NumberBadge
             count={badge}
@@ -64,12 +64,12 @@ export function ToolbarButton({
             // bare "2"; the `--badge` tokens keep the pill AA-legible on every theme, and the
             // sidebar-matched ring lifts it clear of the icon it overlaps.
             aria-label={title ?? label}
-            className="absolute -right-2 -top-1 min-h-0 min-w-3.5 px-1 text-[9px] ring-2 ring-sidebar"
+            className="ring-sidebar absolute -top-1 -right-2 min-h-0 min-w-3.5 px-1 text-[9px] ring-2"
           />
         )}
       </span>
       <span
-        className={`text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground group-disabled:group-hover:text-muted-foreground ${
+        className={`text-muted-foreground group-hover:text-foreground group-disabled:group-hover:text-muted-foreground text-[10px] leading-none transition-colors ${
           hideLabelOnNarrow ? 'hidden lg:inline' : ''
         }`}
       >

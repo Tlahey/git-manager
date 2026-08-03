@@ -246,13 +246,13 @@ describe('GitGraph — loading/error/empty states', () => {
   it('shows a loading indicator', () => {
     useGitLog.mockReturnValue({ data: [], isLoading: true, isError: false })
     renderGraph()
-    expect(screen.getByText("Loading history...")).toBeInTheDocument()
+    expect(screen.getByText('Loading history...')).toBeInTheDocument()
   })
 
   it('shows an error message', () => {
     useGitLog.mockReturnValue({ data: [], isLoading: false, isError: true })
     renderGraph()
-    expect(screen.getByText("Failed to load history")).toBeInTheDocument()
+    expect(screen.getByText('Failed to load history')).toBeInTheDocument()
   })
 
   it('shows the empty-repo initialize prompt when the log is empty (no commits yet)', () => {
@@ -415,9 +415,11 @@ describe('GitGraph — graph overflow zone', () => {
 
     // The graph column spans x=160 (refs width) to x=296 (120 + its 2×8px margins).
     act(() => {
-      screen.getByTestId('commit-graph').dispatchEvent(
-        new WheelEvent('wheel', { clientX: 200, deltaX: 43, bubbles: true, cancelable: true })
-      )
+      screen
+        .getByTestId('commit-graph')
+        .dispatchEvent(
+          new WheelEvent('wheel', { clientX: 200, deltaX: 43, bubbles: true, cancelable: true })
+        )
     })
     expect(lastGraphRowCalls.current.at(-1)).toMatchObject({ graphScrollX: 43 })
     // 43 of the 60px hidden width consumed → 17 left of the 24px range, so the zone is mostly
@@ -1138,7 +1140,11 @@ describe('GitGraph — pending graph selection bridge', () => {
     useRepoUIStore.setState({ pendingGraphSelection: 'ffffffff' })
     renderGraph()
     // The i18n mock returns the bare key, so only the translation key reaches the toast.
-    await waitFor(() => expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not found in the current view')))
+    await waitFor(() =>
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('not found in the current view')
+      )
+    )
     expect(useRepoUIStore.getState().pendingGraphSelection).toBeNull()
     errorSpy.mockRestore()
   })

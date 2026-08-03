@@ -97,7 +97,10 @@ export function SummaryAskPanel({
       )}
 
       {answer && (
-        <div className="mt-2 rounded-lg border border-border bg-card/60 p-3" data-testid="summary-answer">
+        <div
+          className="mt-2 rounded-lg border border-border bg-card/60 p-3"
+          data-testid="summary-answer"
+        >
           <p className="select-text text-xs leading-relaxed text-foreground">{answer.answer}</p>
           {answer.matches.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1.5">

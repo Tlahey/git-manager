@@ -126,7 +126,8 @@ export function MultiCommitDetailsPanel({
                         {commit.subject}
                       </span>
                       <span className="truncate text-[10px] text-muted-foreground/70">
-                        {commit.author.name} · {formatShortDate(commit.author.timestamp, i18n.language)}
+                        {commit.author.name} ·{' '}
+                        {formatShortDate(commit.author.timestamp, i18n.language)}
                       </span>
                     </div>
                     <code className="shrink-0 rounded border border-border/40 bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">

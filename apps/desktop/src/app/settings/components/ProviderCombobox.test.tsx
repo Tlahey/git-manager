@@ -47,7 +47,10 @@ describe('ProviderCombobox', () => {
     renderCombobox()
     await user.click(screen.getByTestId('ai-provider-select'))
 
-    expect(screen.getByTestId('ai-provider-option-ollama')).toHaveAttribute('aria-disabled', 'false')
+    expect(screen.getByTestId('ai-provider-option-ollama')).toHaveAttribute(
+      'aria-disabled',
+      'false'
+    )
     expect(screen.getByTestId('ai-provider-option-openai-compatible')).toHaveAttribute(
       'aria-disabled',
       'false'

@@ -239,7 +239,9 @@ export function CommitFileList({
                     ? 'border-primary bg-primary text-white'
                     : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                 )}
-                title={allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')}
+                title={
+                  allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')
+                }
                 data-testid={`file-tree-folder-checkbox-${node.path}`}
               >
                 {someStaged ? '-' : '✓'}
@@ -294,7 +296,11 @@ export function CommitFileList({
                     ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                     : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                 )}
-                title={hoverStage === 'add' ? t('commitFileList.stageFolder') : t('commitFileList.unstageFolder')}
+                title={
+                  hoverStage === 'add'
+                    ? t('commitFileList.stageFolder')
+                    : t('commitFileList.unstageFolder')
+                }
                 data-testid={`file-tree-folder-hover-stage-${node.path}`}
               >
                 {hoverStage === 'add' ? (
@@ -451,25 +457,37 @@ export function CommitFileList({
           </div>
           <div className="flex flex-wrap gap-1.5 rounded-md border border-border/20 bg-muted/5 p-2">
             {fileStats.added > 0 && (
-              <Tag tone="success" title={`${fileStats.added} ${t('commitDetails.stats.added') || 'added'}`}>
+              <Tag
+                tone="success"
+                title={`${fileStats.added} ${t('commitDetails.stats.added') || 'added'}`}
+              >
                 <Plus className="h-3 w-3" />
                 {fileStats.added}
               </Tag>
             )}
             {fileStats.modified > 0 && (
-              <Tag tone="warning" title={`${fileStats.modified} ${t('commitDetails.stats.modified') || 'modified'}`}>
+              <Tag
+                tone="warning"
+                title={`${fileStats.modified} ${t('commitDetails.stats.modified') || 'modified'}`}
+              >
                 <Pencil className="h-3 w-3" />
                 {fileStats.modified}
               </Tag>
             )}
             {fileStats.deleted > 0 && (
-              <Tag tone="danger" title={`${fileStats.deleted} ${t('commitDetails.stats.deleted') || 'deleted'}`}>
+              <Tag
+                tone="danger"
+                title={`${fileStats.deleted} ${t('commitDetails.stats.deleted') || 'deleted'}`}
+              >
                 <Minus className="h-3 w-3" />
                 {fileStats.deleted}
               </Tag>
             )}
             {fileStats.renamed > 0 && (
-              <Tag tone="info" title={`${fileStats.renamed} ${t('commitDetails.stats.renamed') || 'renamed'}`}>
+              <Tag
+                tone="info"
+                title={`${fileStats.renamed} ${t('commitDetails.stats.renamed') || 'renamed'}`}
+              >
                 <ArrowRight className="h-3 w-3" />
                 {fileStats.renamed}
               </Tag>
@@ -660,7 +678,9 @@ export function CommitFileList({
                             ? 'border-primary bg-primary text-white'
                             : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                         )}
-                        title={file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
+                        title={
+                          file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
+                        }
                       >
                         ✓
                       </button>
@@ -742,7 +762,11 @@ export function CommitFileList({
                             ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                             : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                         )}
-                        title={hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')}
+                        title={
+                          hoverStage === 'add'
+                            ? t('commitFileList.stage')
+                            : t('commitFileList.unstage')
+                        }
                       >
                         {hoverStage === 'add' ? (
                           <Plus className="h-2.5 w-2.5" />

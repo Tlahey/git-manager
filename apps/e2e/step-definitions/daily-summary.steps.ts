@@ -37,9 +37,13 @@ After({ tags: '@daily-summary' }, async () => {
 
   await browser.tauri.execute(async ({ core }, root: string) => {
     try {
-      const files = (await core.invoke('list_daily_summaries')) as { repoPath: string; filePath: string }[]
+      const files = (await core.invoke('list_daily_summaries')) as {
+        repoPath: string
+        filePath: string
+      }[]
       for (const file of files) {
-        if (file.repoPath.startsWith(root)) await core.invoke('delete_daily_summary', { filePath: file.filePath })
+        if (file.repoPath.startsWith(root))
+          await core.invoke('delete_daily_summary', { filePath: file.filePath })
       }
     } catch {
       // A run that never archived anything has no directory to read — nothing to clean.
@@ -134,9 +138,7 @@ Given(
         try {
           const raw = localStorage.getItem('git-manager-repos')
           const saved = raw ? JSON.parse(raw)?.state?.savedRepos : null
-          return (
-            Array.isArray(saved) && saved.some((r: { path?: string }) => r?.path === path)
-          )
+          return Array.isArray(saved) && saved.some((r: { path?: string }) => r?.path === path)
         } catch {
           return false
         }
@@ -224,8 +226,9 @@ Then(/^the daily briefing headline becomes "([^"]*)"$/, async (expected: string)
     // window, leaked settings) — capture what the panel actually shows and what the app believes,
     // so the next occurrence is data rather than another bisection.
     const diag = await browser.execute(() => {
-      const panel =
-        document.querySelector('[data-testid="daily-summary-refresh-button"]')?.closest('aside,div,section')
+      const panel = document
+        .querySelector('[data-testid="daily-summary-refresh-button"]')
+        ?.closest('aside,div,section')
       const settings = JSON.parse(localStorage.getItem('git-manager-settings') ?? '{}')?.state
         ?.settings
       return {

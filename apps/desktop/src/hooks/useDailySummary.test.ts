@@ -56,7 +56,9 @@ describe('useDailySummary', () => {
 
   it('shows the newest day when several are archived', () => {
     const { setSummary } = useDailySummaryStore.getState()
-    setSummary(stored({ date: '2020-01-01', generatedAt: 1, summary: { headline: 'Old', highlights: [] } }))
+    setSummary(
+      stored({ date: '2020-01-01', generatedAt: 1, summary: { headline: 'Old', highlights: [] } })
+    )
     setSummary(stored())
     const { result } = renderHook(() => useDailySummary('/repo/a'))
     expect(result.current.summary?.headline).toBe('H')

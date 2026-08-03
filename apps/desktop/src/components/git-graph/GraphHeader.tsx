@@ -50,7 +50,11 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
   // `delta`, `rightCol` shrinks by as much. The sum stays constant, so ONLY that boundary moves:
   // no distant column shifts. If either side is the flex column (message), only the fixed side is
   // touched and the flex one absorbs the difference locally.
-  function handleResizeDown(e: React.PointerEvent, leftCol: ResolvedColumn, rightCol: ResolvedColumn) {
+  function handleResizeDown(
+    e: React.PointerEvent,
+    leftCol: ResolvedColumn,
+    rightCol: ResolvedColumn
+  ) {
     e.preventDefault()
     e.stopPropagation()
     const startX = e.clientX

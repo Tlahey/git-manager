@@ -78,7 +78,7 @@ describe('CommitFileList — stats summary', () => {
   it('shows the empty-state message when there are no files', () => {
     // Appears both in the stats block and the (also-empty) tree body below it.
     renderList({ processedFiles: [] })
-    expect(screen.getAllByText("No changes").length).toBeGreaterThan(0)
+    expect(screen.getAllByText('No changes').length).toBeGreaterThan(0)
   })
 
   it('uses a custom empty message when provided', () => {
@@ -96,7 +96,7 @@ describe('CommitFileList — search', () => {
   it('filters the tree by search query', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('src/foo.ts'), file('src/bar.ts')] })
-    await user.type(screen.getByPlaceholderText("Filter files..."), 'foo')
+    await user.type(screen.getByPlaceholderText('Filter files...'), 'foo')
     expect(screen.getByText('foo.ts')).toBeInTheDocument()
     expect(screen.queryByText('bar.ts')).not.toBeInTheDocument()
   })
@@ -104,7 +104,7 @@ describe('CommitFileList — search', () => {
   it('clears the search query via the clear button', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('src/foo.ts'), file('src/bar.ts')] })
-    const input = screen.getByPlaceholderText("Filter files...")
+    const input = screen.getByPlaceholderText('Filter files...')
     await user.type(input, 'foo')
     await user.click(screen.getByRole('button', { name: '' })) // the X clear button (no accessible name)
     expect(input).toHaveValue('')
@@ -112,7 +112,7 @@ describe('CommitFileList — search', () => {
 
   it('hides the search bar when hideSearch is set', () => {
     renderList({ processedFiles: [file('a.ts')], hideSearch: true })
-    expect(screen.queryByPlaceholderText("Filter files...")).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Filter files...')).not.toBeInTheDocument()
   })
 })
 
@@ -167,11 +167,11 @@ describe('CommitFileList — tree view interactions', () => {
     renderList({ processedFiles: [file('src/a.ts'), file('lib/b.ts')] })
     expect(screen.queryByText('a.ts')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText("Expand All"))
+    await user.click(screen.getByText('Expand All'))
     expect(screen.getByText('a.ts')).toBeInTheDocument()
     expect(screen.getByText('b.ts')).toBeInTheDocument()
 
-    await user.click(screen.getByText("Collapse All"))
+    await user.click(screen.getByText('Collapse All'))
     expect(screen.queryByText('a.ts')).not.toBeInTheDocument()
   })
 
@@ -215,7 +215,7 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
     const onRefresh = vi.fn()
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: false })], isWip: true, onRefresh })
-    await user.click(screen.getByTitle("Stage"))
+    await user.click(screen.getByTitle('Stage'))
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
     expect(onRefresh).toHaveBeenCalledOnce()
   })
@@ -223,21 +223,23 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
   it('unstages a staged file via its checkbox', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: true })], isWip: true })
-    await user.click(screen.getByTitle("Unstage"))
+    await user.click(screen.getByTitle('Unstage'))
     expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 
   it('does not show a stage checkbox for a non-WIP list', () => {
     renderList({ processedFiles: [file('a.ts')], isWip: false })
-    expect(screen.queryByTitle("Stage")).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Stage')).not.toBeInTheDocument()
   })
 
   it('discards a file after confirmation and refreshes', async () => {
     const onRefresh = vi.fn()
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, onRefresh })
-    await user.click(screen.getByTitle("Discard Changes"))
-    expect(window.confirm).toHaveBeenCalledWith("Are you sure you want to discard all local changes to this file? This action is irreversible.")
+    await user.click(screen.getByTitle('Discard Changes'))
+    expect(window.confirm).toHaveBeenCalledWith(
+      'Are you sure you want to discard all local changes to this file? This action is irreversible.'
+    )
     expect(mockedDiscard).toHaveBeenCalledWith('/repo', 'a.ts')
     expect(onRefresh).toHaveBeenCalledOnce()
   })
@@ -246,7 +248,7 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true })
-    await user.click(screen.getByTitle("Discard Changes"))
+    await user.click(screen.getByTitle('Discard Changes'))
     expect(mockedDiscard).not.toHaveBeenCalled()
   })
 
@@ -280,7 +282,7 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
       isWip: true,
       folderCheckboxes: true,
     })
-    expect(screen.getByText("2 files")).toBeInTheDocument()
+    expect(screen.getByText('2 files')).toBeInTheDocument()
   })
 
   it('starts folders expanded when folderCheckboxes is set', () => {
@@ -293,7 +295,7 @@ describe('CommitFileList — hoverStage mode', () => {
   it('hoverStage="add" file button stages the file', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, hoverStage: 'add' })
-    const stageButtons = screen.getAllByTitle("Stage")
+    const stageButtons = screen.getAllByTitle('Stage')
     await user.click(stageButtons[0])
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
@@ -301,7 +303,7 @@ describe('CommitFileList — hoverStage mode', () => {
   it('hoverStage="remove" file button unstages the file', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, hoverStage: 'remove' })
-    await user.click(screen.getByTitle("Unstage"))
+    await user.click(screen.getByTitle('Unstage'))
     expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 
@@ -376,7 +378,7 @@ describe('CommitFileList — list view stage/discard wiring', () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: false })], isWip: true, onRefresh })
     await user.click(screen.getByRole('radio', { name: 'Flat list' }))
-    await user.click(screen.getByTitle("Stage"))
+    await user.click(screen.getByTitle('Stage'))
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 

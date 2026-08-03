@@ -110,7 +110,10 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
             </div>
             <ol className="space-y-1.5">
               {action.commands.map((command) => (
-                <li key={command.entryId} className="rounded border border-border/60 bg-muted/30 p-2">
+                <li
+                  key={command.entryId}
+                  className="rounded border border-border/60 bg-muted/30 p-2"
+                >
                   {command.lines.map((line, i) => (
                     <code
                       key={i}
@@ -181,7 +184,10 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
                 </Tooltip>
               )}
               {generatedAt !== null && !isGenerating && (
-                <span className="text-[10px] text-muted-foreground" data-testid="action-explain-age">
+                <span
+                  className="text-[10px] text-muted-foreground"
+                  data-testid="action-explain-age"
+                >
                   {t('actionJournal.generatedAt', {
                     // The helper works in epoch seconds; the store records milliseconds.
                     when: formatRelativeTime(generatedAt / 1000, i18n.language),
@@ -199,7 +205,10 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
                 {t('actionJournal.aiUnavailable')}
               </p>
             ) : status === 'error' ? (
-              <p className="break-words text-xs text-tone-danger" data-testid="action-explain-error">
+              <p
+                className="break-words text-xs text-tone-danger"
+                data-testid="action-explain-error"
+              >
                 {aiErrorMessage(error ?? '', tErrors)}
               </p>
             ) : text ? (

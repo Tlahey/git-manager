@@ -38,7 +38,13 @@ const {
   openUrlMock: vi.fn(() => Promise.resolve()),
   resizeMock: vi.fn(() => Promise.resolve()),
   hostCalls: [] as string[],
-  hostOptions: { current: null as { restY: number; surface: { current: HTMLElement | null }; withSound: boolean } | null },
+  hostOptions: {
+    current: null as {
+      restY: number
+      surface: { current: HTMLElement | null }
+      withSound: boolean
+    } | null,
+  },
   updateHandlers: { current: [] as ((p: { model: NotchModel }) => void)[] },
 }))
 
@@ -55,7 +61,11 @@ vi.mock('../../lib/openUrl', () => ({ openUrl: openUrlMock }))
 vi.mock('../../lib/notifications/tauriNotchHost', () => ({
   NOTCH_SOUND: 'Pop',
   resizeNotchWindow: (...a: unknown[]) => resizeMock(...(a as [])),
-  createTauriNotchHost: (options: { restY: number; surface: { current: HTMLElement | null }; withSound: boolean }) => {
+  createTauriNotchHost: (options: {
+    restY: number
+    surface: { current: HTMLElement | null }
+    withSound: boolean
+  }) => {
     hostOptions.current = options
     return {
       prepare: () => hostCalls.push('prepare'),

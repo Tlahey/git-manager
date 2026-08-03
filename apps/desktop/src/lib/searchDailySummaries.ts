@@ -103,7 +103,5 @@ export function searchDailySummaries(
     if (total > 0) results.push({ entry, score: total, snippets: Array.from(snippets) })
   }
 
-  return results.sort(
-    (a, b) => b.score - a.score || b.entry.date.localeCompare(a.entry.date)
-  )
+  return results.sort((a, b) => b.score - a.score || b.entry.date.localeCompare(a.entry.date))
 }

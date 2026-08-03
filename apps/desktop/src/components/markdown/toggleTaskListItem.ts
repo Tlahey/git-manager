@@ -18,11 +18,7 @@ const TASK_ITEM = /^(\s*(?:[-*+]|\d{1,9}[.)])\s+\[)([ xX])(\])/
  * Returns the full new document, or `null` when nothing should be written — either the line isn't a
  * task item any more, or it already carries the requested state.
  */
-export function toggleTaskListItem(
-  content: string,
-  line: number,
-  checked: boolean
-): string | null {
+export function toggleTaskListItem(content: string, line: number, checked: boolean): string | null {
   const lines = content.split('\n')
   const index = line - 1
   const target = lines[index]

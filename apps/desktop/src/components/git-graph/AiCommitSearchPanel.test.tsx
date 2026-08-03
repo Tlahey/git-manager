@@ -13,15 +13,13 @@ const searchState = vi.hoisted(() => ({
   error: null as string | null,
   answer: '',
   askedQuestion: '',
-  progress: null as
-    | {
-        phase: string
-        completed: number
-        total: number
-        filesRead?: number
-        narrowing?: boolean
-      }
-    | null,
+  progress: null as {
+    phase: string
+    completed: number
+    total: number
+    filesRead?: number
+    narrowing?: boolean
+  } | null,
   results: [] as unknown[],
   matches: [] as unknown[],
   unread: [] as ScannedCommit[],
@@ -309,7 +307,13 @@ describe('AiCommitSearchPanel', () => {
   it('says when it is choosing which files to open, since both counters stall then', () => {
     searchState.isRunning = true
     searchState.phase = 'scanning'
-    searchState.progress = { phase: 'scanning', completed: 1, total: 5, filesRead: 4, narrowing: true }
+    searchState.progress = {
+      phase: 'scanning',
+      completed: 1,
+      total: 5,
+      filesRead: 4,
+      narrowing: true,
+    }
     renderPanel()
 
     expect(screen.getByTestId('commit-search-narrowing')).toHaveTextContent(

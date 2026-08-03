@@ -90,13 +90,21 @@ describe('WorktreeWipRow', () => {
 
   it('hides the Open Worktree button by default (showOpenButton unset)', () => {
     render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} />)
-    expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })
+    ).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button and calls onOpenWorktree on click when showOpenButton is set', async () => {
     const onOpenWorktree = vi.fn()
     const user = userEvent.setup()
-    render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />)
+    render(
+      <WorktreeWipRow
+        wipStats={{ added: 1, modified: 0, deleted: 0 }}
+        onOpenWorktree={onOpenWorktree}
+        showOpenButton
+      />
+    )
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
@@ -112,7 +120,10 @@ describe('WorktreeWipRow', () => {
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} />
+        <WorktreeWipRow
+          wipStats={{ added: 1, modified: 0, deleted: 0 }}
+          onOpenWorktree={onOpenWorktree}
+        />
       </div>
     )
     await user.click(screen.getByText(/\/\/ WIP/))
@@ -123,7 +134,13 @@ describe('WorktreeWipRow', () => {
   it('does not double-fire onOpenWorktree when the explicit button is clicked (row + button both wired)', async () => {
     const onOpenWorktree = vi.fn()
     const user = userEvent.setup()
-    render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />)
+    render(
+      <WorktreeWipRow
+        wipStats={{ added: 1, modified: 0, deleted: 0 }}
+        onOpenWorktree={onOpenWorktree}
+        showOpenButton
+      />
+    )
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
@@ -134,7 +151,11 @@ describe('WorktreeWipRow', () => {
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />
+        <WorktreeWipRow
+          wipStats={{ added: 1, modified: 0, deleted: 0 }}
+          onOpenWorktree={onOpenWorktree}
+          showOpenButton
+        />
       </div>
     )
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))

@@ -20,10 +20,7 @@ describe('mergeTarget.api', () => {
 
     const result = await api.apiGetMergeTargetStatus(PATH, ['origin/main', 'origin/master'])
 
-    expect(mocked.getMergeTargetStatus).toHaveBeenCalledWith(PATH, [
-      'origin/main',
-      'origin/master',
-    ])
+    expect(mocked.getMergeTargetStatus).toHaveBeenCalledWith(PATH, ['origin/main', 'origin/master'])
     expect(result).toEqual({ target: 'origin/main' })
   })
 })

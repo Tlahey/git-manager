@@ -64,20 +64,26 @@ Then(
 // same bridge and the real `GitGraphOverlayManager` routing/`CompareToParentDialog` rendering,
 // without needing a native right-click menu WebDriver cannot open — same pattern as
 // blame-history.steps.ts's `setActiveDiffFile` call.
-When(/^I dispatch comparing the selected commit against parent "(\d+)"$/, async (parentNumber: string) => {
-  await browser.execute((parent: number) => {
-    const store = (
-      window as unknown as {
-        __e2eRepoUIStore?: {
-          getState: () => {
-            setPendingGraphAction: (action: { kind: 'compareParent'; parentNumber: number }) => void
+When(
+  /^I dispatch comparing the selected commit against parent "(\d+)"$/,
+  async (parentNumber: string) => {
+    await browser.execute((parent: number) => {
+      const store = (
+        window as unknown as {
+          __e2eRepoUIStore?: {
+            getState: () => {
+              setPendingGraphAction: (action: {
+                kind: 'compareParent'
+                parentNumber: number
+              }) => void
+            }
           }
         }
-      }
-    ).__e2eRepoUIStore
-    store?.getState().setPendingGraphAction({ kind: 'compareParent', parentNumber: parent })
-  }, Number(parentNumber))
-})
+      ).__e2eRepoUIStore
+      store?.getState().setPendingGraphAction({ kind: 'compareParent', parentNumber: parent })
+    }, Number(parentNumber))
+  }
+)
 
 Then(/^the compare-parent dialog is shown$/, async () => {
   await expect($('[data-testid="compare-parent-dialog"]')).toBeDisplayed()

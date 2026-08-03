@@ -82,8 +82,7 @@ export const useLaunchpadStore = create<LaunchpadState>()(
 
       clearPendingOpenPr: () => set({ pendingOpenPrId: null }),
 
-      snoozePr: (id, until) =>
-        set((state) => ({ snoozed: { ...state.snoozed, [id]: until } })),
+      snoozePr: (id, until) => set((state) => ({ snoozed: { ...state.snoozed, [id]: until } })),
 
       unsnoozePr: (id) =>
         set((state) => {

@@ -127,10 +127,7 @@ export function useGraphLayout({
 
   // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed` in
   // GraphRow) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
-  const matchSet = useMemo(
-    () => (matchingOids ? new Set(matchingOids) : null),
-    [matchingOids]
-  )
+  const matchSet = useMemo(() => (matchingOids ? new Set(matchingOids) : null), [matchingOids])
   const totalMatches = matchingOids?.length ?? 0
 
   // Same O(1) lookup set for the AUTHOR column filter — `null` when no author is selected.

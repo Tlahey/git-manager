@@ -1,45 +1,45 @@
 # Commit search
 
-Ask a question about what happened in a repository lately — *"has the button component changed
-recently?"* — and get an answer read out of the actual commits, with the commits it came from.
+Ask a question about what happened in a repository lately — _"has the button component changed
+recently?"_ — and get an answer read out of the actual commits, with the commits it came from.
 
 > Shared plumbing — transport, events, cancellation, errors, settings — lives in the
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 
-| | |
-| --- | --- |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Descriptors** | [`commitRelevanceFeature`](../../packages/ai/src/features/commitRelevance.ts) (map) + [`commitSearchAnswerFeature`](../../packages/ai/src/features/commitSearchAnswer.ts) (reduce), sequenced by [`scanCommits`](../../packages/ai/src/features/scanCommits.ts) — plus, in the quick mode, [`commitQuickScanFeature`](../../packages/ai/src/features/commitQuickScan.ts) narrowing the commits and [`commitFileScanFeature`](../../packages/ai/src/features/commitFileScan.ts) narrowing each one's files |
-| **Kind** | completion + JSON schema per **file**, merged per commit, then streaming markdown for the answer |
-| **Temperature** | 0.1 per commit, 0.2 for the answer |
-| **Input** | `get_ai_commit_scan` (the newest N commits, full oid + touched paths) then `get_commit_diff` per commit |
-| **Diff budget** | per **file**: each prompt carries one file's slice of one commit's patch, so nothing that has to fit is something the user chose the size of |
-| **UI** | [`AiCommitSearchPanel`](../../apps/desktop/src/components/git-graph/AiCommitSearchPanel.tsx) — right panel — via [`useAiCommitSearch`](../../apps/desktop/src/hooks/useAiCommitSearch.ts), opened from [`AiMenu`](../../apps/desktop/src/components/action-toolbar/AiMenu.tsx) or ⇧⌘F |
-| **Memory** | [`aiCommitSearch.store`](../../apps/desktop/src/stores/aiCommitSearch.store.ts), persisted per repo, answer **and** matches |
+| **Kind**        | completion + JSON schema per **file**, merged per commit, then streaming markdown for the answer                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Temperature** | 0.1 per commit, 0.2 for the answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Input**       | `get_ai_commit_scan` (the newest N commits, full oid + touched paths) then `get_commit_diff` per commit                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Diff budget** | per **file**: each prompt carries one file's slice of one commit's patch, so nothing that has to fit is something the user chose the size of                                                                                                                                                                                                                                                                                                                                                              |
+| **UI**          | [`AiCommitSearchPanel`](../../apps/desktop/src/components/git-graph/AiCommitSearchPanel.tsx) — right panel — via [`useAiCommitSearch`](../../apps/desktop/src/hooks/useAiCommitSearch.ts), opened from [`AiMenu`](../../apps/desktop/src/components/action-toolbar/AiMenu.tsx) or ⇧⌘F                                                                                                                                                                                                                     |
+| **Memory**      | [`aiCommitSearch.store`](../../apps/desktop/src/stores/aiCommitSearch.store.ts), persisted per repo, answer **and** matches                                                                                                                                                                                                                                                                                                                                                                               |
 
 ---
 
 ## Why it exists
 
-`git log --grep` searches what people *wrote* about their changes. That is a different question from
-what they *did*. A commit named `fix: review feedback` may be the one that rewrote the button's
+`git log --grep` searches what people _wrote_ about their changes. That is a different question from
+what they _did_. A commit named `fix: review feedback` may be the one that rewrote the button's
 loading state, and no text search will ever find it; conversely `refactor(ui): button` may not have
 touched behaviour at all.
 
 The other AI features all take a subject you already have — this branch, this commit, this file — and
 describe it. This one is the inverse: you have a question and no idea where the answer is. Finding
-the subject *is* the work.
+the subject _is_ the work.
 
 ### Not the same thing as summary search
 
 [Summary search](./summary-search.md) also answers a question, and the two are easy to confuse. They
 read different corpora and fail differently:
 
-| | Summary search | Commit search |
-| --- | --- | --- |
-| Reads | the archived daily briefings — prose the app wrote earlier | the commits themselves, patch included |
-| Cost | one call over a lexically pre-filtered handful of days | one call **per file of every commit** in the window |
-| Answers | "what was I doing in June?" | "did *this specific thing* change, and where?" |
-| Blind to | anything no briefing happened to mention | anything outside the window or off HEAD |
+|          | Summary search                                             | Commit search                                       |
+| -------- | ---------------------------------------------------------- | --------------------------------------------------- |
+| Reads    | the archived daily briefings — prose the app wrote earlier | the commits themselves, patch included              |
+| Cost     | one call over a lexically pre-filtered handful of days     | one call **per file of every commit** in the window |
+| Answers  | "what was I doing in June?"                                | "did _this specific thing_ change, and where?"      |
+| Blind to | anything no briefing happened to mention                   | anything outside the window or off HEAD             |
 
 Ask the archive when you want the shape of a period; ask the commits when you need a sha to open.
 
@@ -85,7 +85,7 @@ there the diff's allowance comes to about 10 000 characters. **Eight per cent of
 
 Each file is judged by the same `commitRelevanceFeature` — same instruction, same schema, same
 acceptance gates, so a file-level verdict cannot get in on easier terms — with the commit's own
-message travelling along, so the model still knows what the change was *for* while looking at one
+message travelling along, so the model still knows what the change was _for_ while looking at one
 file of it.
 
 It runs **whatever the commit's size**, exactly as [the file map phase](./file-grouping.md) does and
@@ -117,7 +117,7 @@ value cannot turn one search into thousands of calls.
 Cancellation is checked **between** commits, not within one: the completion transport takes no
 request id, so a commit's remaining files are abandoned but the call in flight finishes and its
 result is discarded. Acceptable only because each call is small — which is itself the consequence of
-reading one file at a time. Raising *Calls in flight* multiplies that waste by however many calls
+reading one file at a time. Raising _Calls in flight_ multiplies that waste by however many calls
 were in flight.
 
 ---
@@ -127,13 +127,13 @@ were in flight.
 The panel offers a **Quick search** tick-box. It does not change what reading a file means — both
 modes judge a file on its diff, with the same call — it changes **how much gets opened**:
 
-| | Deep (default) | Quick |
-| --- | --- | --- |
-| Picks commits by | nothing, it reads them all | one call over every commit's message |
-| Picks files by | nothing, it reads them all | one call per shortlisted commit, over its paths |
-| Calls | 1 per file of every commit | 1 + 1 per shortlisted commit + 1 per kept file |
-| Verdicts rest on | the code | the code |
-| Misses | nothing in the window | any commit or file the messages and paths never pointed at |
+|                  | Deep (default)             | Quick                                                      |
+| ---------------- | -------------------------- | ---------------------------------------------------------- |
+| Picks commits by | nothing, it reads them all | one call over every commit's message                       |
+| Picks files by   | nothing, it reads them all | one call per shortlisted commit, over its paths            |
+| Calls            | 1 per file of every commit | 1 + 1 per shortlisted commit + 1 per kept file             |
+| Verdicts rest on | the code                   | the code                                                   |
+| Misses           | nothing in the window      | any commit or file the messages and paths never pointed at |
 
 **Two narrowings, not one.** Shortlisting commits alone was not enough and the numbers say why: a
 measured run on this repository shortlisted 13 commits and still spent **94 calls** opening their
@@ -143,7 +143,7 @@ become one call plus the three or four it keeps.
 
 The example at the top of this page is what separates the modes: a commit named `fix: review
 feedback` that rewrote the button's loading state is found by the deep read and never shortlisted by
-the quick one. A commit the shortlist *does* pick is opened and judged exactly as the deep search
+the quick one. A commit the shortlist _does_ pick is opened and judged exactly as the deep search
 would judge it, and can be rejected there.
 
 ### The narrowings lean the other way on purpose
@@ -152,9 +152,9 @@ The passes have opposite cost asymmetries, and their instructions say so:
 
 - For the **verdict**, a false positive is the expensive mistake. It puts a wrong claim about the
   user's own history in front of them, sourced to a commit they will go and open. Its instruction
-  says *the default answer is false*.
+  says _the default answer is false_.
 - For both **narrowings**, a false positive costs one read that then rejects it, while a false
-  negative removes it from the answer for good. Both say *when in doubt, include it* — with the
+  negative removes it from the answer for good. Both say _when in doubt, include it_ — with the
   counterweight that returning everything would defeat the point, so a message or a path giving no
   indication at all is not a candidate.
 
@@ -177,34 +177,34 @@ thing anyone will remember is that they once searched and found nothing.
 
 The feature's honesty rests on never collapsing these:
 
-| Situation | What is recorded | Why it matters |
-| --------- | ---------------- | -------------- |
-| commit read, judged irrelevant | a negative verdict | genuine evidence of absence |
+| Situation                                      | What is recorded                                                       | Why it matters                             |
+| ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
+| commit read, judged irrelevant                 | a negative verdict                                                     | genuine evidence of absence                |
 | commit could not be read (diff or call failed) | `failed: true` **and a cause**, excluded from the answer's denominator | a provider hiccup must not become evidence |
-| history holds commits older than the ones read | `truncated`, stated in the prompt **and** the panel | "not found" means "not in what was read" |
+| history holds commits older than the ones read | `truncated`, stated in the prompt **and** the panel                    | "not found" means "not in what was read"   |
 
 The answer's instruction requires a negative answer to state what was actually searched, and the
-panel shows both caveats above the commit list. The model's `scanned` count is commits *read* —
+panel shows both caveats above the commit list. The model's `scanned` count is commits _read_ —
 failures are subtracted before the prompt is built.
 
 ### Unread commits are named, not counted
 
-The panel used to say *"N commits could not be read"* and stop. True, alarming, and impossible to act
+The panel used to say _"N commits could not be read"_ and stop. True, alarming, and impossible to act
 on: it did not say which commits were missing from the answer, and it collapsed four problems with
 four different fixes into one number. `ScanFailure` keeps them apart:
 
-| Cause | What actually happened | What the user does |
-| ----- | ---------------------- | ------------------ |
-| `unreadable` | the provider answered in a shape the app cannot read | change model — it will do this on *every* commit |
-| `timeout` | the model ran past the request budget. **The most likely one**: a real run lost six of ten commits this way, every one at exactly the configured 30 s | raise the timeout, or pick a faster model |
-| `call` | the provider never answered at all | start it |
-| `diff` | the commit's patch would not load from the repository | look at that commit |
+| Cause        | What actually happened                                                                                                                                | What the user does                               |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `unreadable` | the provider answered in a shape the app cannot read                                                                                                  | change model — it will do this on _every_ commit |
+| `timeout`    | the model ran past the request budget. **The most likely one**: a real run lost six of ten commits this way, every one at exactly the configured 30 s | raise the timeout, or pick a faster model        |
+| `call`       | the provider never answered at all                                                                                                                    | start it                                         |
+| `diff`       | the commit's patch would not load from the repository                                                                                                 | look at that commit                              |
 
 [`CommitSearchUnreadList`](../../apps/desktop/src/components/git-graph/components/CommitSearchUnreadList.tsx)
 states each cause once — a run where twenty commits failed identically is one problem, not twenty —
 and lists the commits as chips that open in the graph, because reading the three the model dropped is
 usually faster than running the search again. A saved run keeps the count and the cause but not the
-commits: which ones failed is only actionable while they are on screen, while *why* is what makes the
+commits: which ones failed is only actionable while they are on screen, while _why_ is what makes the
 caveat readable months later.
 
 ---
@@ -216,8 +216,8 @@ JSON verdict of five fields **in this order**: `subject`, `evidence`, `relevant`
 
 ### The order is the feature
 
-The first version asked for `relevant` first, and it did not work. Against a real question — *"has
-the button component changed?"* — a local model came back with `relevant: true` and a finding that
+The first version asked for `relevant` first, and it did not work. Against a real question — _"has
+the button component changed?"_ — a local model came back with `relevant: true` and a finding that
 was simply a **summary of the commit**: "introduces a two-phase approach for planning commits…". It
 had never considered the button; it had described what was in front of it and marked it relevant.
 
@@ -227,15 +227,15 @@ justification for it did. Now it must write:
 - `subject` — the thing the **question** asks about, copied from the question. This is the anchor;
   without it the diff is the only thing in the model's recent attention.
 - `evidence` — one concrete element **of this diff** that changes that thing. Empty when there is
-  none, and *the parser enforces that an empty one means not relevant*. This is the gate.
+  none, and _the parser enforces that an empty one means not relevant_. This is the gate.
 
 So a match now costs the model a specific claim it has to point at, instead of a boolean it can
 default to.
 
 The instruction backs this with a rule that names the observed failure directly: a question about a
 button is not answered by a commit adding a menu entry, an icon, a panel or a dialog — those are all
-components, and none of them is the button. And: *if what you are about to write reads like a summary
-of the commit, the verdict is false.*
+components, and none of them is the button. And: _if what you are about to write reads like a summary
+of the commit, the verdict is false._
 
 ### The rest of the contract
 
@@ -247,7 +247,7 @@ of the commit, the verdict is false.*
 - **`none`, `n/a`, `aucune` count as empty evidence.** They are how a model writes an empty field
   when a schema forbids omitting it, and taking them literally would reopen the gate.
 - **A failed call throws** `CommitVerdictUnreadable` rather than degrading to a clean "no", so the
-  caller can record the commit as unread *and say why*.
+  caller can record the commit as unread _and say why_.
 
 ### Prose is accepted, on the same terms
 
@@ -256,7 +256,7 @@ back is `relevant: true\nfinding: …\nfiles:\n- a`, which a JSON-only parser re
 did not degrade the search, it made **every** commit unreadable — a wall of failures, and a feature
 that appeared broken rather than mismatched.
 
-The parser therefore falls back to reading labelled prose, and then applies the *same* acceptance
+The parser therefore falls back to reading labelled prose, and then applies the _same_ acceptance
 rules, so a prose answer never gets in on easier terms than a JSON one.
 
 ### Room for the answer
@@ -275,7 +275,7 @@ into one bullet and lose a sha, because the sha is what the user clicks.
 
 ## What the user sees
 
-The toolbar's **AI menu** → *Search history with a question*, or ⇧⌘F, opens the right panel. It sits
+The toolbar's **AI menu** → _Search history with a question_, or ⇧⌘F, opens the right panel. It sits
 in that menu rather than beside the ⌘F search it resembles: the two look alike and behave nothing
 alike — milliseconds over commit subjects versus minutes over every commit's diff — and the AI menu
 is where the actions that spend a model run live. Both routes clear the centre slot's other
@@ -286,9 +286,9 @@ many have been read, the streamed answer, and the commits behind it.
 
 There used to be a time window beside the count, and it was redundant. The scan stops at whichever
 bound it meets first, so exactly one ever binds; and since every commit read costs a model call, the
-count is the one that *must*. A window could therefore only ever return fewer commits than were asked
+count is the one that _must_. A window could therefore only ever return fewer commits than were asked
 for — and its one visible effect was a "the period held more commits than were read" warning that
-fired precisely when the window had done nothing. The span actually covered is now *reported* instead
+fired precisely when the window had done nothing. The span actually covered is now _reported_ instead
 of asked for, both to the user and in the answer's prompt, which also fixes a quieter bug: the model
 used to be told "10 commits, since <a month ago>" when those ten commits spanned three days. **Each match row
 selects that commit in the graph**, where its diff opens the way it always does — an answer you
@@ -296,7 +296,7 @@ cannot verify is a claim, and the follow-up question is always "show me".
 
 ### Saved searches
 
-Every finished run is kept per repository (20 most recent), with its answer *and* its matches: the
+Every finished run is kept per repository (20 most recent), with its answer _and_ its matches: the
 question, when it ran, how many commits were read, how many matched, and which model answered.
 Reopening one restores the answer and the clickable commit list without spending another minute of
 model time. The model name is on screen because it changes how much an old answer is worth.
@@ -312,9 +312,9 @@ model time. The model name is on screen because it changes how much an old answe
 - **Files listed per commit are capped** (60) so a lockfile-regeneration commit cannot dwarf the
   payload; the commit is still read, its path list is just cut.
 - **The scan is sequential by default**, like every other map phase here, and widened only by the
-  *Calls in flight* setting — see [the AI overview](./README.md#reading-several-at-once) for what
+  _Calls in flight_ setting — see [the AI overview](./README.md#reading-several-at-once) for what
   raising it buys and what it costs.
 - **A single file bigger than the window is still trimmed.** Reading file by file removes the commit
   as the unit that has to fit; it cannot remove the file. This is the one place left where the model
-  may be shown part of something — and the instruction holds there too: *a file you cannot see is not
-  evidence*, so the failure is an omission, never an invented match.
+  may be shown part of something — and the instruction holds there too: _a file you cannot see is not
+  evidence_, so the failure is an omission, never an invented match.

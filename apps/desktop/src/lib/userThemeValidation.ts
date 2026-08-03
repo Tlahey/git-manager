@@ -15,7 +15,10 @@ import type { UserTheme } from '@git-manager/git-types'
  * contains no recognizable `html[data-theme]` token block, so purely cosmetic
  * user CSS is left alone.  `warn` is injectable for testing.
  */
-export function warnOnInvalidUserTheme(theme: UserTheme, warn: typeof console.warn = console.warn): void {
+export function warnOnInvalidUserTheme(
+  theme: UserTheme,
+  warn: typeof console.warn = console.warn
+): void {
   const parsed = parseThemeTokens(theme.css)
   // Prefer the block matching the theme id; fall back to the first block found.
   const tokens = parsed.get(theme.id) ?? [...parsed.values()][0]
@@ -26,6 +29,6 @@ export function warnOnInvalidUserTheme(theme: UserTheme, warn: typeof console.wa
 
   warn(
     `[theme] User theme "${theme.id}" (${theme.name}) has accessibility/consistency issues:`,
-    validation,
+    validation
   )
 }

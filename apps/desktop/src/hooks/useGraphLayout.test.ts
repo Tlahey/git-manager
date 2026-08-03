@@ -124,11 +124,13 @@ describe('useGraphLayout', () => {
     expect(result.current.dragHighlightSet).toBeNull()
   })
 
-  it('highlights the hovered ref\'s own lane once a drag-drop target is set', () => {
+  it("highlights the hovered ref's own lane once a drag-drop target is set", () => {
     const nodes = [
       {
         ...node('tip', 0, [], ['base']),
-        refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch' as const, commitOid: 'tip' }],
+        refs: [
+          { name: 'refs/heads/feat', shortName: 'feat', type: 'branch' as const, commitOid: 'tip' },
+        ],
       },
       node('base', 0),
     ]

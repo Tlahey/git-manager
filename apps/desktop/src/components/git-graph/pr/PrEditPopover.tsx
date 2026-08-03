@@ -132,7 +132,9 @@ export function PrEditPopover({
             <Spinner className="h-3 w-3" /> {t('pr.edit.loading')}
           </div>
         ) : candidates.length === 0 ? (
-          <p className="px-1 py-2 text-[11px] italic text-muted-foreground">{t('pr.edit.noResults')}</p>
+          <p className="px-1 py-2 text-[11px] italic text-muted-foreground">
+            {t('pr.edit.noResults')}
+          </p>
         ) : (
           <ul>
             {candidates.map((o) => (

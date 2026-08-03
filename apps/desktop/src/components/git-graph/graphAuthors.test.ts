@@ -69,10 +69,7 @@ describe('collectGraphAuthors', () => {
   })
 
   it('backfills a name from a later commit when the first sighting had none', () => {
-    const authors = collectGraphAuthors([
-      node('a', '', 'dev@x.com'),
-      node('b', 'Dev', 'dev@x.com'),
-    ])
+    const authors = collectGraphAuthors([node('a', '', 'dev@x.com'), node('b', 'Dev', 'dev@x.com')])
     expect(authors).toEqual([{ email: 'dev@x.com', name: 'Dev', count: 2 }])
   })
 })

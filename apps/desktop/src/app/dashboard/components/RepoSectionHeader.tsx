@@ -290,11 +290,7 @@ export function RepoSectionHeader({
               <p className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                 {t('dashboard.section.changeColor')}
               </p>
-              <SectionColorPicker
-                sectionId={sectionId}
-                value={sectionColor}
-                onChange={pickColor}
-              />
+              <SectionColorPicker sectionId={sectionId} value={sectionColor} onChange={pickColor} />
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

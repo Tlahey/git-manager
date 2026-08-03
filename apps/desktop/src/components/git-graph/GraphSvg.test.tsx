@@ -107,7 +107,10 @@ describe('GraphSvg — straight vertical lines', () => {
   it('renders the arriving line on a stash row solid when the edge is not marked dashed', () => {
     // The line coming from above is the branch's real history passing through the stash's lane;
     // only the stash-to-base tether below carries dashed:true (set in Rust), not this segment.
-    const svg = renderSvg({ connections: [edge({ endsAtNode: true, dashed: false })], isStash: true })
+    const svg = renderSvg({
+      connections: [edge({ endsAtNode: true, dashed: false })],
+      isStash: true,
+    })
     expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
   })
 

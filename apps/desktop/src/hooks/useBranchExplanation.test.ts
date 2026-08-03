@@ -201,6 +201,8 @@ describe('useBranchExplanation — memory', () => {
     await generate(() => result.current.explain('origin/main'), 'first')
     await generate(() => result.current.explain('origin/main'), 'second')
 
-    expect(useAiExplanationStore.getState().get('/repo', 'branch', 'feat/login')?.text).toBe('second')
+    expect(useAiExplanationStore.getState().get('/repo', 'branch', 'feat/login')?.text).toBe(
+      'second'
+    )
   })
 })

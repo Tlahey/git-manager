@@ -290,9 +290,7 @@ export function SidebarRowView({
 
     case 'tag': {
       const isHidden = hiddenTags.includes(row.tag.shortName)
-      const visibilityLabel = isHidden
-        ? t('sidebar.tag.showInGraph')
-        : t('sidebar.tag.hideInGraph')
+      const visibilityLabel = isHidden ? t('sidebar.tag.showInGraph') : t('sidebar.tag.hideInGraph')
       const select = () =>
         onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
       return (
@@ -338,7 +336,7 @@ export function SidebarRowView({
               e.stopPropagation()
               onTagContextMenu?.(e, row.tag)
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/tag:opacity-100"
+            className="absolute right-1 top-1/2 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/tag:opacity-100"
             aria-label={t('sidebar.tagActions')}
             title={t('sidebar.tagActions')}
             data-testid={`tag-actions-button-${row.tag.shortName}`}
@@ -409,7 +407,7 @@ export function SidebarRowView({
               e.stopPropagation()
               onStashContextMenu?.(e, row.stash)
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
+            className="absolute right-1 top-1/2 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
             aria-label={t('sidebar.stashActions')}
             title={t('sidebar.stashActions')}
             data-testid={`stash-actions-button-${row.stash.index}`}

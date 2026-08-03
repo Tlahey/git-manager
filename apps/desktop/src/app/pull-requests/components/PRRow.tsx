@@ -137,19 +137,19 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
             }}
             title={t('row.openOnGitHub')}
             data-testid={`pr-number-link-${pr.id}`}
-            className="whitespace-nowrap cursor-pointer font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            className="cursor-pointer whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >
             #{pr.number}
           </button>
         </div>
         <div className="mt-0.5 flex items-center gap-2">
           {pr.additions > 0 && (
-            <Tag tone="success" className="font-mono text-[9px] px-1 py-px">
+            <Tag tone="success" className="px-1 py-px font-mono text-[9px]">
               +{pr.additions}
             </Tag>
           )}
           {pr.deletions > 0 && (
-            <Tag tone="danger" className="font-mono text-[9px] px-1 py-px">
+            <Tag tone="danger" className="px-1 py-px font-mono text-[9px]">
               −{pr.deletions}
             </Tag>
           )}
@@ -233,4 +233,3 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
     </div>
   )
 }
-

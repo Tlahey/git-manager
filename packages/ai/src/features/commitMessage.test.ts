@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  detectScope,
-  formatCommitMessage,
-  parseCommitMessage,
-  truncateDiff,
-} from './commitMessage'
+import { detectScope, formatCommitMessage, parseCommitMessage, truncateDiff } from './commitMessage'
 
 describe('detectScope', () => {
   it('returns the shared top-level directory when all files share one', () => {
@@ -41,10 +36,6 @@ describe('truncateDiff', () => {
     expect(out).toContain('[diff truncated, showing first 10 chars]')
   })
 })
-
-
-
-
 
 describe('parseCommitMessage', () => {
   it('reads the subject and body out of the structured answer', () => {

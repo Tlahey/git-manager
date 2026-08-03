@@ -84,9 +84,7 @@ describe('ActionJournalWindow', () => {
   it('invites an action when the journal is empty', () => {
     render(<ActionJournalWindow />)
 
-    expect(screen.getByTestId('action-journal-empty')).toHaveTextContent(
-      'No actions recorded yet'
-    )
+    expect(screen.getByTestId('action-journal-empty')).toHaveTextContent('No actions recorded yet')
   })
 
   it('lists the actions with their commands', () => {

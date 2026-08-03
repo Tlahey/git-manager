@@ -13,6 +13,7 @@ import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
 import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashConfirm'
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
+import { useBranches } from '../../hooks/useBranches'
 import { RepoGraphWorkspace } from './components/RepoGraphWorkspace'
 
 interface RepoViewProps {
@@ -51,6 +52,23 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
         })
     }
   }, [effectiveRepoPath, repoCache, setRepoCache])
+
+  // …and re-read it whenever the branch list does, since that is exactly when HEAD may have moved.
+  // The effect above only fills the cache when it is *missing*, so `head`/`isDetached` otherwise
+  // kept saying whatever was true when the tab was opened. Nothing noticed while HEAD stayed on a
+  // branch — the toolbar reads the branch list first and only falls back to this — but a checkout
+  // *into* a detached HEAD has no branch to report, so the fallback is the only answer, and it was
+  // stale: undoing a checkout made from a detached HEAD left the toolbar naming the branch the
+  // user had just left.
+  const { data: branchList } = useBranches(effectiveRepoPath ?? '')
+  useEffect(() => {
+    if (!effectiveRepoPath || !branchList) return
+    apiOpenRepo(effectiveRepoPath)
+      .then((r) => setRepoCache(effectiveRepoPath, r))
+      .catch(() => {
+        /* repository not found / not a git repo: ignored */
+      })
+  }, [effectiveRepoPath, branchList, setRepoCache])
 
   // The file explorer browses one repository at a time; a tab (or worktree) switch has to drop the
   // previous one's selected file and directory rather than carry them into a tree they don't exist

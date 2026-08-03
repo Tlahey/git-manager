@@ -108,7 +108,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         className="my-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-foreground"
         data-testid="mermaid-error-fallback"
       >
-        <div className="mb-2 flex items-center gap-2 text-destructive font-medium">
+        <div className="mb-2 flex items-center gap-2 font-medium text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{t('markdown.mermaid.error')}</span>
         </div>
@@ -121,12 +121,12 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
   return (
     <div
-      className="my-4 flex flex-col items-center justify-center overflow-x-auto rounded-lg border border-border bg-card/60 p-4 select-text"
+      className="my-4 flex select-text flex-col items-center justify-center overflow-x-auto rounded-lg border border-border bg-card/60 p-4"
       data-testid="mermaid-block"
     >
       {loading && (
         <div
-          className="py-4 text-xs text-muted-foreground animate-pulse"
+          className="animate-pulse py-4 text-xs text-muted-foreground"
           data-testid="mermaid-loading"
         >
           {t('markdown.mermaid.loading')}
@@ -134,7 +134,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       )}
       <div
         ref={containerRef}
-        className="w-full flex justify-center overflow-x-auto [&_svg]:max-w-full [&_svg]:h-auto"
+        className="flex w-full justify-center overflow-x-auto [&_svg]:h-auto [&_svg]:max-w-full"
         dangerouslySetInnerHTML={{ __html: svgContent || '' }}
       />
     </div>

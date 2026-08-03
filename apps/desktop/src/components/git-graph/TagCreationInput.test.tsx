@@ -8,9 +8,7 @@ describe('TagCreationInput — inline variant', () => {
   beforeEach(() => vi.clearAllMocks())
 
   function renderInline() {
-    return render(
-      <TagCreationInput variant="inline" onSubmit={onSubmit} onCancel={onCancel} />
-    )
+    return render(<TagCreationInput variant="inline" onSubmit={onSubmit} onCancel={onCancel} />)
   }
 
   it('shows the tag-name input with its placeholder', () => {

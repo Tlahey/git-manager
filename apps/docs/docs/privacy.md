@@ -14,11 +14,11 @@ on disk, and everything you see is computed on your machine.
 
 Three things — each visible, each under your control:
 
-| Traffic | Where it goes | When | Turn it off |
-| --- | --- | --- | --- |
-| **AI requests** | The provider **you** configured — `http://localhost:11434` (Ollama) by default, so by default not even off your machine | Only when you use an AI feature | Settings → AI → disable, or never configure a remote endpoint |
-| **GitHub** | `github.com` (OAuth device flow, pull requests, issues, avatars) | Only if you connect a GitHub account | Don't connect one — every Git feature works without it |
-| **Update check** | This project's GitHub Releases (`latest.json`) | On launch, to offer updates | — |
+| Traffic          | Where it goes                                                                                                           | When                                 | Turn it off                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| **AI requests**  | The provider **you** configured — `http://localhost:11434` (Ollama) by default, so by default not even off your machine | Only when you use an AI feature      | Settings → AI → disable, or never configure a remote endpoint |
+| **GitHub**       | `github.com` (OAuth device flow, pull requests, issues, avatars)                                                        | Only if you connect a GitHub account | Don't connect one — every Git feature works without it        |
+| **Update check** | This project's GitHub Releases (`latest.json`)                                                                          | On launch, to offer updates          | —                                                             |
 
 Ordinary Git network operations — fetch, pull, push, clone — of course talk to **your** remotes,
 exactly like the `git` command line would, using your own SSH keys or tokens.

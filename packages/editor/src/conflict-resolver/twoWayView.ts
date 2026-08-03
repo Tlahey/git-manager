@@ -55,10 +55,8 @@ export function buildDynamicMergeView(
     const rawModifiedStartLine = change.modifiedStartLineNumber
     const modifiedEndLine = change.modifiedEndLineNumber
 
-    const originalCount =
-      originalEndLine === 0 ? 0 : originalEndLine - rawOriginalStartLine + 1
-    const modifiedCount =
-      modifiedEndLine === 0 ? 0 : modifiedEndLine - rawModifiedStartLine + 1
+    const originalCount = originalEndLine === 0 ? 0 : originalEndLine - rawOriginalStartLine + 1
+    const modifiedCount = modifiedEndLine === 0 ? 0 : modifiedEndLine - rawModifiedStartLine + 1
 
     // Monaco's `ILineChange` anchors a zero-length (pure add/remove) side on the line BEFORE the
     // gap — "insert after this line" — but every other block source feeding into this shared
@@ -73,10 +71,7 @@ export function buildDynamicMergeView(
 
     pushUnchangedGap(theirsStartLine - 1, oursStartLine - 1)
 
-    const theirsLines = originalLines.slice(
-      Math.max(0, rawOriginalStartLine - 1),
-      originalEndLine
-    )
+    const theirsLines = originalLines.slice(Math.max(0, rawOriginalStartLine - 1), originalEndLine)
 
     blocks.push({
       blockId: blocks.length,

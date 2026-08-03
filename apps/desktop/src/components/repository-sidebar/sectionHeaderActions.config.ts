@@ -42,7 +42,12 @@ const ALL_ACTION_KEYS: SectionHeaderActionKey[] = [
  * A section not listed here (remotes, tags, submodules, stashes) gets no header actions at all.
  */
 export const SECTION_HEADER_ACTIONS: Partial<Record<SectionKey, SectionHeaderActionKey[]>> = {
-  local: ['onCreateBranch', 'onPruneBranches', 'onRemoveMergedBranches', 'onRemoveMyMergedBranches'],
+  local: [
+    'onCreateBranch',
+    'onPruneBranches',
+    'onRemoveMergedBranches',
+    'onRemoveMyMergedBranches',
+  ],
   worktrees: [
     'onAddWorktree',
     'onPruneWorktrees',

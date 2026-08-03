@@ -43,7 +43,10 @@ describe('buildActionExplanationPrompt', () => {
   it('indents the extra lines of a multi-command operation under its number', () => {
     const prompt = buildActionExplanationPrompt({
       commands: [
-        command({ lines: ['git checkout main', 'git merge --no-edit feat'], operation: 'merge_branch' }),
+        command({
+          lines: ['git checkout main', 'git merge --no-edit feat'],
+          operation: 'merge_branch',
+        }),
       ],
     })
 
@@ -71,11 +74,14 @@ describe('buildActionExplanationPrompt', () => {
 
   it('asks for the requested language, defaulting to English', () => {
     expect(
-      buildActionExplanationPrompt({ language: 'fr', commands: [command({ lines: ['git reset'] })] })
+      buildActionExplanationPrompt({
+        language: 'fr',
+        commands: [command({ lines: ['git reset'] })],
+      })
     ).toContain('in French')
-    expect(buildActionExplanationPrompt({ commands: [command({ lines: ['git reset'] })] })).toContain(
-      'in English'
-    )
+    expect(
+      buildActionExplanationPrompt({ commands: [command({ lines: ['git reset'] })] })
+    ).toContain('in English')
   })
 
   it('reports a failed command as failed, with its error, instead of its operation name', () => {
@@ -127,10 +133,7 @@ describe('buildActionExplanationPrompt', () => {
     // A tiny window must not produce a prompt asking the model to explain nothing.
     const prompt = buildActionExplanationPrompt({
       contextTokens: 1,
-      commands: [
-        command({ lines: ['git add -- a.ts'] }),
-        command({ lines: ['git add -- b.ts'] }),
-      ],
+      commands: [command({ lines: ['git add -- a.ts'] }), command({ lines: ['git add -- b.ts'] })],
     })
 
     expect(prompt).toContain('1. git add -- a.ts')

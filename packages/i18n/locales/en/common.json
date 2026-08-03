@@ -349,5 +349,17 @@
   "aiStatus.work.commitSearchAnswer": "Answering your question…",
   "aiStatus.notch.eyebrow": "AI",
   "aiStatus.notch.steps": "{{done}} / {{total}} files",
-  "aiStatus.notch.open": "Open"
+  "aiStatus.notch.open": "Open",
+  "commandPalette.group.ref": "Branches & tags",
+  "commandPalette.ref.merge": "Merge {{branch}} into {{current}}",
+  "commandPalette.ref.merged": "Merged {{branch}} into {{current}}",
+  "commandPalette.ref.fastForward": "Fast-forward {{current}} to {{branch}}",
+  "commandPalette.ref.fastForwarded": "Fast-forwarded {{current}} to {{branch}}",
+  "commandPalette.ref.deleteRemoteBranch": "Delete remote branch {{branch}}",
+  "commandPalette.ref.pushTag": "Push tag {{tag}}",
+  "commandPalette.ref.tagPushed": "Pushed tag {{tag}}",
+  "commandPalette.ref.deleteTag": "Delete local tag {{tag}}",
+  "commandPalette.ref.tagDeleted": "Deleted local tag {{tag}}",
+  "commandPalette.ref.deleteRemoteTag": "Delete remote tag {{tag}}",
+  "commandPalette.commit.createPatch": "Create patch file from commit"
 }

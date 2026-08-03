@@ -52,8 +52,10 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
       data-testid="code-block"
     >
       {/* Code Header Bar */}
-      <div className="flex items-center justify-between border-b border-border/40 bg-muted/60 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground select-none">
-        <span className="uppercase tracking-wider font-sans">{(language || 'text').toUpperCase()}</span>
+      <div className="flex select-none items-center justify-between border-b border-border/40 bg-muted/60 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground">
+        <span className="font-sans uppercase tracking-wider">
+          {(language || 'text').toUpperCase()}
+        </span>
         <Tooltip content={t('markdown.code.copyTooltip')}>
           <button
             onClick={handleCopy}
@@ -77,7 +79,7 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
       </div>
 
       {/* Code Content */}
-      <pre className="overflow-x-auto p-3.5 text-foreground select-text font-mono">
+      <pre className="select-text overflow-x-auto p-3.5 font-mono text-foreground">
         <code className={className} {...props}>
           {children}
         </code>

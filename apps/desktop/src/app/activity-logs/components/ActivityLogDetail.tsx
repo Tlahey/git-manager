@@ -89,7 +89,9 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
 
       <ScrollArea className="flex-1">
         <div className="p-3">
-          <Field label={t('activityLogs.detail.time')}>{formatActivityDateTime(entry.timestamp)}</Field>
+          <Field label={t('activityLogs.detail.time')}>
+            {formatActivityDateTime(entry.timestamp)}
+          </Field>
           <Field label={t('activityLogs.detail.status')}>
             <span className={isError ? 'text-destructive' : 'text-emerald-500'}>
               {isError ? 'error' : 'ok'}
@@ -142,9 +144,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                       {formatActivityTimestamp(op.timestamp)}
                     </span>
                     <span
-                      className={
-                        op.status === 'error' ? 'text-destructive' : 'text-emerald-500'
-                      }
+                      className={op.status === 'error' ? 'text-destructive' : 'text-emerald-500'}
                     >
                       {op.status === 'error' ? 'error' : 'ok'}
                     </span>

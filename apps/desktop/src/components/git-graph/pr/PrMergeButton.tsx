@@ -128,7 +128,12 @@ export function PrMergeButton({
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" data-testid="pr-merge-method-menu" className="w-72">
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            data-testid="pr-merge-method-menu"
+            className="w-72"
+          >
             {METHODS.map((m) => (
               <DropdownMenuItem
                 key={m}

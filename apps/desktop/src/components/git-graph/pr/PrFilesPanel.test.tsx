@@ -41,7 +41,14 @@ import { PrFilesPanel } from './PrFilesPanel'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 function file(overrides: Partial<GhPrFile> = {}): GhPrFile {
-  return { filename: 'src/a.ts', status: 'modified', additions: 1, deletions: 0, changes: 1, ...overrides }
+  return {
+    filename: 'src/a.ts',
+    status: 'modified',
+    additions: 1,
+    deletions: 0,
+    changes: 1,
+    ...overrides,
+  }
 }
 
 beforeEach(() => {

@@ -35,7 +35,9 @@ describe('buildNotificationRoute', () => {
   // The Launchpad tab is the only thing that differs between kinds, and the registry has already
   // resolved it into the notification by the time it gets here.
   it('keeps the notification kind its own launchpad tab', () => {
-    const route = buildNotificationRoute(notification({ type: 'review_requested', targetTab: 'waiting' }))
+    const route = buildNotificationRoute(
+      notification({ type: 'review_requested', targetTab: 'waiting' })
+    )
     expect(route).toMatchObject({ kind: 'pull-request', targetTab: 'waiting' })
   })
 

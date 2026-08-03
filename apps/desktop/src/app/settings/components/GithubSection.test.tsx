@@ -3,7 +3,6 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitHubAccount } from '@git-manager/git-types'
 
-
 const { useGitHubRepos, useGithubDeviceFlow, lastDeviceFlowOptions } = vi.hoisted(() => ({
   useGitHubRepos: vi.fn(),
   useGithubDeviceFlow: vi.fn(),
@@ -56,8 +55,8 @@ beforeEach(() => {
 describe('GithubSection — initial login choice', () => {
   it('shows both OAuth and PAT login options by default', () => {
     render(<GithubSection />)
-    expect(screen.getByText("Login with GitHub")).toBeInTheDocument()
-    expect(screen.getByText("Login with a PAT token")).toBeInTheDocument()
+    expect(screen.getByText('Login with GitHub')).toBeInTheDocument()
+    expect(screen.getByText('Login with a PAT token')).toBeInTheDocument()
   })
 
   it('starts the OAuth flow immediately when its button is clicked', async () => {
@@ -65,7 +64,7 @@ describe('GithubSection — initial login choice', () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ startOAuthLogin }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with GitHub"))
+    await user.click(screen.getByText('Login with GitHub'))
     expect(startOAuthLogin).toHaveBeenCalledOnce()
   })
 })
@@ -76,9 +75,12 @@ describe('GithubSection — PAT login', () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ completeLoginWithToken }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with a PAT token"))
-    await user.type(screen.getByPlaceholderText("Enter your Personal Access Token (PAT)"), '  ghp_abc123  ')
-    await user.click(screen.getByText("Add token"))
+    await user.click(screen.getByText('Login with a PAT token'))
+    await user.type(
+      screen.getByPlaceholderText('Enter your Personal Access Token (PAT)'),
+      '  ghp_abc123  '
+    )
+    await user.click(screen.getByText('Add token'))
 
     expect(completeLoginWithToken).toHaveBeenCalledWith('ghp_abc123')
   })
@@ -88,11 +90,14 @@ describe('GithubSection — PAT login', () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ completeLoginWithToken }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with a PAT token"))
-    await user.type(screen.getByPlaceholderText("Enter your Personal Access Token (PAT)"), 'ghp_abc123')
-    await user.click(screen.getByText("Add token"))
+    await user.click(screen.getByText('Login with a PAT token'))
+    await user.type(
+      screen.getByPlaceholderText('Enter your Personal Access Token (PAT)'),
+      'ghp_abc123'
+    )
+    await user.click(screen.getByText('Add token'))
 
-    expect(await screen.findByText("Login with GitHub")).toBeInTheDocument()
+    expect(await screen.findByText('Login with GitHub')).toBeInTheDocument()
   })
 
   it('stays on the PAT form when the token is rejected', async () => {
@@ -100,18 +105,23 @@ describe('GithubSection — PAT login', () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ completeLoginWithToken }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with a PAT token"))
-    await user.type(screen.getByPlaceholderText("Enter your Personal Access Token (PAT)"), 'bad-token')
-    await user.click(screen.getByText("Add token"))
+    await user.click(screen.getByText('Login with a PAT token'))
+    await user.type(
+      screen.getByPlaceholderText('Enter your Personal Access Token (PAT)'),
+      'bad-token'
+    )
+    await user.click(screen.getByText('Add token'))
 
-    expect(await screen.findByPlaceholderText("Enter your Personal Access Token (PAT)")).toBeInTheDocument()
+    expect(
+      await screen.findByPlaceholderText('Enter your Personal Access Token (PAT)')
+    ).toBeInTheDocument()
   })
 
   it('shows the error message from the device-flow hook', async () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ error: 'invalid token' }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with a PAT token"))
+    await user.click(screen.getByText('Login with a PAT token'))
     expect(screen.getByText('invalid token')).toBeInTheDocument()
   })
 
@@ -120,10 +130,10 @@ describe('GithubSection — PAT login', () => {
     useGithubDeviceFlow.mockReturnValue(deviceFlowState({ cancelFlow }))
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Login with a PAT token"))
-    await user.click(screen.getByText("Back to options"))
+    await user.click(screen.getByText('Login with a PAT token'))
+    await user.click(screen.getByText('Back to options'))
     expect(cancelFlow).toHaveBeenCalledOnce()
-    expect(screen.getByText("Login with GitHub")).toBeInTheDocument()
+    expect(screen.getByText('Login with GitHub')).toBeInTheDocument()
   })
 })
 
@@ -139,7 +149,7 @@ describe('GithubSection — device flow in progress', () => {
     )
     render(<GithubSection />)
     expect(screen.getByText('ABCD-1234')).toBeInTheDocument()
-    expect(screen.getByText("Open Activation Page").closest('a')).toHaveAttribute(
+    expect(screen.getByText('Open Activation Page').closest('a')).toHaveAttribute(
       'href',
       'https://github.com/login/device'
     )
@@ -157,12 +167,12 @@ describe('GithubSection — device flow in progress', () => {
     })
     vi.useFakeTimers()
     render(<GithubSection />)
-    act(() => screen.getByText("Copy Code").click())
+    act(() => screen.getByText('Copy Code').click())
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('ABCD-1234')
-    expect(screen.getByText("Code Copied!")).toBeInTheDocument()
+    expect(screen.getByText('Code Copied!')).toBeInTheDocument()
 
     await act(async () => vi.advanceTimersByTime(2000))
-    expect(screen.getByText("Copy Code")).toBeInTheDocument()
+    expect(screen.getByText('Copy Code')).toBeInTheDocument()
     vi.useRealTimers()
   })
 
@@ -176,7 +186,7 @@ describe('GithubSection — device flow in progress', () => {
     )
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Cancel"))
+    await user.click(screen.getByText('Cancel'))
     expect(cancelFlow).toHaveBeenCalledOnce()
   })
 })
@@ -220,7 +230,7 @@ describe('GithubSection — onLoginSuccess wiring', () => {
 describe('GithubSection — accounts list', () => {
   it('hides the accounts section when there are none', () => {
     render(<GithubSection />)
-    expect(screen.queryByText("Connected Accounts")).not.toBeInTheDocument()
+    expect(screen.queryByText('Connected Accounts')).not.toBeInTheDocument()
   })
 
   it('shows each account, badging the active one', () => {
@@ -242,8 +252,8 @@ describe('GithubSection — accounts list', () => {
     render(<GithubSection />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
-    expect(screen.getByText("Active")).toBeInTheDocument()
-    expect(screen.getByText("Set Active")).toBeInTheDocument() // only for the inactive one
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('Set Active')).toBeInTheDocument() // only for the inactive one
   })
 
   it('switches the active account', async () => {
@@ -261,7 +271,7 @@ describe('GithubSection — accounts list', () => {
     })
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getByText("Set Active"))
+    await user.click(screen.getByText('Set Active'))
     expect(useSettingsStore.getState().settings.github!.activeAccountId).toBe('b')
   })
 
@@ -280,7 +290,7 @@ describe('GithubSection — accounts list', () => {
     })
     const user = userEvent.setup()
     render(<GithubSection />)
-    await user.click(screen.getAllByText("Remove")[0])
+    await user.click(screen.getAllByText('Remove')[0])
     const github = useSettingsStore.getState().settings.github!
     expect(github.accounts.map((a) => a.id)).toEqual(['b'])
     expect(github.activeAccountId).toBe('b')
@@ -316,7 +326,7 @@ describe('GithubSection — repositories panel', () => {
     })
     useGitHubRepos.mockReturnValue({ data: [], isLoading: false })
     render(<GithubSection />)
-    expect(screen.getByText("No repositories found.")).toBeInTheDocument()
+    expect(screen.getByText('No repositories found.')).toBeInTheDocument()
   })
 
   it('lists repos with visibility badge, description, and repo count', () => {

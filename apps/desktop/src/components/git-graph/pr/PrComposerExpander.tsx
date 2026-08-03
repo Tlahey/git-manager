@@ -179,7 +179,13 @@ export function PrComposerExpander({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onCancel} disabled={isSubmitting}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           {t('pr.publish.cancel')}
         </Button>
         <Button

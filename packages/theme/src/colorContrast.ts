@@ -23,9 +23,7 @@ export interface Rgb {
  * string is not a well-formed triplet.
  */
 export function parseHslTriplet(value: string): { h: number; s: number; l: number } | null {
-  const m = value
-    .trim()
-    .match(/^(-?[\d.]+)\s+(-?[\d.]+)%\s+(-?[\d.]+)%$/)
+  const m = value.trim().match(/^(-?[\d.]+)\s+(-?[\d.]+)%\s+(-?[\d.]+)%$/)
   if (!m) return null
   const h = Number(m[1])
   const s = Number(m[2])
@@ -98,10 +96,19 @@ export function contrastRatioForHslTriplets(fg: string, bg: string): number | nu
 // DevTools reports, so our numbers match what you see there.
 const APCA = {
   trc: 2.4,
-  Rco: 0.2126729, Gco: 0.7151522, Bco: 0.072175,
-  normBG: 0.56, normTXT: 0.57, revTXT: 0.62, revBG: 0.65,
-  blkThrs: 0.022, blkClmp: 1.414,
-  scale: 1.14, loClip: 0.1, deltaYmin: 0.0005, loOffset: 0.027,
+  Rco: 0.2126729,
+  Gco: 0.7151522,
+  Bco: 0.072175,
+  normBG: 0.56,
+  normTXT: 0.57,
+  revTXT: 0.62,
+  revBG: 0.65,
+  blkThrs: 0.022,
+  blkClmp: 1.414,
+  scale: 1.14,
+  loClip: 0.1,
+  deltaYmin: 0.0005,
+  loOffset: 0.027,
 }
 
 /** APCA screen luminance (Y) of an sRGB color. */

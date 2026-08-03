@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (k: string) => k }) }))
-vi.mock('./CreatePatchPanel', () => ({ CreatePatchPanel: () => <div data-testid="create-panel" /> }))
+vi.mock('./CreatePatchPanel', () => ({
+  CreatePatchPanel: () => <div data-testid="create-panel" />,
+}))
 vi.mock('./ApplyPatchPanel', () => ({ ApplyPatchPanel: () => <div data-testid="apply-panel" /> }))
 vi.mock('./DependencyPatchPanel', () => ({
   DependencyPatchPanel: () => <div data-testid="dependency-panel" />,

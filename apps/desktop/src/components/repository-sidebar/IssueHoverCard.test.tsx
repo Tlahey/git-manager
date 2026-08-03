@@ -46,7 +46,9 @@ describe('IssueHoverCard — heading', () => {
 
 describe('IssueHoverCard — description', () => {
   it('shows the opening of the body under a Description heading', () => {
-    render(<IssueHoverCard issue={issue({ body: 'Scrolling the list then switching tab resets it.' })} />)
+    render(
+      <IssueHoverCard issue={issue({ body: 'Scrolling the list then switching tab resets it.' })} />
+    )
     expect(screen.getByText('Description')).toBeInTheDocument()
     expect(screen.getByTestId('issue-hover-card-excerpt')).toHaveTextContent(
       'Scrolling the list then switching tab resets it.'
@@ -57,7 +59,9 @@ describe('IssueHoverCard — description', () => {
   it('reduces the body to prose, dropping code blocks and images', () => {
     render(
       <IssueHoverCard
-        issue={issue({ body: 'Repro steps:\n\n```sh\nnpm run dev\n```\n\n![shot](x.png)\n\nThen click.' })}
+        issue={issue({
+          body: 'Repro steps:\n\n```sh\nnpm run dev\n```\n\n![shot](x.png)\n\nThen click.',
+        })}
       />
     )
     const excerpt = screen.getByTestId('issue-hover-card-excerpt')
@@ -78,7 +82,7 @@ describe('IssueHoverCard — description', () => {
 })
 
 describe('IssueHoverCard — metadata column', () => {
-  it('renders the issue view\'s status, assignees and labels sections', () => {
+  it("renders the issue view's status, assignees and labels sections", () => {
     render(<IssueHoverCard issue={issue()} />)
     expect(screen.getByTestId('issue-hover-card-meta')).toBeInTheDocument()
     expect(screen.getByTestId('issue-hover-status')).toBeInTheDocument()
@@ -88,7 +92,7 @@ describe('IssueHoverCard — metadata column', () => {
 
   // PrSidebarSection draws a bottom divider on every block, which suits the tall panel it was built
   // for but leaves a rule across the bottom of a card that ends there.
-  it('strips the last section\'s divider so the column does not end on one', () => {
+  it("strips the last section's divider so the column does not end on one", () => {
     render(<IssueHoverCard issue={issue()} />)
     const sections = screen.getByTestId('issue-hover-card-meta').querySelectorAll('section')
 

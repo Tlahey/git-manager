@@ -3,7 +3,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${o.count}` : k) }),
+  useTranslation: () => ({
+    t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${o.count}` : k),
+  }),
 }))
 vi.mock('../../api/git.api', () => ({
   apiListPatchableDependencies: vi.fn(),
@@ -20,7 +22,11 @@ vi.mock('../git-graph/components/CommitFileList', () => ({
   }) => (
     <div data-testid="file-list">
       {processedFiles.map((f) => (
-        <button key={f.path} data-testid={`file-${f.path}`} onClick={() => onSelectFileDiff({ path: f.path, staged: false })}>
+        <button
+          key={f.path}
+          data-testid={`file-${f.path}`}
+          onClick={() => onSelectFileDiff({ path: f.path, staged: false })}
+        >
           {f.path}
         </button>
       ))}
@@ -40,7 +46,8 @@ const mockedList = apiListPatchableDependencies as unknown as ReturnType<typeof 
 const mockedPrepare = apiPrepareDependencyPatch as unknown as ReturnType<typeof vi.fn>
 const mockedCommit = apiCommitDependencyPatch as unknown as ReturnType<typeof vi.fn>
 
-const DEP_DIFF = 'diff --git a/index.js b/index.js\n--- a/index.js\n+++ b/index.js\n@@ -1 +1 @@\n-a\n+b'
+const DEP_DIFF =
+  'diff --git a/index.js b/index.js\n--- a/index.js\n+++ b/index.js\n@@ -1 +1 @@\n-a\n+b'
 
 function renderPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -79,7 +86,9 @@ describe('DependencyPatchPanel', () => {
     renderPanel()
     fireEvent.click(await screen.findByTestId('patch-dep-ghost'))
     await waitFor(() =>
-      expect(screen.getByTestId('patch-dep-error')).toHaveTextContent('patch.dependency.notInstalled')
+      expect(screen.getByTestId('patch-dep-error')).toHaveTextContent(
+        'patch.dependency.notInstalled'
+      )
     )
     expect(mockedPrepare).not.toHaveBeenCalled()
   })

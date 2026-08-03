@@ -13,7 +13,11 @@ import { NewTabPage } from './app/new-tab/NewTabPage'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
-import { SettingsPage, type Section, type Scope as SettingsScope } from './app/settings/SettingsPage'
+import {
+  SettingsPage,
+  type Section,
+  type Scope as SettingsScope,
+} from './app/settings/SettingsPage'
 import { ActivityLogsPage } from './app/activity-logs/ActivityLogsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'

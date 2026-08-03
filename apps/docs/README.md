@@ -75,7 +75,7 @@ the marketing landing page, whose stylesheet is gated on `html.landing` rather
 than on `.dark`, and which has no light design.
 
 Both themes are checked against WCAG AA. Watch `--vp-c-text-3` in particular: it
-is VitePress's *placeholder* grey and lands at 3.1:1 on the light background, so
+is VitePress's _placeholder_ grey and lands at 3.1:1 on the light background, so
 anything meant to be read (the screenshot captions, the source footnote) uses
 `--vp-c-text-2`.
 
@@ -99,7 +99,7 @@ Every content page ends with a **Report a documentation issue** link
 It is injected once, in `.vitepress/theme/index.ts`, via the default theme's
 `doc-after` layout slot — not written into a page or into `renderDocPage.ts`.
 That is what makes it show up on the hand-written `docs/index.md` /
-`docs/download.md` *and* every generated feature page without a per-page
+`docs/download.md` _and_ every generated feature page without a per-page
 change, and survive `docs/features/*.md` being wiped and rewritten on every
 `pnpm generate`. The landing page (`index.md`, `layout: false`) never renders
 this Layout, so it correctly has no feedback link.
@@ -167,13 +167,13 @@ file and is committed.)
 
 Not every Gherkin step means something to a reader, so they are sorted by shape:
 
-| Step                                | Renders as                                 |
-| ----------------------------------- | ------------------------------------------ |
-| `Given …`                           | dropped — it builds the test's fixture repo |
-| `When I click the …`                | a numbered instruction ("Click the …")      |
-| `When the interface has settled`    | dropped — a test-timing step, not an action |
-| `Then the merge editor is shown`    | a "You should see" bullet                   |
-| `Then a full-window screenshot is …`| the page's image                            |
+| Step                                 | Renders as                                  |
+| ------------------------------------ | ------------------------------------------- |
+| `Given …`                            | dropped — it builds the test's fixture repo |
+| `When I click the …`                 | a numbered instruction ("Click the …")      |
+| `When the interface has settled`     | dropped — a test-timing step, not an action |
+| `Then the merge editor is shown`     | a "You should see" bullet                   |
+| `Then a full-window screenshot is …` | the page's image                            |
 
 The rule is mechanical: a step is an instruction when it is phrased in the first
 person (`I …`). Keep writing steps that way and the docs follow.
@@ -186,5 +186,5 @@ describe a UI that still exists. Prose is the opposite — it needs intent a tes
 cannot state — so it stays hand-written, reviewed, and versioned in the file it
 describes.
 
-No model runs at build time. An LLM is a fine way to *draft* a scenario's
+No model runs at build time. An LLM is a fine way to _draft_ a scenario's
 description; what ships is what a human edited and committed.

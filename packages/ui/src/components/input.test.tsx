@@ -114,7 +114,12 @@ describe('Input', () => {
   })
 
   it('lets a caller override the slot colour from the icon itself', () => {
-    render(<Input variant="chrome" startIcon={<span data-testid="start-icon" className="text-primary" />} />)
+    render(
+      <Input
+        variant="chrome"
+        startIcon={<span data-testid="start-icon" className="text-primary" />}
+      />
+    )
 
     // The icon carries its own colour; the slot's default only applies through inheritance.
     expect(screen.getByTestId('start-icon').className).toContain('text-primary')

@@ -26,10 +26,7 @@ export interface RepoSelection {
 export function useRepoSelection(paths: string[]): RepoSelection {
   const [rawSelected, setRawSelected] = useState<ReadonlySet<string>>(() => new Set())
 
-  const selectedPaths = useMemo(
-    () => paths.filter((p) => rawSelected.has(p)),
-    [paths, rawSelected]
-  )
+  const selectedPaths = useMemo(() => paths.filter((p) => rawSelected.has(p)), [paths, rawSelected])
 
   const isSelected = useCallback((path: string) => rawSelected.has(path), [rawSelected])
 

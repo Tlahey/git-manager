@@ -15,7 +15,7 @@ export function collectViolationRecords(violations: axe.Result[]): ViolationNode
       // The APCA rule reports through axe's `all` array, WCAG color-contrast through
       // `any` — take the first check that carries data or a message.
       const check = [...(n.any ?? []), ...(n.all ?? []), ...(n.none ?? [])].find(
-        (c) => c.data != null || c.message,
+        (c) => c.data != null || c.message
       )
       const data =
         check?.data != null && typeof check.data === 'object'
@@ -31,7 +31,7 @@ export function collectViolationRecords(violations: axe.Result[]): ViolationNode
       }
       if (data) record.data = data
       return record
-    }),
+    })
   )
 }
 

@@ -63,9 +63,7 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
               </p>
               <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
                 <p className="font-mono text-xs text-amber-600 dark:text-amber-400">{shortOid}</p>
-                {bisect.currentSummary && (
-                  <p className="mt-1 text-sm">{bisect.currentSummary}</p>
-                )}
+                {bisect.currentSummary && <p className="mt-1 text-sm">{bisect.currentSummary}</p>}
                 {bisect.currentAuthor && (
                   <p className="mt-1 text-xs text-muted-foreground">{bisect.currentAuthor}</p>
                 )}

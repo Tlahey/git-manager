@@ -101,11 +101,9 @@ describe('planCommitsFromSummaries', () => {
   it('stops between calls when asked to cancel, without grouping', async () => {
     const r = runners()
     let calls = 0
-    const promise = planCommitsFromSummaries(
-      { context: context(['a.ts', 'b.ts', 'c.ts']) },
-      r,
-      { shouldCancel: () => calls++ >= 2 }
-    )
+    const promise = planCommitsFromSummaries({ context: context(['a.ts', 'b.ts', 'c.ts']) }, r, {
+      shouldCancel: () => calls++ >= 2,
+    })
 
     await expect(promise).rejects.toBeInstanceOf(SummaryRunCancelled)
     expect(r.group).not.toHaveBeenCalled()

@@ -28,7 +28,10 @@ beforeEach(() => {
 
 describe('useIssueDetail', () => {
   it('fetches when owner/repo + token + number are known', async () => {
-    mocked.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+    mocked.useRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      token: 'tok',
+    })
     const { result } = renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     await waitFor(() => expect(result.current.issue?.body).toBe('hi'))
     expect(mocked.fetchIssueDetail).toHaveBeenCalledWith('org', 'repo', 7, 'tok')

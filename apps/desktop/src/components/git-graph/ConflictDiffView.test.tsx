@@ -58,7 +58,7 @@ describe('ConflictDiffView — loading/path', () => {
   it('shows a loading spinner while the merge view loads', () => {
     useMergeView.mockReturnValue({ data: undefined, isLoading: true })
     renderView()
-    expect(screen.getByText("Loading...")).toBeInTheDocument()
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
   })
 
   it('splits the file path into a dimmed directory and the file name', () => {
@@ -72,7 +72,7 @@ describe('ConflictDiffView — loading/path', () => {
     useMergeView.mockReturnValue({ data: { renderable: true, isBinary: false }, isLoading: false })
     const user = userEvent.setup()
     const { onClose } = renderView()
-    await user.click(screen.getByTitle("Back to graph"))
+    await user.click(screen.getByTitle('Back to graph'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
@@ -85,30 +85,30 @@ describe('ConflictDiffView — renderable content', () => {
   it('renders the three-way merge editor and toolbar controls', () => {
     renderView()
     expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument()
-    expect(screen.getByText("Apply non-conflicting changes")).toBeInTheDocument()
-    expect(screen.getByText("Mark file resolved")).toBeInTheDocument()
+    expect(screen.getByText('Apply non-conflicting changes')).toBeInTheDocument()
+    expect(screen.getByText('Mark file resolved')).toBeInTheDocument()
   })
 
   it('shows the remaining-conflicts count reported by the merge editor', () => {
     renderView()
     act(() => lastMergeEditorProps.current!.onPendingCountChange(3))
-    expect(screen.getByText("3 conflict(s) remaining")).toBeInTheDocument()
+    expect(screen.getByText('3 conflict(s) remaining')).toBeInTheDocument()
   })
 
   it('disables "mark resolved" while conflicts remain, enables it once they reach zero', () => {
     renderView()
     act(() => lastMergeEditorProps.current!.onPendingCountChange(2))
-    expect(screen.getByText("Mark file resolved").closest('button')).toBeDisabled()
+    expect(screen.getByText('Mark file resolved').closest('button')).toBeDisabled()
 
     act(() => lastMergeEditorProps.current!.onPendingCountChange(0))
-    expect(screen.getByText("Mark file resolved").closest('button')).toBeEnabled()
+    expect(screen.getByText('Mark file resolved').closest('button')).toBeEnabled()
   })
 
   it('applies non-conflicting hunks via the merge editor ref', async () => {
     mergeEditorMock.applyAutoMerge.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderView()
-    await user.click(screen.getByText("Apply non-conflicting changes"))
+    await user.click(screen.getByText('Apply non-conflicting changes'))
     expect(mergeEditorMock.applyAutoMerge).toHaveBeenCalledOnce()
   })
 
@@ -117,7 +117,7 @@ describe('ConflictDiffView — renderable content', () => {
     const user = userEvent.setup()
     const { onResolved } = renderView()
     act(() => lastMergeEditorProps.current!.onPendingCountChange(0))
-    await user.click(screen.getByText("Mark file resolved"))
+    await user.click(screen.getByText('Mark file resolved'))
 
     expect(mockedResolve).toHaveBeenCalledWith('/repo', 'src/a.ts', 'center content')
     expect(onResolved).toHaveBeenCalledOnce()
@@ -128,7 +128,7 @@ describe('ConflictDiffView — renderable content', () => {
     const user = userEvent.setup()
     const { onResolved } = renderView()
     act(() => lastMergeEditorProps.current!.onPendingCountChange(0))
-    await user.click(screen.getByText("Mark file resolved"))
+    await user.click(screen.getByText('Mark file resolved'))
 
     expect(await screen.findByText(/resolve failed/)).toBeInTheDocument()
     expect(onResolved).not.toHaveBeenCalled()
@@ -139,9 +139,9 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
   it('shows the binary-conflict message with keep-ours/keep-theirs actions', () => {
     useMergeView.mockReturnValue({ data: { renderable: false, isBinary: true }, isLoading: false })
     renderView()
-    expect(screen.getByText("Binary file conflict")).toBeInTheDocument()
-    expect(screen.getByText("Keep current version")).toBeInTheDocument()
-    expect(screen.getByText("Keep incoming version")).toBeInTheDocument()
+    expect(screen.getByText('Binary file conflict')).toBeInTheDocument()
+    expect(screen.getByText('Keep current version')).toBeInTheDocument()
+    expect(screen.getByText('Keep incoming version')).toBeInTheDocument()
     expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
   })
 
@@ -151,7 +151,7 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
       isLoading: false,
     })
     renderView()
-    expect(screen.getByText("One side deleted this file")).toBeInTheDocument()
+    expect(screen.getByText('One side deleted this file')).toBeInTheDocument()
   })
 
   it('keeps "ours" via the binary resolver and calls onResolved', async () => {
@@ -159,7 +159,7 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
     useMergeView.mockReturnValue({ data: { renderable: false, isBinary: true }, isLoading: false })
     const user = userEvent.setup()
     const { onResolved } = renderView()
-    await user.click(screen.getByText("Keep current version"))
+    await user.click(screen.getByText('Keep current version'))
 
     expect(mockedResolveBinary).toHaveBeenCalledWith('/repo', 'src/a.ts', 'ours')
     expect(onResolved).toHaveBeenCalledOnce()
@@ -170,7 +170,7 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
     useMergeView.mockReturnValue({ data: { renderable: false, isBinary: true }, isLoading: false })
     const user = userEvent.setup()
     renderView()
-    await user.click(screen.getByText("Keep incoming version"))
+    await user.click(screen.getByText('Keep incoming version'))
 
     expect(await screen.findByText(/keep failed/)).toBeInTheDocument()
   })
@@ -178,6 +178,8 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
   it('shows an "unparseable" message when neither renderable nor binary/delete/rename', () => {
     useMergeView.mockReturnValue({ data: { renderable: false, isBinary: false }, isLoading: false })
     renderView()
-    expect(screen.getByText("Could not parse conflict markers — resolve this file externally")).toBeInTheDocument()
+    expect(
+      screen.getByText('Could not parse conflict markers — resolve this file externally')
+    ).toBeInTheDocument()
   })
 })

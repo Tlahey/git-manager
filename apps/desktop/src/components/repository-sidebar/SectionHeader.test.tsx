@@ -49,7 +49,13 @@ describe('SectionHeader — rendering', () => {
     // Twilight a11y regression: the PR/section count was text-sidebar-muted-foreground/40,
     // barely legible on the dark chrome. It must use the full-opacity muted token.
     render(
-      <SectionHeader title="Pull Requests" icon={null} isOpen={false} onToggle={vi.fn()} count={7} />
+      <SectionHeader
+        title="Pull Requests"
+        icon={null}
+        isOpen={false}
+        onToggle={vi.fn()}
+        count={7}
+      />
     )
     const count = screen.getByText('7')
     expect(count.className).toContain('text-sidebar-muted-foreground')

@@ -7,12 +7,14 @@ vi.mock('@git-manager/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } 
 const invalidateQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))
 
-const { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(() => ({
-  apiCopyCommitSha: vi.fn(),
-  apiCherryPickCommit: vi.fn(),
-  apiGetCommitWebUrl: vi.fn(),
-  apiOpenUrl: vi.fn(),
-}))
+const { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(
+  () => ({
+    apiCopyCommitSha: vi.fn(),
+    apiCherryPickCommit: vi.fn(),
+    apiGetCommitWebUrl: vi.fn(),
+    apiOpenUrl: vi.fn(),
+  })
+)
 vi.mock('../../../api/git.api', () => ({
   apiCopyCommitSha,
   apiCherryPickCommit,
@@ -88,6 +90,7 @@ describe('useCommitCommands', () => {
       'commit-tag-annotated',
       'commit-fixup',
       'commit-cherry-pick',
+      'commit-create-patch',
       'commit-copy-sha',
       'commit-open-github',
     ])

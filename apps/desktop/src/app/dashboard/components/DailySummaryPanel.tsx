@@ -94,7 +94,12 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               {t('dashboard.summary.error')}
             </div>
             <p className="break-words font-mono text-[11px] opacity-80">{error}</p>
-            <Button variant="outline" size="sm" className="mt-1 h-7 text-xs" onClick={() => void generate()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1 h-7 text-xs"
+              onClick={() => void generate()}
+            >
               {t('dashboard.summary.retry')}
             </Button>
           </Alert>
@@ -137,9 +142,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-muted-foreground/70">
             <LlmIcon className="h-10 w-10 text-muted-foreground opacity-20" />
-            <p className="max-w-[240px] text-xs leading-relaxed">
-              {t('dashboard.summary.empty')}
-            </p>
+            <p className="max-w-[240px] text-xs leading-relaxed">{t('dashboard.summary.empty')}</p>
             <Button
               variant="outline"
               size="sm"

@@ -36,7 +36,7 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 - **Rollback** — safe revert and reset (soft / mixed / hard) with preview and typed confirmation for hard reset
 - **Rebase** — interactive rebase (reorder, `reword` / `squash` / `fixup` / `drop`), the guided `--fixup` + `--autosquash` workflow, and conflict resolution in a three-pane Monaco merge editor
 - **Cherry-pick, bisect, patches** — pick commits onto a branch, run a bisect session, create and apply patch files
-- **Branches, stashes, worktrees** — create / delete / checkout / merge branches, a full stash stack, and worktree add / remove / prune (branch *rename* is still not implemented)
+- **Branches, stashes, worktrees** — create / delete / checkout / merge branches, a full stash stack, and worktree add / remove / prune (branch _rename_ is still not implemented)
 - **Undo/redo** — safe undo history across git-mutating actions, with pinned refs so undone objects aren't garbage-collected
 - **Launchpad** — cross-repo pull requests and issues from GitHub (device-flow OAuth), with saved views, snoozing and contribution stats
 - **Dashboard & tabs** — multi-repo dashboard, repository scan, clone/init, Chrome-style tab bar
@@ -55,10 +55,10 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 
 ## Screenshots
 
-| Working tree & file diff | Three-pane merge editor |
-| --- | --- |
-| ![Staging area with a file diff open](docs/screenshots/doc-staging-file-diff.png) | ![Merge editor resolving a rebase conflict](docs/screenshots/doc-merge-editor.png) |
-| **Launchpad — pull requests across repos** | **Multi-repo dashboard** |
+| Working tree & file diff                                                                      | Three-pane merge editor                                                                           |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| ![Staging area with a file diff open](docs/screenshots/doc-staging-file-diff.png)             | ![Merge editor resolving a rebase conflict](docs/screenshots/doc-merge-editor.png)                |
+| **Launchpad — pull requests across repos**                                                    | **Multi-repo dashboard**                                                                          |
 | ![Launchpad grouping pull requests by what they need](docs/screenshots/doc-launchpad-prs.png) | ![Dashboard listing open, favourite and scanned repositories](docs/screenshots/doc-dashboard.png) |
 
 These images are **generated from the real app**, not mocked — they are the very same PNGs the
@@ -82,12 +82,12 @@ pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.p
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Desktop runtime      | [Tauri v2](https://tauri.app/)                                                                                                                                                                         |
 | Frontend             | React 18 + Vite + TypeScript (strict)                                                                                                                                                                  |
-| UI components        | shadcn/ui + Tailwind CSS + [Monaco](https://microsoft.github.io/monaco-editor/) (diff, merge and file viewers)                                                                                          |
+| UI components        | shadcn/ui + Tailwind CSS + [Monaco](https://microsoft.github.io/monaco-editor/) (diff, merge and file viewers)                                                                                         |
 | Git backend          | Rust + [`git2`](https://crates.io/crates/git2) (libgit2 bindings)                                                                                                                                      |
 | State management     | [Zustand](https://zustand-demo.pmnd.rs/) (UI/app state) + [SWR](https://swr.vercel.app/) (new data-fetching hooks) + [TanStack Query](https://tanstack.com/query) (older hooks, being migrated to SWR) |
 | Internationalisation | [react-i18next](https://react.i18next.com/) (EN / FR)                                                                                                                                                  |
-| LLM                  | [Ollama](https://ollama.ai) by default, or any OpenAI-compatible server (your URL, your key)                                                                                                            |
-| Remote auth          | SSH via the system agent (fetch / pull / push)                                                                                                                                                          |
+| LLM                  | [Ollama](https://ollama.ai) by default, or any OpenAI-compatible server (your URL, your key)                                                                                                           |
+| Remote auth          | SSH via the system agent (fetch / pull / push)                                                                                                                                                         |
 | Monorepo             | pnpm workspaces + [Turborepo](https://turbo.build/)                                                                                                                                                    |
 
 ---
@@ -104,14 +104,14 @@ In short: `apps/desktop` (Tauri app: Rust backend in `src-tauri/`, React fronten
 
 ## Prerequisites
 
-| Requirement | Version         | Install                                     |
-| ----------- | --------------- | ------------------------------------------- |
-| macOS       | 13+ (Ventura)   | —                                           |
-| Xcode CLT   | latest          | `xcode-select --install`                    |
-| Node.js     | 24.18.0         | [nodejs.org](https://nodejs.org)            |
-| pnpm        | 11+             | `npm i -g pnpm@11`                          |
-| Rust        | 1.77+           | see below                                   |
-| Ollama      | optional        | [ollama.ai](https://ollama.ai) — AI features only |
+| Requirement | Version       | Install                                           |
+| ----------- | ------------- | ------------------------------------------------- |
+| macOS       | 13+ (Ventura) | —                                                 |
+| Xcode CLT   | latest        | `xcode-select --install`                          |
+| Node.js     | 24.18.0       | [nodejs.org](https://nodejs.org)                  |
+| pnpm        | 11+           | `npm i -g pnpm@11`                                |
+| Rust        | 1.77+         | see below                                         |
+| Ollama      | optional      | [ollama.ai](https://ollama.ai) — AI features only |
 
 Node and pnpm versions are pinned in the root `package.json` (`engines` + `packageManager`); the
 Tauri CLI comes from `@tauri-apps/cli` in the workspace, so there is nothing to install globally.
@@ -196,18 +196,18 @@ pnpm build
 
 All scripts are run from the **repository root**.
 
-| Command                | Description                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `pnpm dev`             | Start Tauri dev server (hot reload React + Rust watch)                   |
-| `pnpm build`           | Build production app bundle                                              |
-| `pnpm typecheck`       | TypeScript check across all packages                                     |
-| `pnpm lint`            | Oxlint across all packages + the EN/FR translation parity check          |
-| `pnpm test`            | Unit tests (Vitest) across all packages                                  |
-| `pnpm test:a11y`       | Theme accessibility & consistency checks (see below)                     |
-| `pnpm test:e2e`        | Build the e2e binary, then run the WebdriverIO + Cucumber suite          |
-| `pnpm dev:import-repo` | Rebuild the scripted fixture repos and launch the app with them as tabs  |
-| `pnpm format`          | Prettier formatting                                                      |
-| `pnpm clean`           | Remove all build artifacts                                               |
+| Command                | Description                                                             |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `pnpm dev`             | Start Tauri dev server (hot reload React + Rust watch)                  |
+| `pnpm build`           | Build production app bundle                                             |
+| `pnpm typecheck`       | TypeScript check across all packages                                    |
+| `pnpm lint`            | Oxlint across all packages + the EN/FR translation parity check         |
+| `pnpm test`            | Unit tests (Vitest) across all packages                                 |
+| `pnpm test:a11y`       | Theme accessibility & consistency checks (see below)                    |
+| `pnpm test:e2e`        | Build the e2e binary, then run the WebdriverIO + Cucumber suite         |
+| `pnpm dev:import-repo` | Rebuild the scripted fixture repos and launch the app with them as tabs |
+| `pnpm format`          | Prettier formatting                                                     |
+| `pnpm clean`           | Remove all build artifacts                                              |
 
 ### Theme accessibility & consistency
 
@@ -247,11 +247,11 @@ Long-running operations (currently: AI generation) stream progress via Tauri eve
 carries the `requestId` minted by the caller, so two generations running at once never feed each
 other's panel:
 
-| Event           | Payload                              | Description                   |
-| --------------- | ------------------------------------ | ----------------------------- |
-| `ai:token`      | `{ requestId: string, token: string }` | Next generated token          |
-| `ai:done`       | `{ requestId: string }`              | Generation complete           |
-| `ai:cancelled`  | `{ requestId: string }`              | Cancelled by user             |
+| Event          | Payload                                | Description          |
+| -------------- | -------------------------------------- | -------------------- |
+| `ai:token`     | `{ requestId: string, token: string }` | Next generated token |
+| `ai:done`      | `{ requestId: string }`                | Generation complete  |
+| `ai:cancelled` | `{ requestId: string }`                | Cancelled by user    |
 
 There is deliberately no `ai:error` event: a failure rejects the `invoke` promise of that request
 instead, so there is one channel per condition rather than two that race.
@@ -287,7 +287,7 @@ briefing, every per-file summary, every per-commit verdict in the history search
 ignores the schema and replies in prose doesn't give worse answers — it gives none, and the app
 reports the work as unread.
 
-Size is not the criterion; obedience is — measured on this repository, the *bigger* `gemma4:26b`
+Size is not the criterion; obedience is — measured on this repository, the _bigger_ `gemma4:26b`
 does worse than `gemma4:12b`, because neither honors the schema and the larger one fails on the one
 commit that mattered. `Qwen3.6-27B` and `Qwen3.6-35B-A3B` (via an OpenAI-compatible server) honor it
 and answer the history search correctly. The tested models, with numbers, are listed in
@@ -319,29 +319,29 @@ Everything project-state and design related lives in [docs/](docs/):
 
 ## Package overview
 
-| Package              | Name                        | Description                                                                                     |
-| -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `apps/desktop`           | `@git-manager/desktop`       | Main Tauri + React application                                                                     |
-| `apps/landing-page`      | `@git-manager/landing-page`  | The [public landing page](https://tlahey.github.io/git-manager/), deployed to GitHub Pages         |
-| `apps/docs`              | `@git-manager/docs`          | The [documentation site](https://tlahey.github.io/git-manager/docs/) (VitePress), one page generated per `@doc` e2e scenario |
-| `apps/e2e`               | `@git-manager/e2e`           | WebdriverIO + Cucumber e2e suite driving the real Tauri app (incl. the `screenshots` capture)       |
-| `packages/git-types`     | `@git-manager/git-types`     | Shared TypeScript DTOs (mirrors Rust models)                                                       |
-| `packages/ai`            | `@git-manager/ai`            | The AI brain: provider presets and one descriptor per AI feature (instructions, temperature, prompts) |
-| `packages/mascot`        | `@git-manager/mascot`        | The octopus mascot as a shared `<git-mascot>` web component (landing page today, app tomorrow)     |
-| `packages/i18n`          | `@git-manager/i18n`          | i18next setup + EN/FR locale files                                                                 |
-| `packages/ui`            | `@git-manager/ui`            | shadcn/ui base components                                                                          |
-| `packages/components`    | `@git-manager/components`    | Composed, domain-agnostic presentational building blocks one level up from `ui`                    |
-| `packages/editor`        | `@git-manager/editor`        | All Monaco integration: diff, three-pane merge and single-pane editors                             |
-| `packages/theme`         | `@git-manager/theme`         | Design tokens, the theme CSS and the WCAG/APCA contrast gates                                      |
-| `packages/storybook-a11y`| `@git-manager/storybook-a11y`| Shared Storybook accessibility setup                                                               |
-| `packages/config`        | `@git-manager/config`        | Shared Oxlint, Tailwind, tsconfig                                                                  |
+| Package                   | Name                          | Description                                                                                                                  |
+| ------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `apps/desktop`            | `@git-manager/desktop`        | Main Tauri + React application                                                                                               |
+| `apps/landing-page`       | `@git-manager/landing-page`   | The [public landing page](https://tlahey.github.io/git-manager/), deployed to GitHub Pages                                   |
+| `apps/docs`               | `@git-manager/docs`           | The [documentation site](https://tlahey.github.io/git-manager/docs/) (VitePress), one page generated per `@doc` e2e scenario |
+| `apps/e2e`                | `@git-manager/e2e`            | WebdriverIO + Cucumber e2e suite driving the real Tauri app (incl. the `screenshots` capture)                                |
+| `packages/git-types`      | `@git-manager/git-types`      | Shared TypeScript DTOs (mirrors Rust models)                                                                                 |
+| `packages/ai`             | `@git-manager/ai`             | The AI brain: provider presets and one descriptor per AI feature (instructions, temperature, prompts)                        |
+| `packages/mascot`         | `@git-manager/mascot`         | The octopus mascot as a shared `<git-mascot>` web component (landing page today, app tomorrow)                               |
+| `packages/i18n`           | `@git-manager/i18n`           | i18next setup + EN/FR locale files                                                                                           |
+| `packages/ui`             | `@git-manager/ui`             | shadcn/ui base components                                                                                                    |
+| `packages/components`     | `@git-manager/components`     | Composed, domain-agnostic presentational building blocks one level up from `ui`                                              |
+| `packages/editor`         | `@git-manager/editor`         | All Monaco integration: diff, three-pane merge and single-pane editors                                                       |
+| `packages/theme`          | `@git-manager/theme`          | Design tokens, the theme CSS and the WCAG/APCA contrast gates                                                                |
+| `packages/storybook-a11y` | `@git-manager/storybook-a11y` | Shared Storybook accessibility setup                                                                                         |
+| `packages/config`         | `@git-manager/config`         | Shared Oxlint, Tailwind, tsconfig                                                                                            |
 
 ---
 
 ## Security
 
 - **No telemetry** — zero analytics. The only outbound traffic is what you ask for: your git remotes, the AI provider you configured (localhost by default), GitHub when you connect an account, and the update check against this repository's releases
-- **Git credentials stay in Rust** — fetch / pull / push authenticate through the system SSH agent inside the Rust layer; no key material is passed to JavaScript. (Provider *API* tokens — the GitHub OAuth token, GitLab/Bitbucket personal access tokens — are held in the frontend settings store, since they're only used for those providers' HTTP APIs.)
+- **Git credentials stay in Rust** — fetch / pull / push authenticate through the system SSH agent inside the Rust layer; no key material is passed to JavaScript. (Provider _API_ tokens — the GitHub OAuth token, GitLab/Bitbucket personal access tokens — are held in the frontend settings store, since they're only used for those providers' HTTP APIs.)
 - **Tauri ACL** — strict capability permissions via Tauri v2's permission system
 - **Protected branches** — configurable list of branches that block destructive operations
 - **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in

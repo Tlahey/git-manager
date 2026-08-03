@@ -280,3 +280,47 @@ describe('useUndoHistoryStore — correlated gestures undo as one', () => {
     expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'b1' })
   })
 })
+
+// A gesture can fail halfway: git takes back the checkout, then refuses the branch deletion. The
+// pointer has to record what actually came back, or the entries already reverted stay marked as
+// applied and the next ⌘Z reverts them a second time.
+describe('useUndoHistoryStore — a gesture that fails halfway', () => {
+  const store = () => useUndoHistoryStore.getState()
+
+  function pushGesture() {
+    store().push(REPO, action('create', [], 'corr-1'))
+    store().push(REPO, action('checkout', [], 'corr-1'))
+  }
+
+  it('advances the pointer past the steps that succeeded and rethrows', async () => {
+    pushGesture()
+    // Newest first: the checkout comes back, the branch deletion is refused.
+    executeUndo.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('is checked out'))
+
+    await expect(store().undo(REPO)).rejects.toThrow()
+
+    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(1)
+    // The failed entry is still there to retry — the reverted one is not replayed.
+    expect(store().canUndo(REPO)).toBe(true)
+    executeUndo.mockClear().mockResolvedValue(undefined)
+    await store().undo(REPO)
+    expect(executeUndo.mock.calls.map((c) => (c[1] as { id: string }).id)).toEqual(['create'])
+  })
+
+  it('leaves the pointer alone when the very first step fails', async () => {
+    pushGesture()
+    executeUndo.mockRejectedValue(new Error('nope'))
+
+    await expect(store().undo(REPO)).rejects.toThrow()
+    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(2)
+  })
+
+  it('applies the same rule to redo', async () => {
+    pushGesture()
+    await store().undo(REPO)
+    executeRedo.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('nope'))
+
+    await expect(store().redo(REPO)).rejects.toThrow()
+    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(1)
+  })
+})

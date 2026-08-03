@@ -56,10 +56,7 @@ describe.each([
     expect(current?.model.tone).toBe('error')
     // The lines the hook printed, not the serialized error — the whole reason the card exists.
     expect(current?.model).toMatchObject({
-      outputLines: [
-        'pre-push: refusing to push refs/heads/release',
-        'this branch is protected',
-      ],
+      outputLines: ['pre-push: refusing to push refs/heads/release', 'this branch is protected'],
     })
   })
 

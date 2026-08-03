@@ -57,7 +57,9 @@ export const DISPLAY_DURATION_OPTIONS_MS = [3000, 5000, 8000, 10000, 12000, 0]
  * to `native`, quietly turning the notch off for every existing user. Same shape as
  * `migrateAiPresetId`.
  */
-export function migrateDisplayStyle(stored: string | undefined): NotificationDisplayStyle | undefined {
+export function migrateDisplayStyle(
+  stored: string | undefined
+): NotificationDisplayStyle | undefined {
   if (stored === undefined) return undefined
   if (stored === 'popover') return 'notch'
   return stored === 'notch' || stored === 'native' ? stored : undefined

@@ -316,13 +316,16 @@ When(/^I confirm the branch creation$/, async () => {
 // Resolves the branch/tag ref's subject off disk rather than re-resolving a relative ref like
 // "HEAD~1" — the mutating action above (checkout-on-create, for branches) can change what a
 // relative ref means, but the target commit's subject is a stable, unambiguous anchor.
-Then(/^the branch "([^"]*)" points at the commit "([^"]*)"$/, async (branch: string, subject: string) => {
-  const repoPath = activeRepoPath()
-  const actual = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', branch], {
-    encoding: 'utf8',
-  }).trim()
-  expect(actual).toBe(subject)
-})
+Then(
+  /^the branch "([^"]*)" points at the commit "([^"]*)"$/,
+  async (branch: string, subject: string) => {
+    const repoPath = activeRepoPath()
+    const actual = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', branch], {
+      encoding: 'utf8',
+    }).trim()
+    expect(actual).toBe(subject)
+  }
+)
 
 // Tag creation is no longer a modal: `TagCreationInput` (added by the "inline tag creation input in
 // the refs column" change, which deleted TagDialog.tsx) renders a bare name input *inside the

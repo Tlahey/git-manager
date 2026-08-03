@@ -102,7 +102,9 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
               ))}
             </div>
 
-            <p className="text-xs text-muted-foreground opacity-70">{t('fixup.autosquash.warning')}</p>
+            <p className="text-xs text-muted-foreground opacity-70">
+              {t('fixup.autosquash.warning')}
+            </p>
           </div>
         )}
 

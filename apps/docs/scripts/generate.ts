@@ -63,10 +63,7 @@ function readDocFeatures(): DocFeature[] {
     .filter((name) => name.endsWith('.feature'))
     .sort()
     .map((name) =>
-      parseDocFeature(
-        readFileSync(join(FEATURES_SRC, name), 'utf8'),
-        `apps/e2e/features/${name}`
-      )
+      parseDocFeature(readFileSync(join(FEATURES_SRC, name), 'utf8'), `apps/e2e/features/${name}`)
     )
     .filter((feature): feature is DocFeature => feature !== null)
 }

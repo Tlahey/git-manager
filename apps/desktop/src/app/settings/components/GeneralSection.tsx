@@ -179,7 +179,9 @@ export function GeneralSection() {
             }}
             onBlur={() => {
               const n = parseInt(commitsDraft, 10)
-              const clamped = Number.isNaN(n) ? DEFAULT_GRAPH_COMMITS : Math.max(MIN_GRAPH_COMMITS, n)
+              const clamped = Number.isNaN(n)
+                ? DEFAULT_GRAPH_COMMITS
+                : Math.max(MIN_GRAPH_COMMITS, n)
               updateGit({ initialGraphCommits: clamped })
               setCommitsDraft(String(clamped))
             }}

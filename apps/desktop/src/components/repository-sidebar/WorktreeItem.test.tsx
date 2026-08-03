@@ -8,9 +8,13 @@ const { openRepoTab } = vi.hoisted(() => ({ openRepoTab: vi.fn() }))
 vi.mock('../../hooks/useOpenRepoTab', () => ({ useOpenRepoTab: () => openRepoTab }))
 
 vi.mock('./HoverExpandLabel', () => ({
-  HoverExpandLabel: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <span className={className}>{children}</span>
-  ),
+  HoverExpandLabel: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => <span className={className}>{children}</span>,
 }))
 
 const PATH = '/tmp/repo-linked'
@@ -50,7 +54,14 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
   }
 }
 
-const WIP = { path: PATH, branch: 'feature/login', totalChanges: 10, added: 3, modified: 5, deleted: 2 }
+const WIP = {
+  path: PATH,
+  branch: 'feature/login',
+  totalChanges: 10,
+  added: 3,
+  modified: 5,
+  deleted: 2,
+}
 
 beforeEach(() => openRepoTab.mockClear())
 

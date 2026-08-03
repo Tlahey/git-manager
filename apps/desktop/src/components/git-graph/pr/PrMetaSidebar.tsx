@@ -41,7 +41,10 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
 
   const usersEnabled = editing === 'reviewers' || editing === 'assignees'
   const { users, isLoading: usersLoading } = useAssignableUsers(repoPath, usersEnabled)
-  const { labels: repoLabels, isLoading: labelsLoading } = useRepoLabels(repoPath, editing === 'labels')
+  const { labels: repoLabels, isLoading: labelsLoading } = useRepoLabels(
+    repoPath,
+    editing === 'labels'
+  )
 
   const userOptions = useMemo<PrEditOption[]>(
     () => users.map((u) => ({ key: u.login, label: u.login, avatarUrl: u.avatar_url })),
@@ -158,7 +161,10 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
                 className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground"
               >
                 {l.color && (
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: `#${l.color}` }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: `#${l.color}` }}
+                  />
                 )}
                 {l.name}
               </li>

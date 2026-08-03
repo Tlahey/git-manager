@@ -87,7 +87,10 @@ describe('terminalRegistry', () => {
   })
 
   it('attach opens the terminal once and mounts it into the container', () => {
-    const entry = getOrCreateTerminal('t1') as unknown as { term: FakeTerminalShape; el: HTMLElement }
+    const entry = getOrCreateTerminal('t1') as unknown as {
+      term: FakeTerminalShape
+      el: HTMLElement
+    }
     const container = document.createElement('div')
     attachTerminal('t1', container)
     attachTerminal('t1', container)

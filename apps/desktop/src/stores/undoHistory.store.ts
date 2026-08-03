@@ -8,6 +8,7 @@ import {
   type UndoAction,
   type UndoLabel,
 } from '../lib/undoActions'
+import { gestureEndingAt, gestureStartingAt } from '../lib/undoGestures'
 
 export type { UndoAction, UndoLabel }
 
@@ -33,35 +34,6 @@ interface UndoHistoryState {
   validateAndPrune: (repoPath: string) => Promise<void>
 }
 
-/**
- * The entries belonging to the same user gesture as the one at `pointer - 1`, oldest first.
- *
- * One gesture can perform several git operations — "create a branch here" creates the ref and
- * checks it out — and `pushAction` stamps each with the gesture's correlation id. Undo takes the
- * whole run back at once, so a single ⌘Z matches a single thing the user did. Entries with no
- * correlation id (anything not wrapped in `runActivity`) stand alone, which keeps every existing
- * one-operation action behaving exactly as before — and is also why other multi-operation
- * gestures are still only half-undoable until they are wrapped too (issue #270).
- */
-function groupEndingAt(stack: UndoAction[], pointer: number): UndoAction[] {
-  const last = stack[pointer - 1]
-  if (!last) return []
-  if (!last.correlationId) return [last]
-  let start = pointer - 1
-  while (start > 0 && stack[start - 1]?.correlationId === last.correlationId) start--
-  return stack.slice(start, pointer)
-}
-
-/** The mirror of {@link groupEndingAt} for redo: the gesture starting at `pointer`, oldest first. */
-function groupStartingAt(stack: UndoAction[], pointer: number): UndoAction[] {
-  const first = stack[pointer]
-  if (!first) return []
-  if (!first.correlationId) return [first]
-  let end = pointer + 1
-  while (end < stack.length && stack[end]?.correlationId === first.correlationId) end++
-  return stack.slice(pointer, end)
-}
-
 function emptyHistory(): RepoHistory {
   return { stack: [], pointer: 0 }
 }
@@ -71,7 +43,10 @@ function emptyHistory(): RepoHistory {
 function sanitizeHistory(raw: unknown): RepoHistory {
   const h = (raw ?? {}) as Partial<RepoHistory>
   const rawStack = Array.isArray(h.stack) ? h.stack : []
-  const rawPointer = Math.min(Math.max(typeof h.pointer === 'number' ? h.pointer : 0, 0), rawStack.length)
+  const rawPointer = Math.min(
+    Math.max(typeof h.pointer === 'number' ? h.pointer : 0, 0),
+    rawStack.length
+  )
   const stack: UndoAction[] = []
   let pointer = 0
   rawStack.forEach((action, i) => {
@@ -81,6 +56,20 @@ function sanitizeHistory(raw: unknown): RepoHistory {
     }
   })
   return { stack, pointer }
+}
+
+/** Shifts one repo's pointer by `delta`, clamped to its stack — a no-op if the repo is gone. */
+function movePointer(
+  set: (fn: (state: UndoHistoryState) => Partial<UndoHistoryState>) => void,
+  repoPath: string,
+  delta: number
+) {
+  set((state) => {
+    const h = state.byRepo[repoPath]
+    if (!h) return state
+    const pointer = Math.min(Math.max(h.pointer + delta, 0), h.stack.length)
+    return { byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer } } }
+  })
 }
 
 function unpinEntries(repoPath: string, entries: UndoAction[]) {
@@ -118,38 +107,40 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
       undo: async (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return
-        const group = groupEndingAt(history.stack, history.pointer)
+        const group = gestureEndingAt(history.stack, history.pointer)
         if (group.length === 0) return
-        // Newest operation first: a gesture's steps have to come apart in the reverse order they
-        // were performed, or a step undoes into a state its predecessor has not left yet.
-        for (let i = group.length - 1; i >= 0; i--) {
-          await executeUndo(repoPath, group[i]!)
-        }
-        set((state) => {
-          const h = state.byRepo[repoPath]
-          if (!h) return state
-          return {
-            byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer - group.length } },
+        let done = 0
+        try {
+          // Newest operation first: a gesture's steps have to come apart in the reverse order they
+          // were performed, or a step undoes into a state its predecessor has not left yet.
+          for (let i = group.length - 1; i >= 0; i--) {
+            await executeUndo(repoPath, group[i]!)
+            done++
           }
-        })
+        } finally {
+          // Move the pointer by what actually came back, then let the error out. Waiting for the
+          // whole gesture would leave entries git has already reverted still marked as applied, so
+          // the next ⌘Z would undo them a second time — on top of whatever half-state the failure
+          // left behind.
+          if (done > 0) movePointer(set, repoPath, -done)
+        }
       },
 
       redo: async (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return
-        const group = groupStartingAt(history.stack, history.pointer)
+        const group = gestureStartingAt(history.stack, history.pointer)
         if (group.length === 0) return
-        // Oldest first — the order they originally happened in.
-        for (const action of group) {
-          await executeRedo(repoPath, action)
-        }
-        set((state) => {
-          const h = state.byRepo[repoPath]
-          if (!h) return state
-          return {
-            byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer + group.length } },
+        let done = 0
+        try {
+          // Oldest first — the order they originally happened in.
+          for (const action of group) {
+            await executeRedo(repoPath, action)
+            done++
           }
-        })
+        } finally {
+          if (done > 0) movePointer(set, repoPath, done)
+        }
       },
 
       clearRedo: (repoPath) =>
@@ -186,13 +177,13 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
       peekUndoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return null
-        return groupEndingAt(history.stack, history.pointer)[0]?.label ?? null
+        return gestureEndingAt(history.stack, history.pointer)[0]?.label ?? null
       },
 
       peekRedoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return null
-        return groupStartingAt(history.stack, history.pointer)[0]?.label ?? null
+        return gestureStartingAt(history.stack, history.pointer)[0]?.label ?? null
       },
 
       validateAndPrune: async (repoPath) => {

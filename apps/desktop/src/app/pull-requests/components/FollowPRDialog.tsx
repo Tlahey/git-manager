@@ -52,7 +52,12 @@ export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
           <Button variant="ghost" size="sm" onClick={onClose}>
             {t('followDialog.cancel')}
           </Button>
-          <Button size="sm" data-testid="follow-pr-confirm-button" onClick={handleAdd} disabled={!isValid}>
+          <Button
+            size="sm"
+            data-testid="follow-pr-confirm-button"
+            onClick={handleAdd}
+            disabled={!isValid}
+          >
             {t('followDialog.follow')}
           </Button>
         </DialogFooter>

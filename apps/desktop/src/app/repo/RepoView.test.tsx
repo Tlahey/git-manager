@@ -33,7 +33,9 @@ vi.mock('../../api/git.api', () => ({
 }))
 vi.mock('../../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
 
-const { showNativeMenu } = vi.hoisted(() => ({ showNativeMenu: vi.fn().mockResolvedValue(undefined) }))
+const { showNativeMenu } = vi.hoisted(() => ({
+  showNativeMenu: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('../../api/nativeMenu.api', () => ({ showNativeMenu }))
 
 const { invalidateQueries } = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
@@ -81,7 +83,9 @@ vi.mock('../../components/repository-sidebar', () => ({
       <span data-testid="sidebar-token">{props.githubToken ?? ''}</span>
       <button onClick={() => props.onSelectBranch('feature-x')}>select-feature-x</button>
       <button onClick={() => props.onSelectBranch(null)}>select-none</button>
-      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>open-pr</button>
+      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>
+        open-pr
+      </button>
       <button
         onClick={(e) =>
           props.onContextMenu?.(e, {
@@ -190,11 +194,26 @@ describe('RepoView — opening the active repo', () => {
     expect(useUndoHistoryStore.getState().validateAndPrune).toHaveBeenCalledWith('/repo')
   })
 
-  it('does not re-open the repo if it is already cached', () => {
+  it('does not re-open the repo if it is already cached and the branch list has not loaded', () => {
+    useBranchesMock.mockReturnValue({ data: undefined })
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
     render(<RepoView />)
     expect(apiOpenRepo).not.toHaveBeenCalled()
+  })
+
+  // `head`/`isDetached` used to be read once and kept forever, so the toolbar could go on naming a
+  // branch the repository had already left — visible after undoing a checkout back into a detached
+  // HEAD, where there is no branch for it to read instead.
+  it('re-reads the repo whenever the branch list does, since HEAD may have moved', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
+    apiOpenRepo.mockResolvedValue(repo({ head: 'HEAD', isDetached: true }))
+    render(<RepoView />)
+    await waitFor(() => expect(apiOpenRepo).toHaveBeenCalledWith('/repo'))
+    await waitFor(() =>
+      expect(useRepoDataStore.getState().repoCache['/repo']).toMatchObject({ isDetached: true })
+    )
   })
 
   it('silently ignores an open-repo failure', async () => {
@@ -288,7 +307,9 @@ describe('RepoView — branch context menu', () => {
   // items in the spec by their real English label (i18n runs live in tests).
   type ItemNode = Extract<MenuSpecNode, { kind: 'item' }>
   function menuItemByText(prefix: string): ItemNode | undefined {
-    const spec = normalizeMenuSpec(showNativeMenu.mock.calls[showNativeMenu.mock.calls.length - 1][0])
+    const spec = normalizeMenuSpec(
+      showNativeMenu.mock.calls[showNativeMenu.mock.calls.length - 1][0]
+    )
     const flat = (nodes: MenuSpecNode[]): MenuSpecNode[] =>
       nodes.flatMap((n) => (n.kind === 'submenu' ? [n, ...flat(normalizeMenuSpec(n.items))] : [n]))
     return flat(spec).find((n): n is ItemNode => n.kind === 'item' && n.text.startsWith(prefix))
@@ -419,7 +440,11 @@ describe('RepoView — branch context menu', () => {
     render(<RepoView />)
     await user.click(screen.getByText('context-menu-local'))
     await act(async () => menuItemByText('Set upstream')!.action!())
-    expect(apiSetBranchUpstream).toHaveBeenCalledWith('/repo', 'local-branch', 'origin/local-branch')
+    expect(apiSetBranchUpstream).toHaveBeenCalledWith(
+      '/repo',
+      'local-branch',
+      'origin/local-branch'
+    )
     expect(screen.queryByTestId('set-upstream-dialog')).not.toBeInTheDocument()
   })
 })

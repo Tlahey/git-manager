@@ -135,7 +135,9 @@ interface SettingsState {
  * partial snapshot, as the e2e screenshot scenarios do) would then leave
  * every other group undefined and crash their consumers.
  */
-export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | undefined): AppSettings {
+export function mergeSettingsWithDefaults(
+  persisted: Partial<AppSettings> | undefined
+): AppSettings {
   const merged = { ...DEFAULT_SETTINGS, ...persisted }
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[]) {
     const def = DEFAULT_SETTINGS[key]

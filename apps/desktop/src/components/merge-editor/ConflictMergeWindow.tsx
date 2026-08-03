@@ -140,7 +140,7 @@ export function ConflictMergeWindowContent({
         )}
 
         {!isLoading && view && view.renderable && (
-          <div className="animate-in fade-in zoom-in-95 flex min-h-0 flex-1 flex-col overflow-hidden border border-border/80 bg-background animate-duration-100">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-border/80 bg-background animate-in fade-in zoom-in-95 animate-duration-100">
             <ThreeWayMergeEditor
               ref={mergeEditorRef}
               repoPath={repoPath}

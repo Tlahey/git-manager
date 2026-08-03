@@ -57,7 +57,11 @@ describe('buildSummaryGroupingPrompt', () => {
 
 describe('renderSummaryList', () => {
   const many = Array.from({ length: 40 }, (_, i) =>
-    summary(`apps/desktop/src/components/Panel${i}.tsx`, 'a fairly long area name', 'a long intent clause about this file')
+    summary(
+      `apps/desktop/src/components/Panel${i}.tsx`,
+      'a fairly long area name',
+      'a long intent clause about this file'
+    )
   )
 
   it('keeps intents when there is room', () => {

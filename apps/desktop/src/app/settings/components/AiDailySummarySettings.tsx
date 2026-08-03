@@ -98,9 +98,7 @@ export function AiDailySummarySettings() {
         <span className="text-[10px] text-muted-foreground">
           {t('settings.ai.dailySummary.retentionHint')}
         </span>
-        {openError && (
-          <span className="font-mono text-[10px] text-destructive">{openError}</span>
-        )}
+        {openError && <span className="font-mono text-[10px] text-destructive">{openError}</span>}
       </div>
     </div>
   )

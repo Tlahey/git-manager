@@ -108,8 +108,7 @@ const commitActions = (): CommitMenuActions => ({
  * `buildBranchSubmenus`), so the harness puts it in `ctx.refs` unless a test says otherwise —
  * matching reality, which some rules now depend on. */
 function submenuFor(refArg: GitRef, context: GraphCommitMenuContext, actions = branchActions()) {
-  const ctxWithRef =
-    context.refs.length > 0 ? context : { ...context, refs: [refArg] }
+  const ctxWithRef = context.refs.length > 0 ? context : { ...context, refs: [refArg] }
   const node = buildBranchSubmenu(refArg, ctxWithRef, actions, commitActions(), t) as SubmenuNode
   return { node, items: normalizeMenuSpec(node.items), actions }
 }
@@ -127,9 +126,10 @@ describe('isMainBranchName', () => {
 
 describe('remoteBranchTarget', () => {
   it('splits a remote-qualified short name into its remote and branch parts', () => {
-    expect(
-      remoteBranchTarget(ref({ shortName: 'origin/main', type: 'remote' }))
-    ).toEqual({ remote: 'origin', branchName: 'main' })
+    expect(remoteBranchTarget(ref({ shortName: 'origin/main', type: 'remote' }))).toEqual({
+      remote: 'origin',
+      branchName: 'main',
+    })
   })
 
   it('keeps every slash after the first as part of the branch name', () => {
@@ -216,7 +216,11 @@ describe('compare with another branch', () => {
   })
 
   it('is offered from the sidebar branch row too, on a remote branch as well', () => {
-    const origin = ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
+    const origin = ref({
+      shortName: 'origin/main',
+      type: 'remote',
+      name: 'refs/remotes/origin/main',
+    })
     const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
     const nodes = normalizeMenuSpec(
       buildSidebarBranchMenuSpec(
@@ -327,7 +331,8 @@ describe('buildBranchSubmenu — another local branch', () => {
 })
 
 describe('buildBranchSubmenu — remote branch', () => {
-  const origin = () => ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
+  const origin = () =>
+    ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
 
   it('offers relationship, checkout, worktree, PR, link-to-branch — and no sync section', () => {
     const { items: nodes } = submenuFor(origin(), ctx({ currentBranch: 'feat' }))
@@ -679,9 +684,7 @@ describe('buildWipMenuSpec', () => {
   })
 
   it('lists the stash and stage/unstage actions', () => {
-    const spec = normalizeMenuSpec(
-      buildWipMenuSpec(wipCtx(), wipActions(), t)
-    )
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx(), wipActions(), t))
     expect(texts(spec)).toEqual([
       'Stash changes',
       'Stash changes (include untracked)',
@@ -719,26 +722,20 @@ describe('buildWipMenuSpec', () => {
   })
 
   it('disables both AI items when AI is switched off', () => {
-    const spec = normalizeMenuSpec(
-      buildWipMenuSpec(wipCtx({ aiEnabled: false }), wipActions(), t)
-    )
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx({ aiEnabled: false }), wipActions(), t))
     expect(item(spec, 'Explain working changes (LLM)')?.enabled).toBe(false)
     expect(item(spec, 'Review changes (LLM)')?.enabled).toBe(false)
   })
 
   it('enables stage/unstage from the working state', () => {
-    const spec = normalizeMenuSpec(
-      buildWipMenuSpec(wipCtx({ hasStaged: false }), wipActions(), t)
-    )
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx({ hasStaged: false }), wipActions(), t))
     expect(item(spec, 'Stage all changes')?.enabled).toBe(true)
     expect(item(spec, 'Unstage all changes')?.enabled).toBe(false)
   })
 
   it('wires the stash items with and without untracked files', () => {
     const actions = wipActions()
-    const spec = normalizeMenuSpec(
-      buildWipMenuSpec(wipCtx(), actions, t)
-    )
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx(), actions, t))
     item(spec, 'Stash changes')?.action?.()
     expect(actions.onStash).toHaveBeenLastCalledWith(false)
     item(spec, 'Stash changes (include untracked)')?.action?.()
@@ -894,7 +891,11 @@ describe('buildRefDropMenuSpec', () => {
 
   it('enables target-moving actions only when the target is a local branch', () => {
     const spec = normalizeMenuSpec(
-      buildRefDropMenuSpec({ ...dropCtx, targetIsBranch: false, sourceIsBranch: true, prEnabled: true }, dropActions(), t)
+      buildRefDropMenuSpec(
+        { ...dropCtx, targetIsBranch: false, sourceIsBranch: true, prEnabled: true },
+        dropActions(),
+        t
+      )
     )
     expect(item(spec, 'Fast-forward main to feat')?.enabled).toBe(false)
     expect(item(spec, 'Merge feat into main')?.enabled).toBe(false)
@@ -904,11 +905,17 @@ describe('buildRefDropMenuSpec', () => {
   it('wires push and the reset submenu', () => {
     const actions = dropActions()
     const spec = normalizeMenuSpec(
-      buildRefDropMenuSpec({ ...dropCtx, targetIsBranch: true, sourceIsBranch: true, prEnabled: true }, actions, t)
+      buildRefDropMenuSpec(
+        { ...dropCtx, targetIsBranch: true, sourceIsBranch: true, prEnabled: true },
+        actions,
+        t
+      )
     )
     item(spec, 'Push feat to origin/main')?.action?.()
     expect(actions.onPush).toHaveBeenCalledOnce()
-    const reset = spec.find((n): n is SubmenuNode => n.kind === 'submenu' && n.text.startsWith('Reset feat'))
+    const reset = spec.find(
+      (n): n is SubmenuNode => n.kind === 'submenu' && n.text.startsWith('Reset feat')
+    )
     item(normalizeMenuSpec(reset!.items), 'Hard')?.action?.()
     expect(actions.onReset).toHaveBeenCalledWith('hard')
   })
@@ -1047,9 +1054,7 @@ describe('buildCommitMenuSpec', () => {
     )
 
   it('lays out the multi-branch commit menu with one submenu per branch', () => {
-    const spec = build(
-      ctx({ refs: [ref({ shortName: 'feat' }), ref({ shortName: 'dev' })] })
-    )
+    const spec = build(ctx({ refs: [ref({ shortName: 'feat' }), ref({ shortName: 'dev' })] }))
     expect(layoutOf(spec)).toEqual([
       'Checkout this commit',
       '— separator',

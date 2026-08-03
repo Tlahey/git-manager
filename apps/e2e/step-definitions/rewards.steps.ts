@@ -37,7 +37,10 @@ When(/^I open the rewards tab$/, async () => {
         store.getState().setActiveTab('rewards')
         return true
       }),
-    { timeout: 10000, timeoutMsg: '__e2eRepoUIStore never became available to switch to the rewards tab' }
+    {
+      timeout: 10000,
+      timeoutMsg: '__e2eRepoUIStore never became available to switch to the rewards tab',
+    }
   )
   await $('[data-testid="rewards-tab-container"]').waitForDisplayed({ timeout: 10000 })
 })

@@ -80,3 +80,51 @@ describe('deriveTimeline', () => {
     expect(deriveTimeline(stack, -3).currentIndex).toBe(0)
   })
 })
+
+// The overlay walks to a picked step by calling `undo`/`redo` once per step, and the store moves a
+// whole gesture per call. A timeline that counted raw entries would ask for two undos where one
+// gesture answers both, and sail past the step the user picked.
+describe('deriveTimeline — one step per gesture', () => {
+  const correlated = (a: UndoAction, id: string): UndoAction => ({ ...a, correlationId: id })
+
+  it('collapses the entries of one gesture into a single step', () => {
+    const stack = [
+      correlated(commit('create', 'oid0', 'oid1'), 'corr-1'),
+      correlated(commit('checkout', 'oid1', 'oid2'), 'corr-1'),
+      commit('later', 'oid2', 'oid3'),
+    ]
+    const { steps } = deriveTimeline(stack, 3)
+    expect(steps).toHaveLength(3) // base + gesture + lone action
+    // The step carries the HEAD the *whole* gesture left behind, not its first operation's.
+    expect(steps[1]).toMatchObject({ index: 1, headOid: 'oid2' })
+    expect(steps[2]).toMatchObject({ index: 2, headOid: 'oid3' })
+  })
+
+  it('names a gesture after its first entry, like the undo tooltip does', () => {
+    const stack = [
+      correlated({ ...commit('create', 'oid0', 'oid1'), label: { key: 'undo.createBranch' } }, 'c'),
+      correlated({ ...commit('checkout', 'oid1', 'oid2'), label: { key: 'undo.checkout' } }, 'c'),
+    ]
+    expect(deriveTimeline(stack, 2).steps[1]!.label).toEqual({ key: 'undo.createBranch' })
+  })
+
+  it('counts currentIndex in gestures, not in entries', () => {
+    const stack = [
+      correlated(commit('create', 'oid0', 'oid1'), 'corr-1'),
+      correlated(commit('checkout', 'oid1', 'oid2'), 'corr-1'),
+      commit('later', 'oid2', 'oid3'),
+    ]
+    expect(deriveTimeline(stack, 3).currentIndex).toBe(2)
+    expect(deriveTimeline(stack, 2).currentIndex).toBe(1) // the gesture is fully applied
+    // A pointer landing inside a gesture (a pruned persisted stack) rounds down to a reachable step.
+    expect(deriveTimeline(stack, 1).currentIndex).toBe(0)
+  })
+
+  it('keeps two adjacent gestures apart', () => {
+    const stack = [
+      correlated(commit('a', 'oid0', 'oid1'), 'corr-1'),
+      correlated(commit('b', 'oid1', 'oid2'), 'corr-2'),
+    ]
+    expect(deriveTimeline(stack, 2).steps).toHaveLength(3)
+  })
+})

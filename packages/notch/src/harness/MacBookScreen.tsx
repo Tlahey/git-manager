@@ -82,7 +82,10 @@ export function MacBookScreen({
           inside it is rendered at 1:1 points and scaled, which keeps `children` in point units. */}
       <div
         data-testid="macbook-viewport"
-        className={cn('relative overflow-hidden', isCropped ? 'rounded-t-[10px]' : 'rounded-[10px]')}
+        className={cn(
+          'relative overflow-hidden',
+          isCropped ? 'rounded-t-[10px]' : 'rounded-[10px]'
+        )}
         style={{ width: visibleWidth * scale, height: visibleHeight * scale }}
       >
         <div

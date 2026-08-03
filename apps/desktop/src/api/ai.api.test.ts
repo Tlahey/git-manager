@@ -91,7 +91,9 @@ describe('feature services', () => {
   })
 
   it('summaryGroupingService completes with the JSON schema then parses into typed commits', async () => {
-    mocked.aiComplete.mockResolvedValue('{"commits":[{"commitMessage":"feat: a","files":["src/a.ts"]}]}')
+    mocked.aiComplete.mockResolvedValue(
+      '{"commits":[{"commitMessage":"feat: a","files":["src/a.ts"]}]}'
+    )
     const commits = await api.summaryGroupingService.run(connection, {
       repoName: 'demo',
       branch: 'main',
@@ -119,17 +121,21 @@ describe('feature services', () => {
 
   it('changeExplanationService streams the file-explanation prompt with its own instruction', async () => {
     mocked.aiGenerateStream.mockResolvedValue(undefined)
-    await api.changeExplanationService.run(connection, {
-      repoName: 'demo',
-      file: {
-        path: 'src/a.ts',
-        status: 'modified',
-        patch: '@@ -1 +1 @@\n-a\n+b',
-        additions: 1,
-        deletions: 1,
+    await api.changeExplanationService.run(
+      connection,
+      {
+        repoName: 'demo',
+        file: {
+          path: 'src/a.ts',
+          status: 'modified',
+          patch: '@@ -1 +1 @@\n-a\n+b',
+          additions: 1,
+          deletions: 1,
+        },
+        fileContent: 'const b = 1',
       },
-      fileContent: 'const b = 1',
-    }, 'req-1')
+      'req-1'
+    )
 
     expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
@@ -204,7 +210,11 @@ describe('feature services', () => {
   it('clears the run when a completion feature fails', async () => {
     mocked.aiComplete.mockRejectedValue(new Error('AI_PROVIDER_NOT_RUNNING'))
     await expect(
-      api.summaryGroupingService.run(connection, { repoName: 'demo', branch: 'main', summaries: [] })
+      api.summaryGroupingService.run(connection, {
+        repoName: 'demo',
+        branch: 'main',
+        summaries: [],
+      })
     ).rejects.toThrow()
     expect(useAiActivityStore.getState().runs).toEqual([])
   })

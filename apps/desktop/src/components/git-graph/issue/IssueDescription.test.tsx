@@ -55,9 +55,7 @@ describe('IssueDescription', () => {
 
   it('ticks a task-list item straight from the rendered body', async () => {
     const user = userEvent.setup()
-    render(
-      <IssueDescription repoPath="org/repo" issueNumber={7} body={'- [ ] one\n- [x] two'} />
-    )
+    render(<IssueDescription repoPath="org/repo" issueNumber={7} body={'- [ ] one\n- [x] two'} />)
 
     await user.click(screen.getAllByRole('checkbox')[0])
 

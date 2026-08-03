@@ -135,7 +135,10 @@ describe('IssueItem — interaction', () => {
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     fireEvent(screen.getByTestId('issue-item-12'), event)
 
-    expect(onContextMenu).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ number: 12 }))
+    expect(onContextMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ number: 12 })
+    )
     expect(event.defaultPrevented).toBe(true)
   })
 

@@ -10,12 +10,8 @@ import { apiGetRepoFiles } from '../api/repo.api'
  * several walks, and the tree is not the kind of data a few seconds of staleness hurts.
  */
 export function useRepoFiles(repoPath: string | null) {
-  return useSWR(
-    repoPath ? ['repoFiles', repoPath] : null,
-    ([, path]) => apiGetRepoFiles(path),
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 10_000,
-    }
-  )
+  return useSWR(repoPath ? ['repoFiles', repoPath] : null, ([, path]) => apiGetRepoFiles(path), {
+    revalidateOnFocus: true,
+    dedupingInterval: 10_000,
+  })
 }

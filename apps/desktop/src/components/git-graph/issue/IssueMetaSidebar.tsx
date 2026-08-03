@@ -41,20 +41,30 @@ type EditTarget = 'assignees' | 'labels' | null
  * toggle (close ↔ reopen); assignees and labels edit through the shared search popover (issue REST
  * endpoints); the branch section offers "Create a branch for this issue" against the local repo.
  */
-export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: IssueMetaSidebarProps) {
+export function IssueMetaSidebar({
+  repoPath,
+  issueNumber,
+  issue,
+  onChanged,
+}: IssueMetaSidebarProps) {
   const { t } = useTranslation('git')
   const { issue: detail, isLoading, refresh } = useIssueDetail(repoPath, issueNumber)
   const { ownerRepo, token } = useRepoGitHub(repoPath)
-  const { repoPath: localRepoPath, branch, createBranch, creatingBranch } = useIssueActions(
-    issue,
-    onChanged
-  )
+  const {
+    repoPath: localRepoPath,
+    branch,
+    createBranch,
+    creatingBranch,
+  } = useIssueActions(issue, onChanged)
 
   const [editing, setEditing] = useState<EditTarget>(null)
   const [pending, setPending] = useState(false)
 
   const { users, isLoading: usersLoading } = useAssignableUsers(repoPath, editing === 'assignees')
-  const { labels: repoLabels, isLoading: labelsLoading } = useRepoLabels(repoPath, editing === 'labels')
+  const { labels: repoLabels, isLoading: labelsLoading } = useRepoLabels(
+    repoPath,
+    editing === 'labels'
+  )
 
   const userOptions = useMemo<PrEditOption[]>(
     () => users.map((u) => ({ key: u.login, label: u.login, avatarUrl: u.avatar_url })),
@@ -132,7 +142,9 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
                   data-testid="issue-status-open"
                   className="gap-2 text-xs"
                   onSelect={() =>
-                    run(() => setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'open', token))
+                    run(() =>
+                      setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'open', token)
+                    )
                   }
                 >
                   <CircleDot className="h-3.5 w-3.5 text-tone-success" />
@@ -172,10 +184,14 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
             loading={usersLoading}
             busy={pending}
             onAdd={(login) =>
-              run(() => addAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!))
+              run(() =>
+                addAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!)
+              )
             }
             onRemove={(login) =>
-              run(() => removeAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!))
+              run(() =>
+                removeAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!)
+              )
             }
             onClose={() => setEditing(null)}
           />
@@ -198,7 +214,10 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
                 className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground"
               >
                 {l.color && (
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: `#${l.color}` }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: `#${l.color}` }}
+                  />
                 )}
                 {l.name}
               </li>

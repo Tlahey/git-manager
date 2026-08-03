@@ -32,9 +32,7 @@ When(/^I filter the activity log to errors only$/, async () => {
 })
 
 Then(/^the activity log does not show a "([^"]*)" entry$/, async (command: string) => {
-  await expect(
-    $(`[data-testid="activity-log-row"][data-command="${command}"]`)
-  ).not.toBeExisting()
+  await expect($(`[data-testid="activity-log-row"][data-command="${command}"]`)).not.toBeExisting()
 })
 
 When(/^I open the "([^"]*)" activity log entry$/, async (command: string) => {

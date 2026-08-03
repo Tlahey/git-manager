@@ -22,7 +22,11 @@ describe('aiErrorMessage', () => {
   )
 
   it("falls back to the payload's own message for an unmapped code", () => {
-    const raw = JSON.stringify({ code: 'HTTP_ERROR', message: 'HTTP 401 Unauthorized', detail: null })
+    const raw = JSON.stringify({
+      code: 'HTTP_ERROR',
+      message: 'HTTP 401 Unauthorized',
+      detail: null,
+    })
     expect(aiErrorMessage(raw, translate)).toBe('HTTP 401 Unauthorized')
   })
 
@@ -52,7 +56,11 @@ describe('appErrorMessage', () => {
   })
 
   it('appends the detail when there is one', () => {
-    const raw = JSON.stringify({ code: 'GIT_ERROR', message: 'cannot lock ref', detail: 'index.lock' })
+    const raw = JSON.stringify({
+      code: 'GIT_ERROR',
+      message: 'cannot lock ref',
+      detail: 'index.lock',
+    })
     expect(appErrorMessage(raw)).toBe('cannot lock ref — index.lock')
   })
 

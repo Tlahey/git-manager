@@ -27,7 +27,7 @@ export const DEFAULT_DISABLED_RULES: Record<string, { enabled: boolean }> = {
  */
 export async function runAxe(
   container: Element,
-  extraDisabledRules: Record<string, { enabled: boolean }> = {},
+  extraDisabledRules: Record<string, { enabled: boolean }> = {}
 ): Promise<axe.Result[]> {
   ensureApcaRegistered()
   const results = await axe.run(container, {

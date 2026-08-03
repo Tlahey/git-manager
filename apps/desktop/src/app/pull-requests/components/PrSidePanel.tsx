@@ -22,7 +22,10 @@ export function PrSidePanel({ pr, onClose }: PrSidePanelProps) {
   )
 
   return (
-    <div className="absolute inset-0 z-panel flex justify-end" data-testid="launchpad-pr-panel-overlay">
+    <div
+      className="absolute inset-0 z-panel flex justify-end"
+      data-testid="launchpad-pr-panel-overlay"
+    >
       <div
         className="absolute inset-0 bg-background/70 backdrop-blur-sm"
         onClick={onClose}

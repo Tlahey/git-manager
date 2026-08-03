@@ -17,6 +17,8 @@ vi.mock('../../lib/tauri', async () => {
     getTags: vi.fn(),
     pinObject: vi.fn(),
     snapshotWorktree: vi.fn(),
+    getRepoSummary: vi.fn(),
+    resolveRevision: vi.fn(),
   }
 })
 
@@ -94,15 +96,33 @@ describe('apiCheckoutBranch', () => {
     )
   })
 
-  it('leaving a detached HEAD pins the detached commit so it survives GC', async () => {
+  // Leaving a detached HEAD is the one case where the caller's `fromRef` cannot be trusted: every
+  // call site reads it from `GitRepo.head`/`GitRepoSummary.head`, which report the literal string
+  // "HEAD" when HEAD is not on a branch. Pinning it failed silently (pin_object wants an OID) and
+  // undoing the checkout resolved "HEAD" to the branch it was meant to leave.
+  it('resolves the detached commit itself rather than trusting the caller', async () => {
+    const path = freshPath()
+    mocked.checkoutBranch.mockResolvedValue(undefined)
+    mocked.resolveRevision.mockResolvedValue('detached-sha')
+
+    await api.apiCheckoutBranch(path, 'main', { fromRef: 'HEAD', fromDetached: true })
+
+    expect(mocked.resolveRevision).toHaveBeenCalledWith(path, 'HEAD')
+    const entry = historyOf(path).stack[0]
+    // Both the pin and the undo target are the resolved OID, not the string the caller passed.
+    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-detached`, 'detached-sha')
+    expect(entry).toMatchObject({ type: 'checkout', fromRef: 'detached-sha' })
+    expect(entry.pinnedRefs).toContain(`${entry.id}-detached`)
+  })
+
+  it('leaves an ordinary branch checkout alone — no revision to resolve', async () => {
     const path = freshPath()
     mocked.checkoutBranch.mockResolvedValue(undefined)
 
-    await api.apiCheckoutBranch(path, 'main', { fromRef: 'detached-sha', fromDetached: true })
+    await api.apiCheckoutBranch(path, 'feat', { fromRef: 'main', fromDetached: false })
 
-    const entry = historyOf(path).stack[0]
-    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-detached`, 'detached-sha')
-    expect(entry.pinnedRefs).toContain(`${entry.id}-detached`)
+    expect(mocked.resolveRevision).not.toHaveBeenCalled()
+    expect(historyOf(path).stack[0]).toMatchObject({ fromRef: 'main' })
   })
 
   it('clears redo when called without opts', async () => {
@@ -228,6 +248,63 @@ describe('apiCreateTag', () => {
 
     await api.apiCreateTag(path, 'v1.0', 'HEAD')
 
+    expect(historyOf(path)).toBeUndefined()
+  })
+})
+
+// The pair is one function because assembling it by hand went wrong at every call site: without a
+// shared correlation id, ⌘Z took back only the checkout and then asked git to delete the branch it
+// had just made HEAD — refused, and silently. See `apiCreateAndCheckoutBranch`.
+describe('apiCreateAndCheckoutBranch', () => {
+  beforeEach(() => {
+    mocked.createBranch.mockResolvedValue(undefined)
+    mocked.checkoutBranch.mockResolvedValue(undefined)
+    // `apiCreateBranch` looks the new branch up by name to pin its OID.
+    mocked.getBranches.mockResolvedValue([{ ...headBranch('new-sha')[0]!, name: 'feat' }])
+    mocked.getRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
+  })
+
+  it('records both operations under one correlation id', async () => {
+    const path = freshPath()
+
+    await api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')
+
+    const stack = historyOf(path).stack
+    expect(stack).toHaveLength(2)
+    expect(stack[0]).toMatchObject({ type: 'createBranch', name: 'feat' })
+    expect(stack[1]).toMatchObject({ type: 'checkout', toRef: 'feat', fromRef: 'main' })
+    expect(stack[0]!.correlationId).toBeTruthy()
+    expect(stack[1]!.correlationId).toBe(stack[0]!.correlationId)
+  })
+
+  it('reads where HEAD was itself, so the checkout is undoable without the caller helping', async () => {
+    const path = freshPath()
+    mocked.getRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
+
+    await api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')
+
+    expect(historyOf(path).stack[1]).toMatchObject({ type: 'checkout', fromRef: 'main' })
+  })
+
+  // Branching off a detached HEAD records the commit, not the word "HEAD" the summary reports for
+  // it — undoing that checkout has to come back to a commit that still means the same thing.
+  it('records the commit itself when branching off a detached HEAD', async () => {
+    const path = freshPath()
+    mocked.getRepoSummary.mockResolvedValue({ head: 'HEAD', isDetached: true })
+    mocked.resolveRevision.mockResolvedValue('detached-sha')
+
+    await api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')
+
+    expect(historyOf(path).stack[1]).toMatchObject({ type: 'checkout', fromRef: 'detached-sha' })
+  })
+
+  it('creates nothing when the repository cannot be read', async () => {
+    const path = freshPath()
+    mocked.getRepoSummary.mockRejectedValue(new Error('not a repository'))
+
+    await expect(api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')).rejects.toThrow()
+
+    expect(mocked.createBranch).not.toHaveBeenCalled()
     expect(historyOf(path)).toBeUndefined()
   })
 })

@@ -3,7 +3,7 @@ import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useSettingsStore } from '../stores/settings.store'
 import { useOpenRepoTab } from './useOpenRepoTab'
-import { apiCreateBranch, apiCheckoutBranch } from '../api/git.api'
+import { apiCreateAndCheckoutBranch } from '../api/git.api'
 import { setIssueState } from '../api/github.api'
 import { openUrl, issueBranchName } from '../app/pull-requests/utils'
 import { useIssueRepoLink } from './useIssueRepoLink'
@@ -57,8 +57,7 @@ export function useIssueActions(issue: MockIssue, onChanged?: () => void): Issue
     setCreatingBranch(true)
     try {
       const name = issueBranchName(issue)
-      await apiCreateBranch(repoPath, name, 'HEAD')
-      await apiCheckoutBranch(repoPath, name)
+      await apiCreateAndCheckoutBranch(repoPath, name, 'HEAD')
       refreshBranch()
       toast.success(t('issue.branchCreated', { branch: name }))
     } catch (e) {

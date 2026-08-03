@@ -15,7 +15,9 @@ const filters = () => useIssueFiltersStore.getState().filters
 
 describe('SavedFilterDialog — creating', () => {
   it('opens empty, titled for a new filter', () => {
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />)
+    render(
+      <SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />
+    )
     expect(screen.getByText('New issue filter')).toBeInTheDocument()
     expect(nameInput()).toHaveValue('')
     expect(queryInput()).toHaveValue('')
@@ -24,7 +26,9 @@ describe('SavedFilterDialog — creating', () => {
 
   it('refuses to submit until both a name and a query are filled in', async () => {
     const user = userEvent.setup()
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />)
+    render(
+      <SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />
+    )
 
     expect(confirm()).toBeDisabled()
     await user.type(nameInput(), 'Bugs')
@@ -36,7 +40,9 @@ describe('SavedFilterDialog — creating', () => {
   it('appends the new filter and closes', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={onClose} />)
+    render(
+      <SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={onClose} />
+    )
 
     await user.type(nameInput(), 'Bugs')
     await user.type(queryInput(), 'label:bug is:open')
@@ -48,7 +54,9 @@ describe('SavedFilterDialog — creating', () => {
 
   it('submits on Enter from the query field', async () => {
     const user = userEvent.setup()
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />)
+    render(
+      <SavedFilterDialog useStore={useIssueFiltersStore} open filter={null} onClose={vi.fn()} />
+    )
 
     await user.type(nameInput(), 'Bugs')
     await user.type(queryInput(), 'label:bug{Enter}')
@@ -75,14 +83,28 @@ describe('SavedFilterDialog — editing', () => {
 
   // A built-in has no `name` of its own, so an edit has to start from the label the user sees.
   it('seeds a built-in filter from its translated label rather than an empty box', () => {
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={DEFAULT_ISSUE_FILTERS[0]} onClose={vi.fn()} />)
+    render(
+      <SavedFilterDialog
+        useStore={useIssueFiltersStore}
+        open
+        filter={DEFAULT_ISSUE_FILTERS[0]}
+        onClose={vi.fn()}
+      />
+    )
     expect(nameInput()).toHaveValue('All open issues')
   })
 
   it('updates the filter in place instead of adding one', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={DEFAULT_ISSUE_FILTERS[0]} onClose={onClose} />)
+    render(
+      <SavedFilterDialog
+        useStore={useIssueFiltersStore}
+        open
+        filter={DEFAULT_ISSUE_FILTERS[0]}
+        onClose={onClose}
+      />
+    )
 
     await user.clear(queryInput())
     await user.type(queryInput(), 'is:open label:bug')
@@ -96,7 +118,14 @@ describe('SavedFilterDialog — editing', () => {
   it('closes without saving when cancelled', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<SavedFilterDialog useStore={useIssueFiltersStore} open filter={DEFAULT_ISSUE_FILTERS[0]} onClose={onClose} />)
+    render(
+      <SavedFilterDialog
+        useStore={useIssueFiltersStore}
+        open
+        filter={DEFAULT_ISSUE_FILTERS[0]}
+        onClose={onClose}
+      />
+    )
 
     await user.clear(queryInput())
     await user.type(queryInput(), 'is:closed')

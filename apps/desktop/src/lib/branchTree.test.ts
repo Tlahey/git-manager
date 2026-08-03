@@ -22,9 +22,7 @@ const tree = (names: string[]) => buildBranchTree(names.map(branch), (b) => b.sh
 
 /** Compact shape of a tree: `folder > [children]` / plain branch display names. */
 function shape(nodes: BranchTreeNode[]): unknown[] {
-  return nodes.map((n) =>
-    n.kind === 'branch' ? n.displayName : { [n.name]: shape(n.children) }
-  )
+  return nodes.map((n) => (n.kind === 'branch' ? n.displayName : { [n.name]: shape(n.children) }))
 }
 
 describe('buildBranchTree', () => {
@@ -59,9 +57,9 @@ describe('buildBranchTree', () => {
   })
 
   it('orders every level, not just the top one', () => {
-    expect(shape(tree(['origin/build/zeta', 'origin/build/ci/lint', 'origin/build/alpha']))).toEqual(
-      [{ build: ['alpha', { ci: ['lint'] }, 'zeta'] }]
-    )
+    expect(
+      shape(tree(['origin/build/zeta', 'origin/build/ci/lint', 'origin/build/alpha']))
+    ).toEqual([{ build: ['alpha', { ci: ['lint'] }, 'zeta'] }])
   })
 
   // A closed folder has to take everything below it off screen, so it owns the deep branches too.

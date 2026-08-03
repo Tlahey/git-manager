@@ -103,7 +103,6 @@ export function truncateDiff(diff: string, maxChars = MAX_DIFF_CHARS): string {
   return `${diff.slice(0, maxChars)}\n\n[diff truncated, showing first ${maxChars} chars]`
 }
 
-
 /** "Group by first path segment" heuristic: if every changed file shares the same top-level
  * directory that's a reasonable scope hint; if they span multiple, leave it to the model rather
  * than forcing a misleading scope. (Formerly `detect_scope` in the Rust provider.) */

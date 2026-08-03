@@ -47,7 +47,9 @@ describe('useWorktreeWipStatuses', () => {
       worktree({ path: '/repo', branch: 'main', isMain: true }),
       worktree({ path: '/repo-worktree', branch: 'feature-x' }),
     ])
-    mockedGetRepoStatus.mockResolvedValue(status({ unstaged: [{ path: 'a.ts', status: 'modified' }] }))
+    mockedGetRepoStatus.mockResolvedValue(
+      status({ unstaged: [{ path: 'a.ts', status: 'modified' }] })
+    )
 
     const { result } = renderHook(() => useWorktreeWipStatuses('/repo'), { wrapper })
 

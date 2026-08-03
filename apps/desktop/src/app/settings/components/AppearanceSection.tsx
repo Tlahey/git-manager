@@ -234,8 +234,6 @@ export function AppearanceSection() {
           <p className="text-[11px] text-muted-foreground">
             {t('settings.appearance.glassTransparency.hint')}
           </p>
-
-
         </FilterableSetting>
       )}
 

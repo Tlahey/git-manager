@@ -115,7 +115,10 @@ When(/^I click the patch apply confirm button$/, async () => {
   await $('[data-testid="patch-apply-confirm"]').click()
 })
 
-Then(/^the working tree file "([^"]*)" contains the line "([^"]*)"$/, (filePath: string, line: string) => {
-  const content = readFileSync(join(getActiveRepoPath(), filePath), 'utf8')
-  expect(content.split('\n')).toContain(line)
-})
+Then(
+  /^the working tree file "([^"]*)" contains the line "([^"]*)"$/,
+  (filePath: string, line: string) => {
+    const content = readFileSync(join(getActiveRepoPath(), filePath), 'utf8')
+    expect(content.split('\n')).toContain(line)
+  }
+)

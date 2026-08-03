@@ -7,12 +7,14 @@ vi.mock('./CommitDetailsAvatar', () => ({
   CommitDetailsAvatar: () => <div data-testid="avatar" />,
 }))
 
-const { useGitStashes, useCommitMessageEdit, apiOpenUrl, useCommitPullRequest } = vi.hoisted(() => ({
-  useGitStashes: vi.fn(),
-  useCommitMessageEdit: vi.fn(),
-  apiOpenUrl: vi.fn(),
-  useCommitPullRequest: vi.fn(),
-}))
+const { useGitStashes, useCommitMessageEdit, apiOpenUrl, useCommitPullRequest } = vi.hoisted(
+  () => ({
+    useGitStashes: vi.fn(),
+    useCommitMessageEdit: vi.fn(),
+    apiOpenUrl: vi.fn(),
+    useCommitPullRequest: vi.fn(),
+  })
+)
 vi.mock('../../../hooks/useGitStashes', () => ({ useGitStashes }))
 vi.mock('../../../hooks/useCommitMessageEdit', () => ({ useCommitMessageEdit }))
 vi.mock('../../../api/shell.api', () => ({ apiOpenUrl }))
@@ -73,7 +75,7 @@ function baseProps(
 describe('CommitHeaderInfo — header title', () => {
   it('shows the working-tree title for WIP', () => {
     render(<CommitHeaderInfo {...baseProps({ isWip: true })} />)
-    expect(screen.getByText("Working Tree")).toBeInTheDocument()
+    expect(screen.getByText('Working Tree')).toBeInTheDocument()
   })
 
   it('shows "WIP on <branch>" when a WIP branch is provided', () => {
@@ -96,12 +98,12 @@ describe('CommitHeaderInfo — header title', () => {
 
   it('shows the stash title for a stash entry', () => {
     render(<CommitHeaderInfo {...baseProps({ isStash: true })} />)
-    expect(screen.getByText("Stashes")).toBeInTheDocument()
+    expect(screen.getByText('Stashes')).toBeInTheDocument()
   })
 
   it('shows the commit-details title otherwise', () => {
     render(<CommitHeaderInfo {...baseProps()} />)
-    expect(screen.getByText("Commit Details")).toBeInTheDocument()
+    expect(screen.getByText('Commit Details')).toBeInTheDocument()
   })
 
   it('renders a close button only when onClose is given, and calls it when clicked', async () => {
@@ -278,7 +280,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
     const user = userEvent.setup()
     const { container, rerender } = render(<CommitHeaderInfo {...baseProps()} />)
     expect(container.querySelector('.lucide-copy')).toBeTruthy()
-    await user.click(screen.getByTitle("Copy SHA"))
+    await user.click(screen.getByTitle('Copy SHA'))
     expect(handleCopySha).toHaveBeenCalledOnce()
 
     useCommitMessageEdit.mockReturnValue(editState({ copied: true }))
@@ -314,7 +316,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
 
   it('hides the parents section when there are none', () => {
     render(<CommitHeaderInfo {...baseProps({ commit: commit({ parentOids: [] }) })} />)
-    expect(screen.queryByText("Parents")).not.toBeInTheDocument()
+    expect(screen.queryByText('Parents')).not.toBeInTheDocument()
   })
 
   it('renders a button per parent oid and navigates on click', async () => {
@@ -341,7 +343,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
       />
     )
     expect(screen.queryByTestId('github-commit-link')).not.toBeInTheDocument()
-    expect(screen.queryByTitle("Copy SHA")).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Copy SHA')).not.toBeInTheDocument()
   })
 })
 

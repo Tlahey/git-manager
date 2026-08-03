@@ -182,7 +182,9 @@ describe('usePullRequestsPage — snooze', () => {
 
   it('excludes snoozed PRs from the derived counts', () => {
     useLaunchpadStore.setState({ snoozed: { 'pr-a': null } })
-    mockGitHubData({ prs: [pr({ id: 'pr-a', status: 'open' }), pr({ id: 'pr-b', status: 'open' })] })
+    mockGitHubData({
+      prs: [pr({ id: 'pr-a', status: 'open' }), pr({ id: 'pr-b', status: 'open' })],
+    })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.openPRsCount).toBe(1)
     expect(result.current.tabCounts.prs).toBe(1)

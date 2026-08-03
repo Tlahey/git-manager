@@ -98,14 +98,12 @@ export function RemoveMergedBranchesDialog({
   const [failedNames, setFailedNames] = useState<string[]>([])
   const [removedNames, setRemovedNames] = useState<string[]>([])
 
-  const { checks, isLoading: isChecking, isGithub, hasToken } = useMergedBranches(
-    repoPath,
-    branches,
-    worktreeBranches,
-    remoteUrls,
-    githubToken,
-    open
-  )
+  const {
+    checks,
+    isLoading: isChecking,
+    isGithub,
+    hasToken,
+  } = useMergedBranches(repoPath, branches, worktreeBranches, remoteUrls, githubToken, open)
 
   // "Mine" = the merged PR was authored by the signed-in GitHub user. Only PR-detected branches
   // carry an author, so in mine-mode gone-upstream-only ones (no PR) are never offered.
@@ -184,9 +182,7 @@ export function RemoveMergedBranchesDialog({
             className="text-[11px] text-muted-foreground/70"
             data-testid="branch-remove-merged-github-hint"
           >
-            {!isGithub
-              ? t('branch.removeMergedNoGithubRemote')
-              : t('branch.removeMergedNoToken')}
+            {!isGithub ? t('branch.removeMergedNoGithubRemote') : t('branch.removeMergedNoToken')}
           </p>
         )}
 

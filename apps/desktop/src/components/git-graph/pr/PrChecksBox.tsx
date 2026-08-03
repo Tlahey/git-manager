@@ -63,7 +63,9 @@ export function PrChecksBox({ repoPath, prNumber, pr, mergeability, isLoading }:
   const { updateBranch, pending } = usePrActions(repoPath, prNumber)
   const checks = mergeability?.checks ?? []
   const summary = summarizeChecks(checks)
-  const [expanded, setExpanded] = useState(summary.kind === 'failure' || summary.kind === 'in_progress')
+  const [expanded, setExpanded] = useState(
+    summary.kind === 'failure' || summary.kind === 'in_progress'
+  )
 
   if (isLoading && !mergeability) {
     return (
@@ -96,7 +98,11 @@ export function PrChecksBox({ repoPath, prNumber, pr, mergeability, isLoading }:
                 className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 aria-label={t('pr.checks.toggle')}
               >
-                {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {expanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </button>
             }
           />

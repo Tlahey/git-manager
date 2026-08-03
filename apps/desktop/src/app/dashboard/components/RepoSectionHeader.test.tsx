@@ -160,7 +160,9 @@ describe('RepoSectionHeader — repo tools', () => {
     const user = userEvent.setup()
     const { props } = renderHeader()
     await user.click(screen.getByTestId('dashboard-section-pull-open'))
-    await user.click(await screen.findByTestId('dashboard-section-pull-open-fast-forward-if-possible'))
+    await user.click(
+      await screen.findByTestId('dashboard-section-pull-open-fast-forward-if-possible')
+    )
     expect(props.onPull).toHaveBeenCalledWith(ALL_PATHS, 'fast-forward-if-possible')
   })
 
@@ -179,9 +181,7 @@ describe('RepoSectionHeader — repo tools', () => {
     const user = userEvent.setup()
     renderHeader()
     await user.hover(screen.getByTestId('dashboard-section-fetch-open'))
-    await waitFor(() =>
-      expect(screen.getByRole('tooltip')).toHaveTextContent('Fetch repositories')
-    )
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Fetch repositories'))
   })
 
   it('carries a downward chevron inside the pull button as its expander', () => {

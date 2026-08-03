@@ -87,8 +87,7 @@ export function RepositorySidebar({
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
   const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath]) || EMPTY_ARRAY
   const toggleTagVisibility = useRepoDataStore((s) => s.toggleTagVisibility)
-  const hiddenBranches =
-    useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
+  const hiddenBranches = useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
   const setBranchesHidden = useRepoDataStore((s) => s.setBranchesHidden)
   // The repo tab's own path (stable, unlike `repoPath` which may already be a workspace) — used to
   // key the pending-changes bubble so a worktree's own row still shows it while that worktree is

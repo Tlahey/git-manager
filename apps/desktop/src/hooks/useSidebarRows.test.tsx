@@ -128,7 +128,11 @@ const DEFAULT_PR_FILTER_DATA = { groups: [], allMatched: [], isGithub: false, is
 
 /** Builds the grouped shape `useRepoPrFilters` returns, with the de-duplicated union it exposes. */
 function prFilterData(
-  groups: Array<{ filter: typeof PR_FILTER_A; prs: Record<string, unknown>[]; error?: string | null }>,
+  groups: Array<{
+    filter: typeof PR_FILTER_A
+    prs: Record<string, unknown>[]
+    error?: string | null
+  }>,
   extra: Record<string, unknown> = {}
 ) {
   const allMatched = [
@@ -170,9 +174,7 @@ function issueData(
   groups: Array<{ filter: typeof FILTER_A; issues: TestIssue[]; error?: string | null }>,
   extra: Record<string, unknown> = {}
 ) {
-  const allIssues = [
-    ...new Map(groups.flatMap((g) => g.issues).map((i) => [i.id, i])).values(),
-  ]
+  const allIssues = [...new Map(groups.flatMap((g) => g.issues).map((i) => [i.id, i])).values()]
   return {
     ...DEFAULT_ISSUE_DATA,
     isGithub: true,
@@ -385,9 +387,9 @@ describe('useSidebarRows — remotes section', () => {
 
     expect(findRow(result.current.sections, 'remote:build')).toBeUndefined()
     expect(findRow(result.current.sections, 'remote:upstream')).toBeDefined()
-    expect(
-      allRows(result.current.sections).filter((r) => r.kind === 'remote-group')
-    ).toHaveLength(2)
+    expect(allRows(result.current.sections).filter((r) => r.kind === 'remote-group')).toHaveLength(
+      2
+    )
   })
 
   it('defaults a slash-less remote branch name to the "origin" group', async () => {
@@ -415,13 +417,15 @@ describe('useSidebarRows — remotes section', () => {
       name: 'ci',
       depth: 2,
     })
-    expect(
-      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
-    ).toMatchObject({ displayName: 'lint', depth: 3 })
+    expect(findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')).toMatchObject({
+      displayName: 'lint',
+      depth: 3,
+    })
     // No folder in its name: it stays a direct child of the remote.
-    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toMatchObject(
-      { displayName: 'main', depth: 1 }
-    )
+    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toMatchObject({
+      displayName: 'main',
+      depth: 1,
+    })
   })
 
   it('carries every branch name on the remote node, for its visibility toggle', async () => {
@@ -445,9 +449,7 @@ describe('useSidebarRows — remotes section', () => {
     })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
     expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toBeUndefined()
-    expect(
-      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
-    ).toBeUndefined()
+    expect(findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')).toBeUndefined()
     expect(findRow(result.current.sections, 'remote-branch:origin/main')).toBeDefined()
   })
 
@@ -502,7 +504,11 @@ describe('useSidebarRows — pull requests section', () => {
   // The filter searches are a second request; the section is not ready until they land either.
   it('shows a loading message while the filter searches are in flight', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
-    useRepoPrFiltersMock.mockReturnValue({ ...DEFAULT_PR_FILTER_DATA, isGithub: true, isLoading: true })
+    useRepoPrFiltersMock.mockReturnValue({
+      ...DEFAULT_PR_FILTER_DATA,
+      isGithub: true,
+      isLoading: true,
+    })
     const { result } = renderRows({ openState: { 'section:prs': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'pr:loading')).toBeDefined())
   })
@@ -523,7 +529,11 @@ describe('useSidebarRows — pull requests section', () => {
 
 describe('useSidebarRows — pull request sub-groups', () => {
   function renderGroups(
-    groups: Array<{ filter: typeof PR_FILTER_A; prs: Record<string, unknown>[]; error?: string | null }>,
+    groups: Array<{
+      filter: typeof PR_FILTER_A
+      prs: Record<string, unknown>[]
+      error?: string | null
+    }>,
     openState: Record<string, boolean> = {}
   ) {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
@@ -621,7 +631,9 @@ describe('useSidebarRows — pull request sub-groups', () => {
       ],
       { 'pr-filter:pf2': true }
     )
-    await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toBeDefined())
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toBeDefined()
+    )
     expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toMatchObject({
       text: expect.stringContaining('Validation Failed'),
     })
@@ -630,7 +642,15 @@ describe('useSidebarRows — pull request sub-groups', () => {
 
   it("hides a collapsed group's rows while keeping its header and count", async () => {
     const { result } = renderGroups(
-      [{ filter: PR_FILTER_A, prs: [{ number: 1, headRef: 'a' }, { number: 2, headRef: 'b' }] }],
+      [
+        {
+          filter: PR_FILTER_A,
+          prs: [
+            { number: 1, headRef: 'a' },
+            { number: 2, headRef: 'b' },
+          ],
+        },
+      ],
       { 'pr-filter:pf1': false }
     )
     await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1')).toBeDefined())
@@ -678,9 +698,7 @@ describe('useSidebarRows — issues section', () => {
       ])
     )
     const { result } = renderRows({ openState: { 'section:issues': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
-    )
+    await waitFor(() => expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined())
     expect(findRow(result.current.sections, 'issue-filter:f1')).toMatchObject({
       kind: 'subgroup',
       label: 'All open',
@@ -700,7 +718,7 @@ describe('useSidebarRows — issues section', () => {
     expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeUndefined()
   })
 
-  it('renders a collapsed filter\'s issues once it is explicitly opened', async () => {
+  it("renders a collapsed filter's issues once it is explicitly opened", async () => {
     useRepoIssuesMock.mockReturnValue(
       issueData([
         { filter: FILTER_A, issues: [issue(1)] },
@@ -758,9 +776,7 @@ describe('useSidebarRows — issues section', () => {
   it('keeps an empty filter visible, with an empty message under it', async () => {
     useRepoIssuesMock.mockReturnValue(issueData([{ filter: FILTER_A, issues: [] }]))
     const { result } = renderRows({ openState: { 'section:issues': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
-    )
+    await waitFor(() => expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined())
     expect(findRow(result.current.sections, 'issue-filter:f1:empty')).toBeDefined()
     expect(findSection(result.current.sections, 'issues')).toBeDefined()
   })
@@ -873,7 +889,9 @@ describe('useSidebarRows — no pull request on branch/worktree rows', () => {
       isLoading: false,
     })
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() => expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined())
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
+    )
     expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).not.toHaveProperty('pr')
   })
 })
@@ -912,8 +930,12 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
     await waitFor(() =>
       expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
     )
-    expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toMatchObject({ isSelected: false })
-    expect(findRow(result.current.sections, 'tag:refs/tags/v2.0')).toMatchObject({ isSelected: true })
+    expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toMatchObject({
+      isSelected: false,
+    })
+    expect(findRow(result.current.sections, 'tag:refs/tags/v2.0')).toMatchObject({
+      isSelected: true,
+    })
   })
 
   it('truncates the tag list at TAGS_LIMIT (100) with a "+N more" message', async () => {

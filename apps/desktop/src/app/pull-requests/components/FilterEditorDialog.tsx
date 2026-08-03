@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { Sliders, CheckCircle2, Save } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, NativeSelect, Input } from '@git-manager/ui'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  NativeSelect,
+  Input,
+} from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { SavedFilter, FilterType, FilterStatus } from '../../../stores/launchpad.store'
 
@@ -31,7 +39,10 @@ const EMOJI_OPTIONS = [
 ]
 
 const STATUS_CONFIG: Record<FilterStatus, { labelKey: string; className: string }> = {
-  open: { labelKey: 'status.open', className: 'bg-green-500/15 text-green-400 border-green-500/30' },
+  open: {
+    labelKey: 'status.open',
+    className: 'bg-green-500/15 text-green-400 border-green-500/30',
+  },
   draft: { labelKey: 'status.draft', className: 'bg-muted text-muted-foreground border-border' },
   approved: {
     labelKey: 'status.approved',

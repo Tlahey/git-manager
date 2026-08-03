@@ -85,7 +85,9 @@ export async function seedSettingsFromCleanState(
  * live (e.g. the theme-picker scenario in settings.feature ending on "dark"). Use this for state
  * that must be right from a scenario's very first render regardless of whether it reloads.
  */
-export async function forceLiveSettings(patch: Record<string, Record<string, unknown>>): Promise<void> {
+export async function forceLiveSettings(
+  patch: Record<string, Record<string, unknown>>
+): Promise<void> {
   await browser.execute((raw: string) => {
     const store = (
       window as unknown as {

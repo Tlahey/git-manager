@@ -58,7 +58,13 @@ function TreeNode({
         data-testid={`file-tree-node-${node.path}`}
       >
         <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center text-sidebar-muted-foreground">
-          {node.isDir ? expanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} /> : null}
+          {node.isDir ? (
+            expanded ? (
+              <ChevronDownIcon size={14} />
+            ) : (
+              <ChevronRightIcon size={14} />
+            )
+          ) : null}
         </span>
         <span className="mr-1.5 flex shrink-0 items-center text-sidebar-muted-foreground">
           {node.isDir ? (

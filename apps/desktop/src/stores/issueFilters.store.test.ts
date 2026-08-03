@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import {
-  DEFAULT_ISSUE_FILTERS,
-  issueFilterLabel,
-  useIssueFiltersStore,
-} from './issueFilters.store'
+import { DEFAULT_ISSUE_FILTERS, issueFilterLabel, useIssueFiltersStore } from './issueFilters.store'
 import { DEFAULT_PR_FILTERS, usePrFiltersStore } from './prFilters.store'
 
 function reset() {
@@ -22,7 +18,9 @@ describe('issueFilters.store', () => {
   })
 
   it('addFilter appends a trimmed filter and returns its id', () => {
-    const id = useIssueFiltersStore.getState().addFilter({ name: '  Bugs  ', query: '  label:bug  ' })
+    const id = useIssueFiltersStore
+      .getState()
+      .addFilter({ name: '  Bugs  ', query: '  label:bug  ' })
     const added = useIssueFiltersStore.getState().filters.at(-1)
     expect(added).toEqual({ id, name: 'Bugs', query: 'label:bug' })
   })

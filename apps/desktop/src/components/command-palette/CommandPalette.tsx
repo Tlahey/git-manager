@@ -14,6 +14,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
+import { useRefCommands } from './commands/useRefCommands'
 import { useFileLookupCommands } from './commands/useFileLookupCommands'
 import type { Section } from '../../app/settings/SettingsPage'
 import type { PaletteCommand, PaletteGroup } from './commands/types'
@@ -116,6 +117,7 @@ function CommandPaletteBody({
   const globalCommands = useGlobalCommands({ onOpenSettings, onOpenActivityLogs })
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
+  const refCommands = useRefCommands()
   const isFilesOnly = mode === 'files'
   const lookupCommands = useCommitLookupCommands(search)
   const fileCommands = useFileLookupCommands(isFilesOnly ? search : '')
@@ -126,6 +128,7 @@ function CommandPaletteBody({
     ...fileCommands,
     ...commitCommands,
     ...stashCommands,
+    ...refCommands,
     ...globalCommands,
   ]
 
@@ -152,6 +155,7 @@ function CommandPaletteBody({
           group: 'stash',
           heading: t('commandPalette.group.stash', { index: selectedStashIndex ?? '' }),
         },
+        { group: 'ref', heading: t('commandPalette.group.ref') },
         { group: 'navigation', heading: t('commandPalette.group.navigation') },
         { group: 'repo', heading: t('commandPalette.group.repo') },
         { group: 'settings', heading: t('commandPalette.group.settings') },
@@ -161,7 +165,9 @@ function CommandPaletteBody({
     <>
       <CommandInput
         data-testid="command-palette-input"
-        placeholder={isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')}
+        placeholder={
+          isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')
+        }
         value={search}
         onValueChange={setSearch}
       />

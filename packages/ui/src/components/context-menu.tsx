@@ -19,7 +19,7 @@ const ContextMenuContent = React.forwardRef<
       ref={ref}
       collisionPadding={collisionPadding}
       className={cn(
-        'border-border bg-popover text-popover-foreground z-popover min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg',
+        'z-popover min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ const ContextMenuItem = React.forwardRef<
   <ContextMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'focus:bg-accent focus:text-accent-foreground relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
+      'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
       className
     )}
     {...props}
@@ -50,7 +50,7 @@ const ContextMenuLabel = React.forwardRef<
   <ContextMenuPrimitive.Label
     ref={ref}
     className={cn(
-      'text-muted-foreground px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide',
+      'px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground',
       className
     )}
     {...props}

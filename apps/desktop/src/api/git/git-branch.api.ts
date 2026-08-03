@@ -21,6 +21,8 @@ import {
   pushTag,
   getTagWebUrl,
   getBranchWebUrl,
+  getRepoSummary,
+  resolveRevision,
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
 import { generateId, pushAction, clearRedo, withHookFailureCard } from './gitApiShared'
@@ -43,9 +45,18 @@ export async function apiCheckoutBranch(path: string, toRef: string, opts?: Chec
     if (force) {
       snapshot = await snapshotWorktree(path, id)
     }
+
+    // What undo will come back to. On a detached HEAD every caller passes the literal string
+    // `"HEAD"` — that is what `GitRepo.head`/`GitRepoSummary.head` report when HEAD is not on a
+    // branch — and that string is useless in both places it was used: `pin_object` rejected it (so
+    // the commit being left behind was never protected, and the failure was swallowed by the
+    // `.catch` below), and undo checked out a name that, by then, resolved to the branch it was
+    // supposed to be leaving. Resolve it here, once, rather than asking four call sites to.
+    let fromRef = opts?.fromRef ?? ''
     if (opts?.fromDetached) {
+      fromRef = await resolveRevision(path, 'HEAD')
       // The detached commit won't be referenced by any branch anymore once we leave it.
-      await pinObject(path, `${id}-detached`, opts.fromRef).catch(() => {})
+      await pinObject(path, `${id}-detached`, fromRef).catch(() => {})
     }
 
     await checkoutBranch(path, toRef, force)
@@ -61,7 +72,7 @@ export async function apiCheckoutBranch(path: string, toRef: string, opts?: Chec
         label: { key: 'undoRedo.checkout', params: { branch: toRef } },
         pinnedRefs,
         type: 'checkout',
-        fromRef: opts.fromRef,
+        fromRef,
         toRef,
         force,
         snapshot,
@@ -174,6 +185,34 @@ export async function apiCreateBranch(path: string, name: string, fromRef: strin
   } else {
     clearRedo(path)
   }
+}
+
+/**
+ * Creates a branch at `startPoint` and checks it out — one gesture, two git operations.
+ *
+ * This is one function, and it takes no options, because every caller that assembled the pair by
+ * hand got it wrong in a way nothing reported. Two things have to hold:
+ *
+ * - **The `runActivity` wrapper**, so both entries carry the same correlation id and a single ⌘Z
+ *   takes back the branch *and* the checkout. Undoing only the checkout is not merely partial: git
+ *   refuses to delete a branch that is currently HEAD, so the undo failed outright — and silently,
+ *   until #269 made the keyboard path report it.
+ * - **Where HEAD was**, without which `apiCheckoutBranch` records no undo entry at all and the
+ *   checkout is invisible to the history. It is read here rather than passed in, so no caller can
+ *   omit it: the two Launchpad entry points did, and a stale cached value would be worse still.
+ *
+ * The read happens *before* anything is created — if the repository can't be inspected, the gesture
+ * doesn't start, rather than half-recording itself.
+ */
+export async function apiCreateAndCheckoutBranch(path: string, name: string, startPoint: string) {
+  const summary = await getRepoSummary(path)
+  return runActivity('git.createAndCheckoutBranch', async () => {
+    await apiCreateBranch(path, name, startPoint)
+    await apiCheckoutBranch(path, name, {
+      fromRef: summary.head,
+      fromDetached: summary.isDetached,
+    })
+  })
 }
 
 // ─── Branch rename ─────────────────────────────────────────────────────────

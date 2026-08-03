@@ -1,10 +1,6 @@
 import type { StreamingFeature } from '../runtime'
 import { languageName } from './language'
-import {
-  DEFAULT_CONTEXT_TOKENS,
-  estimateTokens,
-  variableCharBudget,
-} from '../promptSize'
+import { DEFAULT_CONTEXT_TOKENS, estimateTokens, variableCharBudget } from '../promptSize'
 
 /**
  * The instruction for explaining **one action the user just performed** — the batch of `git` commands

@@ -47,7 +47,10 @@ describe('toParagraphs', () => {
   it('drops the Connextra user story only when asked', () => {
     const story = '  As a user\n  I want a thing\n  So that I win\n\n  Real prose.'
     expect(toParagraphs(story, true)).toEqual(['Real prose.'])
-    expect(toParagraphs(story, false)).toEqual(['As a user I want a thing So that I win', 'Real prose.'])
+    expect(toParagraphs(story, false)).toEqual([
+      'As a user I want a thing So that I win',
+      'Real prose.',
+    ])
   })
 })
 

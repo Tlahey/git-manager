@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { i18next, type TFunction } from '@git-manager/i18n'
 import type { NotchProgressModel } from '@git-manager/notch'
-import {
-  aiRunHasItsOwnCard,
-  aiRunNotchModel,
-  aiRunNotchRoute,
-  AI_RUN_NOTCH_ID,
-} from './aiRunNotch'
+import { aiRunHasItsOwnCard, aiRunNotchModel, aiRunNotchRoute, AI_RUN_NOTCH_ID } from './aiRunNotch'
 import type { AiPhaseProgress, AiRun } from '../../stores/aiActivity.store'
 
 const t = i18next.getFixedT('en', 'common') as unknown as TFunction

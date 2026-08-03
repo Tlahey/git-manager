@@ -111,9 +111,7 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
                       : Math.round((progress.completed / Math.max(1, progress.total)) * 100)
                   }
                 />
-                <p className="text-center text-[10px]">
-                  {t('commitDetails.aiBatch.cancelHint')}
-                </p>
+                <p className="text-center text-[10px]">{t('commitDetails.aiBatch.cancelHint')}</p>
               </div>
             ) : (
               t('commitDetails.aiBatch.analyzing')
@@ -184,7 +182,9 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
                     <span
                       className={cn(
                         'text-xs font-bold',
-                        proposal.kind === 'unplaced' ? 'text-yellow-600 dark:text-yellow-400' : 'text-primary'
+                        proposal.kind === 'unplaced'
+                          ? 'text-yellow-600 dark:text-yellow-400'
+                          : 'text-primary'
                       )}
                     >
                       {proposal.kind === 'unplaced'
@@ -240,7 +240,9 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
                         <p className="font-semibold">
                           {t('commitDetails.aiBatch.conventionWarning')}
                         </p>
-                        {validations[index]?.problems.map((p) => <p key={p.code}>{p.message}</p>)}
+                        {validations[index]?.problems.map((p) => (
+                          <p key={p.code}>{p.message}</p>
+                        ))}
                       </div>
                     </div>
                   ) : null}

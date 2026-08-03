@@ -69,10 +69,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   // invisible. Only while the window is unfocused, though: this panel is a far better place to
   // watch a search you are actually watching, and a card duplicating it would be pure noise.
   const windowFocused = useWindowFocus()
-  const repoName = useMemo(
-    () => repoPath.split('/').filter(Boolean).pop() ?? repoPath,
-    [repoPath]
-  )
+  const repoName = useMemo(() => repoPath.split('/').filter(Boolean).pop() ?? repoPath, [repoPath])
   const notchModel = useMemo(
     () =>
       commitSearchNotchModel({
@@ -84,7 +81,15 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         matchCount: search.matches.length,
         t,
       }),
-    [repoPath, repoName, search.askedQuestion, search.phase, search.progress, search.matches.length, t]
+    [
+      repoPath,
+      repoName,
+      search.askedQuestion,
+      search.phase,
+      search.progress,
+      search.matches.length,
+      t,
+    ]
   )
   useNotchOperation({
     id: commitSearchNotchId(repoPath),
@@ -203,7 +208,10 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
             {/* The narrowing is one call per commit, during which both counters above are frozen —
                 the same stall the file counter was added to fix, one level up. */}
             {progress.narrowing && (
-              <p className="text-[10px] text-muted-foreground" data-testid="commit-search-narrowing">
+              <p
+                className="text-[10px] text-muted-foreground"
+                data-testid="commit-search-narrowing"
+              >
                 {t('gitTree.commitSearch.narrowing')}
               </p>
             )}
@@ -229,7 +237,10 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
       <ScrollArea className="w-full min-w-0 flex-1">
         <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-4">
           {shown.question && (
-            <p className="text-[11px] italic text-muted-foreground" data-testid="commit-search-asked">
+            <p
+              className="text-[11px] italic text-muted-foreground"
+              data-testid="commit-search-asked"
+            >
               {t('gitTree.commitSearch.asked', { question: shown.question })}
             </p>
           )}

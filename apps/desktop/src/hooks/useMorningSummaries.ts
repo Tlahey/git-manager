@@ -65,8 +65,7 @@ export function useMorningSummaries(paths: string[]) {
             date: targetDate,
             // Read straight from the store rather than `useEffectiveRepoSettings`: that is a hook,
             // and this loop covers a variable number of repositories.
-            targetBranches:
-              settings.repoOverrides[path]?.targetBranches ?? DEFAULT_TARGET_BRANCHES,
+            targetBranches: settings.repoOverrides[path]?.targetBranches ?? DEFAULT_TARGET_BRANCHES,
             saveToRepo,
             language,
           })

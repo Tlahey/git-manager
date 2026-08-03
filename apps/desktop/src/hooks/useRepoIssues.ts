@@ -69,7 +69,13 @@ export function useRepoIssues({
 
   const swrKey =
     enabled && isGithub && ownerRepo && filters.length > 0
-      ? (['repo-issue-filters', ownerRepo.owner, ownerRepo.repo, resolvedToken, queriesKey] as const)
+      ? ([
+          'repo-issue-filters',
+          ownerRepo.owner,
+          ownerRepo.repo,
+          resolvedToken,
+          queriesKey,
+        ] as const)
       : null
 
   const { data, error, mutate } = useSWR<IssueFilterGroup[], Error>(

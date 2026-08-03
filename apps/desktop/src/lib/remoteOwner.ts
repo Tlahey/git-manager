@@ -14,7 +14,10 @@ export interface ParsedRemote {
 
 /** Strips a trailing `.git` and any trailing slashes. */
 function normalizePath(pathname: string): string {
-  return pathname.replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.git$/, '')
+  return pathname
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '')
 }
 
 function split(host: string, fullPath: string): ParsedRemote | null {

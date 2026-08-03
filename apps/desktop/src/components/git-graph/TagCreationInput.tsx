@@ -63,12 +63,7 @@ export function TagCreationInput({ variant, onSubmit, onCancel }: TagCreationInp
         >
           {t('gitTree.tagCreation.submit')}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          data-testid="tag-creation-bar-cancel"
-        >
+        <Button variant="ghost" size="sm" onClick={onCancel} data-testid="tag-creation-bar-cancel">
           {t('gitTree.contextMenu.cancel')}
         </Button>
       </div>

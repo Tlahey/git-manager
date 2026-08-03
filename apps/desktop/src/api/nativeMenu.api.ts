@@ -2,11 +2,7 @@ import { Menu, MenuItem, IconMenuItem, Submenu, PredefinedMenuItem } from '@taur
 import { resolveResource } from '@tauri-apps/api/path'
 import { Image } from '@tauri-apps/api/image'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import {
-  normalizeMenuSpec,
-  type MenuSpecEntry,
-  type MenuSpecNode,
-} from '../lib/nativeMenuSpec'
+import { normalizeMenuSpec, type MenuSpecEntry, type MenuSpecNode } from '../lib/nativeMenuSpec'
 
 // ── Icon resolution ──────────────────────────────────────────────────────────
 // Icons are bundled as resources in src-tauri/icons/menu/*.png and resolved
@@ -193,6 +189,3 @@ export async function showNativeMenu(entries: MenuSpecEntry[]): Promise<void> {
     console.error('[nativeMenu] Failed to create or popup native menu:', err)
   }
 }
-
-
-

@@ -23,9 +23,10 @@ describe('parseGitHubUrl', () => {
 
 describe('firstGitHubOwnerRepo', () => {
   it('returns the first GitHub remote among several', () => {
-    expect(
-      firstGitHubOwnerRepo(['https://gitlab.com/x/y.git', 'git@github.com:a/b.git'])
-    ).toEqual({ owner: 'a', repo: 'b' })
+    expect(firstGitHubOwnerRepo(['https://gitlab.com/x/y.git', 'git@github.com:a/b.git'])).toEqual({
+      owner: 'a',
+      repo: 'b',
+    })
   })
 
   it('returns null when no remote is GitHub', () => {

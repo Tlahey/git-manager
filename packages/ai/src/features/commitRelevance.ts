@@ -206,7 +206,9 @@ const PROSE_FIELDS = ['subject', 'evidence', 'relevant', 'finding', 'files'] as 
 function parseProseVerdict(raw: string): Record<string, unknown> | null {
   // Locate each label, allowing markdown bold and a leading bullet: "- **relevant**: true".
   const positions = PROSE_FIELDS.map((field) => {
-    const match = new RegExp(`(?:^|\\n|\\s)[-*\\s]*\\*{0,2}"?${field}"?\\*{0,2}\\s*:`, 'i').exec(raw)
+    const match = new RegExp(`(?:^|\\n|\\s)[-*\\s]*\\*{0,2}"?${field}"?\\*{0,2}\\s*:`, 'i').exec(
+      raw
+    )
     return { field, start: match ? match.index + match[0].length : -1 }
   }).filter((p) => p.start >= 0)
 
@@ -230,7 +232,12 @@ function parseProseVerdict(raw: string): Record<string, unknown> | null {
     } else if (position.field === 'files') {
       record.files = value
         .split('\n')
-        .map((line) => line.replace(/^[-*\s]+/, '').replace(/[",]+$/g, '').trim())
+        .map((line) =>
+          line
+            .replace(/^[-*\s]+/, '')
+            .replace(/[",]+$/g, '')
+            .trim()
+        )
         .filter((line) => line.length > 0 && !line.startsWith('['))
     } else {
       record[position.field] = value
@@ -304,16 +311,18 @@ export function parseCommitRelevance(raw: string): CommitRelevanceResult {
  * change" is a *wrong* answer, not a partial one, when the commit that changed it was the one left
  * out. One small call per commit removes the window as the limit.
  */
-export const commitRelevanceFeature: CompletionFeature<CommitRelevanceInput, CommitRelevanceResult> =
-  {
-    id: 'commit-relevance',
-    kind: 'completion',
-    instruction: COMMIT_RELEVANCE_INSTRUCTION,
-    // Judgement, not description, but a judgement that must be reproducible across a hundred commits
-    // in one run: the same commit read twice should not flip sides.
-    temperature: 0.1,
-    schema: COMMIT_RELEVANCE_SCHEMA,
-    buildPrompt: buildCommitRelevancePrompt,
-    parse: parseCommitRelevance,
-    reservedOutputTokens: () => COMMIT_RELEVANCE_OUTPUT_TOKENS,
-  }
+export const commitRelevanceFeature: CompletionFeature<
+  CommitRelevanceInput,
+  CommitRelevanceResult
+> = {
+  id: 'commit-relevance',
+  kind: 'completion',
+  instruction: COMMIT_RELEVANCE_INSTRUCTION,
+  // Judgement, not description, but a judgement that must be reproducible across a hundred commits
+  // in one run: the same commit read twice should not flip sides.
+  temperature: 0.1,
+  schema: COMMIT_RELEVANCE_SCHEMA,
+  buildPrompt: buildCommitRelevancePrompt,
+  parse: parseCommitRelevance,
+  reservedOutputTokens: () => COMMIT_RELEVANCE_OUTPUT_TOKENS,
+}

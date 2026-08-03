@@ -18,39 +18,41 @@ interface PrStatusTagProps {
 }
 
 /** Per-status pill colors (border + subtle fill) + the status glyph shown next to the GitHub mark. */
-const STATUS_STYLES: Record<PrTagStatus, { pill: string; Icon: typeof GitPullRequest; icon: string }> =
-  {
-    open: {
-      pill: 'border-green-500/30 bg-green-500/10 text-green-400',
-      Icon: GitPullRequest,
-      icon: 'text-green-400',
-    },
-    merged: {
-      pill: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
-      Icon: GitMerge,
-      icon: 'text-purple-400',
-    },
-    failed: {
-      pill: 'border-red-500/30 bg-red-500/10 text-red-400',
-      Icon: CircleX,
-      icon: 'text-red-400',
-    },
-    pending: {
-      pill: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
-      Icon: Clock,
-      icon: 'text-amber-400',
-    },
-    draft: {
-      pill: 'border-sidebar-border bg-sidebar-accent text-sidebar-muted-foreground',
-      Icon: GitPullRequestDraft,
-      icon: 'text-sidebar-muted-foreground',
-    },
-    closed: {
-      pill: 'border-red-500/30 bg-red-500/10 text-red-400',
-      Icon: GitPullRequestClosed,
-      icon: 'text-red-400',
-    },
-  }
+const STATUS_STYLES: Record<
+  PrTagStatus,
+  { pill: string; Icon: typeof GitPullRequest; icon: string }
+> = {
+  open: {
+    pill: 'border-green-500/30 bg-green-500/10 text-green-400',
+    Icon: GitPullRequest,
+    icon: 'text-green-400',
+  },
+  merged: {
+    pill: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
+    Icon: GitMerge,
+    icon: 'text-purple-400',
+  },
+  failed: {
+    pill: 'border-red-500/30 bg-red-500/10 text-red-400',
+    Icon: CircleX,
+    icon: 'text-red-400',
+  },
+  pending: {
+    pill: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    Icon: Clock,
+    icon: 'text-amber-400',
+  },
+  draft: {
+    pill: 'border-sidebar-border bg-sidebar-accent text-sidebar-muted-foreground',
+    Icon: GitPullRequestDraft,
+    icon: 'text-sidebar-muted-foreground',
+  },
+  closed: {
+    pill: 'border-red-500/30 bg-red-500/10 text-red-400',
+    Icon: GitPullRequestClosed,
+    icon: 'text-red-400',
+  },
+}
 
 /**
  * "Large" tag shown on the right of a branch/worktree row when that ref is linked to a pull request:

@@ -92,7 +92,13 @@ describe('buildDynamicMergeView', () => {
     // lines start right after it) — reported as rendering one line too early, appearing to
     // delete content *above* `logging: {` instead of the two properties inside it.
     const view = buildDynamicMergeView('...', [
-      { originalStartLineNumber: 7, originalEndLineNumber: 8, modifiedStartLineNumber: 6, modifiedEndLineNumber: 0, charChanges: undefined },
+      {
+        originalStartLineNumber: 7,
+        originalEndLineNumber: 8,
+        modifiedStartLineNumber: 6,
+        modifiedEndLineNumber: 0,
+        charChanges: undefined,
+      },
     ])
     const change = view.blocks.find((b) => b.kind === 'theirs-only')
     // oursStartLine=7 anchors the marker right before modified line 7 — i.e. after line 6
@@ -105,7 +111,13 @@ describe('buildDynamicMergeView', () => {
     // line 12) — reported as rendering one line too early, appearing to insert *above* `ttl: 60,`
     // instead of below it.
     const view = buildDynamicMergeView('...', [
-      { originalStartLineNumber: 12, originalEndLineNumber: 0, modifiedStartLineNumber: 11, modifiedEndLineNumber: 12, charChanges: undefined },
+      {
+        originalStartLineNumber: 12,
+        originalEndLineNumber: 0,
+        modifiedStartLineNumber: 11,
+        modifiedEndLineNumber: 12,
+        charChanges: undefined,
+      },
     ])
     const change = view.blocks.find((b) => b.kind === 'theirs-only')
     // theirsStartLine=13 anchors the marker right before original line 13 ('},') — i.e. after
@@ -219,9 +231,9 @@ describe('computeTwoWayVisuals', () => {
     })
     const visuals = computeTwoWayVisuals([block], placementFor(block), false)
 
-    expect(visuals.theirs.decorations.some((d) => d.className.includes('merge-text-modification'))).toBe(
-      true
-    )
+    expect(
+      visuals.theirs.decorations.some((d) => d.className.includes('merge-text-modification'))
+    ).toBe(true)
     expect(
       visuals.theirs.decorations.some((d) => d.className.includes('merge-vivid-modification'))
     ).toBe(false)

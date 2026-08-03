@@ -151,7 +151,11 @@ describe('getMarkerPlacement — horizontal scrolling', () => {
   it('moves every lane left by the scroll offset', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR, 22)
     // laneCenterX(3, AVATAR)=82 → 60, now just inside the (still mostly grown) zone.
-    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 60, overflowed: true, opacity: 0.93 })
+    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({
+      x: 60,
+      overflowed: true,
+      opacity: 0.93,
+    })
   })
 
   it('brings the last lane fully into view at maximum scroll', () => {
@@ -218,29 +222,53 @@ describe('getMarkerPlacement', () => {
   it('keeps lanes that fit left of the fade zone at their natural position', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
     // laneCenterX(2, AVATAR)=60, +16 = 76 > overlayStart 72 → already 4px into the zone
-    expect(getMarkerPlacement(2, layout, AVATAR)).toEqual({ x: 60, overflowed: true, opacity: 0.93 })
+    expect(getMarkerPlacement(2, layout, AVATAR)).toEqual({
+      x: 60,
+      overflowed: true,
+      opacity: 0.93,
+    })
   })
 
   it('lets a marker travel inside the zone at its natural position, partially dimmed', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
     // laneCenterX(3, AVATAR)=82 hasn't reached the pin (90) yet, but overlaps the zone by 26px:
     // opacity = 1 - 0.55 * 26/32 ≈ 0.55
-    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 82, overflowed: true, opacity: 0.55 })
+    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({
+      x: 82,
+      overflowed: true,
+      opacity: 0.55,
+    })
   })
 
   it('pins markers past the zone end shy of the right edge, fully dimmed', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
     // pin = innerWidth 112 - 16 (half avatar) - 6 (gap) = 90
-    expect(getMarkerPlacement(5, layout, AVATAR)).toEqual({ x: 90, overflowed: true, opacity: 0.45 })
-    expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({ x: 90, overflowed: true, opacity: 0.45 })
+    expect(getMarkerPlacement(5, layout, AVATAR)).toEqual({
+      x: 90,
+      overflowed: true,
+      opacity: 0.45,
+    })
+    expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({
+      x: 90,
+      overflowed: true,
+      opacity: 0.45,
+    })
   })
 
   it('centers every marker at full opacity at the compact minimum width', () => {
     const layout = getGraphColumnLayout(48, 6, AVATAR)
     expect(layout.compactBlend).toBe(1)
     const center = layout.innerWidth / 2
-    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({ x: center, overflowed: true, opacity: 1 })
-    expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({ x: center, overflowed: true, opacity: 1 })
+    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
+      x: center,
+      overflowed: true,
+      opacity: 1,
+    })
+    expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({
+      x: center,
+      overflowed: true,
+      opacity: 1,
+    })
   })
 
   it('slides markers toward the center progressively across the compact range', () => {
@@ -250,7 +278,11 @@ describe('getMarkerPlacement', () => {
     expect(layout.compactBlend).toBeGreaterThan(0)
     expect(layout.compactBlend).toBeLessThan(1)
     // lane 0: part-way between its natural x (16) and the center (23.5), partially re-brightened.
-    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({ x: 21.11, overflowed: true, opacity: 0.86 })
+    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
+      x: 21.11,
+      overflowed: true,
+      opacity: 0.86,
+    })
     // Right at the boundary (t = 0) the placement matches the overflow formula exactly.
     const atBoundary = getGraphColumnLayout(70, 6, AVATAR)
     expect(atBoundary.mode).toBe('overflow')

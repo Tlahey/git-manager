@@ -51,22 +51,22 @@ Then(
   }
 )
 
-Then(/^the remote "([^"]*)" branch "([^"]*)" is unchanged since the last fetch$/, async (
-  remote: string,
-  branch: string
-) => {
-  const repoPath = getActiveRepoPath()
-  const remoteUrl = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', remote], {
-    encoding: 'utf8',
-  }).trim()
-  const remoteTip = execFileSync('git', ['-C', remoteUrl, 'rev-parse', branch], {
-    encoding: 'utf8',
-  }).trim()
-  const knownTip = execFileSync('git', ['-C', repoPath, 'rev-parse', `${remote}/${branch}`], {
-    encoding: 'utf8',
-  }).trim()
-  expect(remoteTip).toBe(knownTip)
-})
+Then(
+  /^the remote "([^"]*)" branch "([^"]*)" is unchanged since the last fetch$/,
+  async (remote: string, branch: string) => {
+    const repoPath = getActiveRepoPath()
+    const remoteUrl = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', remote], {
+      encoding: 'utf8',
+    }).trim()
+    const remoteTip = execFileSync('git', ['-C', remoteUrl, 'rev-parse', branch], {
+      encoding: 'utf8',
+    }).trim()
+    const knownTip = execFileSync('git', ['-C', repoPath, 'rev-parse', `${remote}/${branch}`], {
+      encoding: 'utf8',
+    }).trim()
+    expect(remoteTip).toBe(knownTip)
+  }
+)
 
 Then(/^a push-rejected error is shown$/, async () => {
   const toast = $('[role="status"]')
@@ -95,9 +95,103 @@ Then(
       timeout: 10000,
       timeoutMsg: `expected branch "${branch}" to track remote "${remote}"`,
     })
-    const configuredMerge = execFileSync('git', ['-C', repoPath, 'config', `branch.${branch}.merge`], {
-      encoding: 'utf8',
-    }).trim()
+    const configuredMerge = execFileSync(
+      'git',
+      ['-C', repoPath, 'config', `branch.${branch}.merge`],
+      {
+        encoding: 'utf8',
+      }
+    ).trim()
     expect(configuredMerge).toBe(`refs/heads/${branch}`)
   }
 )
+
+// ─── Tags and branches on the remote ─────────────────────────────────────────
+//
+// Every assertion below reads the bare origin on disk, for the same reason as the commit checks
+// above: the local clone's remote-tracking refs are a cache, and a delete that only updated the
+// cache would pass while the remote still carried the ref.
+
+/** Absolute path of the fixture clone's `<remote>` URL — a local bare repo. */
+function remotePath(remote: string): string {
+  return execFileSync('git', ['-C', getActiveRepoPath(), 'remote', 'get-url', remote], {
+    encoding: 'utf8',
+  }).trim()
+}
+
+/** Ref names present on the remote for a `refs/…` prefix, read live with `ls-remote`. */
+function remoteRefs(remote: string, prefix: string): string[] {
+  const out = execFileSync(
+    'git',
+    ['-C', getActiveRepoPath(), 'ls-remote', '--refs', remote, prefix],
+    {
+      encoding: 'utf8',
+    }
+  )
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.split('\t')[1] as string)
+}
+
+Then(/^the remote "([^"]*)" has the tag "([^"]*)"$/, async (remote: string, tag: string) => {
+  await browser.waitUntil(() => remoteRefs(remote, 'refs/tags/*').includes(`refs/tags/${tag}`), {
+    timeout: 15000,
+    timeoutMsg: `expected "${remote}" (${remotePath(remote)}) to carry the tag "${tag}"`,
+  })
+})
+
+Then(
+  /^the remote "([^"]*)" no longer has the tag "([^"]*)"$/,
+  async (remote: string, tag: string) => {
+    await browser.waitUntil(() => !remoteRefs(remote, 'refs/tags/*').includes(`refs/tags/${tag}`), {
+      timeout: 15000,
+      timeoutMsg: `expected "${remote}" (${remotePath(remote)}) to have dropped the tag "${tag}"`,
+    })
+  }
+)
+
+Then(
+  /^the remote "([^"]*)" no longer has the branch "([^"]*)"$/,
+  async (remote: string, branch: string) => {
+    await browser.waitUntil(
+      () => !remoteRefs(remote, 'refs/heads/*').includes(`refs/heads/${branch}`),
+      {
+        timeout: 15000,
+        timeoutMsg: `expected "${remote}" (${remotePath(remote)}) to have dropped the branch "${branch}"`,
+      }
+    )
+  }
+)
+
+/** Local tags, straight from the fixture clone — the counterpart to the remote checks above. */
+function localTags(): string[] {
+  return execFileSync('git', ['-C', getActiveRepoPath(), 'tag'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+}
+
+Then(/^the local tag "([^"]*)" still exists$/, async (tag: string) => {
+  await expect(localTags()).toContain(tag)
+})
+
+Then(/^the local tag "([^"]*)" no longer exists$/, async (tag: string) => {
+  await browser.waitUntil(() => !localTags().includes(tag), {
+    timeout: 15000,
+    timeoutMsg: `expected the local tag "${tag}" to be gone (still present: ${localTags().join(', ')})`,
+  })
+})
+
+When(/^I confirm the remote (tag|branch) deletion$/, async (kind: string) => {
+  const button = $(`[data-testid="delete-remote-${kind}-confirm"]`)
+  await button.waitForClickable({ timeout: 10000 })
+  await button.click()
+  await $(`[data-testid="delete-remote-${kind}-dialog"]`).waitForExist({
+    reverse: true,
+    timeout: 15000,
+  })
+})
+
+Then(/^the remote (tag|branch) deletion dialog is shown$/, async (kind: string) => {
+  await expect($(`[data-testid="delete-remote-${kind}-dialog"]`)).toBeDisplayed()
+})

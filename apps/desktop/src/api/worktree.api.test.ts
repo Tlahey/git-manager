@@ -40,7 +40,9 @@ describe('worktree.api pass-throughs', () => {
   it('apiAddWorktree forwards default-file glob patterns', async () => {
     mocked.addWorktree.mockResolvedValue({ copied: ['.env'], skipped: [] })
     await api.apiAddWorktree(PATH, 'feature-x', '/repo/a-worktree', ['.env*'])
-    expect(mocked.addWorktree).toHaveBeenCalledWith(PATH, 'feature-x', '/repo/a-worktree', ['.env*'])
+    expect(mocked.addWorktree).toHaveBeenCalledWith(PATH, 'feature-x', '/repo/a-worktree', [
+      '.env*',
+    ])
   })
 
   it('apiCountDefaultFileMatches delegates to countDefaultFileMatches with the patterns', async () => {

@@ -26,11 +26,7 @@ describe('Chip', () => {
   })
 
   it('uses the outline, unpressed styling when inactive', () => {
-    render(
-      <Chip data-testid="chip">
-        Tous
-      </Chip>
-    )
+    render(<Chip data-testid="chip">Tous</Chip>)
     const chip = screen.getByTestId('chip')
     // Inactive inherits the surface foreground (full contrast, APCA Bronze) instead of
     // the muted token, which only reached ~53Lc at 10px/600 — see chip.tsx.

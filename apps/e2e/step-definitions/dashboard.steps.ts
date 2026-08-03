@@ -30,18 +30,15 @@ Given(
     // sent (hanging the await for cucumber's 60s step timeout) or, deferred, fires mid-scenario
     // later. The stamped wait below then proves the reload actually committed.
     const origin = await browser.execute(() => window.location.origin)
-    await browser.execute(
-      (reposJson: string) => {
-        localStorage.setItem(
-          'git-manager-repos',
-          JSON.stringify({
-            state: { savedRepos: JSON.parse(reposJson), discoveredRepos: [] },
-            version: 0,
-          })
-        )
-      },
-      JSON.stringify(repos)
-    )
+    await browser.execute((reposJson: string) => {
+      localStorage.setItem(
+        'git-manager-repos',
+        JSON.stringify({
+          state: { savedRepos: JSON.parse(reposJson), discoveredRepos: [] },
+          version: 0,
+        })
+      )
+    }, JSON.stringify(repos))
     await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   }
 )

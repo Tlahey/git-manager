@@ -49,7 +49,13 @@ export function usePrFileContents(
           ? fetchFileContentAtRef(ownerRepo!.owner, ownerRepo!.repo, oldPath, baseSha!, token!)
           : Promise.resolve(''),
         needHead
-          ? fetchFileContentAtRef(ownerRepo!.owner, ownerRepo!.repo, file!.filename, headSha!, token!)
+          ? fetchFileContentAtRef(
+              ownerRepo!.owner,
+              ownerRepo!.repo,
+              file!.filename,
+              headSha!,
+              token!
+            )
           : Promise.resolve(''),
       ])
       return { original: original ?? '', modified: modified ?? '' }

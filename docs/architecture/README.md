@@ -7,13 +7,13 @@ complete**, so they are records of decisions taken, not a to-do list.
 For the current architecture rules, read [CLAUDE.md](../../CLAUDE.md); it is the authoritative
 source and is what a PR is checked against.
 
-| Document                                                                     | Scope                                                          | Status                                                        |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| [Architecture refactor plan](./2026-07-architecture-refactor-plan.md)        | Splitting rules (R1/R2), patterns, prioritised roadmap         | Fully executed — still useful as the rationale for the rules  |
+| Document                                                                      | Scope                                                          | Status                                                        |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Architecture refactor plan](./2026-07-architecture-refactor-plan.md)         | Splitting rules (R1/R2), patterns, prioritised roadmap         | Fully executed — still useful as the rationale for the rules  |
 | [Architecture refactor tracking](./2026-07-architecture-refactor-tracking.md) | Action-by-action execution record of that plan, with a journal | **36 / 36 actions done** (2026-07-02 → 07-11)                 |
-| [Rewards system](./2026-07-rewards-system-refactor.md)                       | SOLID audit of the achievements/gamification stack             | Phases 1–3 done; phase 4 (`AppEvent` payload typing) deferred |
-| [Panels & interaction](./2026-07-panels-interaction-refactor.md)             | Panel/menu/anchoring duplication                               | All 14 actions done (2026-07-03)                              |
-| [Notification system](./2026-07-notification-system-refactor.md)             | Notification registry + tray and hide-on-close delivery        | Both parts done (2026-07-03)                                  |
+| [Rewards system](./2026-07-rewards-system-refactor.md)                        | SOLID audit of the achievements/gamification stack             | Phases 1–3 done; phase 4 (`AppEvent` payload typing) deferred |
+| [Panels & interaction](./2026-07-panels-interaction-refactor.md)              | Panel/menu/anchoring duplication                               | All 14 actions done (2026-07-03)                              |
+| [Notification system](./2026-07-notification-system-refactor.md)              | Notification registry + tray and hide-on-close delivery        | Both parts done (2026-07-03)                                  |
 
 ## Naming
 

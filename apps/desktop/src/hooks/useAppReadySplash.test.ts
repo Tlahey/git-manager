@@ -5,7 +5,9 @@ import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repo
 import { useGlobalLoadingStore } from '../stores/globalLoading.store'
 
 const nextFrame = () =>
-  new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  )
 
 describe('useAppReadySplash', () => {
   beforeEach(() => {

@@ -52,7 +52,9 @@ describe('SetUpstreamDialog — rendering', () => {
   it('shows the title/description and preselects origin/<branch> when it exists', () => {
     renderDialog()
     expect(screen.getByText('Set upstream branch')).toBeInTheDocument()
-    expect(screen.getByText('Choose the remote-tracking branch feat should follow.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Choose the remote-tracking branch feat should follow.')
+    ).toBeInTheDocument()
     expect(screen.getByTestId('set-upstream-select')).toHaveValue('origin/feat')
   })
 

@@ -95,7 +95,7 @@ Scope lives in two places, both kept up to date for different reasons:
 
 - **[COVERAGE.md](COVERAGE.md)** — the written map: what each domain covers, what is deliberately
   out of reach (native dialogs, real remotes), and the gotchas that cost someone a debugging round.
-  Hand-written, because the *why* cannot be generated.
+  Hand-written, because the _why_ cannot be generated.
 - **[REPORT.md](REPORT.md)** — regenerated at the end of every `wdio run`, so it cannot go stale.
   Per feature file and per scenario: how long it took, how much of that was inside steps, and what
   failed. Committed, so the repo carries a reference point without anyone having to sit through an

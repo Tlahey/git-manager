@@ -244,7 +244,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   }
 
   return (
-    <div className="animate-in fade-in zoom-in-95 flex h-full w-full select-none flex-col overflow-hidden bg-background animate-duration-100">
+    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 animate-duration-100">
       <DiffToolbar
         parsedPath={parsedPath}
         diffData={diffData}
@@ -383,7 +383,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                 {activeTab === 'preview' ? (
                   <div
                     data-testid="file-preview-area"
-                    className="flex-1 overflow-y-auto bg-card/10 p-6 select-text flex items-center justify-center"
+                    className="flex flex-1 select-text items-center justify-center overflow-y-auto bg-card/10 p-6"
                   >
                     {isMarkdown ? (
                       <div className="mx-auto block h-full w-full max-w-4xl">
@@ -416,7 +416,9 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                         )}
                       </div>
                     ) : (
-                      <div className="text-muted-foreground">{t('diffView.previewUnavailable')}</div>
+                      <div className="text-muted-foreground">
+                        {t('diffView.previewUnavailable')}
+                      </div>
                     )}
                   </div>
                 ) : activeTab === 'file' ? (

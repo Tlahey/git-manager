@@ -81,6 +81,34 @@ describe('TimelineBar', () => {
     expect(useTimelineNavStore.getState().isOpen).toBe(false)
   })
 
+  // The store moves a whole gesture per `undo()` call, so the overlay has to count steps in
+  // gestures too — one call per step it walks back. Counting raw entries would ask for two undos to
+  // cross a two-operation gesture and take back the gesture *before* it as well.
+  it('spends one undo call per gesture, not per git operation', async () => {
+    const user = userEvent.setup()
+    const undoSpy = vi.fn().mockResolvedValue(undefined)
+    const redoSpy = vi.fn().mockResolvedValue(undefined)
+    const gesture = [
+      { ...commit('create', 'oid0', 'oid1'), correlationId: 'corr-1' },
+      { ...commit('checkout', 'oid1', 'oid2'), correlationId: 'corr-1' },
+      commit('later', 'oid2', 'oid3'),
+    ]
+    useUndoHistoryStore.setState({
+      byRepo: { '/repo': { stack: gesture, pointer: 3 } },
+      undo: undoSpy,
+      redo: redoSpy,
+    })
+
+    // base + gesture + lone action = 3 steps, so "actual" sits at 2 and the base is 2 steps back.
+    useTimelineNavStore.getState().open('/repo', 0)
+    render(<TimelineBar repoPath="/repo" />, { wrapper })
+    expect(screen.queryByTestId('timeline-step-3')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('timeline-scrubber-validate'))
+
+    await waitFor(() => expect(undoSpy).toHaveBeenCalledTimes(2))
+  })
+
   it('closes without mutating on cancel', async () => {
     const user = userEvent.setup()
     const undoSpy = vi.fn().mockResolvedValue(undefined)

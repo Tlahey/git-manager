@@ -80,9 +80,10 @@ describe('buildDailySummaryPrompt', () => {
 
 describe('parseDailySummary', () => {
   it('parses the schema shape', () => {
-    expect(
-      parseDailySummary('{"headline":"Shipped X","highlights":["did a","did b"]}')
-    ).toEqual({ headline: 'Shipped X', highlights: ['did a', 'did b'] })
+    expect(parseDailySummary('{"headline":"Shipped X","highlights":["did a","did b"]}')).toEqual({
+      headline: 'Shipped X',
+      highlights: ['did a', 'did b'],
+    })
   })
 
   it('tolerates prose / code fences around the object and trims bullets', () => {

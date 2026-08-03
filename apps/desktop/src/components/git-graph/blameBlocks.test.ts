@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import type { BlameHunk } from '@git-manager/git-types'
-import {
-  blameBlocks,
-  blameColorIndex,
-  truncateCommitName,
-  BLAME_COLOR_COUNT,
-} from './blameBlocks'
+import { blameBlocks, blameColorIndex, truncateCommitName, BLAME_COLOR_COUNT } from './blameBlocks'
 
-function hunk(overrides: Partial<BlameHunk> & Pick<BlameHunk, 'startLine' | 'lineCount' | 'commitOid'>): BlameHunk {
+function hunk(
+  overrides: Partial<BlameHunk> & Pick<BlameHunk, 'startLine' | 'lineCount' | 'commitOid'>
+): BlameHunk {
   return {
     shortOid: overrides.commitOid.slice(0, 7),
     authorName: 'A',

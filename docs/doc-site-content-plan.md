@@ -35,7 +35,7 @@ Every row below follows this shape:
       - 🆕 write it — no scenario exists yet; write the e2e coverage first.
       - 🚫 blocked/not achievable — architecturally unreachable from e2e today (a direct `fetch()`
         bypassing Tauri's mockable `invoke()`, or a native-OS-only entry point) — not a TODO, a
-        documented limit. Note *why*, and whether it's a permanent limit or an infra gap that would
+        documented limit. Note _why_, and whether it's a permanent limit or an infra gap that would
         unblock it (see "Pull requests inside the graph" for the latter kind).
   - A **page** (not a sub-part) can also be 🔄 partially done — some sub-parts ✅, at least one
     still 🆕 — when the remaining piece is real backlog rather than blocked (see "Patch workflows").
@@ -77,7 +77,7 @@ shows the real three-button UI, not the debug stand-in.
     `repoData.store`'s persisted `savedRepos`/`recentRepoPaths` directly (the same native-dialog
     workaround `repo.steps.ts` already uses for `openTabs`) rather than driving Open/Clone/Create.
   - e2e (already-open case, plain regression): `open-repo.feature → "Opening an already-open recent
-    repository focuses its tab instead of duplicating it"` — ✅ tagged (not `@doc` — same visible
+repository focuses its tab instead of duplicating it"` — ✅ tagged (not `@doc` — same visible
     result, no separate screenshot needed)
 - **Sub-part — Three ways in** (regression only, not `@doc`: nothing new to show visually beyond
   the button row already screenshotted above)
@@ -252,6 +252,7 @@ fixture in this repo exercising a genuine local git remote. Building it required
 
 Three things surfaced while building this were out of scope to fix inline — filed as their own
 issues rather than worked around silently:
+
 - [#194](https://github.com/Tlahey/git-manager/issues/194) (fixed): a rejected push's toast showed
   raw backend error JSON (`{"code":"GIT_ERROR",...}`) instead of a readable message — a systemic
   pattern (~50 call sites), not push-specific. Fixed by unwrapping `AppError`'s JSON into a plain
@@ -282,10 +283,10 @@ issues rather than worked around silently:
   - e2e: `remote-push.feature → "Pushing publishes your commits to the remote"` — ✅ tagged (the
     clean fast-forward case)
   - e2e: `remote-push.feature → "A rejected push reports the conflict instead of silently
-    failing"` — ✅ tagged, now that [#194](https://github.com/Tlahey/git-manager/issues/194) is fixed
+failing"` — ✅ tagged, now that [#194](https://github.com/Tlahey/git-manager/issues/194) is fixed
   - Upstream tracking on a fresh push: not screenshot-able (see note above) — proven by the plain
     e2e scenario `remote-push.feature → "Pushing a brand-new branch configures its upstream
-    tracking"` instead, now that [#195](https://github.com/Tlahey/git-manager/issues/195) is fixed.
+tracking"` instead, now that [#195](https://github.com/Tlahey/git-manager/issues/195) is fixed.
 
 ### Page: Branches & tags (`branch-create.feature`) — ✅ done (toolbar scope only)
 
@@ -325,7 +326,7 @@ doesn't get a page.
   - Must show: opening Tools → Patch → Dependency, picking a package under `node_modules`, and
     committing a patch limited to that one dependency.
   - e2e: `patch-workspace.feature → "Patching a single node_modules dependency"` — 🆕 write it
-  - Why this one's harder: `dependency_patch.rs` shells out to the *real* `pnpm patch`/
+  - Why this one's harder: `dependency_patch.rs` shells out to the _real_ `pnpm patch`/
     `patch-commit` CLI workflow (materialising a pristine copy under `pnpm`'s own store, diffing
     it against the live `node_modules/<pkg>`). Every other fixture in this suite is pure `git`
     shell commands — this would be the first to also run a real `pnpm install`. A `file:./local-pkg`
@@ -377,7 +378,7 @@ Both of the already-done pages below were blocked on [#192](https://github.com/T
 AI test server was missing a response case for the `commit_message` schema — fixed by adding it).
 Tagging `daily-summary.feature` also surfaced a second, separate issue: its only fixture
 (`stash-stack`) has a single commit dated at fixture-build time ("today"), while the feature's
-default window is the *previous working day* — so the fixture never had anything in the window
+default window is the _previous working day_ — so the fixture never had anything in the window
 regardless of the schema fix. A brand-new `daily-summary` fixture
 (`tools/git-fixtures/scenarios/daily-summary.sh`) computes that target day in bash (mirroring
 `previousWorkingDayKey()`'s Monday/Sunday special cases) and back-dates its commit to land inside
@@ -413,14 +414,14 @@ commit in the window.
 ### Page: Recomposing a commit message (`ai-commit-recompose.feature`) — ✅ done
 
 - **Sub-part — Rewrite a past commit's message from what it actually changed**
-  - Must show: right-click a commit → *Rewrite this commit's message (LLM)*; the generated message
+  - Must show: right-click a commit → _Rewrite this commit's message (LLM)_; the generated message
     shown for review before it's applied; applying it rewrites history (same caveats as any other
     message-only rewrite — descendant SHAs change).
   - e2e: `ai-commit-recompose.feature → "Recomposing a commit's message from its diff"` — ✅ tagged
   - Descriptor: `commit-recompose.md`
   - **Architectural finding, worth knowing before picking up the next two pages below**: every
     commit-scoped AI action (this one, plus every sub-part of "Explaining what changed" and "AI code
-    review" below) is wired *only* through the graph row's right-click menu, and — confirmed via
+    review" below) is wired _only_ through the graph row's right-click menu, and — confirmed via
     `nativeMenuSpec.ts`/`nativeMenu.api.ts` and the same limitation `tag-context-menu.feature`
     documents for the tag badge menu — that menu is a real native macOS context menu, which WebDriver
     cannot open or click into. Unlike reset/revert/branch/tag (which also live there but have a
@@ -447,7 +448,7 @@ Three of the four sub-parts below share one instruction and one temperature, dis
 one page because a reader who finds one "Explain (LLM)" entry point has effectively found all four.
 
 - **Sub-part — Explain one commit, beyond its message**
-  - Must show: right-click a commit → *Explain this commit (LLM)*; the right panel's streamed
+  - Must show: right-click a commit → _Explain this commit (LLM)_; the right panel's streamed
     explanation, remembered so reopening the panel doesn't regenerate it.
   - e2e: `ai-explanation.feature → "Explaining a single commit"` — ✅ tagged. Confirmed the "Must
     show" claim (fine to read, not tested with a dedicated assertion): the panel's `text` reads from
@@ -457,14 +458,14 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     count assertion was not built to prove it end to end.
   - Descriptor: `commit-explanation.md`
 - **Sub-part — Explain a whole branch**
-  - Must show: right-click a branch (or a commit) → *Explain branch changes (LLM)*; the explanation
+  - Must show: right-click a branch (or a commit) → _Explain branch changes (LLM)_; the explanation
     is remembered per branch.
   - e2e: `ai-explanation.feature → "Explaining a branch's changes"` — ✅ tagged. Same store-bridge
     approach as the commit sub-part (see the page-level note below); `baseRef` resolves against
     local refs only (`resolveExplanationBase`), so this needs no remote and no GitHub token.
   - Descriptor: `branch-explanation.md`
 - **Sub-part — Explain everything you haven't committed yet**
-  - Must show: right-click the WIP row → *Explain working changes (LLM)*; the summary covers every
+  - Must show: right-click the WIP row → _Explain working changes (LLM)_; the summary covers every
     uncommitted file, not just the one you have open.
   - e2e: `ai-explanation.feature → "Explaining all uncommitted changes"` — ✅ tagged. Unlike the
     commit/branch panels this one keeps no memory (`WorkingExplanationPanel`'s own doc comment: "the
@@ -472,7 +473,7 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     re-runs the map-then-compose call.
   - Descriptor: `working-explanation.md`
 - **Sub-part — Explain one file's pending diff**
-  - Must show: the *Explain* button above the diff editor on a working-copy file; the explanation is
+  - Must show: the _Explain_ button above the diff editor on a working-copy file; the explanation is
     read against the file's own content, not just the patch.
   - e2e: `ai-explanation.feature → "Explaining one file's pending diff"` — ✅ tagged. The one
     sub-part with a plain DOM entry point (`change-explanation-run` in `ChangeExplanationPanel.tsx`,
@@ -481,7 +482,7 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
   - Descriptor: `change-explanation.md`
 - **How the first three were reached**: like recompose above, all three panel sub-parts open only
   from a real native context menu item (`gitTree.contextMenu.explainCommit`, `.branchMenu.
-  explainChanges`, `.wipMenu.explainChanges`) with no command-palette equivalent. All three,
+explainChanges`, `.wipMenu.explainChanges`) with no command-palette equivalent. All three,
   though, ultimately just call `setAiPanelTarget({ kind, ... })` on the `repoUI` store —
   `GitGraph.tsx` renders whichever panel `aiPanelTarget.kind` names, purely reactively, regardless
   of who set it. So each e2e step dispatches through that same store bridge
@@ -493,12 +494,12 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
 ### Page: AI code review (`ai-code-review.feature`) — ✅ done
 
 - **Sub-part — Get a second opinion on your working changes**
-  - Must show: right-click the WIP row → *Review changes (LLM)*; the right panel's review flags
+  - Must show: right-click the WIP row → _Review changes (LLM)_; the right panel's review flags
     what deserves a second look — this is the one AI feature the app explicitly lets have an
     opinion (every explanation feature above is told not to).
   - e2e: `ai-code-review.feature → "Reviewing the working changes"` — ✅ tagged
 - **Sub-part — Review a whole branch before opening a PR**
-  - Must show: right-click a branch/commit → *Review branch changes (LLM)*, same panel, range-diff
+  - Must show: right-click a branch/commit → _Review branch changes (LLM)_, same panel, range-diff
     input instead of the working tree.
   - e2e: `ai-code-review.feature → "Reviewing a branch's range diff"` — ✅ tagged
   - Descriptor: `code-review.md`
@@ -540,7 +541,7 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
 - **Sub-part — Ask a question, get an answer read from real commits**
   - Must show: opening the panel from the AI menu (or ⇧⌘F), asking something like "has the button
     component changed recently?", and an answer citing the specific commits it came from — the
-    point being this finds commits by what they *did*, not what they were *named*.
+    point being this finds commits by what they _did_, not what they were _named_.
   - e2e: `ai-commit-search.feature → "Answering a question from the commit history"` — ✅ tagged.
     Entry point is a plain DOM dropdown item (`ai-menu-commit-search` in `AiMenu.tsx`) — no native
     menu, no store bridge, just the same Radix pointerdown/pointerup dance every other toolbar
@@ -599,7 +600,7 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
   - **Gotcha for whoever touches this next**: the frontend batches activity-log entries and flushes
     them to disk on a 2s timer (`activityLogPersistence.ts`'s `FLUSH_DELAY_MS`), not on every
     action. A real second window leaves the main window's JS context — and that pending timer —
-    alive in the background while the journal is read; navigating the *shared* window away in
+    alive in the background while the journal is read; navigating the _shared_ window away in
     place (as this scenario does) tears that context down instead, silently dropping whatever
     hadn't flushed yet. The scenario waits out the flush delay before navigating
     (`action-journal.steps.ts`). Found by a "0 actions" empty state that turned out not to be a
@@ -629,7 +630,7 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     screen "the launchpad" — wrong, and confusing next to the real **Launchpad** section below (a
     different screen, the Pull Requests hub, `footer.launchpad`). The footer already has the correct,
     distinct names (`footer.dashboard` → "Dashboard", `footer.launchpad` → "Launchpad"), so the fix
-    was renaming the *wording* to match reality, not renaming any screen: `daily-summary.feature`'s
+    was renaming the _wording_ to match reality, not renaming any screen: `daily-summary.feature`'s
     scenario/step text and a couple of stray "launchpad" doc comments in `DashboardPage.tsx` and
     `daily-summary.steps.ts` now say "dashboard" throughout. No behavior changed — `setActiveTab`
     already used the id `'dashboard'` even while the prose called it something else.
@@ -642,9 +643,9 @@ The Launchpad (`PullRequestsPage.tsx`, footer "Launchpad" button) had zero e2e o
 this section, despite being one of the largest pages in the app. The key fact that makes most of it
 tractable: `useGitHubData()` falls back to deterministic mock data
 (`apps/desktop/src/app/pull-requests/mockData.ts`) whenever no GitHub account is configured, so every
-*list* surface below (KPIs, tabs, heatmap, PR/issue rows) is fully drivable with **no GitHub OAuth and
+_list_ surface below (KPIs, tabs, heatmap, PR/issue rows) is fully drivable with **no GitHub OAuth and
 no live token** — the same posture as every other fixture in this suite. The one exception, confirmed
-empirically rather than assumed: the *detail panels* (a PR's or issue's own view, opened from a row)
+empirically rather than assumed: the _detail panels_ (a PR's or issue's own view, opened from a row)
 do **not** share that fallback — `usePrDetail`/`useIssueDetail` only fetch with a real token, so both
 are marked 🚫 blocked below rather than written as scenarios. What else isn't drivable: anything that
 calls `api.github.com` directly from the frontend (`apps/desktop/src/api/github.api.ts` — merging a
@@ -698,7 +699,7 @@ not.
 - **Sub-part — Browse issues from the Launchpad**
   - Must show: the Issues tab's list, defaulting to open issues across every added repo.
   - e2e: `launchpad-issues.feature → "The Issues tab lists open issues from every repo you're
-    tracking"` — ✅ done
+tracking"` — ✅ done
 - **Sub-part — Open an issue's detail panel**
   - Must show: `IssueDetailCenter`'s description/labels/assignees/comments for a Launchpad issue.
   - e2e: `launchpad-issues.feature → "Selecting an issue opens its detail panel"` — 🚫 blocked:
@@ -721,7 +722,7 @@ not.
 
 A second, separate PR surface lives in `apps/desktop/src/components/git-graph/pr/` (~35 files:
 `PrCreateCenter`, `PrDetailCenter`, `PrMergeButton`, `PrReviewComposer`, `PrChecksBox`, …) — this is
-the center-pane takeover for *your current branch's* PR (create one, or view/merge/review the one
+the center-pane takeover for _your current branch's_ PR (create one, or view/merge/review the one
 that already exists), as opposed to the Launchpad's browse-everything list above. It does not share
 the Launchpad's mock-data escape hatch: `usePrDetail` (`apps/desktop/src/hooks/usePrDetail.ts`) only
 fires its fetch when a real `token` is present — no `hasToken`-false fallback the way
@@ -736,7 +737,7 @@ fires its fetch when a real `token` is present — no `hasToken`-false fallback 
 - **Sub-part — View, merge or review a PR without leaving the graph**
   - Must show: `PrDetailCenter`'s description/checks/comments/merge button for the branch's own PR.
   - e2e: `pr-graph.feature → "Viewing the current branch's pull request in the graph"` — 🚫 blocked:
-    `usePrDetail` needs a live token to fetch at all, so even *reading* this page (not just
+    `usePrDetail` needs a live token to fetch at all, so even _reading_ this page (not just
     mutating) is unreachable from a deterministic e2e run today. Giving `usePrDetail` the same
     mock-fallback pattern `useGitHubData` already has would unblock the read-only half of this page
     without needing real network access — worth raising as its own follow-up rather than working
@@ -772,7 +773,7 @@ covered below).
     (`daily-summary.feature`) rather than adding one for a single e2e click.
   - **Found, not fixed (separate concern)**: `achievements.json`'s titles/descriptions/reward text
     are hardcoded French regardless of app language — visible in both screenshots despite `Given
-    the app language is English`. A real i18n gap (this repo's own hard invariant is that every
+the app language is English`. A real i18n gap (this repo's own hard invariant is that every
     user-facing string goes through `@git-manager/i18n`), but translating a ~28-entry achievement
     catalog is unrelated in scope to writing e2e doc coverage for existing behavior, so it was
     flagged as its own follow-up rather than fixed inline here.
@@ -792,7 +793,7 @@ covered below).
 
 `SettingsPage.tsx` has more surface than the sub-parts below might suggest: a top-level
 **Global vs. Repository** split (`Scope = 'general' | 'local'`), eleven global sections, and a
-settings search box. The Global/Repository override *mechanic* itself is meaty enough to get its
+settings search box. The Global/Repository override _mechanic_ itself is meaty enough to get its
 own page — see "Repository-specific settings" below.
 
 - **Sub-part — Configure the app**
@@ -804,7 +805,7 @@ own page — see "Repository-specific settings" below.
     activation link shown, and that it can be cancelled mid-flow — this is what makes the Launchpad
     section above meaningful with real data instead of the mock fallback.
   - e2e: `settings.feature → "Starting the GitHub OAuth device flow shows a real device code, and it
-    can be cancelled"` — ✅ tagged (drivable today since `github_device_code`/`github_poll_token`
+can be cancelled"` — ✅ tagged (drivable today since `github_device_code`/`github_poll_token`
     are real Tauri commands hitting the real, unauthenticated `github.com/login/device/code`
     endpoint — no mock needed). Tagging it surfaced two pre-existing hardcoded-French strings this
     scenario's own screenshot would otherwise have shipped with — the settings header's "Retour"
@@ -841,7 +842,7 @@ own page — see "Repository-specific settings" below.
 
 The Repository (Local) scope only appears once a repo is open, labelled with that repo's own name
 rather than "Local". `gitflow`, `worktree` and `run` are repo-only; `appearance` and `ai_commit`
-*mirror* a matching Global page, so the same value can be set globally and then overridden per repo.
+_mirror_ a matching Global page, so the same value can be set globally and then overridden per repo.
 
 - **Sub-part — Set repo-only defaults (GitFlow, worktree, tasks)**
   - Must show: Settings → Repository → GitFlow (protected branches, default branch name, target
@@ -853,10 +854,10 @@ rather than "Local". `gitflow`, `worktree` and `run` are repo-only; `appearance`
     protected branches, one representative field rather than one scenario per repo-only page.
 - **Sub-part — Override a global setting for just this repository**
   - Must show: overriding the per-repo theme (or AI commit style) shows an "(overridden)" badge on
-    the *global* page for that same field, so editing it there doesn't look like it silently did
+    the _global_ page for that same field, so editing it there doesn't look like it silently did
     nothing.
   - e2e: `settings-repository.feature → "Overriding the per-repo theme shows as overridden on the
-    global Appearance page"` — ✅ done
+global Appearance page"` — ✅ done
 
 ### Page: Notifications (`notifications.feature`) — ✅ done
 
@@ -905,7 +906,7 @@ against something intentionally out of scope.
   that already opens them (`commit-graph.feature`, `working-tree.feature`, `blame-history.feature`,
   etc.), and a dedicated "the details panel" page would just re-narrate those. The AI right panels
   (explanation × 4, code review, commit search) and the Patch/Package-health panels each get their
-  own page above precisely because their *content* is the feature, not their shell.
+  own page above precisely because their _content_ is the feature, not their shell.
 - **The editor (Monaco)**: exactly two distinct capabilities exist and both are already documented —
   the three-way merge editor (`merge-editor.feature`) and the blame-annotated file viewer
   (`blame-history.feature`, via `BlameFileViewer` → `MonacoFileViewer`). There is no separate

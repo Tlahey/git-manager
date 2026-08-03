@@ -23,7 +23,13 @@ vi.mock('./PrCreateForm', () => ({
   PrCreateForm: (props: {
     currentBranch: string | null
     defaultBase: string | null
-    onCreate: (i: { head: string; base: string; title: string; body: string; draft: boolean }) => void
+    onCreate: (i: {
+      head: string
+      base: string
+      title: string
+      body: string
+      draft: boolean
+    }) => void
     onCancel: () => void
   }) => (
     <div data-testid="stub-form">

@@ -1,6 +1,11 @@
 import type { AiConnectionConfig, DailySummary, SummarizeOptions } from '@git-manager/ai'
 import { composeDailySummaryFromSummaries } from '@git-manager/ai'
-import { apiGetAiActivity, apiGetAiContext, dailySummaryService, fileSummaryService } from '../api/ai.api'
+import {
+  apiGetAiActivity,
+  apiGetAiContext,
+  dailySummaryService,
+  fileSummaryService,
+} from '../api/ai.api'
 import { apiSaveDailySummary } from '../api/dailySummary.api'
 import { useDailySummaryStore } from '../stores/dailySummary.store'
 import { dayBounds } from './dailySummaryWindow'

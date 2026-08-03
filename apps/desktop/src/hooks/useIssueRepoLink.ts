@@ -23,7 +23,9 @@ function useSavedRepoOwnerMap() {
           try {
             const remotes = await apiGetRemotes(path)
             const ownerRepo = firstGitHubOwnerRepo(remotes.map((r) => r.url))
-            return ownerRepo ? ([`${ownerRepo.owner}/${ownerRepo.repo}`.toLowerCase(), path] as const) : null
+            return ownerRepo
+              ? ([`${ownerRepo.owner}/${ownerRepo.repo}`.toLowerCase(), path] as const)
+              : null
           } catch {
             return null
           }

@@ -97,7 +97,12 @@ describe('activity sessions', () => {
     // Resolving a conflict and staging the result IS the rebase, not an aside.
     openActivitySession('/repo/a', 'rebase')
 
-    for (const command of ['resolve_conflict', 'resolve_conflict_binary', 'stage_file', 'stage_all']) {
+    for (const command of [
+      'resolve_conflict',
+      'resolve_conflict_binary',
+      'stage_file',
+      'stage_all',
+    ]) {
       expect(getActiveSession('/repo/a', command), command).not.toBeNull()
     }
   })

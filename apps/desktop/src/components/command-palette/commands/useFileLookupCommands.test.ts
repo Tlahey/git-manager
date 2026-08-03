@@ -7,11 +7,7 @@ vi.mock('../../../api/git.api', () => ({ apiGetFileHistory }))
 const { useTrackedFiles } = vi.hoisted(() => ({ useTrackedFiles: vi.fn() }))
 vi.mock('../../../hooks/useTrackedFiles', () => ({ useTrackedFiles }))
 
-import {
-  useFileLookupCommands,
-  scoreFileMatch,
-  rankFileMatches,
-} from './useFileLookupCommands'
+import { useFileLookupCommands, scoreFileMatch, rankFileMatches } from './useFileLookupCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 const INITIAL = useRepoUIStore.getState()

@@ -114,7 +114,7 @@ describe('RewardsTab — status filter', () => {
     const user = userEvent.setup()
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
-    await user.click(screen.getByText("In progress"))
+    await user.click(screen.getByText('In progress'))
     expect(screen.queryByText('First Steps')).not.toBeInTheDocument()
     expect(screen.getByText('Status Inspector')).toBeInTheDocument()
   })
@@ -143,12 +143,12 @@ describe('RewardsTab — difficulty groups', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText("Beginner level")).toBeInTheDocument()
-    expect(screen.getByText("Intermediate level")).toBeInTheDocument()
+    expect(screen.getByText('Beginner level')).toBeInTheDocument()
+    expect(screen.getByText('Intermediate level')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('rewards-filter-completed'))
-    expect(screen.getByText("Beginner level")).toBeInTheDocument()
-    expect(screen.queryByText("Intermediate level")).not.toBeInTheDocument()
+    expect(screen.getByText('Beginner level')).toBeInTheDocument()
+    expect(screen.queryByText('Intermediate level')).not.toBeInTheDocument()
   })
 
   it('shows the unlocked/total count per difficulty group', () => {
@@ -206,9 +206,7 @@ describe('RewardsTab — achievement card content', () => {
     const card = screen.getByTestId('achievement-card-commit_10')
     expect(within(card).getByText('???')).toBeInTheDocument()
     expect(within(card).queryByText('Commit Regular')).not.toBeInTheDocument()
-    expect(
-      within(card).getByText(/Mystery challenge/)
-    ).toBeInTheDocument()
+    expect(within(card).getByText(/Mystery challenge/)).toBeInTheDocument()
   })
 
   it('reveals the title once the prerequisite is unlocked', () => {
@@ -243,9 +241,7 @@ describe('RewardsTab — achievement card content', () => {
 
   it('reveals the cosmetic reward name once unlocked', () => {
     useGameStore.setState({
-      achievements: [
-        achievement({ id: 'commit_1', rewardIsCosmetic: true, unlocked: true }),
-      ],
+      achievements: [achievement({ id: 'commit_1', rewardIsCosmetic: true, unlocked: true })],
     })
     render(<RewardsTab />)
     expect(screen.getByText('Reward: Bronze avatar frame')).toBeInTheDocument()
@@ -268,7 +264,7 @@ describe('RewardsTab — milestone progress bar', () => {
     })
     render(<RewardsTab />)
     expect(screen.getByText('4 / 10')).toBeInTheDocument()
-    expect(screen.getByText("Milestone")).toBeInTheDocument()
+    expect(screen.getByText('Milestone')).toBeInTheDocument()
   })
 
   it('hides the progress bar once the achievement is unlocked', () => {
@@ -285,7 +281,7 @@ describe('RewardsTab — milestone progress bar', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.queryByText("Milestone")).not.toBeInTheDocument()
+    expect(screen.queryByText('Milestone')).not.toBeInTheDocument()
   })
 
   it('hides the progress bar while masked behind a locked prerequisite', () => {
@@ -304,6 +300,6 @@ describe('RewardsTab — milestone progress bar', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.queryByText("Milestone")).not.toBeInTheDocument()
+    expect(screen.queryByText('Milestone')).not.toBeInTheDocument()
   })
 })

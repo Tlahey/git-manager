@@ -1,11 +1,11 @@
 import { AnnotateTagDialog } from '../AnnotateTagDialog'
 import { DeleteRemoteTagDialog } from '../DeleteRemoteTagDialog'
-import type { PendingTagAction } from '../../../hooks/useTagContextMenu'
+import type { TagDialogAction } from '../../../stores/repoUI.store'
 
 interface TagDialogsManagerProps {
   repoPath: string
   /** The tag-specific dialog to show (annotate / remote delete), or `null` for none. */
-  pendingTagAction: PendingTagAction
+  pendingTagAction: TagDialogAction
   onClearPendingTagAction: () => void
 }
 

@@ -240,7 +240,9 @@ describe('MarkdownRenderer — task list toggling', () => {
 
     fireEvent.click(screen.getAllByRole('checkbox')[1])
 
-    expect(onTaskToggle).toHaveBeenCalledWith('Intro paragraph\n\n- [ ] alpha\n\n- [x] beta\n\nOutro')
+    expect(onTaskToggle).toHaveBeenCalledWith(
+      'Intro paragraph\n\n- [ ] alpha\n\n- [x] beta\n\nOutro'
+    )
   })
 
   it('freezes the checkboxes while a toggle is being saved', () => {

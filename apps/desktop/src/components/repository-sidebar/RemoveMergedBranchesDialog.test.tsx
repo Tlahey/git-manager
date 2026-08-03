@@ -53,7 +53,9 @@ function hookResult(
   }
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof RemoveMergedBranchesDialog>> = {}) {
+function renderDialog(
+  props: Partial<React.ComponentProps<typeof RemoveMergedBranchesDialog>> = {}
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
   const utils = render(
@@ -86,23 +88,29 @@ describe('RemoveMergedBranchesDialog — body states', () => {
   it('shows a no-GitHub-remote hint and disables confirm when nothing qualifies', () => {
     useMergedBranchesMock.mockReturnValue(hookResult([], { isGithub: false }))
     renderDialog()
-    expect(screen.getByText("No GitHub remote — detecting merged branches locally (deleted remote branch) only.")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No GitHub remote — detecting merged branches locally (deleted remote branch) only.'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
   it('shows a checking message while loading', () => {
     useMergedBranchesMock.mockReturnValue(hookResult([], { isLoading: true }))
     renderDialog()
-    expect(screen.getByText("Checking merge status…")).toBeInTheDocument()
+    expect(screen.getByText('Checking merge status…')).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
   it('shows an empty-state message when nothing qualifies', () => {
-    useMergedBranchesMock.mockReturnValue(
-      hookResult([{ branch: branch(), status: 'no-match' }])
-    )
+    useMergedBranchesMock.mockReturnValue(hookResult([{ branch: branch(), status: 'no-match' }]))
     renderDialog()
-    expect(screen.getByText("No branches qualify right now — none are merged (merged pull request or deleted remote branch).")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No branches qualify right now — none are merged (merged pull request or deleted remote branch).'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
@@ -123,14 +131,14 @@ describe('RemoveMergedBranchesDialog — body states', () => {
     expect(card).toHaveTextContent('feature/a')
     expect(card).toHaveTextContent('aaaaaaa') // short SHA
     expect(card.querySelector('.lucide-git-branch')).toBeTruthy()
-    expect(screen.getByTitle("Merged in PR #1")).toBeInTheDocument()
+    expect(screen.getByTitle('Merged in PR #1')).toBeInTheDocument()
     expect(screen.queryByTestId('branch-remove-merged-reason-feature/a')).not.toBeInTheDocument()
 
     expect(screen.getByTestId('branch-remove-merged-reason-feature/b')).toHaveTextContent(
-      "Checked out in a worktree"
+      'Checked out in a worktree'
     )
     expect(screen.getByTestId('branch-remove-merged-reason-feature/c')).toHaveTextContent(
-      "Not merged (remote branch still exists, no merged PR)"
+      'Not merged (remote branch still exists, no merged PR)'
     )
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeEnabled()
   })
@@ -147,7 +155,11 @@ describe('RemoveMergedBranchesDialog — body states', () => {
 describe('RemoveMergedBranchesDialog — confirming', () => {
   it('deletes only merged branches (force off), invalidates, and closes', async () => {
     mockedDeleteBranch.mockResolvedValue(undefined)
-    const merged = branch({ shortName: 'feature/a', commitOid: 'oid-a', upstream: 'origin/feature/a' })
+    const merged = branch({
+      shortName: 'feature/a',
+      commitOid: 'oid-a',
+      upstream: 'origin/feature/a',
+    })
     const noMatch = branch({ shortName: 'feature/b' })
     useMergedBranchesMock.mockReturnValue(
       hookResult([mergedCheck(merged), { branch: noMatch, status: 'no-match' }])
@@ -192,7 +204,7 @@ describe('RemoveMergedBranchesDialog — confirming', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ onClose })
-    await user.click(screen.getByText("Cancel"))
+    await user.click(screen.getByText('Cancel'))
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedDeleteBranch).not.toHaveBeenCalled()
   })
@@ -212,7 +224,7 @@ describe('RemoveMergedBranchesDialog — mine-only mode', () => {
     )
     renderDialog({ mineOnly: true, currentUser: 'Alice' })
 
-    expect(screen.getAllByText("Remove my merged branches").length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Remove my merged branches').length).toBeGreaterThan(0)
     expect(screen.getByTestId('branch-remove-merged-item-feature/mine')).toBeInTheDocument()
     // Someone else's PR, and a gone-upstream branch with no PR author, are both excluded.
     expect(screen.queryByTestId('branch-remove-merged-item-feature/theirs')).not.toBeInTheDocument()
@@ -235,6 +247,10 @@ describe('RemoveMergedBranchesDialog — mine-only mode', () => {
 
     await user.click(screen.getByTestId('branch-remove-merged-confirm-button'))
     expect(mockedDeleteBranch).toHaveBeenCalledWith('/repo', 'feature/mine', expect.anything())
-    expect(mockedDeleteBranch).not.toHaveBeenCalledWith('/repo', 'feature/theirs', expect.anything())
+    expect(mockedDeleteBranch).not.toHaveBeenCalledWith(
+      '/repo',
+      'feature/theirs',
+      expect.anything()
+    )
   })
 })

@@ -116,7 +116,13 @@ describe('useNotchQueue — the surface decision', () => {
     setDisplayStyle('native')
     renderHook(() => useNotchQueue())
     enqueue({
-      model: { kind: 'progress', id: 'clone', tone: 'running', eyebrow: 'CLONING', title: 'objects' },
+      model: {
+        kind: 'progress',
+        id: 'clone',
+        tone: 'running',
+        eyebrow: 'CLONING',
+        title: 'objects',
+      },
       importance: 'ambient',
     })
 
@@ -154,8 +160,7 @@ describe('useNotchQueue — the surface decision', () => {
   // banner via the native fallback. Gated on VITE_E2E, so it is unreachable in production builds.
   it('paints nothing when the e2e build forces the surface to none, but still drains the queue', async () => {
     vi.stubEnv('VITE_E2E', 'true')
-    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface =
-      'none'
+    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface = 'none'
     try {
       setDisplayStyle('notch')
       renderHook(() => useNotchQueue())
@@ -166,8 +171,7 @@ describe('useNotchQueue — the surface decision', () => {
       expect(sendNative).not.toHaveBeenCalled()
     } finally {
       vi.unstubAllEnvs()
-      delete (window as unknown as { __e2eNotificationSurface?: string })
-        .__e2eNotificationSurface
+      delete (window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface
     }
   })
 })
@@ -305,7 +309,13 @@ describe('useNotchQueue', () => {
     openWindow.mockResolvedValue(false)
     renderHook(() => useNotchQueue())
     enqueue({
-      model: { kind: 'progress', id: 'clone', tone: 'running', eyebrow: 'CLONING', title: 'objects' },
+      model: {
+        kind: 'progress',
+        id: 'clone',
+        tone: 'running',
+        eyebrow: 'CLONING',
+        title: 'objects',
+      },
       importance: 'ambient',
       nativeFallback: { title: 'x', body: 'y', route: { kind: 'rewards' } },
     })

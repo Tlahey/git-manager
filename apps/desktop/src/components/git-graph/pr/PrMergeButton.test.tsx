@@ -8,7 +8,13 @@ vi.mock('@git-manager/i18n', () => ({
 
 const { mergeMock } = vi.hoisted(() => ({ mergeMock: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
-  usePrActions: () => ({ merge: mergeMock, pending: false, comment: vi.fn(), submitReview: vi.fn(), error: null }),
+  usePrActions: () => ({
+    merge: mergeMock,
+    pending: false,
+    comment: vi.fn(),
+    submitReview: vi.fn(),
+    error: null,
+  }),
 }))
 
 import { PrMergeButton } from './PrMergeButton'

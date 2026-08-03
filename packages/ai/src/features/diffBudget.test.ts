@@ -102,8 +102,7 @@ describe('budgetDiff — when everything fits', () => {
 describe('budgetDiff — priority', () => {
   it('serves source before tests, and tests before docs, when the budget forces a choice', () => {
     // Too tight for a useful share each, so only the highest-priority file survives the cut.
-    const diff =
-      section('README.md', 3000) + section('a.test.ts', 3000) + section('src/a.ts', 3000)
+    const diff = section('README.md', 3000) + section('a.test.ts', 3000) + section('src/a.ts', 3000)
     const result = budgetDiff(diff, 1000)
 
     expect(result.text).toContain('src/a.ts')
@@ -144,8 +143,7 @@ describe('budgetDiff — priority', () => {
   })
 
   it('shows whole files rather than a window into every file', () => {
-    const diff =
-      section('src/a.ts', 2000) + section('src/b.ts', 2000) + section('src/c.ts', 2000)
+    const diff = section('src/a.ts', 2000) + section('src/b.ts', 2000) + section('src/c.ts', 2000)
     const result = budgetDiff(diff, 4500)
 
     // A head-cut would have shown a.ts, part of b.ts and nothing of c.ts — silently. Here two files
@@ -163,7 +161,8 @@ describe('budgetDiff — allocation', () => {
     // Smallest-first: the cheap file is served whole and leaves the rest of the pool for the big
     // one, which also fits whole. The budget is deliberately below the total so the allocator
     // actually runs — above it, budgetDiff short-circuits and the test would prove nothing.
-    const diff = section('src/small.ts', 50) + section('src/big.ts', 1500) + section('docs/x.md', 9000)
+    const diff =
+      section('src/small.ts', 50) + section('src/big.ts', 1500) + section('docs/x.md', 9000)
     const result = budgetDiff(diff, 4000)
 
     // Both source files whole; the surplus then flows down to the doc, which is cut.
@@ -173,8 +172,7 @@ describe('budgetDiff — allocation', () => {
   })
 
   it('omits — and names — the files it could not afford at all', () => {
-    const diff =
-      section('src/a.ts', 4000) + section('src/b.ts', 4000) + section('src/c.ts', 4000)
+    const diff = section('src/a.ts', 4000) + section('src/b.ts', 4000) + section('src/c.ts', 4000)
     const result = budgetDiff(diff, 900)
 
     // 900 over three files is 300 each, below the useful minimum: one file gets the lot instead.
@@ -198,8 +196,7 @@ describe('budgetDiff — allocation', () => {
   })
 
   it('respects the budget', () => {
-    const diff =
-      section('src/a.ts', 9000) + section('src/b.ts', 9000) + section('docs/c.md', 9000)
+    const diff = section('src/a.ts', 9000) + section('src/b.ts', 9000) + section('docs/c.md', 9000)
     const result = budgetDiff(diff, 3000)
     expect(result.text.length).toBeLessThanOrEqual(3000 + 200) // + the inline truncation markers
   })

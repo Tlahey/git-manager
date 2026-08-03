@@ -105,9 +105,7 @@ describe('RebasingCommitWindow — loading and plan rendering', () => {
   it('shows the commit count in the header', async () => {
     mockedListCommits.mockResolvedValue([commit('aaa1111'), commit('bbb2222')])
     renderWindow()
-    await waitFor(() =>
-      expect(screen.getByText('2 commits')).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText('2 commits')).toBeInTheDocument())
   })
 })
 
@@ -115,7 +113,9 @@ describe('RebasingCommitWindow — selection and details panel', () => {
   it('shows a hint when nothing is selected', async () => {
     mockedListCommits.mockResolvedValue([commit('aaa1111')])
     renderWindow()
-    await waitFor(() => expect(screen.getByText('Select a commit to see its changes and details')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('Select a commit to see its changes and details')).toBeInTheDocument()
+    )
   })
 
   it('selects a row on click and shows its details', async () => {

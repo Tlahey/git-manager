@@ -42,7 +42,12 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 
     return (
       <RadioGroupContext.Provider value={{ name: groupName, value, onValueChange, disabled }}>
-        <div ref={ref} role="radiogroup" className={cn('flex flex-col gap-2', className)} {...props}>
+        <div
+          ref={ref}
+          role="radiogroup"
+          className={cn('flex flex-col gap-2', className)}
+          {...props}
+        >
           {children}
         </div>
       </RadioGroupContext.Provider>
@@ -51,8 +56,10 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 )
 RadioGroup.displayName = 'RadioGroup'
 
-export interface RadioGroupItemProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'checked'> {
+export interface RadioGroupItemProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'type' | 'value' | 'checked'
+> {
   /** The value this radio represents within the group. */
   value: string
 }

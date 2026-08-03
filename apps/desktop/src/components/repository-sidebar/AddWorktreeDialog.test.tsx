@@ -131,7 +131,9 @@ describe('AddWorktreeDialog — branch picker', () => {
   it('defaults to the current (HEAD) branch', async () => {
     renderDialog()
     await waitFor(() =>
-      expect(screen.getByTestId<HTMLSelectElement>('worktree-add-branch-select')).toHaveValue('main')
+      expect(screen.getByTestId<HTMLSelectElement>('worktree-add-branch-select')).toHaveValue(
+        'main'
+      )
     )
   })
 
@@ -141,9 +143,7 @@ describe('AddWorktreeDialog — branch picker', () => {
     expect(await screen.findByTestId('worktree-add-branch-in-use-warning')).toHaveTextContent(
       'worktree.addBranchCheckedOutWarning'
     )
-    await waitFor(() =>
-      expect(screen.getByTestId('worktree-add-confirm-button')).toBeDisabled()
-    )
+    await waitFor(() => expect(screen.getByTestId('worktree-add-confirm-button')).toBeDisabled())
   })
 
   it('shows a message instead of the picker when the repo has no local branches', async () => {

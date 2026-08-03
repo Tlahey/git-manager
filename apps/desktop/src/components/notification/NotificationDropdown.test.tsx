@@ -66,8 +66,8 @@ describe('NotificationDropdown — list', () => {
   it('shows an empty state when there are no notifications', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    expect(screen.getByText("No notifications yet")).toBeInTheDocument()
+    await user.click(screen.getByTitle('Notifications'))
+    expect(screen.getByText('No notifications yet')).toBeInTheDocument()
   })
 
   it('lists up to the 5 most recent notifications', async () => {
@@ -75,7 +75,7 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: notifs })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByTitle('Notifications'))
     expect(screen.getAllByText(/PR #\d+ Merged/)).toHaveLength(5)
   })
 
@@ -85,14 +85,14 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: [notification({ targetTab: 'waiting' })] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByTitle('Notifications'))
     await user.click(screen.getByText(/PR #\d+ Merged/))
 
     expect(useNotificationStore.getState().notifications[0].read).toBe(true)
     expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
     expect(useLaunchpadStore.getState().activeTab).toBe('waiting')
     expect(useLaunchpadStore.getState().pendingOpenPrId).toBe('pr-42')
-    expect(screen.queryByText("No notifications yet")).not.toBeInTheDocument()
+    expect(screen.queryByText('No notifications yet')).not.toBeInTheDocument()
     expect(screen.queryByText(/PR #\d+ Merged/)).not.toBeInTheDocument()
   })
 
@@ -102,8 +102,8 @@ describe('NotificationDropdown — list', () => {
     })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    await user.click(screen.getByTitle("Mark all as read"))
+    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByTitle('Mark all as read'))
     expect(useNotificationStore.getState().notifications.every((n) => n.read)).toBe(true)
   })
 
@@ -111,8 +111,8 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: [notification()] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    await user.click(screen.getByTitle("Clear all"))
+    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByTitle('Clear all'))
     expect(useNotificationStore.getState().notifications).toEqual([])
   })
 })

@@ -148,10 +148,10 @@ When(/^I click the conflicted file "([^"]*)" to resolve it$/, async (filePath: s
   const row = $(`[data-testid="file-tree-file-${filePath}"]`)
   await row.waitForDisplayed({ timeout: 10000 })
   await row.click()
-  await browser.waitUntil(
-    async () => (await browser.getWindowHandles()).length > before.length,
-    { timeout: 10000, timeoutMsg: 'The merge editor window never opened' }
-  )
+  await browser.waitUntil(async () => (await browser.getWindowHandles()).length > before.length, {
+    timeout: 10000,
+    timeoutMsg: 'The merge editor window never opened',
+  })
   const after = await browser.getWindowHandles()
   mergeWindowHandle = after.find((h) => !before.includes(h))!
   await browser.switchToWindow(mergeWindowHandle)
@@ -318,7 +318,10 @@ Then(/^the file "([^"]*)" contains the line "([^"]*)"$/, (filePath: string, line
   expect(content.split('\n')).toContain(line)
 })
 
-Then(/^the file "([^"]*)" does not contain the line "([^"]*)"$/, (filePath: string, line: string) => {
-  const content = readFileSync(join(currentRepoPath, filePath), 'utf8')
-  expect(content.split('\n')).not.toContain(line)
-})
+Then(
+  /^the file "([^"]*)" does not contain the line "([^"]*)"$/,
+  (filePath: string, line: string) => {
+    const content = readFileSync(join(currentRepoPath, filePath), 'utf8')
+    expect(content.split('\n')).not.toContain(line)
+  }
+)

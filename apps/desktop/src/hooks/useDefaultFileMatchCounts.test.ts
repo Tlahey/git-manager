@@ -32,9 +32,7 @@ describe('useDefaultFileMatchCounts', () => {
 
   it('debounces, queries only non-empty patterns, and maps counts by pattern', async () => {
     mocked.mockResolvedValue([2, 0])
-    const { result } = renderHook(() =>
-      useDefaultFileMatchCounts('/repo', ['.env*', '', 'nope/*'])
-    )
+    const { result } = renderHook(() => useDefaultFileMatchCounts('/repo', ['.env*', '', 'nope/*']))
     // Nothing before the debounce elapses.
     expect(mocked).not.toHaveBeenCalled()
     // Wrap the advance in act(): the resolved API promise triggers setState inside the hook,

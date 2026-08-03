@@ -118,9 +118,7 @@ describe('generateDailySummary', () => {
       connection,
       expect.objectContaining({
         branch: 'origin/main',
-        summaries: [
-          { path: 'src/a.ts', status: 'modified', intent: 'does a thing', area: 'demo' },
-        ],
+        summaries: [{ path: 'src/a.ts', status: 'modified', intent: 'does a thing', area: 'demo' }],
       })
     )
   })

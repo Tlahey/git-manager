@@ -68,8 +68,8 @@ describe('Footer — contextual left section', () => {
   it('shows the dashboard state with the total repo count', () => {
     useRepoDataStore.setState({ savedRepos: [{ path: '/a', name: 'a', pinned: false }] })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText("Dashboard")).toBeInTheDocument()
-    expect(screen.getByText("1 registered repo")).toBeInTheDocument()
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('1 registered repo')).toBeInTheDocument()
   })
 
   it('uses the plural repo-count key once more than one repo is known', () => {
@@ -80,7 +80,7 @@ describe('Footer — contextual left section', () => {
       ],
     })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText("2 registered repos")).toBeInTheDocument()
+    expect(screen.getByText('2 registered repos')).toBeInTheDocument()
   })
 
   it('deduplicates saved and discovered repos sharing the same path', () => {
@@ -92,13 +92,13 @@ describe('Footer — contextual left section', () => {
       ],
     })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText("2 registered repos")).toBeInTheDocument()
+    expect(screen.getByText('2 registered repos')).toBeInTheDocument()
   })
 
   it('shows the launchpad state on the pull-requests tab', () => {
     useRepoUIStore.setState({ activeTab: PULL_REQUESTS_TAB })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText("Launchpad")).toBeInTheDocument()
+    expect(screen.getByText('Launchpad')).toBeInTheDocument()
   })
 
   it('shows the rewards state on the rewards tab', () => {
@@ -139,15 +139,15 @@ describe('Footer — contextual left section', () => {
       render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle("Click to copy the absolute path"))
+        fireEvent.click(screen.getByTitle('Click to copy the absolute path'))
         await Promise.resolve()
         await Promise.resolve()
       })
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('/repo/a')
-      expect(screen.getByText("Repository path copied!")).toBeInTheDocument()
+      expect(screen.getByText('Repository path copied!')).toBeInTheDocument()
 
       await act(async () => vi.advanceTimersByTime(2000))
-      expect(screen.queryByText("Repository path copied!")).not.toBeInTheDocument()
+      expect(screen.queryByText('Repository path copied!')).not.toBeInTheDocument()
       vi.useRealTimers()
     })
 
@@ -161,12 +161,12 @@ describe('Footer — contextual left section', () => {
       render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle("Click to copy the absolute path"))
+        fireEvent.click(screen.getByTitle('Click to copy the absolute path'))
         await Promise.resolve()
         await Promise.resolve()
       })
       expect(consoleError).toHaveBeenCalled()
-      expect(screen.queryByText("Repository path copied!")).not.toBeInTheDocument()
+      expect(screen.queryByText('Repository path copied!')).not.toBeInTheDocument()
     })
   })
 })
@@ -255,7 +255,7 @@ describe('Footer — rewards link', () => {
 describe('Footer — GitHub account link', () => {
   it('shows "not connected" when there is no active account', () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText("GitHub disconnected")).toBeInTheDocument()
+    expect(screen.getByText('GitHub disconnected')).toBeInTheDocument()
   })
 
   it('shows the connected account name once a token is active', () => {
@@ -273,7 +273,7 @@ describe('Footer — GitHub account link', () => {
     const onOpenSettings = vi.fn()
     const user = userEvent.setup()
     render(<Footer onOpenSettings={onOpenSettings} onOpenActivityLogs={vi.fn()} />)
-    await user.click(screen.getByText("GitHub disconnected").closest('button')!)
+    await user.click(screen.getByText('GitHub disconnected').closest('button')!)
     expect(onOpenSettings).toHaveBeenCalledWith('integrations')
   })
 })
@@ -281,7 +281,7 @@ describe('Footer — GitHub account link', () => {
 describe('Footer — version', () => {
   it('shows the app version once read from Tauri', async () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(await screen.findByText("v0.1.0")).toBeInTheDocument()
+    expect(await screen.findByText('v0.1.0')).toBeInTheDocument()
   })
 
   it('does not render the version badge when the version cannot be read', () => {

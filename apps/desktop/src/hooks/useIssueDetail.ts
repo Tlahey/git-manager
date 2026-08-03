@@ -23,7 +23,8 @@ export function useIssueDetail(
     issueNumber != null && ownerRepo && token
       ? ['issue-detail', ownerRepo.owner, ownerRepo.repo, issueNumber, token]
       : null,
-    () => fetchIssueDetail(ownerRepo!.owner, ownerRepo!.repo, issueNumber as number, token as string),
+    () =>
+      fetchIssueDetail(ownerRepo!.owner, ownerRepo!.repo, issueNumber as number, token as string),
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 

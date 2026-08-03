@@ -291,10 +291,7 @@ describe('SidebarRowView — remote-group', () => {
       />
     )
     fireEvent.click(screen.getByLabelText('Hide these remote branches from the graph'))
-    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(
-      ['origin/main', 'origin/dev'],
-      true
-    )
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(['origin/main', 'origin/dev'], true)
   })
 
   it('offers to show them again, and dims the row, once all of them are hidden', () => {
@@ -311,21 +308,14 @@ describe('SidebarRowView — remote-group', () => {
     expect(container.querySelector('.opacity-50')).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('Show these remote branches in the graph'))
-    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(
-      ['origin/main', 'origin/dev'],
-      false
-    )
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(['origin/main', 'origin/dev'], false)
   })
 
   // Partly hidden is still "showing", so the action stays "hide" — but the toggle has to be
   // visible at rest, since a hover-only icon would say nothing about the branches already gone.
   it('keeps the toggle on screen, dimmed, when only some branches below are hidden', () => {
     render(
-      <SidebarRowView
-        row={remoteGroup()}
-        {...baseHandlers()}
-        hiddenBranches={['origin/main']}
-      />
+      <SidebarRowView row={remoteGroup()} {...baseHandlers()} hiddenBranches={['origin/main']} />
     )
     const toggle = screen.getByLabelText('Hide these remote branches from the graph')
     expect(toggle.className).toContain('opacity-100')
@@ -438,11 +428,7 @@ describe('SidebarRowView — remote-branch', () => {
 
   it('dims a hidden branch and offers to bring it back', () => {
     const { container } = render(
-      <SidebarRowView
-        row={remoteBranch()}
-        {...baseHandlers()}
-        hiddenBranches={['origin/main']}
-      />
+      <SidebarRowView row={remoteBranch()} {...baseHandlers()} hiddenBranches={['origin/main']} />
     )
     expect(screen.getByLabelText('Show this remote branch in the graph')).toBeInTheDocument()
     expect(container.querySelector('.lucide-eye-off')).toBeTruthy()
@@ -698,7 +684,11 @@ describe('SidebarRowView — tag', () => {
         row={{
           kind: 'tag',
           id: 't-1',
-          tag: tag({ name: 'refs/tags/v1.0.0', shortName: 'v1.0.0', commitOid: 'abcdef1234567890' }),
+          tag: tag({
+            name: 'refs/tags/v1.0.0',
+            shortName: 'v1.0.0',
+            commitOid: 'abcdef1234567890',
+          }),
           isSelected: false,
         }}
         {...h}
@@ -912,11 +902,7 @@ describe('SidebarRowView — stash', () => {
     expect(toggle).toHaveAttribute('title', 'Hide this stash from the graph')
 
     render(
-      <SidebarRowView
-        row={visibleRow}
-        {...baseHandlers()}
-        hiddenStashes={['stashoid1234567']}
-      />
+      <SidebarRowView row={visibleRow} {...baseHandlers()} hiddenStashes={['stashoid1234567']} />
     )
     expect(screen.getByLabelText('Show this stash in the graph')).toBeInTheDocument()
   })
@@ -980,9 +966,7 @@ describe('SidebarRowView — stash', () => {
     expect(shownToggle.className).toContain('opacity-0')
     expect(shownToggle.className).toContain('group-hover/stash:opacity-100')
 
-    render(
-      <SidebarRowView row={row} {...baseHandlers()} hiddenStashes={['stashoid1234567']} />
-    )
+    render(<SidebarRowView row={row} {...baseHandlers()} hiddenStashes={['stashoid1234567']} />)
     const hiddenToggle = screen.getByLabelText('Show this stash in the graph')
     expect(hiddenToggle.className).toContain('opacity-100')
     expect(hiddenToggle.className).not.toContain('opacity-0')

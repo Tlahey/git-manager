@@ -85,12 +85,15 @@ Then(/^the sidebar lists a worktree for branch "([^"]*)"$/, async (branchName: s
   })
 })
 
-Then(/^the sidebar no longer lists a worktree for branch "([^"]*)"$/, async (branchName: string) => {
-  await browser.waitUntil(async () => !(await worktreeRowHasBranch(branchName)), {
-    timeout: 10000,
-    timeoutMsg: `Worktree row for branch "${branchName}" is still present`,
-  })
-})
+Then(
+  /^the sidebar no longer lists a worktree for branch "([^"]*)"$/,
+  async (branchName: string) => {
+    await browser.waitUntil(async () => !(await worktreeRowHasBranch(branchName)), {
+      timeout: 10000,
+      timeoutMsg: `Worktree row for branch "${branchName}" is still present`,
+    })
+  }
+)
 
 When(/^I click the add-worktree button$/, async () => {
   // Click-then-recheck rather than click-then-wait: a click dispatched during a sidebar

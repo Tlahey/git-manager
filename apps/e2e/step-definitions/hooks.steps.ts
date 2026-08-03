@@ -48,13 +48,33 @@ Before(async () => {
   // passing in isolation, where no override was ever written.
   const repoOverrides = {}
 
+  // Kept even though GitLab and Bitbucket are currently unlisted: a connected account is
+  // persisted settings like any other, and localStorage survives app relaunches, so one left by an
+  // older build (or by re-enabling a provider locally) would otherwise carry into every run.
+  // Spelled out as the factory shape rather than `{}` — an empty object means "reset the group" to
+  // the baseline, and the panels read `gitlabAccounts.length` straight off it.
+  const integrations = {
+    gitlabAccounts: [],
+    gitlabActiveAccountId: null,
+    bitbucketAccounts: [],
+    bitbucketActiveAccountId: null,
+  }
+
   // One driver command for the whole baseline — clearing the volatile persisted slices, patching
   // the live settings store, and seeding settings + graph columns. It used to be three, and the
   // hook runs before all 160 scenarios; a measured full run spent 58.6 of its 62 minutes outside
   // step execution, with these round trips the dominant remaining candidate. See
   // support/scenarioBaseline.ts for the ordering constraints inside it.
   const baseline = {
-    settings: { appearance, ai, notifications, dailySummary, repoOverrides, language: 'en' },
+    settings: {
+      appearance,
+      ai,
+      notifications,
+      dailySummary,
+      repoOverrides,
+      integrations,
+      language: 'en',
+    },
     columns: {
       refs: { visible: true, width: 160 },
       // Wide enough that no fixture's lane count pushes the graph column into its
@@ -90,9 +110,7 @@ Before(async () => {
     await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
     await browser.waitUntil(
       async () =>
-        await browser.execute(
-          () => (document.getElementById('root')?.childElementCount ?? 0) > 0
-        ),
+        await browser.execute(() => (document.getElementById('root')?.childElementCount ?? 0) > 0),
       { timeout: 15000, timeoutMsg: 'The app did not remount after a crash-recovery reload' }
     )
     // The seeds above landed in the crashed document; the reload rehydrated from them, but the

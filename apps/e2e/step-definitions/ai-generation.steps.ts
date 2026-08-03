@@ -96,10 +96,10 @@ When(/^I click the commit-generate button$/, async () => {
 
 Then(/^the commit message becomes "([^"]*)"$/, async (expected: string) => {
   const input = $('[data-testid="commit-message-input"]')
-  await browser.waitUntil(
-    async () => (await input.getValue()) === expected,
-    { timeout: 15000, timeoutMsg: `commit message never became "${expected}"` }
-  )
+  await browser.waitUntil(async () => (await input.getValue()) === expected, {
+    timeout: 15000,
+    timeoutMsg: `commit message never became "${expected}"`,
+  })
 })
 
 // The fake server runs in this same Node process (unlike the app's own state, which lives inside

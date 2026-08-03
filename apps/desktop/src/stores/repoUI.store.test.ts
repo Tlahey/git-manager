@@ -231,10 +231,7 @@ describe('useRepoUIStore — activeIssue', () => {
       () => useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false }),
       () => useRepoUIStore.getState().setPrCreateOpen(true),
       () => useRepoUIStore.getState().openPrCreateWith('feat', 'main'),
-      () =>
-        useRepoUIStore
-          .getState()
-          .setPrComposer({ head: 'feat', baseRef: 'main', title: 'x' }),
+      () => useRepoUIStore.getState().setPrComposer({ head: 'feat', baseRef: 'main', title: 'x' }),
     ]
     for (const take of takeOver) {
       useRepoUIStore.getState().setActiveIssue(issue(12))
@@ -534,7 +531,6 @@ describe('useRepoUIStore — clearTabStateForRemovedRepo', () => {
     expect(state.activeRepo).toBe('/repo/b')
     expect(state.activeTab).toBe('/repo/b')
   })
-
 })
 
 describe('useRepoUIStore — empty "New Tab" placeholders', () => {

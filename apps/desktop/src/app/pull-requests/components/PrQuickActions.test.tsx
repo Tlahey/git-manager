@@ -127,13 +127,7 @@ describe('PrQuickActions', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Close PR' }))
 
     await waitFor(() =>
-      expect(mockedUpdate).toHaveBeenCalledWith(
-        'me',
-        'git-manager',
-        42,
-        { state: 'closed' },
-        'tok'
-      )
+      expect(mockedUpdate).toHaveBeenCalledWith('me', 'git-manager', 42, { state: 'closed' }, 'tok')
     )
   })
 })

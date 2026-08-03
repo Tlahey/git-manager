@@ -55,10 +55,7 @@ export function EmptyRepoPanel({ repoPath }: EmptyRepoPanelProps) {
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <Card
-        data-testid="empty-repo-panel"
-        className="max-w-sm space-y-3 p-5 text-center"
-      >
+      <Card data-testid="empty-repo-panel" className="max-w-sm space-y-3 p-5 text-center">
         <GitCommitHorizontal className="mx-auto h-6 w-6 text-muted-foreground" />
         <p className="text-sm text-foreground">{t('emptyRepo.message', { repo: repoName })}</p>
         {error && <p className="text-xs text-destructive">{error}</p>}

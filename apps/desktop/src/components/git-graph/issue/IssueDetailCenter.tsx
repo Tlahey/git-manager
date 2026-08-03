@@ -89,7 +89,8 @@ export function IssueDetailCenter({
                   {isOpen ? t('issue.view.stateOpen') : t('issue.view.stateClosed')}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {detail.user?.login ?? '—'} · {new Date(detail.created_at).toLocaleDateString(i18n.language)}
+                  {detail.user?.login ?? '—'} ·{' '}
+                  {new Date(detail.created_at).toLocaleDateString(i18n.language)}
                 </span>
               </div>
             </div>

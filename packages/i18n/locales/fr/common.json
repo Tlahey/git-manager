@@ -349,5 +349,17 @@
   "aiStatus.work.commitSearchAnswer": "Rédaction de la réponse…",
   "aiStatus.notch.eyebrow": "IA",
   "aiStatus.notch.steps": "{{done}} / {{total}} fichiers",
-  "aiStatus.notch.open": "Ouvrir"
+  "aiStatus.notch.open": "Ouvrir",
+  "commandPalette.group.ref": "Branches et tags",
+  "commandPalette.ref.merge": "Fusionner {{branch}} dans {{current}}",
+  "commandPalette.ref.merged": "{{branch}} fusionnée dans {{current}}",
+  "commandPalette.ref.fastForward": "Avance rapide de {{current}} vers {{branch}}",
+  "commandPalette.ref.fastForwarded": "{{current}} avancée vers {{branch}}",
+  "commandPalette.ref.deleteRemoteBranch": "Supprimer la branche distante {{branch}}",
+  "commandPalette.ref.pushTag": "Publier le tag {{tag}}",
+  "commandPalette.ref.tagPushed": "Tag {{tag}} publié",
+  "commandPalette.ref.deleteTag": "Supprimer le tag local {{tag}}",
+  "commandPalette.ref.tagDeleted": "Tag local {{tag}} supprimé",
+  "commandPalette.ref.deleteRemoteTag": "Supprimer le tag distant {{tag}}",
+  "commandPalette.commit.createPatch": "Créer un fichier patch du commit"
 }

@@ -166,7 +166,9 @@ describe('RecomposeDialog', () => {
       })
     )
     renderDialog()
-    expect(screen.getByTestId('recompose-validation-aaa')).toHaveTextContent('Missing a type prefix')
+    expect(screen.getByTestId('recompose-validation-aaa')).toHaveTextContent(
+      'Missing a type prefix'
+    )
     expect(screen.getByTestId('recompose-apply')).toBeEnabled()
   })
 })

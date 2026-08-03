@@ -91,7 +91,9 @@ describe('NotchBody — status', () => {
   })
 
   it('keeps the LAST lines of output, which is where the error is', () => {
-    render(<NotchBody model={{ ...status, outputLines: ['one', 'two', 'three', 'four', 'five'] }} />)
+    render(
+      <NotchBody model={{ ...status, outputLines: ['one', 'two', 'three', 'four', 'five'] }} />
+    )
     const output = screen.getByTestId('notch-status-output')
     expect(output).toHaveTextContent('three')
     expect(output).toHaveTextContent('five')

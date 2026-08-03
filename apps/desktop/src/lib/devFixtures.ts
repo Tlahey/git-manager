@@ -52,9 +52,8 @@ export interface DevFixtures {
 export async function loadDevFixtures(): Promise<DevFixtures | null> {
   if (!DEV_FIXTURES_AVAILABLE) return null
 
-  const { MOCK_PRS, MOCK_ISSUES, getMockContributions } = await import(
-    '../app/pull-requests/mockData'
-  )
+  const { MOCK_PRS, MOCK_ISSUES, getMockContributions } =
+    await import('../app/pull-requests/mockData')
 
   return {
     // Copies, not the shared array: `simulateChange` mutates what it is given, and a second load

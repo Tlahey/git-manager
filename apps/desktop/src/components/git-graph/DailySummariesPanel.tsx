@@ -35,10 +35,20 @@ interface DailySummariesPanelProps {
  */
 export function DailySummariesPanel({ repoPath, onClose }: DailySummariesPanelProps) {
   const { t } = useTranslation('dashboard')
-  const { entries: repoEntries, isLoading, error, refresh, remove } =
-    useDailySummaryHistory(repoPath)
-  const { isGenerating, progress, skipped, error: generateError, generate } =
-    useDailySummary(repoPath)
+  const {
+    entries: repoEntries,
+    isLoading,
+    error,
+    refresh,
+    remove,
+  } = useDailySummaryHistory(repoPath)
+  const {
+    isGenerating,
+    progress,
+    skipped,
+    error: generateError,
+    generate,
+  } = useDailySummary(repoPath)
   const aiEnabled = useAiEnabled()
   const editorCommand = useSettingsStore((s) => s.settings.git.externalEditorCommand)
 

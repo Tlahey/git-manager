@@ -38,9 +38,7 @@ function hookResult(
 ) {
   return {
     checks,
-    mergedWorktrees: checks
-      .filter((c) => typeof c.status === 'object')
-      .map((c) => c.worktree),
+    mergedWorktrees: checks.filter((c) => typeof c.status === 'object').map((c) => c.worktree),
     isLoading: false,
     isGithub: true,
     hasToken: true,
@@ -48,7 +46,9 @@ function hookResult(
   }
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof RemoveMergedWorktreesDialog>> = {}) {
+function renderDialog(
+  props: Partial<React.ComponentProps<typeof RemoveMergedWorktreesDialog>> = {}
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
   const utils = render(
@@ -80,21 +80,29 @@ describe('RemoveMergedWorktreesDialog — body states', () => {
   it('shows a no-GitHub-remote message and disables confirm', () => {
     useMergedWorktreesMock.mockReturnValue(hookResult([], { isGithub: false }))
     renderDialog()
-    expect(screen.getByText("No GitHub remote — detecting merged branches locally (deleted remote branch) only.")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No GitHub remote — detecting merged branches locally (deleted remote branch) only.'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByTestId('worktree-remove-merged-confirm-button')).toBeDisabled()
   })
 
   it('shows a no-token message and disables confirm', () => {
     useMergedWorktreesMock.mockReturnValue(hookResult([], { hasToken: false }))
     renderDialog()
-    expect(screen.getByText("No GitHub account connected — detecting merged branches locally (deleted remote branch) only.")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No GitHub account connected — detecting merged branches locally (deleted remote branch) only.'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByTestId('worktree-remove-merged-confirm-button')).toBeDisabled()
   })
 
   it('shows a checking message and spinner while loading', () => {
     useMergedWorktreesMock.mockReturnValue(hookResult([], { isLoading: true }))
     renderDialog()
-    expect(screen.getByText("Checking merge status…")).toBeInTheDocument()
+    expect(screen.getByText('Checking merge status…')).toBeInTheDocument()
     expect(screen.getByTestId('worktree-remove-merged-confirm-button')).toBeDisabled()
   })
 
@@ -103,7 +111,11 @@ describe('RemoveMergedWorktreesDialog — body states', () => {
       hookResult([{ worktree: worktree(), status: 'no-match' }])
     )
     renderDialog()
-    expect(screen.getByText("No worktrees qualify right now — none are both clean and merged (remote branch gone or a merged pull request).")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No worktrees qualify right now — none are both clean and merged (remote branch gone or a merged pull request).'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByTestId('worktree-remove-merged-confirm-button')).toBeDisabled()
   })
 
@@ -128,33 +140,27 @@ describe('RemoveMergedWorktreesDialog — body states', () => {
     expect(mergedCard).toHaveTextContent('feature/a')
     expect(mergedCard).toHaveTextContent('/tmp/wt-a')
     expect(mergedCard.querySelector('.lucide-layers')).toBeTruthy()
-    expect(
-      screen.getByTitle("Merged in PR #1")
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByTestId('worktree-remove-merged-reason-/tmp/wt-a')
-    ).not.toBeInTheDocument()
+    expect(screen.getByTitle('Merged in PR #1')).toBeInTheDocument()
+    expect(screen.queryByTestId('worktree-remove-merged-reason-/tmp/wt-a')).not.toBeInTheDocument()
 
     // Non-eligible cards spell out their reason under the name/path block.
     expect(screen.getByTestId('worktree-remove-merged-reason-/tmp/wt-b')).toHaveTextContent(
-      "Uncommitted changes"
+      'Uncommitted changes'
     )
     expect(screen.getByTestId('worktree-remove-merged-reason-/tmp/wt-c')).toHaveTextContent(
-      "Not on a branch"
+      'Not on a branch'
     )
     expect(screen.getByTestId('worktree-remove-merged-reason-/tmp/wt-d')).toHaveTextContent(
-      "Not merged (remote branch still exists, no merged PR)"
+      'Not merged (remote branch still exists, no merged PR)'
     )
     expect(screen.getByTestId('worktree-remove-merged-confirm-button')).toBeEnabled()
   })
 
   it('shows a green check with a tooltip and no reason for a branch-gone worktree', () => {
     const gone = worktree({ path: '/tmp/wt-gone', branch: 'feature/gone' })
-    useMergedWorktreesMock.mockReturnValue(
-      hookResult([{ worktree: gone, status: 'branch-gone' }])
-    )
+    useMergedWorktreesMock.mockReturnValue(hookResult([{ worktree: gone, status: 'branch-gone' }]))
     renderDialog()
-    expect(screen.getByTitle("Merged (remote branch deleted)")).toBeInTheDocument()
+    expect(screen.getByTitle('Merged (remote branch deleted)')).toBeInTheDocument()
     expect(
       screen.queryByTestId('worktree-remove-merged-reason-/tmp/wt-gone')
     ).not.toBeInTheDocument()
@@ -197,9 +203,7 @@ describe('RemoveMergedWorktreesDialog — confirming', () => {
   it('keeps failed removals listed for retry and reports them, without closing', async () => {
     const ok = worktree({ path: '/tmp/ok', branch: 'feature/ok' })
     const fails = worktree({ path: '/tmp/fails', branch: 'feature/fails' })
-    useMergedWorktreesMock.mockReturnValue(
-      hookResult([mergedCheck(ok), mergedCheck(fails, 2)])
-    )
+    useMergedWorktreesMock.mockReturnValue(hookResult([mergedCheck(ok), mergedCheck(fails, 2)]))
     mockedRemoveWorktree.mockImplementation(async (_path: string, worktreePath: string) => {
       if (worktreePath === '/tmp/fails') throw new Error('boom')
     })
@@ -222,7 +226,7 @@ describe('RemoveMergedWorktreesDialog — confirming', () => {
     const user = userEvent.setup()
     renderDialog({ onClose })
 
-    await user.click(screen.getByText("Cancel"))
+    await user.click(screen.getByText('Cancel'))
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedRemoveWorktree).not.toHaveBeenCalled()
@@ -245,7 +249,7 @@ describe('RemoveMergedWorktreesDialog — mine-only mode', () => {
     const user = userEvent.setup()
     renderDialog({ mineOnly: true, currentUser: 'Alice' })
 
-    expect(screen.getAllByText("Remove my merged worktrees").length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Remove my merged worktrees').length).toBeGreaterThan(0)
     expect(screen.getByTestId('worktree-remove-merged-item-/tmp/mine')).toBeInTheDocument()
     expect(screen.queryByTestId('worktree-remove-merged-item-/tmp/theirs')).not.toBeInTheDocument()
     expect(screen.queryByTestId('worktree-remove-merged-item-/tmp/gone')).not.toBeInTheDocument()

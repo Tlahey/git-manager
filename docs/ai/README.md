@@ -13,21 +13,21 @@ specific to it — its prompt, its inputs, its UI, its limits.
 
 ## The features
 
-| Feature | What it does | Kind | Where you trigger it |
-| ------- | ------------ | ---- | -------------------- |
-| [Commit message](./commit-message.md) | Writes the message for the staged changes | completion + schema | ✨ in the WIP staging panel |
-| [File grouping](./file-grouping.md) | Splits all working changes into a plan of atomic commits | completion + JSON schema | "AI commits" in the WIP panel |
-| [PR description](./pr-description.md) | Writes the body of a pull request from a branch's range diff | streaming | ✨ in the PR composer / create form |
-| [Branch explanation](./branch-explanation.md) | Explains what a whole branch changes, in a right panel, remembered per branch | streaming | right-click a commit or a branch → *Explain branch changes (LLM)* |
-| [Commit explanation](./commit-explanation.md) | Explains what one commit actually does, beyond its message | streaming | right-click a commit → *Explain this commit (LLM)* |
-| [Change explanation](./change-explanation.md) | Explains one file's pending diff, read against the file itself | streaming | *Explain* above the diff, on a working-copy file |
-| [Working explanation](./working-explanation.md) | Summarizes everything uncommitted — what you are in the middle of | streaming | right-click the WIP row → *Explain working changes (LLM)* |
-| [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
-| [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository, read file by file off the main branch and archived as markdown | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
-| [Summary search](./summary-search.md) | Answers a question about the archived briefings, citing the days it rests on | completion + JSON schema | the question box on the Summaries tab |
-| [Commit search](./commit-search.md) | Answers a question about recent history by reading every commit in a window, one at a time | completion + JSON schema per commit, then streaming | the AI menu → *Search history*, or ⇧⌘F |
-| [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
-| [Action explanation](./action-explanation.md) | Explains the git commands the app ran behind an action you performed — the one feature aimed at needing the app less | streaming | the 🎓 button in the footer → pick an action → *Explain* |
+| Feature                                         | What it does                                                                                                         | Kind                                                | Where you trigger it                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [Commit message](./commit-message.md)           | Writes the message for the staged changes                                                                            | completion + schema                                 | ✨ in the WIP staging panel                                                                          |
+| [File grouping](./file-grouping.md)             | Splits all working changes into a plan of atomic commits                                                             | completion + JSON schema                            | "AI commits" in the WIP panel                                                                        |
+| [PR description](./pr-description.md)           | Writes the body of a pull request from a branch's range diff                                                         | streaming                                           | ✨ in the PR composer / create form                                                                  |
+| [Branch explanation](./branch-explanation.md)   | Explains what a whole branch changes, in a right panel, remembered per branch                                        | streaming                                           | right-click a commit or a branch → _Explain branch changes (LLM)_                                    |
+| [Commit explanation](./commit-explanation.md)   | Explains what one commit actually does, beyond its message                                                           | streaming                                           | right-click a commit → _Explain this commit (LLM)_                                                   |
+| [Change explanation](./change-explanation.md)   | Explains one file's pending diff, read against the file itself                                                       | streaming                                           | _Explain_ above the diff, on a working-copy file                                                     |
+| [Working explanation](./working-explanation.md) | Summarizes everything uncommitted — what you are in the middle of                                                    | streaming                                           | right-click the WIP row → _Explain working changes (LLM)_                                            |
+| [Code review](./code-review.md)                 | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion                            | streaming                                           | right-click the WIP row → _Review changes (LLM)_, or a commit/branch → _Review branch changes (LLM)_ |
+| [Daily summary](./daily-summary.md)             | A "yesterday / today" briefing per repository, read file by file off the main branch and archived as markdown        | completion + JSON schema                            | ✨ on a dashboard project, and automatically each morning                                            |
+| [Summary search](./summary-search.md)           | Answers a question about the archived briefings, citing the days it rests on                                         | completion + JSON schema                            | the question box on the Summaries tab                                                                |
+| [Commit search](./commit-search.md)             | Answers a question about recent history by reading every commit in a window, one at a time                           | completion + JSON schema per commit, then streaming | the AI menu → _Search history_, or ⇧⌘F                                                               |
+| [Recompose a commit](./commit-recompose.md)     | Rewrites the message of a commit that already exists, reviewed before it is applied                                  | completion                                          | right-click a commit → _Rewrite this commit's message (LLM)_                                         |
+| [Action explanation](./action-explanation.md)   | Explains the git commands the app ran behind an action you performed — the one feature aimed at needing the app less | streaming                                           | the 🎓 button in the footer → pick an action → _Explain_                                             |
 
 Every feature listed here is built. See the roadmap section at the bottom for what is not.
 
@@ -79,12 +79,12 @@ deleted rather than shipped beside a tested one.
 
 The invariants that shape hold, and why they are worth protecting:
 
-| Invariant | Why |
-| --------- | --- |
-| The Rust provider is a **dumb transport** — it relays a prebuilt system/user pair | Changing a prompt never means recompiling Rust or shipping a release |
-| `packages/ai` imports **no** `@tauri-apps/api` | Prompt logic stays unit-testable in plain Node, with no IPC to fake |
-| Only `api/*.api.ts` calls `invoke()` | Repo-wide hard rule; bypassing it silently drops undo/event-bus behaviour elsewhere |
-| Settings hold **connection data only** | Instruction and temperature belong to the feature; a wrong temperature degrades output nobody can debug |
+| Invariant                                                                         | Why                                                                                                     |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| The Rust provider is a **dumb transport** — it relays a prebuilt system/user pair | Changing a prompt never means recompiling Rust or shipping a release                                    |
+| `packages/ai` imports **no** `@tauri-apps/api`                                    | Prompt logic stays unit-testable in plain Node, with no IPC to fake                                     |
+| Only `api/*.api.ts` calls `invoke()`                                              | Repo-wide hard rule; bypassing it silently drops undo/event-bus behaviour elsewhere                     |
+| Settings hold **connection data only**                                            | Instruction and temperature belong to the feature; a wrong temperature degrades output nobody can debug |
 
 ---
 
@@ -101,7 +101,7 @@ Two presets ship, both speaking the `openai-compatible` protocol: **Ollama** (de
 vLLM, MLX, OpenAI itself. `anthropic-messages` has a registry entry but its provider is a stub that errors — no preset points at it.
 
 `resolveGenerateConfig(connection, feature.temperature)` resolves the preset to its **protocol** and
-splices in the temperature the *feature* chose. That is the whole negotiation.
+splices in the temperature the _feature_ chose. That is the whole negotiation.
 
 `enabled: false` (the master switch) hides every AI affordance in the app — no buttons, no footer
 pill, no automatic daily summary. Users who don't want AI never see AI chrome.
@@ -115,12 +115,12 @@ verbatim, so typing the base URL an OpenAI SDK expects doesn't produce `/v1/v1/m
 A generation has four different waits, and one number cannot bound them all — trying to was the bug
 behind a history search that lost six of ten commits.
 
-| Wait | Bounded by | Why it is separate |
-| ---- | ---------- | ------------------ |
-| Reaching the server | `CONNECT_TIMEOUT_SECONDS` (10 s, fixed) | An unreachable provider must fail in seconds however long the user will wait for tokens — on both the streaming and the one-shot client |
-| Prompt processing, up to the **first** token | `timeoutSeconds` (the user's setting) | The long part on a local model reading a whole diff. This is what the setting is *for* |
-| Silence **between** tokens | `STREAM_IDLE_TIMEOUT_SECONDS` (30 s, fixed) | Inter-token gaps are milliseconds, so a long one means a dead stream, not a slow model. Not configurable: its natural range is narrow |
-| Generation length | `max_tokens`, sent on every request | A clock is the wrong tool for a runaway model. Every feature declares its own room (`reservedOutputTokens`) and the cap is what makes the prompt's reserve true |
+| Wait                                         | Bounded by                                  | Why it is separate                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reaching the server                          | `CONNECT_TIMEOUT_SECONDS` (10 s, fixed)     | An unreachable provider must fail in seconds however long the user will wait for tokens — on both the streaming and the one-shot client                         |
+| Prompt processing, up to the **first** token | `timeoutSeconds` (the user's setting)       | The long part on a local model reading a whole diff. This is what the setting is _for_                                                                          |
+| Silence **between** tokens                   | `STREAM_IDLE_TIMEOUT_SECONDS` (30 s, fixed) | Inter-token gaps are milliseconds, so a long one means a dead stream, not a slow model. Not configurable: its natural range is narrow                           |
+| Generation length                            | `max_tokens`, sent on every request         | A clock is the wrong tool for a runaway model. Every feature declares its own room (`reservedOutputTokens`) and the cap is what makes the prompt's reserve true |
 
 A **one-shot** completion has no first-token wait — the body arrives whole — so there `timeoutSeconds`
 caps the entire generation. That is why its default is 120 s rather than the 30 s that was fine back
@@ -128,7 +128,7 @@ when the budget only ever measured a stream's silence.
 
 **`timeoutSeconds: 0` removes that clock entirely**, and only that one. The other three stay: an
 unreachable provider still fails in ten seconds, a dead stream is still cut after thirty, and output
-is still capped by `max_tokens`. What is gone is the clock on a model that is *working* — which is
+is still capped by `max_tokens`. What is gone is the clock on a model that is _working_ — which is
 the one that cannot be set correctly in advance, because the wait it bounds varies by more than an
 order of magnitude with the model, the diff and how many calls are in flight. And it fails in the
 worst possible direction: a budget guessed low does not degrade an answer, it **deletes commits from
@@ -141,27 +141,27 @@ check, rather than one long await during which Stop would do nothing.
 ### Reading several at once
 
 Every map phase — `summarizeFiles` over a changeset's files, `scanCommits` over history's commits —
-runs one call at a time by default, and the *Calls in flight* setting (`concurrency`) widens it. Both
+runs one call at a time by default, and the _Calls in flight_ setting (`concurrency`) widens it. Both
 share one bounded pool, [`mapConcurrently`](../../packages/ai/src/features/mapConcurrently.ts).
 
 The default is **1**, and it is not a placeholder. Whether concurrency helps at all is decided by the
 provider's scheduler, not by this code:
 
-| Server | What N concurrent requests do |
-| ------ | ----------------------------- |
-| Ollama, out of the box | Queue. It serves one generation per model unless `OLLAMA_NUM_PARALLEL` says otherwise, so the surplus waits at the socket |
-| A server doing **continuous batching** (vLLM, some MLX servers) | Enter the same forward pass. Real throughput gain |
+| Server                                                          | What N concurrent requests do                                                                                             |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Ollama, out of the box                                          | Queue. It serves one generation per model unless `OLLAMA_NUM_PARALLEL` says otherwise, so the surplus waits at the socket |
+| A server doing **continuous batching** (vLLM, some MLX servers) | Enter the same forward pass. Real throughput gain                                                                         |
 
-The code used to assert the first case for everyone — *"the provider is normally a local model with
-one copy resident, so concurrent requests queue behind the same weights"*. Measured against an MLX
+The code used to assert the first case for everyone — _"the provider is normally a local model with
+one copy resident, so concurrent requests queue behind the same weights"_. Measured against an MLX
 server with 8-way admission, 8 requests carrying one commit's diff each:
 
-| In flight | Total | Per request | Slowest |
-| --------- | ----- | ----------- | ------- |
-| 1 | 15.8 s | 2.0 s | 2.5 s |
-| 2 | 14.2 s | 3.5 s | 4.1 s |
-| 4 | 8.9 s | 4.4 s | 6.2 s |
-| 8 | 7.8 s | 7.6 s | 7.8 s |
+| In flight | Total  | Per request | Slowest |
+| --------- | ------ | ----------- | ------- |
+| 1         | 15.8 s | 2.0 s       | 2.5 s   |
+| 2         | 14.2 s | 3.5 s       | 4.1 s   |
+| 4         | 8.9 s  | 4.4 s       | 6.2 s   |
+| 8         | 7.8 s  | 7.6 s       | 7.8 s   |
 
 So the assertion was wrong for that server and right for the default one, which is exactly why this
 is a setting rather than a change.
@@ -174,7 +174,7 @@ early: 4 in flight bought 88% of what 8 did.
 
 Two things get worse, and neither is fixable here:
 
-- **Cancellation gets coarser.** `shouldCancel` is polled before *dispatching*, never during a call,
+- **Cancellation gets coarser.** `shouldCancel` is polled before _dispatching_, never during a call,
   because the completion transport takes no request id. At 1 in flight, stopping wastes one call. At
   8 it wastes 8.
 - **The KV cache is shared.** Concurrent requests compete for it, and a server that shrinks the
@@ -188,17 +188,17 @@ meaning while the run fills in.
 
 ### Reasoning models, and getting them to stop
 
-A reasoning model narrates before it answers. Where that narration *goes* is the provider's business,
+A reasoning model narrates before it answers. Where that narration _goes_ is the provider's business,
 and it has exactly one good outcome and two bad ones:
 
-| | What the user sees |
-| --- | --- |
+|                                                    | What the user sees                                                                             |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | The provider separates it into `reasoning_content` | Nothing. The app reads `delta.content` only, which is why most features never had this problem |
-| The provider gives up separating it | "Thinking Process: 1. Analyze the request…" above the answer |
-| It is asked not to think at all | Nothing, and faster |
+| The provider gives up separating it                | "Thinking Process: 1. Analyze the request…" above the answer                                   |
+| It is asked not to think at all                    | Nothing, and faster                                                                            |
 
 The middle row is the one that bites, and its usual cause is not the model — it is **truncation**. A
-provider only separates deliberation from answer once the generation *completes*; cut it off
+provider only separates deliberation from answer once the generation _completes_; cut it off
 mid-thought with `max_tokens` and the server folds the partial reasoning into the content it streams.
 So a token budget too small does not merely shorten an answer, it is what puts the narration on
 screen. That is why the answer features reserve generously, and it is the first thing to check.
@@ -212,11 +212,11 @@ The app defends on both sides:
 - **`extraBody`** in Settings sends whatever switch the user's server understands, because there is
   no standard one:
 
-| Spelling | Where it works |
-| --- | --- |
-| `{"reasoning_effort": "none"}` | In the OpenAI spec; Ollama maps it onto its own `think` |
-| `{"chat_template_kwargs": {"enable_thinking": false}}` | vLLM, SGLang — what Qwen's model card documents |
-| `{"think": false}` | Ollama's **native** API, not its `/v1` surface |
+| Spelling                                               | Where it works                                          |
+| ------------------------------------------------------ | ------------------------------------------------------- |
+| `{"reasoning_effort": "none"}`                         | In the OpenAI spec; Ollama maps it onto its own `think` |
+| `{"chat_template_kwargs": {"enable_thinking": false}}` | vLLM, SGLang — what Qwen's model card documents         |
+| `{"think": false}`                                     | Ollama's **native** API, not its `/v1` surface          |
 
 The app cannot send all of them: an unknown field is an HTTP 400 on a strict server, and that would
 break working setups. It cannot pick one either. So the user names theirs, and the field is empty by
@@ -235,16 +235,16 @@ being usable. **The dividing line is not size — it is whether the model honors
 Half the features ask for a JSON object constrained by a schema (`response_format: json_schema`): the
 commit message, the commit plan, the daily summary, every per-file summary, every per-commit verdict.
 A model that ignores the schema and answers in prose does not produce worse results — it produces
-*none*, and every one of those calls is recorded as a failure. Measured on this repository:
+_none_, and every one of those calls is recorded as a failure. Measured on this repository:
 
-| Model | Provider | Structured output | Commit search on the button question | Verdict |
-| ----- | -------- | ----------------- | ------------------------------------ | ------- |
-| `Qwen3.6-27B-MXFP8-MTP` | omlx (OpenAI-compatible) | honored | 3/3 on the labelled spot check — finds the real hit, rejects both decoys | **recommended** |
-| `Qwen3.6-35B-A3B-MLX-8bit` | omlx (OpenAI-compatible) | honored | 3/3 on the same spot check | **recommended** |
-| `gemma4:12b-mlx` | Ollama | **ignored** — answers in prose | over 25 commits: 1 hit, 0 false positives, 6 unreadable | usable, degraded |
-| `gemma4:26b-mlx-bf16` | Ollama | **ignored** — answers in prose | 2/3 — rejects both decoys but **misses the real hit** (unreadable) | not recommended |
+| Model                      | Provider                 | Structured output              | Commit search on the button question                                     | Verdict          |
+| -------------------------- | ------------------------ | ------------------------------ | ------------------------------------------------------------------------ | ---------------- |
+| `Qwen3.6-27B-MXFP8-MTP`    | omlx (OpenAI-compatible) | honored                        | 3/3 on the labelled spot check — finds the real hit, rejects both decoys | **recommended**  |
+| `Qwen3.6-35B-A3B-MLX-8bit` | omlx (OpenAI-compatible) | honored                        | 3/3 on the same spot check                                               | **recommended**  |
+| `gemma4:12b-mlx`           | Ollama                   | **ignored** — answers in prose | over 25 commits: 1 hit, 0 false positives, 6 unreadable                  | usable, degraded |
+| `gemma4:26b-mlx-bf16`      | Ollama                   | **ignored** — answers in prose | 2/3 — rejects both decoys but **misses the real hit** (unreadable)       | not recommended  |
 
-Note the last two rows: the **bigger** model of the same family does *worse*. It rejects the decoys
+Note the last two rows: the **bigger** model of the same family does _worse_. It rejects the decoys
 and then fails to produce a readable verdict on the one commit that mattered — a miss that would
 have read as a confident "no, the button never changed". Twice the parameters buy nothing here
 because the constraint is the output contract, not the reasoning.
@@ -257,7 +257,7 @@ salvage path, not a substitute — a model that honors the schema is worth more 
 If a run reports a wall of unread commits, or the commit box fills with reasoning, the model is the
 thing to change first. That is also why the relevance verdict's field order matters: see
 [commit search](./commit-search.md#the-order-is-the-feature) for the failure a weaker model exhibits
-even when its output *is* well-formed.
+even when its output _is_ well-formed.
 
 > These numbers come from one repository, one question and four models. Treat the table as a starting
 > point rather than a compatibility matrix, and add rows as models are actually tried.
@@ -267,12 +267,12 @@ even when its output *is* well-formed.
 **Test the model** in Settings → AI no longer sends the word `ping`: it sends a tiny
 schema-constrained request and reports **two independent things**.
 
-| Field | Means | When it is false |
-| ----- | ----- | ---------------- |
-| `ok` | anything non-empty came back — the whole path works | wrong URL, model not pulled, auth, provider down |
-| `structured` | the reply was the JSON object the schema asked for | the model ignores `response_format` |
+| Field        | Means                                               | When it is false                                 |
+| ------------ | --------------------------------------------------- | ------------------------------------------------ |
+| `ok`         | anything non-empty came back — the whole path works | wrong URL, model not pulled, auth, provider down |
+| `structured` | the reply was the JSON object the schema asked for  | the model ignores `response_format`              |
 
-`ok: true, structured: false` is the state the probe exists for: everything *looks* configured, the
+`ok: true, structured: false` is the state the probe exists for: everything _looks_ configured, the
 page is green, and every schema-driven feature will fail on every call. Nothing else in the app says
 so until a feature runs — and for the commit search, that is half an hour of scanning that comes back
 unreadable.
@@ -301,18 +301,18 @@ probes it with the same button, because a second slot is a second way to be misc
 
 `contextTokens` is the one setting the whole AI stack takes on faith — every feature sizes its prompt
 from it, so declaring more than the provider serves rebuilds the silent truncation the setting exists
-to prevent, and worse than before, because the app then builds an oversized prompt *deliberately*.
+to prevent, and worse than before, because the app then builds an oversized prompt _deliberately_.
 
 The **Check against the model** button ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs))
 asks the provider what it can. Two of the three sources are Ollama's native endpoints; the third is
 not, and it is the only thing a non-Ollama provider gives us.
 
-| Source | Reports | Authority |
-| ------ | ------- | --------- |
-| `/api/show` → `<arch>.context_length` | The model's architectural ceiling | Can only prove a value **wrong**. A server can serve far less than the model supports |
-| `/api/show` → `parameters` `num_ctx` | What the Modelfile pins | Reported, never a verdict — the running server overrides it routinely |
-| `/api/ps` → `context_length` | The window the server **actually allocated** | Decides, in both directions — but only exists while the model is loaded |
-| `GET /v1/models` → `max_model_len` | What an OpenAI-compatible server says it serves | Same authority as the architectural ceiling — declared, not allocated. Non-standard, so usually absent; **omlx reports it**, and it is the only window signal outside Ollama |
+| Source                                | Reports                                         | Authority                                                                                                                                                                    |
+| ------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/show` → `<arch>.context_length` | The model's architectural ceiling               | Can only prove a value **wrong**. A server can serve far less than the model supports                                                                                        |
+| `/api/show` → `parameters` `num_ctx`  | What the Modelfile pins                         | Reported, never a verdict — the running server overrides it routinely                                                                                                        |
+| `/api/ps` → `context_length`          | The window the server **actually allocated**    | Decides, in both directions — but only exists while the model is loaded                                                                                                      |
+| `GET /v1/models` → `max_model_len`    | What an OpenAI-compatible server says it serves | Same authority as the architectural ceiling — declared, not allocated. Non-standard, so usually absent; **omlx reports it**, and it is the only window signal outside Ollama |
 
 `/api/ps` is what closes the old gap. A server-side `OLLAMA_CONTEXT_LENGTH` used to be invisible from
 here, so the best the check could say was "plausible"; now, with the model loaded, a declared value
@@ -324,7 +324,7 @@ costs coverage the model would have given for free.
 The default `contextTokens` is 4096; a user on omlx serving 128000 has every feature reading a
 fraction of every diff, forever, with only the coverage notice hinting at it. When the check finds a
 better number than the one declared it offers a one-click **Use N tokens** button
-(`suggestedContextWindow`), preferring what the server *allocated* over what it says it *could*
+(`suggestedContextWindow`), preferring what the server _allocated_ over what it says it _could_
 serve. It offers rather than applies: silently rewriting a value the user typed is not advice.
 
 Reading `/v1/models` needs the configured **API key** — omlx rejects it unauthenticated — which is why
@@ -347,11 +347,11 @@ Prompts are built in TypeScript, but the git data behind them comes from `git2` 
 `get_ai_context` ([ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs)). One
 command, three scopes:
 
-| Scope | Diff | Used by |
-| ----- | ---- | ------- |
-| `staged` | index vs HEAD — what a plain commit would capture | commit message |
-| `working` | worktree vs HEAD, untracked included | file grouping, working explanation, working review |
-| `range` | `merge-base(base, head)..head` | PR description, branch explanation, branch review |
+| Scope     | Diff                                              | Used by                                            |
+| --------- | ------------------------------------------------- | -------------------------------------------------- |
+| `staged`  | index vs HEAD — what a plain commit would capture | commit message                                     |
+| `working` | worktree vs HEAD, untracked included              | file grouping, working explanation, working review |
+| `range`   | `merge-base(base, head)..head`                    | PR description, branch explanation, branch review  |
 
 `range` takes the **merge base**, not the base tip — diffing `main..feat` naively reports main's own
 commits as deletions the branch never made. `head` defaults to `HEAD`; passing it explicitly is what
@@ -362,7 +362,7 @@ in package.json, or a git `commit.template`) and the subjects of recent non-merg
 message-writing features can match the project's actual style — which may be free-form, not
 Conventional Commits. See [commit message](./commit-message.md) for how that is used.
 
-The daily summary uses a different command, `get_ai_activity`, which looks *backwards* over a time
+The daily summary uses a different command, `get_ai_activity`, which looks _backwards_ over a time
 window instead of at a diff.
 
 The [commit search](./commit-search.md) uses a third, `get_ai_commit_scan`
@@ -415,18 +415,18 @@ Every event carries the same payload, the Rust `AiStreamEvent`:
 { "requestId": "ai-9f3c…", "token": "…" } // `token` only on ai:token
 ```
 
-| Event | Emitted by | Meaning |
-| ----- | ---------- | ------- |
-| `ai:token` | provider, per delta | one chunk of text |
-| `ai:done` | provider, on `[DONE]`/EOF | generation complete |
-| `ai:cancelled` | provider, when this request's cancel flag flips | stopped on request |
+| Event          | Emitted by                                      | Meaning             |
+| -------------- | ----------------------------------------------- | ------------------- |
+| `ai:token`     | provider, per delta                             | one chunk of text   |
+| `ai:done`      | provider, on `[DONE]`/EOF                       | generation complete |
+| `ai:cancelled` | provider, when this request's cancel flag flips | stopped on request  |
 
 > ⚠️ **These events are a broadcast, not a channel.** One Rust backend emits them to every listener
 > in every window, so `requestId` is what separates one generation from another — **a listener must
 > ignore any event whose id is not its own**. Before it existed, a commit message being written while
 > an explanation panel streamed interleaved both answers into both surfaces, and whichever finished
 > first ended the other. The id is minted frontend-side
-> ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) because the *listener* has to know
+> ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) because the _listener_ has to know
 > it before the request starts; it is passed to `ai_generate_stream`, and providers emit through
 > [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so they cannot forget to
 > attach it.
@@ -441,25 +441,25 @@ Every event carries the same payload, the Rust `AiStreamEvent`:
 
 The configured `timeoutSeconds` means something different per call kind, and the difference matters:
 
-| Call | Timeout applied | Meaning |
-| ---- | --------------- | ------- |
-| `ai_complete` (one-shot) | total request | longest the whole answer may take |
-| `ai_generate_stream` | **per read**, plus a 10s connect timeout | longest *silence* tolerated mid-stream |
+| Call                     | Timeout applied                          | Meaning                                |
+| ------------------------ | ---------------------------------------- | -------------------------------------- |
+| `ai_complete` (one-shot) | total request                            | longest the whole answer may take      |
+| `ai_generate_stream`     | **per read**, plus a 10s connect timeout | longest _silence_ tolerated mid-stream |
 
 reqwest's `Client::timeout` bounds the whole request **including reading the body**, so on a streamed
 response it caps the entire generation. With the 30s default that aborted any answer taking longer
-than half a minute — surfacing mid-stream as the thoroughly unhelpful *"error decoding response
-body"*. Streaming therefore uses `read_timeout` instead: a provider that goes silent still fails,
+than half a minute — surfacing mid-stream as the thoroughly unhelpful _"error decoding response
+body"_. Streaming therefore uses `read_timeout` instead: a provider that goes silent still fails,
 but a slow local model can take as long as it needs.
 
-If a cold model takes more than `timeoutSeconds` to emit its *first* token, raise the setting — that
+If a cold model takes more than `timeoutSeconds` to emit its _first_ token, raise the setting — that
 first wait is a silence like any other.
 
 ### The output reserve
 
 Every prompt is sized to leave room for the answer: `variableCharBudget` subtracts
 `RESERVED_OUTPUT_TOKENS` (600) before handing what's left to the diff. That reserve used to be a
-*hope* — nothing obliged the model to stay inside it, and an answer that ran past it overflowed the
+_hope_ — nothing obliged the model to stay inside it, and an answer that ran past it overflowed the
 very window the prompt had been sized against, dropping tokens from the **start**, where the
 instruction lives.
 
@@ -471,11 +471,11 @@ nobody spends.
 
 Two callers deliberately use a different N:
 
-| Caller | Cap | Why |
-| ------ | --- | --- |
-| Every prose feature | 600 | A review is capped at 300 words; prose answers don't scale with the input |
-| [File grouping](./file-grouping.md) | `max(600, files × 24)` | Its JSON must name **every** changed file verbatim, so the answer's length is a property of the question. A flat cap truncates a 40-file plan mid-array — and because the output is *parsed*, that is `parseCommitPlan` throwing, not a shorter answer |
-| The model probe | 16 | The expected answer is the word "OK". A reasoning model handed 600 tokens spends them deliberating about `ping` while the user watches a button |
+| Caller                              | Cap                    | Why                                                                                                                                                                                                                                                    |
+| ----------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Every prose feature                 | 600                    | A review is capped at 300 words; prose answers don't scale with the input                                                                                                                                                                              |
+| [File grouping](./file-grouping.md) | `max(600, files × 24)` | Its JSON must name **every** changed file verbatim, so the answer's length is a property of the question. A flat cap truncates a 40-file plan mid-array — and because the output is _parsed_, that is `parseCommitPlan` throwing, not a shorter answer |
+| The model probe                     | 16                     | The expected answer is the word "OK". A reasoning model handed 600 tokens spends them deliberating about `ping` while the user watches a button                                                                                                        |
 
 A feature declares a non-default reserve twice — once as `AiFeature.reservedOutputTokens(input)` (the
 cap) and once as its sizing's `reservedOutputTokens` (the room). They must be the same expression;
@@ -516,7 +516,7 @@ one" — and it survives the label folding away on a narrow footer, since a spin
 that something is happening. It comes from `trackAiProgress(featureId, setProgress)`, which mirrors
 the panel's own progress into the activity store. The count is **tagged with the feature it belongs
 to** and rendered only while that feature is the one running: a map phase publishes its count
-*between* calls, when nothing is in flight, so it cannot be attached to a run — and an untagged
+_between_ calls, when nothing is in flight, so it cannot be attached to a run — and an untagged
 leftover would show a finished scan's `42/42` against the next, unrelated generation.
 
 ### Errors
@@ -524,14 +524,14 @@ leftover would show a finished scan's `42/42` against the next, unrelated genera
 Rust serializes `AppError` to `{ code, message, detail }` JSON, which arrives as the rejection's
 message. Four stable sentinels have localized copy in the `errors` namespace:
 
-| Sentinel | Cause |
-| -------- | ----- |
-| `AI_PROVIDER_NOT_RUNNING` | connection refused |
-| `AI_MODEL_NOT_FOUND` | HTTP 404 from the completions endpoint |
-| `AI_EMPTY_RESPONSE` | HTTP 200 with an empty body (raised by the model probe) |
-| `AI_NO_BRANCH_CHANGES` | frontend-side: the branch is level with its base |
-| `AI_NO_COMMIT_CHANGES` | frontend-side: the commit touches no text |
-| `AI_NO_WORKING_CHANGES` | frontend-side: the working tree is clean |
+| Sentinel                  | Cause                                                   |
+| ------------------------- | ------------------------------------------------------- |
+| `AI_PROVIDER_NOT_RUNNING` | connection refused                                      |
+| `AI_MODEL_NOT_FOUND`      | HTTP 404 from the completions endpoint                  |
+| `AI_EMPTY_RESPONSE`       | HTTP 200 with an empty body (raised by the model probe) |
+| `AI_NO_BRANCH_CHANGES`    | frontend-side: the branch is level with its base        |
+| `AI_NO_COMMIT_CHANGES`    | frontend-side: the commit touches no text               |
+| `AI_NO_WORKING_CHANGES`   | frontend-side: the working tree is clean                |
 
 [`aiErrorMessage(raw, t)`](../../apps/desktop/src/lib/aiErrorMessage.ts) resolves a sentinel to
 localized copy, else falls back to the payload's `message` (+ `detail`), else the raw string — never
@@ -545,7 +545,7 @@ Every AI call writes its **full prompts and the model's answer** to
 `~/.git-manager/ai-logs/ai-YYYY-MM-DD.jsonl` — one JSON object per line, a file per day, pruned after
 a week. The "AI transcripts" button in the Activity Logs view reveals the folder.
 
-This is deliberately *not* the activity log. That one records IPC arguments truncated to 200
+This is deliberately _not_ the activity log. That one records IPC arguments truncated to 200
 characters and never sees a return value, so for an AI call it can tell you one happened and how long
 it took, and nothing about the two things a bug turns on: the prompt that came out wrong, and the
 answer that dropped half the files.
@@ -553,12 +553,12 @@ answer that dropped half the files.
 Written from `trackedTransport` in [`ai.api.ts`](../../apps/desktop/src/api/ai.api.ts), the single
 funnel every feature passes through — so a new feature is instrumented for free.
 
-| Field | Note |
-| ----- | ---- |
-| `systemPrompt`, `userPrompt` | Verbatim, untruncated |
-| `response` | The full answer for a **completion** feature. Absent for a **streaming** one by nature: its tokens arrive as Tauri events and the transport call resolves with nothing |
-| `model`, `temperature`, `maxTokens` | What sizing bugs turn on — `maxTokens` is the answer reserve the prompt held back |
-| `status`, `error`, `durationMs` | A failed call is recorded before the error is rethrown |
+| Field                               | Note                                                                                                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `systemPrompt`, `userPrompt`        | Verbatim, untruncated                                                                                                                                                  |
+| `response`                          | The full answer for a **completion** feature. Absent for a **streaming** one by nature: its tokens arrive as Tauri events and the transport call resolves with nothing |
+| `model`, `temperature`, `maxTokens` | What sizing bugs turn on — `maxTokens` is the answer reserve the prompt held back                                                                                      |
+| `status`, `error`, `durationMs`     | A failed call is recorded before the error is rethrown                                                                                                                 |
 
 **No `apiKey` and no provider URL.** The entry is built field by field from the config rather than
 spread, so a field added to `AiGenerateConfig` later cannot ride along onto disk.
@@ -573,7 +573,7 @@ the thing most likely to precede a hang, and a queue would be lost with it.
 1. One file in `packages/ai/src/features/` exporting an `AiFeature` — instruction, temperature,
    `buildPrompt`, plus a `schema` + `parse` if it needs structured output. Export it from
    `features/index.ts` and `src/index.ts`. If its answer is not prose — structured output whose
-   length scales with the input — declare `reservedOutputTokens(input)` and pass the *same*
+   length scales with the input — declare `reservedOutputTokens(input)` and pass the _same_
    expression as the sizing's `reservedOutputTokens`; see [The output reserve](#the-output-reserve).
 2. One line in `api/ai.api.ts`: `createStreamingService(feature, trackedTransport(feature.id))`.
 3. A hook (streaming features can build on
@@ -585,11 +585,11 @@ the thing most likely to precede a hang, and a queue would be lost with it.
 **No Rust change, no new command, no new Settings knob** — unless the feature needs data the backend
 doesn't hand over yet. That exception has been used three times, and only one of them was about git:
 
-| Feature | What it added | Why the shape didn't cover it |
-| ------- | ------------- | ----------------------------- |
-| [Branch explanation](./branch-explanation.md) | one optional parameter on `get_ai_context` | it needed a range ending somewhere other than `HEAD` |
-| [Commit search](./commit-search.md) | `get_ai_commit_scan` | a month of history's oids and paths, so the frontend can fetch one patch at a time |
-| [Action explanation](./action-explanation.md) | `read_activity_log` | not git data at all: its window is a separate `WebviewWindow`, so the in-memory activity buffer is in another JS context and disk is the only shared surface |
+| Feature                                       | What it added                              | Why the shape didn't cover it                                                                                                                                |
+| --------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Branch explanation](./branch-explanation.md) | one optional parameter on `get_ai_context` | it needed a range ending somewhere other than `HEAD`                                                                                                         |
+| [Commit search](./commit-search.md)           | `get_ai_commit_scan`                       | a month of history's oids and paths, so the frontend can fetch one patch at a time                                                                           |
+| [Action explanation](./action-explanation.md) | `read_activity_log`                        | not git data at all: its window is a separate `WebviewWindow`, so the in-memory activity buffer is in another JS context and disk is the only shared surface |
 
 Write the doc page alongside it, and add it to the table at the top.
 
@@ -599,53 +599,53 @@ Write the doc page alongside it, and add it to the table at the top.
 
 Shared by every feature; the per-feature pages list their own on top of these.
 
-| # | Limitation | Impact | Fix sketch |
-| - | ---------- | ------ | ---------- |
-| 1 | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id. | — | — |
-| 2 | ~~**`ai:error` is dead.**~~ **Resolved by removal.** Nothing ever emitted it and three hooks listened for it. The `invoke` promise is already this request's own error channel and already carries the message, so a parallel event would be a second source of truth for one condition — and the two would race. The listeners are gone and the reject path is documented on `AiProvider::generate` and `useAiStream`. | — | — |
-| 3 | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. The remaining judgement call — a generated file that genuinely matters — now has an escape hatch: `classifyDiffPath`/`budgetDiff` take a `DiffTierOverrides` map, carried on `DiffPromptSizing` so a feature's prompt and its coverage report cannot disagree about the order. The code review exposes it as `CodeReviewInput.tierOverrides`. | — | — |
-| 4 | ~~**Two hooks still duplicate the streaming plumbing.**~~ **Resolved.** `useAiGeneration` and `usePrDescriptionGeneration` now run on [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts), which grew the `onToken` / `trackText` options they were missing — they stream into an input the caller owns, which is why they had forked in the first place. Both inherit the two fixes their copies never got: listeners are dropped on unmount, and a second run no longer stacks a listener set on the previous one. | — | — |
-| 5 | **The context window cannot be negotiated — only declared and verified.** `max_tokens` *is* sent now, so the output reserve is enforced rather than hoped for (see [The output reserve](#the-output-reserve)). The context length still cannot be: Ollama's OpenAI-compatible endpoint has no `num_ctx` and no `options`, and [its own docs say so](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx) — the documented workarounds are a `Modelfile` or `OLLAMA_CONTEXT_LENGTH`, both out-of-band. So `contextTokens` stays declared. What changed is that it can now be *checked* against what the server actually allocated, not just against the model's ceiling. | A window declared higher than the server serves still truncates — but the check button now says so | Detection, not negotiation. Sending `num_ctx` would mean a native `/api/chat` path, i.e. a provider per vendor rather than per protocol — a trade this architecture deliberately refuses |
-| 6 | **No end-to-end test against a real model.** | "The right bytes reached the transport" is covered; "the model wrote something good" is not | Inherent — a provider is the one dependency CI cannot assume |
+| #   | Limitation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Impact                                                                                             | Fix sketch                                                                                                                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id.                                                                                                                                                                | —                                                                                                  | —                                                                                                                                                                                        |
+| 2   | ~~**`ai:error` is dead.**~~ **Resolved by removal.** Nothing ever emitted it and three hooks listened for it. The `invoke` promise is already this request's own error channel and already carries the message, so a parallel event would be a second source of truth for one condition — and the two would race. The listeners are gone and the reject path is documented on `AiProvider::generate` and `useAiStream`.                                                                                                                                                                                                                                                                           | —                                                                                                  | —                                                                                                                                                                                        |
+| 3   | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. The remaining judgement call — a generated file that genuinely matters — now has an escape hatch: `classifyDiffPath`/`budgetDiff` take a `DiffTierOverrides` map, carried on `DiffPromptSizing` so a feature's prompt and its coverage report cannot disagree about the order. The code review exposes it as `CodeReviewInput.tierOverrides`. | —                                                                                                  | —                                                                                                                                                                                        |
+| 4   | ~~**Two hooks still duplicate the streaming plumbing.**~~ **Resolved.** `useAiGeneration` and `usePrDescriptionGeneration` now run on [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts), which grew the `onToken` / `trackText` options they were missing — they stream into an input the caller owns, which is why they had forked in the first place. Both inherit the two fixes their copies never got: listeners are dropped on unmount, and a second run no longer stacks a listener set on the previous one.                                                                                                                                                                     | —                                                                                                  | —                                                                                                                                                                                        |
+| 5   | **The context window cannot be negotiated — only declared and verified.** `max_tokens` _is_ sent now, so the output reserve is enforced rather than hoped for (see [The output reserve](#the-output-reserve)). The context length still cannot be: Ollama's OpenAI-compatible endpoint has no `num_ctx` and no `options`, and [its own docs say so](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx) — the documented workarounds are a `Modelfile` or `OLLAMA_CONTEXT_LENGTH`, both out-of-band. So `contextTokens` stays declared. What changed is that it can now be _checked_ against what the server actually allocated, not just against the model's ceiling.  | A window declared higher than the server serves still truncates — but the check button now says so | Detection, not negotiation. Sending `num_ctx` would mean a native `/api/chat` path, i.e. a provider per vendor rather than per protocol — a trade this architecture deliberately refuses |
+| 6   | **No end-to-end test against a real model.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | "The right bytes reached the transport" is covered; "the model wrote something good" is not        | Inherent — a provider is the one dependency CI cannot assume                                                                                                                             |
 
 ---
 
 ## Roadmap
 
-| Item | State |
-| ---- | ----- |
-| ~~**Recompose a commit with AI**~~ | **Built** — see [commit recompose](./commit-recompose.md). Applying reuses the existing `run_interactive_rebase` (its todo renderer already implements `reword`), so it needed no Rust change; the risk is handled by a review dialog, a protected-branch gate and an explicit history-rewrite warning |
-| ~~**LLM explanation in the session journal**~~ | **Built** — see [action explanation](./action-explanation.md). It needed none of the pedagogy machinery it was once thought to be blocked on: the commands were already recorded as they ran, and `lib/gitCommandCatalog.ts` renders each backend operation back into the `git` line it stands for |
+| Item                                           | State                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ~~**Recompose a commit with AI**~~             | **Built** — see [commit recompose](./commit-recompose.md). Applying reuses the existing `run_interactive_rebase` (its todo renderer already implements `reword`), so it needed no Rust change; the risk is handled by a review dialog, a protected-branch gate and an explicit history-rewrite warning |
+| ~~**LLM explanation in the session journal**~~ | **Built** — see [action explanation](./action-explanation.md). It needed none of the pedagogy machinery it was once thought to be blocked on: the commands were already recorded as they ran, and `lib/gitCommandCatalog.ts` renders each backend operation back into the `git` line it stands for     |
 
 ---
 
 ## File map
 
-| Concern | File |
-| ------- | ---- |
-| Feature descriptors | [packages/ai/src/features/](../../packages/ai/src/features/) |
-| History rewriting (reword todo + runner) | [git_interactive_rebase.rs](../../apps/desktop/src-tauri/src/services/git_interactive_rebase.rs) · [commands/interactive_rebase.rs](../../apps/desktop/src-tauri/src/commands/interactive_rebase.rs) |
-| Runtime (descriptor → service) | [packages/ai/src/runtime.ts](../../packages/ai/src/runtime.ts) |
-| Presets, protocols | [packages/ai/src/presets.ts](../../packages/ai/src/presets.ts) |
-| Connection + context types | [packages/ai/src/config.ts](../../packages/ai/src/config.ts) |
-| Service assembly, transport, activity tracking | [apps/desktop/src/api/ai.api.ts](../../apps/desktop/src/api/ai.api.ts) |
-| Shared streaming hook | [apps/desktop/src/hooks/useAiStream.ts](../../apps/desktop/src/hooks/useAiStream.ts) |
-| Request id minting (one per generation) | [apps/desktop/src/lib/aiRequestId.ts](../../apps/desktop/src/lib/aiRequestId.ts) |
-| Per-request cancel flags | [src-tauri/src/state.rs](../../apps/desktop/src-tauri/src/state.rs) (`GenerationRegistry`) |
-| Error decoding | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts) |
-| Prompt sizing (budget from the context window) | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts) |
-| Bounded pool shared by both map phases | [packages/ai/src/features/mapConcurrently.ts](../../packages/ai/src/features/mapConcurrently.ts) |
-| Per-file diff budgeting (tiers, shares, omitted list) | [packages/ai/src/features/diffBudget.ts](../../packages/ai/src/features/diffBudget.ts) |
-| Diff budget + coverage report, shared by every feature | [packages/ai/src/features/diffCoverage.ts](../../packages/ai/src/features/diffCoverage.ts) |
-| Coverage line in the UI | [apps/desktop/src/components/git-graph/components/CoverageNotice.tsx](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx) |
-| Model context-window lookup (Ollama `/api/show` + `/api/ps`) | [src-tauri/src/services/ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs) |
-| Verdict on the declared window (which of the three numbers decides) | [apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts](../../apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts) |
-| Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
-| Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |
-| Commands | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs) |
-| Remembered commit searches (answer + matches) | [apps/desktop/src/stores/aiCommitSearch.store.ts](../../apps/desktop/src/stores/aiCommitSearch.store.ts) |
-| Git context (git2) | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
-| Providers | [ai_provider.rs](../../apps/desktop/src-tauri/src/services/ai_provider.rs) · [ai_openai_compatible.rs](../../apps/desktop/src-tauri/src/services/ai_openai_compatible.rs) · [ai_anthropic.rs](../../apps/desktop/src-tauri/src/services/ai_anthropic.rs) · [ai_registry.rs](../../apps/desktop/src-tauri/src/services/ai_registry.rs) |
+| Concern                                                             | File                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Feature descriptors                                                 | [packages/ai/src/features/](../../packages/ai/src/features/)                                                                                                                                                                                                                                                                                     |
+| History rewriting (reword todo + runner)                            | [git_interactive_rebase.rs](../../apps/desktop/src-tauri/src/services/git_interactive_rebase.rs) · [commands/interactive_rebase.rs](../../apps/desktop/src-tauri/src/commands/interactive_rebase.rs)                                                                                                                                             |
+| Runtime (descriptor → service)                                      | [packages/ai/src/runtime.ts](../../packages/ai/src/runtime.ts)                                                                                                                                                                                                                                                                                   |
+| Presets, protocols                                                  | [packages/ai/src/presets.ts](../../packages/ai/src/presets.ts)                                                                                                                                                                                                                                                                                   |
+| Connection + context types                                          | [packages/ai/src/config.ts](../../packages/ai/src/config.ts)                                                                                                                                                                                                                                                                                     |
+| Service assembly, transport, activity tracking                      | [apps/desktop/src/api/ai.api.ts](../../apps/desktop/src/api/ai.api.ts)                                                                                                                                                                                                                                                                           |
+| Shared streaming hook                                               | [apps/desktop/src/hooks/useAiStream.ts](../../apps/desktop/src/hooks/useAiStream.ts)                                                                                                                                                                                                                                                             |
+| Request id minting (one per generation)                             | [apps/desktop/src/lib/aiRequestId.ts](../../apps/desktop/src/lib/aiRequestId.ts)                                                                                                                                                                                                                                                                 |
+| Per-request cancel flags                                            | [src-tauri/src/state.rs](../../apps/desktop/src-tauri/src/state.rs) (`GenerationRegistry`)                                                                                                                                                                                                                                                       |
+| Error decoding                                                      | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts)                                                                                                                                                                                                                                                           |
+| Prompt sizing (budget from the context window)                      | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts)                                                                                                                                                                                                                                                                             |
+| Bounded pool shared by both map phases                              | [packages/ai/src/features/mapConcurrently.ts](../../packages/ai/src/features/mapConcurrently.ts)                                                                                                                                                                                                                                                 |
+| Per-file diff budgeting (tiers, shares, omitted list)               | [packages/ai/src/features/diffBudget.ts](../../packages/ai/src/features/diffBudget.ts)                                                                                                                                                                                                                                                           |
+| Diff budget + coverage report, shared by every feature              | [packages/ai/src/features/diffCoverage.ts](../../packages/ai/src/features/diffCoverage.ts)                                                                                                                                                                                                                                                       |
+| Coverage line in the UI                                             | [apps/desktop/src/components/git-graph/components/CoverageNotice.tsx](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx)                                                                                                                                                                                                 |
+| Model context-window lookup (Ollama `/api/show` + `/api/ps`)        | [src-tauri/src/services/ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs)                                                                                                                                                                                                                                            |
+| Verdict on the declared window (which of the three numbers decides) | [apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts](../../apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts)                                                                                                                                                                                                   |
+| Footer activity state                                               | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts)                                                                                                                                                                                                                                                 |
+| Remembered explanations                                             | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts)                                                                                                                                                                                                                                           |
+| Commands                                                            | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs)                                                                                                                                                                                                                                                                  |
+| Remembered commit searches (answer + matches)                       | [apps/desktop/src/stores/aiCommitSearch.store.ts](../../apps/desktop/src/stores/aiCommitSearch.store.ts)                                                                                                                                                                                                                                         |
+| Git context (git2)                                                  | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
+| Providers                                                           | [ai_provider.rs](../../apps/desktop/src-tauri/src/services/ai_provider.rs) · [ai_openai_compatible.rs](../../apps/desktop/src-tauri/src/services/ai_openai_compatible.rs) · [ai_anthropic.rs](../../apps/desktop/src-tauri/src/services/ai_anthropic.rs) · [ai_registry.rs](../../apps/desktop/src-tauri/src/services/ai_registry.rs)            |
 
 For the architecture rules all of this is built on, read [CLAUDE.md](../../CLAUDE.md) — it is
 authoritative and is what a PR is checked against.

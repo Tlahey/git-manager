@@ -1,5 +1,13 @@
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
-import { GitPullRequest, GitMerge, UserPlus, AlertTriangle, Eye, PencilRuler, Pin } from 'lucide-react'
+import {
+  GitPullRequest,
+  GitMerge,
+  UserPlus,
+  AlertTriangle,
+  Eye,
+  PencilRuler,
+  Pin,
+} from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import type { TagTone } from '@git-manager/ui'
 
@@ -22,12 +30,36 @@ type OpenState = Record<string, boolean>
 /** Per-group header presentation: a coloured icon + count-tag tone. The label itself stays
  * foreground/black (see `GroupHeader`); only the icon and count tag carry the section colour. */
 const GROUP_DECOR: Record<PrGroupKey, { icon: ReactNode; iconClassName: string; tone: TagTone }> = {
-  readyToMerge: { icon: <GitMerge className="h-3 w-3" />, iconClassName: 'text-emerald-400', tone: 'success' },
-  unassignedReviewers: { icon: <UserPlus className="h-3 w-3" />, iconClassName: 'text-sky-400', tone: 'info' },
-  resolveConflicts: { icon: <AlertTriangle className="h-3 w-3" />, iconClassName: 'text-red-400', tone: 'danger' },
-  needsMyReview: { icon: <Eye className="h-3 w-3" />, iconClassName: 'text-orange-400', tone: 'warning' },
-  draft: { icon: <PencilRuler className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
-  other: { icon: <GitPullRequest className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
+  readyToMerge: {
+    icon: <GitMerge className="h-3 w-3" />,
+    iconClassName: 'text-emerald-400',
+    tone: 'success',
+  },
+  unassignedReviewers: {
+    icon: <UserPlus className="h-3 w-3" />,
+    iconClassName: 'text-sky-400',
+    tone: 'info',
+  },
+  resolveConflicts: {
+    icon: <AlertTriangle className="h-3 w-3" />,
+    iconClassName: 'text-red-400',
+    tone: 'danger',
+  },
+  needsMyReview: {
+    icon: <Eye className="h-3 w-3" />,
+    iconClassName: 'text-orange-400',
+    tone: 'warning',
+  },
+  draft: {
+    icon: <PencilRuler className="h-3 w-3" />,
+    iconClassName: 'text-muted-foreground',
+    tone: 'neutral',
+  },
+  other: {
+    icon: <GitPullRequest className="h-3 w-3" />,
+    iconClassName: 'text-muted-foreground',
+    tone: 'neutral',
+  },
 }
 
 interface PullRequestsTabProps {

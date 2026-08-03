@@ -88,12 +88,16 @@ describe('useCodeReview — working scope', () => {
     await act(async () => {
       await result.current.review()
     })
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      context: workingContext,
-      scope: 'working',
-      language: 'fr',
-      contextTokens: 4096,
-    }, expect.any(String))
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        context: workingContext,
+        scope: 'working',
+        language: 'fr',
+        contextTokens: 4096,
+      },
+      expect.any(String)
+    )
   })
 
   it('refuses a clean tree without calling the model', async () => {
@@ -212,13 +216,17 @@ describe('useCodeReview — branch scope', () => {
     await act(async () => {
       await result.current.review('origin/main')
     })
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      context: rangeContext,
-      scope: 'branch',
-      language: 'en',
-      // The declared window travels with the input: it sizes how much diff is sent.
-      contextTokens: 4096,
-    }, expect.any(String))
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        context: rangeContext,
+        scope: 'branch',
+        language: 'en',
+        // The declared window travels with the input: it sizes how much diff is sent.
+        contextTokens: 4096,
+      },
+      expect.any(String)
+    )
   })
 
   it('refuses a branch level with its base, without calling the model', async () => {

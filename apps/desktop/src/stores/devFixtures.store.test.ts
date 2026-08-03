@@ -39,17 +39,14 @@ describe('useDevFixturesStore', () => {
 
     await useDevFixturesStore.getState().load()
 
-    expect(
-      useNotificationStore.getState().mockPRs.find((pr) => pr.id === target)?.status
-    ).toBe('merged')
+    expect(useNotificationStore.getState().mockPRs.find((pr) => pr.id === target)?.status).toBe(
+      'merged'
+    )
   })
 
   it('shares one load between callers that ask at the same moment', async () => {
     // Both GitHub data hooks call this, and either may mount first.
-    const [a, b] = [
-      useDevFixturesStore.getState().load(),
-      useDevFixturesStore.getState().load(),
-    ]
+    const [a, b] = [useDevFixturesStore.getState().load(), useDevFixturesStore.getState().load()]
     await Promise.all([a, b])
 
     // A second fetch would have re-seeded and wiped nothing yet, so the observable proof is that

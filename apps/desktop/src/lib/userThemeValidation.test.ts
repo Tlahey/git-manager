@@ -54,21 +54,21 @@ describe('warnOnInvalidUserTheme', () => {
     const warn = vi.fn()
     warnOnInvalidUserTheme(
       theme('html[data-theme="my-theme"] { --background: 0 0% 100%; --foreground: 0 0% 96%; }'),
-      warn,
+      warn
     )
     expect(warn).toHaveBeenCalledOnce()
     const [, validation] = warn.mock.calls[0]
     expect(validation.missingTokens.length).toBeGreaterThan(0)
-    expect(validation.contrastFailures.some((f: string) => f.startsWith('foreground/background'))).toBe(
-      true,
-    )
+    expect(
+      validation.contrastFailures.some((f: string) => f.startsWith('foreground/background'))
+    ).toBe(true)
   })
 
   it('falls back to the first block when the id does not match the selector', () => {
     const warn = vi.fn()
     warnOnInvalidUserTheme(
       theme('html[data-theme="other-id"] { --background: 0 0% 100%; --foreground: 0 0% 96%; }'),
-      warn,
+      warn
     )
     expect(warn).toHaveBeenCalledOnce()
   })

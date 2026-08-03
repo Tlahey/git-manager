@@ -4,7 +4,13 @@ import userEvent from '@testing-library/user-event'
 
 const { commentMock } = vi.hoisted(() => ({ commentMock: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
-  usePrActions: () => ({ comment: commentMock, pending: false, merge: vi.fn(), submitReview: vi.fn(), error: null }),
+  usePrActions: () => ({
+    comment: commentMock,
+    pending: false,
+    merge: vi.fn(),
+    submitReview: vi.fn(),
+    error: null,
+  }),
 }))
 
 const openUrl = vi.fn()
@@ -31,7 +37,9 @@ describe('PrCommentBox', () => {
   })
 
   it('opens the target on GitHub when an image is dropped, since uploads have no API', () => {
-    render(<PrCommentBox repoPath="/repo" prNumber={7} targetUrl="https://github.com/o/r/issues/7" />)
+    render(
+      <PrCommentBox repoPath="/repo" prNumber={7} targetUrl="https://github.com/o/r/issues/7" />
+    )
 
     fireEvent.drop(screen.getByTestId('pr-comment-input'), {
       dataTransfer: { types: ['Files'], files: [{ type: 'image/png' }] } as unknown as DataTransfer,

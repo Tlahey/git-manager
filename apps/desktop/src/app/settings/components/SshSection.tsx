@@ -122,9 +122,7 @@ export function SshSection() {
     <div className="space-y-6">
       {/* Paths */}
       <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">
-          {t('settings.ssh.pathsTitle')}
-        </h4>
+        <h4 className="text-xs font-semibold text-foreground">{t('settings.ssh.pathsTitle')}</h4>
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">

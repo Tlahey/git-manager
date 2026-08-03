@@ -271,7 +271,13 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     { id: 'gitflow', label: t('settings.sections.gitflow'), icon: GitBranch },
     { id: 'appearance', label: t('settings.sections.ui_customization'), icon: Palette },
     ...(aiEnabled
-      ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit'), icon: GitCommitHorizontal }]
+      ? [
+          {
+            id: 'ai_commit' as const,
+            label: t('settings.sections.ai_commit'),
+            icon: GitCommitHorizontal,
+          },
+        ]
       : []),
     { id: 'worktree', label: t('settings.sections.worktree'), icon: FolderTree },
     { id: 'run', label: t('settings.sections.run'), icon: Play },
@@ -319,7 +325,10 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     !supportMatches
 
   return (
-    <div data-testid="settings-page" className="flex h-screen flex-col bg-background text-foreground">
+    <div
+      data-testid="settings-page"
+      className="flex h-screen flex-col bg-background text-foreground"
+    >
       {/* Header */}
       <header
         data-tauri-drag-region
@@ -386,7 +395,9 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
                 >
                   {t('settings.scope.repository')}
                   {projectName && (
-                    <span className="ml-1 normal-case text-muted-foreground/50">· {projectName}</span>
+                    <span className="ml-1 normal-case text-muted-foreground/50">
+                      · {projectName}
+                    </span>
                   )}
                 </p>
                 {visibleLocalTabs.map((tab) => (

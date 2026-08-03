@@ -54,40 +54,40 @@ export function DefaultFilesEditor({
           const trimmed = pattern.trim()
           const count = trimmed ? matchCounts?.[trimmed] : undefined
           return (
-          <div key={i} className="flex items-center gap-2" data-testid="default-files-row">
-            <div className="relative flex-1">
-              <Input
-                value={pattern}
+            <div key={i} className="flex items-center gap-2" data-testid="default-files-row">
+              <div className="relative flex-1">
+                <Input
+                  value={pattern}
+                  disabled={disabled}
+                  onChange={(e) => updateAt(i, e.target.value)}
+                  placeholder={t('worktree.defaultFiles.placeholder')}
+                  className="h-8 w-full pr-16 font-mono text-xs"
+                  data-testid="default-files-input"
+                />
+                {count !== undefined && (
+                  <span
+                    className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums ${
+                      count === 0 ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
+                    data-testid="default-files-count"
+                  >
+                    {t('worktree.defaultFiles.matchCount', { count })}
+                  </span>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 disabled={disabled}
-                onChange={(e) => updateAt(i, e.target.value)}
-                placeholder={t('worktree.defaultFiles.placeholder')}
-                className="h-8 w-full pr-16 font-mono text-xs"
-                data-testid="default-files-input"
-              />
-              {count !== undefined && (
-                <span
-                  className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums ${
-                    count === 0 ? 'text-destructive' : 'text-muted-foreground'
-                  }`}
-                  data-testid="default-files-count"
-                >
-                  {t('worktree.defaultFiles.matchCount', { count })}
-                </span>
-              )}
+                onClick={() => removeAt(i)}
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                aria-label={t('worktree.defaultFiles.remove')}
+                data-testid="default-files-remove"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              onClick={() => removeAt(i)}
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-              aria-label={t('worktree.defaultFiles.remove')}
-              data-testid="default-files-remove"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
           )
         })
       )}

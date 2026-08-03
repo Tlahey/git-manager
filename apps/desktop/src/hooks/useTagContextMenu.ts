@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from '@git-manager/ui'
 import type { GitRef } from '@git-manager/git-types'
@@ -23,12 +23,6 @@ import type { GraphCommitAction } from '../stores/repoUI.store'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
-/** A tag-specific dialog awaiting confirmation/input, or `null` for "no dialog open". */
-export type PendingTagAction =
-  | { kind: 'annotate'; tagName: string; oid: string; shortOid: string }
-  | { kind: 'deleteRemote'; tagName: string; oid: string; remote: string }
-  | null
-
 interface UseTagContextMenuParams {
   repoPath: string
   /** Current HEAD branch name, or `null` when detached — gates the relationship actions. */
@@ -46,7 +40,8 @@ interface UseTagContextMenuParams {
  * the tag's commit), the branch-relationship actions (merge/rebase relative to the current branch),
  * and the tag-specific ones (delete local/remote, copy name/link, annotate). Commit dialogs are
  * routed through the graph's own `pendingAction`; the two tag-only dialogs (annotate, remote delete)
- * are driven by the `pendingTagAction` state returned here.
+ * go through `pendingTagDialog` on the repoUI store, which `RepoGraphWorkspace` renders — so this
+ * hook opens them and never mounts them.
  */
 export function useTagContextMenu({
   repoPath,
@@ -63,7 +58,9 @@ export function useTagContextMenu({
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { data: branches } = useBranches(repoPath)
-  const [pendingTagAction, setPendingTagAction] = useState<PendingTagAction>(null)
+  // Shared state, not `useState`: the tag dialogs must survive `GitGraph` unmounting when the file
+  // explorer opens, and they are mounted once by `RepoGraphWorkspace`. See `pendingTagDialog`.
+  const setPendingTagAction = useRepoUIStore((s) => s.setPendingTagDialog)
 
   // Stable identity: this handler is published through TagMenuContext to every memoized GraphRow, so
   // a fresh identity on each render would re-render all visible rows. Its deps are all stable.
@@ -127,7 +124,10 @@ export function useTagContextMenu({
           { params, relationEnabled, isHidden },
           {
             onPush: () =>
-              void run(() => apiPushTag(repoPath, gitRef.shortName), t('gitTree.tagMenu.pushed', params)),
+              void run(
+                () => apiPushTag(repoPath, gitRef.shortName),
+                t('gitTree.tagMenu.pushed', params)
+              ),
             // Moving a tag is a local delete + re-create onto the branch tip; the remote copy is
             // deliberately left alone, since re-pointing a published tag breaks everyone who has it.
             onFastForward: () => {
@@ -138,7 +138,16 @@ export function useTagContextMenu({
                 t('gitTree.tagMenu.fastForwarded', params)
               )
             },
-            onExplain: () => setAiPanelTarget({ kind: 'commit', oid: gitRef.commitOid, shortOid: gitRef.commitOid.slice(0, 7), subject: gitRef.shortName, body: '', author: '', parentCount: 1 }),
+            onExplain: () =>
+              setAiPanelTarget({
+                kind: 'commit',
+                oid: gitRef.commitOid,
+                shortOid: gitRef.commitOid.slice(0, 7),
+                subject: gitRef.shortName,
+                body: '',
+                author: '',
+                parentCount: 1,
+              }),
             onToggleHidden: () => toggleTagVisibility(repoPath, gitRef.shortName),
             // Solo works on branch names, so a tag solos the branch its commit sits on.
             onSolo: () => {
@@ -205,10 +214,11 @@ export function useTagContextMenu({
       hiddenTags,
       toggleTagVisibility,
       setAiPanelTarget,
+      setPendingTagAction,
       enableSolo,
       branches,
     ]
   )
 
-  return { openTagMenu, pendingTagAction, setPendingTagAction }
+  return { openTagMenu }
 }

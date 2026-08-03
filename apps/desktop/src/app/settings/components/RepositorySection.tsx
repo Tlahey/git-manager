@@ -142,7 +142,9 @@ export function RepositorySection({ category }: RepositorySectionProps) {
 
       {/* Theme (appearance category) */}
       {category === 'appearance' && (
-        <FilterableSetting match={`${t('settings.appearance.theme')} theme thème couleur apparence`}>
+        <FilterableSetting
+          match={`${t('settings.appearance.theme')} theme thème couleur apparence`}
+        >
           <OverrideField
             label={t('settings.appearance.theme')}
             isOverridden={themeOverridden}

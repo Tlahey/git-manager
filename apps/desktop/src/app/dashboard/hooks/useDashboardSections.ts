@@ -38,10 +38,7 @@ export function useDashboardSections(filterText: string): DashboardSections {
   // The dashboard lists repositories, not the workspaces hanging off them: a linked worktree is a
   // view of a repo that is already in the list, so showing it would duplicate the entry under a
   // path the user never registered. See `linkedWorktreePaths` in repoData.store.
-  const worktrees = useMemo(
-    () => new Set(linkedWorktreePaths ?? []),
-    [linkedWorktreePaths]
-  )
+  const worktrees = useMemo(() => new Set(linkedWorktreePaths ?? []), [linkedWorktreePaths])
 
   const matches = useCallback(
     (repo: SectionRepo) => {
@@ -67,7 +64,10 @@ export function useDashboardSections(filterText: string): DashboardSections {
 
   const favorites = useMemo(
     () =>
-      savedRepos.filter((r) => r.pinned).map((r) => ({ path: r.path, name: r.name })).filter(matches),
+      savedRepos
+        .filter((r) => r.pinned)
+        .map((r) => ({ path: r.path, name: r.name }))
+        .filter(matches),
     [savedRepos, matches]
   )
 

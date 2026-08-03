@@ -57,9 +57,7 @@ describe('buildIssueMenuSpec', () => {
 
   it('wires each entry to its action', () => {
     const actions = issueActions()
-    const spec = normalizeMenuSpec(
-      buildIssueMenuSpec({ number: 1, hasBranch: false }, actions, t)
-    )
+    const spec = normalizeMenuSpec(buildIssueMenuSpec({ number: 1, hasBranch: false }, actions, t))
 
     item(spec, 'Create a branch for issue #1')!.action!()
     item(spec, 'View issue on GitHub')!.action!()

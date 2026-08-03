@@ -141,9 +141,18 @@ const page: CSSProperties = {
 
 // WCAG ratio results (ContrastResult) → GradedCell.
 const asRatioCells =
-  (grade: (t: ThemeTokens) => { label: string; ratio: number | null; minRatio: number; passes: boolean }[]) =>
+  (
+    grade: (
+      t: ThemeTokens
+    ) => { label: string; ratio: number | null; minRatio: number; passes: boolean }[]
+  ) =>
   (tokens: ThemeTokens): GradedCell[] =>
-    grade(tokens).map((r) => ({ label: r.label, value: r.ratio, threshold: r.minRatio, passes: r.passes }))
+    grade(tokens).map((r) => ({
+      label: r.label,
+      value: r.ratio,
+      threshold: r.minRatio,
+      passes: r.passes,
+    }))
 
 const ratio = (v: number | null) => (v === null ? 'n/a' : v.toFixed(2))
 const lc = (v: number | null) => (v === null ? 'n/a' : `Lc ${Math.round(v)}`)

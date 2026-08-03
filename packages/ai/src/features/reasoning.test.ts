@@ -18,9 +18,12 @@ describe('stripReasoning', () => {
     ].join('\n')
 
     expect(stripReasoning(raw)).toBe(
-      ['**Yes**, the button changed twice.', '', '## What changed', '- `abc1234` — adds a loading state'].join(
-        '\n'
-      )
+      [
+        '**Yes**, the button changed twice.',
+        '',
+        '## What changed',
+        '- `abc1234` — adds a loading state',
+      ].join('\n')
     )
   })
 

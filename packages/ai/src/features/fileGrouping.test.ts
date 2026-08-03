@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { groupingOutputTokens, parseCommitPlan } from './fileGrouping'
 import { estimateTokens, RESERVED_OUTPUT_TOKENS } from '../promptSize'
 
-
 describe('groupingOutputTokens', () => {
   const deep = (n: number) =>
     Array.from(
@@ -60,7 +59,8 @@ describe('parseCommitPlan', () => {
   })
 
   it('extracts JSON wrapped in prose and markdown fences', () => {
-    const raw = 'Here you go:\n```json\n{"commits":[{"commitMessage":"fix: b","files":["b.ts"]}]}\n```\n'
+    const raw =
+      'Here you go:\n```json\n{"commits":[{"commitMessage":"fix: b","files":["b.ts"]}]}\n```\n'
     expect(parseCommitPlan(raw)).toEqual([{ commitMessage: 'fix: b', files: ['b.ts'] }])
   })
 

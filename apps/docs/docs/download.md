@@ -22,8 +22,8 @@ Each release publishes two macOS files:
 ## First launch: macOS will warn you
 
 Git Manager isn't signed with an Apple Developer certificate yet, so the first
-time you open it, Gatekeeper shows *"Apple could not verify this app is free of
-malware."* That's expected — it isn't a sign anything is wrong.
+time you open it, Gatekeeper shows _"Apple could not verify this app is free of
+malware."_ That's expected — it isn't a sign anything is wrong.
 
 To open it anyway:
 

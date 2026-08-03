@@ -51,7 +51,9 @@ export function PrCodeSuggestions({ repoPath, prNumber }: PrCodeSuggestionsProps
                   )}
                 </div>
                 {th.snippet && (
-                  <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{th.snippet}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                    {th.snippet}
+                  </p>
                 )}
                 <p className="mt-1 text-[10px] text-muted-foreground">{th.author}</p>
               </a>

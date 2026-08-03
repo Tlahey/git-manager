@@ -48,7 +48,9 @@ export function AiStatusBanner({ onOpenSettings }: AiStatusBannerProps) {
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="font-medium">{t('aiStatus.disconnectedTitle')}</span>
-          <span className="min-w-0 truncate opacity-80">{t('aiStatus.disconnectedHint', { url })}</span>
+          <span className="min-w-0 truncate opacity-80">
+            {t('aiStatus.disconnectedHint', { url })}
+          </span>
         </button>
         <button
           type="button"

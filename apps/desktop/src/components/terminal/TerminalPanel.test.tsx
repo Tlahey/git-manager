@@ -17,7 +17,9 @@ vi.mock('../../hooks/useIntegratedTerminal', () => ({
   }),
 }))
 // XtermView drives real xterm.js (canvas) — stub it out; its own test covers the registry wiring.
-vi.mock('./XtermView', () => ({ XtermView: ({ id }: { id: string }) => <div data-testid={`xterm-${id}`} /> }))
+vi.mock('./XtermView', () => ({
+  XtermView: ({ id }: { id: string }) => <div data-testid={`xterm-${id}`} />,
+}))
 
 import { TerminalPanel } from './TerminalPanel'
 import { useTerminalStore } from '../../stores/terminal.store'

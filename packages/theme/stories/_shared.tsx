@@ -45,8 +45,17 @@ export function TokenChip({ tokens, name }: { tokens: ThemeTokens; name: string 
           background: isRadius ? 'transparent' : hsl(value),
         }}
       />
-      <div style={{ minWidth: 0, fontFamily: 'ui-monospace, monospace', fontSize: 11, lineHeight: 1.3 }}>
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+      <div
+        style={{
+          minWidth: 0,
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 11,
+          lineHeight: 1.3,
+        }}
+      >
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {name}
+        </div>
         <div style={{ opacity: 0.6 }}>{value ?? '—'}</div>
       </div>
     </div>
@@ -146,7 +155,9 @@ export function MiniApp({ theme }: { theme: ThemeDefinition }) {
             <span style={{ opacity: 0.65 }}>repo-b</span>
           </div>
 
-          <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <div
+            style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}
+          >
             <div
               style={{
                 background: 'hsl(var(--card))',
@@ -163,10 +174,18 @@ export function MiniApp({ theme }: { theme: ThemeDefinition }) {
             </div>
 
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Btn bg="--primary" fg="--primary-foreground">Primary</Btn>
-              <Btn bg="--secondary" fg="--secondary-foreground">Secondary</Btn>
-              <Btn bg="--destructive" fg="--destructive-foreground">Delete</Btn>
-              <Btn bg="--success" fg="--success-foreground">Merge</Btn>
+              <Btn bg="--primary" fg="--primary-foreground">
+                Primary
+              </Btn>
+              <Btn bg="--secondary" fg="--secondary-foreground">
+                Secondary
+              </Btn>
+              <Btn bg="--destructive" fg="--destructive-foreground">
+                Delete
+              </Btn>
+              <Btn bg="--success" fg="--success-foreground">
+                Merge
+              </Btn>
             </div>
 
             {/* Diff (stands in for the editor) */}

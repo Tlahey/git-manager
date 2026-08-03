@@ -223,7 +223,7 @@ export function BlameFileViewer({
       {hovered && (
         <div
           data-testid="blame-popover"
-          className="animate-in fade-in pointer-events-none absolute z-raised max-w-xs rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg animate-duration-100"
+          className="pointer-events-none absolute z-raised max-w-xs rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg animate-in fade-in animate-duration-100"
           style={{ top: Math.max(4, hovered.top), left: lineHeight + 8 }}
         >
           <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">

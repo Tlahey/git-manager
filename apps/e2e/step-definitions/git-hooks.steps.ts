@@ -56,14 +56,15 @@ Given(/^the notch queue is being recorded$/, async () => {
     // — or, when that window can't open, a REAL macOS banner via the native fallback. The whole
     // production chain (hook run, AppError, IPC, parse, enqueue) stays real; only the final
     // paint is skipped. The suite baseline clears this flag between scenarios.
-    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface =
-      'none'
+    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface = 'none'
 
     const store = (
       window as unknown as {
         __e2eNotchQueueStore?: {
           getState: () => { clear: () => void }
-          subscribe: (listener: (state: { queue: { current: { model: unknown } | null } }) => void) => void
+          subscribe: (
+            listener: (state: { queue: { current: { model: unknown } | null } }) => void
+          ) => void
         }
       }
     ).__e2eNotchQueueStore
@@ -219,8 +220,7 @@ When(/^I open the commit options$/, async () => {
  */
 Then(/^the commit options offer to skip the hooks$/, async () => {
   await browser.waitUntil(
-    async () =>
-      browser.execute(() => document.body.innerText.includes('without running hooks')),
+    async () => browser.execute(() => document.body.innerText.includes('without running hooks')),
     { timeout: 5000, timeoutMsg: 'the commit options menu never offered to skip the hooks' }
   )
 })

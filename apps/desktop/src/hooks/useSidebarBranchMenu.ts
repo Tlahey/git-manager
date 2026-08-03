@@ -11,7 +11,6 @@ import {
   type BranchMenuActions,
   type BranchTipCommitActions,
   type CommitCopyActions,
-  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import {
   apiPullBranch,
@@ -79,10 +78,9 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
-  // The remote branch awaiting its delete confirmation, or null. The caller renders
-  // `<DeleteRemoteBranchDialog>` — same "own it locally, caller renders it" split as rename above.
-  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
-    useState<PendingDeleteRemoteBranch>(null)
+  // Shared state, not `useState`: the confirmation must survive `GitGraph` unmounting when the file
+  // explorer opens, and it is mounted once by `RepoGraphWorkspace`. See `pendingRemoteBranchDelete`.
+  const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
   // The branch whose "Set upstream" picker is open, or null — only reached when no default is
   // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.
   const [setUpstreamTarget, setSetUpstreamTarget] = useState<string | null>(null)
@@ -193,8 +191,10 @@ export function useSidebarBranchMenu(repoPath: string) {
     const ref = branchToRef(branch)
     const rel = (r: GitRef) => ({ branch: r.shortName, current: currentBranch ?? '' })
     return {
-      onPull: () => void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
-      onPush: () => void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
+      onPull: () =>
+        void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
+      onPush: () =>
+        void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
       // Mirrors the graph menu's own onSetUpstream: an unambiguous default applies directly,
       // anything else opens the picker.
       onSetUpstream: (r) => {
@@ -219,7 +219,10 @@ export function useSidebarBranchMenu(repoPath: string) {
           t('gitTree.branchMenu.merged', rel(r))
         ),
       onRebaseOntoBranch: (r) =>
-        void run(() => apiRebaseOntoCommit(repoPath, r.commitOid), t('gitTree.branchMenu.rebased', rel(r))),
+        void run(
+          () => apiRebaseOntoCommit(repoPath, r.commitOid),
+          t('gitTree.branchMenu.rebased', rel(r))
+        ),
       onCheckoutBranch: (r) => {
         const target = r.type === 'branch' ? r.shortName : r.commitOid
         void checkoutBranchWithStashPrompt(repoPath, target)
@@ -245,7 +248,11 @@ export function useSidebarBranchMenu(repoPath: string) {
           return
         }
         void run(
-          () => apiDeleteBranch(repoPath, r.shortName, { targetOid: r.commitOid, upstream: branch.upstream }),
+          () =>
+            apiDeleteBranch(repoPath, r.shortName, {
+              targetOid: r.commitOid,
+              upstream: branch.upstream,
+            }),
           t('gitTree.branchMenu.deleted', rel(r))
         )
       },
@@ -341,8 +348,6 @@ export function useSidebarBranchMenu(repoPath: string) {
     openBranchMenu,
     renameTarget,
     setRenameTarget,
-    pendingDeleteRemoteBranch,
-    setPendingDeleteRemoteBranch,
     setUpstreamTarget,
     setSetUpstreamTarget,
   }

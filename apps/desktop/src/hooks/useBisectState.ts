@@ -10,12 +10,8 @@ export const bisectStateKey = (repoPath: string | null) =>
  * terminal is picked up; the in-app actions update the cache directly with the state they return.
  */
 export function useBisectState(repoPath: string | null) {
-  return useSWR(
-    bisectStateKey(repoPath),
-    () => apiGetBisectState(repoPath as string),
-    {
-      revalidateOnFocus: true,
-      revalidateIfStale: true,
-    }
-  )
+  return useSWR(bisectStateKey(repoPath), () => apiGetBisectState(repoPath as string), {
+    revalidateOnFocus: true,
+    revalidateIfStale: true,
+  })
 }

@@ -7,10 +7,7 @@ import { useRepoGitHub } from './useRepoGitHub'
  * token is configured. Returns a `sha → avatarUrl` map (empty for SHAs GitHub couldn't resolve, or
  * for everything when there's no token / non-GitHub remote) — callers fall back to initials.
  */
-export function useCommitAvatars(
-  repoPath: string | null,
-  shas: string[]
-): Record<string, string> {
+export function useCommitAvatars(repoPath: string | null, shas: string[]): Record<string, string> {
   const { ownerRepo, token } = useRepoGitHub(repoPath)
 
   // Stable, deduplicated key so unrelated re-renders don't refetch.

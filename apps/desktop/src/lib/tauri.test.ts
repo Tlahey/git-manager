@@ -5,11 +5,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
 
 import * as tauri from './tauri'
 import { useActivityLogStore } from '../stores/activityLog.store'
-import {
-  openActivitySession,
-  resetActivitySessions,
-  runActivity,
-} from './activityCorrelation'
+import { openActivitySession, resetActivitySessions, runActivity } from './activityCorrelation'
 
 beforeEach(() => {
   mockInvoke.mockClear()
@@ -313,7 +309,8 @@ const cases: {
 
   {
     name: 'checkAiStatus',
-    call: () => tauri.checkAiStatus({ protocol: 'openai-compatible', url: 'http://localhost:11434' }),
+    call: () =>
+      tauri.checkAiStatus({ protocol: 'openai-compatible', url: 'http://localhost:11434' }),
     command: 'check_ai_status',
     args: { config: { protocol: 'openai-compatible', url: 'http://localhost:11434' } },
   },

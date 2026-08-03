@@ -104,13 +104,12 @@ export function RemoveMergedWorktreesDialog({
   const [failedPaths, setFailedPaths] = useState<string[]>([])
   const [removedPaths, setRemovedPaths] = useState<string[]>([])
 
-  const { checks, isLoading: isChecking, isGithub, hasToken } = useMergedWorktrees(
-    repoPath,
-    worktrees,
-    remoteUrls,
-    githubToken,
-    open
-  )
+  const {
+    checks,
+    isLoading: isChecking,
+    isGithub,
+    hasToken,
+  } = useMergedWorktrees(repoPath, worktrees, remoteUrls, githubToken, open)
 
   // "Mine" = the merged PR was authored by the signed-in GitHub user. Only PR-detected worktrees
   // carry an author, so in mine-mode gone-upstream-only ones (no PR) are never offered.
@@ -184,7 +183,10 @@ export function RemoveMergedWorktreesDialog({
         {/* GitHub is optional — the local "merged into main" signal works without it. When it's
             unavailable we just note that PR detection is off, rather than blocking the whole flow. */}
         {(!isGithub || !hasToken) && (
-          <p className="text-[11px] text-muted-foreground/70" data-testid="worktree-remove-merged-github-hint">
+          <p
+            className="text-[11px] text-muted-foreground/70"
+            data-testid="worktree-remove-merged-github-hint"
+          >
             {!isGithub
               ? t('worktree.removeMergedNoGithubRemote')
               : t('worktree.removeMergedNoToken')}

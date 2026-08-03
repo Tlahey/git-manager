@@ -107,7 +107,6 @@
   "settings.integrations.setActive": "Set Active",
   "settings.integrations.noAccountConnected": "No {{provider}} account connected",
   "settings.integrations.gitlab.hint": "Sync your GitLab repositories by connecting your personal or self-hosted accounts.",
-  "settings.integrations.gitlab.tokenLabel": "Personal Access Token (PAT)",
   "settings.integrations.bitbucket.hint": "Sync your Bitbucket repositories by connecting your personal or Cloud accounts.",
   "settings.integrations.bitbucket.tokenLabel": "App Password / Token",
   "settings.integrations.bitbucket.tokenPlaceholder": "Enter your app password",
@@ -326,5 +325,10 @@
   "settings.ai.probeSuccess": "{{model}} answered in {{duration}} ms",
   "settings.ai.probeFailed": "{{model}} did not answer",
   "settings.ai.probeNoStructuredOutput": "{{model}} answered, but ignored the requested JSON format. Features that need structured output — commit message, commit plan, daily briefing, history search — will fail on every call with this model.",
-  "settings.ai.probeNoModel": "Pick a model first."
+  "settings.ai.probeNoModel": "Pick a model first.",
+  "settings.integrations.gitlab.signIn": "Sign in with GitLab",
+  "settings.integrations.gitlab.authorization": "GitLab Authorization",
+  "settings.integrations.gitlab.deviceCodeInstructions": "Enter this code on the GitLab page that just opened to authorize Git Manager.",
+  "settings.integrations.gitlab.clientIdLabel": "Application ID",
+  "settings.integrations.gitlab.clientIdHint": "Self-hosted GitLab keeps its own application registry, so it needs an application registered on that instance (with the device authorization flow enabled). gitlab.com needs nothing here."
 }

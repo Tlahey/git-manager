@@ -53,10 +53,10 @@ Copy arrives **already translated**. The package has no i18n dependency, the sam
 
 Three kinds:
 
-| Kind       | For                                                        |
-| ---------- | ---------------------------------------------------------- |
-| `event`    | something happened — fire and forget, fades on its own      |
-| `progress` | something is running — a live card, updated in place        |
+| Kind       | For                                                           |
+| ---------- | ------------------------------------------------------------- |
+| `event`    | something happened — fire and forget, fades on its own        |
+| `progress` | something is running — a live card, updated in place          |
 | `status`   | something finished — the outcome, plus the tail of its output |
 
 and seven **tones** (`neutral` `info` `accent` `success` `error` `running` `highlight`) instead of
@@ -67,14 +67,14 @@ seven values are the previous eight de-duplicated, so nothing changed colour in 
 
 There is one notch, and cards can arrive together. `notchQueue.ts` is a pure reducer over
 `{ current, pending }`, generic in its entry type — anything carrying a `model`. That is what lets
-the desktop app queue whole *deliveries* (route, icon key, importance, banner fallback) without
+the desktop app queue whole _deliveries_ (route, icon key, importance, banner fallback) without
 restating the model's `id`/`tone`/`kind` beside them and keeping two copies in step.
 
 Two rules do the work:
 
 - **Coalescing by `model.id`.** Re-enqueueing the same id updates the card in place instead of
   queueing a second one — which is what makes a live `progress` card possible at all.
-- **Only an error preempts.** Priority orders the *waiting list* (a live progress card outranks a
+- **Only an error preempts.** Priority orders the _waiting list_ (a live progress card outranks a
   merged-PR notice), but taking the screen from someone mid-read is a different question with a
   different answer. A failed hook earns it; a fetch that just started does not. The card an error
   displaces goes back to the head of its priority group rather than being dropped.

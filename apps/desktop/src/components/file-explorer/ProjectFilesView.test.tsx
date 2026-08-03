@@ -43,7 +43,9 @@ beforeEach(() => {
     data: ['src/index.ts', 'docs/guide.md', 'logo.png'],
     isLoading: false,
   })
-  useGitStatus.mockReturnValue({ data: { staged: [], unstaged: [], untracked: [], conflicted: [] } })
+  useGitStatus.mockReturnValue({
+    data: { staged: [], unstaged: [], untracked: [], conflicted: [] },
+  })
 })
 
 describe('ProjectFilesView — directory listing', () => {

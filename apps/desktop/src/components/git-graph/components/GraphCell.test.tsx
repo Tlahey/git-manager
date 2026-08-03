@@ -79,11 +79,7 @@ describe('GraphCell — full mode', () => {
   })
 
   it('flags WIP-like rows on the svg and renders the dashed ring instead of an avatar', () => {
-    const { container } = renderCell(
-      node({ commit: { ...node().commit, oid: 'WIP' } }),
-      200,
-      3
-    )
+    const { container } = renderCell(node({ commit: { ...node().commit, oid: 'WIP' } }), 200, 3)
     expect(lastGraphSvgProps.current).toMatchObject({ isWip: true })
     expect(container.querySelector('.border-dashed')).toBeTruthy()
     expect(container.querySelector('.lucide-triangle-alert')).not.toBeInTheDocument()

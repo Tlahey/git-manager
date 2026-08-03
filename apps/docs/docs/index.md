@@ -79,7 +79,7 @@ notch, or on an external monitor, the app falls back to default measurements —
 and that fallback has not been verified on real hardware, so the card may sit a
 few points off where it should.
 
-This is cosmetic. Nothing about *what* a notification says or does depends on it,
+This is cosmetic. Nothing about _what_ a notification says or does depends on it,
 and a card that cannot be measured is still shown. If you see one land somewhere
 obviously wrong, the **Report a documentation issue** link takes you to the right
 place to say so — including which Mac and which display.

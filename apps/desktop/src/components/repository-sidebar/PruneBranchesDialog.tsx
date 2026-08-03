@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { apiDeleteBranch, apiFetchRemote } from '../../api/git.api'
+import { runActivity } from '../../lib/activityCorrelation'
 import { apiGoneUpstreamBranches } from '../../api/worktree.api'
 import { DEFAULT_PINNED } from './types'
 
@@ -100,17 +101,22 @@ export function PruneBranchesDialog({
     setFailedNames([])
     const succeeded: string[] = []
     const stillFailing: string[] = []
-    for (const b of prunable) {
-      try {
-        await apiDeleteBranch(repoPath, b.shortName, {
-          targetOid: b.commitOid,
-          upstream: b.upstream ?? undefined,
-        })
-        succeeded.push(b.shortName)
-      } catch {
-        stillFailing.push(b.shortName)
+    // One correlation for the whole confirmation: the user approved a *set* of branches, so ⌘Z
+    // restores that set rather than putting them back one press at a time. The deletions are
+    // independent, so the order undo replays them in doesn't matter.
+    await runActivity('git.pruneBranches', async () => {
+      for (const b of prunable) {
+        try {
+          await apiDeleteBranch(repoPath, b.shortName, {
+            targetOid: b.commitOid,
+            upstream: b.upstream ?? undefined,
+          })
+          succeeded.push(b.shortName)
+        } catch {
+          stillFailing.push(b.shortName)
+        }
       }
-    }
+    })
     queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
     setIsLoading(false)
     setRemovedNames((prev) => [...prev, ...succeeded])

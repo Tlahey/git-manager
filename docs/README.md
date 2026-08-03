@@ -28,17 +28,17 @@
 
 ## Tech stack
 
-| Layer                | Technology                                |
-| -------------------- | ----------------------------------------- |
-| Desktop runtime      | Tauri v2                                  |
-| Frontend             | React 18 + Vite + TypeScript              |
-| UI Components        | shadcn/ui + Tailwind CSS                  |
-| Backend              | Rust + `git2` crate (libgit2)             |
-| State management     | Zustand                                   |
-| Internationalization | react-i18next (FR / EN)                   |
-| LLM (AI commit)      | Ollama, or any OpenAI-compatible server   |
-| Remote auth          | SSH + HTTPS (token)                       |
-| Monorepo             | pnpm workspaces + Turborepo               |
+| Layer                | Technology                              |
+| -------------------- | --------------------------------------- |
+| Desktop runtime      | Tauri v2                                |
+| Frontend             | React 18 + Vite + TypeScript            |
+| UI Components        | shadcn/ui + Tailwind CSS                |
+| Backend              | Rust + `git2` crate (libgit2)           |
+| State management     | Zustand                                 |
+| Internationalization | react-i18next (FR / EN)                 |
+| LLM (AI commit)      | Ollama, or any OpenAI-compatible server |
+| Remote auth          | SSH + HTTPS (token)                     |
+| Monorepo             | pnpm workspaces + Turborepo             |
 
 ---
 
@@ -163,13 +163,13 @@ ollama pull qwen2.5-coder:7b
 
 ## Documentation
 
-| Document                                           | Description                                                        |
-| -------------------------------------------------- | ------------------------------------------------------------------ |
-| [CLAUDE.md](../CLAUDE.md)                          | **Authoritative** architecture, IPC boundary and layering rules    |
+| Document                                                         | Description                                                                            |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [CLAUDE.md](../CLAUDE.md)                                        | **Authoritative** architecture, IPC boundary and layering rules                        |
 | [Documentation site](https://tlahey.github.io/git-manager/docs/) | The user-facing manual — one page per feature, generated from the `@doc` e2e scenarios |
-| [Issue tracker](https://github.com/Tlahey/git-manager/issues) | Remaining work. There is no roadmap file: see the note below       |
-| [AI system](./ai/README.md)                        | How every AI feature works — shared runtime + one page per feature |
-| [Architecture refactors](./architecture/README.md) | Five refactor audits and their execution records (July 2026) — all complete |
+| [Issue tracker](https://github.com/Tlahey/git-manager/issues)    | Remaining work. There is no roadmap file: see the note below                           |
+| [AI system](./ai/README.md)                                      | How every AI feature works — shared runtime + one page per feature                     |
+| [Architecture refactors](./architecture/README.md)               | Five refactor audits and their execution records (July 2026) — all complete            |
 
 ### One rule behind this list
 
@@ -185,7 +185,7 @@ things were removed on 2026-07-31 for failing that test:
 - **`specs/archive/`** — the original 2026-07-03 per-feature design docs, written before the
   features existed and never updated. Six warnings scattered across the docs existed purely to tell
   readers not to trust them.
-- **`specs/`** — two *accurate* specs describing invariants worth protecting. They went because
+- **`specs/`** — two _accurate_ specs describing invariants worth protecting. They went because
   their content belonged one level down: the module doc comment is the copy you cannot refactor
   past without reading. `auto-fetch.md` was already reproduced almost verbatim in
   `useAutoFetch.ts`'s own header; what only `graph-column-layout.md` carried moved into

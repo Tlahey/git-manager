@@ -207,13 +207,21 @@ describe('GraphHeader — resizing', () => {
 
 describe('GraphHeader — compact graph label', () => {
   it('shows the text label at regular graph widths', () => {
-    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 120 })]} />)
+    render(
+      <GraphHeader
+        columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 120 })]}
+      />
+    )
     expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
   })
 
   it('swaps the Graph label for an icon below the compact width threshold', () => {
     // Standard row height: compact below 70px (22 lane + 40 overlay + 8 margin)
-    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 48 })]} />)
+    render(
+      <GraphHeader
+        columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 48 })]}
+      />
+    )
     expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
     expect(screen.getByLabelText('gitTree.columns.graph')).toBeInTheDocument()
   })
@@ -227,7 +235,11 @@ describe('GraphHeader — compact graph label', () => {
       },
     }))
     // Small avatar: compact below 62px (22 lane + 32 overlay + 8 margin), so 64 keeps the label.
-    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]} />)
+    render(
+      <GraphHeader
+        columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]}
+      />
+    )
     expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
   })
 
@@ -240,7 +252,11 @@ describe('GraphHeader — compact graph label', () => {
       },
     }))
     // Standard threshold applies: 64 < 70 → icon
-    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]} />)
+    render(
+      <GraphHeader
+        columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]}
+      />
+    )
     expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
   })
 })

@@ -47,8 +47,6 @@ describe('LoadingOverlay', () => {
     expect(overlay).toHaveClass('opacity-0')
     expect(screen.getByText('Loading...')).toBeInTheDocument()
 
-    await waitFor(() =>
-      expect(screen.queryByTestId('loading-overlay')).not.toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.queryByTestId('loading-overlay')).not.toBeInTheDocument())
   })
 })

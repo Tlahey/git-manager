@@ -4,7 +4,9 @@ import { createElement } from 'react'
 import { SWRConfig } from 'swr'
 
 const apiGetPrTemplate = vi.fn()
-vi.mock('../api/repo.api', () => ({ apiGetPrTemplate: (...a: unknown[]) => apiGetPrTemplate(...a) }))
+vi.mock('../api/repo.api', () => ({
+  apiGetPrTemplate: (...a: unknown[]) => apiGetPrTemplate(...a),
+}))
 
 import { usePrTemplate } from './usePrTemplate'
 
@@ -24,7 +26,9 @@ describe('usePrTemplate', () => {
   it('returns the detected template', async () => {
     apiGetPrTemplate.mockResolvedValue({ kind: 'single', source: 'x', content: 'y' })
     const { result } = renderHook(() => usePrTemplate('/repo'), { wrapper })
-    await waitFor(() => expect(result.current.template).toEqual({ kind: 'single', source: 'x', content: 'y' }))
+    await waitFor(() =>
+      expect(result.current.template).toEqual({ kind: 'single', source: 'x', content: 'y' })
+    )
     expect(apiGetPrTemplate).toHaveBeenCalledWith('/repo')
   })
 })

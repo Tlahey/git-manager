@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${o.count}` : k) }),
+  useTranslation: () => ({
+    t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${o.count}` : k),
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiApplyPatch: vi.fn(), apiReadPatchFile: vi.fn() }))
 vi.mock('../../lib/pickFile', () => ({ pickFile: vi.fn() }))
@@ -16,7 +18,11 @@ vi.mock('../git-graph/components/CommitFileList', () => ({
   }) => (
     <div data-testid="file-list">
       {processedFiles.map((f) => (
-        <button key={f.path} data-testid={`file-${f.path}`} onClick={() => onSelectFileDiff({ path: f.path, staged: false })}>
+        <button
+          key={f.path}
+          data-testid={`file-${f.path}`}
+          onClick={() => onSelectFileDiff({ path: f.path, staged: false })}
+        >
           {f.path}
         </button>
       ))}

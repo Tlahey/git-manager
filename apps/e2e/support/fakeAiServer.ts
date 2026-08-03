@@ -127,7 +127,9 @@ export async function startFakeAiServer(
               highlights: ['did the fake work'],
             }
             res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] }))
+            res.end(
+              JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] })
+            )
             return
           }
 

@@ -157,7 +157,10 @@ export function WorktreeDefaultFilesSetting({ repoPath }: WorktreeDefaultFilesSe
                 </>
               ) : (
                 <>
-                  <span className="flex-1 font-mono text-xs text-foreground" data-testid="worktree-df-value">
+                  <span
+                    className="flex-1 font-mono text-xs text-foreground"
+                    data-testid="worktree-df-value"
+                  >
                     {row.committed}
                   </span>
                   {countBadge(row.committed)}

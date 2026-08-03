@@ -61,10 +61,12 @@ describe('useCommitRecompose — generating', () => {
 
     expect(mocked.run).toHaveBeenCalledTimes(2)
     expect(result.current.proposals.map((p) => p.oid)).toEqual(['aaa', 'bbb'])
-    expect(result.current.proposals.every((p) => p.proposedMessage === 'feat: rewritten')).toBe(true)
+    expect(result.current.proposals.every((p) => p.proposedMessage === 'feat: rewritten')).toBe(
+      true
+    )
   })
 
-  it("never shows the model the message it is replacing", () => {
+  it('never shows the model the message it is replacing', () => {
     // Guarded at the feature level too, but the hook is what assembles the input — a `message`
     // slipping into `commit` here would defeat that instruction silently.
     const { result } = renderHook(() => useCommitRecompose('/repo', nodes))

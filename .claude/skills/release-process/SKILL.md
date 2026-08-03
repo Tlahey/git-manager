@@ -51,7 +51,7 @@ A clean `cargo fmt --check` is expected. `cargo clippy` is noisier: this codebas
 carries ~30 pre-existing warnings (redundant closures, borrow suggestions, etc. — nothing
 release-blocking on its own). Don't treat the whole repo being warning-free as the bar; instead
 compare clippy's output against what it looked like before your change and make sure you didn't
-*add* new warnings or, more importantly, any errors. If any of the four commands above fail
+_add_ new warnings or, more importantly, any errors. If any of the four commands above fail
 outright (not just clippy warnings), stop and fix it — don't trigger a release on top of a red
 build, since nothing downstream will catch that for you.
 
@@ -143,7 +143,7 @@ A `302`/`200` means it's live.
 - **It fails after pushing the tag but `release.yml` never got a clean build** — the version-bump
   commit and tag are already on `main`. Fix the issue, then `gh run rerun` on `release.yml` for
   that same tag rather than re-running `prepare-release.yml` (which would try to bump the version
-  *again* on top of the one that already landed).
+  _again_ on top of the one that already landed).
 - **A draft release has assets missing or a botched changelog body** — safe to delete
   (`gh release delete vX.Y.Z`) and rerun `release.yml`, since nothing was published yet.
 - **You published and then found a bug** — don't unpublish; ship a new patch release instead. The

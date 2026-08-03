@@ -31,7 +31,12 @@ export function usePrFilesViewedState(
       ? ['pr-files-viewed', ownerRepo.owner, ownerRepo.repo, prNumber, token]
       : null,
     () =>
-      fetchPrFilesViewedState(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+      fetchPrFilesViewedState(
+        ownerRepo!.owner,
+        ownerRepo!.repo,
+        prNumber as number,
+        token as string
+      ),
     { revalidateOnFocus: false }
   )
 

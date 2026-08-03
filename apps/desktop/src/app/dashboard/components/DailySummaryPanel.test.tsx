@@ -65,9 +65,7 @@ describe('DailySummaryPanel — content', () => {
   })
 
   it('heads each list and shows a per-list empty message', () => {
-    useDailySummary.mockReturnValue(
-      buildState({ summary: { headline: 'h', highlights: [] } })
-    )
+    useDailySummary.mockReturnValue(buildState({ summary: { headline: 'h', highlights: [] } }))
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
     expect(screen.getByText('What landed')).toBeInTheDocument()
     expect(screen.getByText('Nothing landed that day.')).toBeInTheDocument()
@@ -114,9 +112,7 @@ describe('DailySummaryPanel — content', () => {
       })
     )
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
-    expect(screen.getByTestId('daily-summary-progress')).toHaveTextContent(
-      'Reading file 3 of 12…'
-    )
+    expect(screen.getByTestId('daily-summary-progress')).toHaveTextContent('Reading file 3 of 12…')
   })
 
   it('reports the composing phase once the files are read', () => {

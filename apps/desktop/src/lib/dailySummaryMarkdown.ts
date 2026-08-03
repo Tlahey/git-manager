@@ -102,7 +102,9 @@ function readFrontMatter(frontMatter: string): Record<string, string> {
  * Accepts `-` and `*` markers, and the `_(nothing)_` placeholder renders back as an empty list. */
 function readSection(body: string, heading: string): string[] {
   const lines = body.split('\n')
-  const start = lines.findIndex((line) => line.trim().toLowerCase() === `## ${heading}`.toLowerCase())
+  const start = lines.findIndex(
+    (line) => line.trim().toLowerCase() === `## ${heading}`.toLowerCase()
+  )
   if (start === -1) return []
 
   const items: string[] = []

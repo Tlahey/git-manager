@@ -57,10 +57,8 @@ describe('resolveCiStatus', () => {
       resolveCiStatus(checkRuns([{ name: 'a', status: 'queued', conclusion: null }]), null).overall
     ).toBe('running')
     expect(
-      resolveCiStatus(
-        checkRuns([{ name: 'a', status: 'in_progress', conclusion: null }]),
-        null
-      ).overall
+      resolveCiStatus(checkRuns([{ name: 'a', status: 'in_progress', conclusion: null }]), null)
+        .overall
     ).toBe('running')
     expect(resolveCiStatus(null, statuses([{ state: 'pending' }], 'pending')).overall).toBe(
       'running'
