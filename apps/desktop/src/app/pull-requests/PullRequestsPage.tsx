@@ -195,141 +195,141 @@ export function PullRequestsPage() {
   return (
     <OpenPrContext.Provider value={setOpenedPr}>
       <OpenIssueContext.Provider value={setOpenedIssue}>
-      <div className="relative flex h-full overflow-hidden bg-background">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Page Header */}
-        <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <Rocket className="h-4 w-4 text-primary" />
-            <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          {hasToken ? (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              {loading || isValidating ? (
-                <>
-                  <Spinner className="h-3 w-3" /> {t('page.fetching')}
-                </>
-              ) : error ? (
-                <>
-                  <WifiOff className="h-3 w-3 text-destructive" />{' '}
-                  <span className="text-destructive">{error}</span>
-                </>
+        <div className="relative flex h-full overflow-hidden bg-background">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {/* Page Header */}
+            <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <Rocket className="h-4 w-4 text-primary" />
+                <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
+              </div>
+              <div className="h-4 w-px bg-border" />
+              {hasToken ? (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {loading || isValidating ? (
+                    <>
+                      <Spinner className="h-3 w-3" /> {t('page.fetching')}
+                    </>
+                  ) : error ? (
+                    <>
+                      <WifiOff className="h-3 w-3 text-destructive" />{' '}
+                      <span className="text-destructive">{error}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 text-green-400" /> {t('page.syncedAs')}{' '}
+                      <strong className="ml-0.5 text-foreground">{username}</strong>
+                    </>
+                  )}
+                </span>
               ) : (
-                <>
-                  <CheckCircle2 className="h-3 w-3 text-green-400" /> {t('page.syncedAs')}{' '}
-                  <strong className="ml-0.5 text-foreground">{username}</strong>
-                </>
+                <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
+                  <WifiOff className="h-3 w-3" /> {t('page.noAccount')}
+                </span>
               )}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
-              <WifiOff className="h-3 w-3" /> {t('page.noAccount')}
-            </span>
-          )}
-          <div className="ml-auto flex items-center gap-3">
-            {lastRefreshed && (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
-              </span>
-            )}
-            <button
-              onClick={refresh}
-              disabled={isValidating}
-              data-testid="manual-refresh-button"
-              className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              title={t('page.refreshNow')}
+              <div className="ml-auto flex items-center gap-3">
+                {lastRefreshed && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                    <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
+                  </span>
+                )}
+                <button
+                  onClick={refresh}
+                  disabled={isValidating}
+                  data-testid="manual-refresh-button"
+                  className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  title={t('page.refreshNow')}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
+                  {t('page.refresh')}
+                </button>
+              </div>
+            </header>
+
+            {/* Loading progress bar container - fixed height to prevent CLS */}
+            <div
+              className="relative h-[2px] w-full shrink-0 overflow-hidden bg-border/10"
+              data-testid="refresh-progress-bar"
             >
-              <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
-              {t('page.refresh')}
-            </button>
-          </div>
-        </header>
+              {isValidating && (
+                <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent" />
+              )}
+            </div>
 
-        {/* Loading progress bar container - fixed height to prevent CLS */}
-        <div
-          className="relative h-[2px] w-full shrink-0 overflow-hidden bg-border/10"
-          data-testid="refresh-progress-bar"
-        >
-          {isValidating && (
-            <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent" />
+            {/* Overview KPI Bar */}
+            <div className="flex shrink-0 items-stretch gap-3 border-b border-border bg-card/20 px-5 py-3">
+              <KpiCard
+                icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />}
+                label={t('kpi.openPrs')}
+                value={openPRsCount}
+                sub={t('kpi.openPrsSub')}
+                loading={loading}
+              />
+              <KpiCard
+                icon={<Eye className="h-3.5 w-3.5 text-orange-400" />}
+                label={t('kpi.needsReview')}
+                value={needsReviewCount}
+                sub={t('kpi.needsReviewSub')}
+                accent="hover:border-orange-500/20"
+                loading={loading}
+              />
+              <KpiCard
+                icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />}
+                label={t('kpi.openIssues')}
+                value={openIssuesCount}
+                sub={t('kpi.openIssuesSub')}
+                loading={loading}
+              />
+              <KpiCard
+                icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+                label={t('kpi.ciPassRate')}
+                value={`${ciPassRate}%`}
+                sub={t('kpi.ciPassRateSub')}
+                loading={loading}
+              />
+              <KpiCard
+                icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />}
+                label={t('kpi.commits')}
+                value={weekCommits}
+                sub={t('kpi.commitsSub')}
+                loading={loading}
+              />
+            </div>
+
+            {/* Global controls shared across every inner tab (search + collapse/expand all) */}
+            <LaunchpadToolbar />
+
+            {/* Inner Tab Bar */}
+            <div className="flex shrink-0 items-center border-b border-border bg-card/30 px-3">
+              {PR_TABS.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <InnerTab
+                    key={tab.id}
+                    data-testid={`launchpad-tab-${tab.id}`}
+                    active={activeTab === tab.id}
+                    onClick={() => selectTab(tab.id)}
+                    count={tabCounts[tab.id]}
+                    loading={loading}
+                  >
+                    {Icon && <Icon className="h-3.5 w-3.5" />} {tab.label}
+                  </InnerTab>
+                )
+              })}
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
+          </div>
+          {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
+          {openedIssue && (
+            <IssueSidePanel
+              issue={openedIssue}
+              onClose={() => setOpenedIssue(null)}
+              onChanged={refreshIssues}
+            />
           )}
         </div>
-
-        {/* Overview KPI Bar */}
-        <div className="flex shrink-0 items-stretch gap-3 border-b border-border bg-card/20 px-5 py-3">
-          <KpiCard
-            icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />}
-            label={t('kpi.openPrs')}
-            value={openPRsCount}
-            sub={t('kpi.openPrsSub')}
-            loading={loading}
-          />
-          <KpiCard
-            icon={<Eye className="h-3.5 w-3.5 text-orange-400" />}
-            label={t('kpi.needsReview')}
-            value={needsReviewCount}
-            sub={t('kpi.needsReviewSub')}
-            accent="hover:border-orange-500/20"
-            loading={loading}
-          />
-          <KpiCard
-            icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />}
-            label={t('kpi.openIssues')}
-            value={openIssuesCount}
-            sub={t('kpi.openIssuesSub')}
-            loading={loading}
-          />
-          <KpiCard
-            icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
-            label={t('kpi.ciPassRate')}
-            value={`${ciPassRate}%`}
-            sub={t('kpi.ciPassRateSub')}
-            loading={loading}
-          />
-          <KpiCard
-            icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />}
-            label={t('kpi.commits')}
-            value={weekCommits}
-            sub={t('kpi.commitsSub')}
-            loading={loading}
-          />
-        </div>
-
-        {/* Global controls shared across every inner tab (search + collapse/expand all) */}
-        <LaunchpadToolbar />
-
-        {/* Inner Tab Bar */}
-        <div className="flex shrink-0 items-center border-b border-border bg-card/30 px-3">
-          {PR_TABS.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <InnerTab
-                key={tab.id}
-                data-testid={`launchpad-tab-${tab.id}`}
-                active={activeTab === tab.id}
-                onClick={() => selectTab(tab.id)}
-                count={tabCounts[tab.id]}
-                loading={loading}
-              >
-                {Icon && <Icon className="h-3.5 w-3.5" />} {tab.label}
-              </InnerTab>
-            )
-          })}
-        </div>
-
-        {/* Tab Content */}
-        <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
-        </div>
-        {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
-        {openedIssue && (
-          <IssueSidePanel
-            issue={openedIssue}
-            onClose={() => setOpenedIssue(null)}
-            onChanged={refreshIssues}
-          />
-        )}
-      </div>
       </OpenIssueContext.Provider>
     </OpenPrContext.Provider>
   )

@@ -274,7 +274,11 @@ describe('useKeyboardShortcuts — settings shortcut', () => {
 describe('useKeyboardShortcuts — command palette (⌘K)', () => {
   it('toggles the palette open in "all" mode on Ctrl+K', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'k', ctrlKey: true })
     expect(useCommandPaletteStore.getState().open).toBe(true)
@@ -285,7 +289,11 @@ describe('useKeyboardShortcuts — command palette (⌘K)', () => {
 describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
   it('toggles the palette open in "files" mode on Ctrl+P', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'p', ctrlKey: true })
     expect(useCommandPaletteStore.getState().open).toBe(true)
@@ -295,7 +303,11 @@ describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
   it('toggles back closed on a second Ctrl+P', () => {
     useCommandPaletteStore.setState({ open: true, mode: 'files' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'p', ctrlKey: true })
     expect(useCommandPaletteStore.getState().open).toBe(false)
@@ -303,7 +315,11 @@ describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
 
   it('opens even while focused inside an input (handled before the typing guard)', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(inputEl, { key: 'p', ctrlKey: true })
     expect(useCommandPaletteStore.getState().open).toBe(true)
@@ -311,7 +327,11 @@ describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
 
   it('does not toggle when Alt is also held', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'p', ctrlKey: true, altKey: true })
     expect(useCommandPaletteStore.getState().open).toBe(false)
@@ -320,7 +340,11 @@ describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
   it('uses metaKey on a Mac user agent', () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'p', ctrlKey: true }) // ctrl alone shouldn't trigger on Mac
     expect(useCommandPaletteStore.getState().open).toBe(false)
@@ -377,7 +401,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
   it('toggles the search panel open on Ctrl+F when a repo is active', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(true)
@@ -387,7 +415,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useCommitSearchStore.setState({ open: true })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -396,7 +428,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
   it('opens even while focused inside a plain input (handled before the typing guard)', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(inputEl, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(true)
@@ -404,7 +440,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
 
   it('does nothing without an active repo', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -413,7 +453,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
   it('does nothing when a PR/diff/composer view is active instead of the commit graph', () => {
     useRepoUIStore.setState({ activeRepo: '/repo', activePrNumber: 42 })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -422,7 +466,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
   it('does not toggle when Alt is also held', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true })
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -437,7 +485,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
     document.body.appendChild(monacoContainer)
 
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(inner, { key: 'f', ctrlKey: true })
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -449,7 +501,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true }) // ctrl alone shouldn't trigger on Mac
     expect(useCommitSearchStore.getState().open).toBe(false)
@@ -462,7 +518,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
   it('requests focus on Ctrl+Alt+F when a repo is active', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
@@ -471,7 +531,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
   it('requests focus even while focused inside a plain input (handled before the typing guard)', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(inputEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
@@ -479,7 +543,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
 
   it('does nothing without an active repo', () => {
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
@@ -488,7 +556,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
   it('does not fire on plain Ctrl+F (that toggles commit search instead)', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { code: 'KeyF', key: 'f', ctrlKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
@@ -498,7 +570,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true }) // ctrl alone shouldn't trigger on Mac
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
@@ -510,7 +586,11 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
     )
     // What macOS actually reports for a physical Option+Cmd+F keypress on a US layout.
     dispatchFrom(plainEl, { code: 'KeyF', key: 'ƒ', metaKey: true, altKey: true })

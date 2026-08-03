@@ -131,7 +131,7 @@ export function RepoRow({
               e.stopPropagation()
               handleActivate()
             }}
-            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors group-hover/row:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/row:text-primary"
           >
             {name}
           </button>

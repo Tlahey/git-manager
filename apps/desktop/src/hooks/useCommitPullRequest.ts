@@ -3,7 +3,10 @@ import { fetchCommitPullRequest, type CommitPrRef } from '../api/github.api'
 import { useRepoGitHub } from './useRepoGitHub'
 
 /** The GitHub pull request associated with `oid`, or null (no PR / non-GitHub repo / signed out). */
-export function useCommitPullRequest(repoPath: string | null, oid: string | null): CommitPrRef | null {
+export function useCommitPullRequest(
+  repoPath: string | null,
+  oid: string | null
+): CommitPrRef | null {
   const { ownerRepo, token } = useRepoGitHub(repoPath)
 
   const { data } = useSWR(

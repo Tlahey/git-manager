@@ -44,7 +44,13 @@ async function openDropdown(testid: string) {
   await browser.execute((id: string) => {
     const el = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
     if (!el) throw new Error(`openDropdown: no element with data-testid="${id}"`)
-    const opts = { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', isPrimary: true }
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      pointerType: 'mouse',
+      isPrimary: true,
+    }
     el.dispatchEvent(new PointerEvent('pointerdown', opts))
     el.dispatchEvent(new PointerEvent('pointerup', opts))
   }, testid)
@@ -104,23 +110,26 @@ Then(/^the bisect setup bar is not shown$/, async () => {
 // Focus the target slot, then click the commit's row (its message cell — the reliable target, per
 // command-palette.steps.ts) to fill it. The click is intercepted by the setup, so we confirm the
 // pick landed by reading the slot's oid from the exposed store rather than the selection bridge.
-When(/^I pick the "([^"]*)" commit as the "(bad|good)" commit$/, async (ref: string, kind: string) => {
-  const repo = await repoPath()
-  const oid = revParse(repo, ref)
-  const subject = subjectOf(repo, oid)
+When(
+  /^I pick the "([^"]*)" commit as the "(bad|good)" commit$/,
+  async (ref: string, kind: string) => {
+    const repo = await repoPath()
+    const oid = revParse(repo, ref)
+    const subject = subjectOf(repo, oid)
 
-  await $(`[data-testid="bisect-slot-${kind}"]`).click()
-  const row = $(`[data-testid="graph-row-${oid}"]`)
-  await row.waitForDisplayed({ timeout: 10000 })
-  const messageCell = row.$(`span*=${subject}`)
-  await messageCell.waitForDisplayed({ timeout: 10000 })
-  await messageCell.click()
+    await $(`[data-testid="bisect-slot-${kind}"]`).click()
+    const row = $(`[data-testid="graph-row-${oid}"]`)
+    await row.waitForDisplayed({ timeout: 10000 })
+    const messageCell = row.$(`span*=${subject}`)
+    await messageCell.waitForDisplayed({ timeout: 10000 })
+    await messageCell.click()
 
-  await browser.waitUntil(async () => (await pendingSlotOid(kind as 'bad' | 'good')) === oid, {
-    timeout: 10000,
-    timeoutMsg: `the ${kind} slot never took commit ${oid} (${ref}) after clicking its row`,
-  })
-})
+    await browser.waitUntil(async () => (await pendingSlotOid(kind as 'bad' | 'good')) === oid, {
+      timeout: 10000,
+      timeoutMsg: `the ${kind} slot never took commit ${oid} (${ref}) after clicking its row`,
+    })
+  }
+)
 
 Then(/^the bisect setup reports an invalid range$/, async () => {
   await $('[data-testid="bisect-setup-invalid-range"]').waitForDisplayed({ timeout: 10000 })
@@ -150,7 +159,9 @@ Then(/^a bisect is in progress$/, async () => {
 // otherwise — exactly what a developer would decide by testing the build.
 async function testCurrentBisectCandidate(repo: string): Promise<void> {
   const appContent = readFileSync(join(repo, 'app.txt'), 'utf8')
-  const testId = appContent.includes('BUG introduced here') ? 'bisect-bad-button' : 'bisect-good-button'
+  const testId = appContent.includes('BUG introduced here')
+    ? 'bisect-bad-button'
+    : 'bisect-good-button'
 
   const headBefore = revParse(repo, 'HEAD')
   const button = $(`[data-testid="${testId}"]`)

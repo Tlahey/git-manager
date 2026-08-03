@@ -11,7 +11,6 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: [] }),
 }))
 
-
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
 vi.mock('@git-manager/ui', () => ({

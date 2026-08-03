@@ -193,8 +193,10 @@ export function useSidebarBranchMenu(repoPath: string) {
     const ref = branchToRef(branch)
     const rel = (r: GitRef) => ({ branch: r.shortName, current: currentBranch ?? '' })
     return {
-      onPull: () => void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
-      onPush: () => void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
+      onPull: () =>
+        void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
+      onPush: () =>
+        void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
       // Mirrors the graph menu's own onSetUpstream: an unambiguous default applies directly,
       // anything else opens the picker.
       onSetUpstream: (r) => {
@@ -219,7 +221,10 @@ export function useSidebarBranchMenu(repoPath: string) {
           t('gitTree.branchMenu.merged', rel(r))
         ),
       onRebaseOntoBranch: (r) =>
-        void run(() => apiRebaseOntoCommit(repoPath, r.commitOid), t('gitTree.branchMenu.rebased', rel(r))),
+        void run(
+          () => apiRebaseOntoCommit(repoPath, r.commitOid),
+          t('gitTree.branchMenu.rebased', rel(r))
+        ),
       onCheckoutBranch: (r) => {
         const target = r.type === 'branch' ? r.shortName : r.commitOid
         void checkoutBranchWithStashPrompt(repoPath, target)
@@ -245,7 +250,11 @@ export function useSidebarBranchMenu(repoPath: string) {
           return
         }
         void run(
-          () => apiDeleteBranch(repoPath, r.shortName, { targetOid: r.commitOid, upstream: branch.upstream }),
+          () =>
+            apiDeleteBranch(repoPath, r.shortName, {
+              targetOid: r.commitOid,
+              upstream: branch.upstream,
+            }),
           t('gitTree.branchMenu.deleted', rel(r))
         )
       },

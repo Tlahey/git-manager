@@ -111,9 +111,7 @@ describe('CommandPalette', () => {
   })
 
   it('surfaces stash commands when present', () => {
-    stashCommands.current = [
-      { id: 'stash-pop', group: 'stash', title: 'Pop stash', run: vi.fn() },
-    ]
+    stashCommands.current = [{ id: 'stash-pop', group: 'stash', title: 'Pop stash', run: vi.fn() }]
     useCommandPaletteStore.setState({ open: true })
     renderPalette()
     expect(screen.getByTestId('command-item-stash-pop')).toBeInTheDocument()

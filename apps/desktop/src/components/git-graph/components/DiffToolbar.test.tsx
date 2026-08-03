@@ -85,17 +85,13 @@ describe('DiffToolbar — status badge', () => {
         {...baseProps({ diffData: diffFile({ status: 'added', additions: 10, deletions: 2 }) })}
       />
     )
-    expect(screen.getByText("Added")).toBeInTheDocument()
+    expect(screen.getByText('Added')).toBeInTheDocument()
     expect(screen.getByTestId('diff-additions')).toHaveTextContent('+10')
     expect(screen.getByTestId('diff-deletions')).toHaveTextContent('-2')
   })
 
   it('renders the counts as toned Tags, not raw green/red text the themes cannot grade', () => {
-    render(
-      <DiffToolbar
-        {...baseProps({ diffData: diffFile({ additions: 10, deletions: 2 }) })}
-      />
-    )
+    render(<DiffToolbar {...baseProps({ diffData: diffFile({ additions: 10, deletions: 2 }) })} />)
 
     expect(screen.getByTestId('diff-additions')).toHaveClass('text-tone-success')
     expect(screen.getByTestId('diff-deletions')).toHaveClass('text-tone-danger')
@@ -113,14 +109,14 @@ describe('DiffToolbar — status badge', () => {
         {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: false } })}
       />
     )
-    expect(screen.getByText("Unstaged")).toBeInTheDocument()
+    expect(screen.getByText('Unstaged')).toBeInTheDocument()
 
     rerender(
       <DiffToolbar
         {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: true } })}
       />
     )
-    expect(screen.getByText("Staged")).toBeInTheDocument()
+    expect(screen.getByText('Staged')).toBeInTheDocument()
 
     rerender(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: false })} />)
     expect(screen.queryByText('Staged')).not.toBeInTheDocument()
@@ -133,9 +129,9 @@ describe('DiffToolbar — tabs', () => {
     const onChangeActiveTab = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onChangeActiveTab })} />)
-    await user.click(screen.getByText("File"))
+    await user.click(screen.getByText('File'))
     expect(onChangeActiveTab).toHaveBeenCalledWith('file')
-    await user.click(screen.getByText("Diff"))
+    await user.click(screen.getByText('Diff'))
     expect(onChangeActiveTab).toHaveBeenCalledWith('diff')
   })
 
@@ -188,23 +184,24 @@ describe('DiffToolbar — folding contract with diffToolbar.css', () => {
   })
 
   it('marks every foldable label with the class the container query targets', () => {
-    render(
-      <DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, hasPreview: true })} />
-    )
+    render(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, hasPreview: true })} />)
 
     for (const testId of ['diff-tab-diff', 'diff-tab-file', 'diff-tab-preview']) {
       expect(screen.getByTestId(testId).querySelector('.diff-toolbar-tab-label')).not.toBeNull()
     }
-    for (const testId of ['diff-blame-toggle', 'diff-history-toggle', 'diff-stage-toggle', 'diff-discard']) {
+    for (const testId of [
+      'diff-blame-toggle',
+      'diff-history-toggle',
+      'diff-stage-toggle',
+      'diff-discard',
+    ]) {
       expect(screen.getByTestId(testId).querySelector('.diff-toolbar-action-label')).not.toBeNull()
     }
   })
 
   it('names every control independently of its label being displayed', () => {
     // A hidden label leaves no accessible name behind, so each control carries its own aria-label.
-    render(
-      <DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, hasPreview: true })} />
-    )
+    render(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, hasPreview: true })} />)
 
     expect(screen.getByRole('button', { name: 'Diff' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument()
@@ -274,7 +271,7 @@ describe('DiffToolbar — WIP actions', () => {
         })}
       />
     )
-    await user.click(screen.getByText("Stage File"))
+    await user.click(screen.getByText('Stage File'))
     expect(onToggleStage).toHaveBeenCalledOnce()
   })
 
@@ -284,14 +281,14 @@ describe('DiffToolbar — WIP actions', () => {
         {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: true } })}
       />
     )
-    expect(screen.getByText("Unstage")).toBeInTheDocument()
+    expect(screen.getByText('Unstage')).toBeInTheDocument()
   })
 
   it('calls onRollback from the Discard button', async () => {
     const onRollback = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), onRollback })} />)
-    await user.click(screen.getByText("Discard"))
+    await user.click(screen.getByText('Discard'))
     expect(onRollback).toHaveBeenCalledOnce()
   })
 
@@ -299,8 +296,8 @@ describe('DiffToolbar — WIP actions', () => {
     render(
       <DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), isProcessing: true })} />
     )
-    expect(screen.getByText("Stage File").closest('button')).toBeDisabled()
-    expect(screen.getByText("Discard").closest('button')).toBeDisabled()
+    expect(screen.getByText('Stage File').closest('button')).toBeDisabled()
+    expect(screen.getByText('Discard').closest('button')).toBeDisabled()
   })
 })
 

@@ -9,7 +9,11 @@ import {
   runInteractiveRebase,
 } from '../../lib/tauri'
 import type { RebaseTodoStep } from '@git-manager/git-types'
-import { closeActivitySession, openActivitySession, runActivity } from '../../lib/activityCorrelation'
+import {
+  closeActivitySession,
+  openActivitySession,
+  runActivity,
+} from '../../lib/activityCorrelation'
 import { clearRedo, pendingRebasePreviousOid, settleRebase } from './gitApiShared'
 
 export async function apiRebaseOntoCommit(path: string, targetOid: string) {

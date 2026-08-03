@@ -481,9 +481,7 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     // The worktree's branch is now surfaced as a tag (worktree icon + name).
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     expect(screen.getByText('feature-x').closest('[title]')).toHaveAttribute('title', 'feature-x')
-    expect(
-      screen.queryByRole('button', { name: 'Open Worktree' })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open Worktree' })).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button once the row is selected, and calls onOpenWorktree with the worktree path', async () => {

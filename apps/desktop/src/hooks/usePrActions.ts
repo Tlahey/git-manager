@@ -100,27 +100,33 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
   )
 
   const requestReviewer = useCallback(
-    (login: string) => run(() => addReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
+    (login: string) =>
+      run(() => addReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
     [run, ownerRepo, prNumber, token]
   )
   const unrequestReviewer = useCallback(
-    (login: string) => run(() => removeReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
+    (login: string) =>
+      run(() => removeReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
     [run, ownerRepo, prNumber, token]
   )
   const assign = useCallback(
-    (login: string) => run(() => addAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
+    (login: string) =>
+      run(() => addAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
     [run, ownerRepo, prNumber, token]
   )
   const unassign = useCallback(
-    (login: string) => run(() => removeAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
+    (login: string) =>
+      run(() => removeAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
     [run, ownerRepo, prNumber, token]
   )
   const addLabel = useCallback(
-    (name: string) => run(() => addLabels(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [name], token!)),
+    (name: string) =>
+      run(() => addLabels(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [name], token!)),
     [run, ownerRepo, prNumber, token]
   )
   const deleteLabel = useCallback(
-    (name: string) => run(() => removeLabel(ownerRepo!.owner, ownerRepo!.repo, prNumber!, name, token!)),
+    (name: string) =>
+      run(() => removeLabel(ownerRepo!.owner, ownerRepo!.repo, prNumber!, name, token!)),
     [run, ownerRepo, prNumber, token]
   )
 

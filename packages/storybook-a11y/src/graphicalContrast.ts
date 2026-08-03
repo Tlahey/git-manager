@@ -107,7 +107,7 @@ function isRenderedOpaque(el: Element): boolean {
  */
 export function checkGraphicalContrast(
   container: Element,
-  minRatio: number = MIN_GRAPHICAL_RATIO,
+  minRatio: number = MIN_GRAPHICAL_RATIO
 ): ViolationNodeRecord[] {
   const records: ViolationNodeRecord[] = []
   for (const mark of container.querySelectorAll('[data-contrast-mark]')) {

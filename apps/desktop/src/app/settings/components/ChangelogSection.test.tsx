@@ -23,9 +23,7 @@ vi.mock('../../../lib/changelog', () => ({
       sections: [
         {
           heading: '',
-          items: [
-            'feat: add thing by @octocat in https://github.com/owner/repo/pull/42',
-          ],
+          items: ['feat: add thing by @octocat in https://github.com/owner/repo/pull/42'],
         },
       ],
     },

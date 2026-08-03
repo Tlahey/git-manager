@@ -161,7 +161,7 @@ describe('ReadmePanel — content states', () => {
       error: new Error('not found'),
     })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
-    expect(screen.getByText("No README file found.")).toBeInTheDocument()
+    expect(screen.getByText('No README file found.')).toBeInTheDocument()
   })
 
   it('renders the README content via Markdown once loaded', () => {

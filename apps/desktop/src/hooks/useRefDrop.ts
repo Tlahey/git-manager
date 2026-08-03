@@ -115,10 +115,13 @@ export function useRefDrop(repoPath: string) {
               t('gitTree.dragDrop.merged', params)
             ),
           onRebase: () =>
-            void run(async () => {
-              await ensureCheckedOut(source.shortName)
-              await apiRebaseOntoCommit(repoPath, target.commitOid)
-            }, t('gitTree.dragDrop.rebased', params)),
+            void run(
+              async () => {
+                await ensureCheckedOut(source.shortName)
+                await apiRebaseOntoCommit(repoPath, target.commitOid)
+              },
+              t('gitTree.dragDrop.rebased', params)
+            ),
           onInteractiveRebase: () =>
             void run(async () => {
               await ensureCheckedOut(source.shortName)
@@ -130,10 +133,13 @@ export function useRefDrop(repoPath: string) {
               t('gitTree.dragDrop.pushed', params)
             ),
           onReset: (mode) =>
-            void run(async () => {
-              await ensureCheckedOut(source.shortName)
-              await apiResetToCommit(repoPath, target.commitOid, mode)
-            }, t('gitTree.dragDrop.reset', params)),
+            void run(
+              async () => {
+                await ensureCheckedOut(source.shortName)
+                await apiResetToCommit(repoPath, target.commitOid, mode)
+              },
+              t('gitTree.dragDrop.reset', params)
+            ),
           onStartPr: () => openPrCreateWith(sourceName, targetName),
         },
         t

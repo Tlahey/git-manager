@@ -18,7 +18,9 @@ vi.mock('./RepoRow', () => ({
     lastRepoRowProps.current.push(props)
     return (
       <div data-testid={`repo-row-${props.path}`} data-selected={String(props.isSelected)}>
-        <button onClick={props.onToggleSelected as () => void}>select-{props.path as string}</button>
+        <button onClick={props.onToggleSelected as () => void}>
+          select-{props.path as string}
+        </button>
       </div>
     )
   },
@@ -144,10 +146,9 @@ describe('RepoSection — bulk git actions', () => {
     renderSection()
     await user.click(screen.getByTestId('dashboard-section-fetch-favorites'))
     await waitFor(() => expect(apiFetchRemote).toHaveBeenCalledTimes(2))
-    expect((apiFetchRemote as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])).toEqual([
-      '/repo/a',
-      '/repo/b',
-    ])
+    expect(
+      (apiFetchRemote as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    ).toEqual(['/repo/a', '/repo/b'])
   })
 
   it('fetches only the checked repos', async () => {

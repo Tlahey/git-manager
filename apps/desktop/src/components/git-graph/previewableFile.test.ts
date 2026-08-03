@@ -3,7 +3,16 @@ import { hasPreviewTab, isPreviewableImage, isPreviewableMarkdown } from './prev
 
 describe('isPreviewableImage', () => {
   it('recognises image extensions whatever their case', () => {
-    for (const path of ['a.png', 'a.JPG', 'a.jpeg', 'a.gif', 'a.webp', 'a.ico', 'a.bmp', 'a.avif']) {
+    for (const path of [
+      'a.png',
+      'a.JPG',
+      'a.jpeg',
+      'a.gif',
+      'a.webp',
+      'a.ico',
+      'a.bmp',
+      'a.avif',
+    ]) {
       expect(isPreviewableImage(path)).toBe(true)
     }
   })

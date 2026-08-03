@@ -47,7 +47,9 @@ export function formatActionText(text: string): string {
 function renderSteps(heading: string, steps: DocStep[], ordered: boolean): string[] {
   if (steps.length === 0) return []
   const format = ordered ? formatActionText : formatStepText
-  const lines = steps.map((step, index) => `${ordered ? `${index + 1}.` : '-'} ${format(step.text)}`)
+  const lines = steps.map(
+    (step, index) => `${ordered ? `${index + 1}.` : '-'} ${format(step.text)}`
+  )
   return [`**${heading}**`, '', ...lines]
 }
 
@@ -115,5 +117,8 @@ export function renderDocPage(feature: DocFeature): string {
 
   // Collapse the runs of blank lines the block assembly can leave behind, so
   // the output is stable whatever combination of sections a scenario has.
-  return `${lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`
+  return `${lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()}\n`
 }

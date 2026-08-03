@@ -67,7 +67,9 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
               checked={isViewed}
               disabled={isToggling || !pullRequestId}
               onChange={() => {
-                toggleViewed(filename).catch((err) => console.error('Failed to toggle viewed:', err))
+                toggleViewed(filename).catch((err) =>
+                  console.error('Failed to toggle viewed:', err)
+                )
               }}
             />
             {t('pr.diff.viewed')}
@@ -79,7 +81,9 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
               data-testid="pr-file-diff-tab-diff"
               className={cn(
                 'flex cursor-pointer items-center gap-1 px-2 py-1 text-[11px] transition-colors',
-                tab === 'diff' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+                tab === 'diff'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent'
               )}
             >
               <GitCompare className="h-3 w-3" />
@@ -90,7 +94,9 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
               data-testid="pr-file-diff-tab-file"
               className={cn(
                 'flex cursor-pointer items-center gap-1 px-2 py-1 text-[11px] transition-colors',
-                tab === 'file' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+                tab === 'file'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent'
               )}
             >
               <FileText className="h-3 w-3" />

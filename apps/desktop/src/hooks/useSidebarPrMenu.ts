@@ -43,9 +43,7 @@ export function useSidebarPrMenu({
       e.preventDefault()
       e.stopPropagation()
 
-      const hasLocalBranch = (branches ?? []).some(
-        (b) => !b.isRemote && b.shortName === pr.headRef
-      )
+      const hasLocalBranch = (branches ?? []).some((b) => !b.isRemote && b.shortName === pr.headRef)
 
       async function copyLink() {
         try {
@@ -90,6 +88,15 @@ export function useSidebarPrMenu({
         )
       ).catch(console.error)
     },
-    [branches, repoPath, aiEnabled, queryClient, setAiPanelTarget, onSelectBranch, onCreateWorktree, t]
+    [
+      branches,
+      repoPath,
+      aiEnabled,
+      queryClient,
+      setAiPanelTarget,
+      onSelectBranch,
+      onCreateWorktree,
+      t,
+    ]
   )
 }

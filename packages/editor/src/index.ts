@@ -14,11 +14,7 @@ export type { CodePaneEditorComponent, CodePaneEditorProps } from './CodePane'
 export { CodeEditor } from './CodeEditor'
 export type { CodeEditorProps } from './CodeEditor'
 export { MonacoEditor, MonacoDiffEditor, languageForFilePath } from './monaco/setup'
-export {
-  monacoThemes,
-  registerMonacoThemes,
-  registerAndApplyDynamicTheme,
-} from './monaco/themes'
+export { monacoThemes, registerMonacoThemes, registerAndApplyDynamicTheme } from './monaco/themes'
 export type { MonacoThemeConfig } from './monaco/themes'
 export { MergeConnectorOverlay } from './MergeConnectorOverlay'
 export type { ConnectorSegment } from './MergeConnectorOverlay'

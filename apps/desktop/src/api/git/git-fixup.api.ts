@@ -1,4 +1,12 @@
-import { checkFixupTarget, createFixupCommit, autosquashPreview, runAutosquash, getPendingFixups, getBranches, pinObject } from '../../lib/tauri'
+import {
+  checkFixupTarget,
+  createFixupCommit,
+  autosquashPreview,
+  runAutosquash,
+  getPendingFixups,
+  getBranches,
+  pinObject,
+} from '../../lib/tauri'
 import { callCommand } from '../service'
 import { openActivitySession, runActivity } from '../../lib/activityCorrelation'
 import {

@@ -164,7 +164,11 @@ const CATALOG: Record<string, GitCommandSpec> = {
     render: (a) => [`git restore -- ${shOr(str(a, 'filePath'), '<file>')}`],
   },
   stage_all: { titleKey: 'gitCommand.stageAll', family: 'staging', render: () => ['git add -A'] },
-  unstage_all: { titleKey: 'gitCommand.unstageAll', family: 'staging', render: () => ['git reset'] },
+  unstage_all: {
+    titleKey: 'gitCommand.unstageAll',
+    family: 'staging',
+    render: () => ['git reset'],
+  },
 
   // ─── Commits ────────────────────────────────────────────────────────────────
   create_commit: {
@@ -233,9 +237,7 @@ const CATALOG: Record<string, GitCommandSpec> = {
       const name = shOr(str(a, 'name'), '<tag>')
       const from = str(a, 'fromRef')
       const message = str(a, 'message')
-      const head = message
-        ? `git tag -a ${name} -m ${sh(firstLine(message))}`
-        : `git tag ${name}`
+      const head = message ? `git tag -a ${name} -m ${sh(firstLine(message))}` : `git tag ${name}`
       return [from ? `${head} ${sh(from)}` : head]
     },
   },
@@ -325,11 +327,7 @@ const CATALOG: Record<string, GitCommandSpec> = {
     render: (a) => {
       const strategy = str(a, 'strategy')
       const option =
-        strategy === 'rebase'
-          ? ' --rebase'
-          : strategy === 'fast-forward-only'
-            ? ' --ff-only'
-            : ''
+        strategy === 'rebase' ? ' --rebase' : strategy === 'fast-forward-only' ? ' --ff-only' : ''
       return [`git pull${option} ${remote(a)}`]
     },
   },
@@ -364,9 +362,7 @@ const CATALOG: Record<string, GitCommandSpec> = {
   add_remote: {
     titleKey: 'gitCommand.addRemote',
     family: 'remote',
-    render: (a) => [
-      `git remote add ${shOr(str(a, 'name'), '<name>')} ${urlArg(a)}`,
-    ],
+    render: (a) => [`git remote add ${shOr(str(a, 'name'), '<name>')} ${urlArg(a)}`],
   },
   remove_remote: {
     titleKey: 'gitCommand.removeRemote',
@@ -404,9 +400,7 @@ const CATALOG: Record<string, GitCommandSpec> = {
   stash_store: {
     titleKey: 'gitCommand.stashStore',
     family: 'stash',
-    render: (a) => [
-      `git stash store -m ${messageArg(a)} ${oidArg(a, 'commitOid')}`,
-    ],
+    render: (a) => [`git stash store -m ${messageArg(a)} ${oidArg(a, 'commitOid')}`],
   },
   edit_stash_message: {
     titleKey: 'gitCommand.editStashMessage',
@@ -503,8 +497,6 @@ export function describeGitCommand(command: string, args: unknown): DescribedGit
   const spec = CATALOG[command]
   if (!spec) return null
   const bag: RecordedArgs =
-    args !== null && typeof args === 'object' && !Array.isArray(args)
-      ? (args as RecordedArgs)
-      : {}
+    args !== null && typeof args === 'object' && !Array.isArray(args) ? (args as RecordedArgs) : {}
   return { titleKey: spec.titleKey, family: spec.family, lines: spec.render(bag) }
 }

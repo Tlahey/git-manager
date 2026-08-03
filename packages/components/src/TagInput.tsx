@@ -31,12 +31,12 @@ export function TagInput({ tags, onChange, placeholder, testId }: TagInputProps)
   return (
     <div
       data-testid={testId}
-      className="flex min-h-[38px] flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm focus-within:ring-1 focus-within:ring-ring"
+      className="border-input bg-background focus-within:ring-ring flex min-h-[38px] flex-wrap gap-1.5 rounded-md border px-3 py-2 text-sm focus-within:ring-1"
     >
       {tags.map((tag, i) => (
         <span
           key={i}
-          className="flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+          className="bg-secondary text-secondary-foreground flex items-center gap-1 rounded px-2 py-0.5 text-xs"
         >
           {tag}
           <button
@@ -54,7 +54,7 @@ export function TagInput({ tags, onChange, placeholder, testId }: TagInputProps)
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ''}
-        className="min-w-[80px] flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+        className="placeholder:text-muted-foreground min-w-[80px] flex-1 bg-transparent text-xs outline-none"
       />
     </div>
   )

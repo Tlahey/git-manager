@@ -90,7 +90,11 @@ export const useAppUpdaterStore = create<AppUpdaterState>((set) => ({
 
   downloadAndInstall: async () => {
     if (!updateRef) return
-    set({ status: 'downloading', error: null, progress: { downloadedBytes: 0, contentLength: null } })
+    set({
+      status: 'downloading',
+      error: null,
+      progress: { downloadedBytes: 0, contentLength: null },
+    })
     try {
       await apiDownloadAndInstallUpdate(updateRef, (progress) => set({ progress }))
       set({ status: 'ready' })

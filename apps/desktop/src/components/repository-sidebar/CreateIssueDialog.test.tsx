@@ -25,13 +25,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CreateIssueDial
   const onClose = vi.fn()
   const onCreated = vi.fn()
   render(
-    <CreateIssueDialog
-      repoPath="/repo"
-      open
-      onClose={onClose}
-      onCreated={onCreated}
-      {...props}
-    />
+    <CreateIssueDialog repoPath="/repo" open onClose={onClose} onCreated={onCreated} {...props} />
   )
   return { onClose, onCreated }
 }

@@ -246,7 +246,11 @@ function setUpstreamSection(
 /** Pull / Push / Set upstream, as one section for the graph's branch submenu and flat layout —
  *  the sidebar (`buildSidebarBranchMenuSpec`) uses the two halves separately instead, since only
  *  the pull/push half needs to be gated to the trunk. */
-function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: TranslateFn): MenuSpecEntry[] {
+function syncSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
   return [...pullPushSection(b, actions, t), ...setUpstreamSection(b, actions, t)]
 }
 
@@ -831,26 +835,45 @@ export function buildRefDropMenuSpec(
       enabled: ctx.targetIsBranch,
       action: actions.onFastForward,
     }),
-    menuItem({ text: t('gitTree.dragDrop.merge', p), enabled: ctx.targetIsBranch, action: actions.onMerge }),
-    menuItem({ text: t('gitTree.dragDrop.rebase', p), enabled: ctx.sourceIsBranch, action: actions.onRebase }),
+    menuItem({
+      text: t('gitTree.dragDrop.merge', p),
+      enabled: ctx.targetIsBranch,
+      action: actions.onMerge,
+    }),
+    menuItem({
+      text: t('gitTree.dragDrop.rebase', p),
+      enabled: ctx.sourceIsBranch,
+      action: actions.onRebase,
+    }),
     menuItem({
       text: t('gitTree.dragDrop.interactiveRebase', p),
       enabled: ctx.sourceIsBranch,
       action: actions.onInteractiveRebase,
     }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.dragDrop.push', p), enabled: ctx.sourceIsBranch, action: actions.onPush }),
+    menuItem({
+      text: t('gitTree.dragDrop.push', p),
+      enabled: ctx.sourceIsBranch,
+      action: actions.onPush,
+    }),
     menuSubmenu({
       text: t('gitTree.dragDrop.resetSubmenu', p),
       enabled: ctx.sourceIsBranch,
       items: [
         menuItem({ text: t('gitTree.dragDrop.resetSoft'), action: () => actions.onReset('soft') }),
-        menuItem({ text: t('gitTree.dragDrop.resetMixed'), action: () => actions.onReset('mixed') }),
+        menuItem({
+          text: t('gitTree.dragDrop.resetMixed'),
+          action: () => actions.onReset('mixed'),
+        }),
         menuItem({ text: t('gitTree.dragDrop.resetHard'), action: () => actions.onReset('hard') }),
       ],
     }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.dragDrop.startPr', p), enabled: ctx.prEnabled, action: actions.onStartPr }),
+    menuItem({
+      text: t('gitTree.dragDrop.startPr', p),
+      enabled: ctx.prEnabled,
+      action: actions.onStartPr,
+    }),
   ]
 }
 
@@ -913,7 +936,11 @@ export function buildTagMenuSpec(
   return [
     menuItem({ text: t('gitTree.tagMenu.push', p), action: actions.onPush }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.tagMenu.fastForward', p), enabled: rel, action: actions.onFastForward }),
+    menuItem({
+      text: t('gitTree.tagMenu.fastForward', p),
+      enabled: rel,
+      action: actions.onFastForward,
+    }),
     menuItem({ text: t('gitTree.tagMenu.merge', p), enabled: rel, action: actions.onMerge }),
     menuItem({ text: t('gitTree.tagMenu.rebase', p), enabled: rel, action: actions.onRebase }),
     menuSeparator(),
@@ -921,15 +948,28 @@ export function buildTagMenuSpec(
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.explain'), action: actions.onExplain }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.contextMenu.createBranch'), icon: 'branch', action: actions.onCreateBranch }),
+    menuItem({
+      text: t('gitTree.contextMenu.createBranch'),
+      icon: 'branch',
+      action: actions.onCreateBranch,
+    }),
     menuItem({ text: t('gitTree.contextMenu.cherryPick'), action: actions.onCherryPick }),
     menuSubmenu({
       text: t('gitTree.tagMenu.resetSubmenu', p),
       enabled: rel,
       items: [
-        menuItem({ text: t('gitTree.contextMenu.resetSoft'), action: () => actions.onReset('soft') }),
-        menuItem({ text: t('gitTree.contextMenu.resetMixed'), action: () => actions.onReset('mixed') }),
-        menuItem({ text: t('gitTree.contextMenu.resetHard'), action: () => actions.onReset('hard') }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetSoft'),
+          action: () => actions.onReset('soft'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetMixed'),
+          action: () => actions.onReset('mixed'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetHard'),
+          action: () => actions.onReset('hard'),
+        }),
       ],
     }),
     menuItem({ text: t('gitTree.contextMenu.revert'), icon: 'revert', action: actions.onRevert }),
@@ -938,7 +978,11 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
-    menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
+    menuItem({
+      text: t('gitTree.contextMenu.copySha'),
+      icon: 'copy_sha',
+      action: actions.onCopySha,
+    }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
     menuSeparator(),
@@ -968,14 +1012,27 @@ function commitCoreSection(
       enabled: isSingle,
       action: actions.onCreateBranch,
     }),
-    menuItem({ text: t('gitTree.contextMenu.cherryPick'), enabled: isSingle, action: actions.onCherryPick }),
+    menuItem({
+      text: t('gitTree.contextMenu.cherryPick'),
+      enabled: isSingle,
+      action: actions.onCherryPick,
+    }),
     menuSubmenu({
       text: t('gitTree.contextMenu.resetSubmenu', { branch: ctx.currentBranch ?? 'HEAD' }),
       enabled: isSingle,
       items: [
-        menuItem({ text: t('gitTree.contextMenu.resetSoft'), action: () => actions.onReset('soft') }),
-        menuItem({ text: t('gitTree.contextMenu.resetMixed'), action: () => actions.onReset('mixed') }),
-        menuItem({ text: t('gitTree.contextMenu.resetHard'), action: () => actions.onReset('hard') }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetSoft'),
+          action: () => actions.onReset('soft'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetMixed'),
+          action: () => actions.onReset('mixed'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetHard'),
+          action: () => actions.onReset('hard'),
+        }),
       ],
     }),
     // Same entry and same dialog for a merge, only relabelled: the dialog is what asks which parent
@@ -1174,7 +1231,8 @@ export function buildCommitMenuSpec(
   // (b) a commit with NO branch label of its own but sitting on the current branch — then keyed to
   // the current branch (a plain history commit still gets the branch actions relative to HEAD).
   const ownBranches = branchRefs(ctx)
-  const flatBranch = soleLogicalBranch(ownBranches) ?? (ownBranches.length === 0 ? ctx.currentBranchRef : null)
+  const flatBranch =
+    soleLogicalBranch(ownBranches) ?? (ownBranches.length === 0 ? ctx.currentBranchRef : null)
   if (flatBranch) {
     return buildFlatSingleBranchMenuSpec(flatBranch, ctx, actions, branchActions, t)
   }
@@ -1196,7 +1254,11 @@ export function buildCommitMenuSpec(
     ...(branchSubmenus.length > 0
       ? branchSubmenus
       : [
-          menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
+          menuItem({
+            text: t('gitTree.contextMenu.copySha'),
+            icon: 'copy_sha',
+            action: actions.onCopySha,
+          }),
           menuItem({ text: t('gitTree.contextMenu.copyLink'), action: actions.onCopyLink }),
           menuItem({ text: t('gitTree.contextMenu.createPatch'), action: actions.onCreatePatch }),
         ]),
@@ -1237,21 +1299,37 @@ export function buildMultiCommitMenuSpec(
     menuSubmenu({
       text: t('gitTree.contextMenu.resetSubmenu', { branch }),
       items: [
-        menuItem({ text: t('gitTree.contextMenu.resetSoft'), action: () => actions.onReset('soft') }),
-        menuItem({ text: t('gitTree.contextMenu.resetMixed'), action: () => actions.onReset('mixed') }),
-        menuItem({ text: t('gitTree.contextMenu.resetHard'), action: () => actions.onReset('hard') }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetSoft'),
+          action: () => actions.onReset('soft'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetMixed'),
+          action: () => actions.onReset('mixed'),
+        }),
+        menuItem({
+          text: t('gitTree.contextMenu.resetHard'),
+          action: () => actions.onReset('hard'),
+        }),
       ],
     }),
     menuItem({ text: t('gitTree.contextMenu.revert'), icon: 'revert', action: actions.onRevert }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
+    menuItem({
+      text: t('gitTree.contextMenu.copySha'),
+      icon: 'copy_sha',
+      action: actions.onCopySha,
+    }),
     menuItem({ text: t('gitTree.contextMenu.copyLink'), action: actions.onCopyLink }),
     menuItem({
       text: t('gitTree.contextMenu.createPatchMany'),
       action: actions.onCreatePatchSelection,
     }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.contextMenu.compareToWorkdir'), action: actions.onCompareToWorkdir }),
+    menuItem({
+      text: t('gitTree.contextMenu.compareToWorkdir'),
+      action: actions.onCompareToWorkdir,
+    }),
     menuSeparator(),
     ...tagCreationSection(ctx, actions, t),
   ]

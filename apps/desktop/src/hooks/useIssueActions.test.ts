@@ -5,12 +5,12 @@ import type { MockIssue } from '../app/pull-requests/types'
 const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
 vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
 
-vi.mock('../api/git.api', () => ({ apiCreateBranch: vi.fn(), apiCheckoutBranch: vi.fn() }))
+vi.mock('../api/git.api', () => ({ apiCreateAndCheckoutBranch: vi.fn() }))
 vi.mock('../api/github.api', () => ({ setIssueState: vi.fn() }))
 vi.mock('@git-manager/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('./useIssueRepoLink', () => ({ useIssueRepoLink: vi.fn() }))
 
-import { apiCreateBranch, apiCheckoutBranch } from '../api/git.api'
+import { apiCreateAndCheckoutBranch } from '../api/git.api'
 import { setIssueState } from '../api/github.api'
 import { toast } from '@git-manager/ui'
 import { useIssueRepoLink } from './useIssueRepoLink'
@@ -19,8 +19,7 @@ import { useRepoUIStore } from '../stores/repoUI.store'
 import { useIssueActions } from './useIssueActions'
 
 const mocked = {
-  apiCreateBranch: apiCreateBranch as unknown as ReturnType<typeof vi.fn>,
-  apiCheckoutBranch: apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>,
+  apiCreateAndCheckoutBranch: apiCreateAndCheckoutBranch as unknown as ReturnType<typeof vi.fn>,
   setIssueState: setIssueState as unknown as ReturnType<typeof vi.fn>,
   useIssueRepoLink: useIssueRepoLink as unknown as ReturnType<typeof vi.fn>,
   toastSuccess: toast.success as unknown as ReturnType<typeof vi.fn>,
@@ -56,7 +55,11 @@ function withToken() {
       ...DEFAULT_SETTINGS,
       github: {
         accounts: [
-          { id: 'acc1', token: 'tok', user: { login: 'me', name: null, email: null, avatarUrl: '' } },
+          {
+            id: 'acc1',
+            token: 'tok',
+            user: { login: 'me', name: null, email: null, avatarUrl: '' },
+          },
         ],
         activeAccountId: 'acc1',
       },
@@ -99,8 +102,11 @@ describe('useIssueActions — createBranch', () => {
     mocked.useIssueRepoLink.mockReturnValue({ repoPath: '/local/gm', branch: null, refreshBranch })
     const { result } = renderHook(() => useIssueActions(issue()))
     await act(async () => result.current.createBranch())
-    expect(mocked.apiCreateBranch).toHaveBeenCalledWith('/local/gm', '42-fix-the-thing', 'HEAD')
-    expect(mocked.apiCheckoutBranch).toHaveBeenCalledWith('/local/gm', '42-fix-the-thing')
+    expect(mocked.apiCreateAndCheckoutBranch).toHaveBeenCalledWith(
+      '/local/gm',
+      '42-fix-the-thing',
+      'HEAD'
+    )
     expect(refreshBranch).toHaveBeenCalled()
     expect(mocked.toastSuccess).toHaveBeenCalled()
   })
@@ -108,7 +114,7 @@ describe('useIssueActions — createBranch', () => {
   it('does nothing without a local repo', async () => {
     const { result } = renderHook(() => useIssueActions(issue()))
     await act(async () => result.current.createBranch())
-    expect(mocked.apiCreateBranch).not.toHaveBeenCalled()
+    expect(mocked.apiCreateAndCheckoutBranch).not.toHaveBeenCalled()
   })
 })
 

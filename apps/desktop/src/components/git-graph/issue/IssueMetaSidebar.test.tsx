@@ -98,7 +98,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   m.useIssueDetail.mockReturnValue({ issue: raw(), isLoading: false, error: null, refresh })
   m.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
-  m.useAssignableUsers.mockReturnValue({ users: [{ login: 'bob', avatar_url: '' }], isLoading: false })
+  m.useAssignableUsers.mockReturnValue({
+    users: [{ login: 'bob', avatar_url: '' }],
+    isLoading: false,
+  })
   m.useRepoLabels.mockReturnValue({ labels: [{ name: 'ui', color: '00ff00' }], isLoading: false })
   mockActions()
 })

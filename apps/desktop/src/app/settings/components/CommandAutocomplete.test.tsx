@@ -12,9 +12,7 @@ describe('CommandAutocomplete', () => {
   it('reports free-typed text through onChange', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    render(
-      <CommandAutocomplete value="" onChange={onChange} suggestions={[]} testId="cmd" />
-    )
+    render(<CommandAutocomplete value="" onChange={onChange} suggestions={[]} testId="cmd" />)
     await user.type(screen.getByTestId('cmd'), 'x')
     expect(onChange).toHaveBeenCalledWith('x')
   })
@@ -33,7 +31,12 @@ describe('CommandAutocomplete', () => {
 
   it('filters suggestions by the typed text', async () => {
     render(
-      <CommandAutocomplete value="build" onChange={vi.fn()} suggestions={SUGGESTIONS} testId="cmd" />
+      <CommandAutocomplete
+        value="build"
+        onChange={vi.fn()}
+        suggestions={SUGGESTIONS}
+        testId="cmd"
+      />
     )
     await userEvent.setup().click(screen.getByTestId('cmd'))
     expect(screen.getByTestId('cmd-option-build')).toBeInTheDocument()

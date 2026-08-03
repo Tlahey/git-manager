@@ -221,7 +221,9 @@ function limb(name: string): string {
  * the eyes along with it.
  */
 function eyesOverlay(): string {
-  const covers = EYES.map((e) => `<circle cx="${e.cx}" cy="${e.cy}" r="${EYE_COVER_R}" fill="${EYE_COVER_FILL}"/>`).join('')
+  const covers = EYES.map(
+    (e) => `<circle cx="${e.cx}" cy="${e.cy}" r="${EYE_COVER_R}" fill="${EYE_COVER_FILL}"/>`
+  ).join('')
   const pupils = EYES.map(
     (e) => `<g class="${MASCOT_SELECTORS.pupil}" data-cx="${e.cx}" data-cy="${e.cy}">
           <circle cx="${e.cx}" cy="${e.cy}" r="${PUPIL_R}" fill="${PUPIL_FILL}"/>
@@ -258,9 +260,11 @@ export const MASCOT_MARKUP = /* html */ `
            into the art, eyes overlaid on top) sits wherever the layout put
            it in that order -->
       ${PLACEMENTS.map((p) =>
-        p.role === 'head' ? `
+        p.role === 'head'
+          ? `
       ${image(HEAD.sprite, HEAD.x, HEAD.y, HEAD.scale)}
-      ${eyesOverlay()}` : limb(p.zone)
+      ${eyesOverlay()}`
+          : limb(p.zone)
       ).join('')}
     </g>
   </g>

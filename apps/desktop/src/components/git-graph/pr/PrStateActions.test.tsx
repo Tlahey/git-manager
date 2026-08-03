@@ -34,7 +34,11 @@ beforeEach(() => {
 describe('PrStateActions', () => {
   it('renders nothing for a merged PR', () => {
     const { container } = render(
-      <PrStateActions repoPath="/repo" prNumber={7} pr={pr({ merged_at: '2026-01-01', state: 'closed' })} />
+      <PrStateActions
+        repoPath="/repo"
+        prNumber={7}
+        pr={pr({ merged_at: '2026-01-01', state: 'closed' })}
+      />
     )
     expect(container).toBeEmptyDOMElement()
   })

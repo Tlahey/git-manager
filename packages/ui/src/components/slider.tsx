@@ -11,7 +11,10 @@ import { cn } from '../lib/utils'
 // filled portion needs no extra element — which keeps the thumb's position and the
 // fill mathematically in sync at any min/max/step.
 
-export interface SliderProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
+export interface SliderProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'type' | 'value' | 'onChange'
+> {
   value: number
   onValueChange: (value: number) => void
   min?: number

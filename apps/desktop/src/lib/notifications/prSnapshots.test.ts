@@ -31,14 +31,16 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 
 describe('buildPRSnapshot', () => {
   it('captures every field a notification can be raised on', () => {
-    expect(buildPRSnapshot(pr({ status: 'merged', ciStatus: 'success', autoMerge: true }))).toEqual({
-      status: 'merged',
-      reviewStatus: 'pending',
-      needsMyReview: false,
-      ciStatus: 'success',
-      autoMerge: true,
-      updatedAt: '2026-07-29T10:00:00.000Z',
-    })
+    expect(buildPRSnapshot(pr({ status: 'merged', ciStatus: 'success', autoMerge: true }))).toEqual(
+      {
+        status: 'merged',
+        reviewStatus: 'pending',
+        needsMyReview: false,
+        ciStatus: 'success',
+        autoMerge: true,
+        updatedAt: '2026-07-29T10:00:00.000Z',
+      }
+    )
   })
 
   it('normalizes the optional booleans so an absent flag never reads as a change', () => {
@@ -70,9 +72,9 @@ describe('snapshotMapsEqual', () => {
     expect(snapshotMapsEqual(base, buildPRSnapshotMap([pr({ id: 'a', autoMerge: true })]))).toBe(
       false
     )
-    expect(snapshotMapsEqual(base, buildPRSnapshotMap([pr({ id: 'a', ciStatus: 'failure' })]))).toBe(
-      false
-    )
+    expect(
+      snapshotMapsEqual(base, buildPRSnapshotMap([pr({ id: 'a', ciStatus: 'failure' })]))
+    ).toBe(false)
   })
 
   it('is false when the set of PRs changed', () => {

@@ -89,9 +89,7 @@ describe('PruneBranchesDialog — prunable selection', () => {
   it('shows the empty state and disables confirm when no branch has a gone upstream', async () => {
     mockedGone.mockResolvedValue([])
     renderDialog()
-    await waitFor(() =>
-      expect(screen.getByText('branch.pruneEmpty')).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText('branch.pruneEmpty')).toBeInTheDocument())
     expect(screen.getByTestId('branch-prune-confirm-button')).toBeDisabled()
   })
 
@@ -160,9 +158,7 @@ describe('PruneBranchesDialog — confirming', () => {
     )
     await user.click(screen.getByTestId('branch-prune-confirm-button'))
 
-    await waitFor(() =>
-      expect(screen.getByText(/branch.prunePartialFailure/)).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText(/branch.prunePartialFailure/)).toBeInTheDocument())
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.queryByTestId('branch-prune-item-feature/ok')).not.toBeInTheDocument()
     expect(screen.getByTestId('branch-prune-item-feature/fails')).toBeInTheDocument()

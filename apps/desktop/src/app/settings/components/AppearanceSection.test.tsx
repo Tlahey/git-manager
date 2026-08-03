@@ -80,7 +80,7 @@ describe('AppearanceSection — font size / density / row height', () => {
   it('switches density', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
-    await user.click(screen.getByRole('radio', { name: "Compact" }))
+    await user.click(screen.getByRole('radio', { name: 'Compact' }))
     expect(useSettingsStore.getState().settings.appearance.density).toBe('compact')
   })
 

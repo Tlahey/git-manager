@@ -33,5 +33,6 @@ export const useGraphAuthorFilterStore = create<GraphAuthorFilterState>((set) =>
       next.delete(email)
       return { selected: next }
     }),
-  clear: () => set((state) => (state.selected.size === 0 ? state : { selected: new Set<string>() })),
+  clear: () =>
+    set((state) => (state.selected.size === 0 ? state : { selected: new Set<string>() })),
 }))

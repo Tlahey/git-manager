@@ -13,20 +13,20 @@ export interface KpiCardProps {
 export function KpiCard({ icon, label, value, sub, accent, loading }: KpiCardProps) {
   return (
     <Card
-      className={`flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl bg-card/60 px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:border-border/80 hover:shadow-md ${
+      className={`bg-card/60 hover:border-border/80 flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:shadow-md ${
         accent ?? ''
       }`}
     >
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2">
         {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-medium tracking-wider uppercase">{label}</span>
       </div>
       {loading ? (
-        <Skeleton className="my-1 h-6 w-12 rounded bg-muted/60" />
+        <Skeleton className="bg-muted/60 my-1 h-6 w-12 rounded" />
       ) : (
-        <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
+        <span className="text-foreground text-2xl leading-none font-bold">{value}</span>
       )}
-      {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
+      {sub && <span className="text-muted-foreground text-[10px]">{sub}</span>}
     </Card>
   )
 }

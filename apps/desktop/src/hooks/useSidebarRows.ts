@@ -143,10 +143,12 @@ export function useSidebarRows({
   // The user's saved pull request views — one sub-group each, in this order.
   const prFilters = usePrFiltersStore((s) => s.filters)
 
-  const {
-    groups: prGroups,
-    isLoading: prFiltersLoading,
-  } = useRepoPrFilters({ remoteUrls, githubToken, filters: prFilters, knownPrs: allPrs })
+  const { groups: prGroups, isLoading: prFiltersLoading } = useRepoPrFilters({
+    remoteUrls,
+    githubToken,
+    filters: prFilters,
+    knownPrs: allPrs,
+  })
 
   // The user's saved issue views — one sub-group each, in this order.
   const issueFilters = useIssueFiltersStore((s) => s.filters)
@@ -510,7 +512,8 @@ export function useSidebarRows({
           })
         }
       }
-      const hideForFilter = q && isGithub && !prsLoading && !prFiltersLoading && filteredPrCount === 0
+      const hideForFilter =
+        q && isGithub && !prsLoading && !prFiltersLoading && filteredPrCount === 0
       if (!hideForFilter) {
         list.push({
           key: 'prs',
@@ -543,7 +546,11 @@ export function useSidebarRows({
             loading: true,
           })
         } else if (!issuesIsGithub) {
-          issueRows.push({ kind: 'message', id: 'issue:nogithub', text: t('sidebar.issues.noGithub') })
+          issueRows.push({
+            kind: 'message',
+            id: 'issue:nogithub',
+            text: t('sidebar.issues.noGithub'),
+          })
         } else if (filteredIssueGroups.length === 0) {
           issueRows.push({
             kind: 'message',
@@ -578,7 +585,11 @@ export function useSidebarRows({
               return
             }
             if (group.issues.length === 0) {
-              issueRows.push({ kind: 'message', id: `${gid}:empty`, text: t('sidebar.issues.empty') })
+              issueRows.push({
+                kind: 'message',
+                id: `${gid}:empty`,
+                text: t('sidebar.issues.empty'),
+              })
               return
             }
             for (const issue of group.issues) {

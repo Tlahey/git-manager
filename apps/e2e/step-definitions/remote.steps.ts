@@ -51,22 +51,22 @@ Then(
   }
 )
 
-Then(/^the remote "([^"]*)" branch "([^"]*)" is unchanged since the last fetch$/, async (
-  remote: string,
-  branch: string
-) => {
-  const repoPath = getActiveRepoPath()
-  const remoteUrl = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', remote], {
-    encoding: 'utf8',
-  }).trim()
-  const remoteTip = execFileSync('git', ['-C', remoteUrl, 'rev-parse', branch], {
-    encoding: 'utf8',
-  }).trim()
-  const knownTip = execFileSync('git', ['-C', repoPath, 'rev-parse', `${remote}/${branch}`], {
-    encoding: 'utf8',
-  }).trim()
-  expect(remoteTip).toBe(knownTip)
-})
+Then(
+  /^the remote "([^"]*)" branch "([^"]*)" is unchanged since the last fetch$/,
+  async (remote: string, branch: string) => {
+    const repoPath = getActiveRepoPath()
+    const remoteUrl = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', remote], {
+      encoding: 'utf8',
+    }).trim()
+    const remoteTip = execFileSync('git', ['-C', remoteUrl, 'rev-parse', branch], {
+      encoding: 'utf8',
+    }).trim()
+    const knownTip = execFileSync('git', ['-C', repoPath, 'rev-parse', `${remote}/${branch}`], {
+      encoding: 'utf8',
+    }).trim()
+    expect(remoteTip).toBe(knownTip)
+  }
+)
 
 Then(/^a push-rejected error is shown$/, async () => {
   const toast = $('[role="status"]')
@@ -95,9 +95,13 @@ Then(
       timeout: 10000,
       timeoutMsg: `expected branch "${branch}" to track remote "${remote}"`,
     })
-    const configuredMerge = execFileSync('git', ['-C', repoPath, 'config', `branch.${branch}.merge`], {
-      encoding: 'utf8',
-    }).trim()
+    const configuredMerge = execFileSync(
+      'git',
+      ['-C', repoPath, 'config', `branch.${branch}.merge`],
+      {
+        encoding: 'utf8',
+      }
+    ).trim()
     expect(configuredMerge).toBe(`refs/heads/${branch}`)
   }
 )

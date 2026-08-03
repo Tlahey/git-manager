@@ -33,7 +33,9 @@ vi.mock('../../api/git.api', () => ({
 }))
 vi.mock('../../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
 
-const { showNativeMenu } = vi.hoisted(() => ({ showNativeMenu: vi.fn().mockResolvedValue(undefined) }))
+const { showNativeMenu } = vi.hoisted(() => ({
+  showNativeMenu: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('../../api/nativeMenu.api', () => ({ showNativeMenu }))
 
 const { invalidateQueries } = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
@@ -81,7 +83,9 @@ vi.mock('../../components/repository-sidebar', () => ({
       <span data-testid="sidebar-token">{props.githubToken ?? ''}</span>
       <button onClick={() => props.onSelectBranch('feature-x')}>select-feature-x</button>
       <button onClick={() => props.onSelectBranch(null)}>select-none</button>
-      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>open-pr</button>
+      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>
+        open-pr
+      </button>
       <button
         onClick={(e) =>
           props.onContextMenu?.(e, {
@@ -288,7 +292,9 @@ describe('RepoView — branch context menu', () => {
   // items in the spec by their real English label (i18n runs live in tests).
   type ItemNode = Extract<MenuSpecNode, { kind: 'item' }>
   function menuItemByText(prefix: string): ItemNode | undefined {
-    const spec = normalizeMenuSpec(showNativeMenu.mock.calls[showNativeMenu.mock.calls.length - 1][0])
+    const spec = normalizeMenuSpec(
+      showNativeMenu.mock.calls[showNativeMenu.mock.calls.length - 1][0]
+    )
     const flat = (nodes: MenuSpecNode[]): MenuSpecNode[] =>
       nodes.flatMap((n) => (n.kind === 'submenu' ? [n, ...flat(normalizeMenuSpec(n.items))] : [n]))
     return flat(spec).find((n): n is ItemNode => n.kind === 'item' && n.text.startsWith(prefix))
@@ -419,7 +425,11 @@ describe('RepoView — branch context menu', () => {
     render(<RepoView />)
     await user.click(screen.getByText('context-menu-local'))
     await act(async () => menuItemByText('Set upstream')!.action!())
-    expect(apiSetBranchUpstream).toHaveBeenCalledWith('/repo', 'local-branch', 'origin/local-branch')
+    expect(apiSetBranchUpstream).toHaveBeenCalledWith(
+      '/repo',
+      'local-branch',
+      'origin/local-branch'
+    )
     expect(screen.queryByTestId('set-upstream-dialog')).not.toBeInTheDocument()
   })
 })

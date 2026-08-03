@@ -3,11 +3,7 @@ import type { GitGraphNode, RebaseTodoStep } from '@git-manager/git-types'
 import type { CommitConvention, CommitValidation } from '@git-manager/ai'
 import { validateCommitSubject } from '@git-manager/ai'
 import { apiGetAiContext, commitRecomposeService } from '../api/ai.api'
-import {
-  apiGetCommitDiff,
-  apiListRebaseCommits,
-  apiRunInteractiveRebase,
-} from '../api/git.api'
+import { apiGetCommitDiff, apiListRebaseCommits, apiRunInteractiveRebase } from '../api/git.api'
 import { formatUnifiedPatch } from '../lib/formatUnifiedPatch'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
@@ -95,8 +91,8 @@ export function useCommitRecompose(
               filesChanged: diff.files.length,
               insertions: diff.totalAdditions,
               deletions: diff.totalDeletions,
-              isMerge: (nodes.find((n) => n.commit.oid === target.oid)?.commit.parentOids.length ??
-                1) > 1,
+              isMerge:
+                (nodes.find((n) => n.commit.oid === target.oid)?.commit.parentOids.length ?? 1) > 1,
             },
             convention: context.commitConvention,
             recentCommits: context.recentCommits,
@@ -139,7 +135,10 @@ export function useCommitRecompose(
 
   /** The proposals that will actually change a message: accepted, non-empty, and different. */
   const accepted = proposals.filter(
-    (p) => p.accepted && p.proposedMessage.trim() && p.proposedMessage.trim() !== p.previousMessage.trim()
+    (p) =>
+      p.accepted &&
+      p.proposedMessage.trim() &&
+      p.proposedMessage.trim() !== p.previousMessage.trim()
   )
 
   /** Best-effort convention check per proposal, recomputed so it tracks live edits. */
@@ -171,9 +170,7 @@ export function useCommitRecompose(
       // Oldest first — `apiListRebaseCommits` returns the range in that order, and the last accepted
       // entry in it is the oldest one the rebase has to start from.
       const byOid = new Map(accepted.map((p) => [p.oid, p]))
-      const oldest = [...nodes]
-        .reverse()
-        .find((n) => byOid.has(n.commit.oid))?.commit.oid
+      const oldest = [...nodes].reverse().find((n) => byOid.has(n.commit.oid))?.commit.oid
 
       if (!oldest) {
         setError('RECOMPOSE_TARGET_NOT_IN_GRAPH')

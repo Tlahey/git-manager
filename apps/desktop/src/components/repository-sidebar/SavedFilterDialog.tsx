@@ -91,9 +91,7 @@ export function SavedFilterDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent data-testid="saved-filter-dialog" className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {filter ? t(copy.editTitle) : t(copy.addTitle)}
-          </DialogTitle>
+          <DialogTitle>{filter ? t(copy.editTitle) : t(copy.addTitle)}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 py-1">

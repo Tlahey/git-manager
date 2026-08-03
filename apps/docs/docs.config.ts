@@ -114,12 +114,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Launchpad',
-    features: [
-      'launchpad-prs',
-      'launchpad-organize',
-      'launchpad-issues',
-      'launchpad-commit-stats',
-    ],
+    features: ['launchpad-prs', 'launchpad-organize', 'launchpad-issues', 'launchpad-commit-stats'],
   },
   {
     title: 'Settings',

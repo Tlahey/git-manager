@@ -18,10 +18,9 @@ describe('useMarkdownTaskToggle', () => {
 
   it('falls back to the saved body once the write settles', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
-    const { result, rerender } = renderHook(
-      ({ content }) => useMarkdownTaskToggle(content, save),
-      { initialProps: { content: '- [ ] todo' } }
-    )
+    const { result, rerender } = renderHook(({ content }) => useMarkdownTaskToggle(content, save), {
+      initialProps: { content: '- [ ] todo' },
+    })
 
     act(() => result.current.onTaskToggle?.('- [x] todo'))
     // What the caller's own revalidation brings back after the PATCH.

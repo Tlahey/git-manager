@@ -34,12 +34,7 @@ describe('descendantsOnCurrentBranch', () => {
 
   it('follows the first parent only, so a merge does not pull in the side branch', () => {
     // The set an interactive rebase from the target would replay is the first-parent line.
-    const merged = [
-      node('m', ['d', 'side']),
-      node('d', ['c']),
-      node('side', ['c']),
-      node('c', []),
-    ]
+    const merged = [node('m', ['d', 'side']), node('d', ['c']), node('side', ['c']), node('c', [])]
     expect(descendantsOnCurrentBranch(merged, 'c', 'm')).toBe(2)
     expect(descendantsOnCurrentBranch(merged, 'side', 'm')).toBe(0)
   })

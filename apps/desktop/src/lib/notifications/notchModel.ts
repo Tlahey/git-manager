@@ -53,10 +53,7 @@ export function authorInitials(author: string): string {
  * `getNotificationText`'s `message` is deliberately unused: it is a sentence templating the
  * repo/title/author back together, and this layout already shows each of them as its own field.
  */
-export function notchModelFromNotification(
-  notif: AppNotification,
-  t: TFunction
-): NotchEventModel {
+export function notchModelFromNotification(notif: AppNotification, t: TFunction): NotchEventModel {
   const { title } = getNotificationText(notif, t)
 
   return {

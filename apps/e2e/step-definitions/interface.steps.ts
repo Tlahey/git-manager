@@ -26,8 +26,8 @@ Then(/^the footer reports the AI provider status$/, async () => {
   // Not just "the pill exists": by the time a screenshot is worth taking, the liveness check must
   // have concluded (the suite's baseline points at the always-up fake server, so 'connected' is
   // the only stable answer here — 'checking' in a capture would be a race, not a state).
-  await browser.waitUntil(
-    async () => (await pill.getAttribute('data-state')) === 'connected',
-    { timeout: 10000, timeoutMsg: 'the footer AI pill never reported the provider as connected' }
-  )
+  await browser.waitUntil(async () => (await pill.getAttribute('data-state')) === 'connected', {
+    timeout: 10000,
+    timeoutMsg: 'the footer AI pill never reported the provider as connected',
+  })
 })

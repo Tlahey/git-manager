@@ -48,7 +48,7 @@ export function useTheme(repoPathOverride?: string) {
   const repoPath = repoPathOverride ?? activeRepo
   const { theme } = useEffectiveRepoSettings(repoPath)
   const glassTransparency = useSettingsStore(
-    (s) => s.settings.appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY,
+    (s) => s.settings.appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY
   )
   const mediaQueryRef = useRef<MediaQueryList | null>(null)
 

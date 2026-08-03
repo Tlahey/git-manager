@@ -119,9 +119,9 @@ describe('compilePattern', () => {
 
 describe('validateCommitSubject — user pattern', () => {
   it('accepts a subject matching the user pattern', () => {
-    expect(validateCommitSubject('JIRA-12: do a thing', { pattern: '^[A-Z]+-\\d+: .+' }).valid).toBe(
-      true
-    )
+    expect(
+      validateCommitSubject('JIRA-12: do a thing', { pattern: '^[A-Z]+-\\d+: .+' }).valid
+    ).toBe(true)
   })
 
   it('flags a subject that does not match the user pattern', () => {
@@ -187,7 +187,6 @@ describe('validateCommitSubject — adaptive', () => {
   })
 })
 
-
 describe('inferHeaderMaxLength', () => {
   /** `count` conventional subjects, the first `long` of them over the 72-char default. */
   function history(count: number, long: number, longLength = 95): string[] {
@@ -210,7 +209,7 @@ describe('inferHeaderMaxLength', () => {
     expect(inferHeaderMaxLength(history(10, 1))).toBe(DEFAULT_HEADER_MAX_LENGTH)
   })
 
-  it('reads a habit of long subjects as the project\'s real bar', () => {
+  it("reads a habit of long subjects as the project's real bar", () => {
     // git-manager's own case: no commitlint config, unmistakably conventional subjects, and a third
     // of them past 72. Holding the model to 72 there flags every message of ordinary length.
     expect(inferHeaderMaxLength(history(10, 3))).toBe(95)
@@ -270,7 +269,13 @@ describe('buildRecentCommitsSection — states the ceiling', () => {
   })
 
   it('states the conventional default for a project with short subjects', () => {
-    const section = buildRecentCommitsSection(['feat: a', 'fix: b', 'chore: c', 'docs: d', 'test: e'])
+    const section = buildRecentCommitsSection([
+      'feat: a',
+      'fix: b',
+      'chore: c',
+      'docs: d',
+      'test: e',
+    ])
     expect(section).toContain(`MUST NOT exceed ${DEFAULT_HEADER_MAX_LENGTH} characters`)
   })
 })

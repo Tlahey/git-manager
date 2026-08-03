@@ -7,8 +7,6 @@ export function parseGitHubUrl(url: string): { owner: string; repo: string } | n
 }
 
 /** Returns the first GitHub `{ owner, repo }` found across the given remote URLs, or `null`. */
-export function firstGitHubOwnerRepo(
-  remoteUrls: string[]
-): { owner: string; repo: string } | null {
+export function firstGitHubOwnerRepo(remoteUrls: string[]): { owner: string; repo: string } | null {
   return remoteUrls.map(parseGitHubUrl).find((r) => r !== null) ?? null
 }

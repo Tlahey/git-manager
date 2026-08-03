@@ -6,14 +6,14 @@ grammar-constrained JSON.
 > Shared plumbing — transport, events, cancellation, errors, settings — lives in the
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 
-| | |
-| --- | --- |
-| **Descriptor** | [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts), driven by [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts) |
-| **Kind** | completion + JSON schema (`COMMIT_MESSAGE_SCHEMA` → `{ subject, body }`) |
-| **Temperature** | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary |
-| **Context scope** | `staged` (index vs HEAD) |
-| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
-| **UI** | ✨ in [`WipStagingPanel`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx) via [`useWipCommitPanel`](../../apps/desktop/src/hooks/useWipCommitPanel.ts) → [`useAiGeneration`](../../apps/desktop/src/hooks/useAiGeneration.ts) |
+|                   |                                                                                                                                                                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Descriptor**    | [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts), driven by [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts)                                                          |
+| **Kind**          | completion + JSON schema (`COMMIT_MESSAGE_SCHEMA` → `{ subject, body }`)                                                                                                                                                                                  |
+| **Temperature**   | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary                                                                                                                                                                     |
+| **Context scope** | `staged` (index vs HEAD)                                                                                                                                                                                                                                  |
+| **Diff budget**   | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts)                                                       |
+| **UI**            | ✨ in [`WipStagingPanel`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx) via [`useWipCommitPanel`](../../apps/desktop/src/hooks/useWipCommitPanel.ts) → [`useAiGeneration`](../../apps/desktop/src/hooks/useAiGeneration.ts) |
 
 ---
 
@@ -34,10 +34,10 @@ model well, not policing its output.
 Above that warning sits the shared
 [`CoverageNotice`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx), saying
 how much of the staged change the message was actually written from — silent on the common case where
-everything was read. It is worth showing *here* for a reason none of the other panels have: this text
+everything was read. It is worth showing _here_ for a reason none of the other panels have: this text
 is about to be written into the repository's history under your name, permanently, and a subject
 scoped to the six files that fitted looks exactly like a subject someone chose. It is computed from
-the same input the prompt is built from and shown *before* the request, because a caption that shows
+the same input the prompt is built from and shown _before_ the request, because a caption that shows
 up after you have read the subject is a caption you did not get.
 
 Batch mode leaves the classic message box untouched, so the notice is gated on that box having text —
@@ -45,7 +45,7 @@ it never captions a message it did not describe.
 
 ---
 
-## Matching *this* project's style
+## Matching _this_ project's style
 
 The interesting part of this feature isn't "write a commit message" — it's "write one that looks
 like it belongs in this repo". A project may enforce Conventional Commits via commitlint, may follow
@@ -93,7 +93,7 @@ The chain, measured against a local Qwen 35B-A3B served by omlx:
 
 1. Asked for **prose**, a reasoning model deliberates first — 2255 tokens before writing anything.
 2. `max_tokens` is [`RESERVED_OUTPUT_TOKENS`](../../packages/ai/src/promptSize.ts) (600), the room the
-   prompt held back for the answer. That constant only ever reasoned about how long an *answer* is;
+   prompt held back for the answer. That constant only ever reasoned about how long an _answer_ is;
    nobody had considered a model that generates thousands of tokens before starting one.
 3. So the cap truncates the model **mid-reasoning**. The provider never sees the end of the reasoning
    block, gives up separating it into `reasoning_content`, and flushes the partial thinking into
@@ -111,11 +111,11 @@ and Qwen 3.5+ dropped the `/no_think` soft switch, so it cannot be relied on acr
 **Constraining the answer is.** Under `COMMIT_MESSAGE_SCHEMA` the grammar obliges the first token to be
 `{`, so there is no reasoning phase to leak:
 
-| request | completion tokens | `finish_reason` | what reaches the box |
-| --- | --- | --- | --- |
-| prose, 600 cap | 600 (exhausted) | `length` | 2222 chars of deliberation |
-| prose, 4000 cap | 2255 | `stop` | the message (26 s later) |
-| **schema, 600 cap** | **13–101** | `stop` | **the message (~1 s)** |
+| request             | completion tokens | `finish_reason` | what reaches the box       |
+| ------------------- | ----------------- | --------------- | -------------------------- |
+| prose, 600 cap      | 600 (exhausted)   | `length`        | 2222 chars of deliberation |
+| prose, 4000 cap     | 2255              | `stop`          | the message (26 s later)   |
+| **schema, 600 cap** | **13–101**        | `stop`          | **the message (~1 s)**     |
 
 That also retires the output budget as something to tune: an answer that never approaches the cap
 cannot be truncated by it. The cost is the token-by-token fill of the message box, which is worth
@@ -134,9 +134,9 @@ body **only** when the change needs rationale the subject cannot carry (`""` oth
 
 `parseCommitMessage` reads the object back and `formatCommitMessage` flattens it to the
 `subject\n\nbody` form git wants. The parser tolerates a ```json fence, and falls back to reading the
-raw text as the message when a provider ignores `response_format` — which is what this feature did
+raw text as the message when a provider ignores `response_format`— which is what this feature did
 for its whole streaming life. An **empty** answer is the one thing it refuses, rather than quietly
-committing `''`.
+committing`''`.
 
 **User** — repo/branch header, a scope hint, the style section, then the diff:
 
@@ -197,7 +197,7 @@ over the results.
 
 This feature's version of the truncation problem is the one that lasts. Given a staged change too
 large for the window, the single prompt read whichever files sorted first and wrote a subject about
-*those* — so a change that also rewrote the backend got committed as `fix(ui): …`, permanently, in
+_those_ — so a change that also rewrote the backend got committed as `fix(ui): …`, permanently, in
 the repository's history, under the user's name, looking deliberate. The instruction told it to
 scope the subject over what it had not read, which is asking a model to describe something it was
 never shown.
@@ -208,7 +208,7 @@ box, because one call per file runs for a while and the Stop button alone does n
 waiting on. Closing or stopping cancels at the next call boundary — the in-flight call still
 completes, since the completion transport takes no request id.
 
-Unlike the commit *plan*, the answer's length is not a property of the question: one message is one
+Unlike the commit _plan_, the answer's length is not a property of the question: one message is one
 message whether it covers 12 files or 200, so the reduce call keeps the ordinary prose reserve and
 is cheap whatever the changeset size. All the cost is in the map phase, and it is paid on every change: three
 calls where there used to be one on a two-file commit. A threshold that kept the single prompt below
@@ -216,7 +216,7 @@ a file count was tried and removed — the same button doing two different thing
 invisible number is not something a user (or a bug report) can reason about. The way to buy the
 latency back is caching summaries by `(path, content hash)`, which is not built yet.
 
-Diff coverage is not reported on this path: it measures how much of the diff the *single* prompt
+Diff coverage is not reported on this path: it measures how much of the diff the _single_ prompt
 could carry, and here every file is read whole in its own prompt.
 
 ---
@@ -225,22 +225,22 @@ could carry, and here every file is read whole in its own prompt.
 
 Beyond the [shared ones](./README.md#known-limitations):
 
-| Limitation | Note |
-| ---------- | ---- |
-| A large staged changeset is still read partially | The budget follows the window now rather than a flat 4000 characters, and spends itself on source before lockfiles — but a huge staged change still exceeds a small window. The omitted paths are named in the prompt and the instruction forbids scoping the subject to only what was read, which keeps `fix(ui)` off a change that also rewrote the backend. It remains true that staging deliberately gives better messages than "stage everything then generate" |
-| ~~A reasoning model wrote its deliberation into the commit box~~ | **Fixed.** The answer is grammar-constrained JSON, so there is no reasoning phase to leak — see [Why this is not a stream](#why-this-is-not-a-stream) |
-| "Stop" abandons the answer rather than cancelling the request | `ai_complete` is a single awaited request with no cancellation channel, unlike `ai_generate_stream`. Clicking stop leaves the message box alone, which is what the user is asking for, but the provider still finishes the generation. The window in which this matters is now a second or two |
-| The subject length cannot be *guaranteed* | Only steered. A JSON-schema `maxLength` was measured and rejected: omlx enforces it by forbidding the next token, so the model does not shorten its wording, it gets cut off mid-word (`…to grammar-constrained JS`, `…with JSON schema, d`). A mangled subject is committed as permanently as a long one and is worse to read. Prompt wording alone barely moved the rate (7/12 → 7/12 over 72 across 12 samples); what fixed it was making the bar match the project (see [Validation](#validation)) |
-| A model can copy a recent subject verbatim | The style section says "examples of FORM ONLY, never reuse one verbatim", and on a repo with real history the model obeys. On a scratch repo whose entire history is `test commit PR` / `Initial commit`, a small model still sometimes echoes one back — there is little else to imitate |
-| Only the **staged** diff is seen | By design: it describes what you are about to commit. Unstaged work is invisible, which is correct but occasionally surprising |
-| ~~Coverage was computed but never shown~~ | **Fixed.** `assessCommitMessageCoverage` was exported and unused; `useAiGeneration` now exposes it and the WIP panel renders it under the message box, before you commit |
+| Limitation                                                       | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A large staged changeset is still read partially                 | The budget follows the window now rather than a flat 4000 characters, and spends itself on source before lockfiles — but a huge staged change still exceeds a small window. The omitted paths are named in the prompt and the instruction forbids scoping the subject to only what was read, which keeps `fix(ui)` off a change that also rewrote the backend. It remains true that staging deliberately gives better messages than "stage everything then generate"                                   |
+| ~~A reasoning model wrote its deliberation into the commit box~~ | **Fixed.** The answer is grammar-constrained JSON, so there is no reasoning phase to leak — see [Why this is not a stream](#why-this-is-not-a-stream)                                                                                                                                                                                                                                                                                                                                                  |
+| "Stop" abandons the answer rather than cancelling the request    | `ai_complete` is a single awaited request with no cancellation channel, unlike `ai_generate_stream`. Clicking stop leaves the message box alone, which is what the user is asking for, but the provider still finishes the generation. The window in which this matters is now a second or two                                                                                                                                                                                                         |
+| The subject length cannot be _guaranteed_                        | Only steered. A JSON-schema `maxLength` was measured and rejected: omlx enforces it by forbidding the next token, so the model does not shorten its wording, it gets cut off mid-word (`…to grammar-constrained JS`, `…with JSON schema, d`). A mangled subject is committed as permanently as a long one and is worse to read. Prompt wording alone barely moved the rate (7/12 → 7/12 over 72 across 12 samples); what fixed it was making the bar match the project (see [Validation](#validation)) |
+| A model can copy a recent subject verbatim                       | The style section says "examples of FORM ONLY, never reuse one verbatim", and on a repo with real history the model obeys. On a scratch repo whose entire history is `test commit PR` / `Initial commit`, a small model still sometimes echoes one back — there is little else to imitate                                                                                                                                                                                                              |
+| Only the **staged** diff is seen                                 | By design: it describes what you are about to commit. Unstaged work is invisible, which is correct but occasionally surprising                                                                                                                                                                                                                                                                                                                                                                         |
+| ~~Coverage was computed but never shown~~                        | **Fixed.** `assessCommitMessageCoverage` was exported and unused; `useAiGeneration` now exposes it and the WIP panel renders it under the message box, before you commit                                                                                                                                                                                                                                                                                                                               |
 
 ## Tests
 
-| Test | Covers |
-| ---- | ------ |
-| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts) | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, the instruction's committed-output rules, and `parseCommitMessage`/`formatCommitMessage` (JSON, fenced JSON, prose fallback, empty rejected) |
-| [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts) | commitlint parsing, conventional-history inference, validation, and the adaptive length bar (`inferHeaderMaxLength`: outlier vs habit, never tightening below the default, commitlint overriding it, and the prompt stating the same number) |
-| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts) | the finished message handed back whole, subject+body joined by a blank line, empty-staged refusal, validation wiring, coverage (assessed before the request, cleared on a new run), and cancelling (no write-back, no error reported for a request that failed after being abandoned) |
-| [`WipStagingPanel.test.tsx`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.test.tsx) | the coverage line under the message box: shown when files were left out, silent when everything was read, absent when the box is empty |
-| [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | the right instruction, temperature and **schema** reach the transport, and the parsed draft comes back |
+| Test                                                                                                          | Covers                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts)                               | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, the instruction's committed-output rules, and `parseCommitMessage`/`formatCommitMessage` (JSON, fenced JSON, prose fallback, empty rejected) |
+| [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts)                         | commitlint parsing, conventional-history inference, validation, and the adaptive length bar (`inferHeaderMaxLength`: outlier vs habit, never tightening below the default, commitlint overriding it, and the prompt stating the same number)                                                                                             |
+| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts)                             | the finished message handed back whole, subject+body joined by a blank line, empty-staged refusal, validation wiring, coverage (assessed before the request, cleared on a new run), and cancelling (no write-back, no error reported for a request that failed after being abandoned)                                                    |
+| [`WipStagingPanel.test.tsx`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.test.tsx) | the coverage line under the message box: shown when files were left out, silent when everything was read, absent when the box is empty                                                                                                                                                                                                   |
+| [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts)                                                 | the right instruction, temperature and **schema** reach the transport, and the parsed draft comes back                                                                                                                                                                                                                                   |

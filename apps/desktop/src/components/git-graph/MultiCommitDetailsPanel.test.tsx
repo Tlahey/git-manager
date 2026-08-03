@@ -102,11 +102,7 @@ describe('MultiCommitDetailsPanel', () => {
   it('injects the range base oid when a file diff is opened', () => {
     const onSelectFileDiff = vi.fn()
     render(
-      <MultiCommitDetailsPanel
-        nodes={NODES}
-        repoPath="/repo"
-        onSelectFileDiff={onSelectFileDiff}
-      />
+      <MultiCommitDetailsPanel nodes={NODES} repoPath="/repo" onSelectFileDiff={onSelectFileDiff} />
     )
     const onSelect = fileListCalls.current[0].onSelectFileDiff as (f: {
       path: string

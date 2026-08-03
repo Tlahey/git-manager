@@ -43,13 +43,7 @@ import { useAiStream } from './useAiStream'
 export const DEFAULT_MAX_SCANNED_COMMITS = 60
 
 /** What the search is doing, from the user's point of view. */
-export type AiCommitSearchPhase =
-  | 'idle'
-  | 'scanning'
-  | 'answering'
-  | 'done'
-  | 'cancelled'
-  | 'error'
+export type AiCommitSearchPhase = 'idle' | 'scanning' | 'answering' | 'done' | 'cancelled' | 'error'
 
 export interface AiCommitSearchOptions {
   maxCommits: number
@@ -148,9 +142,14 @@ function readSpan(scan: { oldestEpoch?: number; newestEpoch?: number }): string 
  * never happened".
  */
 export function useAiCommitSearch(repoPath: string) {
-  const { run, cancel, reset, status: streamStatus, error: streamError, text } = useAiStream(
-    commitSearchAnswerService.cancel
-  )
+  const {
+    run,
+    cancel,
+    reset,
+    status: streamStatus,
+    error: streamError,
+    text,
+  } = useAiStream(commitSearchAnswerService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
   const contextTokens = aiConnection.contextTokens
@@ -213,10 +212,7 @@ export function useAiCommitSearch(repoPath: string) {
 
       let scanned: ScannedCommit[] = []
       try {
-        scanned =
-          options.mode === 'quick'
-            ? await runQuickScan(scan)
-            : await runDeepScan(scan)
+        scanned = options.mode === 'quick' ? await runQuickScan(scan) : await runDeepScan(scan)
       } catch (err) {
         setScanning(false)
         setProgress(null)

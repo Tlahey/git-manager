@@ -71,7 +71,9 @@ export function resolveCiStatus(
       } else {
         const allSkipped =
           hasCheckRuns &&
-          checkRuns.every((run: GhCheckRun) => ['skipped', 'neutral'].includes(run.conclusion ?? ''))
+          checkRuns.every((run: GhCheckRun) =>
+            ['skipped', 'neutral'].includes(run.conclusion ?? '')
+          )
         overall = allSkipped ? 'skipped' : null
       }
     }

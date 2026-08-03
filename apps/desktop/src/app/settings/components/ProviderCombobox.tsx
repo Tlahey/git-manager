@@ -43,16 +43,13 @@ export function ProviderCombobox({
           role="combobox"
           aria-expanded={open}
           data-testid="ai-provider-select"
-          className="h-8 w-full justify-between font-normal text-xs"
+          className="h-8 w-full justify-between text-xs font-normal"
         >
           {selected?.label ?? value}
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[var(--radix-popover-trigger-width,280px)] p-0"
-        align="start"
-      >
+      <PopoverContent className="w-[var(--radix-popover-trigger-width,280px)] p-0" align="start">
         <Command>
           <CommandInput data-testid="ai-provider-search" placeholder={searchPlaceholder} />
           <CommandList>
@@ -69,10 +66,7 @@ export function ProviderCombobox({
                   }}
                 >
                   <Check
-                    className={cn(
-                      'h-3.5 w-3.5',
-                      preset.id === value ? 'opacity-100' : 'opacity-0'
-                    )}
+                    className={cn('h-3.5 w-3.5', preset.id === value ? 'opacity-100' : 'opacity-0')}
                   />
                   {preset.label}
                 </CommandItem>

@@ -43,7 +43,6 @@ export const FILE_GROUPING_SCHEMA: JsonSchema = {
   strict: true,
 }
 
-
 /** Files per commit assumed when reserving room for the plan's own scaffolding. Deliberately low:
  * the instruction asks for minimality, so real plans group more than this, and over-counting commits
  * reserves a little too much rather than truncating the answer. */
@@ -129,9 +128,7 @@ export function parseCommitPlan(raw: string): ProposedCommit[] {
       : null
   if (!rawItems) throw new Error('AI grouping response had no "commits" array')
 
-  const commits = rawItems
-    .map(toProposedCommit)
-    .filter((c): c is ProposedCommit => c !== null)
+  const commits = rawItems.map(toProposedCommit).filter((c): c is ProposedCommit => c !== null)
   if (commits.length === 0) throw new Error('AI grouping response contained no usable commits')
   return commits
 }

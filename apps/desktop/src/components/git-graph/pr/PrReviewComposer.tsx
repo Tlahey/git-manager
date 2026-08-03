@@ -48,7 +48,11 @@ export function PrReviewComposer({ repoPath, prNumber, prUrl }: PrReviewComposer
           onClick={() => submit('APPROVE')}
           data-testid="pr-review-approve"
         >
-          {pending ? <Spinner className="h-3 w-3" /> : <Check className="h-3.5 w-3.5 text-green-500" />}
+          {pending ? (
+            <Spinner className="h-3 w-3" />
+          ) : (
+            <Check className="h-3.5 w-3.5 text-green-500" />
+          )}
           {t('pr.review.approve')}
         </Button>
         <Button

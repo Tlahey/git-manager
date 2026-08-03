@@ -49,9 +49,7 @@ function mockActions(overrides: Partial<IssueActions> = {}) {
 }
 
 function renderRow(props: Partial<Parameters<typeof IssueRow>[0]> = {}) {
-  return render(
-    <IssueRow issue={issue()} pinned={false} onTogglePin={vi.fn()} {...props} />
-  )
+  return render(<IssueRow issue={issue()} pinned={false} onTogglePin={vi.fn()} {...props} />)
 }
 
 beforeEach(() => {

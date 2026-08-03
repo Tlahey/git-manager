@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
 vi.mock('../api/git.api', () => ({
-  apiCreateBranch: vi.fn(),
-  apiCheckoutBranch: vi.fn(),
+  apiCreateAndCheckoutBranch: vi.fn(),
   apiPushBranch: vi.fn(),
   apiCreateCommit: vi.fn(),
 }))
@@ -22,7 +21,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('swr', () => ({ default: () => ({ data: 'main' }) }))
 
-import { apiCreateBranch, apiCheckoutBranch, apiPushBranch, apiCreateCommit } from '../api/git.api'
+import { apiCreateAndCheckoutBranch, apiPushBranch, apiCreateCommit } from '../api/git.api'
 import { createPullRequest } from '../api/github.api'
 import { usePrPublishFlow } from './usePrPublishFlow'
 import { useRepoDataStore } from '../stores/repoData.store'
@@ -30,8 +29,7 @@ import { useRepoUIStore } from '../stores/repoUI.store'
 
 const REPO = '/repo'
 const m = {
-  createBranch: apiCreateBranch as unknown as ReturnType<typeof vi.fn>,
-  checkout: apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>,
+  createBranch: apiCreateAndCheckoutBranch as unknown as ReturnType<typeof vi.fn>,
   push: apiPushBranch as unknown as ReturnType<typeof vi.fn>,
   commit: apiCreateCommit as unknown as ReturnType<typeof vi.fn>,
   createPr: createPullRequest as unknown as ReturnType<typeof vi.fn>,
@@ -103,16 +101,11 @@ describe('usePrPublishFlow — commitAndPrepare', () => {
     await act(async () => {
       await result.current.commitAndPrepare({ commitMessage: 'feat: x', newBranchName: 'feat/x' })
     })
+    // The branch + checkout pair is one composed call, so it can't come apart into a half-undoable
+    // gesture — see `apiCreateAndCheckoutBranch`.
     expect(m.createBranch).toHaveBeenCalledWith(REPO, 'feat/x', 'HEAD')
-    expect(m.checkout).toHaveBeenCalledWith(REPO, 'feat/x', {
-      fromRef: 'main',
-      fromDetached: false,
-    })
-    // Order: branch → checkout → commit
+    // Order: branch (+ its checkout) → commit
     expect(m.createBranch.mock.invocationCallOrder[0]).toBeLessThan(
-      m.checkout.mock.invocationCallOrder[0]
-    )
-    expect(m.checkout.mock.invocationCallOrder[0]).toBeLessThan(
       m.commit.mock.invocationCallOrder[0]
     )
     expect(result.current.composer?.head).toBe('feat/x')
@@ -125,9 +118,7 @@ describe('usePrPublishFlow — commitAndPrepare', () => {
     setBranch('main')
     const { result } = renderHook(() => usePrPublishFlow(REPO))
     await act(async () => {
-      await expect(
-        result.current.commitAndPrepare({ commitMessage: 'feat: x' })
-      ).rejects.toThrow()
+      await expect(result.current.commitAndPrepare({ commitMessage: 'feat: x' })).rejects.toThrow()
     })
     expect(m.commit).not.toHaveBeenCalled()
     expect(useRepoUIStore.getState().prComposer).toBeNull()

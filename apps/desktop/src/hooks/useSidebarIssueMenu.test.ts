@@ -24,8 +24,7 @@ vi.mock('../api/nativeMenu.api', () => ({
 }))
 
 vi.mock('../api/git.api', () => ({
-  apiCreateBranch: vi.fn().mockResolvedValue(undefined),
-  apiCheckoutBranch: vi.fn().mockResolvedValue(undefined),
+  apiCreateAndCheckoutBranch: vi.fn().mockResolvedValue(undefined),
   apiGetBranches: vi.fn().mockResolvedValue([]),
 }))
 
@@ -78,7 +77,8 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
   }
 }
 
-const event = () => ({ preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as React.MouseEvent
+const event = () =>
+  ({ preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as React.MouseEvent
 
 function openMenu(target: MockIssue = issue()) {
   const { result } = renderHook(() => useSidebarIssueMenu('/repo'))
@@ -95,8 +95,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useQueryMock.mockReturnValue({ data: [] })
   showNativeMenu.mockResolvedValue(undefined)
-  mocked.apiCreateBranch.mockResolvedValue(undefined)
-  mocked.apiCheckoutBranch.mockResolvedValue(undefined)
+  mocked.apiCreateAndCheckoutBranch.mockResolvedValue(undefined)
 })
 
 describe('useSidebarIssueMenu — menu shape', () => {
@@ -140,21 +139,24 @@ describe('useSidebarIssueMenu — create a branch', () => {
 
     await act(async () => item(spec, 'Create a branch for issue #312')!.action!())
 
-    expect(mocked.apiCreateBranch).toHaveBeenCalledWith('/repo', '312-tab-close-button-overlaps-text', 'HEAD')
-    expect(mocked.apiCheckoutBranch).toHaveBeenCalledWith('/repo', '312-tab-close-button-overlaps-text')
+    expect(mocked.apiCreateAndCheckoutBranch).toHaveBeenCalledWith(
+      '/repo',
+      '312-tab-close-button-overlaps-text',
+      'HEAD'
+    )
     await waitFor(() =>
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
     )
     expect(toastSuccess).toHaveBeenCalled()
   })
 
-  it('reports a failed creation without checking anything out', async () => {
-    mocked.apiCreateBranch.mockRejectedValue(new Error('already exists'))
+  it('reports a failed creation', async () => {
+    mocked.apiCreateAndCheckoutBranch.mockRejectedValue(new Error('already exists'))
     const spec = openMenu()
 
     await act(async () => item(spec, 'Create a branch for issue #312')!.action!())
 
-    expect(mocked.apiCheckoutBranch).not.toHaveBeenCalled()
+    expect(invalidateQueries).not.toHaveBeenCalled()
     await waitFor(() => expect(toastError).toHaveBeenCalled())
   })
 })

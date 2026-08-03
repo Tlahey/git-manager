@@ -275,6 +275,12 @@ export function useCommitBatchReview(
         return
       }
       await apiUnstageAll(repoPath)
+      // Deliberately *not* one undo gesture (`runActivity`), unlike the other multi-operation
+      // flows. Each commit here undoes cleanly on its own — a soft reset to its predecessor — and
+      // every intermediate state is one the user might actually want to stop at ("keep the first
+      // three of the five"). Grouping would take that away to fix nothing: the leading
+      // `apiUnstageAll` records no undo entry, so a group would not restore the original staging
+      // either. Coarse is not the same as broken; see `lib/undoGestures.ts`.
       for (const { proposal, index } of acceptedEntries) {
         for (const file of proposal.files) {
           await apiStageFile(repoPath, file.path)

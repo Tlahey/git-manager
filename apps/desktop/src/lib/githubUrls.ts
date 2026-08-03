@@ -21,6 +21,8 @@ export function resolveGithubUrl(
 ): string | undefined {
   return (
     knownUrls.find((url): url is string => Boolean(url)) ??
-    (ownerRepo ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/${kind}/${number}` : undefined)
+    (ownerRepo
+      ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/${kind}/${number}`
+      : undefined)
   )
 }

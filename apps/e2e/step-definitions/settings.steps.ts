@@ -30,47 +30,49 @@ When(/^I open the settings$/, async () => {
   // scenarios that open settings without a preceding reload are not slowed down.
   const page = $('[data-testid="settings-page"]')
   let attempts = 0
-  await browser.waitUntil(
-    async () => {
-      if (await page.isDisplayed().catch(() => false)) return true
-      attempts += 1
-      await browser.keys([META, ','])
-      if (await page.isDisplayed().catch(() => false)) return true
-      // Native chords occasionally get lost for the whole wait — not just the reload gap above:
-      // when the OS takes focus off the window, `browser.keys` delivers nothing at all, and one
-      // random settings scenario per full run used to burn this whole timeout. After a few real
-      // attempts, also dispatch the same keydown synthetically on `window`: it drives the exact
-      // `useKeyboardShortcuts` handler a real Cmd+, reaches (the listener never checks
-      // `isTrusted`), minus the native key delivery that focus loss breaks. Real chords keep
-      // getting sent first on every pass, so a healthy run still exercises the true shortcut path.
-      if (attempts >= 4) {
-        console.warn('[e2e] Mod+, chord seems lost — falling back to a synthetic keydown')
-        await browser.execute(() => {
-          window.dispatchEvent(
-            new KeyboardEvent('keydown', { key: ',', metaKey: true, bubbles: true })
-          )
-        })
-      }
-      return page.isDisplayed().catch(() => false)
-    },
-    { timeout: 10000, interval: 500, timeoutMsg: 'settings-page never appeared after Mod+,' }
-  ).catch(async (e) => {
-    // The chord and the synthetic fallback both failing means the app itself did not respond —
-    // capture what page it was actually on, so the next flaky run is data instead of a mystery.
-    const diag = await browser
-      .execute(() => ({
-        url: window.location.href,
-        rootChildren: document.getElementById('root')?.childElementCount ?? -1,
-        bodyMarkers: [...document.querySelectorAll('[data-testid]')]
-          .slice(0, 10)
-          .map((el) => el.getAttribute('data-testid')),
-      }))
-      .catch(() => 'diagnostics unavailable (execute failed)')
-    throw new Error(
-      `settings-page never appeared after Mod+, — app state: ${JSON.stringify(diag)}`,
-      { cause: e }
+  await browser
+    .waitUntil(
+      async () => {
+        if (await page.isDisplayed().catch(() => false)) return true
+        attempts += 1
+        await browser.keys([META, ','])
+        if (await page.isDisplayed().catch(() => false)) return true
+        // Native chords occasionally get lost for the whole wait — not just the reload gap above:
+        // when the OS takes focus off the window, `browser.keys` delivers nothing at all, and one
+        // random settings scenario per full run used to burn this whole timeout. After a few real
+        // attempts, also dispatch the same keydown synthetically on `window`: it drives the exact
+        // `useKeyboardShortcuts` handler a real Cmd+, reaches (the listener never checks
+        // `isTrusted`), minus the native key delivery that focus loss breaks. Real chords keep
+        // getting sent first on every pass, so a healthy run still exercises the true shortcut path.
+        if (attempts >= 4) {
+          console.warn('[e2e] Mod+, chord seems lost — falling back to a synthetic keydown')
+          await browser.execute(() => {
+            window.dispatchEvent(
+              new KeyboardEvent('keydown', { key: ',', metaKey: true, bubbles: true })
+            )
+          })
+        }
+        return page.isDisplayed().catch(() => false)
+      },
+      { timeout: 10000, interval: 500, timeoutMsg: 'settings-page never appeared after Mod+,' }
     )
-  })
+    .catch(async (e) => {
+      // The chord and the synthetic fallback both failing means the app itself did not respond —
+      // capture what page it was actually on, so the next flaky run is data instead of a mystery.
+      const diag = await browser
+        .execute(() => ({
+          url: window.location.href,
+          rootChildren: document.getElementById('root')?.childElementCount ?? -1,
+          bodyMarkers: [...document.querySelectorAll('[data-testid]')]
+            .slice(0, 10)
+            .map((el) => el.getAttribute('data-testid')),
+        }))
+        .catch(() => 'diagnostics unavailable (execute failed)')
+      throw new Error(
+        `settings-page never appeared after Mod+, — app state: ${JSON.stringify(diag)}`,
+        { cause: e }
+      )
+    })
 })
 
 Then(/^the settings screen is shown$/, async () => {
@@ -272,7 +274,10 @@ When(/^I select the "([^"]*)" theme$/, async (themeId: string) => {
 Then(/^the active theme is "([^"]*)"$/, async (themeId: string) => {
   await browser.waitUntil(
     async () => (await browser.execute(() => document.documentElement.dataset.theme)) === themeId,
-    { timeout: 10000, timeoutMsg: `document.documentElement's data-theme never became "${themeId}"` }
+    {
+      timeout: 10000,
+      timeoutMsg: `document.documentElement's data-theme never became "${themeId}"`,
+    }
   )
 })
 
@@ -280,15 +285,15 @@ Then(/^the active theme is "([^"]*)"$/, async (themeId: string) => {
 // on why a full appearance snapshot isn't reproducible: which OTHER cards show up depends on
 // unlocked achievements + custom themes dropped in ~/.git-manager/themes/ on the test machine).
 // "dark" is never achievement-gated, so this specific card is always present and stable.
-Then(/^the "([^"]*)" theme card matches the visual snapshot "([^"]*)"$/, async (
-  themeId: string,
-  tag: string
-) => {
-  const card = $(`[data-testid="theme-card-${themeId}"]`)
-  await card.waitForDisplayed({ timeout: 10000 })
-  await stabiliseForSnapshot()
-  await expect(card).toMatchElementSnapshot(tag, 1)
-})
+Then(
+  /^the "([^"]*)" theme card matches the visual snapshot "([^"]*)"$/,
+  async (themeId: string, tag: string) => {
+    const card = $(`[data-testid="theme-card-${themeId}"]`)
+    await card.waitForDisplayed({ timeout: 10000 })
+    await stabiliseForSnapshot()
+    await expect(card).toMatchElementSnapshot(tag, 1)
+  }
+)
 
 // The "integrations" tab defaults to the GitHub sub-provider (IntegrationSection.tsx's
 // `activeProvider` initial state), so no extra sub-tab click is needed to reach this button.

@@ -94,11 +94,7 @@ export function StepRailRow({
         onRowClick && 'cursor-pointer',
         // Selection wins over the `current` tint — otherwise the step in progress, which is
         // exactly the row most likely to be selected, would never look selected.
-        isSelected
-          ? 'bg-accent'
-          : isCurrent
-            ? 'bg-primary/10'
-            : onRowClick && 'hover:bg-accent/40'
+        isSelected ? 'bg-accent' : isCurrent ? 'bg-primary/10' : onRowClick && 'hover:bg-accent/40'
       )}
       style={{ height: STEP_RAIL_ROW_HEIGHT }}
     >

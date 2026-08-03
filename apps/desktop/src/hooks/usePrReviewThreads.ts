@@ -14,7 +14,8 @@ export function usePrReviewThreads(
     prNumber != null && ownerRepo && token
       ? ['pr-review-threads', ownerRepo.owner, ownerRepo.repo, prNumber, token]
       : null,
-    () => fetchPrReviewThreads(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+    () =>
+      fetchPrReviewThreads(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 

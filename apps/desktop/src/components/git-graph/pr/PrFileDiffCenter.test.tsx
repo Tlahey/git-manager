@@ -31,13 +31,22 @@ vi.mock('../../merge-editor/ThreeWayMergeEditor', () => ({
   ),
 }))
 vi.mock('@git-manager/editor', () => ({
-  CodeEditor: (p: { content: string }) => <div data-testid="stub-code-editor" data-content={p.content} />,
+  CodeEditor: (p: { content: string }) => (
+    <div data-testid="stub-code-editor" data-content={p.content} />
+  ),
 }))
 
 import { PrFileDiffCenter } from './PrFileDiffCenter'
 
 function file(overrides: Partial<GhPrFile> = {}): GhPrFile {
-  return { filename: 'src/a.ts', status: 'modified', additions: 3, deletions: 1, changes: 4, ...overrides }
+  return {
+    filename: 'src/a.ts',
+    status: 'modified',
+    additions: 3,
+    deletions: 1,
+    changes: 4,
+    ...overrides,
+  }
 }
 
 function contents(overrides: Partial<ReturnType<typeof usePrFileContentsMock>> = {}) {
@@ -118,7 +127,9 @@ describe('PrFileDiffCenter', () => {
     expect(screen.queryByTestId('stub-diff-editor')).not.toBeInTheDocument()
 
     usePrFileContentsMock.mockReturnValue(contents({ file: undefined, isLoading: false }))
-    rerender(<PrFileDiffCenter repoPath="/repo" prNumber={7} filename="gone.ts" onClose={vi.fn()} />)
+    rerender(
+      <PrFileDiffCenter repoPath="/repo" prNumber={7} filename="gone.ts" onClose={vi.fn()} />
+    )
     expect(screen.getByText('pr.diff.notFound')).toBeInTheDocument()
   })
 })

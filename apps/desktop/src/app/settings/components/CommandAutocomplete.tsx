@@ -44,10 +44,7 @@ export function CommandAutocomplete({
 
   const query = value.trim().toLowerCase()
   const filtered = suggestions.filter(
-    (s) =>
-      !query ||
-      s.name.toLowerCase().includes(query) ||
-      s.command.toLowerCase().includes(query)
+    (s) => !query || s.name.toLowerCase().includes(query) || s.command.toLowerCase().includes(query)
   )
   const showList = open && filtered.length > 0
 

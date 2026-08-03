@@ -6,8 +6,9 @@ import type { MockIssue } from '../types'
 /** Simulate the infinite-scroll sentinel scrolling into view (see the IntersectionObserver stub in
  * vitest.setup.ts). The most recently mounted observer belongs to the current sentinel. */
 function scrollSentinelIntoView() {
-  const io = (globalThis.IntersectionObserver as unknown as { instances: { trigger: () => void }[] })
-    .instances
+  const io = (
+    globalThis.IntersectionObserver as unknown as { instances: { trigger: () => void }[] }
+  ).instances
   act(() => io.at(-1)?.trigger())
 }
 
@@ -37,14 +38,30 @@ function makeIssue(overrides: Partial<MockIssue> = {}): MockIssue {
 
 describe('IssuesTab — loading', () => {
   it('shows skeleton rows while loading', () => {
-    const { container } = render(<IssuesTab allIssues={[]} loading currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <IssuesTab
+        allIssues={[]}
+        loading
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
   })
 })
 
 describe('IssuesTab — empty state', () => {
   it('shows a no-issues message when the list is empty', () => {
-    render(<IssuesTab allIssues={[]} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={[]}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByText('No issues match your filters')).toBeInTheDocument()
   })
 })
@@ -55,7 +72,15 @@ describe('IssuesTab — content', () => {
       makeIssue({ id: '1', title: 'Issue one' }),
       makeIssue({ id: '2', title: 'Issue two' }),
     ]
-    render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByText('Issue one')).toBeInTheDocument()
     expect(screen.getByText('Issue two')).toBeInTheDocument()
   })
@@ -68,7 +93,15 @@ describe('IssuesTab — search and filters', () => {
       makeIssue({ id: '2', title: 'Add feature', author: 'bob' }),
     ]
     const user = userEvent.setup()
-    render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     await user.type(screen.getByPlaceholderText('Search…'), 'bob')
     expect(screen.getByText('Add feature')).toBeInTheDocument()
     expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
@@ -80,7 +113,15 @@ describe('IssuesTab — search and filters', () => {
       makeIssue({ id: '2', title: 'Closed issue', status: 'closed' }),
     ]
     const user = userEvent.setup()
-    const { container } = render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     // Closed issues are hidden by default so the list matches the "open issues" count.
     expect(screen.getByText('Open issue')).toBeInTheDocument()
     expect(screen.queryByText('Closed issue')).not.toBeInTheDocument()
@@ -107,7 +148,15 @@ describe('IssuesTab — mine filter', () => {
       }),
     ]
     const user = userEvent.setup()
-    render(<IssuesTab allIssues={issues} loading={false} currentUser="me" pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser="me"
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     // Default: authored-by-me and assigned-to-me only.
     expect(screen.getByText('My issue')).toBeInTheDocument()
     expect(screen.getByText('Assigned to me')).toBeInTheDocument()
@@ -118,7 +167,15 @@ describe('IssuesTab — mine filter', () => {
   })
 
   it('does not render the Mine toggle without a signed-in user', () => {
-    render(<IssuesTab allIssues={[]} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={[]}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.queryByTestId('issues-mine-toggle')).not.toBeInTheDocument()
   })
 })
@@ -130,7 +187,15 @@ describe('IssuesTab — sorting', () => {
       makeIssue({ id: '2', title: 'Issue by alice', author: 'alice' }),
     ]
     const user = userEvent.setup()
-    const { container } = render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     const sortButtons = Array.from(container.querySelectorAll('.flex.items-center.gap-1 > button'))
     const authorButton = sortButtons.find((b) => b.textContent === 'Author')!
     await user.click(authorButton) // desc by author: zed before alice
@@ -152,7 +217,15 @@ describe('IssuesTab — pagination (infinite scroll)', () => {
     const issues = Array.from({ length: 60 }, (_, i) =>
       makeIssue({ id: String(i), title: `Issue number ${i}` })
     )
-    render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     // First 50 rendered (stable order — all share an updatedAt), the rest hidden until scroll.
     expect(screen.getByText('Issue number 49')).toBeInTheDocument()
     expect(screen.queryByText('Issue number 55')).not.toBeInTheDocument()
@@ -166,7 +239,15 @@ describe('IssuesTab — pagination (infinite scroll)', () => {
     const issues = Array.from({ length: 50 }, (_, i) =>
       makeIssue({ id: String(i), title: `Issue number ${i}` })
     )
-    render(<IssuesTab allIssues={issues} loading={false} currentUser={null} pinnedIds={new Set()} onTogglePin={vi.fn()} />)
+    render(
+      <IssuesTab
+        allIssues={issues}
+        loading={false}
+        currentUser={null}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.queryByTestId('infinite-scroll-sentinel')).not.toBeInTheDocument()
   })
 })

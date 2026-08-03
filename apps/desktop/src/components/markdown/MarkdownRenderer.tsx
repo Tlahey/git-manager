@@ -114,22 +114,33 @@ export function MarkdownRenderer({
           // `id` comes from rehype-slug and must survive the override, or every anchor link in a
           // README points at a heading that no longer has a target.
           h1: ({ children, id }) => (
-            <h1 id={id} className="mb-3 mt-6 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground">
+            <h1
+              id={id}
+              className="mb-3 mt-6 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground"
+            >
               {children}
             </h1>
           ),
           h2: ({ children, id }) => (
-            <h2 id={id} className="mb-2.5 mt-5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90">
+            <h2
+              id={id}
+              className="mb-2.5 mt-5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90"
+            >
               {children}
             </h2>
           ),
           h3: ({ children, id }) => (
-            <h3 id={id} className="mb-2 mt-4 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85">
+            <h3
+              id={id}
+              className="mb-2 mt-4 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85"
+            >
               {children}
             </h3>
           ),
           h4: ({ children, id }) => (
-            <h4 id={id} className="mb-1.5 mt-3 text-xs font-semibold text-foreground/80">{children}</h4>
+            <h4 id={id} className="mb-1.5 mt-3 text-xs font-semibold text-foreground/80">
+              {children}
+            </h4>
           ),
           p: ({ children }) => (
             <p className="my-1.5 text-xs leading-relaxed text-muted-foreground">{children}</p>
@@ -178,17 +189,25 @@ export function MarkdownRenderer({
               return (
                 <div
                   {...alignAttr}
-                  className={`flex flex-col items-center justify-center text-center space-y-3 my-4 ${className || ''}`}
+                  className={`my-4 flex flex-col items-center justify-center space-y-3 text-center ${className || ''}`}
                   {...props}
                 >
                   {children}
                 </div>
               )
             }
-            return <div className={className} {...props}>{children}</div>
+            return (
+              <div className={className} {...props}>
+                {children}
+              </div>
+            )
           },
-          sub: ({ children }) => <sub className="text-[10px] text-muted-foreground">{children}</sub>,
-          sup: ({ children }) => <sup className="text-[10px] text-muted-foreground">{children}</sup>,
+          sub: ({ children }) => (
+            <sub className="text-[10px] text-muted-foreground">{children}</sub>
+          ),
+          sup: ({ children }) => (
+            <sup className="text-[10px] text-muted-foreground">{children}</sup>
+          ),
         }}
       >
         {content}
@@ -197,6 +216,8 @@ export function MarkdownRenderer({
   )
 
   return (
-    <MarkdownTaskListContext.Provider value={taskContext}>{rendered}</MarkdownTaskListContext.Provider>
+    <MarkdownTaskListContext.Provider value={taskContext}>
+      {rendered}
+    </MarkdownTaskListContext.Provider>
   )
 }

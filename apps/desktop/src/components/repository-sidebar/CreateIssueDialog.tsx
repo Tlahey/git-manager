@@ -33,7 +33,9 @@ interface CreateIssueDialogProps {
 export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: CreateIssueDialogProps) {
   const { t } = useTranslation('git')
   const { ownerRepo, token } = useRepoGitHub(repoPath)
-  const newIssueUrl = ownerRepo ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/issues/new` : null
+  const newIssueUrl = ownerRepo
+    ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/issues/new`
+    : null
   const mediaDrop = useGithubMediaDropHandler(newIssueUrl)
 
   const [title, setTitle] = useState('')

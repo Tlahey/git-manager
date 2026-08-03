@@ -93,10 +93,7 @@ export function useRepoPrFilters({
     { refreshInterval: 60_000, dedupingInterval: 10_000 }
   )
 
-  const knownByNumber = useMemo(
-    () => new Map(knownPrs.map((pr) => [pr.number, pr])),
-    [knownPrs]
-  )
+  const knownByNumber = useMemo(() => new Map(knownPrs.map((pr) => [pr.number, pr])), [knownPrs])
 
   // Re-derived from the *current* filters rather than returned as fetched: a rename or a reorder has
   // to show immediately, and neither is worth a refetch.

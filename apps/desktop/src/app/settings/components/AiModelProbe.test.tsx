@@ -50,7 +50,12 @@ describe('AiModelProbe', () => {
    * until a feature runs — for the history search, half an hour later.
    */
   it('warns when the model answered but ignored the JSON format', async () => {
-    mockedProbe.mockResolvedValue({ ok: true, structured: false, reply: 'Sure! OK.', durationMs: 90 })
+    mockedProbe.mockResolvedValue({
+      ok: true,
+      structured: false,
+      reply: 'Sure! OK.',
+      durationMs: 90,
+    })
     const user = userEvent.setup()
     render(<AiModelProbe />)
 
@@ -101,7 +106,12 @@ describe('AiModelProbe', () => {
   })
 
   it('does not spend a second model load when both slots name the same model', async () => {
-    mockedProbe.mockResolvedValue({ ok: true, structured: true, reply: '{"ok":true}', durationMs: 8 })
+    mockedProbe.mockResolvedValue({
+      ok: true,
+      structured: true,
+      reply: '{"ok":true}',
+      durationMs: 8,
+    })
     const user = userEvent.setup()
     render(<AiModelProbe fastModel="llama3.2" />)
 

@@ -14,7 +14,12 @@ import {
   UserCheck,
   ListFilter,
 } from 'lucide-react'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'

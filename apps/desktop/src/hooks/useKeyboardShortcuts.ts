@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { toast } from '@git-manager/ui'
 import {
   useRepoUIStore,
   isSpecialTab,
@@ -150,12 +151,19 @@ export function useKeyboardShortcuts({
           queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
           queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
         }
+        // Always surface a rejection. A failing undo used to be *completely* silent here — the
+        // shortcut is the main way people reach it, and a refused git operation looked exactly
+        // like a working ⌘Z that had nothing left to do. That is how the "create branch here" bug
+        // (#269) survived: git was refusing to delete the branch it had just checked out, on every
+        // single press, and said so to nobody.
+        // The refresh runs either way: a gesture that failed halfway still moved the repository,
+        // and the views have to show where it actually stopped.
+        const settle = (p: Promise<void>) =>
+          p.catch((err: unknown) => toast.error(String(err))).finally(invalidate)
         if (e.shiftKey) {
-          if (undoHistory.canRedo(activeRepo)) {
-            undoHistory.redo(activeRepo).then(invalidate)
-          }
+          if (undoHistory.canRedo(activeRepo)) settle(undoHistory.redo(activeRepo))
         } else if (undoHistory.canUndo(activeRepo)) {
-          undoHistory.undo(activeRepo).then(invalidate)
+          settle(undoHistory.undo(activeRepo))
         }
         return
       }

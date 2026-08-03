@@ -63,8 +63,7 @@ export async function applyBaseline(baseline: Baseline): Promise<boolean> {
       // Reset the notification-surface override a previous scenario may have set (git-hooks'
       // recording step forces 'none' so cards reach the queue without painting a window or a
       // real macOS banner — see useNotchQueue.ts's e2e seam).
-      delete (window as unknown as { __e2eNotificationSurface?: string })
-        .__e2eNotificationSurface
+      delete (window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface
 
       // 1. Live settings first — see the note above on why this cannot come after the seed.
       const store = (

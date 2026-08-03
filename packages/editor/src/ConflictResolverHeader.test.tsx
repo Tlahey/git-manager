@@ -243,7 +243,9 @@ describe('status bar / panel layout', () => {
 
   it('omits the whole bar when the host supplies no status at all', () => {
     render(
-      <ConflictResolverHeader {...props({ statuses: [null, null, null], panelWidths: [1, 1, 0] })} />
+      <ConflictResolverHeader
+        {...props({ statuses: [null, null, null], panelWidths: [1, 1, 0] })}
+      />
     )
     expect(screen.queryByTestId('merge-header-left-status')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-header-center-status')).not.toBeInTheDocument()

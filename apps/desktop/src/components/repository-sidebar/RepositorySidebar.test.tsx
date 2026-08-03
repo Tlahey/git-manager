@@ -48,10 +48,7 @@ vi.mock('./SidebarSectionHeader', () => ({
   SidebarSectionHeader: (props: Record<string, unknown>) => {
     lastHeaderCalls.current.push(props)
     return (
-      <button
-        data-testid={`header-${props.sectionKey}`}
-        onClick={props.onToggle as () => void}
-      >
+      <button data-testid={`header-${props.sectionKey}`} onClick={props.onToggle as () => void}>
         {props.title as string}
       </button>
     )
@@ -223,7 +220,7 @@ describe('RepositorySidebar — mode routing', () => {
     useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true }))
     renderSidebar()
     expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
-    expect(screen.queryByLabelText("Filter branches")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Filter branches')).not.toBeInTheDocument()
   })
 
   it('expands from the rail via onExpand', async () => {
@@ -239,7 +236,7 @@ describe('RepositorySidebar — mode routing', () => {
     act(() => useRepoUIStore.setState({ activeLeftPanel: 'blame' }))
     renderSidebar()
     expect(screen.getByTestId('blame-history-panel')).toBeInTheDocument()
-    expect(screen.queryByLabelText("Filter branches")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Filter branches')).not.toBeInTheDocument()
   })
 
   it('closing the blame/history panel resets the left panel to "sidebar"', async () => {
@@ -253,7 +250,7 @@ describe('RepositorySidebar — mode routing', () => {
   it('shows the full sidebar (header/search/rows) otherwise', () => {
     renderSidebar()
     expect(screen.getByText('Repository')).toBeInTheDocument()
-    expect(screen.getByLabelText("Filter branches")).toBeInTheDocument()
+    expect(screen.getByLabelText('Filter branches')).toBeInTheDocument()
   })
 
   it('collapses the sidebar from the header button', async () => {
@@ -261,7 +258,7 @@ describe('RepositorySidebar — mode routing', () => {
     useSidebarResize.mockReturnValue(resizeState({ collapse }))
     const user = userEvent.setup()
     renderSidebar()
-    await user.click(screen.getByLabelText("Collapse sidebar"))
+    await user.click(screen.getByLabelText('Collapse sidebar'))
     expect(collapse).toHaveBeenCalledOnce()
   })
 })
@@ -270,16 +267,16 @@ describe('RepositorySidebar — search filter', () => {
   it('passes the typed filter through to useSidebarRows', async () => {
     const user = userEvent.setup()
     renderSidebar()
-    await user.type(screen.getByLabelText("Filter branches"), 'feat')
+    await user.type(screen.getByLabelText('Filter branches'), 'feat')
     expect(useSidebarRows).toHaveBeenLastCalledWith(expect.objectContaining({ filter: 'feat' }))
   })
 
   it('clears the filter via the clear button', async () => {
     const user = userEvent.setup()
     renderSidebar()
-    const input = screen.getByLabelText("Filter branches")
+    const input = screen.getByLabelText('Filter branches')
     await user.type(input, 'feat')
-    await user.click(screen.getByLabelText("Clear filter"))
+    await user.click(screen.getByLabelText('Clear filter'))
     expect(input).toHaveValue('')
   })
 
@@ -290,7 +287,7 @@ describe('RepositorySidebar — search filter', () => {
     })
     const user = userEvent.setup()
     renderSidebar()
-    await user.type(screen.getByLabelText("Filter branches"), 'feat')
+    await user.type(screen.getByLabelText('Filter branches'), 'feat')
     expect(lastRowViewCalls.current.at(-1)).toMatchObject({ filterQuery: 'feat' })
     expect(lastHeaderCalls.current.at(-1)).toMatchObject({ isFiltered: true })
   })
@@ -314,7 +311,7 @@ describe('RepositorySidebar — search filter', () => {
     renderSidebar()
     expect(screen.queryByTestId('sidebar-filter-stats')).not.toBeInTheDocument()
 
-    await user.type(screen.getByLabelText("Filter branches"), 'feat')
+    await user.type(screen.getByLabelText('Filter branches'), 'feat')
     expect(screen.getByTestId('sidebar-filter-stats')).toHaveTextContent('3 / 139 results')
   })
 })
@@ -322,7 +319,7 @@ describe('RepositorySidebar — search filter', () => {
 describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
   it('focuses and selects the filter input when the sidebar is already visible', () => {
     renderSidebar()
-    const input = screen.getByLabelText("Filter branches") as HTMLInputElement
+    const input = screen.getByLabelText('Filter branches') as HTMLInputElement
     const focusSpy = vi.spyOn(input, 'focus')
     act(() => useSidebarSearchStore.getState().requestFocus())
     expect(focusSpy).toHaveBeenCalled()
@@ -345,7 +342,7 @@ describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
 
   it('does nothing on initial render (token starts at 0)', () => {
     renderSidebar()
-    const input = screen.getByLabelText("Filter branches") as HTMLInputElement
+    const input = screen.getByLabelText('Filter branches') as HTMLInputElement
     expect(document.activeElement).not.toBe(input)
   })
 })
@@ -389,7 +386,7 @@ describe('RepositorySidebar — sections', () => {
     expect(screen.getByTestId('sidebar-section-container-remotes')).toHaveClass('flex-none')
   })
 
-  it("gives an open section container an explicit min-height floor (268px = header + body floor) so shrinking is deterministic — an automatic content-based floor previously caused sections to overlap instead of being pushed down", () => {
+  it('gives an open section container an explicit min-height floor (268px = header + body floor) so shrinking is deterministic — an automatic content-based floor previously caused sections to overlap instead of being pushed down', () => {
     useSidebarRows.mockReturnValue({
       sections: [
         section({ key: 'local', isOpen: true, rows: [] }),
@@ -546,12 +543,22 @@ describe('RepositorySidebar — sections', () => {
     const checkout = lastRowViewCalls.current[0].onCheckoutBranch as (b: GitBranch) => void
 
     await act(async () =>
-      checkout({ shortName: 'feature-x', name: 'feature-x', isRemote: false, commitOid: 'abc' } as GitBranch)
+      checkout({
+        shortName: 'feature-x',
+        name: 'feature-x',
+        isRemote: false,
+        commitOid: 'abc',
+      } as GitBranch)
     )
     expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'feature-x', undefined)
 
     await act(async () =>
-      checkout({ shortName: 'main', name: 'origin/main', isRemote: true, commitOid: 'def456' } as GitBranch)
+      checkout({
+        shortName: 'main',
+        name: 'origin/main',
+        isRemote: true,
+        commitOid: 'def456',
+      } as GitBranch)
     )
     expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'def456', undefined)
   })
@@ -716,9 +723,9 @@ describe('RepositorySidebar — sections', () => {
     renderSidebar()
     expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute('data-worktree', '')
     act(() =>
-      (
-        lastRowViewCalls.current[0].onRemoveWorktree as (wt: { path: string }) => void
-      )({ path: '/tmp/repo-linked' })
+      (lastRowViewCalls.current[0].onRemoveWorktree as (wt: { path: string }) => void)({
+        path: '/tmp/repo-linked',
+      })
     )
     expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute(
       'data-worktree',
@@ -735,9 +742,9 @@ describe('RepositorySidebar — sections', () => {
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     act(() =>
-      (
-        lastRowViewCalls.current[0].onRemoveWorktreeAndBranch as (wt: { path: string }) => void
-      )({ path: '/tmp/repo-linked' })
+      (lastRowViewCalls.current[0].onRemoveWorktreeAndBranch as (wt: { path: string }) => void)({
+        path: '/tmp/repo-linked',
+      })
     )
     const dialog = screen.getByTestId('remove-worktree-dialog')
     expect(dialog).toHaveAttribute('data-worktree', '/tmp/repo-linked')
@@ -768,9 +775,9 @@ describe('RepositorySidebar — sections', () => {
     const activeRepoBefore = useRepoUIStore.getState().activeRepo
     renderSidebar()
     act(() =>
-      (
-        lastRowViewCalls.current[0].onOpenWorktree as (wt: { path: string }) => void
-      )({ path: '/tmp/repo-linked' })
+      (lastRowViewCalls.current[0].onOpenWorktree as (wt: { path: string }) => void)({
+        path: '/tmp/repo-linked',
+      })
     )
     expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/tmp/repo-linked')
     // No new tab, and the tab identity/active repo itself is untouched.
@@ -781,7 +788,14 @@ describe('RepositorySidebar — sections', () => {
   it('passes the pending-changes bubble data through to SidebarRowView', () => {
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     const statuses = [
-      { path: '/tmp/repo-linked', branch: 'feature/login', totalChanges: 2, added: 1, modified: 1, deleted: 0 },
+      {
+        path: '/tmp/repo-linked',
+        branch: 'feature/login',
+        totalChanges: 2,
+        added: 1,
+        modified: 1,
+        deleted: 0,
+      },
     ]
     useWorktreeWipStatuses.mockReturnValue({ data: statuses })
     renderSidebar()

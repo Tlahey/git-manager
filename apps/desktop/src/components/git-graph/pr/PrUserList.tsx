@@ -20,7 +20,9 @@ export function PrUserList({ users, emptyLabel }: PrUserListProps) {
     <ul className="flex flex-wrap gap-2">
       {users.map((u) => (
         <li key={u.login} className="flex items-center gap-1.5" data-testid={`pr-user-${u.login}`}>
-          {u.avatar_url && <img src={u.avatar_url} alt={u.login} className="h-4 w-4 rounded-full" />}
+          {u.avatar_url && (
+            <img src={u.avatar_url} alt={u.login} className="h-4 w-4 rounded-full" />
+          )}
           <span className="text-xs text-foreground">{u.login}</span>
         </li>
       ))}

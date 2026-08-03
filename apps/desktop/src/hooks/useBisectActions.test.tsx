@@ -22,7 +22,10 @@ vi.mock('../api/git.api', () => ({
 }))
 vi.mock('swr', () => ({ mutate: (...a: unknown[]) => swrMutate(...a) }))
 vi.mock('@git-manager/ui', () => ({
-  toast: { error: (...a: unknown[]) => toastError(...a), success: (...a: unknown[]) => toastSuccess(...a) },
+  toast: {
+    error: (...a: unknown[]) => toastError(...a),
+    success: (...a: unknown[]) => toastSuccess(...a),
+  },
 }))
 
 import { useBisectActions } from './useBisectActions'

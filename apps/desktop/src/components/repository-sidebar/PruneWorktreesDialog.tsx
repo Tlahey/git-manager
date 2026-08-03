@@ -72,11 +72,7 @@ export function PruneWorktreesDialog({
         {worktrees.length > 0 && (
           <ul className="max-h-40 space-y-1 overflow-y-auto py-1 text-xs text-muted-foreground">
             {worktrees.map((wt) => (
-              <li
-                key={wt.path}
-                className="truncate"
-                data-testid={`worktree-prune-item-${wt.path}`}
-              >
+              <li key={wt.path} className="truncate" data-testid={`worktree-prune-item-${wt.path}`}>
                 {wt.branch} — {wt.path}
               </li>
             ))}

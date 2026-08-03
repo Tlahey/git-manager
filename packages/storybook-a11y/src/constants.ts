@@ -13,7 +13,7 @@ export type SurfaceId = keyof typeof SURFACES
 
 /** Every real built-in theme id (skips the "system" pseudo-theme). */
 export const DEFAULT_THEMES: string[] = BUILTIN_THEMES.filter((t) => t.id !== 'system').map(
-  (t) => t.id,
+  (t) => t.id
 )
 
 export const DEFAULT_SURFACES = Object.keys(SURFACES) as SurfaceId[]

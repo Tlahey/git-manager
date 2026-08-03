@@ -115,7 +115,10 @@ describe('RefLabelGroup — sorting priority', () => {
 
   it('drops the redundant HEAD badge when a local branch marks the same commit', () => {
     // The main tip with HEAD on it: only "main" should show, no "+1"/HEAD overflow.
-    const refs = [ref({ type: 'branch', shortName: 'main' }), ref({ type: 'HEAD', shortName: 'HEAD' })]
+    const refs = [
+      ref({ type: 'branch', shortName: 'main' }),
+      ref({ type: 'HEAD', shortName: 'HEAD' }),
+    ]
     render(<RefLabelGroup refs={refs} />)
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()

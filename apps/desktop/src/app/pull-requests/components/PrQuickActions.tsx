@@ -93,17 +93,52 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
   }
 
   const descriptors: Record<PrActionKey, SplitButtonAction | null> = {
-    review: { key: 'review', label: t('row.review'), icon: <Eye className="h-3.5 w-3.5" />, onSelect: openPanel },
-    view: { key: 'view', label: t('row.view'), icon: <Eye className="h-3.5 w-3.5" />, onSelect: openPanel },
+    review: {
+      key: 'review',
+      label: t('row.review'),
+      icon: <Eye className="h-3.5 w-3.5" />,
+      onSelect: openPanel,
+    },
+    view: {
+      key: 'view',
+      label: t('row.view'),
+      icon: <Eye className="h-3.5 w-3.5" />,
+      onSelect: openPanel,
+    },
     merge: canMerge
-      ? { key: 'merge', label: t('row.merge'), icon: <GitMerge className="h-3.5 w-3.5" />, onSelect: () => setConfirm('merge') }
+      ? {
+          key: 'merge',
+          label: t('row.merge'),
+          icon: <GitMerge className="h-3.5 w-3.5" />,
+          onSelect: () => setConfirm('merge'),
+        }
       : null,
     close: canClose
-      ? { key: 'close', label: t('row.closePr'), icon: <XCircle className="h-3.5 w-3.5" />, onSelect: () => setConfirm('close') }
+      ? {
+          key: 'close',
+          label: t('row.closePr'),
+          icon: <XCircle className="h-3.5 w-3.5" />,
+          onSelect: () => setConfirm('close'),
+        }
       : null,
-    openGitHub: { key: 'openGitHub', label: t('row.openOnGitHub'), icon: <ExternalLink className="h-3.5 w-3.5" />, onSelect: () => openUrl(pr.url) },
-    viewRepo: { key: 'viewRepo', label: t('row.viewRepo'), icon: <FolderGit2 className="h-3.5 w-3.5" />, onSelect: () => openUrl(pr.repoUrl) },
-    copyLink: { key: 'copyLink', label: t('row.copyLink'), icon: <LinkIcon className="h-3.5 w-3.5" />, onSelect: () => navigator.clipboard.writeText(pr.url) },
+    openGitHub: {
+      key: 'openGitHub',
+      label: t('row.openOnGitHub'),
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => openUrl(pr.url),
+    },
+    viewRepo: {
+      key: 'viewRepo',
+      label: t('row.viewRepo'),
+      icon: <FolderGit2 className="h-3.5 w-3.5" />,
+      onSelect: () => openUrl(pr.repoUrl),
+    },
+    copyLink: {
+      key: 'copyLink',
+      label: t('row.copyLink'),
+      icon: <LinkIcon className="h-3.5 w-3.5" />,
+      onSelect: () => navigator.clipboard.writeText(pr.url),
+    },
   }
 
   const primaryKey = defaultPrActionKey(pr, currentUser)

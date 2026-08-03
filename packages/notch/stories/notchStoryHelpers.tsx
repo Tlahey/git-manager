@@ -78,7 +78,10 @@ export function StaticNotch({
       preset={preset}
       wallpaper={wallpaper}
       scale={scale}
-      viewport={{ ...(viewportWidth !== undefined ? { width: viewportWidth } : {}), height: viewportHeight }}
+      viewport={{
+        ...(viewportWidth !== undefined ? { width: viewportWidth } : {}),
+        height: viewportHeight,
+      }}
     >
       <div
         className="absolute"

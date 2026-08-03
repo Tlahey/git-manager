@@ -26,7 +26,12 @@ describe('ActivityLogDetail', () => {
 
   it('renders the error block with a copy button', () => {
     render(
-      <ActivityLogDetail entry={errorEntry()} block={undefined} onTrace={vi.fn()} onClose={vi.fn()} />
+      <ActivityLogDetail
+        entry={errorEntry()}
+        block={undefined}
+        onTrace={vi.fn()}
+        onClose={vi.fn()}
+      />
     )
     expect(screen.getByText('Error')).toBeInTheDocument()
     expect(screen.getByText(/would be overwritten by checkout/)).toBeInTheDocument()
@@ -35,7 +40,9 @@ describe('ActivityLogDetail', () => {
 
   it('copies the full error text to the clipboard', async () => {
     const entry = errorEntry()
-    render(<ActivityLogDetail entry={entry} block={undefined} onTrace={vi.fn()} onClose={vi.fn()} />)
+    render(
+      <ActivityLogDetail entry={entry} block={undefined} onTrace={vi.fn()} onClose={vi.fn()} />
+    )
 
     fireEvent.click(screen.getByTestId('activity-detail-copy-error'))
     expect(writeText).toHaveBeenCalledWith(entry.error)

@@ -316,7 +316,6 @@ export function NotificationSection() {
               )}
             </div>
           </FilterableSetting>
-
         </>
       )}
     </div>

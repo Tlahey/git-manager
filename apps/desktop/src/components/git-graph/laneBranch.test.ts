@@ -7,7 +7,12 @@ function ref(shortName: string, type: GitRef['type'] = 'branch'): GitRef {
 }
 
 /** Builds a node; `parents` is the ordered parent-oid list (first entry = first parent). */
-function node(oid: string, parents: string[] = [], refs: GitRef[] = [], color = '#000'): GitGraphNode {
+function node(
+  oid: string,
+  parents: string[] = [],
+  refs: GitRef[] = [],
+  color = '#000'
+): GitGraphNode {
   return {
     commit: {
       oid,

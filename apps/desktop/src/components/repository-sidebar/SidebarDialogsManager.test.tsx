@@ -16,7 +16,11 @@ vi.mock('./RemoveWorktreeDialog', () => ({
     deleteBranch: boolean
     onClose: () => void
   }) => (
-    <div data-testid="remove-worktree" data-path={p.worktree?.path ?? ''} data-delete={p.deleteBranch}>
+    <div
+      data-testid="remove-worktree"
+      data-path={p.worktree?.path ?? ''}
+      data-delete={p.deleteBranch}
+    >
       <button onClick={p.onClose}>close-remove-worktree</button>
     </div>
   ),
@@ -155,9 +159,7 @@ describe('SidebarDialogsManager', () => {
 
   it('resolves the saved-filter dialog kind/open state from filterDialog', () => {
     render(
-      <SidebarDialogsManager
-        {...baseProps({ filterDialog: { kind: 'prs', filter: null } })}
-      />
+      <SidebarDialogsManager {...baseProps({ filterDialog: { kind: 'prs', filter: null } })} />
     )
     const dialog = screen.getByTestId('saved-filter')
     expect(dialog).toHaveAttribute('data-open', 'true')
@@ -173,7 +175,9 @@ describe('SidebarDialogsManager', () => {
 
   it('forwards the initial branch to the add-worktree dialog', () => {
     render(
-      <SidebarDialogsManager {...baseProps({ addWorktreeOpen: true, worktreeBranch: 'release/1.0' })} />
+      <SidebarDialogsManager
+        {...baseProps({ addWorktreeOpen: true, worktreeBranch: 'release/1.0' })}
+      />
     )
     const dialog = screen.getByTestId('add-worktree')
     expect(dialog).toHaveAttribute('data-open', 'true')

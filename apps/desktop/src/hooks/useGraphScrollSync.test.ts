@@ -114,7 +114,9 @@ describe('useGraphScrollSync', () => {
   })
 
   it('auto-selects the branch-matching node on a branch change', () => {
-    const feat = node('feat-tip', [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'feat-tip' }])
+    const feat = node('feat-tip', [
+      { name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'feat-tip' },
+    ])
     const { selectSingle } = renderSync({ nodes: [node('main-tip'), feat], branch: 'feat' })
     expect(selectSingle).toHaveBeenCalledWith('feat-tip')
   })

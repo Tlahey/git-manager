@@ -79,7 +79,8 @@ export function AiContextWindowCheck() {
   const verdict = state.kind === 'answered' ? contextWindowVerdict(declared, state.limits) : null
   // Offered rather than applied: the check is advice, and silently rewriting a setting the user
   // typed is not advice.
-  const suggested = state.kind === 'answered' ? suggestedContextWindow(declared, state.limits) : null
+  const suggested =
+    state.kind === 'answered' ? suggestedContextWindow(declared, state.limits) : null
 
   return (
     <div className="space-y-1">
@@ -103,7 +104,10 @@ export function AiContextWindowCheck() {
       )}
 
       {state.kind === 'failed' && (
-        <p className="break-words text-[10px] text-tone-danger" data-testid="ai-context-check-result">
+        <p
+          className="break-words text-[10px] text-tone-danger"
+          data-testid="ai-context-check-result"
+        >
           {state.message}
         </p>
       )}

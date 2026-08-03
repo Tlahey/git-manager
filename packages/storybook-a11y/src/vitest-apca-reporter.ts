@@ -42,7 +42,10 @@ export class ApcaMatrixReporter implements Reporter {
     const enforcedCount = (c: ApcaCellMeta): number => c.violations.filter((v) => !v.exempt).length
     const failing = cells.filter((c) => enforcedCount(c) > 0)
     const totalNodes = cells.reduce((sum, c) => sum + enforcedCount(c), 0)
-    const totalExempt = cells.reduce((sum, c) => sum + c.violations.filter((v) => v.exempt).length, 0)
+    const totalExempt = cells.reduce(
+      (sum, c) => sum + c.violations.filter((v) => v.exempt).length,
+      0
+    )
 
     const dir = resolve(process.cwd(), this.outputDir)
     mkdirSync(dir, { recursive: true })
@@ -51,22 +54,30 @@ export class ApcaMatrixReporter implements Reporter {
       `${JSON.stringify(
         {
           generatedAt: new Date().toISOString(),
-          totals: { cells: cells.length, failingCells: failing.length, failingNodes: totalNodes, exemptNodes: totalExempt },
+          totals: {
+            cells: cells.length,
+            failingCells: failing.length,
+            failingNodes: totalNodes,
+            exemptNodes: totalExempt,
+          },
           themes,
           surfaces,
           cells: cells.map((c) => ({ ...c, violationCount: c.violations.length })),
         },
         null,
-        2,
-      )}\n`,
+        2
+      )}\n`
     )
-    writeFileSync(resolve(dir, 'apca-report.md'), this.renderMarkdown(themes, surfaces, byKey, totalExempt))
+    writeFileSync(
+      resolve(dir, 'apca-report.md'),
+      this.renderMarkdown(themes, surfaces, byKey, totalExempt)
+    )
 
     // eslint-disable-next-line no-console
     console.log(
       `\nAPCA matrix: ${failing.length}/${cells.length} theme × surface cells failing ` +
         `(${totalNodes} enforced nodes, ${totalExempt} exempt by muted-decorative policy) ` +
-        `— report written to ${this.outputDir}/apca-report.{json,md}`,
+        `— report written to ${this.outputDir}/apca-report.{json,md}`
     )
   }
 
@@ -74,7 +85,7 @@ export class ApcaMatrixReporter implements Reporter {
     themes: string[],
     surfaces: string[],
     byKey: Map<string, ApcaCellMeta>,
-    totalExempt: number,
+    totalExempt: number
   ): string {
     const enforced = (theme: string, surface: string): ViolationNodeRecord[] =>
       byKey.get(`${theme}|${surface}`)?.violations.filter((v) => !v.exempt) ?? []
@@ -93,11 +104,15 @@ export class ApcaMatrixReporter implements Reporter {
       const counts = surfaces.map((s) => enforced(theme, s).length)
       const total = counts.reduce((a, b) => a + b, 0)
       lines.push(
-        `| ${theme} | ${counts.map((c) => (c === 0 ? '✓' : String(c))).join(' | ')} | ${total} |`,
+        `| ${theme} | ${counts.map((c) => (c === 0 ? '✓' : String(c))).join(' | ')} | ${total} |`
       )
     }
-    const surfaceTotals = surfaces.map((s) => themes.reduce((sum, t) => sum + enforced(t, s).length, 0))
-    lines.push(`| **total** | ${surfaceTotals.join(' | ')} | ${surfaceTotals.reduce((a, b) => a + b, 0)} |`)
+    const surfaceTotals = surfaces.map((s) =>
+      themes.reduce((sum, t) => sum + enforced(t, s).length, 0)
+    )
+    lines.push(
+      `| **total** | ${surfaceTotals.join(' | ')} | ${surfaceTotals.reduce((a, b) => a + b, 0)} |`
+    )
 
     if (totalExempt > 0) {
       lines.push(
@@ -105,7 +120,7 @@ export class ApcaMatrixReporter implements Reporter {
         `> **${totalExempt} node(s) exempt by the muted-decorative policy** — text in the`,
         '> `muted-foreground` role (inactive Chip, neutral "draft" Tag) is intentionally',
         '> low-contrast and not gated by APCA Bronze. Recorded, not enforced. Actions are',
-        '> never muted (the input "Clear" button uses `text-foreground`).',
+        '> never muted (the input "Clear" button uses `text-foreground`).'
       )
     }
 
@@ -114,7 +129,10 @@ export class ApcaMatrixReporter implements Reporter {
       for (const surface of surfaces) {
         const nodes = enforced(theme, surface)
         if (nodes.length === 0) continue
-        lines.push(`<details><summary><code>${theme} × ${surface}</code> — ${nodes.length} node(s)</summary>`, '')
+        lines.push(
+          `<details><summary><code>${theme} × ${surface}</code> — ${nodes.length} node(s)</summary>`,
+          ''
+        )
         for (const v of nodes) {
           lines.push(`- \`${v.rule}\` — \`${v.target}\` — ${v.message}`)
         }

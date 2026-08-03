@@ -46,9 +46,7 @@ describe('useNotchOperation', () => {
   })
 
   it('lets a caller ask for a card worth a banner', () => {
-    renderHook(() =>
-      useNotchOperation({ id: 'op', model: progress(0.1), importance: 'key' })
-    )
+    renderHook(() => useNotchOperation({ id: 'op', model: progress(0.1), importance: 'key' }))
     expect(current()?.importance).toBe('key')
   })
 
@@ -136,9 +134,7 @@ describe('useNotchOperation', () => {
 describe('useNotchOperation — actions', () => {
   it('runs the caller’s handler when its button is pressed', () => {
     const cancel = vi.fn()
-    renderHook(() =>
-      useNotchOperation({ id: 'op', model: progress(0.5), actions: { cancel } })
-    )
+    renderHook(() => useNotchOperation({ id: 'op', model: progress(0.5), actions: { cancel } }))
 
     expect(runNotchAction('cancel', { notchId: 'op' })).toBe(true)
     expect(cancel).toHaveBeenCalled()
@@ -147,9 +143,7 @@ describe('useNotchOperation — actions', () => {
   it('ignores a press meant for someone else’s card', () => {
     // Two repositories running the same kind of operation must not cancel each other.
     const cancel = vi.fn()
-    renderHook(() =>
-      useNotchOperation({ id: 'repo-a', model: progress(0.5), actions: { cancel } })
-    )
+    renderHook(() => useNotchOperation({ id: 'repo-a', model: progress(0.5), actions: { cancel } }))
 
     runNotchAction('cancel', { notchId: 'repo-b' })
     expect(cancel).not.toHaveBeenCalled()

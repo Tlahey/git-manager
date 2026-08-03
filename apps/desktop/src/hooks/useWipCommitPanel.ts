@@ -59,10 +59,7 @@ export function useWipCommitPanel(
   function handleToggleAmend(checked: boolean) {
     setIsAmend(checked)
     if (checked && !commitMessage.trim()) {
-      const logData = queryClient.getQueryData<{ nodes?: GitGraphNode[] }>([
-        'git-log',
-        repoPath,
-      ])
+      const logData = queryClient.getQueryData<{ nodes?: GitGraphNode[] }>(['git-log', repoPath])
       if (logData?.nodes) {
         const headNode =
           logData.nodes.find((n) => n.refs?.some((r) => r.type === 'HEAD')) ||

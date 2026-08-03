@@ -10,7 +10,10 @@ import {
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
 import { hookFailureFrom } from '../../lib/notifications/hookNotch'
-import { useRemoteProgressStore, type RemoteOperationOutcome } from '../../stores/remoteProgress.store'
+import {
+  useRemoteProgressStore,
+  type RemoteOperationOutcome,
+} from '../../stores/remoteProgress.store'
 import { generateId, pushAction, clearRedo } from './gitApiShared'
 
 // ─── Remotes ───────────────────────────────────────────────────────────────

@@ -76,8 +76,7 @@ export function useMergedWorktrees(
   const candidates = worktrees.filter((wt) => !wt.isDirty && wt.branch !== '(detached HEAD)')
 
   // ── Local signal: branches whose upstream remote branch is gone (merged then deleted/pruned). ──
-  const localKey =
-    enabled && candidates.length > 0 ? ['gone-upstream-branches', repoPath] : null
+  const localKey = enabled && candidates.length > 0 ? ['gone-upstream-branches', repoPath] : null
   const { data: goneList } = useSWR(
     localKey,
     // Resolve failures to [] (like fetchClosedPullRequests does) so a backend error — e.g. the
@@ -152,14 +151,18 @@ export function useMergedWorktrees(
     if (commitPr) {
       return {
         worktree: wt,
-        status: { merged: { number: commitPr.number, title: commitPr.title, author: commitPr.author } },
+        status: {
+          merged: { number: commitPr.number, title: commitPr.title, author: commitPr.author },
+        },
       }
     }
     const prMatch = prList?.find((pr) => pr.head?.ref === wt.branch && pr.merged_at)
     if (prMatch) {
       return {
         worktree: wt,
-        status: { merged: { number: prMatch.number, title: prMatch.title, author: prMatch.user?.login } },
+        status: {
+          merged: { number: prMatch.number, title: prMatch.title, author: prMatch.user?.login },
+        },
       }
     }
     if (goneBranches?.has(wt.branch)) return { worktree: wt, status: 'branch-gone' }

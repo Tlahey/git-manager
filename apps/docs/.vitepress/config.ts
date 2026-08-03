@@ -76,14 +76,12 @@ export default defineConfig({
    */
   transformHtml(code, _id, { page }) {
     if (page !== 'index.md') return code
-    return code
-      .replace('<html ', '<html class="landing" ')
-      .replace(
-        '</head>',
-        // Same id LandingPage.vue looks for, so it adopts this link instead of
-        // appending a second one after hydration.
-        `<link id="landing-stylesheet" rel="stylesheet" href="${SITE_BASE}${LANDING_CSS.file}"></head>`
-      )
+    return code.replace('<html ', '<html class="landing" ').replace(
+      '</head>',
+      // Same id LandingPage.vue looks for, so it adopts this link instead of
+      // appending a second one after hydration.
+      `<link id="landing-stylesheet" rel="stylesheet" href="${SITE_BASE}${LANDING_CSS.file}"></head>`
+    )
   },
   themeConfig: {
     logo: '/mascot-icon-128.png',

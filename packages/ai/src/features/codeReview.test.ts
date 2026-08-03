@@ -198,20 +198,23 @@ describe('buildCodeReviewPrompt — the prompt fits the window it was sized for'
     return { files, diff: files.map((f) => bulky(f.path, 4000)).join('') }
   }
 
-  it.each([4096, 8192, 24576])('stays inside a %i-token window on a 50-file changeset', (window) => {
-    // The regression: a flat envelope allowance ignored the file lists, which came to ~1280 tokens
-    // on 50 files. The prompt then overflowed the window it had just sized itself against, and the
-    // app warned the user about an overflow it had produced itself.
-    const { files, diff } = manyFiles(50)
-    const prompt = buildCodeReviewPrompt({
-      context: { ...workingContext, files, diff },
-      scope: 'working',
-      contextTokens: window,
-    })
-    expect(estimateTokens(CODE_REVIEW_INSTRUCTION) + estimateTokens(prompt)).toBeLessThanOrEqual(
-      window
-    )
-  })
+  it.each([4096, 8192, 24576])(
+    'stays inside a %i-token window on a 50-file changeset',
+    (window) => {
+      // The regression: a flat envelope allowance ignored the file lists, which came to ~1280 tokens
+      // on 50 files. The prompt then overflowed the window it had just sized itself against, and the
+      // app warned the user about an overflow it had produced itself.
+      const { files, diff } = manyFiles(50)
+      const prompt = buildCodeReviewPrompt({
+        context: { ...workingContext, files, diff },
+        scope: 'working',
+        contextTokens: window,
+      })
+      expect(estimateTokens(CODE_REVIEW_INSTRUCTION) + estimateTokens(prompt)).toBeLessThanOrEqual(
+        window
+      )
+    }
+  )
 
   it('caps the changed-file list and says how many it did not print', () => {
     const { files, diff } = manyFiles(50)
@@ -320,7 +323,9 @@ describe('codeReviewFeature', () => {
   it('forbids inferring that something is missing from a narrow hunk', () => {
     // Seen in the wild: a guard sitting 4 lines above an insertion — one line outside git's 3-line
     // context — was reported as absent, which made a correct comment look like a wrong one.
-    expect(codeReviewFeature.instruction).toContain('Absence of evidence is not evidence of absence')
+    expect(codeReviewFeature.instruction).toContain(
+      'Absence of evidence is not evidence of absence'
+    )
   })
 })
 

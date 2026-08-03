@@ -124,10 +124,7 @@ describe('scanCommits', () => {
 
   it('flags a commit whose diff could not be loaded, without stopping the scan', async () => {
     const judge = vi.fn().mockResolvedValue(positive)
-    const loadDiff = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('gone'))
-      .mockResolvedValueOnce('diff')
+    const loadDiff = vi.fn().mockRejectedValueOnce(new Error('gone')).mockResolvedValueOnce('diff')
 
     const results = await scanCommits(
       [commit({ shortOid: 'c1' }), commit({ shortOid: 'c2' })],
@@ -404,13 +401,9 @@ describe('scanCommits', () => {
     it('moves the file counter during a commit, not only when it finishes', async () => {
       const progress: CommitScanProgress[] = []
       const judge = vi.fn().mockResolvedValue({ relevant: false, finding: '', files: [] })
-      await scanCommits(
-        [threeFileCommit],
-        () => Promise.resolve(threeFileDiff),
-        judge,
-        params,
-        { onProgress: (p) => progress.push({ ...p }) }
-      )
+      await scanCommits([threeFileCommit], () => Promise.resolve(threeFileDiff), judge, params, {
+        onProgress: (p) => progress.push({ ...p }),
+      })
 
       // The commit is still unfinished at 1 and 2 files: that is the whole point of the counter.
       expect(progress).toContainEqual(

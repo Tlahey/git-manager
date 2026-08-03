@@ -58,13 +58,17 @@ describe('useChangeExplanation', () => {
       await result.current.explain({ repoName: 'demo', file, fileContent: 'const a = 1' })
     })
 
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      repoName: 'demo',
-      file,
-      fileContent: 'const a = 1',
-      language: 'fr',
-      contextTokens: 4096,
-    }, expect.any(String))
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        repoName: 'demo',
+        file,
+        fileContent: 'const a = 1',
+        language: 'fr',
+        contextTokens: 4096,
+      },
+      expect.any(String)
+    )
   })
 
   it('accumulates streamed tokens into the explanation text', async () => {

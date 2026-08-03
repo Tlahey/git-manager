@@ -118,7 +118,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           </div>
         ) : showRaw ? (
           <pre
-            className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground select-text p-2 rounded bg-muted/20 border border-border/40"
+            className="select-text whitespace-pre-wrap rounded border border-border/40 bg-muted/20 p-2 font-mono text-xs leading-relaxed text-foreground"
             data-testid="readme-raw-content"
           >
             {content}
@@ -132,4 +132,3 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
     </div>
   )
 }
-

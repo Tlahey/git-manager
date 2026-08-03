@@ -121,10 +121,7 @@ export function DependencyPatchPanel({ repoPath }: { repoPath: string }) {
   // ── Dependency picker (single zone until a dependency is chosen) ────────────
   if (!selected) {
     return (
-      <div
-        className="flex h-full w-full min-w-0 flex-col"
-        data-testid="dependency-patch-panel"
-      >
+      <div className="flex h-full w-full min-w-0 flex-col" data-testid="dependency-patch-panel">
         <div className="border-b border-border p-2">
           <Input
             value={filter}

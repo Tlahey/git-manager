@@ -126,11 +126,9 @@ describe('useNotificationStore — notifications', () => {
   })
 
   it('setPreviousPRs / setSessionInitialized store watcher bookkeeping', () => {
-    useNotificationStore
-      .getState()
-      .setPreviousPRs({
-        'pr-1': { status: 'open', reviewStatus: 'pending', needsMyReview: false, updatedAt: 'now' },
-      })
+    useNotificationStore.getState().setPreviousPRs({
+      'pr-1': { status: 'open', reviewStatus: 'pending', needsMyReview: false, updatedAt: 'now' },
+    })
     useNotificationStore.getState().setSessionInitialized(true)
     const state = useNotificationStore.getState()
     expect(state.previousPRs['pr-1'].status).toBe('open')

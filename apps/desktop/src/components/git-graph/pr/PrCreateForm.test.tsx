@@ -104,9 +104,9 @@ describe('PrCreateForm', () => {
 
   it('only lists local branches in the selectors', () => {
     renderForm()
-    const options = Array.from(
-      screen.getByTestId('pr-create-head').querySelectorAll('option')
-    ).map((o) => o.textContent)
+    const options = Array.from(screen.getByTestId('pr-create-head').querySelectorAll('option')).map(
+      (o) => o.textContent
+    )
     expect(options).toEqual(['main', 'feat/x'])
   })
 
@@ -146,7 +146,11 @@ describe('PrCreateForm', () => {
 
   it('pre-fills the body from a single template', async () => {
     usePrTemplateMock.mockReturnValue({
-      template: { kind: 'single', source: '.github/PULL_REQUEST_TEMPLATE.md', content: '## Checklist' },
+      template: {
+        kind: 'single',
+        source: '.github/PULL_REQUEST_TEMPLATE.md',
+        content: '## Checklist',
+      },
       isLoading: false,
     })
     renderForm()

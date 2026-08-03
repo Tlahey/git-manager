@@ -9,7 +9,13 @@ async function openDropdown(testid: string) {
   await browser.execute((id: string) => {
     const el = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
     if (!el) throw new Error(`openDropdown: no element with data-testid="${id}"`)
-    const opts = { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', isPrimary: true }
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      pointerType: 'mouse',
+      isPrimary: true,
+    }
     el.dispatchEvent(new PointerEvent('pointerdown', opts))
     el.dispatchEvent(new PointerEvent('pointerup', opts))
   }, testid)

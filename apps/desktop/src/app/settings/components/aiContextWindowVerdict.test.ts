@@ -29,9 +29,9 @@ describe('contextWindowVerdict', () => {
   it('can only say "plausible" while the model is not loaded', () => {
     // /api/show alone cannot see a server-side OLLAMA_CONTEXT_LENGTH — passing it is not proof.
     expect(contextWindowVerdict(4096, limits({ architectureMax: 32768 }))).toBe('plausible')
-    expect(contextWindowVerdict(4096, limits({ architectureMax: 32768, modelfileNumCtx: 8192 }))).toBe(
-      'plausible'
-    )
+    expect(
+      contextWindowVerdict(4096, limits({ architectureMax: 32768, modelfileNumCtx: 8192 }))
+    ).toBe('plausible')
   })
 
   it('catches a declared window the server will not actually serve', () => {
@@ -73,12 +73,13 @@ describe('isHarmfulVerdict', () => {
   })
 })
 
-
 describe('contextWindowVerdict — an OpenAI-compatible server that reports its window', () => {
   // `/v1/models` carrying `max_model_len` is non-standard, but it is the only window signal a
   // non-Ollama provider gives — and omlx gives it.
   it('flags a declared window above what the provider says it serves', () => {
-    expect(contextWindowVerdict(256000, limits({ servedMaxModelLen: 128000 }))).toBe('above-ceiling')
+    expect(contextWindowVerdict(256000, limits({ servedMaxModelLen: 128000 }))).toBe(
+      'above-ceiling'
+    )
   })
 
   it('flags the default 4096 left in front of a 128k model', () => {

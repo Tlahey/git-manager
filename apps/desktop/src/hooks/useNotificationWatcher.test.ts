@@ -92,7 +92,13 @@ describe('useNotificationWatcher — click listener setup', () => {
     await waitFor(() => expect(onNotificationActivated).toHaveBeenCalled())
     const handler = onNotificationActivated.mock.calls[0][0]
 
-    const route = { kind: 'pull-request', prNumber: 1, prId: 'pr-1', repo: 'repo', targetTab: 'waiting' }
+    const route = {
+      kind: 'pull-request',
+      prNumber: 1,
+      prId: 'pr-1',
+      repo: 'repo',
+      targetTab: 'waiting',
+    }
     act(() => handler(route))
 
     expect(routeNotification).toHaveBeenCalledWith(route)

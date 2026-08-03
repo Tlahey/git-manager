@@ -45,9 +45,7 @@ const HISTORY: FileHistoryEntry[] = [
 const FILE = { path: 'src/components/Button.tsx', staged: false }
 
 function renderPanel(props: Partial<React.ComponentProps<typeof BlameHistoryPanel>> = {}) {
-  return render(
-    <BlameHistoryPanel file={FILE} repoPath="/repo" onClose={vi.fn()} {...props} />
-  )
+  return render(<BlameHistoryPanel file={FILE} repoPath="/repo" onClose={vi.fn()} {...props} />)
 }
 
 beforeEach(() => {

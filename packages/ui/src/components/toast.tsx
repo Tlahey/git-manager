@@ -101,16 +101,16 @@ function ToastCard({ item }: { item: ToastItem }) {
       data-testid="toast"
       data-variant={item.variant}
       className={cn(
-        'border-border bg-popover/95 pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-2.5 rounded-lg border border-l-4 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out',
+        'pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-2.5 rounded-lg border border-l-4 border-border bg-popover/95 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out',
         border,
         shown ? 'translate-x-0 opacity-100' : 'translate-x-3 opacity-0'
       )}
     >
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', icon_)} />
       <div className="min-w-0 flex-1">
-        <p className="text-popover-foreground text-xs font-medium leading-snug">{item.message}</p>
+        <p className="text-xs font-medium leading-snug text-popover-foreground">{item.message}</p>
         {item.description && (
-          <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
             {item.description}
           </p>
         )}
@@ -118,7 +118,7 @@ function ToastCard({ item }: { item: ToastItem }) {
       <button
         type="button"
         onClick={() => dismiss(item.id)}
-        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground shrink-0 cursor-pointer rounded p-0.5 transition-colors"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
       >
         <X className="h-3 w-3" />
         <span className="sr-only">Dismiss</span>

@@ -44,8 +44,18 @@ describe('useTerminalStore', () => {
   it('keeps sessions isolated per path', () => {
     useTerminalStore.getState().addTab('/repo', tab('a'))
     useTerminalStore.getState().addTab('/other', tab('x', '/other'))
-    expect(useTerminalStore.getState().tabsFor('/repo').tabs.map((t) => t.id)).toEqual(['a'])
-    expect(useTerminalStore.getState().tabsFor('/other').tabs.map((t) => t.id)).toEqual(['x'])
+    expect(
+      useTerminalStore
+        .getState()
+        .tabsFor('/repo')
+        .tabs.map((t) => t.id)
+    ).toEqual(['a'])
+    expect(
+      useTerminalStore
+        .getState()
+        .tabsFor('/other')
+        .tabs.map((t) => t.id)
+    ).toEqual(['x'])
   })
 
   it('removeTab activates the previous neighbour when the active tab closes', () => {

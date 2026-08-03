@@ -33,7 +33,11 @@ export interface GhRawPR {
   created_at: string
   updated_at: string
   comments?: number
-  base?: { ref?: string; sha?: string; repo?: { name?: string; html_url?: string; full_name?: string } }
+  base?: {
+    ref?: string
+    sha?: string
+    repo?: { name?: string; html_url?: string; full_name?: string }
+  }
   head?: { ref?: string; sha?: string }
   repository_url?: string
   mergeable?: boolean | null
@@ -171,7 +175,11 @@ async function ghGraphQL<T>(
 ): Promise<T> {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
-    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json', Accept: accept },
+    headers: {
+      Authorization: `bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: accept,
+    },
     body: JSON.stringify({ query, variables }),
   })
   if (!res.ok) {
@@ -823,9 +831,7 @@ export async function resolveTagOrReleaseUrl(
   token?: string
 ): Promise<string> {
   const releaseUrl = await fetchReleaseUrlForTag(owner, repo, tag, token)
-  return (
-    releaseUrl ?? `https://github.com/${owner}/${repo}/releases/tag/${encodeURIComponent(tag)}`
-  )
+  return releaseUrl ?? `https://github.com/${owner}/${repo}/releases/tag/${encodeURIComponent(tag)}`
 }
 
 /** A single file changed by a pull request (`GET /pulls/{n}/files`). */
@@ -1054,7 +1060,8 @@ export async function setPullRequestDraft(
     convertPullRequestToDraft?: { pullRequest?: { isDraft: boolean } }
     markPullRequestReadyForReview?: { pullRequest?: { isDraft: boolean } }
   }>(mutation, { id: nodeId }, token)
-  const pr = data.convertPullRequestToDraft?.pullRequest ?? data.markPullRequestReadyForReview?.pullRequest
+  const pr =
+    data.convertPullRequestToDraft?.pullRequest ?? data.markPullRequestReadyForReview?.pullRequest
   return pr?.isDraft ?? draft
 }
 
@@ -1212,10 +1219,19 @@ export async function fetchPrMergeability(
         mergeStateStatus?: PrMergeStateStatus
         reviewDecision?: PrReviewDecision
         viewerCanMergeAsAdmin?: boolean
-        commits?: { nodes?: Array<{ commit?: { statusCheckRollup?: { contexts?: { nodes?: RawCheckContext[] } } } }> }
+        commits?: {
+          nodes?: Array<{
+            commit?: { statusCheckRollup?: { contexts?: { nodes?: RawCheckContext[] } } }
+          }>
+        }
       }
     }
-  }>(query, { owner, repo, number: prNumber }, token, 'application/vnd.github.merge-info-preview+json')
+  }>(
+    query,
+    { owner, repo, number: prNumber },
+    token,
+    'application/vnd.github.merge-info-preview+json'
+  )
 
   const prNode = data.repository?.pullRequest
   const contexts = prNode?.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? []
@@ -1276,11 +1292,14 @@ export async function addReviewers(
   reviewers: string[],
   token: string
 ): Promise<unknown> {
-  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`, {
-    method: 'POST',
-    body: { reviewers },
-    token,
-  })
+  return ghRequest(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`,
+    {
+      method: 'POST',
+      body: { reviewers },
+      token,
+    }
+  )
 }
 
 /** Cancel a pending review request for the given logins. */
@@ -1291,11 +1310,14 @@ export async function removeReviewers(
   reviewers: string[],
   token: string
 ): Promise<unknown> {
-  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`, {
-    method: 'DELETE',
-    body: { reviewers },
-    token,
-  })
+  return ghRequest(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`,
+    {
+      method: 'DELETE',
+      body: { reviewers },
+      token,
+    }
+  )
 }
 
 /** Add assignees (issue/PR share the assignee endpoints). */
@@ -1400,7 +1422,9 @@ export async function fetchPrReviewThreads(
             isOutdated: boolean
             path: string
             line: number | null
-            comments?: { nodes?: Array<{ author?: { login?: string }; bodyText?: string; url?: string }> }
+            comments?: {
+              nodes?: Array<{ author?: { login?: string }; bodyText?: string; url?: string }>
+            }
           }>
         }
       }

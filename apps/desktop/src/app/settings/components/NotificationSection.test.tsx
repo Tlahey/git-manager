@@ -24,7 +24,7 @@ describe('NotificationSection — global toggle', () => {
   it('shows the Bell icon and event sections when enabled', () => {
     render(<NotificationSection />)
     expect(document.querySelector('.lucide-bell')).toBeTruthy()
-    expect(screen.getByText("Notification events")).toBeInTheDocument()
+    expect(screen.getByText('Notification events')).toBeInTheDocument()
   })
 
   it('shows the BellOff icon and hides everything else when disabled', () => {

@@ -34,7 +34,10 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
   const extraLabels = issue.labels.length - MAX_LABELS
 
   return (
-    <div className="flex w-[30rem] whitespace-normal" data-testid={`issue-hover-card-${issue.number}`}>
+    <div
+      className="flex w-[30rem] whitespace-normal"
+      data-testid={`issue-hover-card-${issue.number}`}
+    >
       {/* Left: what the issue is about. */}
       <div className="flex min-w-0 flex-1 flex-col px-1 py-0.5">
         <div className="text-xs font-semibold leading-snug text-foreground">

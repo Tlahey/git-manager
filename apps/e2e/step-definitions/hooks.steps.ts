@@ -90,9 +90,7 @@ Before(async () => {
     await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
     await browser.waitUntil(
       async () =>
-        await browser.execute(
-          () => (document.getElementById('root')?.childElementCount ?? 0) > 0
-        ),
+        await browser.execute(() => (document.getElementById('root')?.childElementCount ?? 0) > 0),
       { timeout: 15000, timeoutMsg: 'The app did not remount after a crash-recovery reload' }
     )
     // The seeds above landed in the crashed document; the reload rehydrated from them, but the

@@ -27,7 +27,7 @@ export function TrophyToast() {
     setActiveUnlock(recentUnlock)
     setVisible(true)
 
-      // Mirror the toast as an OS banner; clicking it opens the Rewards tab, where the trophy is.
+    // Mirror the toast as an OS banner; clicking it opens the Rewards tab, where the trophy is.
     void apiSendNativeNotification({
       title: t('rewards.toast.nativeTitle', { tier: t(`rewards.${recentUnlock.type}`) }),
       body: t('rewards.toast.nativeBody', {

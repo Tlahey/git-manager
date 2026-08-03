@@ -48,7 +48,11 @@ export function E2ePathPickerDialog() {
           <Button variant="ghost" data-testid="e2e-folder-picker-cancel" onClick={cancel}>
             Cancel
           </Button>
-          <Button data-testid="e2e-folder-picker-confirm" onClick={confirm} disabled={!value.trim()}>
+          <Button
+            data-testid="e2e-folder-picker-confirm"
+            onClick={confirm}
+            disabled={!value.trim()}
+          >
             Choose
           </Button>
         </DialogFooter>

@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import type { GhRawPR, PrCheck, PrMergeability } from '../../../api/github.api'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: { count?: number; base?: string }) => (opts?.count != null ? `${key}:${opts.count}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: { count?: number; base?: string }) =>
+      opts?.count != null ? `${key}:${opts.count}` : key,
+  }),
 }))
 
 const { updateBranch } = vi.hoisted(() => ({ updateBranch: vi.fn() }))
@@ -52,7 +55,13 @@ beforeEach(() => {
 
 function renderBox(m: PrMergeability, prOverrides: Partial<GhRawPR> = {}) {
   return render(
-    <PrChecksBox repoPath="/repo" prNumber={7} pr={pr(prOverrides)} mergeability={m} isLoading={false} />
+    <PrChecksBox
+      repoPath="/repo"
+      prNumber={7}
+      pr={pr(prOverrides)}
+      mergeability={m}
+      isLoading={false}
+    />
   )
 }
 

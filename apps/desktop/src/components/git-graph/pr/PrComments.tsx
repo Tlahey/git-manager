@@ -44,9 +44,15 @@ export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
             >
               <div className="mb-1.5 flex items-center gap-2">
                 {c.user?.avatar_url && (
-                  <img src={c.user.avatar_url} alt={c.user.login} className="h-4 w-4 rounded-full" />
+                  <img
+                    src={c.user.avatar_url}
+                    alt={c.user.login}
+                    className="h-4 w-4 rounded-full"
+                  />
                 )}
-                <span className="text-[11px] font-medium text-foreground">{c.user?.login ?? '—'}</span>
+                <span className="text-[11px] font-medium text-foreground">
+                  {c.user?.login ?? '—'}
+                </span>
                 <span className="text-[10px] text-muted-foreground">
                   {new Date(c.created_at).toLocaleDateString(i18n.language)}
                 </span>

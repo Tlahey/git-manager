@@ -161,7 +161,9 @@ function CommandPaletteBody({
     <>
       <CommandInput
         data-testid="command-palette-input"
-        placeholder={isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')}
+        placeholder={
+          isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')
+        }
         value={search}
         onValueChange={setSearch}
       />

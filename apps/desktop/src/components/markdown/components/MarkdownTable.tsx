@@ -32,7 +32,8 @@ export function MarkdownTableCell({
   align?: 'left' | 'center' | 'right' | null
 }) {
   const Component = isHeader ? 'th' : 'td'
-  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+  const alignClass =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
 
   return (
     <Component

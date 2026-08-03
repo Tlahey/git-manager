@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { attachTerminal, detachTerminal, fitTerminal, getOrCreateTerminal } from '../../lib/terminalRegistry'
+import {
+  attachTerminal,
+  detachTerminal,
+  fitTerminal,
+  getOrCreateTerminal,
+} from '../../lib/terminalRegistry'
 
 interface XtermViewProps {
   /** Backend PTY session id — the xterm instance is owned by `lib/terminalRegistry`. */

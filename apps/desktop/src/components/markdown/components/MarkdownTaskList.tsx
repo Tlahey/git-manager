@@ -11,8 +11,7 @@ export function MarkdownTaskListInput({ checked }: { checked?: boolean }) {
   const { onToggle, pending } = useContext(MarkdownTaskListContext)
   const line = useContext(MarkdownTaskItemLineContext)
 
-  const toggle =
-    onToggle && line !== null ? (next: boolean) => onToggle(line, next) : undefined
+  const toggle = onToggle && line !== null ? (next: boolean) => onToggle(line, next) : undefined
 
   // `disabled` alone would leave the toggle reachable while a save is in flight (a label click, or
   // any programmatic activation) — a second write against a body the server hasn't answered for yet.

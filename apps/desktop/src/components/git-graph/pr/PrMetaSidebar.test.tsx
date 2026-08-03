@@ -29,8 +29,12 @@ vi.mock('../../../hooks/usePrEditCandidates', () => ({
   useRepoLabels: (...a: unknown[]) => useRepoLabelsMock(...a),
 }))
 vi.mock('./PrReviewComposer', () => ({ PrReviewComposer: () => <div data-testid="stub-review" /> }))
-vi.mock('./PrStateActions', () => ({ PrStateActions: () => <div data-testid="stub-state-actions" /> }))
-vi.mock('./PrCodeSuggestions', () => ({ PrCodeSuggestions: () => <div data-testid="stub-suggestions" /> }))
+vi.mock('./PrStateActions', () => ({
+  PrStateActions: () => <div data-testid="stub-state-actions" />,
+}))
+vi.mock('./PrCodeSuggestions', () => ({
+  PrCodeSuggestions: () => <div data-testid="stub-suggestions" />,
+}))
 
 import { PrMetaSidebar } from './PrMetaSidebar'
 
@@ -65,7 +69,10 @@ beforeEach(() => {
     ],
     isLoading: false,
   })
-  useRepoLabelsMock.mockReturnValue({ labels: [{ name: 'bug' }, { name: 'chore' }], isLoading: false })
+  useRepoLabelsMock.mockReturnValue({
+    labels: [{ name: 'bug' }, { name: 'chore' }],
+    isLoading: false,
+  })
 })
 
 describe('PrMetaSidebar', () => {
@@ -79,8 +86,12 @@ describe('PrMetaSidebar', () => {
   it('renders reviewers, assignees, labels, branch and state actions', () => {
     usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false })
     render(<PrMetaSidebar repoPath="/repo" prNumber={7} />)
-    expect(within(screen.getByTestId('pr-reviewers')).getByTestId('pr-user-rev1')).toBeInTheDocument()
-    expect(within(screen.getByTestId('pr-assignees')).getByTestId('pr-user-assignee1')).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('pr-reviewers')).getByTestId('pr-user-rev1')
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('pr-assignees')).getByTestId('pr-user-assignee1')
+    ).toBeInTheDocument()
     expect(screen.getByTestId('pr-label-bug')).toBeInTheDocument()
     expect(screen.getByTestId('pr-branch')).toHaveTextContent('feat/x')
     expect(screen.getByTestId('stub-state-actions')).toBeInTheDocument()

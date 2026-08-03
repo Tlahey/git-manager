@@ -361,9 +361,7 @@ export function AiProviderForm() {
                   updateAi({ concurrency: Math.min(parsed, MAX_AI_CONCURRENCY) })
                 }
               }}
-              onBlur={() =>
-                setConcurrencyText(String(ai.concurrency ?? DEFAULT_AI_CONCURRENCY))
-              }
+              onBlur={() => setConcurrencyText(String(ai.concurrency ?? DEFAULT_AI_CONCURRENCY))}
               className="h-8 w-24 text-xs"
               data-testid="ai-concurrency-input"
             />

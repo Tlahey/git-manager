@@ -207,10 +207,7 @@ describe('showNativeMenu — spec rendering', () => {
 
   it('items default to enabled and honour an explicit enabled: false', async () => {
     const api = await freshApi()
-    await api.showNativeMenu([
-      menuItem({ text: 'On' }),
-      menuItem({ text: 'Off', enabled: false }),
-    ])
+    await api.showNativeMenu([menuItem({ text: 'On' }), menuItem({ text: 'Off', enabled: false })])
     expect(iconMenuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({ text: 'On', enabled: true })
     )

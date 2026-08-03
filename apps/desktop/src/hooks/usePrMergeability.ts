@@ -9,14 +9,20 @@ export function usePrMergeability(
   repoPath: string | null,
   prNumber: number | null,
   headSha: string | null
-): { mergeability: PrMergeability | undefined; isLoading: boolean; error: unknown; refresh: () => void } {
+): {
+  mergeability: PrMergeability | undefined
+  isLoading: boolean
+  error: unknown
+  refresh: () => void
+} {
   const { ownerRepo, token } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
     prNumber != null && ownerRepo && token
       ? ['pr-mergeability', ownerRepo.owner, ownerRepo.repo, prNumber, headSha, token]
       : null,
-    () => fetchPrMergeability(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+    () =>
+      fetchPrMergeability(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
     { revalidateOnFocus: false, refreshInterval: 20_000 }
   )
 

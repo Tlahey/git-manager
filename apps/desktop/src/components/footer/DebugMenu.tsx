@@ -118,9 +118,7 @@ function QueueReadout() {
           {queue.current ? `Showing: ${queue.current.model.eyebrow}` : 'The notch is idle'}
         </span>
         <span className="text-[10px] text-muted-foreground">
-          {waiting > 0
-            ? `${waiting} waiting — one notch, one card at a time`
-            : 'Nothing waiting'}
+          {waiting > 0 ? `${waiting} waiting — one notch, one card at a time` : 'Nothing waiting'}
         </span>
       </span>
       {(queue.current || waiting > 0) && (
@@ -196,10 +194,7 @@ function DebugActionRow({ actionId }: { actionId: string }) {
             )}
           </>
         ) : (
-          <SurfaceButton
-            testId={`debug-action-${action.id}`}
-            onClick={() => void action.run(t)}
-          >
+          <SurfaceButton testId={`debug-action-${action.id}`} onClick={() => void action.run(t)}>
             Run
           </SurfaceButton>
         )}

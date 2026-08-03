@@ -8,14 +8,14 @@ each morning — and the only one whose output is **archived on disk** for two m
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 > Searching the archive is its own feature: see [summary search](./summary-search.md).
 
-| | |
-| --- | --- |
-| **Descriptors** | [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) (map) → [`dailySummaryFeature`](../../packages/ai/src/features/dailySummary.ts) (reduce) |
-| **Orchestrator** | [`composeDailySummaryFromSummaries`](../../packages/ai/src/features/composeDailySummary.ts) |
-| **Kind** | completion + JSON schema → `DailySummary` |
-| **Temperature** | 0.3 (reduce), 0.1 (map) |
-| **Context** | `get_ai_activity` (the window) **plus** `get_ai_context` at `range` scope (the window's diff) |
-| **UI** | ✨ per project on the dashboard → [`DailySummaryPanel`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.tsx), the morning auto-run, and the archive panel → *AI ▸ Daily summaries* in a repo ([`DailySummariesPanel`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.tsx)) |
+|                  |                                                                                                                                                                                                                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Descriptors**  | [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) (map) → [`dailySummaryFeature`](../../packages/ai/src/features/dailySummary.ts) (reduce)                                                                                                                                                |
+| **Orchestrator** | [`composeDailySummaryFromSummaries`](../../packages/ai/src/features/composeDailySummary.ts)                                                                                                                                                                                                                   |
+| **Kind**         | completion + JSON schema → `DailySummary`                                                                                                                                                                                                                                                                     |
+| **Temperature**  | 0.3 (reduce), 0.1 (map)                                                                                                                                                                                                                                                                                       |
+| **Context**      | `get_ai_activity` (the window) **plus** `get_ai_context` at `range` scope (the window's diff)                                                                                                                                                                                                                 |
+| **UI**           | ✨ per project on the dashboard → [`DailySummaryPanel`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.tsx), the morning auto-run, and the archive panel → _AI ▸ Daily summaries_ in a repo ([`DailySummariesPanel`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.tsx)) |
 
 ---
 
@@ -30,7 +30,7 @@ Three fields, rendered as a small panel on a dashboard project, and archived as 
 A green dot marks a project whose briefing is fresh. Clicking ✨ regenerates on demand.
 
 Past briefings are browsed **per repository**, from the toolbar's **AI menu** (the LLM icon, its own
-zone next to Tools) ▸ *Daily summaries*, which opens the archive in the graph's right-hand panel.
+zone next to Tools) ▸ _Daily summaries_, which opens the archive in the graph's right-hand panel.
 There, a **date field** picks the day to explore, and the generate button sits beside it — because
 the date is that button's argument, generation is disabled until a day is chosen. Repo-scoped rather than a global page: a briefing
 is about one project, and the question you ask of it ("when did I finish X here?") is asked while
@@ -82,19 +82,19 @@ Not "the last N hours". The window is `[local midnight, 23:59:59]` of a specific
 named after that date, and the date is an **argument** — the panel's date field, or the previous
 working day for the morning run.
 
-It used to be a rolling window filed under the day it was *written*, which meant a file named Tuesday
+It used to be a rolling window filed under the day it was _written_, which meant a file named Tuesday
 describing Monday's work: readable the morning you generated it, confusing two months later in an
 archive you are searching by date. It also made "summarize last Thursday" unexpressible.
 
 The day logic is pure and unit-tested in
 [`dailySummaryWindow.ts`](../../apps/desktop/src/lib/dailySummaryWindow.ts) — no React, no Tauri:
 
-| Helper | Job |
-| ------ | --- |
-| `localDateKey(date)` | the `YYYY-MM-DD` a briefing is filed under — **local**, not `toISOString()`, which would file an evening briefing under tomorrow west of Greenwich |
-| `dayBounds(key)` | the epoch-second bounds the backend walks — built with the local `Date` constructor, since `Date.parse('2026-07-27')` is *UTC* midnight and lands on a different day in any non-zero offset |
-| `previousWorkingDayKey(now)` | what the morning run targets: Monday reaches back over the weekend to Friday, so a fresh week doesn't open on a day nobody worked |
-| `isSummaryStale(dates)` | whether the previous working day is missing from the archive — drives the "regenerate?" dot and the auto-run |
+| Helper                       | Job                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `localDateKey(date)`         | the `YYYY-MM-DD` a briefing is filed under — **local**, not `toISOString()`, which would file an evening briefing under tomorrow west of Greenwich                                          |
+| `dayBounds(key)`             | the epoch-second bounds the backend walks — built with the local `Date` constructor, since `Date.parse('2026-07-27')` is _UTC_ midnight and lands on a different day in any non-zero offset |
+| `previousWorkingDayKey(now)` | what the morning run targets: Monday reaches back over the weekend to Friday, so a fresh week doesn't open on a day nobody worked                                                           |
+| `isSummaryStale(dates)`      | whether the previous working day is missing from the archive — drives the "regenerate?" dot and the auto-run                                                                                |
 
 The frontend owns all of it because only it knows the user's clock and time zone; Rust receives two
 absolute timestamps and stays a pure git query.
@@ -108,9 +108,9 @@ deliberate:
 - **Reads the archive first**, so a briefing written this morning by a previous session isn't
   regenerated after a restart.
 - **One repository at a time** — each briefing is already N+1 calls, so overlapping two of them would
-  multiply the load by a factor nobody chose. Concurrency *inside* a briefing is the *Calls in
-  flight* setting's business ([why it lives there](./README.md#reading-several-at-once)).
-- **Once per path per session** — success, *skip* or failure — no retry loops against a
+  multiply the load by a factor nobody chose. Concurrency _inside_ a briefing is the _Calls in
+  flight_ setting's business ([why it lives there](./README.md#reading-several-at-once)).
+- **Once per path per session** — success, _skip_ or failure — no retry loops against a
   misconfigured provider.
 - **A failing project doesn't block the others**; you can retry it by hand from the panel.
 
@@ -121,23 +121,23 @@ both the AI master switch and its own `dailySummary.autoGenerate` setting.
 
 ## The context
 
-Two calls, because the window is both a *list of commits* and a *diff*:
+Two calls, because the window is both a _list of commits_ and a _diff_:
 
 **`get_ai_activity`** ([ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs))
 walks the resolved main branch newest-first and collects the following. **Both** bounds matter: the
 walk starts at the branch tip, usually far newer than the day asked about, so anything past
 `until_epoch` is skipped on the way down rather than ending the walk.
 
-| | |
-| --- | --- |
-| **commits** | non-merge commits whose **author time** falls within `[since_epoch, until_epoch]`, with subject, body, and `filesChanged/insertions/deletions`. Capped at 50 — newest win, and `truncated: true` tells the prompt it saw a sample |
-| **pending** | a light snapshot of uncommitted work (path + status), so "today" can be grounded in what's in flight |
-| **baseOid / headOid** | the two ends of the window: the first parent of the oldest collected commit, and the newest one |
+|                       |                                                                                                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **commits**           | non-merge commits whose **author time** falls within `[since_epoch, until_epoch]`, with subject, body, and `filesChanged/insertions/deletions`. Capped at 50 — newest win, and `truncated: true` tells the prompt it saw a sample |
+| **pending**           | a light snapshot of uncommitted work (path + status), so "today" can be grounded in what's in flight                                                                                                                              |
+| **baseOid / headOid** | the two ends of the window: the first parent of the oldest collected commit, and the newest one                                                                                                                                   |
 
 **`get_ai_context`** at `range` scope over `baseOid..headOid` then yields the window's diff and file
 list. No new Rust diff path was needed: `build_ai_context`'s `merge_base(base, head)` collapses to
 `baseOid`, since it is an ancestor of `headOid` by construction. Keeping the boundary at the
-*collected* oldest commit (not the window's true oldest) is what makes the diff match `commits` even
+_collected_ oldest commit (not the window's true oldest) is what makes the diff match `commits` even
 when the walk stopped early at the 50-commit cap.
 
 Merge commits are skipped: their auto-generated subjects don't describe authored work.
@@ -153,12 +153,12 @@ invent work that has no basis in the data**.
 
 **User** — the repo and main branch, the day being summarized, the commits (with stats and bodies),
 the pending files, a note when the window was truncated, the target language, and then a summary of
-every file the window touched (trimmed by `renderSummaryList`, which drops *detail* before it drops
-*files*).
+every file the window touched (trimmed by `renderSummaryList`, which drops _detail_ before it drops
+_files_).
 
 `DAILY_SUMMARY_SCHEMA` constrains the output to `{ headline, yesterday[], today[] }`.
 `parseDailySummary` tolerates prose or fences around the JSON, coerces the lists to clean non-empty
-strings, and throws only when *all three* fields are empty. Structured output rather than a stream,
+strings, and throws only when _all three_ fields are empty. Structured output rather than a stream,
 for the same reason the commit message uses one: this text is stored and re-read weeks later, so a
 reasoning model's deliberation leaking into it is a permanent defect, not a transient one.
 
@@ -241,25 +241,25 @@ the user's repository, and untracked files in a git client's own repos are a vis
 
 Beyond the [shared ones](./README.md#known-limitations):
 
-| Limitation | Note |
-| ---------- | ---- |
-| **Not filtered by author** | It reports every non-merge commit in the window, including teammates' commits merged in. On an active shared branch, "what *I* did yesterday" is diluted |
-| **Main branch only** | Work sitting on an unmerged feature branch is invisible; it appears the day it lands |
-| **50-commit cap** | A very busy window is summarized from a sample; the prompt is told, but the result is still partial |
-| **Cost scales with the day** | One model call per file changed in the window, plus one. A 60-file day is a 61-call run — bounded, but not instant |
-| **Retention is fixed at 60 days** | Not user-configurable; older files are pruned on the next write |
+| Limitation                        | Note                                                                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Not filtered by author**        | It reports every non-merge commit in the window, including teammates' commits merged in. On an active shared branch, "what _I_ did yesterday" is diluted |
+| **Main branch only**              | Work sitting on an unmerged feature branch is invisible; it appears the day it lands                                                                     |
+| **50-commit cap**                 | A very busy window is summarized from a sample; the prompt is told, but the result is still partial                                                      |
+| **Cost scales with the day**      | One model call per file changed in the window, plus one. A 60-file day is a 61-call run — bounded, but not instant                                       |
+| **Retention is fixed at 60 days** | Not user-configurable; older files are pruned on the next write                                                                                          |
 
 ## Tests
 
-| Test | Covers |
-| ---- | ------ |
-| [`dailySummary.test.ts`](../../packages/ai/src/features/dailySummary.test.ts) | prompt shape, file-summary evidence, language, parse tolerance |
-| [`composeDailySummary.test.ts`](../../packages/ai/src/features/composeDailySummary.test.ts) | map→reduce orchestration, progress, cancellation, per-file failure |
-| [`dailySummaryWindow.test.ts`](../../apps/desktop/src/lib/dailySummaryWindow.test.ts) | the weekend rule, the local date key, staleness |
-| [`dailySummaryMarkdown.test.ts`](../../apps/desktop/src/lib/dailySummaryMarkdown.test.ts) | the file format, round trip, hand-edited tolerance |
-| [`generateDailySummary.test.ts`](../../apps/desktop/src/lib/generateDailySummary.test.ts) | end-to-end orchestration, the skip rule, the archive write |
-| [`dailySummary.store.test.ts`](../../apps/desktop/src/stores/dailySummary.store.test.ts) | hydration from disk, per-day indexing, deletion |
-| [`useMorningSummaries.test.ts`](../../apps/desktop/src/hooks/useMorningSummaries.test.ts) | sequential run, once-per-session, failure isolation |
-| [`DailySummaryPanel.test.tsx`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.test.tsx) | rendering, progress, the skip state, the regenerate action |
-| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.test.tsx) | repo scoping (list *and* model shortlist), filters, actions |
-| `ai_activity.rs` / `daily_summary_archive.rs` tests | branch resolution, window boundary, retention, the exclude entry |
+| Test                                                                                                       | Covers                                                             |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`dailySummary.test.ts`](../../packages/ai/src/features/dailySummary.test.ts)                              | prompt shape, file-summary evidence, language, parse tolerance     |
+| [`composeDailySummary.test.ts`](../../packages/ai/src/features/composeDailySummary.test.ts)                | map→reduce orchestration, progress, cancellation, per-file failure |
+| [`dailySummaryWindow.test.ts`](../../apps/desktop/src/lib/dailySummaryWindow.test.ts)                      | the weekend rule, the local date key, staleness                    |
+| [`dailySummaryMarkdown.test.ts`](../../apps/desktop/src/lib/dailySummaryMarkdown.test.ts)                  | the file format, round trip, hand-edited tolerance                 |
+| [`generateDailySummary.test.ts`](../../apps/desktop/src/lib/generateDailySummary.test.ts)                  | end-to-end orchestration, the skip rule, the archive write         |
+| [`dailySummary.store.test.ts`](../../apps/desktop/src/stores/dailySummary.store.test.ts)                   | hydration from disk, per-day indexing, deletion                    |
+| [`useMorningSummaries.test.ts`](../../apps/desktop/src/hooks/useMorningSummaries.test.ts)                  | sequential run, once-per-session, failure isolation                |
+| [`DailySummaryPanel.test.tsx`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.test.tsx) | rendering, progress, the skip state, the regenerate action         |
+| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.test.tsx) | repo scoping (list _and_ model shortlist), filters, actions        |
+| `ai_activity.rs` / `daily_summary_archive.rs` tests                                                        | branch resolution, window boundary, retention, the exclude entry   |

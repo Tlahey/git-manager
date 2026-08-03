@@ -41,16 +41,16 @@ describe('issueExcerpt — markdown stripping', () => {
     )
   })
 
-  it('keeps a link\'s text and drops its target', () => {
+  it("keeps a link's text and drops its target", () => {
     expect(issueExcerpt('See [the docs](https://example.com/very/long/url) for details')).toBe(
       'See the docs for details'
     )
   })
 
   it('drops images entirely, target and alt text alike', () => {
-    expect(issueExcerpt('Screenshot: ![a very wide screenshot](https://img.example/x.png) done')).toBe(
-      'Screenshot: done'
-    )
+    expect(
+      issueExcerpt('Screenshot: ![a very wide screenshot](https://img.example/x.png) done')
+    ).toBe('Screenshot: done')
   })
 
   it('strips heading, quote, bullet and numbered-list markers', () => {

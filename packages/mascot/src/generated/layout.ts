@@ -3,33 +3,141 @@
  * do not edit by hand; run `pnpm --filter @git-manager/mascot generate`.
  */
 
-import { SPRITES, type SpriteDef } from './sprites';
+import { SPRITES, type SpriteDef } from './sprites'
 
 export interface GeneratedPlacement {
-  zone: keyof typeof SPRITES;
-  role: string;
-  sprite: SpriteDef;
-  x: number;
-  y: number;
-  scale: number;
-  rot: number;
-  flip: boolean;
-  opacity: number;
-  pivot: { x: number; y: number };
-  anim: { amp: number; dur: number; delay: number };
+  zone: keyof typeof SPRITES
+  role: string
+  sprite: SpriteDef
+  x: number
+  y: number
+  scale: number
+  rot: number
+  flip: boolean
+  opacity: number
+  pivot: { x: number; y: number }
+  anim: { amp: number; dur: number; delay: number }
 }
 
-export const STAGE = { width: 1000, height: 1000 } as const;
+export const STAGE = { width: 1000, height: 1000 } as const
 
 /** Paint order: first = furthest back, last = frontmost. */
 export const PLACEMENTS: readonly GeneratedPlacement[] = [
-  { zone: 't1', role: 'tentacle', sprite: SPRITES.t1, x: 598, y: 227, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 590, y: 423 }, anim: { amp: 3, dur: 3.9, delay: 0.5 } },
-  { zone: 't4', role: 'tentacle', sprite: SPRITES.t4, x: 188, y: 239, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 410, y: 428 }, anim: { amp: 3, dur: 3.6, delay: 0 } },
-  { zone: 'head', role: 'head', sprite: SPRITES.head, x: 320, y: 110, scale: 0.5979, rot: 0, flip: false, opacity: 1, pivot: { x: 510, y: 300 }, anim: { amp: 0, dur: 4, delay: 0 } },
-  { zone: 't8', role: 'tentacle', sprite: SPRITES.t8, x: 575, y: 421, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 607, y: 412 }, anim: { amp: 2.4, dur: 4.2, delay: 0.9 } },
-  { zone: 't5', role: 'tentacle', sprite: SPRITES.t5, x: 133, y: 467, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 426, y: 459 }, anim: { amp: 2.4, dur: 4, delay: 0.35 } },
-  { zone: 't2', role: 'tentacle', sprite: SPRITES.t2, x: 211, y: 483, scale: 0.4928, rot: 7, flip: false, opacity: 1, pivot: { x: 434, y: 493 }, anim: { amp: 2.6, dur: 3.4, delay: 0.2 } },
-  { zone: 't3', role: 'tentacle', sprite: SPRITES.t3, x: 562, y: 503, scale: 0.4928, rot: -8, flip: false, opacity: 1, pivot: { x: 594, y: 485 }, anim: { amp: 2.6, dur: 3.7, delay: 0.7 } },
-  { zone: 't6', role: 'tentacle', sprite: SPRITES.t6, x: 327, y: 473, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 514, y: 458 }, anim: { amp: 2.2, dur: 3.5, delay: 0.6 } },
-  { zone: 't7', role: 'tentacle', sprite: SPRITES.t7, x: 488, y: 483, scale: 0.5537, rot: 0, flip: false, opacity: 1, pivot: { x: 519, y: 470 }, anim: { amp: 2.2, dur: 3.2, delay: 0.15 } },
-];
+  {
+    zone: 't1',
+    role: 'tentacle',
+    sprite: SPRITES.t1,
+    x: 598,
+    y: 227,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 590, y: 423 },
+    anim: { amp: 3, dur: 3.9, delay: 0.5 },
+  },
+  {
+    zone: 't4',
+    role: 'tentacle',
+    sprite: SPRITES.t4,
+    x: 188,
+    y: 239,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 410, y: 428 },
+    anim: { amp: 3, dur: 3.6, delay: 0 },
+  },
+  {
+    zone: 'head',
+    role: 'head',
+    sprite: SPRITES.head,
+    x: 320,
+    y: 110,
+    scale: 0.5979,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 510, y: 300 },
+    anim: { amp: 0, dur: 4, delay: 0 },
+  },
+  {
+    zone: 't8',
+    role: 'tentacle',
+    sprite: SPRITES.t8,
+    x: 575,
+    y: 421,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 607, y: 412 },
+    anim: { amp: 2.4, dur: 4.2, delay: 0.9 },
+  },
+  {
+    zone: 't5',
+    role: 'tentacle',
+    sprite: SPRITES.t5,
+    x: 133,
+    y: 467,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 426, y: 459 },
+    anim: { amp: 2.4, dur: 4, delay: 0.35 },
+  },
+  {
+    zone: 't2',
+    role: 'tentacle',
+    sprite: SPRITES.t2,
+    x: 211,
+    y: 483,
+    scale: 0.4928,
+    rot: 7,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 434, y: 493 },
+    anim: { amp: 2.6, dur: 3.4, delay: 0.2 },
+  },
+  {
+    zone: 't3',
+    role: 'tentacle',
+    sprite: SPRITES.t3,
+    x: 562,
+    y: 503,
+    scale: 0.4928,
+    rot: -8,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 594, y: 485 },
+    anim: { amp: 2.6, dur: 3.7, delay: 0.7 },
+  },
+  {
+    zone: 't6',
+    role: 'tentacle',
+    sprite: SPRITES.t6,
+    x: 327,
+    y: 473,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 514, y: 458 },
+    anim: { amp: 2.2, dur: 3.5, delay: 0.6 },
+  },
+  {
+    zone: 't7',
+    role: 'tentacle',
+    sprite: SPRITES.t7,
+    x: 488,
+    y: 483,
+    scale: 0.5537,
+    rot: 0,
+    flip: false,
+    opacity: 1,
+    pivot: { x: 519, y: 470 },
+    anim: { amp: 2.2, dur: 3.2, delay: 0.15 },
+  },
+]

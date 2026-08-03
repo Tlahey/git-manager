@@ -404,7 +404,11 @@ describe('computeTwoWayIntraLineHighlights', () => {
       oursLines: [],
       theirsLines: ['same line'],
     }
-    const highlights = computeTwoWayIntraLineHighlights([block], twoWayPlacementFor(block), () => 'same line')
+    const highlights = computeTwoWayIntraLineHighlights(
+      [block],
+      twoWayPlacementFor(block),
+      () => 'same line'
+    )
     expect(highlights.theirs).toEqual([])
     expect(highlights.center).toEqual([])
   })

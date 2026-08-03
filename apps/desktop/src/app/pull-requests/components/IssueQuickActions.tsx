@@ -32,7 +32,13 @@ interface IssueQuickActionsProps {
  * confirm dialog), View repo, Open on GitHub, Copy link — in its dropdown. Pin and snooze stay as
  * hover icons on the row's left edge.
  */
-export function IssueQuickActions({ issue, viewRepo, close, closing, canClose }: IssueQuickActionsProps) {
+export function IssueQuickActions({
+  issue,
+  viewRepo,
+  close,
+  closing,
+  canClose,
+}: IssueQuickActionsProps) {
   const { t } = useTranslation('launchpad')
   const openIssue = useOpenIssue()
   const [confirmClose, setConfirmClose] = useState(false)
@@ -95,7 +101,12 @@ export function IssueQuickActions({ issue, viewRepo, close, closing, canClose }:
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" size="sm" disabled={closing} onClick={() => setConfirmClose(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={closing}
+              onClick={() => setConfirmClose(false)}
+            >
               {t('issue.closeConfirmCancel')}
             </Button>
             <Button

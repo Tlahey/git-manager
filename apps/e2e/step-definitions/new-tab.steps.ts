@@ -21,7 +21,11 @@ function fixtureRepoPath(fixtureName: string): string {
   return join(FIXTURE_ROOT, fixtureName)
 }
 
-function liveRepoUIState(): Promise<{ openTabs: string[]; activeTab: string; activeRepo: string | null }> {
+function liveRepoUIState(): Promise<{
+  openTabs: string[]
+  activeTab: string
+  activeRepo: string | null
+}> {
   return browser.execute(() => {
     const store = (
       window as unknown as {
@@ -74,17 +78,20 @@ Given(/^the "([^"]*)" fixture repository is listed as recent$/, async (fixtureNa
   )
 })
 
-Given(/^the "([^"]*)" fixture repository is already open in a tab$/, async (fixtureName: string) => {
-  const repoPath = fixtureRepoPath(fixtureName)
-  await browser.execute(
-    (key: string, value: string) => localStorage.setItem(key, value),
-    REPO_UI_KEY,
-    JSON.stringify({
-      state: { openTabs: [repoPath], activeRepo: repoPath, activeTab: repoPath },
-      version: 0,
-    })
-  )
-})
+Given(
+  /^the "([^"]*)" fixture repository is already open in a tab$/,
+  async (fixtureName: string) => {
+    const repoPath = fixtureRepoPath(fixtureName)
+    await browser.execute(
+      (key: string, value: string) => localStorage.setItem(key, value),
+      REPO_UI_KEY,
+      JSON.stringify({
+        state: { openTabs: [repoPath], activeRepo: repoPath, activeTab: repoPath },
+        version: 0,
+      })
+    )
+  }
+)
 
 When(/^I open a new tab$/, async () => {
   const origin = await browser.execute(() => window.location.origin)
@@ -102,7 +109,11 @@ When(/^I open a new tab$/, async () => {
     async () =>
       (await $('[data-testid="open-repo-button"]').isExisting()) ||
       (await $('[data-testid="repo-view"]').isExisting()),
-    { timeout: 10000, interval: 250, timeoutMsg: 'Neither the Dashboard nor a repo view ever rendered' }
+    {
+      timeout: 10000,
+      interval: 250,
+      timeoutMsg: 'Neither the Dashboard nor a repo view ever rendered',
+    }
   )
   await browser.keys([META, 't'])
   await $('[data-testid="new-tab-page"]').waitForDisplayed({ timeout: 10000 })

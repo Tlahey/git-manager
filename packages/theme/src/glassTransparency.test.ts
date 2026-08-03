@@ -76,7 +76,9 @@ describe('glassAlphasForLevel', () => {
 
 describe('glassTransparencyVars', () => {
   it('emits exactly the custom properties the module owns', () => {
-    expect(Object.keys(glassTransparencyVars(50)).sort()).toEqual([...GLASS_TRANSPARENCY_VARS].sort())
+    expect(Object.keys(glassTransparencyVars(50)).sort()).toEqual(
+      [...GLASS_TRANSPARENCY_VARS].sort()
+    )
   })
 
   it('emits values the CSS alpha syntax accepts', () => {

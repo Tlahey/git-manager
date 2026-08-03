@@ -59,7 +59,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
           <ListFilter className="h-3.5 w-3.5" />
           {hasSelection && (
             <span
-              className="text-[9px] font-bold leading-none tabular-nums"
+              className="text-[9px] font-bold tabular-nums leading-none"
               data-testid="author-filter-count"
             >
               {activeCount}
@@ -126,7 +126,9 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
                     data-testid={`author-filter-option-${a.email}`}
                     className="gap-2"
                   >
-                    <Check className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'opacity-100' : 'opacity-0')} />
+                    <Check
+                      className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'opacity-100' : 'opacity-0')}
+                    />
                     <AuthorAvatar name={a.name} email={a.email} className="h-4 w-4 text-[7px]" />
                     <span className="truncate">{a.name}</span>
                     <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/60">

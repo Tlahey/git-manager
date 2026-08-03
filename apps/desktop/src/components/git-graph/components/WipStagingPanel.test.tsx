@@ -131,7 +131,6 @@ describe('WipStagingPanel — tabs (Commit & Stash)', () => {
   })
 })
 
-
 describe('WipStagingPanel — classic commit form', () => {
   it('binds the commit message textarea and disables it while generating', () => {
     useWipCommitPanel.mockReturnValue(
@@ -163,9 +162,6 @@ describe('WipStagingPanel — classic commit form', () => {
     await user.click(screen.getByText('Stop'))
     expect(handleGenerateCommitMessage).toHaveBeenCalledOnce()
   })
-
-
-
 
   it('disables commit when nothing is staged, the message is blank, or a commit is in progress', () => {
     const { rerender } = renderPanel({ gitStatus: gitStatus({ staged: [] }) })
@@ -242,9 +238,7 @@ describe('WipStagingPanel — batch mode', () => {
 
   it('binds the per-group message textarea', () => {
     renderPanel()
-    expect(screen.getByPlaceholderText('Message for this batch...')).toHaveValue(
-      'auth message'
-    )
+    expect(screen.getByPlaceholderText('Message for this batch...')).toHaveValue('auth message')
   })
 
   it('generates a message for the batch when clicked', async () => {
@@ -282,9 +276,7 @@ describe('WipStagingPanel — batch mode', () => {
       panelState({ batchMode: true, wipBatches: { auth: [file()] }, batchMessages: { auth: '' } })
     )
     const { rerender } = renderPanel()
-    expect(
-      screen.getByText('Commit this batch').closest('button')
-    ).toBeDisabled()
+    expect(screen.getByText('Commit this batch').closest('button')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(
       panelState({
@@ -294,9 +286,7 @@ describe('WipStagingPanel — batch mode', () => {
       })
     )
     rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} />)
-    expect(
-      screen.getByText('Commit this batch').closest('button')
-    ).toBeEnabled()
+    expect(screen.getByText('Commit this batch').closest('button')).toBeEnabled()
   })
 
   it('commits the batch when clicked', async () => {
@@ -316,7 +306,6 @@ describe('WipStagingPanel — batch mode', () => {
     expect(commitBatch).toHaveBeenCalledWith('auth', files)
   })
 })
-
 
 describe('WipStagingPanel — batch "all" actions', () => {
   const twoGroups = {

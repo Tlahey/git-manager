@@ -311,7 +311,6 @@ describe('useGitGraphActions — openMenuAt: WIP row', () => {
     await act(async () => getItem('gitTree.wipMenu.unstageAll').action!())
     expect(mocked.apiUnstageAll).toHaveBeenCalledWith(REPO)
   })
-
 })
 
 describe('useGitGraphActions — openMenuAt: other-worktree WIP row', () => {
@@ -708,7 +707,12 @@ describe('useGitGraphActions — per-branch submenus', () => {
   })
   const withRemote = commitNode('a', {
     refs: [
-      { name: 'refs/remotes/origin/main', shortName: 'origin/main', type: 'remote', commitOid: 'a' },
+      {
+        name: 'refs/remotes/origin/main',
+        shortName: 'origin/main',
+        type: 'remote',
+        commitOid: 'a',
+      },
     ],
   })
 
@@ -843,7 +847,12 @@ describe('useGitGraphActions — per-branch submenus', () => {
     const mainTip = commitNode('a', {
       refs: [
         { name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' },
-        { name: 'refs/remotes/origin/main', shortName: 'origin/main', type: 'remote', commitOid: 'a' },
+        {
+          name: 'refs/remotes/origin/main',
+          shortName: 'origin/main',
+          type: 'remote',
+          commitOid: 'a',
+        },
       ],
     })
     const { result } = renderHook(() =>
@@ -973,7 +982,11 @@ describe('useGitGraphActions — openMenuAt: multi-selection', () => {
     const { result } = renderHook(() => useGitGraphActions(multi()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'b'))
     await act(async () => getItem('gitTree.contextMenu.createPatchMany').action!())
-    expect(mocked.apiCreateCommitsPatch).toHaveBeenCalledWith(REPO, ['a', 'b', 'c'], '/dest/range.patch')
+    expect(mocked.apiCreateCommitsPatch).toHaveBeenCalledWith(
+      REPO,
+      ['a', 'b', 'c'],
+      '/dest/range.patch'
+    )
   })
 
   it('rebases the current branch onto the primary (right-clicked) commit', async () => {
@@ -1099,7 +1112,9 @@ describe('useGitGraphActions — pending graph action bridge', () => {
   })
 
   it('drafts an inline tag on the selected commit for a tag action', () => {
-    const { result, rerender } = renderHook(() => useGitGraphActions(baseParams({ primaryOid: 'a' })))
+    const { result, rerender } = renderHook(() =>
+      useGitGraphActions(baseParams({ primaryOid: 'a' }))
+    )
 
     act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'tag', annotated: true } }))
     rerender()
@@ -1109,7 +1124,9 @@ describe('useGitGraphActions — pending graph action bridge', () => {
   })
 
   it('forwards any other action kind to setPendingAction, opening its matching dialog', () => {
-    const { result, rerender } = renderHook(() => useGitGraphActions(baseParams({ primaryOid: 'a' })))
+    const { result, rerender } = renderHook(() =>
+      useGitGraphActions(baseParams({ primaryOid: 'a' }))
+    )
 
     act(() => useRepoUIStore.setState({ pendingGraphAction: { kind: 'revert' } }))
     rerender()

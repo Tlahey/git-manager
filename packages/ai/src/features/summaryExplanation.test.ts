@@ -81,7 +81,9 @@ describe('SUMMARY_EXPLANATION_INSTRUCTION', () => {
   it('keeps the two rules worth keeping from both features it replaces', () => {
     // Explaining is not reviewing, and a diff you cannot see is not a diff that is missing.
     expect(SUMMARY_EXPLANATION_INSTRUCTION).toContain('Describe, do not review')
-    expect(SUMMARY_EXPLANATION_INSTRUCTION).toContain('Absence of evidence is not evidence of absence')
+    expect(SUMMARY_EXPLANATION_INSTRUCTION).toContain(
+      'Absence of evidence is not evidence of absence'
+    )
   })
 
   it('tells a commit explanation not to parrot the commit message back', () => {

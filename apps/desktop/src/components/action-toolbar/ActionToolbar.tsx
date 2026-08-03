@@ -22,6 +22,7 @@ import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { deriveTimeline } from '../../lib/timelineModel'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
@@ -83,8 +84,12 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
 
   const openTimeline = () => {
     if (!activeRepo) return
-    const pointer = useUndoHistoryStore.getState().byRepo[activeRepo]?.pointer ?? 0
-    useTimelineNavStore.getState().open(activeRepo, pointer)
+    // The overlay is indexed by *gesture*, not by stack entry, so the starting step has to come
+    // from the model rather than from the raw pointer (they differ as soon as one gesture recorded
+    // several git operations — see `lib/undoGestures.ts`).
+    const history = useUndoHistoryStore.getState().byRepo[activeRepo]
+    const { currentIndex } = deriveTimeline(history?.stack ?? [], history?.pointer ?? 0)
+    useTimelineNavStore.getState().open(activeRepo, currentIndex)
   }
 
   const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
@@ -105,9 +110,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
               the branch shown to their left. */}
           <MergeTargetIndicator
             repoPath={effectiveRepoPath}
-            onOpenSettings={
-              onOpenSettings ? () => onOpenSettings('general', 'local') : undefined
-            }
+            onOpenSettings={onOpenSettings ? () => onOpenSettings('general', 'local') : undefined}
           />
           <StateTags />
         </div>
@@ -158,9 +161,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           icon={<GitPullRequest className="h-4 w-4 text-blue-400" />}
           label={t('remote.pull')}
           title={
-            behindCount > 0
-              ? t('remote.commitsToPull', { count: behindCount })
-              : t('remote.pull')
+            behindCount > 0 ? t('remote.commitsToPull', { count: behindCount }) : t('remote.pull')
           }
           loading={loading.pull}
           disabled={disabled}
@@ -235,7 +236,11 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
       {/* ── Right section: actions & search ───────────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <ToolbarButton
-          icon={<FolderOpen className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`} />}
+          icon={
+            <FolderOpen
+              className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`}
+            />
+          }
           label={isFileExplorerOpen ? t('toolbar.filesClose') : t('toolbar.files')}
           title={t('toolbar.filesTitle')}
           disabled={disabled}

@@ -141,7 +141,9 @@ describe('theme contrast (WCAG AA)', () => {
     for (const id of themeIds) {
       for (const r of evaluateThemeContrast(themes.get(id) as ThemeTokens)) {
         const ratio = r.ratio === null ? 'n/a' : r.ratio.toFixed(2)
-        lines.push(`${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(28)} ${ratio} (min ${r.minRatio})`)
+        lines.push(
+          `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(28)} ${ratio} (min ${r.minRatio})`
+        )
       }
     }
     // eslint-disable-next-line no-console
@@ -162,11 +164,11 @@ describe('theme contrast (WCAG AA)', () => {
 
     expect(
       regressions,
-      `New contrast failures — either fix the theme or, if intentional, add to KNOWN_CONTRAST_FAILURES:\n  ${regressions.join('\n  ')}`,
+      `New contrast failures — either fix the theme or, if intentional, add to KNOWN_CONTRAST_FAILURES:\n  ${regressions.join('\n  ')}`
     ).toEqual([])
     expect(
       fixed,
-      `These pairs now pass AA — remove them from KNOWN_CONTRAST_FAILURES:\n  ${fixed.join('\n  ')}`,
+      `These pairs now pass AA — remove them from KNOWN_CONTRAST_FAILURES:\n  ${fixed.join('\n  ')}`
     ).toEqual([])
   })
 })
@@ -212,7 +214,7 @@ describe('component token defaults (CSS ↔ TS parity)', () => {
   const rootCss = readFileSync(resolve(process.cwd(), 'src/themes.css'), 'utf8')
   const rootBlock = rootCss.match(/:root\s*\{([^{}]*)\}/)?.[1] ?? ''
   const cssDefaults = new Map(
-    [...rootBlock.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+    [...rootBlock.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()])
   )
 
   it('themes.css :root declares exactly COMPONENT_TOKEN_DEFAULTS', () => {
@@ -231,7 +233,7 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
     const gh = themes.get('github-light') as ThemeTokens
     const merged = componentTokensForTheme(gh)
     expect(resolveTokenValue(merged, merged.get('--button-bg') as string)).toBe(
-      resolveTokenValue(gh, gh.get('--primary') as string),
+      resolveTokenValue(gh, gh.get('--primary') as string)
     )
   })
 
@@ -280,7 +282,7 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
     const regressions = [...liveFailures].filter((f) => !KNOWN_COMPONENT_FAILURES.has(f)).sort()
     expect(
       regressions,
-      `New component-token contrast failures:\n  ${regressions.join('\n  ')}`,
+      `New component-token contrast failures:\n  ${regressions.join('\n  ')}`
     ).toEqual([])
     // Sanity: the pair set is actually being graded.
     expect(COMPONENT_CONTRAST_PAIRS.length).toBeGreaterThan(0)
@@ -304,7 +306,9 @@ describe('non-text (graphical) contrast — WCAG 1.4.11', () => {
     for (const id of themeIds) {
       for (const r of evaluateGraphicalContrast(themes.get(id) as ThemeTokens)) {
         const ratio = r.ratio === null ? 'n/a' : r.ratio.toFixed(2)
-        lines.push(`${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(24)} ${ratio} (min ${r.minRatio})`)
+        lines.push(
+          `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(24)} ${ratio} (min ${r.minRatio})`
+        )
       }
     }
     // eslint-disable-next-line no-console
@@ -323,11 +327,11 @@ describe('non-text (graphical) contrast — WCAG 1.4.11', () => {
     const fixed = [...KNOWN_GRAPHICAL_FAILURES].filter((f) => !liveFailures.has(f)).sort()
     expect(
       regressions,
-      `Badge fills that blend into their surface (add a popping --badge-bg override or accept):\n  ${regressions.join('\n  ')}`,
+      `Badge fills that blend into their surface (add a popping --badge-bg override or accept):\n  ${regressions.join('\n  ')}`
     ).toEqual([])
     expect(
       fixed,
-      `These badge fills now pass 1.4.11 — remove from KNOWN_GRAPHICAL_FAILURES:\n  ${fixed.join('\n  ')}`,
+      `These badge fills now pass 1.4.11 — remove from KNOWN_GRAPHICAL_FAILURES:\n  ${fixed.join('\n  ')}`
     ).toEqual([])
   })
 })
@@ -352,7 +356,9 @@ describe(`APCA perceptual contrast (component labels, |Lc| ≥ ${APCA_MIN_UI_TEX
     for (const id of themeIds) {
       for (const r of evaluateApcaComponentContrast(themes.get(id) as ThemeTokens)) {
         const lc = r.lc === null ? 'n/a' : r.lc.toFixed(1)
-        lines.push(`${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(20)} Lc ${lc} (min ${r.minLc})`)
+        lines.push(
+          `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(20)} Lc ${lc} (min ${r.minLc})`
+        )
       }
     }
     // eslint-disable-next-line no-console
@@ -371,11 +377,11 @@ describe(`APCA perceptual contrast (component labels, |Lc| ≥ ${APCA_MIN_UI_TEX
     const fixed = [...KNOWN_APCA_FAILURES].filter((f) => !liveFailures.has(f)).sort()
     expect(
       regressions,
-      `New APCA-unreadable component labels (fix the token or add to KNOWN_APCA_FAILURES):\n  ${regressions.join('\n  ')}`,
+      `New APCA-unreadable component labels (fix the token or add to KNOWN_APCA_FAILURES):\n  ${regressions.join('\n  ')}`
     ).toEqual([])
     expect(
       fixed,
-      `These labels now clear the APCA bar — remove from KNOWN_APCA_FAILURES:\n  ${fixed.join('\n  ')}`,
+      `These labels now clear the APCA bar — remove from KNOWN_APCA_FAILURES:\n  ${fixed.join('\n  ')}`
     ).toEqual([])
   })
 })

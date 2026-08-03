@@ -91,7 +91,9 @@ describe('useSettingsStore — per-repository overrides', () => {
 
   it('setRepoSetting creates a repo entry and sets one field', () => {
     useSettingsStore.getState().setRepoSetting('/repo', 'theme', 'dracula')
-    expect(useSettingsStore.getState().settings.repoOverrides['/repo']).toEqual({ theme: 'dracula' })
+    expect(useSettingsStore.getState().settings.repoOverrides['/repo']).toEqual({
+      theme: 'dracula',
+    })
   })
 
   it('setRepoSetting merges additional fields into an existing repo entry', () => {

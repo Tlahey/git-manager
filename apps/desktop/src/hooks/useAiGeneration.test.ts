@@ -8,11 +8,7 @@ vi.mock('../api/ai.api', () => ({
   summaryCommitMessageService: { run: vi.fn() },
 }))
 
-import {
-  apiGetAiContext,
-  fileSummaryService,
-  summaryCommitMessageService,
-} from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryCommitMessageService } from '../api/ai.api'
 import { useAiGeneration } from './useAiGeneration'
 
 const mockedGetContext = apiGetAiContext as unknown as ReturnType<typeof vi.fn>
@@ -36,7 +32,6 @@ beforeEach(() => {
   mockedCompose.mockResolvedValue(draft('feat: add a proper subject'))
   mockedSummarize.mockResolvedValue({ intent: 'changes it', area: 'demo area' })
 })
-
 
 describe('useAiGeneration', () => {
   it('starts idle', () => {
@@ -187,4 +182,3 @@ describe('useAiGeneration — cancelling', () => {
     expect(result.current.error).toBeNull()
   })
 })
-

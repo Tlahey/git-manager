@@ -3,11 +3,7 @@ import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { parseThemeTokens, resolveTokenValue } from './themeTokens'
 import { parseHslTriplet, hslToRgb } from './colorContrast'
-import {
-  BUILTIN_THEMES,
-  vibrancyForTheme,
-  windowAppearanceForTheme,
-} from './registry'
+import { BUILTIN_THEMES, vibrancyForTheme, windowAppearanceForTheme } from './registry'
 
 // vitest runs with cwd = packages/theme; tokens live one file per theme under
 // src/themes/. Concatenate them all before parsing.
@@ -106,11 +102,7 @@ const KNOWN_SWATCH_DRIFT = new Set<string>([])
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ]
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 
 function maxChannelDelta(hex: string, hslTriplet: string): number | null {
@@ -143,11 +135,11 @@ describe('swatch preview drift', () => {
 
     expect(
       regressions,
-      `Swatch preview drifted from the CSS token (>${TOLERANCE}/channel). Align the hex in registry.ts:\n  ${regressions.join('\n  ')}`,
+      `Swatch preview drifted from the CSS token (>${TOLERANCE}/channel). Align the hex in registry.ts:\n  ${regressions.join('\n  ')}`
     ).toEqual([])
     expect(
       fixed,
-      `These swatches now match the CSS — remove them from KNOWN_SWATCH_DRIFT:\n  ${fixed.join('\n  ')}`,
+      `These swatches now match the CSS — remove them from KNOWN_SWATCH_DRIFT:\n  ${fixed.join('\n  ')}`
     ).toEqual([])
   })
 })

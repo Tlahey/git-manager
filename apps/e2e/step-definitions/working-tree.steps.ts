@@ -30,11 +30,18 @@ When(/^I select the working-tree changes in the graph$/, async () => {
   // are re-queried each pass to survive the graph re-rendering its rows between attempts.
   await browser.waitUntil(
     async () => {
-      if (await $('[data-testid="wip-staging-panel"]').isDisplayed().catch(() => false)) return true
+      if (
+        await $('[data-testid="wip-staging-panel"]')
+          .isDisplayed()
+          .catch(() => false)
+      )
+        return true
       await $('[data-testid="graph-row-WIP"]')
         .click({ x: clickX, y: 0 })
         .catch(() => {})
-      return $('[data-testid="wip-staging-panel"]').isDisplayed().catch(() => false)
+      return $('[data-testid="wip-staging-panel"]')
+        .isDisplayed()
+        .catch(() => false)
     },
     {
       timeout: 10000,

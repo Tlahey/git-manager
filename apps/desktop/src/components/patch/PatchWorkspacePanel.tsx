@@ -23,7 +23,10 @@ export function PatchWorkspacePanel({ repoPath }: { repoPath: string }) {
   return (
     <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold" data-testid="patch-panel-title">
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-semibold"
+          data-testid="patch-panel-title"
+        >
           {title}
         </span>
         <button

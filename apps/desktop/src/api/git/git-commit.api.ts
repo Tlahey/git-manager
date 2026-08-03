@@ -1,4 +1,13 @@
-import { stageFile, unstageFile, stageAll, unstageAll, createCommit, discardFileChanges, getBranches, pinObject } from '../../lib/tauri'
+import {
+  stageFile,
+  unstageFile,
+  stageAll,
+  unstageAll,
+  createCommit,
+  discardFileChanges,
+  getBranches,
+  pinObject,
+} from '../../lib/tauri'
 import { callCommand } from '../service'
 import { runActivity } from '../../lib/activityCorrelation'
 import { generateId, pushAction, clearRedo, raiseHookFailureCard } from './gitApiShared'

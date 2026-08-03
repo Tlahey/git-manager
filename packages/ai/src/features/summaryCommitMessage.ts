@@ -1,11 +1,7 @@
 import type { CommitConvention } from '../config'
 import type { CompletionFeature } from '../runtime'
 import { buildCommitStyleSection } from './commitConvention'
-import {
-  COMMIT_MESSAGE_SCHEMA,
-  parseCommitMessage,
-  type CommitMessageDraft,
-} from './commitMessage'
+import { COMMIT_MESSAGE_SCHEMA, parseCommitMessage, type CommitMessageDraft } from './commitMessage'
 import type { FileSummary } from './fileSummary'
 import { renderSummaryList } from './summaryGrouping'
 import { diffCharBudget } from './diffCoverage'

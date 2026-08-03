@@ -68,7 +68,10 @@ export const FILE_SUMMARY_SCHEMA: JsonSchema = {
   schema: {
     type: 'object',
     properties: {
-      intent: { type: 'string', description: 'What this change does, one short imperative clause.' },
+      intent: {
+        type: 'string',
+        description: 'What this change does, one short imperative clause.',
+      },
       area: { type: 'string', description: 'The feature or concern it serves, 2-4 words.' },
     },
     required: ['intent', 'area'],
@@ -78,9 +81,7 @@ export const FILE_SUMMARY_SCHEMA: JsonSchema = {
 }
 
 export function buildFileSummaryPrompt(input: FileSummaryInput): string {
-  const language = input.language
-    ? `\nWrite both fields in ${languageName(input.language)}.`
-    : ''
+  const language = input.language ? `\nWrite both fields in ${languageName(input.language)}.` : ''
   const header = `File: ${input.path} (${input.status})${language}`
   const budgeted = budgetDiff(
     input.diff,

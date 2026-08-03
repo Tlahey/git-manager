@@ -60,9 +60,7 @@ describe('ToggleGroup', () => {
 
   it('respects an explicit shared name', () => {
     render(<Fixture />)
-    render(
-      <ToggleGroup value="tree" onValueChange={() => {}} options={options} name="view-mode" />
-    )
+    render(<ToggleGroup value="tree" onValueChange={() => {}} options={options} name="view-mode" />)
     const radios = screen.getAllByRole('radio', { name: 'Tree structure' }) as HTMLInputElement[]
     expect(radios.at(-1)?.name).toBe('view-mode')
   })

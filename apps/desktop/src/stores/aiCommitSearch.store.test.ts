@@ -32,10 +32,7 @@ describe('useAiCommitSearchStore', () => {
     addRun('/repo', run({ id: 'old' }))
     addRun('/repo', run({ id: 'new' }))
 
-    expect(useAiCommitSearchStore.getState().runs['/repo'].map((r) => r.id)).toEqual([
-      'new',
-      'old',
-    ])
+    expect(useAiCommitSearchStore.getState().runs['/repo'].map((r) => r.id)).toEqual(['new', 'old'])
   })
 
   it('keeps each repository apart', () => {

@@ -21,12 +21,7 @@ interface SummaryDayCardProps {
  * Rendered from the parsed entry rather than the raw markdown, so query matches can be highlighted
  * line by line.
  */
-export function SummaryDayCard({
-  entry,
-  onOpenInEditor,
-  onReveal,
-  onDelete,
-}: SummaryDayCardProps) {
+export function SummaryDayCard({ entry, onOpenInEditor, onReveal, onDelete }: SummaryDayCardProps) {
   const { t, i18n } = useTranslation('dashboard')
 
   // Parsed at local noon so the label can't slip a day in a negative-offset time zone.

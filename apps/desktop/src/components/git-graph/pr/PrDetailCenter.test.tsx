@@ -52,7 +52,12 @@ beforeEach(() => {
 
 describe('PrDetailCenter', () => {
   it('shows a loading state until the PR resolves', () => {
-    usePrDetailMock.mockReturnValue({ pr: undefined, isLoading: true, error: null, mutate: vi.fn() })
+    usePrDetailMock.mockReturnValue({
+      pr: undefined,
+      isLoading: true,
+      error: null,
+      mutate: vi.fn(),
+    })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
     expect(screen.getByText('pr.view.loading')).toBeInTheDocument()
   })

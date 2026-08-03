@@ -124,7 +124,8 @@ describe('describeGitCommand', () => {
   it('strips credentials embedded in a remote URL', () => {
     // The catalog is what the AI explanation sends to a provider, so a token in a remote URL would
     // otherwise leave the machine.
-    expect(lines('add_remote', { name: 'origin', url: 'https://me:ghp_secret@github.com/a/b.git' })
+    expect(
+      lines('add_remote', { name: 'origin', url: 'https://me:ghp_secret@github.com/a/b.git' })
     ).toEqual(['git remote add origin https://github.com/a/b.git'])
     expect(lines('clone_repo', { url: 'https://x:y@host/r.git', destPath: '/tmp/r' })).toEqual([
       'git clone https://host/r.git /tmp/r',

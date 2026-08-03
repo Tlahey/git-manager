@@ -54,9 +54,7 @@ describe('ActionRow', () => {
   })
 
   it('names the action in the real English copy', () => {
-    render(
-      <ActionRow action={action()} selected={false} explained={false} onSelect={vi.fn()} />
-    )
+    render(<ActionRow action={action()} selected={false} explained={false} onSelect={vi.fn()} />)
 
     expect(screen.getByText('Stage a file')).toBeInTheDocument()
   })

@@ -11,7 +11,11 @@ import { useProjectCommands } from './useProjectCommands'
 const mockedApi = apiGetProjectCommands as unknown as ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: ReactNode }) {
-  return createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0 } }, children)
+  return createElement(
+    SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0 } },
+    children
+  )
 }
 
 beforeEach(() => {

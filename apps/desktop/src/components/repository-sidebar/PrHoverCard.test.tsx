@@ -140,7 +140,11 @@ describe('PrHoverCard — empty review block', () => {
   // or the request failed — and an empty bordered block is a divider at the bottom of the card.
   it('draws no review block at all when the lookup produced nothing', () => {
     const { container } = render(
-      <PrHoverCard pr={pr({ createdAt: '', updatedAt: '' })} summary={undefined} isLoading={false} />
+      <PrHoverCard
+        pr={pr({ createdAt: '', updatedAt: '' })}
+        summary={undefined}
+        isLoading={false}
+      />
     )
     expect(container.querySelectorAll('.border-t')).toHaveLength(0)
     expect(screen.queryByText('Loading review status…')).not.toBeInTheDocument()
@@ -171,7 +175,9 @@ describe('PrHoverCard — review data', () => {
   })
 
   it('shows the checks rollup', () => {
-    render(<PrHoverCard pr={pr()} summary={summary({ checksState: 'FAILURE' })} isLoading={false} />)
+    render(
+      <PrHoverCard pr={pr()} summary={summary({ checksState: 'FAILURE' })} isLoading={false} />
+    )
     expect(screen.getByText('Checks')).toBeInTheDocument()
     expect(screen.getByText('Failing')).toBeInTheDocument()
   })

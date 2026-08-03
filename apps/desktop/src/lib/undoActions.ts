@@ -41,8 +41,8 @@ interface ActionBase {
    * *and* checks it out. Undo has to take them back as a unit, or it takes back half of what the
    * user did — and, worse, can leave the repository in a state where the remaining half cannot be
    * undone at all (deleting a branch git has just made HEAD is refused, which is exactly how this
-   * field came to exist). Entries sharing a correlation id are undone and redone together, newest
-   * operation first; an entry without one is its own group.
+   * field came to exist). `lib/undoGestures.ts` owns the grouping rule and is the only place that
+   * should read this field.
    */
   correlationId?: string
 }

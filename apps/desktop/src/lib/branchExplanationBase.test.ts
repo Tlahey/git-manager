@@ -6,7 +6,10 @@ const existing = ['main', 'origin/main', 'develop', 'origin/develop', 'feat/logi
 
 /** A `GitBranch` as `get_branches` really returns it: `name` keeps the remote prefix, `shortName`
  * has it stripped. Mixing the two up is what broke this resolver in the first place. */
-function branch(name: string, isRemote = name.includes('/') && name.startsWith('origin/')): GitBranch {
+function branch(
+  name: string,
+  isRemote = name.includes('/') && name.startsWith('origin/')
+): GitBranch {
   return {
     name,
     shortName: isRemote ? name.split('/').slice(1).join('/') : name,

@@ -96,7 +96,10 @@ describe('MASCOT_MARKUP', () => {
   it('renders exactly two pupil groups tagged with the shared pupil selector and their eye coordinates', () => {
     const matches = [
       ...MASCOT_MARKUP.matchAll(
-        new RegExp(`class="${MASCOT_SELECTORS.pupil}" data-cx="(-?[\\d.]+)" data-cy="(-?[\\d.]+)"`, 'g')
+        new RegExp(
+          `class="${MASCOT_SELECTORS.pupil}" data-cx="(-?[\\d.]+)" data-cy="(-?[\\d.]+)"`,
+          'g'
+        )
       ),
     ]
     expect(matches).toHaveLength(2)

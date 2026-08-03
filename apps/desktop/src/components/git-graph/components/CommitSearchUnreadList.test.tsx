@@ -39,7 +39,9 @@ describe('CommitSearchUnreadList', () => {
    * "change model", not "retry". Saying only "N commits could not be read" hid that entirely.
    */
   it('blames the output format when the answer could not be read', () => {
-    render(<CommitSearchUnreadList unread={[unread('aaa1111', 'unreadable')]} onOpenCommit={vi.fn()} />)
+    render(
+      <CommitSearchUnreadList unread={[unread('aaa1111', 'unreadable')]} onOpenCommit={vi.fn()} />
+    )
     expect(screen.getByTestId('commit-search-unread')).toHaveTextContent(
       /ignores the JSON format the app asks for/i
     )
@@ -79,7 +81,9 @@ describe('CommitSearchUnreadList', () => {
   it('opens a commit so it can be read by hand', async () => {
     const user = userEvent.setup()
     const onOpenCommit = vi.fn()
-    render(<CommitSearchUnreadList unread={[unread('aaa1111', 'call')]} onOpenCommit={onOpenCommit} />)
+    render(
+      <CommitSearchUnreadList unread={[unread('aaa1111', 'call')]} onOpenCommit={onOpenCommit} />
+    )
 
     await user.click(screen.getByTestId('commit-search-unread-aaa1111'))
     expect(onOpenCommit).toHaveBeenCalledWith('aaa1111'.padEnd(40, '0'))

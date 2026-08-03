@@ -12,7 +12,5 @@ export function useIsCommitsView(): boolean {
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const prComposer = useRepoUIStore((s) => s.prComposer)
   const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
-  return (
-    activePrNumber == null && !activeIssue && !activeDiffFile && !prComposer && !prCreateOpen
-  )
+  return activePrNumber == null && !activeIssue && !activeDiffFile && !prComposer && !prCreateOpen
 }

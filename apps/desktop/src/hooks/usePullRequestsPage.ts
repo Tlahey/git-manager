@@ -64,9 +64,7 @@ export function usePullRequestsPage() {
   const needsReviewCount = visiblePRs.filter((p) => p.needsMyReview).length
   // Counts reflect the tab's default view — my own open issues — so the KPI/badge match what's shown
   // before the "Mine" filter is cleared (the whole point of the earlier "count said 0" confusion).
-  const openIssuesCount = issues.filter(
-    (i) => i.status === 'open' && isMyIssue(i, username)
-  ).length
+  const openIssuesCount = issues.filter((i) => i.status === 'open' && isMyIssue(i, username)).length
   const ciPassRate =
     visiblePRs.length > 0
       ? Math.round(

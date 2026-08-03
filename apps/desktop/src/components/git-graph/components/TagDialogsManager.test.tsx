@@ -15,7 +15,11 @@ import { TagDialogsManager } from './TagDialogsManager'
 describe('TagDialogsManager', () => {
   it('renders nothing when there is no pending tag action', () => {
     const { container } = render(
-      <TagDialogsManager repoPath="/repo" pendingTagAction={null} onClearPendingTagAction={vi.fn()} />
+      <TagDialogsManager
+        repoPath="/repo"
+        pendingTagAction={null}
+        onClearPendingTagAction={vi.fn()}
+      />
     )
     expect(container).toBeEmptyDOMElement()
   })

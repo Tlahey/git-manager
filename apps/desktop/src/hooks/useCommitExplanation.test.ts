@@ -106,7 +106,10 @@ describe('useCommitExplanation', () => {
       expect.objectContaining({
         scope: 'commit',
         repoName: 'demo',
-        commit: expect.objectContaining({ shortOid: subject().shortOid, subject: subject().subject }),
+        commit: expect.objectContaining({
+          shortOid: subject().shortOid,
+          subject: subject().subject,
+        }),
         summaries: expect.arrayContaining([
           expect.objectContaining({ path: 'src/a.ts', intent: 'does a thing' }),
         ]),
@@ -124,9 +127,6 @@ describe('useCommitExplanation', () => {
     expect(paths).toEqual(diff.files.map((f) => f.newPath || f.oldPath))
   })
 
-
-
-
   it('refuses a commit with no textual diff, without calling the model', async () => {
     mockedDiff.mockResolvedValue({ files: [], totalAdditions: 0, totalDeletions: 0 })
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
@@ -136,7 +136,6 @@ describe('useCommitExplanation', () => {
     expect(mockedRun).not.toHaveBeenCalled()
     expect(result.current.error).toBe('AI_NO_COMMIT_CHANGES')
   })
-
 
   it("uses the path the patch's own header carries, so dropped files can be marked", async () => {
     // A deletion has no new path; `formatUnifiedPatch` writes the old one into `diff --git`, and the
@@ -152,7 +151,9 @@ describe('useCommitExplanation', () => {
     // The path handed to the map phase has to be the one `formatUnifiedPatch` wrote into the
     // `diff --git` header, or `splitDiffByFile` cannot find that file's slice.
     expect(mockedSummarize.mock.calls[0][1].path).toBe('src/gone.ts')
-    expect(mockedSummarize.mock.calls[0][1].diff).toContain('diff --git a/src/gone.ts b/src/gone.ts')
+    expect(mockedSummarize.mock.calls[0][1].diff).toContain(
+      'diff --git a/src/gone.ts b/src/gone.ts'
+    )
   })
 
   it("sizes the patch against the model's declared context window", async () => {

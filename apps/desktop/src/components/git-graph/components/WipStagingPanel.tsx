@@ -11,7 +11,15 @@ import {
   Tooltip,
   LlmIcon,
 } from '@git-manager/ui'
-import { AlertTriangle, Archive, Check, GitCommitHorizontal, Layers, ShieldOff, Square } from 'lucide-react'
+import {
+  AlertTriangle,
+  Archive,
+  Check,
+  GitCommitHorizontal,
+  Layers,
+  ShieldOff,
+  Square,
+} from 'lucide-react'
 import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
@@ -108,7 +116,7 @@ export function WipStagingPanel({
 
       {batchMode ? (
         /* Smart Batch Mode */
-        <div className="animate-in fade-in slide-in-from-top-1 space-y-4 pt-1 animate-duration-150">
+        <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-1 animate-duration-150">
           <p className="border-b border-border/20 pb-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
             {t('commitDetails.batchCommit.subtitle')}
           </p>
@@ -286,7 +294,7 @@ export function WipStagingPanel({
                 className={cn(
                   'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'commit'
-                    ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
+                    ? 'shadow-xs border border-b-0 border-border/60 bg-card text-foreground'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 )}
               >
@@ -305,7 +313,7 @@ export function WipStagingPanel({
                 className={cn(
                   'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'stash'
-                    ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
+                    ? 'shadow-xs border border-b-0 border-border/60 bg-card text-foreground'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 )}
               >
@@ -320,204 +328,202 @@ export function WipStagingPanel({
           {/* ── CONTAINER (Textarea, checkbox, actions) ── */}
           <div className="space-y-3 rounded-b-lg rounded-tr-lg border border-border/40 bg-card p-3 shadow-sm">
             {activeTab === 'commit' ? (
-            /* COMMIT FORM */
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Textarea
-                  data-testid="commit-message-input"
-                  value={commitMessage}
-                  onChange={(e) => setCommitMessage(e.target.value)}
-                  placeholder={t('commit.placeholder')}
-                  rows={3}
-                  className="resize-none font-mono text-xs"
-                  disabled={isGenerating}
-                />
-                {/* One call per staged file, so on a large change this runs for a while. The Stop
+              /* COMMIT FORM */
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Textarea
+                    data-testid="commit-message-input"
+                    value={commitMessage}
+                    onChange={(e) => setCommitMessage(e.target.value)}
+                    placeholder={t('commit.placeholder')}
+                    rows={3}
+                    className="resize-none font-mono text-xs"
+                    disabled={isGenerating}
+                  />
+                  {/* One call per staged file, so on a large change this runs for a while. The Stop
                     button alone does not say what it is waiting on — the count does. */}
-                {commitProgress && (
-                  <div className="space-y-1" data-testid="commit-message-progress">
-                    <p className="text-[10px] text-muted-foreground">
-                      {commitProgress.phase === 'summarizing'
-                        ? t('commit.summarizing', {
-                            done: commitProgress.completed,
-                            total: commitProgress.total,
-                          })
-                        : t('commit.composing')}
-                    </p>
-                    <Progress
-                      value={
-                        commitProgress.phase === 'composing'
-                          ? 100
-                          : Math.round(
-                              (commitProgress.completed / Math.max(1, commitProgress.total)) * 100
-                            )
+                  {commitProgress && (
+                    <div className="space-y-1" data-testid="commit-message-progress">
+                      <p className="text-[10px] text-muted-foreground">
+                        {commitProgress.phase === 'summarizing'
+                          ? t('commit.summarizing', {
+                              done: commitProgress.completed,
+                              total: commitProgress.total,
+                            })
+                          : t('commit.composing')}
+                      </p>
+                      <Progress
+                        value={
+                          commitProgress.phase === 'composing'
+                            ? 100
+                            : Math.round(
+                                (commitProgress.completed / Math.max(1, commitProgress.total)) * 100
+                              )
+                        }
+                      />
+                    </div>
+                  )}
+                  {commitValidation && !commitValidation.valid && (
+                    <div
+                      data-testid="commit-validation-warning"
+                      className="flex items-start gap-1.5 rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-[10px] text-yellow-600 dark:text-yellow-400"
+                    >
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                      <div className="space-y-0.5">
+                        <p className="font-semibold">{t('commit.conventionWarning')}</p>
+                        {commitValidation.problems.map((p) => (
+                          <p key={p.code}>{p.message}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox placement: BELOW the text area */}
+                <label
+                  data-testid="commit-amend-checkbox-label"
+                  className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Checkbox
+                    data-testid="commit-amend-checkbox"
+                    checked={isAmend}
+                    onChange={(e) => handleToggleAmend(e.target.checked)}
+                  />
+                  <span>
+                    {t('conflictEditor.amendPreviousCommit', {
+                      defaultValue: 'Amender le commit précédent',
+                    })}
+                  </span>
+                </label>
+
+                <div className="flex gap-2">
+                  {aiEnabled && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="commit-generate-button"
+                      className="h-8 flex-1 gap-1 text-xs"
+                      onClick={handleGenerateCommitMessage}
+                      disabled={gitStatus?.staged?.length === 0 && !isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Square className="h-3 w-3 animate-pulse text-destructive" />
+                          {t('commit.stop')}
+                        </>
+                      ) : (
+                        <>
+                          <LlmIcon className="h-3 w-3 text-primary" />
+                          {t('commit.generate')}
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  <div className="flex-1">
+                    <SplitButton
+                      size="sm"
+                      fullWidth
+                      testIdPrefix="commit"
+                      label={
+                        isAmend ? t('commit.amend', { defaultValue: 'Amend' }) : t('commit.commit')
                       }
+                      {...(isCommitting ? { icon: <Spinner className="h-3 w-3" /> } : {})}
+                      onClick={() => void handleCommitWip()}
+                      busy={isCommitting}
+                      disabled={
+                        ((gitStatus?.staged?.length ?? 0) === 0 && !isAmend) ||
+                        !commitMessage.trim()
+                      }
+                      menuLabel={t('commit.options')}
+                      actions={[
+                        {
+                          key: 'skip-hooks',
+                          label: t('commit.skipHooks'),
+                          icon: <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />,
+                          onSelect: () => void handleCommitWip({ skipHooks: true }),
+                        },
+                      ]}
                     />
                   </div>
-                )}
-                {commitValidation && !commitValidation.valid && (
-                  <div
-                    data-testid="commit-validation-warning"
-                    className="flex items-start gap-1.5 rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-[10px] text-yellow-600 dark:text-yellow-400"
-                  >
-                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                    <div className="space-y-0.5">
-                      <p className="font-semibold">{t('commit.conventionWarning')}</p>
-                      {commitValidation.problems.map((p) => (
-                        <p key={p.code}>{p.message}</p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
 
-              {/* Checkbox placement: BELOW the text area */}
-              <label
-                data-testid="commit-amend-checkbox-label"
-                className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Checkbox
-                  data-testid="commit-amend-checkbox"
-                  checked={isAmend}
-                  onChange={(e) => handleToggleAmend(e.target.checked)}
+                {/* Commit + push + open a GitHub PR flow */}
+                <PrPublishButton
+                  repoPath={repoPath}
+                  commitMessage={commitMessage}
+                  disabled={
+                    (gitStatus?.staged?.length ?? 0) === 0 || !commitMessage.trim() || isCommitting
+                  }
                 />
-                <span>
-                  {t('conflictEditor.amendPreviousCommit', {
-                    defaultValue: 'Amender le commit précédent',
-                  })}
-                </span>
-              </label>
 
-              <div className="flex gap-2">
+                {/* AI Batch atomic commits dialog trigger */}
                 {aiEnabled && (
                   <Button
                     variant="outline"
                     size="sm"
-                    data-testid="commit-generate-button"
-                    className="h-8 flex-1 gap-1 text-xs"
-                    onClick={handleGenerateCommitMessage}
-                    disabled={gitStatus?.staged?.length === 0 && !isGenerating}
+                    data-testid="ai-batch-generate-button"
+                    className="h-8 w-full gap-1.5 text-xs"
+                    onClick={batchReview.openAndGenerate}
+                    disabled={allWipChanges.length === 0 || batchReview.isGenerating}
                   >
-                    {isGenerating ? (
-                      <>
-                        <Square className="h-3 w-3 animate-pulse text-destructive" />
-                        {t('commit.stop')}
-                      </>
-                    ) : (
-                      <>
-                        <LlmIcon className="h-3 w-3 text-primary" />
-                        {t('commit.generate')}
-                      </>
-                    )}
+                    <LlmIcon className="h-3.5 w-3.5 text-primary" />
+                    {t('commitDetails.aiBatch.trigger')}
                   </Button>
                 )}
-
-                <div className="flex-1">
-                  <SplitButton
-                    size="sm"
-                    fullWidth
-                    testIdPrefix="commit"
-                    label={
-                      isAmend
-                        ? t('commit.amend', { defaultValue: 'Amend' })
-                        : t('commit.commit')
-                    }
-                    {...(isCommitting ? { icon: <Spinner className="h-3 w-3" /> } : {})}
-                    onClick={() => void handleCommitWip()}
-                    busy={isCommitting}
-                    disabled={
-                      ((gitStatus?.staged?.length ?? 0) === 0 && !isAmend) ||
-                      !commitMessage.trim()
-                    }
-                    menuLabel={t('commit.options')}
-                    actions={[
-                      {
-                        key: 'skip-hooks',
-                        label: t('commit.skipHooks'),
-                        icon: <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />,
-                        onSelect: () => void handleCommitWip({ skipHooks: true }),
-                      },
-                    ]}
-                  />
-                </div>
               </div>
-
-              {/* Commit + push + open a GitHub PR flow */}
-              <PrPublishButton
-                repoPath={repoPath}
-                commitMessage={commitMessage}
-                disabled={
-                  (gitStatus?.staged?.length ?? 0) === 0 || !commitMessage.trim() || isCommitting
-                }
-              />
-
-              {/* AI Batch atomic commits dialog trigger */}
-              {aiEnabled && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  data-testid="ai-batch-generate-button"
-                  className="h-8 w-full gap-1.5 text-xs"
-                  onClick={batchReview.openAndGenerate}
-                  disabled={allWipChanges.length === 0 || batchReview.isGenerating}
-                >
-                  <LlmIcon className="h-3.5 w-3.5 text-primary" />
-                  {t('commitDetails.aiBatch.trigger')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            /* STASH FORM */
-            <div className="space-y-3">
-              <Textarea
-                data-testid="stash-message-input"
-                value={stashMessage}
-                onChange={(e) => setStashMessage(e.target.value)}
-                placeholder={t('stash.pushDialog.placeholder', {
-                  defaultValue: 'Stash message (optional)...',
-                })}
-                rows={3}
-                className="resize-none font-mono text-xs"
-              />
-
-              {/* Checkbox placement: BELOW the text area */}
-              <label
-                data-testid="stash-untracked-checkbox-label"
-                className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Checkbox
-                  data-testid="stash-untracked-checkbox"
-                  checked={includeUntracked}
-                  onChange={(e) => setIncludeUntracked(e.target.checked)}
-                />
-                <span>
-                  {t('stash.pushDialog.includeUntracked', {
-                    defaultValue: 'Inclure les fichiers non suivis',
+            ) : (
+              /* STASH FORM */
+              <div className="space-y-3">
+                <Textarea
+                  data-testid="stash-message-input"
+                  value={stashMessage}
+                  onChange={(e) => setStashMessage(e.target.value)}
+                  placeholder={t('stash.pushDialog.placeholder', {
+                    defaultValue: 'Stash message (optional)...',
                   })}
-                </span>
-              </label>
+                  rows={3}
+                  className="resize-none font-mono text-xs"
+                />
 
-              <Button
-                size="sm"
-                data-testid="stash-submit-button"
-                className="h-8 w-full gap-1.5 text-xs"
-                onClick={handleStash}
-                disabled={
-                  isStashing ||
-                  ((gitStatus?.staged?.length ?? 0) === 0 &&
-                    (gitStatus?.unstaged?.length ?? 0) === 0 &&
-                    (gitStatus?.untracked?.length ?? 0) === 0)
-                }
-              >
-                {isStashing ? (
-                  <Spinner className="mr-1.5 h-3 w-3" />
-                ) : (
-                  <Archive className="h-3.5 w-3.5" />
-                )}
-                <span>{t('stash.push', { defaultValue: 'Stash changes' })}</span>
-              </Button>
-            </div>
-          )}
+                {/* Checkbox placement: BELOW the text area */}
+                <label
+                  data-testid="stash-untracked-checkbox-label"
+                  className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Checkbox
+                    data-testid="stash-untracked-checkbox"
+                    checked={includeUntracked}
+                    onChange={(e) => setIncludeUntracked(e.target.checked)}
+                  />
+                  <span>
+                    {t('stash.pushDialog.includeUntracked', {
+                      defaultValue: 'Inclure les fichiers non suivis',
+                    })}
+                  </span>
+                </label>
+
+                <Button
+                  size="sm"
+                  data-testid="stash-submit-button"
+                  className="h-8 w-full gap-1.5 text-xs"
+                  onClick={handleStash}
+                  disabled={
+                    isStashing ||
+                    ((gitStatus?.staged?.length ?? 0) === 0 &&
+                      (gitStatus?.unstaged?.length ?? 0) === 0 &&
+                      (gitStatus?.untracked?.length ?? 0) === 0)
+                  }
+                >
+                  {isStashing ? (
+                    <Spinner className="mr-1.5 h-3 w-3" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5" />
+                  )}
+                  <span>{t('stash.push', { defaultValue: 'Stash changes' })}</span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -526,4 +532,3 @@ export function WipStagingPanel({
     </div>
   )
 }
-

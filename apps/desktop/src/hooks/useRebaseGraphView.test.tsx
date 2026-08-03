@@ -72,7 +72,9 @@ describe('useRebaseGraphView', () => {
   })
 
   it('respects a dismissed progress view (rebaseViewOpen false) while still rebasing', async () => {
-    useRebaseViewStore.setState({ views: { '/repo': { progressHidden: true, filesHidden: false } } })
+    useRebaseViewStore.setState({
+      views: { '/repo': { progressHidden: true, filesHidden: false } },
+    })
     mockedApi.mockResolvedValue(rebaseState({ kind: 'conflict' }))
     const { result } = renderHook(() => useRebaseGraphView('/repo'), { wrapper })
     await waitFor(() => expect(result.current.isRebasing).toBe(true))
@@ -81,7 +83,9 @@ describe('useRebaseGraphView', () => {
   })
 
   it('forgets the dismissal once the repo stops rebasing', async () => {
-    useRebaseViewStore.setState({ views: { '/repo': { progressHidden: true, filesHidden: false } } })
+    useRebaseViewStore.setState({
+      views: { '/repo': { progressHidden: true, filesHidden: false } },
+    })
     mockedApi.mockResolvedValue(rebaseState({ kind: 'idle' }))
     renderHook(() => useRebaseGraphView('/repo'), { wrapper })
 

@@ -24,9 +24,7 @@ describe('buildFileTree', () => {
     expect(src?.path).toBe('src')
     expect(src?.children?.find((n) => n.name === 'components')?.path).toBe('src/components')
     expect(
-      src?.children
-        ?.find((n) => n.name === 'components')
-        ?.children?.map((n) => n.path)
+      src?.children?.find((n) => n.name === 'components')?.children?.map((n) => n.path)
     ).toEqual(['src/components/Button.tsx', 'src/components/Input.tsx'])
   })
 

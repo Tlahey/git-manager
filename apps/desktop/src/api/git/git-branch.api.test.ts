@@ -17,6 +17,7 @@ vi.mock('../../lib/tauri', async () => {
     getTags: vi.fn(),
     pinObject: vi.fn(),
     snapshotWorktree: vi.fn(),
+    getRepoSummary: vi.fn(),
   }
 })
 
@@ -228,6 +229,51 @@ describe('apiCreateTag', () => {
 
     await api.apiCreateTag(path, 'v1.0', 'HEAD')
 
+    expect(historyOf(path)).toBeUndefined()
+  })
+})
+
+// The pair is one function because assembling it by hand went wrong at every call site: without a
+// shared correlation id, ⌘Z took back only the checkout and then asked git to delete the branch it
+// had just made HEAD — refused, and silently. See `apiCreateAndCheckoutBranch`.
+describe('apiCreateAndCheckoutBranch', () => {
+  beforeEach(() => {
+    mocked.createBranch.mockResolvedValue(undefined)
+    mocked.checkoutBranch.mockResolvedValue(undefined)
+    // `apiCreateBranch` looks the new branch up by name to pin its OID.
+    mocked.getBranches.mockResolvedValue([{ ...headBranch('new-sha')[0]!, name: 'feat' }])
+    mocked.getRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
+  })
+
+  it('records both operations under one correlation id', async () => {
+    const path = freshPath()
+
+    await api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')
+
+    const stack = historyOf(path).stack
+    expect(stack).toHaveLength(2)
+    expect(stack[0]).toMatchObject({ type: 'createBranch', name: 'feat' })
+    expect(stack[1]).toMatchObject({ type: 'checkout', toRef: 'feat', fromRef: 'main' })
+    expect(stack[0]!.correlationId).toBeTruthy()
+    expect(stack[1]!.correlationId).toBe(stack[0]!.correlationId)
+  })
+
+  it('reads where HEAD was itself, so the checkout is undoable without the caller helping', async () => {
+    const path = freshPath()
+    mocked.getRepoSummary.mockResolvedValue({ head: 'HEAD', isDetached: true })
+
+    await api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')
+
+    expect(historyOf(path).stack[1]).toMatchObject({ type: 'checkout', fromRef: 'HEAD' })
+  })
+
+  it('creates nothing when the repository cannot be read', async () => {
+    const path = freshPath()
+    mocked.getRepoSummary.mockRejectedValue(new Error('not a repository'))
+
+    await expect(api.apiCreateAndCheckoutBranch(path, 'feat', 'HEAD')).rejects.toThrow()
+
+    expect(mocked.createBranch).not.toHaveBeenCalled()
     expect(historyOf(path)).toBeUndefined()
   })
 })

@@ -5,7 +5,8 @@ import { useRepoGitHub } from './useRepoGitHub'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import { useRepoUIStore } from '../stores/repoUI.store'
-import { apiCreateBranch, apiCheckoutBranch, apiPushBranch, apiCreateCommit } from '../api/git.api'
+import { apiCreateAndCheckoutBranch, apiPushBranch, apiCreateCommit } from '../api/git.api'
+import { runActivity } from '../lib/activityCorrelation'
 import { createPullRequest, fetchRepoDefaultBranch, type GhRawPR } from '../api/github.api'
 
 /** Which entry-point variant applies for the current branch. `unavailable` = not a GitHub repo,
@@ -76,19 +77,20 @@ export function usePrPublishFlow(repoPath: string) {
         let head = currentBranch as string
         let base = ghDefaultBranch ?? currentBranch ?? ''
 
-        if (mode === 'protected') {
-          const name = newBranchName?.trim()
-          if (!name) throw new Error('A new branch name is required on a protected branch')
-          await apiCreateBranch(repoPath, name, 'HEAD')
-          await apiCheckoutBranch(repoPath, name, {
-            fromRef: currentBranch as string,
-            fromDetached: false,
-          })
-          head = name
-          base = currentBranch as string // PR targets the protected branch you branched from
-        }
+        // One gesture: on a protected branch this branches, checks out *and* commits, and a ⌘Z
+        // afterwards should return the repository to where the button was pressed rather than
+        // peel the three operations off one at a time.
+        await runActivity('git.prPublishPrepare', async () => {
+          if (mode === 'protected') {
+            const name = newBranchName?.trim()
+            if (!name) throw new Error('A new branch name is required on a protected branch')
+            await apiCreateAndCheckoutBranch(repoPath, name, 'HEAD')
+            head = name
+            base = currentBranch as string // PR targets the protected branch you branched from
+          }
 
-        await apiCreateCommit(repoPath, commitMessage)
+          await apiCreateCommit(repoPath, commitMessage)
+        })
 
         // The commit + (maybe) new branch changed the log, branch list and working status.
         queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })

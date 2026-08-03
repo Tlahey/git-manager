@@ -127,7 +127,10 @@ export function useTagContextMenu({
           { params, relationEnabled, isHidden },
           {
             onPush: () =>
-              void run(() => apiPushTag(repoPath, gitRef.shortName), t('gitTree.tagMenu.pushed', params)),
+              void run(
+                () => apiPushTag(repoPath, gitRef.shortName),
+                t('gitTree.tagMenu.pushed', params)
+              ),
             // Moving a tag is a local delete + re-create onto the branch tip; the remote copy is
             // deliberately left alone, since re-pointing a published tag breaks everyone who has it.
             onFastForward: () => {
@@ -138,7 +141,16 @@ export function useTagContextMenu({
                 t('gitTree.tagMenu.fastForwarded', params)
               )
             },
-            onExplain: () => setAiPanelTarget({ kind: 'commit', oid: gitRef.commitOid, shortOid: gitRef.commitOid.slice(0, 7), subject: gitRef.shortName, body: '', author: '', parentCount: 1 }),
+            onExplain: () =>
+              setAiPanelTarget({
+                kind: 'commit',
+                oid: gitRef.commitOid,
+                shortOid: gitRef.commitOid.slice(0, 7),
+                subject: gitRef.shortName,
+                body: '',
+                author: '',
+                parentCount: 1,
+              }),
             onToggleHidden: () => toggleTagVisibility(repoPath, gitRef.shortName),
             // Solo works on branch names, so a tag solos the branch its commit sits on.
             onSolo: () => {

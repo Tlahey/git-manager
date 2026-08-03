@@ -76,7 +76,14 @@ export function BranchContext() {
           matchesQuery(b.shortName) &&
           !workspaceBranchNames.has(b.shortName)
       )
-      .map((b): ContextEntry => ({ kind: 'branch', key: b.name, label: b.shortName, name: b.shortName })),
+      .map(
+        (b): ContextEntry => ({
+          kind: 'branch',
+          key: b.name,
+          label: b.shortName,
+          name: b.shortName,
+        })
+      ),
   ]
   const showCurrentRow = matchesQuery(currentLabel)
 

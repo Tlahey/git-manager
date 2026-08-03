@@ -50,15 +50,7 @@ export const EveryDisplay: Story = {
   ),
 }
 
-const TONES: NotchTone[] = [
-  'neutral',
-  'info',
-  'accent',
-  'success',
-  'error',
-  'running',
-  'highlight',
-]
+const TONES: NotchTone[] = ['neutral', 'info', 'accent', 'success', 'error', 'running', 'highlight']
 
 export const EveryTone: Story = {
   name: 'Every tone — the halo palette',

@@ -26,7 +26,11 @@ vi.mock('../git-graph/components/CommitFileList', () => ({
   }) => (
     <div data-testid={`zone-${title}`}>
       {processedFiles.map((f) => (
-        <button key={f.path} data-testid={`file-${f.path}`} onClick={() => onSelectFileDiff({ path: f.path, staged: false })}>
+        <button
+          key={f.path}
+          data-testid={`file-${f.path}`}
+          onClick={() => onSelectFileDiff({ path: f.path, staged: false })}
+        >
           {f.path}
         </button>
       ))}

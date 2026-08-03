@@ -26,26 +26,26 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 > caught it. Re-run the suite before trusting a row, and see
 > [Known blockers / gotchas](#known-blockers--gotchas) for the harness traps those five uncovered.
 
-| Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
-| ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
-| **Command palette (⌘K)**: 12 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
-| App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
-| **Interface chrome tour**: tab bar / toolbar / footer, each with a zone-cropped doc capture | app shell | fixture:feature-branches | 📷 (doc, per-zone) | ✅ (`interface-overview.feature` — also the reference for the "area screenshot" step) |
-| Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
-| Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
-| Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |
-| **Rebase progress view** (center step rail) + **snapshot** + hide/banner/files toggle | rebase | fixture:rebase-multi-step | 📷 ✅ (full step rail) | ✅ (see "Rebase progress view" below) |
-| **Merge editor** opens for a conflicted file + **snapshot** + **block resolution** | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | ✅ (opens + snapshotted; **wand + per-block accept + Apply ✅**, real second window, result asserted via git/file content) |
-| **Working-tree staging panel** + **file diff** + **snapshots**     | commits    | fixture:stash-stack      | 📷 ✅ (staging panel + diff view) | ✅                                                          |
-| **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
-| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
-| Detached HEAD indicator reads "HEAD", checkout back to a branch                                                          | repo state | fixture:detached-head    | —                                 | ✅                                                          |
-| **Git bisect**: tools menu → pick bad/good in graph → run to first bad commit | bisect     | fixture:bisect-history   | —                                 | ✅ (setup bar open/cancel; inverted-range rejected + start disabled; full run marks by bug presence and converges on commit 5 — asserted via `.git/BISECT_LOG`; abort clears `.git/BISECT_START`) |
-| Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
-| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
-| **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
-| **Worktree** list / add / remove (incl. dirty-remove force gate)  | worktree   | fixture:worktree-repo    | —                                 | ✅ (see "Worktree management" below)                        |
-| **Repo tab views**: switch Graph ↔ Terminal ↔ Settings            | navigation | fixture:feature-branches | 📷 (doc)                          | ✅ (see "Repo tab views" below)                              |
+| Feature                                                                                                  | Area       | Setup                                             | Snapshot                          | Status                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Command palette (⌘K)**: 12 scenarios across settings/commit/stash                                      | palette    | rollback-history · feature-branches · stash-stack | —                                 | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk)                                                |
+| App launches, React mounts                                                                               | app shell  | —                                                 | —                                 | ✅                                                                                                                                                                                                                                                           |
+| **Interface chrome tour**: tab bar / toolbar / footer, each with a zone-cropped doc capture              | app shell  | fixture:feature-branches                          | 📷 (doc, per-zone)                | ✅ (`interface-overview.feature` — also the reference for the "area screenshot" step)                                                                                                                                                                        |
+| Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC        | mock                                              | —                                 | ✅                                                                                                                                                                                                                                                           |
+| Fixup autosquash grouping + **create fixup commit (via ⌘K palette)**                                     | fixup      | fixture:fixup-chain                               | 📷 ✅ (preview groups)            | ✅                                                                                                                                                                                                                                                           |
+| Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort                                    | rebase     | fixture:rebase-conflict                           | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately)                                                                                                                                                  |
+| **Rebase progress view** (center step rail) + **snapshot** + hide/banner/files toggle                    | rebase     | fixture:rebase-multi-step                         | 📷 ✅ (full step rail)            | ✅ (see "Rebase progress view" below)                                                                                                                                                                                                                        |
+| **Merge editor** opens for a conflicted file + **snapshot** + **block resolution**                       | merge      | fixture:rebase-conflict                           | 📷 ✅ (full Monaco editor)        | ✅ (opens + snapshotted; **wand + per-block accept + Apply ✅**, real second window, result asserted via git/file content)                                                                                                                                   |
+| **Working-tree staging panel** + **file diff** + **snapshots**                                           | commits    | fixture:stash-stack                               | 📷 ✅ (staging panel + diff view) | ✅                                                                                                                                                                                                                                                           |
+| **Commit staged changes** (write message → Commit → HEAD advances)                                       | commits    | fixture:stash-stack                               | —                                 | ✅                                                                                                                                                                                                                                                           |
+| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)                                                  | undo/redo  | fixture:feature-branches                          | —                                 | ✅                                                                                                                                                                                                                                                           |
+| Detached HEAD indicator reads "HEAD", checkout back to a branch                                          | repo state | fixture:detached-head                             | —                                 | ✅                                                                                                                                                                                                                                                           |
+| **Git bisect**: tools menu → pick bad/good in graph → run to first bad commit                            | bisect     | fixture:bisect-history                            | —                                 | ✅ (setup bar open/cancel; inverted-range rejected + start disabled; full run marks by bug presence and converges on commit 5 — asserted via `.git/BISECT_LOG`; abort clears `.git/BISECT_START`)                                                            |
+| Sidebar lists stashes                                                                                    | stash      | fixture:stash-stack                               | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file)                                                                                                                                                     |
+| Settings screen opens + **snapshot**                                                                     | settings   | keyboard (Mod+,)                                  | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
+| **AI commit-message generation**: streaming + prompt-wiring + cancel                                     | AI         | fake HTTP server                                  | —                                 | ✅ (see "6. AI commit-message generation" below)                                                                                                                                                                                                             |
+| **Worktree** list / add / remove (incl. dirty-remove force gate)                                         | worktree   | fixture:worktree-repo                             | —                                 | ✅ (see "Worktree management" below)                                                                                                                                                                                                                         |
+| **Repo tab views**: switch Graph ↔ Terminal ↔ Settings                                                   | navigation | fixture:feature-branches                          | 📷 (doc)                          | ✅ (see "Repo tab views" below)                                                                                                                                                                                                                              |
 
 ---
 
@@ -56,30 +56,30 @@ Audited 2026-08-03, against the full `generate_handler!` command list in `lib.rs
 [#267](https://github.com/Tlahey/git-manager/issues/267) — tick the item there and update the row
 here in the same PR that lands a scenario. What the suite does **not** exercise, split by why.
 This is the section REPORT.md points at —
-REPORT.md itself is regenerated on every run and can only say how the *existing* scenarios did;
+REPORT.md itself is regenerated on every run and can only say how the _existing_ scenarios did;
 what's missing has to live here, where a human maintains it.
 
 ### Real gaps — testable with today's harness, just not written yet
 
-| Missing                                    | Commands / UI involved                                                       | Notes |
-| ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
-| **Running a task** (`run_task_in_terminal`) | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The *listing* half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`). |
-| **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. The one genuinely open item on this list. |
-| **Undo/redo breadth**                      | undo stack beyond checkout / reset / commit                                  | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage. |
+| Missing                                     | Commands / UI involved                                                                                                                                                                                                                                                 | Notes                                                                                                                                                                                                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Running a task** (`run_task_in_terminal`) | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The _listing_ half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`). |
+| **Tag push/delete, remote branch delete**   | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`                                                                                                                                                                                                  | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. The one genuinely open item on this list. |
+| **Undo/redo breadth**                       | undo stack beyond checkout / reset / commit                                                                                                                                                                                                                            | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage.                                                                                                                                                    |
 
 ### Blocked by the harness (documented, deliberate)
 
-| Missing                                   | Why |
-| ----------------------------------------- | --- |
-| **Interactive rebase editor** (reword/squash/drop) | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas"). |
-| **Package updates** (`update_packages`, `check_outdated_packages`) | Updating shells out to the project's real package manager (`services/package_update.rs`): network, minutes, and a mutated `node_modules`/lockfile in the fixture. A suite that runs in seven minutes and touches nothing outside `/tmp` should not do that; the health *scan* and its counts are covered. |
-| **GitLab / Bitbucket accounts** | Connecting validates against the provider's real API with a real token — the same wall GitHub's OAuth hits, where only the device-code request is covered and the poll is mocked. Worth noting separately: `IntegrationSection.tsx` carries **no `data-testid` at all**, so even the form-rendering half would need those added first (the project's own convention asks for them on interactive elements). |
-| **Patch from commits** (`create_commits_patch`, `create_patch`) | Native commit context menu only, with no palette entry — the same blocker as merge below. The *dialog* half is no longer in the way: all three of `useGitGraphActions`'s native pickers now go through `pickSaveDestination`/`pickFolder`, which an e2e build swaps for an in-webview picker, so the moment a palette entry exists these are drivable. patch-workspace.feature covers create-from-working-tree and apply-external. |
-| **Merge a branch / fast-forward** (`merge_branch`, `fast_forward_branch`) | Native branch context menu only, and — unlike "set upstream" or "compare with" — its handlers call the API **directly**, with no `pendingGraphAction` store write to dispatch instead (`useGitGraphActions.ts`'s `onMergeInto`/`onFastForward`). Driving it e2e would mean giving the app a palette entry or a bridge kind first, i.e. a feature change, not a test. The merge *editor* and merge-*commit* actions are covered. |
-| **Branch delete**                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted. |
-| **Native OS surfaces**                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them. |
-| **Worktree agent activity** (`get_worktree_agent_activity`) | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`. |
-| **The notch window's own rendering**      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. |
+| Missing                                                                   | Why                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Interactive rebase editor** (reword/squash/drop)                        | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas").                                                                                                                                                                                                                                                                                          |
+| **Package updates** (`update_packages`, `check_outdated_packages`)        | Updating shells out to the project's real package manager (`services/package_update.rs`): network, minutes, and a mutated `node_modules`/lockfile in the fixture. A suite that runs in seven minutes and touches nothing outside `/tmp` should not do that; the health _scan_ and its counts are covered.                                                                                                                          |
+| **GitLab / Bitbucket accounts**                                           | Connecting validates against the provider's real API with a real token — the same wall GitHub's OAuth hits, where only the device-code request is covered and the poll is mocked. Worth noting separately: `IntegrationSection.tsx` carries **no `data-testid` at all**, so even the form-rendering half would need those added first (the project's own convention asks for them on interactive elements).                        |
+| **Patch from commits** (`create_commits_patch`, `create_patch`)           | Native commit context menu only, with no palette entry — the same blocker as merge below. The _dialog_ half is no longer in the way: all three of `useGitGraphActions`'s native pickers now go through `pickSaveDestination`/`pickFolder`, which an e2e build swaps for an in-webview picker, so the moment a palette entry exists these are drivable. patch-workspace.feature covers create-from-working-tree and apply-external. |
+| **Merge a branch / fast-forward** (`merge_branch`, `fast_forward_branch`) | Native branch context menu only, and — unlike "set upstream" or "compare with" — its handlers call the API **directly**, with no `pendingGraphAction` store write to dispatch instead (`useGitGraphActions.ts`'s `onMergeInto`/`onFastForward`). Driving it e2e would mean giving the app a palette entry or a bridge kind first, i.e. a feature change, not a test. The merge _editor_ and merge-_commit_ actions are covered.    |
+| **Branch delete**                                                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted.                                                                                                                                                                                                                                                                                                                                     |
+| **Native OS surfaces**                                                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them.                                                                                                                                                                                                                         |
+| **Worktree agent activity** (`get_worktree_agent_activity`)               | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`.                                                                       |
+| **The notch window's own rendering**                                      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at.                                                                                                                                                                                                                                         |
 
 ## Rebase progress view ✅ 📷
 
@@ -96,15 +96,15 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
   the files-panel toggle; continue **advancing the rail** from step 2 to step 4; abort restoring
   the graph (asserted against `git log` on disk); and a full-rail visual snapshot.
 - **Regression guarded**: clicking the banner used to run through the graph's row-select handler,
-  which *toggles* a synthetic row — so clicking it while the CONFLICT row was already selected (the
+  which _toggles_ a synthetic row — so clicking it while the CONFLICT row was already selected (the
   normal state during a pause) cleared the selection and closed the conflicted-files panel the click
   was meant to open. Both panels now have explicit per-repo visibility state
-  (`stores/rebaseView.store.ts`) and the banner *sets* them visible.
+  (`stores/rebaseView.store.ts`) and the banner _sets_ them visible.
 - **Two harness gotchas** (both cost a debugging round, see rebase.steps.ts):
   1. the whole-app loading scrim (`loading-overlay`, `fixed inset-0 z-9998`) is up while the graph
      reloads its history — i.e. exactly when the banner step runs. WebKit's driver clicks the scrim
      instead of reporting an intercepted click, so the click silently does nothing.
-  2. clicking a row *wrapper* (`graph-row-<oid>`) doesn't reach the row's React `onClick` here; the
+  2. clicking a row _wrapper_ (`graph-row-<oid>`) doesn't reach the row's React `onClick` here; the
      inner cell has to be the target (`conflict-row-banner`), same as bisect.steps.ts does for
      picking commits.
 
@@ -147,7 +147,7 @@ reading much into a green snapshot assertion.
   otherwise every feature after it inherits `?window=merge`. See merge.steps.ts.
 
 **Block resolution: done** — unlike the opens/snapshot scenario above, every action that actually
-*resolves* the conflict (`merge-apply`, `merge-accept-left`/`-right`, keep-ours/keep-theirs) calls
+_resolves_ the conflict (`merge-apply`, `merge-accept-left`/`-right`, keep-ours/keep-theirs) calls
 `getCurrentWindow().close()`, so reusing the shared main window here would kill the rest of the
 test run (see the multi-window gotcha below). This scenario instead opens a **real second
 `WebviewWindow`** the same way production does — clicking the conflicted file row in
@@ -172,15 +172,15 @@ manually-accepted blocks show the expected content, and the untouched theirs-onl
 Each scripted fixture is a real, awkward git state — the highest-value e2e fuel. Coverage per
 fixture:
 
-| Fixture          | Exercises                                                                                       | Status                              |
-| ---------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------- |
-| fixup-chain      | fixup grouping / autosquash ✅ · **create-fixup from staged change ✅** (via ⌘K palette, real second window — see gotchas) | ✅ |
-| rebase-conflict  | conflict panel ✅ · merge editor open+snapshot ✅ · **continue/skip/abort ✅** (continue resolves the conflict via `git checkout --ours` directly on disk, not the merge editor UI) · **merge editor block resolution ✅** (wand + per-block accept + Apply, real second window — see gotchas) | ✅ |
-| detached-head    | detached indicator ✅ · checkout-back-to-branch ✅                                              | ✅                                  |
-| feature-branches | branch checkout ✅ · undo/redo of the checkout ✅ · **cherry-pick (via ⌘K palette) ✅**         | ✅                                  |
-| stash-stack      | list ✅ · WIP staging panel ✅ · stage/unstage individual files ✅ · file diff ✅ · commit ✅ · **drop/apply/pop (via ⌘K palette) ✅** | ✅                                  |
-| rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · **create-tag's ref badge shown in the graph ✅** · undo/redo of revert/branch/tag 🚫 (not a test gap — `undoActions.ts` has no case for these three actions at all; the app doesn't support undoing them yet, see the "Add undo/redo support" follow-up) | ✅ |
-| bisect-history   | **bisect setup bar (open/cancel) ✅** · **inverted good/bad range rejected + start disabled ✅** · **full bisect run: pick bad/good in the graph, mark by bug presence, converge on the first bad commit ✅** (asserted via `.git/BISECT_LOG`) · **abort ✅** | ✅ |
+| Fixture          | Exercises                                                                                                                                                                                                                                                                                                                                                                                                | Status |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| fixup-chain      | fixup grouping / autosquash ✅ · **create-fixup from staged change ✅** (via ⌘K palette, real second window — see gotchas)                                                                                                                                                                                                                                                                               | ✅     |
+| rebase-conflict  | conflict panel ✅ · merge editor open+snapshot ✅ · **continue/skip/abort ✅** (continue resolves the conflict via `git checkout --ours` directly on disk, not the merge editor UI) · **merge editor block resolution ✅** (wand + per-block accept + Apply, real second window — see gotchas)                                                                                                           | ✅     |
+| detached-head    | detached indicator ✅ · checkout-back-to-branch ✅                                                                                                                                                                                                                                                                                                                                                       | ✅     |
+| feature-branches | branch checkout ✅ · undo/redo of the checkout ✅ · **cherry-pick (via ⌘K palette) ✅**                                                                                                                                                                                                                                                                                                                  | ✅     |
+| stash-stack      | list ✅ · WIP staging panel ✅ · stage/unstage individual files ✅ · file diff ✅ · commit ✅ · **drop/apply/pop (via ⌘K palette) ✅**                                                                                                                                                                                                                                                                   | ✅     |
+| rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · **create-tag's ref badge shown in the graph ✅** · undo/redo of revert/branch/tag 🚫 (not a test gap — `undoActions.ts` has no case for these three actions at all; the app doesn't support undoing them yet, see the "Add undo/redo support" follow-up) | ✅     |
+| bisect-history   | **bisect setup bar (open/cancel) ✅** · **inverted good/bad range rejected + start disabled ✅** · **full bisect run: pick bad/good in the graph, mark by bug presence, converge on the first bad commit ✅** (asserted via `.git/BISECT_LOG`) · **abort ✅**                                                                                                                                            | ✅     |
 
 ### 3. Settings 🟡 📷
 
@@ -203,7 +203,7 @@ directory (never the user's real `~/.ssh` — `generate_ssh_key` shells out to t
 and creates parent dirs itself, so a pre-existing file at the destination would make it prompt
 interactively to overwrite and hang the test), clicks generate, and asserts both the UI shows the
 generated public key **and** a real key pair exists on disk. **Ollama:** clicks "Test Connection"
-and asserts *some* definitive status renders (`text-destructive` or `text-green-500` class) —
+and asserts _some_ definitive status renders (`text-destructive` or `text-green-500` class) —
 **not** which one: mocking the IPC command doesn't reach a real UI click (see
 command-mocking.feature's own note on that limitation), and asserting a specific outcome here is
 genuinely flaky across machines, not just theoretically — a real local Ollama server (very
@@ -240,7 +240,7 @@ shows the diff (`diff-content-area`) and it's snapshotted (`wip-file-diff`), ver
 `[title="Unstage"]`, hardcoded plain strings in `CommitFileList.tsx`, not run through i18n — locale-
 independent unlike the bulk button) drives the real `apiStageFile`/`apiUnstageFile`, asserted via
 `git diff --cached --name-only` off disk. **Bulk stage/unstage-all: done** — `file-list-bulk-stage`
-used to carry the *same* testid in both the staged and unstaged zones; added a `bulkStageTestId`
+used to carry the _same_ testid in both the staged and unstaged zones; added a `bulkStageTestId`
 prop to `CommitFileList` (defaults to `file-list-bulk-stage`, preserving existing unit tests) so
 `CommitDetailsPanel` can give the staged zone's unstage-all button its own testid
 (`file-list-bulk-unstage`) — a small, targeted source change (not just e2e files) rather than
@@ -304,7 +304,7 @@ be added later without reworking today's code:
   custom system prompt, repo name/branch, and detected scope — proving the wiring, not just that
   generation "did something"; (2) cancels a stuck generation. **Gotcha**: the stalled-server variant
   must still send periodic SSE keep-alive comment lines (`: keep-alive`) rather than truly never
-  writing anything — the Rust cancellation check only runs *between* stream chunks
+  writing anything — the Rust cancellation check only runs _between_ stream chunks
   (`while let Some(chunk) = stream.next().await`), so a connection with zero bytes ever sent would
   leave that await stuck forever with the cancel flag never observed, no matter what the frontend
   does. `settings.feature` gained a scenario asserting the preset dropdown shows Ollama enabled and
@@ -324,7 +324,7 @@ instruction + `Repository: <name>` context were actually sent (real `get_ai_acti
 its empty state and the briefing is produced on demand; (3) with `dailySummary.enabled` off the
 `repo-summary-button` never renders. **Gotcha**: the briefings persist in
 `git-manager-daily-summaries` localStorage, which survives across scenarios in the shared app window
-— a leftover *fresh* (same-day) summary makes the morning auto-run skip (so no request is sent) and
+— a leftover _fresh_ (same-day) summary makes the morning auto-run skip (so no request is sent) and
 breaks the "empty state" scenario, so a Background step (`no daily briefing has been generated yet`)
 clears that key and reloads before each scenario. The dashboard tab has no testid, so the
 "open the launchpad dashboard" step switches to it via the e2e-exposed `__e2eRepoUIStore`
@@ -342,13 +342,13 @@ exist (a picker is for choosing something that does). Built the missing UI so th
 usable and e2e-coverable, rather than documenting it as blocked like Clone/Scan:
 
 - A new **Worktrees** sidebar section (`useSidebarRows.ts` + `SidebarRowView.tsx`'s `case
-  'worktree':`), mirroring the existing (live) Submodules pattern — one row per non-main worktree,
+'worktree':`), mirroring the existing (live) Submodules pattern — one row per non-main worktree,
   branch + path + short oid, a lock glyph when relevant. Unlike Submodules/Tags/Stashes, this
   section is always shown (even with zero worktrees), since it's the one section whose header
   carries an "add" action (`worktree-add-button`) that must stay reachable.
 - **`AddWorktreeDialog.tsx`** (new): a branch `<select>` + a plain text path input — deliberately
   not a native picker, both because WebDriver can't drive one and because a path that must not yet
-  exist was never what a folder *picker* is for.
+  exist was never what a folder _picker_ is for.
 - **`RemoveWorktreeDialog.tsx`** (new): a hover-revealed trash icon on each row (not a native
   context menu — this repo's own docs note those can't be driven by WebDriver) opens a confirm
   dialog. `git_worktree.rs`'s `is_dirty` was hardcoded `false` and never actually computed — fixed
@@ -378,7 +378,7 @@ attributes anywhere (added: `github-login-oauth-button`/`github-login-pat-button
 The flow itself splits into two genuinely different testing tiers, same distinction the AI
 test-connection button already established:
 
-- **Real, UI-driven** (`settings.feature`): clicking the OAuth button hits the *real*
+- **Real, UI-driven** (`settings.feature`): clicking the OAuth button hits the _real_
   `github_device_code` endpoint (`github.com/login/device/code`) — this needs no auth and always
   succeeds, so asserting the real `user_code`/`verification_uri` shape is safe and deterministic,
   not machine-dependent. The scenario stops there and cancels — completing the flow needs a human
@@ -401,7 +401,7 @@ into the `pendingGraphAction` store bridge (`repoUI.store.ts`) the same way the 
 dialog-based commands (reset/revert/create-branch/tag) do:
 `window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'renameBranch', branch })` —
 `GitGraph.tsx`'s own effect picks it up and forwards it into `GitGraphOverlayManager`, which
-renders the *exact* `RenameBranchDialog` the native menu would have opened. That effect requires a
+renders the _exact_ `RenameBranchDialog` the native menu would have opened. That effect requires a
 commit already selected in the graph (`primaryOid`) — the dialog resolves its target node from
 `nodes`, not from the action payload — so each scenario selects one first via the shared "I select
 the `<ref>` commit in the graph" step. From the dialog opening onward everything driven is real:
@@ -441,7 +441,7 @@ found the two land very differently once that's ruled out:
   are gone/present and the other side's content is untouched (not just "a new commit exists").
 - **Compare against parent: reachable, but only via a direct store dispatch, not the palette.**
   `compareParent` is a real `GraphCommitAction` variant (`repoUI.store.ts`) and `GitGraph.tsx`'s
-  `pendingGraphAction` bridge forwards *any* such action into the graph's own dialog routing — the
+  `pendingGraphAction` bridge forwards _any_ such action into the graph's own dialog routing — the
   same generic mechanism the palette's dialog commands use. But `useCommitCommands.ts` (the ⌘K
   command list) has no `commit-compare-parent-1`/`-2` entries wired to it: grepping the frontend
   confirms `compareParent` is only ever set from `useGitGraphActions.ts`'s native-menu handler
@@ -449,7 +449,7 @@ found the two land very differently once that's ruled out:
   action — only the native menu (blocked) or writing the store field directly. These scenarios do
   the latter, through the same e2e-exposed `__e2eRepoUIStore` hook `blame-history.steps.ts`
   already uses for `setActiveDiffFile`: `store.getState().setPendingGraphAction({ kind:
-  'compareParent', parentNumber })`. This exercises the real `GitGraphOverlayManager` routing,
+'compareParent', parentNumber })`. This exercises the real `GitGraphOverlayManager` routing,
   `CompareToParentDialog`, `DiffFilesPanel` and the backend's `get_commit_diff` with a
   merge-specific `parentIndex` — everything except the one native menu click that would normally
   trigger it. **Honest gap**: if a future change removed the palette's generic
@@ -462,7 +462,7 @@ found the two land very differently once that's ruled out:
 - **Fixture and commit choice**: `showcase` (`tools/git-fixtures/scenarios/showcase.sh`) has two
   real `git merge --no-ff` commits, tagged `v0.1.0` ("Merge branch 'feat/ai-commit'") and `v0.2.0`
   ("Merge branch 'feat/rollback'"). These scenarios use **v0.2.0**, not v0.1.0: v0.1.0's mainline
-  side is a change to `README.md`, and a *later* main commit (`docs: add readme badges`) touches
+  side is a change to `README.md`, and a _later_ main commit (`docs: add readme badges`) touches
   `README.md` again before the fixture's `HEAD` — so reverting v0.1.0 with `-m 2` against the
   fixture's tip hits a real 3-way-merge conflict (the reverse patch's context no longer matches),
   which `repo.revert()` in `git_rollback.rs` correctly refuses to resolve silently. v0.2.0's two
@@ -475,31 +475,31 @@ found the two land very differently once that's ruled out:
 
 ## Rest of the surface (lower priority / smaller)
 
-| Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
-| --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
-| Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native — investigated for the remote-delete confirmation flow specifically and confirmed genuinely blocked, not just unattempted; see "Known blockers / gotchas" below) |
-| Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
-| Compare two branches                    | branch        | remote-ahead      | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`) |
-| Tags: create / shown in graph            | tag           | rollback-history · showcase | —  | ✅ (`tags.feature` tells the whole tag story in one place — **create lightweight + annotated via ⌘K palette**, asserted via `git log`/`git cat-file -t`; the graph ref badge and its context-menu marker; published as one doc page) |
-| Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
-| Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
-| Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |
-| Revert a commit                         | rollback      | rollback-history  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)     |
-| Revert a MERGE commit (mainline picker) | rollback      | showcase          | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below) |
-| Compare a merge commit against parent 1/2 | rollback    | showcase          | —        | 🟡 (dialog + diff content ✅, but only reachable via a direct store dispatch, not the palette — see "10. Merge commit actions" below) |
-| Stash apply / pop / drop                | stash         | stash-stack       | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas) |
-| Remote: fetch / pull / push             | remote        | remote-ahead/behind | —      | ✅ (file-based remote fixtures — fetch badge, pull fast-forward, push publish, rejected non-FF push, new-branch upstream; see `remote-fetch-pull.feature` / `remote-push.feature`. Tag push/delete and remote-branch delete still uncovered — see "Not covered today") |
-| Clone a repo                            | repo          | seeded picker     | —        | ✅ (`open-repo.feature` — clone via the picker against a local path URL; folder open + init covered the same way. Network clones/credentials stay out of reach) |
-| Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
-| AI commit-message generation            | AI            | fake HTTP server  | —        | ✅ (streaming + prompt-wiring + cancel + settings dropdown — see "AI generation" below) |
-| GitHub OAuth device flow                | github        | mock + real call  | —        | ✅ (real device-code request + cancel via Settings; poll contract mocked — see "GitHub OAuth" below) |
-| SSH key generate / read                 | ssh           | seed              | —        | ✅ (generate via Settings → ssh, real `ssh-keygen` against a temp dir — see "3. Settings" above) |
-| Submodule list                          | submodule     | dedicated fixture | —        | ✅ (`fixture:submodule-repo`, a real `git submodule add`; sidebar row asserted via `SidebarRowView.tsx` — see gotchas for the dead-code detour) |
-| Worktree add / list / remove            | worktree      | dedicated fixture | —        | ✅ (list/add/remove + dirty-remove force gate — see "Worktree management" below)     |
-| Themes                                  | settings      | seed              | 📷       | ✅ (select a built-in theme → `data-theme` applies + persists across reload; single-card snapshot avoids the full-grid reproducibility problem — see "3. Settings") |
-| Rewards / gamification toast            | rewards       | action-triggered  | 📷       | ✅ (first commit unlocks "Premier Pas", asserted via `trophy-toast`; game progress reset via localStorage first — see `rewards.feature`) |
-| Notifications tray/dropdown             | notifications | seed              | —        | ✅ (bell → dropdown shows seeded items + unread badge, mark-all-read, clear-all → empty state; seeded via `git-manager-notifications` localStorage, not the real GitHub-diff pipeline) |
+| Feature                                       | Area          | Setup                       | Snapshot | Status                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------- | ------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Commit graph rendering                        | log/graph     | any fixture                 | 📷       | ⬜ (volatile: shas/dates)                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Branches: create / checkout / rename / delete | branch        | any fixture                 | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native — investigated for the remote-delete confirmation flow specifically and confirmed genuinely blocked, not just unattempted; see "Known blockers / gotchas" below)                                                                                                    |
+| Branches: set upstream                        | branch        | remote-ahead                | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
+| Compare two branches                          | branch        | remote-ahead                | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`)                                                   |
+| Tags: create / shown in graph                 | tag           | rollback-history · showcase | —        | ✅ (`tags.feature` tells the whole tag story in one place — **create lightweight + annotated via ⌘K palette**, asserted via `git log`/`git cat-file -t`; the graph ref badge and its context-menu marker; published as one doc page)                                                                                                                                                                                                             |
+| Cherry-pick a commit                          | cherry-pick   | feature-branches            | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch)                                                                                                                                                                                                                                                                                                                                      |
+| Interactive rebase (reword/squash/drop)       | rebase        | fixup-chain                 | —        | 🚫 (native commit menu + child window)                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Reset (soft/mixed/hard, RESET confirm)        | rollback      | rollback-history            | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`)                                                                                                                                                                                                                                                                                                                                          |
+| Revert a commit                               | rollback      | rollback-history            | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)                                                                                                                                                                                                                                                                                                                                                                 |
+| Revert a MERGE commit (mainline picker)       | rollback      | showcase                    | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below)                                                                                                                                                                                                                                                                                                                             |
+| Compare a merge commit against parent 1/2     | rollback      | showcase                    | —        | 🟡 (dialog + diff content ✅, but only reachable via a direct store dispatch, not the palette — see "10. Merge commit actions" below)                                                                                                                                                                                                                                                                                                            |
+| Stash apply / pop / drop                      | stash         | stash-stack                 | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas)                                                                                                                                                                                                                                                                                 |
+| Remote: fetch / pull / push                   | remote        | remote-ahead/behind         | —        | ✅ (file-based remote fixtures — fetch badge, pull fast-forward, push publish, rejected non-FF push, new-branch upstream; see `remote-fetch-pull.feature` / `remote-push.feature`. Tag push/delete and remote-branch delete still uncovered — see "Not covered today")                                                                                                                                                                           |
+| Clone a repo                                  | repo          | seeded picker               | —        | ✅ (`open-repo.feature` — clone via the picker against a local path URL; folder open + init covered the same way. Network clones/credentials stay out of reach)                                                                                                                                                                                                                                                                                  |
+| Scan a folder for repos                       | repo          | native                      | —        | 🚫 (native dialog)                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| AI commit-message generation                  | AI            | fake HTTP server            | —        | ✅ (streaming + prompt-wiring + cancel + settings dropdown — see "AI generation" below)                                                                                                                                                                                                                                                                                                                                                          |
+| GitHub OAuth device flow                      | github        | mock + real call            | —        | ✅ (real device-code request + cancel via Settings; poll contract mocked — see "GitHub OAuth" below)                                                                                                                                                                                                                                                                                                                                             |
+| SSH key generate / read                       | ssh           | seed                        | —        | ✅ (generate via Settings → ssh, real `ssh-keygen` against a temp dir — see "3. Settings" above)                                                                                                                                                                                                                                                                                                                                                 |
+| Submodule list                                | submodule     | dedicated fixture           | —        | ✅ (`fixture:submodule-repo`, a real `git submodule add`; sidebar row asserted via `SidebarRowView.tsx` — see gotchas for the dead-code detour)                                                                                                                                                                                                                                                                                                  |
+| Worktree add / list / remove                  | worktree      | dedicated fixture           | —        | ✅ (list/add/remove + dirty-remove force gate — see "Worktree management" below)                                                                                                                                                                                                                                                                                                                                                                 |
+| Themes                                        | settings      | seed                        | 📷       | ✅ (select a built-in theme → `data-theme` applies + persists across reload; single-card snapshot avoids the full-grid reproducibility problem — see "3. Settings")                                                                                                                                                                                                                                                                              |
+| Rewards / gamification toast                  | rewards       | action-triggered            | 📷       | ✅ (first commit unlocks "Premier Pas", asserted via `trophy-toast`; game progress reset via localStorage first — see `rewards.feature`)                                                                                                                                                                                                                                                                                                         |
+| Notifications tray/dropdown                   | notifications | seed                        | —        | ✅ (bell → dropdown shows seeded items + unread badge, mark-all-read, clear-all → empty state; seeded via `git-manager-notifications` localStorage, not the real GitHub-diff pipeline)                                                                                                                                                                                                                                                           |
 
 ---
 
@@ -547,10 +547,9 @@ DOM value:
   separately that this was the reset and not the `main.tsx` window guard shipped in the same build:
   with the reset call removed and the same binary, the same specs run with zero window errors.
 
-
 - **A step can "find" a control that changed shape under it.** Three of the five silently-broken
   feature files broke this way, all invisible to a testid-existence check:
-  - **⌘P is not ⌘K.** `useKeyboardShortcuts` opens the *same* palette dialog in two modes — ⌘K
+  - **⌘P is not ⌘K.** `useKeyboardShortcuts` opens the _same_ palette dialog in two modes — ⌘K
     (`toggle('all')`, the actions palette) and ⌘P (`toggle('files')`, file search). In `files` mode
     `CommandPalette` renders only the lookup/files groups, so no `command-item-*` for
     commit/stash/settings actions and no `[cmdk-group-heading]` exists at all. `command-palette-input`
@@ -563,7 +562,7 @@ DOM value:
     There's no name-then-confirm dialog and no confirm button: Enter submits, and annotated tags go
     through the same input with an empty message.
   - **The worktree branch picker is no longer a `<select>`.** `BranchCombobox` kept the
-    `worktree-add-branch-select` testid on its *trigger button*, so `selectByAttribute('value', …)`
+    `worktree-add-branch-select` testid on its _trigger button_, so `selectByAttribute('value', …)`
     kept finding the control and failing only on the option. Click the trigger, then the
     `worktree-add-branch-option-<branch>` item.
 - **Radix dropdown triggers open on `pointerdown`, not `click`.** The worktree row's remove action
@@ -575,8 +574,8 @@ DOM value:
 - **Navigate with `browser.url()`, never by assigning `window.location.href` inside `execute`.**
   The assignment tears the document down while the driver is still completing that same call, so the
   navigation can simply be lost (see `repo.steps.ts`). It's worse than a lost navigation, though:
-  the tauri service runs a window-state script in a `beforeCommand` hook — *before every single
-  command* — so anything issued between the assignment and the new document committing runs that
+  the tauri service runs a window-state script in a `beforeCommand` hook — _before every single
+  command_ — so anything issued between the assignment and the new document committing runs that
   script against a tearing-down document, which reliably takes the **whole app process** down. That
   surfaces as ECONNREFUSED in some later scenario, nowhere near the cause, and (once the process
   comes back) as an app rehydrated from whatever repo an earlier run last flushed to `localStorage`.
@@ -586,10 +585,10 @@ DOM value:
   `merge.steps.ts`'s merge-route step and its `@merge` After hook).
 - **`repo-view` being displayed does not mean you're on the repo you just seeded.** The
   fixture-open step seeds `localStorage` and reloads, but `[data-testid="repo-view"]` is equally
-  displayed by the document being navigated *away* from, so the wait can be satisfied before the
+  displayed by the document being navigated _away_ from, so the wait can be satisfied before the
   reload lands. A scenario that opens a second fixture on top of the Background's one (the palette
   feature's cherry-pick and stash scenarios) could therefore keep running against the first — and
-  since the assertion steps read the repo path back *out of the app*, they'd faithfully shell out to
+  since the assertion steps read the repo path back _out of the app_, they'd faithfully shell out to
   `git -C <the-wrong-fixture>` and fail with a baffling "unknown revision". Two fixes, both worth
   keeping: the step now verifies the live store landed on the requested repo (repairing it in place
   via `openTab`/`setActiveRepo` rather than reloading again, which would just re-enter the race), and
@@ -597,12 +596,12 @@ DOM value:
   fixture is built — instead of asking the app. **Steps that still read `git-manager-repos-ui` out of
   the app carry the same latent bug**: `rewards`, `tag-menu`, `rebase`, `bisect`, `working-tree`,
   `commit`, `blame-history`.
-- **In a real second window, re-assert the window before *every* interaction.** The same
+- **In a real second window, re-assert the window before _every_ interaction.** The same
   `beforeCommand` focus hook follows the OS's active window, so once focus returns to the main app
   window — which it does on its own, e.g. after the merge editor's auto-merge IPC round trip — the
   driver silently switches with it and every later query runs against the main window's document.
   The symptom is not "wrong window" but "the merge editor's buttons vanished": `$$` comes back empty
-  with *no* `merge-*` testid in the document. `merge.steps.ts`'s `ensureMergeWindow()` switches
+  with _no_ `merge-*` testid in the document. `merge.steps.ts`'s `ensureMergeWindow()` switches
   unconditionally before each interaction (checking the current handle first is itself a command, so
   "already on it" is never a safe conclusion), and the accept-right loop does its find-and-click
   inside a **single** injected script — split across round-trips, the element gets found in one
@@ -611,7 +610,7 @@ DOM value:
   is gitignored and `autoSaveBaseline` is on (it's `!process.env.CI`, and there is no CI), so the
   **first** run on any machine writes the baselines and every 📷 assertion passes vacuously; only a
   second run compares anything. That made a whole class of bug self-perpetuating: a snapshot taken
-  while a full-viewport cover was up got *saved as the baseline*, and every later run then mismatched
+  while a full-viewport cover was up got _saved as the baseline_, and every later run then mismatched
   against it forever (merge-editor at 6%, autosquash-preview at 14%, theme-card-dark at 98%). Two
   covers do this — `#app-splash`, the static startup splash `index.html` paints before React boots,
   which every in-place navigation puts back up, and `LoadingOverlay`'s global scrim — and
@@ -624,10 +623,10 @@ DOM value:
   element (a step that clicks the element it then photographs leaves it focused, and whether
   `:focus-visible` paints depends on how the driver's click was classified) — blurring, not a
   blanket `box-shadow: none` on `:focus`, because Tailwind's `ring-*` compiles to `box-shadow` and
-  that's also how the card draws its *selected* state, so suppressing it in CSS erased real chrome
+  that's also how the card draws its _selected_ state, so suppressing it in CSS erased real chrome
   and made this flakier rather than less. And a scenario must
   **set the state it snapshots** instead of inheriting it. The theme-card scenario used to rely on
-  the *previous* scenario leaving `dark` selected — order-dependent, and racy anyway against the
+  the _previous_ scenario leaving `dark` selected — order-dependent, and racy anyway against the
   persisted settings rehydrating after its own reload; it now selects the theme itself first.
 - **The first load of an app session is several times slower than the rest.** A `@merge` run that
   takes 14s warm took 45s cold, and 15s waits that never came close warm timed out cold. Waits
@@ -650,10 +649,10 @@ DOM value:
   `useGitGraphActions.ts`'s native-menu handlers exactly (same calls, same `mutate`/
   `invalidateQueries` follow-up). All are now e2e-drivable (see command-palette.feature). A third
   shape exists for `fixup`: no in-page dialog to route through, so `pendingGraphAction: { kind:
-  'fixup' }` instead calls `openFixupWindow` (now exported from `useGitGraphActions.ts`) directly,
+'fixup' }` instead calls `openFixupWindow` (now exported from `useGitGraphActions.ts`) directly,
   opening a **real second `WebviewWindow`** — see the multi-window gotcha below for why this one
   couldn't reuse the merge/rebase editors' navigate-in-place trick. Still native-menu-only (no
-  palette command yet): interactive rebase, create-branch/tag from a *multi-selection*,
+  palette command yet): interactive rebase, create-branch/tag from a _multi-selection_,
   drag-reorder in the rebase editor, **branch delete (local and remote)**. Other non-menu entry
   points: branch checkout via `BranchContext` (undo-redo.feature), commit via the WIP panel buttons
   (commit.feature), undo/redo via keyboard.
@@ -663,20 +662,20 @@ DOM value:
   But the
   native handler for these still only calls `setPendingGraphAction({ kind: 'renameBranch' | ... })`
   on the repoUI store the same way the palette's commit-scoped actions do — `ai-commit-recompose.
-  steps.ts` proved the pattern first for its own native-menu-only entry (`recompose`), and
+steps.ts` proved the pattern first for its own native-menu-only entry (`recompose`), and
   `branch-upstream.steps.ts` reuses it for **Set upstream**: `window.__e2eRepoUIStore.getState()
-  .setPendingGraphAction(...)` after selecting any commit (`GitGraph.tsx`'s bridge effect requires
+.setPendingGraphAction(...)` after selecting any commit (`GitGraph.tsx`'s bridge effect requires
   a non-null `primaryOid`, unrelated to which branch the action targets), which opens the real
   `SetUpstreamDialog` exactly as a menu click would. **Not covered by this**: the "unambiguous
   default" shortcut (`resolveDefaultUpstream` in `lib/branchUpstream.ts`) that applies the upstream
-  directly with *no* dialog when exactly one `origin/<branch>` exists — that branch of
+  directly with _no_ dialog when exactly one `origin/<branch>` exists — that branch of
   `onSetUpstream` lives entirely inside the native-menu closure in `useGitGraphActions.ts`/
   `useSidebarBranchMenu.ts` and is never reached without a real menu click, so it stays untested by
   e2e (unit-tested instead, see `branchUpstream.test.ts`). The dialog path e2e drives calls the
   identical `apiSetBranchUpstream` → `set_branch_upstream` backend command either way, which is what
   actually needed proving (the command didn't exist before this feature).
 - **"Compare `<branch>` with…"** (graph branch pill / sidebar branch row) is a fourth
-  shape: it has no ⌘K equivalent at all (it's about a *pair* of refs, not a commit/stash action the
+  shape: it has no ⌘K equivalent at all (it's about a _pair_ of refs, not a commit/stash action the
   palette's `pendingGraphAction` bridge is shaped for), so `compare-branches.feature` instead jumps
   straight to `RepoView`'s mounted `CompareBranchesDialog` via
   `__e2eRepoUIStore.getState().setCompareRefsTarget({ baseRef, headRef })` — the same "seed the
@@ -687,11 +686,11 @@ DOM value:
   not just "nobody wrote it yet".** Both entry points (the graph's per-commit branch menu in
   `useGitGraphActions.ts` and the sidebar's branch-row menu in `useSidebarBranchMenu.ts`) are real
   native context menus (see the bullet above), so the Delete item on a remote ref (`origin/x`) can't
-  be clicked at all. The question this investigation actually answered was narrower: *could the
+  be clicked at all. The question this investigation actually answered was narrower: _could the
   confirmation dialog it opens (`DeleteRemoteBranchDialog.tsx`) still be reached by bypassing the
   menu and writing state directly, the way `ai-commit-recompose.steps.ts` already does for
   `recompose` (`window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'recompose', ... })`,
-  which `GitGraph.tsx` forwards into its own dialog)?* The answer is no, and not by omission:
+  which `GitGraph.tsx` forwards into its own dialog)?_ The answer is no, and not by omission:
   - The pending state each hook owns (`pendingDeleteRemoteBranch` / `setPendingDeleteRemoteBranch`,
     rendered as two separate `<DeleteRemoteBranchDialog>` instances — one in `GitGraph.tsx`, one in
     `RepoView.tsx`) is **plain `useState`**, not a field on any Zustand store, so
@@ -701,9 +700,9 @@ DOM value:
     `pendingGraphAction` carries, and that is a deliberate exclusion the code already documents, not
     a gap: `graphContextMenus.ts`'s doc comment on `PendingDeleteRemoteBranch` says plainly "unlike
     the graph's other menu-triggered dialogs, this one needs no clicked-commit node to exist in the
-    loaded graph page … so it stays outside that shared union." Every kind that *is* in the union
+    loaded graph page … so it stays outside that shared union." Every kind that _is_ in the union
     flows through `GitGraph.tsx`'s `pendingGraphAction` effect — gated on `pendingGraphAction &&
-    primaryOid` — and, for the dialog-based kinds, a second gate in `GitGraphOverlayManager` that
+primaryOid` — and, for the dialog-based kinds, a second gate in `GitGraphOverlayManager` that
     requires the oid to resolve to a **loaded graph node** before rendering anything. A remote
     branch's tip commit is not guaranteed to be inside the graph's loaded window (a remote-only
     branch outside `initialGraphCommits` is a completely normal case, and is exactly the kind of
@@ -713,7 +712,7 @@ DOM value:
     real bug; it isn't an oversight to "fix" for testability.
   - Also checked and ruled out: no ⌘K command-palette entry exists for this action either, unlike
     reset/revert/create-branch/create-tag (`grep -rn "deleteRemoteBranch\|DeleteRemoteBranchDialog"
-    apps/desktop/src` finds only the two menu hooks, the dialog component, and their own unit tests
+apps/desktop/src` finds only the two menu hooks, the dialog component, and their own unit tests
     — no `useCommitCommands.ts`/`useStashCommands.ts` wiring).
   - Bridging it anyway would mean either forcing tests (and, if ever added, a real palette command)
     to select an unrelated commit first just to satisfy a gate the dialog doesn't need, or
@@ -731,7 +730,7 @@ DOM value:
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —
   cheap and safe, since neither of those routes call `getCurrentWindow().close()` on the actions
   the tests drive. **`fixup-autosquash.feature`'s create-fixup scenario couldn't do that**: both of
-  `FixupCommitWindow`'s buttons (Commit *and* Cancel) call `getCurrentWindow().close()`, and
+  `FixupCommitWindow`'s buttons (Commit _and_ Cancel) call `getCurrentWindow().close()`, and
   reusing the shared window would close the one and only window for the rest of the test run. So
   it opens a **real** second `WebviewWindow` via the palette's `commit-fixup` command and uses
   `browser.getWindowHandles()`/`switchToWindow()` — WebdriverIO commands that hadn't been used
@@ -742,8 +741,8 @@ DOM value:
   dispatching the click via injected JS (`browser.execute(() => el.click())`) instead works
   reliably; (2) once a window closes itself via app-initiated JS (`getCurrentWindow().close()`,
   not a WebDriver-initiated close), that browsing context's WebDriver handle goes stale, and
-  issuing *any* further command while it's still the session's "current" window throws `"no such
-  window"` — switch to a different, still-alive window **immediately** after triggering a
+  issuing _any_ further command while it's still the session's "current" window throws `"no such
+window"` — switch to a different, still-alive window **immediately** after triggering a
   self-close, before polling `getWindowHandles()` again. For a window you're done with and don't
   need to interact with further, `browser.closeWindow()` (the native WebDriver command) proved more
   reliable than clicking an in-app close/cancel button that does the same thing — one less
@@ -762,7 +761,7 @@ DOM value:
   opening the window or clicking the wand can transiently find zero elements. A first fix attempt
   waited for the wand button's spinner `<svg class="animate-spin">` to disappear
   (`waitForExist({reverse: true})`) instead of a plain pause, but that's itself racy: if the spinner
-  hasn't appeared *yet* (React hasn't re-rendered with `isAutoMerging: true` at the moment of the
+  hasn't appeared _yet_ (React hasn't re-rendered with `isAutoMerging: true` at the moment of the
   check), `reverse: true` reports "not there" immediately and the wait becomes a no-op. A plain
   `browser.pause(1000)` after opening the window and after each wand click proved simpler and
   reliable for this fixture's size — paired with the existing `browser.waitUntil` poll for the
@@ -770,10 +769,10 @@ DOM value:
 - **Real remote / network** (fetch/pull/push, clone, GitHub, Ollama) — mock the IPC command
   (`browser.tauri.mock`) rather than standing up a real server, unless doing an integration run.
 - **Check a component is actually mounted before adding testids to it** — the sidebar's submodule
-  section has *two* implementations: `SubmodulesSection.tsx` (dead code, only referenced from its
+  section has _two_ implementations: `SubmodulesSection.tsx` (dead code, only referenced from its
   own test file) and the real one, `SidebarRowView.tsx`'s `case 'submodule':` branch (fed by
   `useSidebarRows.ts`), which is what the app actually renders. Adding testids to the dead one first
-  produced a confusing partial result — the section *header* worked (it's rendered generically by
+  produced a confusing partial result — the section _header_ worked (it's rendered generically by
   `SidebarRowView.tsx` itself via `testId={`sidebar-section-${row.sectionKey}`}`, unrelated to
   `SubmodulesSection.tsx`), showing the correct count, but the item rows never appeared, because
   they're rendered by the OTHER, real component. `grep -rn "<ComponentName"` for actual JSX usage
@@ -799,7 +798,7 @@ DOM value:
   directly on the fixture repo (not through the merge editor's block-accept UI), then reloads the
   page so the app's stale `conflicted-files`/`git-status` queries pick up the new state before
   clicking Continue. This deliberately scopes the test to "does Continue call `git rebase
-  --continue` and complete the rebase" — merge-editor block resolution (`merge-accept-left`/
+--continue` and complete the rebase" — merge-editor block resolution (`merge-accept-left`/
   `-right`/auto-merge) is separate, still-🟡 work (see "1. Merge editor" above); driving it wasn't
   the goal here. Skip only offers a click while `noneResolved` (`ConflictResolutionPanel`'s own
   gate — nothing staged yet); this fixture rebases a single commit, so skipping it completes the
@@ -811,13 +810,13 @@ DOM value:
   command only `toast.error`s it — no exception reaches the e2e harness, so the failure surfaces
   much later as "stash count/file never changed" rather than a clear conflict message. Any
   scenario driving apply/pop needs a clean working tree first — see the `Given the working tree
-  starts clean` step (`git reset --hard HEAD && git clean -fd` directly on the fixture repo,
+starts clean` step (`git reset --hard HEAD && git clean -fd` directly on the fixture repo,
   bypassing the UI) in `command-palette.steps.ts`.
 - **A linked worktree must live outside its own fixture's directory** — `worktree-repo.sh` is the
-  first fixture script to call `git worktree add`; the linked worktree goes at a *sibling* path
+  first fixture script to call `git worktree add`; the linked worktree goes at a _sibling_ path
   (`$FIXTURES_ROOT/worktree-repo-linked`), not a subdirectory of the fixture itself, since git
   refuses/complains about nesting a worktree inside the repo it's linked to. The dirty-remove e2e
-  scenario writes directly to a file inside that sibling path *before* reloading the app (not
+  scenario writes directly to a file inside that sibling path _before_ reloading the app (not
   after) — `list_worktrees`' React Query cache is wiped by the reload itself, so the timing only
   matters relative to the write, not to any manual cache invalidation.
 - **`opacity-0 group-hover:opacity-100` elements fail `waitForDisplayed`/`.click()` on the embedded

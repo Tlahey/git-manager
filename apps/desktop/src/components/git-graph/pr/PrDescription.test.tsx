@@ -82,7 +82,14 @@ describe('PrDescription', () => {
 
   it('opens the PR on GitHub when an image is dropped on the editor, since uploads have no API', async () => {
     const user = userEvent.setup()
-    render(<PrDescription repoPath="/repo" prNumber={1} body="old body" prUrl="https://github.com/o/r/pull/1" />)
+    render(
+      <PrDescription
+        repoPath="/repo"
+        prNumber={1}
+        body="old body"
+        prUrl="https://github.com/o/r/pull/1"
+      />
+    )
     await user.click(screen.getByTestId('pr-description-edit'))
 
     fireEvent.drop(screen.getByTestId('pr-description-input'), {

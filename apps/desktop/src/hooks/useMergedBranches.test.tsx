@@ -63,10 +63,9 @@ describe('useMergedBranches — exclusions', () => {
       branch({ shortName: 'feature/x', isHead: true }),
       branch({ shortName: 'feature/y', commitOid: 'oid-y' }),
     ]
-    const { result } = renderHook(
-      () => useMergedBranches('/repo', branches, [], GH, 'tok', true),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useMergedBranches('/repo', branches, [], GH, 'tok', true), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const names = result.current.checks.map((c) => c.branch.shortName)
     expect(names).toEqual(['feature/y'])
@@ -89,10 +88,9 @@ describe('useMergedBranches — exclusions', () => {
       branch({ shortName: 'feature/x' }),
       branch({ shortName: 'origin/feature/x', isRemote: true }),
     ]
-    const { result } = renderHook(
-      () => useMergedBranches('/repo', branches, [], GH, 'tok', true),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useMergedBranches('/repo', branches, [], GH, 'tok', true), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.checks.map((c) => c.branch.shortName)).toEqual(['feature/x'])
   })
@@ -102,10 +100,9 @@ describe('useMergedBranches — merge signals', () => {
   it('flags a branch whose tip commit belongs to a merged PR of its own name', async () => {
     mockedCommitPr.mockResolvedValue({ number: 12, title: 'feat: x' })
     const branches = [branch({ shortName: 'feature/x', commitOid: 'oid-x' })]
-    const { result } = renderHook(
-      () => useMergedBranches('/repo', branches, [], GH, 'tok', true),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useMergedBranches('/repo', branches, [], GH, 'tok', true), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.mergedBranches).toHaveLength(1))
     expect(statusOf(result.current.checks, 'feature/x')).toEqual({
       merged: { number: 12, title: 'feat: x' },
@@ -130,10 +127,9 @@ describe('useMergedBranches — merge signals', () => {
       { number: 5, title: 'Old PR', head: { ref: 'feature/x' }, merged_at: '2024-01-01' },
     ])
     const branches = [branch({ shortName: 'feature/x' })]
-    const { result } = renderHook(
-      () => useMergedBranches('/repo', branches, [], GH, 'tok', true),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useMergedBranches('/repo', branches, [], GH, 'tok', true), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.mergedBranches).toHaveLength(1))
     expect(statusOf(result.current.checks, 'feature/x')).toEqual({
       merged: { number: 5, title: 'Old PR' },
@@ -142,10 +138,9 @@ describe('useMergedBranches — merge signals', () => {
 
   it('leaves a branch with no signal as "no-match"', async () => {
     const branches = [branch({ shortName: 'feature/x' })]
-    const { result } = renderHook(
-      () => useMergedBranches('/repo', branches, [], GH, 'tok', true),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useMergedBranches('/repo', branches, [], GH, 'tok', true), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(statusOf(result.current.checks, 'feature/x')).toBe('no-match')
     expect(result.current.mergedBranches).toEqual([])

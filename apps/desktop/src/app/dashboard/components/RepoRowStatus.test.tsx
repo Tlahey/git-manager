@@ -20,9 +20,7 @@ function summary(overrides: Partial<GitRepoSummary> = {}): GitRepoSummary {
 }
 
 function renderStatus(props: Partial<React.ComponentProps<typeof RepoRowStatus>> = {}) {
-  return render(
-    <RepoRowStatus summary={summary()} isLoading={false} hasError={false} {...props} />
-  )
+  return render(<RepoRowStatus summary={summary()} isLoading={false} hasError={false} {...props} />)
 }
 
 describe('RepoRowStatus', () => {

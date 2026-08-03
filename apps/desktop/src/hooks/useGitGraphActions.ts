@@ -322,8 +322,7 @@ export function useGitGraphActions({
         buildWipMenuSpec(
           {
             hasStaged: (status?.staged.length ?? 0) > 0,
-            hasUnstaged:
-              (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0,
+            hasUnstaged: (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0,
             aiEnabled,
           },
           {

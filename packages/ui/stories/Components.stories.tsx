@@ -329,11 +329,7 @@ export const Overview: Story = {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 240 }}>
           <Progress value={25} aria-label="Download progress 25%" />
           <Progress value={60} aria-label="Download progress 60%" />
-          <Progress
-            value={100}
-            aria-label="Complete"
-            indicatorClassName="bg-success"
-          />
+          <Progress value={100} aria-label="Complete" indicatorClassName="bg-success" />
         </div>
       </Section>
 

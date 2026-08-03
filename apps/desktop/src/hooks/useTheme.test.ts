@@ -152,7 +152,7 @@ describe('useTheme — native window material', () => {
 })
 
 describe('useTheme — repo-aware theme resolution', () => {
-  it('applies the active repo\'s theme override over the global theme', () => {
+  it("applies the active repo's theme override over the global theme", () => {
     setThemeSetting('dark')
     useSettingsStore.getState().setRepoSetting('/repo', 'theme', 'dracula')
     useRepoUIStore.setState({ activeRepo: '/repo' })

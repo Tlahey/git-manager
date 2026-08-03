@@ -11,7 +11,5 @@ import { useRepoDataStore } from '../stores/repoData.store'
  * `null` for a null path.
  */
 export function useCanonicalRepoPath(path: string | null): string | null {
-  return useRepoDataStore((s) =>
-    path ? (s.repoCache[path]?.mainWorktreePath ?? path) : null
-  )
+  return useRepoDataStore((s) => (path ? (s.repoCache[path]?.mainWorktreePath ?? path) : null))
 }

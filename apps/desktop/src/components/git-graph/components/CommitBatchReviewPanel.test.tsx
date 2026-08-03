@@ -87,18 +87,14 @@ describe('CommitBatchReviewPanel', () => {
         })}
       />
     )
-    expect(screen.getByTestId('ai-batch-progress')).toHaveTextContent(
-      'Grouping them into commits'
-    )
+    expect(screen.getByTestId('ai-batch-progress')).toHaveTextContent('Grouping them into commits')
   })
 
   it('shows the error and a regenerate button on failure', async () => {
     const regenerate = vi.fn()
     const user = userEvent.setup()
     render(
-      <CommitBatchReviewPanel
-        review={review({ error: 'ai down', proposals: [], regenerate })}
-      />
+      <CommitBatchReviewPanel review={review({ error: 'ai down', proposals: [], regenerate })} />
     )
     expect(screen.getByTestId('ai-batch-error')).toHaveTextContent('ai down')
     await user.click(screen.getByText('Regenerate'))
@@ -182,7 +178,12 @@ describe('CommitBatchReviewPanel', () => {
       <CommitBatchReviewPanel
         review={review({
           proposals: [
-            { commitMessage: 'feat: a', files: [file('src/a.ts')], accepted: true, kind: 'proposed' },
+            {
+              commitMessage: 'feat: a',
+              files: [file('src/a.ts')],
+              accepted: true,
+              kind: 'proposed',
+            },
             { commitMessage: '', files: [file('docs/b.md')], accepted: false, kind: 'unplaced' },
           ],
           validations: [
@@ -253,9 +254,7 @@ describe('CommitBatchReviewPanel', () => {
   it('applies the accepted commits and disables apply when none are applicable', async () => {
     const applyAccepted = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = render(
-      <CommitBatchReviewPanel review={review({ applyAccepted })} />
-    )
+    const { rerender } = render(<CommitBatchReviewPanel review={review({ applyAccepted })} />)
     expect(screen.getByTestId('ai-batch-apply')).toHaveTextContent('Create 1 commit(s)')
     await user.click(screen.getByTestId('ai-batch-apply'))
     expect(applyAccepted).toHaveBeenCalled()

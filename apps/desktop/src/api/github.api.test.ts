@@ -105,9 +105,9 @@ describe('parsePRStatus', () => {
   })
 
   it('still reports a search item closed when its pull_request block has no merged_at', () => {
-    expect(parsePRStatus({ state: 'closed', draft: false, pull_request: { merged_at: null } })).toBe(
-      'closed'
-    )
+    expect(
+      parsePRStatus({ state: 'closed', draft: false, pull_request: { merged_at: null } })
+    ).toBe('closed')
   })
 })
 
@@ -515,11 +515,13 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
     // shipped that commit — accepting it once bulk-deleted a never-merged worktree.
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse([
-          rawPR({ number: 87, merged_at: '2024-01-01', head: { ref: 'claude/other-branch' } }),
-        ])
-      )
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse([
+            rawPR({ number: 87, merged_at: '2024-01-01', head: { ref: 'claude/other-branch' } }),
+          ])
+        )
     )
     expect(
       await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
@@ -529,9 +531,11 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
   it('ignores an unmerged PR even when its head.ref matches the branch', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse([rawPR({ number: 4, merged_at: null, head: { ref: 'feature/mine' } })])
-      )
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse([rawPR({ number: 4, merged_at: null, head: { ref: 'feature/mine' } })])
+        )
     )
     expect(
       await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
@@ -560,15 +564,21 @@ describe('fetchClosedPullRequests', () => {
   it('returns the raw list, including head.ref and merged_at for each item', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse([
-          rawPR({ number: 7, merged_at: '2024-01-01', head: { ref: 'feature/login' } }),
-        ])
-      )
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse([
+            rawPR({ number: 7, merged_at: '2024-01-01', head: { ref: 'feature/login' } }),
+          ])
+        )
     )
     const prs = await fetchClosedPullRequests('org', 'repo', 'tok')
     expect(prs).toEqual([
-      expect.objectContaining({ number: 7, merged_at: '2024-01-01', head: { ref: 'feature/login' } }),
+      expect.objectContaining({
+        number: 7,
+        merged_at: '2024-01-01',
+        head: { ref: 'feature/login' },
+      }),
     ])
   })
 
@@ -582,9 +592,11 @@ describe('resolveTagOrReleaseUrl', () => {
   it('returns the release page URL when a release exists for the tag', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse({ html_url: 'https://github.com/org/repo/releases/tag/v1.0' })
-      )
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ html_url: 'https://github.com/org/repo/releases/tag/v1.0' })
+        )
     )
     expect(await resolveTagOrReleaseUrl('org', 'repo', 'v1.0', 'tok')).toBe(
       'https://github.com/org/repo/releases/tag/v1.0'
@@ -759,7 +771,7 @@ describe('rawToPullRequest — participants', () => {
 })
 
 describe('fetchRepoIssues', () => {
-  it('queries the repo\'s own open issues and maps them', async () => {
+  it("queries the repo's own open issues and maps them", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse([
         {
@@ -797,7 +809,14 @@ describe('fetchRepoIssues', () => {
             updated_at: '',
             pull_request: { url: 'x' },
           },
-          { number: 2, title: 'An issue', html_url: '', state: 'open', created_at: '', updated_at: '' },
+          {
+            number: 2,
+            title: 'An issue',
+            html_url: '',
+            state: 'open',
+            created_at: '',
+            updated_at: '',
+          },
         ])
       )
     )
@@ -811,11 +830,13 @@ describe('fetchRepoIssues', () => {
   it('fills the repo name and full name from the requested owner/repo', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse([
-          { number: 3, title: 'x', html_url: '', state: 'open', created_at: '', updated_at: '' },
-        ])
-      )
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse([
+            { number: 3, title: 'x', html_url: '', state: 'open', created_at: '', updated_at: '' },
+          ])
+        )
     )
 
     const issues = await fetchRepoIssues('org', 'repo', 'tok')
@@ -859,9 +880,7 @@ describe('fetchIssuesByQuery', () => {
 
     await fetchIssuesByQuery('org', 'repo', '', 'tok')
 
-    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('q')).toBe(
-      'repo:org/repo is:issue'
-    )
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('q')).toBe('repo:org/repo is:issue')
   })
 
   it('maps the search results and stamps them with the requested repo', async () => {
@@ -930,7 +949,7 @@ describe('fetchIssuesByQuery', () => {
   })
 
   // A rejected query has to surface — the sidebar shows GitHub's own message on that filter.
-  it('throws with GitHub\'s message when the query is invalid', async () => {
+  it("throws with GitHub's message when the query is invalid", async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))

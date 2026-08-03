@@ -96,9 +96,9 @@ describe('fileSummaryFeature', () => {
   it('asks for the same small answer room on every call, whatever the file', () => {
     // Unlike the plan, this answer's length is not a property of its question.
     expect(fileSummaryFeature.reservedOutputTokens?.(input)).toBe(FILE_SUMMARY_OUTPUT_TOKENS)
-    expect(
-      fileSummaryFeature.reservedOutputTokens?.({ ...input, diff: 'x'.repeat(50_000) })
-    ).toBe(FILE_SUMMARY_OUTPUT_TOKENS)
+    expect(fileSummaryFeature.reservedOutputTokens?.({ ...input, diff: 'x'.repeat(50_000) })).toBe(
+      FILE_SUMMARY_OUTPUT_TOKENS
+    )
   })
 
   it('runs colder than the planner, so two sibling files get the same area', () => {

@@ -135,9 +135,7 @@ function ActionJournalContent() {
               className="px-3 py-12 text-center text-[11px] text-muted-foreground"
               data-testid="action-journal-empty"
             >
-              {actions.length === 0
-                ? t('actionJournal.empty')
-                : t('actionJournal.emptyNoMatch')}
+              {actions.length === 0 ? t('actionJournal.empty') : t('actionJournal.emptyNoMatch')}
             </p>
           ) : (
             filtered.map((action) => (

@@ -223,7 +223,10 @@ describe('PullRequestsPage — tab navigation', () => {
 
   it('renders the Issues tab content when activeTab is "issues"', () => {
     // Authored by the signed-in user so the Issues tab's default "Mine" filter keeps it visible.
-    mockHook({ activeTab: 'issues', issues: [issue({ title: 'An assigned issue', author: 'octocat' })] })
+    mockHook({
+      activeTab: 'issues',
+      issues: [issue({ title: 'An assigned issue', author: 'octocat' })],
+    })
     render(<PullRequestsPage />)
     expect(screen.getByText('An assigned issue')).toBeInTheDocument()
   })
@@ -275,7 +278,10 @@ describe('PullRequestsPage — tab navigation', () => {
 describe('PullRequestsPage — opening a PR in the in-app view', () => {
   it('opens the interactive PR view in a resizable side panel via open-in-app button, then closes via Back', async () => {
     const user = userEvent.setup()
-    mockHook({ activeTab: 'prs', visiblePRs: [pr({ id: 'pr-1', title: 'Openable PR', fullName: 'owner/repo' })] })
+    mockHook({
+      activeTab: 'prs',
+      visiblePRs: [pr({ id: 'pr-1', title: 'Openable PR', fullName: 'owner/repo' })],
+    })
     render(<PullRequestsPage />)
 
     await user.click(screen.getByTestId('pr-open-in-app-pr-1'))
@@ -290,7 +296,7 @@ describe('PullRequestsPage — opening a PR in the in-app view', () => {
     expect(screen.getByText('Openable PR')).toBeInTheDocument()
   })
 
-  it('opens the panel from the row\'s open-in-app icon', async () => {
+  it("opens the panel from the row's open-in-app icon", async () => {
     const user = userEvent.setup()
     mockHook({
       activeTab: 'prs',

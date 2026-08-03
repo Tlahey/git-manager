@@ -66,7 +66,7 @@ export function BranchCombobox({
         aria-expanded={open}
         data-testid="worktree-add-branch-select"
         onClick={() => setOpen((prev) => !prev)}
-        className="h-8 w-full justify-between font-normal text-sm"
+        className="h-8 w-full justify-between text-sm font-normal"
       >
         <span className="truncate">{value || placeholder}</span>
         <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -109,7 +109,9 @@ export function BranchCombobox({
                     />
                     <span className="truncate">{b.shortName}</span>
                     {b.isCheckedOut && (
-                      <span className="ml-auto text-[11px] text-muted-foreground">{inUseLabel}</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        {inUseLabel}
+                      </span>
                     )}
                   </CommandItem>
                 ))}

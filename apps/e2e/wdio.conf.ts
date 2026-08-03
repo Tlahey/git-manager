@@ -2,7 +2,11 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Services } from '@wdio/types'
-import { startFakeAiServer, SUITE_WIDE_FAKE_AI_PORT, type FakeAiServerHandle } from './support/fakeAiServer.ts'
+import {
+  startFakeAiServer,
+  SUITE_WIDE_FAKE_AI_PORT,
+  type FakeAiServerHandle,
+} from './support/fakeAiServer.ts'
 import { useIsolatedHome, isolatedAppBinary } from './support/isolatedAppState.js'
 import {
   resetRunReport,

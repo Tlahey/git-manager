@@ -23,7 +23,13 @@ interface AnnotateTagDialogProps {
 }
 
 /** Adds an annotation message to an existing tag, recreating it as an annotated tag on the same commit. */
-export function AnnotateTagDialog({ repoPath, tagName, oid, open, onClose }: AnnotateTagDialogProps) {
+export function AnnotateTagDialog({
+  repoPath,
+  tagName,
+  oid,
+  open,
+  onClose,
+}: AnnotateTagDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const [message, setMessage] = useState('')
@@ -60,7 +66,9 @@ export function AnnotateTagDialog({ repoPath, tagName, oid, open, onClose }: Ann
       <DialogContent data-testid="annotate-tag-dialog">
         <DialogHeader>
           <DialogTitle>{t('gitTree.tagMenu.annotate', { tag: tagName })}</DialogTitle>
-          <DialogDescription>{t('gitTree.tagMenu.annotateDescription', { tag: tagName })}</DialogDescription>
+          <DialogDescription>
+            {t('gitTree.tagMenu.annotateDescription', { tag: tagName })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-1">

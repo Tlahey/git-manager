@@ -1,4 +1,12 @@
-import { Pin, MessageSquare, ThumbsUp, GitBranch, GitBranchPlus, PanelRight, Loader2 } from 'lucide-react'
+import {
+  Pin,
+  MessageSquare,
+  ThumbsUp,
+  GitBranch,
+  GitBranchPlus,
+  PanelRight,
+  Loader2,
+} from 'lucide-react'
 import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockIssue } from '../types'
@@ -72,7 +80,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             }}
             title={t('row.openOnGitHub')}
             data-testid={`issue-number-link-${issue.id}`}
-            className="whitespace-nowrap cursor-pointer font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            className="cursor-pointer whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >
             #{issue.number}
           </button>

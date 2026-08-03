@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { showNativeMenu } from '../api/nativeMenu.api'
-import { apiCreateBranch, apiCheckoutBranch } from '../api/git.api'
+import { apiCreateAndCheckoutBranch } from '../api/git.api'
 import { buildIssueMenuSpec } from '../lib/issueContextMenus'
 import { branchMatchesIssue, issueBranchName, openUrl } from '../app/pull-requests/utils'
 import { useBranches } from './useBranches'
@@ -36,8 +36,7 @@ export function useSidebarIssueMenu(repoPath: string) {
       async function createBranch() {
         const name = issueBranchName(issue)
         try {
-          await apiCreateBranch(repoPath, name, 'HEAD')
-          await apiCheckoutBranch(repoPath, name)
+          await apiCreateAndCheckoutBranch(repoPath, name, 'HEAD')
           queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
           queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
           queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })

@@ -27,7 +27,9 @@ describe('usePrFiles', () => {
   })
 
   it('fetches the PR files with owner/repo/number/token', async () => {
-    fetchPrFiles.mockResolvedValue([{ filename: 'a.ts', status: 'modified', additions: 1, deletions: 0, changes: 1 }])
+    fetchPrFiles.mockResolvedValue([
+      { filename: 'a.ts', status: 'modified', additions: 1, deletions: 0, changes: 1 },
+    ])
     const { result } = renderHook(() => usePrFiles('/repo', 5), { wrapper })
     await waitFor(() => expect(result.current.files).toHaveLength(1))
     expect(fetchPrFiles).toHaveBeenCalledWith('org', 'repo', 5, 'tok')

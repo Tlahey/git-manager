@@ -7,16 +7,14 @@ import { cn } from '../lib/utils'
 // the container, not a pile of empty boxes). Size/shape it with `className`.
 export type SkeletonProps = React.HTMLAttributes<HTMLDivElement>
 
-const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      className={cn('animate-pulse rounded-md bg-muted', className)}
-      {...props}
-    />
-  )
-)
+const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    aria-hidden="true"
+    className={cn('animate-pulse rounded-md bg-muted', className)}
+    {...props}
+  />
+))
 Skeleton.displayName = 'Skeleton'
 
 export { Skeleton }

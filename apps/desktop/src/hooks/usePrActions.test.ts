@@ -69,7 +69,13 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.submitReview({ event: 'APPROVE', body: 'lgtm' })
     })
-    expect(submitPrReview).toHaveBeenCalledWith('org', 'repo', 7, { event: 'APPROVE', body: 'lgtm' }, 'tok')
+    expect(submitPrReview).toHaveBeenCalledWith(
+      'org',
+      'repo',
+      7,
+      { event: 'APPROVE', body: 'lgtm' },
+      'tok'
+    )
   })
 
   it('merges', async () => {
@@ -77,7 +83,13 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.merge({ mergeMethod: 'squash' })
     })
-    expect(mergePullRequest).toHaveBeenCalledWith('org', 'repo', 7, { mergeMethod: 'squash' }, 'tok')
+    expect(mergePullRequest).toHaveBeenCalledWith(
+      'org',
+      'repo',
+      7,
+      { mergeMethod: 'squash' },
+      'tok'
+    )
   })
 
   it('updates the PR title/body', async () => {
@@ -85,7 +97,13 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.updatePr({ title: 'New', body: 'B' })
     })
-    expect(updatePullRequest).toHaveBeenCalledWith('org', 'repo', 7, { title: 'New', body: 'B' }, 'tok')
+    expect(updatePullRequest).toHaveBeenCalledWith(
+      'org',
+      'repo',
+      7,
+      { title: 'New', body: 'B' },
+      'tok'
+    )
   })
 
   it('closes / reopens via the state patch', async () => {

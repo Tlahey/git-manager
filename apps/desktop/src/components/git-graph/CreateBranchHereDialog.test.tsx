@@ -3,19 +3,16 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
+vi.mock('../../api/git.api', () => ({
+  apiCreateBranch: vi.fn(),
+  apiCreateAndCheckoutBranch: vi.fn(),
 }))
-vi.mock('../../api/git.api', () => ({ apiCreateBranch: vi.fn(), apiCheckoutBranch: vi.fn() }))
 
-import { apiCreateBranch, apiCheckoutBranch } from '../../api/git.api'
+import { apiCreateBranch, apiCreateAndCheckoutBranch } from '../../api/git.api'
 import { CreateBranchHereDialog } from './CreateBranchHereDialog'
 
 const mockedCreateBranch = apiCreateBranch as unknown as ReturnType<typeof vi.fn>
-const mockedCheckoutBranch = apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>
+const mockedCreateAndCheckout = apiCreateAndCheckoutBranch as unknown as ReturnType<typeof vi.fn>
 
 function renderDialog(props: Partial<React.ComponentProps<typeof CreateBranchHereDialog>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -46,8 +43,8 @@ afterEach(() => {
 describe('CreateBranchHereDialog — rendering', () => {
   it('shows the title, "from <sha>" description, and a pre-checked checkout box', () => {
     renderDialog()
-    expect(screen.getByText('gitTree.actions.createBranch')).toBeInTheDocument()
-    expect(screen.getByText('gitTree.createBranch.from:{"sha":"abc123d"}')).toBeInTheDocument()
+    expect(screen.getByText('Create branch here')).toBeInTheDocument()
+    expect(screen.getByText('From commit abc123d')).toBeInTheDocument()
     expect(screen.getByRole('checkbox')).toBeChecked()
   })
 })
@@ -56,78 +53,72 @@ describe('CreateBranchHereDialog — confirm gating', () => {
   it('disables confirm until a name is entered', async () => {
     const user = userEvent.setup()
     renderDialog()
-    expect(screen.getByRole('button', { name: 'gitTree.contextMenu.create' })).toBeDisabled()
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'feature-x')
-    expect(screen.getByRole('button', { name: 'gitTree.contextMenu.create' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+    await user.type(screen.getByPlaceholderText('Branch name...'), 'feature-x')
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
   })
 })
 
 describe('CreateBranchHereDialog — creating a branch', () => {
-  it('creates the branch, checks it out by default, invalidates queries, and closes', async () => {
-    mockedCreateBranch.mockResolvedValue(undefined)
-    mockedCheckoutBranch.mockResolvedValue(undefined)
+  it('creates and checks out through the composed API, invalidates queries, and closes', async () => {
+    mockedCreateAndCheckout.mockResolvedValue(undefined)
     const onClose = vi.fn()
     const user = userEvent.setup()
     const { invalidateSpy } = renderDialog({ onClose })
-    await user.type(
-      screen.getByPlaceholderText('gitTree.createBranch.placeholder'),
-      'feature-x{Enter}'
-    )
+    await user.type(screen.getByPlaceholderText('Branch name...'), 'feature-x{Enter}')
 
-    expect(mockedCreateBranch).toHaveBeenCalledWith('/repo', 'feature-x', 'abc123')
-    // `opts` is not decoration: without it `apiCheckoutBranch` records no undo entry, and ⌘Z then
-    // tries to delete a branch git has just made HEAD — which it refuses (see the store's
-    // correlated-gesture tests).
-    expect(mockedCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature-x', {
-      fromRef: '',
-      fromDetached: false,
-    })
+    // The pair goes through one call on purpose: assembled by hand it silently became a
+    // half-undoable gesture — ⌘Z would try to delete a branch git had just made HEAD, which it
+    // refuses (see `apiCreateAndCheckoutBranch` and the store's gesture tests).
+    expect(mockedCreateAndCheckout).toHaveBeenCalledWith('/repo', 'feature-x', 'abc123')
+    expect(mockedCreateBranch).not.toHaveBeenCalled()
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
   })
 
-  it('skips the checkout call when the checkbox is unchecked', async () => {
+  it('creates without checking out when the checkbox is unchecked', async () => {
     mockedCreateBranch.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderDialog()
     await user.click(screen.getByRole('checkbox'))
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'feature-x')
-    await user.click(screen.getByRole('button', { name: 'gitTree.contextMenu.create' }))
+    await user.type(screen.getByPlaceholderText('Branch name...'), 'feature-x')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
 
     expect(mockedCreateBranch).toHaveBeenCalledWith('/repo', 'feature-x', 'abc123')
-    expect(mockedCheckoutBranch).not.toHaveBeenCalled()
+    expect(mockedCreateAndCheckout).not.toHaveBeenCalled()
   })
 
-  it('shows an inline error and stays open when branch creation fails', async () => {
-    mockedCreateBranch.mockRejectedValue(new Error('branch already exists'))
+  it('shows an inline error and stays open when the gesture fails', async () => {
+    mockedCreateAndCheckout.mockRejectedValue(new Error('branch already exists'))
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ onClose })
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'feature-x')
-    await user.click(screen.getByRole('button', { name: 'gitTree.contextMenu.create' }))
+    await user.type(screen.getByPlaceholderText('Branch name...'), 'feature-x')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
 
     expect(await screen.findByText(/branch already exists/)).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('shows an inline error when the checkout after creation fails', async () => {
-    mockedCreateBranch.mockResolvedValue(undefined)
-    mockedCheckoutBranch.mockRejectedValue(new Error('checkout conflict'))
+  it('shows an inline error when creating without checkout fails', async () => {
+    mockedCreateBranch.mockRejectedValue(new Error('branch already exists'))
     const user = userEvent.setup()
     renderDialog()
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'feature-x')
-    await user.click(screen.getByRole('button', { name: 'gitTree.contextMenu.create' }))
+    await user.click(screen.getByRole('checkbox'))
+    await user.type(screen.getByPlaceholderText('Branch name...'), 'feature-x')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
 
-    expect(await screen.findByText(/checkout conflict/)).toBeInTheDocument()
+    expect(await screen.findByText(/branch already exists/)).toBeInTheDocument()
   })
 
   it('cancel calls onClose without creating a branch', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ onClose })
-    await user.click(screen.getByRole('button', { name: 'gitTree.contextMenu.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedCreateBranch).not.toHaveBeenCalled()
+    expect(mockedCreateAndCheckout).not.toHaveBeenCalled()
   })
 })

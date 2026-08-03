@@ -79,7 +79,14 @@ export function RunTasksSetting({ repoPath }: RunTasksSettingProps) {
   function addRow(name = '') {
     setRows([
       ...rows,
-      { id: crypto.randomUUID(), committedName: '', committedCommand: '', name, command: '', editing: true },
+      {
+        id: crypto.randomUUID(),
+        committedName: '',
+        committedCommand: '',
+        name,
+        command: '',
+        editing: true,
+      },
     ])
   }
 

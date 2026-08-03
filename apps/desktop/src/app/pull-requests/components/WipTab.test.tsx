@@ -100,8 +100,6 @@ describe('WipTab', () => {
     const user = userEvent.setup()
     render(<WipTab />)
     await user.type(screen.getByPlaceholderText('Search…'), 'zzz')
-    expect(
-      screen.getByText('No repositories match your search or filters.')
-    ).toBeInTheDocument()
+    expect(screen.getByText('No repositories match your search or filters.')).toBeInTheDocument()
   })
 })

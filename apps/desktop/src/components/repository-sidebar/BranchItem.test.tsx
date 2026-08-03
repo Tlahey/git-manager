@@ -73,7 +73,9 @@ describe('BranchItem — rendering', () => {
   })
 
   it('falls back to the full shortName when displayName is not provided', () => {
-    render(<BranchItem branch={branch({ shortName: 'feat/a' })} isSelected={false} onSelect={vi.fn()} />)
+    render(
+      <BranchItem branch={branch({ shortName: 'feat/a' })} isSelected={false} onSelect={vi.fn()} />
+    )
     expect(screen.getByText('feat/a')).toBeInTheDocument()
   })
 
@@ -93,11 +95,14 @@ describe('BranchItem — rendering', () => {
 
   it('renders the plain name with no <mark> when filterQuery is empty', () => {
     const { container } = render(
-      <BranchItem branch={branch({ shortName: 'feature-x' })} isSelected={false} onSelect={vi.fn()} />
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
     )
     expect(container.querySelector('mark')).toBeFalsy()
   })
-
 })
 
 describe('BranchItem — interaction', () => {
@@ -291,12 +296,7 @@ describe('BranchItem — pin button', () => {
 describe('BranchItem — solo toggle', () => {
   it('does not render the solo toggle when solo mode is off', () => {
     render(
-      <BranchItem
-        branch={branch()}
-        isSelected={false}
-        onSelect={vi.fn()}
-        onToggleSolo={vi.fn()}
-      />
+      <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} onToggleSolo={vi.fn()} />
     )
     expect(screen.queryByTestId('branch-solo-toggle')).not.toBeInTheDocument()
   })
@@ -387,12 +387,7 @@ describe('BranchItem — what the row deliberately leaves out', () => {
 describe('BranchItem — solo toggle', () => {
   it('does not render the solo toggle when solo mode is off', () => {
     render(
-      <BranchItem
-        branch={branch()}
-        isSelected={false}
-        onSelect={vi.fn()}
-        onToggleSolo={vi.fn()}
-      />
+      <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} onToggleSolo={vi.fn()} />
     )
     expect(screen.queryByTestId('branch-solo-toggle')).not.toBeInTheDocument()
   })

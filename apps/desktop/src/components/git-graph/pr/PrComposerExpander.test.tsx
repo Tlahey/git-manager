@@ -16,7 +16,9 @@ vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({
     error: aiState.error,
   }),
 }))
-vi.mock('./PrBaseBranchDialog', () => ({ PrBaseBranchDialog: () => <div data-testid="stub-base-dialog" /> }))
+vi.mock('./PrBaseBranchDialog', () => ({
+  PrBaseBranchDialog: () => <div data-testid="stub-base-dialog" />,
+}))
 
 const openUrl = vi.fn()
 vi.mock('../../../lib/openUrl', () => ({ openUrl: (...a: unknown[]) => openUrl(...a) }))
@@ -72,13 +74,15 @@ describe('PrComposerExpander', () => {
 
   it('pre-fills the body from a single template', async () => {
     usePrTemplateMock.mockReturnValue({
-      template: { kind: 'single', source: '.github/PULL_REQUEST_TEMPLATE.md', content: '## Checklist' },
+      template: {
+        kind: 'single',
+        source: '.github/PULL_REQUEST_TEMPLATE.md',
+        content: '## Checklist',
+      },
       isLoading: false,
     })
     renderComposer()
-    await waitFor(() =>
-      expect(screen.getByTestId('pr-composer-body')).toHaveValue('## Checklist')
-    )
+    await waitFor(() => expect(screen.getByTestId('pr-composer-body')).toHaveValue('## Checklist'))
   })
 
   it('shows a template chooser for a multi-template repo', () => {
@@ -100,7 +104,12 @@ describe('PrComposerExpander', () => {
     const user = userEvent.setup()
     renderComposer()
     await user.click(screen.getByTestId('pr-composer-ai-fill'))
-    expect(generateMock).toHaveBeenCalledWith('main', null, expect.any(Function), expect.any(Function))
+    expect(generateMock).toHaveBeenCalledWith(
+      'main',
+      null,
+      expect.any(Function),
+      expect.any(Function)
+    )
   })
 
   it('reports a failed generation instead of just clearing the body', () => {

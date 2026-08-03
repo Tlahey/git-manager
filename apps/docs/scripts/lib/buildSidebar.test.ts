@@ -3,7 +3,13 @@ import { buildSidebar } from './buildSidebar.ts'
 import type { DocFeature } from './parseDocFeatures.ts'
 
 function feature(slug: string, name: string): DocFeature {
-  return { sourcePath: `apps/e2e/features/${slug}.feature`, slug, name, paragraphs: [], scenarios: [] }
+  return {
+    sourcePath: `apps/e2e/features/${slug}.feature`,
+    slug,
+    name,
+    paragraphs: [],
+    scenarios: [],
+  }
 }
 
 const SECTIONS = [
@@ -23,7 +29,10 @@ describe('buildSidebar', () => {
         text: 'Reading your repository',
         items: [{ text: 'The commit graph', link: '/docs/features/commit-graph' }],
       },
-      { text: 'Making changes', items: [{ text: 'Working tree', link: '/docs/features/working-tree' }] },
+      {
+        text: 'Making changes',
+        items: [{ text: 'Working tree', link: '/docs/features/working-tree' }],
+      },
     ])
   })
 

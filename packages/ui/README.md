@@ -28,11 +28,11 @@ declares the `unit` and `storybook` projects; the APCA matrix has its own config
 chromium browser project per config and the two browser suites configure axe
 differently:
 
-| Project | Command | Environment | What it checks |
-| --- | --- | --- | --- |
-| `unit` | `pnpm test` | jsdom | Component behaviour + rendered classes |
+| Project     | Command               | Environment           | What it checks                               |
+| ----------- | --------------------- | --------------------- | -------------------------------------------- |
+| `unit`      | `pnpm test`           | jsdom                 | Component behaviour + rendered classes       |
 | `storybook` | `pnpm test:storybook` | real headless browser | WCAG 2.x (axe) on every story, default theme |
-| `apca` | `pnpm test:apca` | real headless browser | APCA Bronze on every theme × surface |
+| `apca`      | `pnpm test:apca`      | real headless browser | APCA Bronze on every theme × surface         |
 
 ### 1. Unit tests — behaviour & markup (jsdom)
 
@@ -65,8 +65,8 @@ intended pairing.
 It's wired with the official **Storybook Test addon**, not a hand-rolled script:
 
 - [`@storybook/addon-vitest`](https://storybook.js.org/docs/writing-tests/integrations/vitest-addon)
-  + `@storybook/addon-a11y` are registered in
-  [`.storybook/main.ts`](.storybook/main.ts).
+  - `@storybook/addon-a11y` are registered in
+    [`.storybook/main.ts`](.storybook/main.ts).
 - [`.storybook/preview.tsx`](.storybook/preview.tsx) sets `a11y: { test: 'error' }`
   (fail on violations — switch to `'todo'` to report without failing while
   triaging). It also exposes two toolbars: **Theme** (every built-in theme) and
@@ -78,7 +78,7 @@ It's wired with the official **Storybook Test addon**, not a hand-rolled script:
 - The `storybook` Vitest project uses `storybookTest` from
   `@storybook/addon-vitest/vitest-plugin`, which applies the preview + addon
   annotations itself (Storybook ≥ 10.3). Don't add a manual
-  `setProjectAnnotations` setup file to this project — it *replaces* that set and
+  `setProjectAnnotations` setup file to this project — it _replaces_ that set and
   silently disables the addon-a11y checks.
 
 ### 3. APCA matrix — every theme × surface (real browser)
@@ -108,7 +108,7 @@ suppressing the rule.
 
 ### 4. Contrast matrix — every theme × every pair (in `@git-manager/theme`)
 
-Browser axe audits the *current* theme/surface of each rendered story. The
+Browser axe audits the _current_ theme/surface of each rendered story. The
 exhaustive contrast coverage lives next door, in the theme package, and runs
 without a browser:
 

@@ -23,7 +23,7 @@ export function highlightMatch(text: string, query: string): ReactNode {
     if (matchIndex > cursor) parts.push(text.slice(cursor, matchIndex))
     const end = matchIndex + q.length
     parts.push(
-      <mark key={key++} className="rounded-[2px] bg-primary/30 text-inherit">
+      <mark key={key++} className="bg-primary/30 rounded-[2px] text-inherit">
         {text.slice(matchIndex, end)}
       </mark>
     )

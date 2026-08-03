@@ -70,8 +70,7 @@ export function useMergedBranches(
   const candidates = shown.filter((b) => !worktreeBranchSet.has(b.shortName))
 
   // ── Local signal: branches whose upstream remote branch is gone (merged then deleted/pruned). ──
-  const localKey =
-    enabled && candidates.length > 0 ? ['gone-upstream-branches', repoPath] : null
+  const localKey = enabled && candidates.length > 0 ? ['gone-upstream-branches', repoPath] : null
   const { data: goneList } = useSWR(
     localKey,
     () => apiGoneUpstreamBranches(repoPath).catch(() => [] as string[]),
@@ -140,14 +139,18 @@ export function useMergedBranches(
     if (commitPr) {
       return {
         branch: b,
-        status: { merged: { number: commitPr.number, title: commitPr.title, author: commitPr.author } },
+        status: {
+          merged: { number: commitPr.number, title: commitPr.title, author: commitPr.author },
+        },
       }
     }
     const prMatch = prList?.find((pr) => pr.head?.ref === b.shortName && pr.merged_at)
     if (prMatch) {
       return {
         branch: b,
-        status: { merged: { number: prMatch.number, title: prMatch.title, author: prMatch.user?.login } },
+        status: {
+          merged: { number: prMatch.number, title: prMatch.title, author: prMatch.user?.login },
+        },
       }
     }
     if (goneBranches?.has(b.shortName)) return { branch: b, status: 'branch-gone' }

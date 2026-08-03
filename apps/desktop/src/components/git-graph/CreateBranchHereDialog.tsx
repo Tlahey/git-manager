@@ -13,9 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@git-manager/ui'
-import { apiCreateBranch, apiCheckoutBranch } from '../../api/git.api'
-import { runActivity } from '../../lib/activityCorrelation'
-import { useRepoDataStore } from '../../stores/repoData.store'
+import { apiCreateBranch, apiCreateAndCheckoutBranch } from '../../api/git.api'
 
 interface CreateBranchHereDialogProps {
   repoPath: string
@@ -35,10 +33,6 @@ export function CreateBranchHereDialog({
 }: CreateBranchHereDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
-  // Where the checkout below starts from, so the undo stack can put HEAD back. Read from the repo
-  // cache rather than taken as a prop: both mount sites (the graph's overlay manager and the
-  // sidebar's dialog manager) would otherwise have to thread it through.
-  const repo = useRepoDataStore((s) => s.repoCache[repoPath])
   const [name, setName] = useState('')
   const [checkout, setCheckout] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -50,21 +44,13 @@ export function CreateBranchHereDialog({
     setIsLoading(true)
     setError(null)
     try {
-      // One gesture, one correlation id — so one ⌘Z takes the whole thing back. Creating a branch
-      // and checking it out are two git operations, and undoing only the first is not merely
-      // incomplete: git refuses to delete a branch it has just made HEAD, so the undo failed
-      // outright (and silently) before these two were grouped.
-      await runActivity('git.createBranchHere', async () => {
+      // The create+checkout pair goes through the composed API so it is one undoable gesture —
+      // see `apiCreateAndCheckoutBranch` for why doing it by hand here was wrong twice over.
+      if (checkout) {
+        await apiCreateAndCheckoutBranch(repoPath, trimmed, oid)
+      } else {
         await apiCreateBranch(repoPath, trimmed, oid)
-        if (checkout) {
-          // `opts` is what makes the checkout undoable at all — without it `apiCheckoutBranch`
-          // records nothing (see its own implementation).
-          await apiCheckoutBranch(repoPath, trimmed, {
-            fromRef: repo?.head ?? '',
-            fromDetached: repo?.isDetached ?? false,
-          })
-        }
-      })
+      }
       queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       setName('')

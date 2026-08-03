@@ -21,7 +21,6 @@ import { useCommitMessageEdit } from '../../../hooks/useCommitMessageEdit'
 import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
 import { formatDateTimeLong } from '../../../lib/relativeDate'
 
-
 interface CommitHeaderInfoProps {
   isWip: boolean
   isStash?: boolean

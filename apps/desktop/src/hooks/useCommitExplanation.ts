@@ -111,14 +111,7 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
           )
         },
         {
-          onComplete: (full) =>
-            remember(
-              repoPath,
-              'commit',
-              commit.oid,
-              comparedTo,
-              full
-            ),
+          onComplete: (full) => remember(repoPath, 'commit', commit.oid, comparedTo, full),
         }
       ),
     [

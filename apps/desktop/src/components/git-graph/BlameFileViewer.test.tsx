@@ -54,10 +54,7 @@ const fakeMonaco = {
   editor: { EditorOption: { lineHeight: 66 } },
 }
 vi.mock('./MonacoFileViewer', () => ({
-  MonacoFileViewer: (props: {
-    onMount?: (e: unknown, m: unknown) => void
-    content: string
-  }) => {
+  MonacoFileViewer: (props: { onMount?: (e: unknown, m: unknown) => void; content: string }) => {
     useEffect(() => {
       const registeredBefore = layoutCallbacks.length
       props.onMount?.(fakeEditor, fakeMonaco)

@@ -16,7 +16,8 @@ const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac
 type LevelFilter = 'all' | 'error'
 
 function entryHaystack(e: ActivityLogEntry): string {
-  const args = e.args === undefined ? '' : typeof e.args === 'string' ? e.args : JSON.stringify(e.args)
+  const args =
+    e.args === undefined ? '' : typeof e.args === 'string' ? e.args : JSON.stringify(e.args)
   return `${e.command} ${e.correlationLabel ?? ''} ${args} ${e.error ?? ''}`.toLowerCase()
 }
 

@@ -24,7 +24,7 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        'border-border bg-popover text-popover-foreground z-popover min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg',
+        'z-popover min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
         className
       )}
       {...props}
@@ -40,7 +40,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'focus:bg-accent focus:text-accent-foreground relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     {...props}
@@ -55,7 +55,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[state=open]:bg-accent data-[disabled]:opacity-50',
       className
     )}
     {...props}
@@ -74,7 +74,7 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.SubContent
       ref={ref}
       className={cn(
-        'border-border bg-popover text-popover-foreground z-popover min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg',
+        'z-popover min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg',
         className
       )}
       {...props}
@@ -89,7 +89,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn('bg-border -mx-1 my-1 h-px', className)}
+    className={cn('-mx-1 my-1 h-px bg-border', className)}
     {...props}
   />
 ))

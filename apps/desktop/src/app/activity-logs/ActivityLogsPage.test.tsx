@@ -46,7 +46,11 @@ describe('ActivityLogsPage', () => {
     useActivityLogStore.setState({
       entries: [
         makeEntry({ command: 'pin_object', correlationId: 'c1', correlationLabel: 'git.commit' }),
-        makeEntry({ command: 'create_commit', correlationId: 'c1', correlationLabel: 'git.commit' }),
+        makeEntry({
+          command: 'create_commit',
+          correlationId: 'c1',
+          correlationLabel: 'git.commit',
+        }),
       ],
     })
     render(<ActivityLogsPage onClose={() => {}} />)
@@ -72,7 +76,11 @@ describe('ActivityLogsPage', () => {
     useActivityLogStore.setState({
       entries: [
         makeEntry({ command: 'pin_object', correlationId: 'c1', correlationLabel: 'git.commit' }),
-        makeEntry({ command: 'create_commit', correlationId: 'c1', correlationLabel: 'git.commit' }),
+        makeEntry({
+          command: 'create_commit',
+          correlationId: 'c1',
+          correlationLabel: 'git.commit',
+        }),
       ],
     })
     render(<ActivityLogsPage onClose={() => {}} />)
@@ -95,7 +103,11 @@ describe('ActivityLogsPage', () => {
     useActivityLogStore.setState({
       entries: [
         makeEntry({ command: 'pin_object', correlationId: 'c1', correlationLabel: 'git.commit' }),
-        makeEntry({ command: 'create_commit', correlationId: 'c1', correlationLabel: 'git.commit' }),
+        makeEntry({
+          command: 'create_commit',
+          correlationId: 'c1',
+          correlationLabel: 'git.commit',
+        }),
         makeEntry({ command: 'get_status' }),
       ],
     })

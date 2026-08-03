@@ -46,7 +46,9 @@ describe('Textarea', () => {
   })
 
   it('allows overriding autoCapitalize, autoCorrect, and spellCheck props', () => {
-    render(<Textarea data-testid="textarea" autoCapitalize="on" autoCorrect="on" spellCheck={true} />)
+    render(
+      <Textarea data-testid="textarea" autoCapitalize="on" autoCorrect="on" spellCheck={true} />
+    )
     const el = screen.getByTestId('textarea')
     expect(el).toHaveAttribute('autocapitalize', 'on')
     expect(el).toHaveAttribute('autocorrect', 'on')

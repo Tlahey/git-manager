@@ -71,7 +71,9 @@ describe('useGlobalCommands — availability', () => {
   })
 
   it('exposes one settings command per section', () => {
-    const settingsIds = ids().commands.filter((c) => c.group === 'settings').map((c) => c.id)
+    const settingsIds = ids()
+      .commands.filter((c) => c.group === 'settings')
+      .map((c) => c.id)
     expect(settingsIds).toContain('settings-ui_customization')
     expect(settingsIds).not.toContain('settings-debug')
     expect(settingsIds).toHaveLength(8)

@@ -364,7 +364,10 @@ export function GithubSection() {
                                 {acc.user.name || acc.user.login}
                               </span>
                               {isActive && (
-                                <Tag tone="success" className="rounded-full text-[8px] leading-none">
+                                <Tag
+                                  tone="success"
+                                  className="rounded-full text-[8px] leading-none"
+                                >
                                   {t('settings.github.activeAccount')}
                                 </Tag>
                               )}

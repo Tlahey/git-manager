@@ -28,7 +28,10 @@ describe('findLocalRepoPath', () => {
       '/code/gm-checkout': ['https://github.com/Tlahey/git-manager.git'],
     })
 
-    const path = await findLocalRepoPath({ fullName: 'Tlahey/git-manager', name: 'git-manager' }, SAVED)
+    const path = await findLocalRepoPath(
+      { fullName: 'Tlahey/git-manager', name: 'git-manager' },
+      SAVED
+    )
     expect(path).toBe('/code/gm-checkout')
   })
 

@@ -3,9 +3,9 @@ import { isLinkedWorktree } from './linkedWorktree'
 
 describe('isLinkedWorktree', () => {
   it('flags a worktree whose owner is a different path', () => {
-    expect(
-      isLinkedWorktree({ path: '/repo/.worktrees/feature', mainWorktreePath: '/repo' })
-    ).toBe(true)
+    expect(isLinkedWorktree({ path: '/repo/.worktrees/feature', mainWorktreePath: '/repo' })).toBe(
+      true
+    )
   })
 
   it('does not flag a normal repo, whose owner is itself', () => {

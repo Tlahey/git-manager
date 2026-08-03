@@ -13,7 +13,9 @@ describe('NotchHeaderRow', () => {
   })
 
   it('shows the context and the meta when they are given', () => {
-    render(<NotchHeaderRow tone="info" eyebrow="NEW PR" context="Tlahey/git-manager" meta="2 min" />)
+    render(
+      <NotchHeaderRow tone="info" eyebrow="NEW PR" context="Tlahey/git-manager" meta="2 min" />
+    )
     expect(screen.getByTestId('notch-context')).toHaveTextContent('Tlahey/git-manager')
     expect(screen.getByTestId('notch-meta')).toHaveTextContent('2 min')
   })

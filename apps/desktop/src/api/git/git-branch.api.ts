@@ -21,6 +21,7 @@ import {
   pushTag,
   getTagWebUrl,
   getBranchWebUrl,
+  getRepoSummary,
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
 import { generateId, pushAction, clearRedo, withHookFailureCard } from './gitApiShared'
@@ -174,6 +175,34 @@ export async function apiCreateBranch(path: string, name: string, fromRef: strin
   } else {
     clearRedo(path)
   }
+}
+
+/**
+ * Creates a branch at `startPoint` and checks it out — one gesture, two git operations.
+ *
+ * This is one function, and it takes no options, because every caller that assembled the pair by
+ * hand got it wrong in a way nothing reported. Two things have to hold:
+ *
+ * - **The `runActivity` wrapper**, so both entries carry the same correlation id and a single ⌘Z
+ *   takes back the branch *and* the checkout. Undoing only the checkout is not merely partial: git
+ *   refuses to delete a branch that is currently HEAD, so the undo failed outright — and silently,
+ *   until #269 made the keyboard path report it.
+ * - **Where HEAD was**, without which `apiCheckoutBranch` records no undo entry at all and the
+ *   checkout is invisible to the history. It is read here rather than passed in, so no caller can
+ *   omit it: the two Launchpad entry points did, and a stale cached value would be worse still.
+ *
+ * The read happens *before* anything is created — if the repository can't be inspected, the gesture
+ * doesn't start, rather than half-recording itself.
+ */
+export async function apiCreateAndCheckoutBranch(path: string, name: string, startPoint: string) {
+  const summary = await getRepoSummary(path)
+  return runActivity('git.createAndCheckoutBranch', async () => {
+    await apiCreateBranch(path, name, startPoint)
+    await apiCheckoutBranch(path, name, {
+      fromRef: summary.head,
+      fromDetached: summary.isDetached,
+    })
+  })
 }
 
 // ─── Branch rename ─────────────────────────────────────────────────────────

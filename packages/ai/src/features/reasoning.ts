@@ -33,7 +33,10 @@ const NARRATION =
  * tooling` is a section of a real answer about a linter, and eating it would be a far worse failure
  * than leaving a little deliberation on screen.
  */
-const NARRATION_HEADING = new RegExp(`^\\s*(?:#{1,6}\\s*|\\*\\*)\\s*${NARRATION}\\s*:?\\s*\\*{0,2}[ \t]*\n`, 'i')
+const NARRATION_HEADING = new RegExp(
+  `^\\s*(?:#{1,6}\\s*|\\*\\*)\\s*${NARRATION}\\s*:?\\s*\\*{0,2}[ \t]*\n`,
+  'i'
+)
 
 /**
  * The marker as a label, with the deliberation continuing on the same line.

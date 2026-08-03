@@ -47,7 +47,10 @@ export function useCommitCommands(): PaletteCommand[] {
   // (before the gate below); they no-op when there's no commit/repo.
   const { ownerRepo, token } = useRepoGitHub(activeRepo)
   const tag = useCommitTag(activeRepo, selectedStashIndex === null ? selectedCommitOid : null)
-  const pr = useCommitPullRequest(activeRepo, selectedStashIndex === null ? selectedCommitOid : null)
+  const pr = useCommitPullRequest(
+    activeRepo,
+    selectedStashIndex === null ? selectedCommitOid : null
+  )
 
   if (!selectedCommitOid || !activeRepo || selectedStashIndex !== null) return []
 

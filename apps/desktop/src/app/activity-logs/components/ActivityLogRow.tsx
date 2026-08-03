@@ -51,9 +51,7 @@ export function ActivityLogRow({ entry, selected, onSelect }: ActivityLogRowProp
         }
       }}
       className={`group/row flex cursor-pointer items-baseline gap-3 px-3 py-[3px] ${
-        isError
-          ? 'bg-destructive/10 text-destructive hover:bg-destructive/15'
-          : 'hover:bg-muted/40'
+        isError ? 'bg-destructive/10 text-destructive hover:bg-destructive/15' : 'hover:bg-muted/40'
       } ${selected ? 'bg-accent' : ''}`}
       data-testid="activity-log-row"
       data-command={entry.command}
