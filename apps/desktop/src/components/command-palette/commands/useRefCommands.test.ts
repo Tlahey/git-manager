@@ -22,21 +22,28 @@ vi.mock('../../../hooks/useBranches', () => ({
   useBranches: () => ({ data: branchesQuery.current }),
 }))
 
-const { apiGetTags, apiMergeBranch, apiFastForwardBranch, apiPushTag, apiDeleteTag } = vi.hoisted(
-  () => ({
-    apiGetTags: vi.fn(),
-    apiMergeBranch: vi.fn(),
-    apiFastForwardBranch: vi.fn(),
-    apiPushTag: vi.fn(),
-    apiDeleteTag: vi.fn(),
-  })
-)
+const {
+  apiGetTags,
+  apiMergeBranch,
+  apiFastForwardBranch,
+  apiPushTag,
+  apiDeleteTag,
+  apiDeleteBranch,
+} = vi.hoisted(() => ({
+  apiGetTags: vi.fn(),
+  apiMergeBranch: vi.fn(),
+  apiFastForwardBranch: vi.fn(),
+  apiPushTag: vi.fn(),
+  apiDeleteTag: vi.fn(),
+  apiDeleteBranch: vi.fn(),
+}))
 vi.mock('../../../api/git.api', () => ({
   apiGetTags,
   apiMergeBranch,
   apiFastForwardBranch,
   apiPushTag,
   apiDeleteTag,
+  apiDeleteBranch,
 }))
 
 import { useRefCommands } from './useRefCommands'
@@ -114,6 +121,7 @@ beforeEach(() => {
   apiFastForwardBranch.mockResolvedValue(undefined)
   apiPushTag.mockResolvedValue(undefined)
   apiDeleteTag.mockResolvedValue(undefined)
+  apiDeleteBranch.mockResolvedValue(undefined)
 })
 
 describe('useRefCommands — gating', () => {
@@ -153,6 +161,14 @@ describe('useRefCommands — branch actions', () => {
 
   // Destructive on someone else's clone too: this one opens the confirmation the menus open,
   // rather than deleting outright.
+  // Never offered for the branch you are on: git refuses to delete the branch HEAD points at.
+  it('deletes a local branch through the undo-recording wrapper, with its tip oid', () => {
+    const cmds = setup({ head: 'main', branches: [branch('feat'), branch('main')] })
+    expect(ids(cmds)).not.toContain('ref-delete-branch-main')
+    byId(cmds, 'ref-delete-branch-feat').run()
+    expect(apiDeleteBranch).toHaveBeenCalledWith(REPO, 'feat', { targetOid: 'oid-feat' })
+  })
+
   it('deleting a remote branch opens the confirmation, split into remote + branch', () => {
     const cmds = setup({ branches: [branch('feat/login', 'origin')] })
     byId(cmds, 'ref-delete-remote-branch-origin/feat/login').run()

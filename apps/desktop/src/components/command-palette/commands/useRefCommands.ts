@@ -13,6 +13,7 @@ import {
   apiFastForwardBranch,
   apiPushTag,
   apiDeleteTag,
+  apiDeleteBranch,
 } from '../../../api/git.api'
 import type { PaletteCommand } from './types'
 
@@ -112,6 +113,23 @@ export function useRefCommands(): PaletteCommand[] {
           ),
       })
     }
+  }
+
+  // Deleting a *local* branch, gated on the same "not the one you are on" rule as merge above:
+  // git refuses to delete the branch HEAD points at, so offering it would only produce an error.
+  for (const branch of localBranches) {
+    commands.push({
+      id: `ref-delete-branch-${branch.shortName}`,
+      group: 'ref',
+      title: t('commandPalette.ref.deleteBranch', { branch: branch.shortName }),
+      keywords: [branch.shortName],
+      icon: createElement(Trash2),
+      run: () =>
+        run(
+          () => apiDeleteBranch(activeRepo, branch.shortName, { targetOid: branch.commitOid }),
+          t('commandPalette.ref.branchDeleted', { branch: branch.shortName })
+        ),
+    })
   }
 
   // Deleting a remote branch needs the remote and the branch apart. Split `name`, NOT `shortName`:

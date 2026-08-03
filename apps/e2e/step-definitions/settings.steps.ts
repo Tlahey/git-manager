@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
@@ -407,3 +407,27 @@ Then(/^the task command suggestions include "([^"]*)"$/, async (name: string) =>
 // The GitLab and Bitbucket steps that used to live here went with their scenarios: both providers
 // are built but not listed (see `AVAILABLE_PROVIDERS` in IntegrationSection.tsx), so there is
 // nothing on screen to drive. `git log` has them when the panels come back.
+
+/**
+ * A patch file written to disk by "Create patch". Read as text and checked for a real diff header,
+ * so an empty file (or a path the app never wrote to) fails rather than passing on existence.
+ */
+Then(/^the patch file "([^"]*)" holds a diff$/, async (fileName: string) => {
+  const target = join(tmpdir(), fileName)
+  await browser.waitUntil(() => existsSync(target), {
+    timeout: 15000,
+    timeoutMsg: `expected a patch file at ${target}`,
+  })
+  const content = readFileSync(target, 'utf8')
+  if (!content.includes('diff --git')) {
+    throw new Error(`${target} exists but holds no diff (${content.length} bytes)`)
+  }
+  rmSync(target, { force: true })
+})
+
+When(/^I choose "([^"]*)" in the save dialog$/, async (fileName: string) => {
+  const dialog = $('[data-testid="e2e-folder-picker-dialog"]')
+  await dialog.waitForDisplayed({ timeout: 15000 })
+  await $('[data-testid="e2e-folder-picker-input"]').setValue(join(tmpdir(), fileName))
+  await $('[data-testid="e2e-folder-picker-confirm"]').click()
+})
