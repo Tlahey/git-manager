@@ -61,11 +61,29 @@ what's missing has to live here, where a human maintains it.
 
 ### Real gaps — testable with today's harness, just not written yet
 
-| Missing                                     | Commands / UI involved                                                                                                                                                                                                                                                 | Notes                                                                                                                                                                                                                                  |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing                                     | Commands / UI involved                                                                                                                                                                                                                                                 | Notes                                                                                                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Running a task** (`run_task_in_terminal`) | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The _listing_ half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`). |
-| **Tag push/delete, remote branch delete**   | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`                                                                                                                                                                                                  | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. The one genuinely open item on this list. |
-| **Undo/redo breadth**                       | undo stack beyond checkout / reset / commit                                                                                                                                                                                                                            | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage.                                                                                                                                                    |
+| **Tag push/delete, remote branch delete**   | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`                                                                                                                                                                                                  | Not reachable by the store-bridge technique after all — re-checked 2026-08-03, see the note below. Blocked on a decision, not on the fixtures. |
+| **Undo/redo breadth**                       | undo stack beyond checkout / reset / commit                                                                                                                                                                                                                            | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage.                                                            |
+
+> **Why the tag/remote-delete row moved out of reach.** [#271](https://github.com/Tlahey/git-manager/issues/271)
+> assumed these worked like `branch-upstream.feature`, which drives a native-menu-only action by
+> writing `pendingGraphAction` on the repoUI store. They don't:
+>
+> - **Push tag** and **delete local tag** call `apiPushTag` / `apiDeleteTag` straight from the
+>   native menu callback (`useTagContextMenu.ts`). There is no intermediate state to write — the
+>   same shape as merge/fast-forward/create-patch in
+>   [#272](https://github.com/Tlahey/git-manager/issues/272).
+> - **Delete remote tag** and **delete remote branch** do raise a dialog, but from
+>   `useState` inside the hook (`pendingTagAction`, `pendingDeleteRemoteBranch`), not from the
+>   store. Nothing outside the component can set it.
+>
+> Promoting those two into `repoUI.store` would work, but each is currently held **twice** — once
+> by `GitGraph` and once by `RepoGraphWorkspace`, which renders `GitGraph` inside itself. One
+> shared value would render each dialog twice, so the promotion also means deciding which of the
+> two mount sites owns the dialogs. That is an architecture call, not a test to write, which is why
+> this sits under "real gaps" with a blocker rather than being written.
 
 ### Blocked by the harness (documented, deliberate)
 
