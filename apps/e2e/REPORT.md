@@ -5,7 +5,7 @@ point without anyone having to run an 18-minute suite first. It is a snapshot of
 last run: treat the shape (which files dominate, how little sits inside steps) as the signal, and
 the absolute numbers as indicative._
 
-**4 scenarios** across **1 feature files** · 0 failing · **0.2 min** of scenario time, of which 0.1 min (56%) is inside steps.
+**12 scenarios** across **1 feature files** · 0 failing · **0.3 min** of scenario time, of which 0.3 min (83%) is inside steps.
 
 Plus **0.0 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 1 times, ~0.1s each.
 
@@ -15,13 +15,21 @@ Read the last column first. "In steps" is what cucumber's `afterStep` reported, 
 
 | Feature | Scenarios | Failing | App launch | Scenarios | In steps | Outside steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `blame-history.feature` | 4 |  | 0.1s | 9.3s | 5.2s | **4.1s** |
+| `command-palette.feature` | 12 |  | 0.1s | 19.1s | 15.9s | **3.2s** |
 
 ## Slowest individual scenarios
 
 | Scenario | Feature | Total | Outside steps |
 | --- | --- | ---: | ---: |
-| The File view shows blame avatars in the gutter | `blame-history.feature` | 3.9s | 2.0s |
-| Selecting a history version shows that version in the diff | `blame-history.feature` | 2.8s | 1.0s |
-| Blame mode annotates lines with the commit name | `blame-history.feature` | 1.9s | 1.0s |
-| The history panel lists the file's versions | `blame-history.feature` | 0.7s | 0.0s |
+| Resetting to an earlier commit from the palette | `command-palette.feature` | 3.1s | 1.0s |
+| Popping a stash via the palette removes it and restores its changes | `command-palette.feature` | 3.0s | 1.0s |
+| Applying a stash via the palette keeps it but restores its changes | `command-palette.feature` | 3.0s | 1.0s |
+| Cherry-picking a commit from another branch via the palette | `command-palette.feature` | 1.4s | 0.0s |
+| Dropping a stash via the palette | `command-palette.feature` | 1.4s | 0.0s |
+| Creating a tag from an earlier commit via the palette | `command-palette.feature` | 1.2s | 0.0s |
+| Hard-resetting requires typing RESET to confirm | `command-palette.feature` | 1.2s | 0.0s |
+| Soft-resetting to an earlier commit keeps the change staged | `command-palette.feature` | 1.1s | 0.0s |
+| Creating an annotated tag from an earlier commit via the palette | `command-palette.feature` | 1.1s | 0.0s |
+| Creating a branch from an earlier commit via the palette | `command-palette.feature` | 1.1s | 0.0s |
+| Reverting the last commit from the palette | `command-palette.feature` | 0.8s | 0.0s |
+| Opening a settings section from the palette | `command-palette.feature` | 0.7s | 0.0s |

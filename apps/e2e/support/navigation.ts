@@ -28,6 +28,11 @@ export async function navigateAndSettle(url: string, marker: string): Promise<vo
     throw new Error(`navigateAndSettle: the url "${url}" does not contain its marker "${marker}"`)
   }
   await browser.url(url)
+  // Let the swap commit before the first poll: an executeScript dispatched into the OLD document
+  // dies with it and only errors after the session's script timeout (capped to 5s in
+  // wdio.conf.ts's `before`, but still 5s of dead time per race). 50ms is enough for WebKit to
+  // commit the new document in practice, so the first poll almost always lands on the new page.
+  await browser.pause(50)
   await browser.waitUntil(
     async () =>
       await browser
