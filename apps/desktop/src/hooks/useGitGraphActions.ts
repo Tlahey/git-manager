@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
-import { open, save } from '@tauri-apps/plugin-dialog'
 import { toast } from '@git-manager/ui'
 import type { GitGraphNode, GitRef, GitStatus } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
@@ -53,6 +52,8 @@ import { useBranches } from './useBranches'
 import { useBranchCheckout } from './useBranchCheckout'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import { worktreeWipPath } from '../components/git-graph/syntheticRows'
+import { pickSaveDestination } from '../lib/pickSaveDestination'
+import { pickFolder } from '../lib/pickFolder'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -214,8 +215,8 @@ export function useGitGraphActions({
 
   async function handleCreateWorktree(oid: string) {
     try {
-      const destPath = await open({ directory: true, multiple: false })
-      if (!destPath || typeof destPath !== 'string') return
+      const destPath = await pickFolder()
+      if (!destPath) return
       await apiAddWorktree(repoPath, oid, destPath)
       toast.success(t('gitTree.contextMenu.worktreeCreated'))
     } catch (err) {
@@ -249,7 +250,7 @@ export function useGitGraphActions({
 
   async function handleCreatePatch(oid: string) {
     try {
-      const destPath = await save({ defaultPath: `${oid.slice(0, 7)}.patch` })
+      const destPath = await pickSaveDestination(`${oid.slice(0, 7)}.patch`)
       if (!destPath) return
       await apiCreatePatch(repoPath, oid, destPath)
       toast.success(t('gitTree.contextMenu.patchCreated'))
@@ -482,7 +483,9 @@ export function useGitGraphActions({
 
     async function handleCreatePatchSelection() {
       try {
-        const destPath = await save({ defaultPath: `${oid.slice(0, 7)}-and-${targets.length - 1}-more.patch` })
+        const destPath = await pickSaveDestination(
+          `${oid.slice(0, 7)}-and-${targets.length - 1}-more.patch`
+        )
         if (!destPath) return
         await apiCreateCommitsPatch(repoPath, selectedOldestFirst, destPath)
         toast.success(t('gitTree.contextMenu.patchCreated'))
