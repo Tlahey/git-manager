@@ -18,6 +18,7 @@ Feature: Summary search
     rather than a vague "at some point", so each one opens straight to that day's own briefing.
     Given the app language is English
     And the AI provider is pointed at a fake server
+    And the "daily-summary" fixture repository is opened
     And the "daily-summary" project is listed in the dashboard with no briefing yet
     When I open the dashboard
     And I open the project's daily briefing

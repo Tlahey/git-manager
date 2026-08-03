@@ -1,10 +1,14 @@
-import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
 
 // Mirror repo.steps' fixture layout: fixtures live at /tmp/git-manager-fixtures/<name>, and a repo's
 // display name is the directory's basename.
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const SCENARIOS_DIR = join(__dirname, '../../../tools/git-fixtures/scenarios')
 
 // This suite shares ONE app window across all specs, and this feature is the first to write the
 // dashboard's persisted `savedRepos` + the `dailySummary` settings. Without cleanup those keys would
@@ -100,6 +104,16 @@ Given(
   /^the "([^"]*)" project is listed in the dashboard with no briefing yet$/,
   async (fixtureName: string) => {
     const repoPath = join(FIXTURE_ROOT, fixtureName)
+
+    // Rebuild the fixture rather than trusting whatever a previous run left at this path. The
+    // daily-summary fixture is the one repo whose commit DATES are load-bearing: its script dates
+    // the newest commit to "the previous working day" *at build time*, and the morning auto-run
+    // only reads that exact day. A fixture built on Sunday carries Friday-the-1st commits; run
+    // the suite on Monday and the window is Friday-the-2nd — zero commits, a silently empty
+    // generation, and a scenario that fails on every machine whose fixture predates the current
+    // window (this is why ai-summary-search.feature, which has no fixture-open step of its own,
+    // failed in every full run but passed in isolation right after a same-day rebuild).
+    execFileSync('bash', [join(SCENARIOS_DIR, `${fixtureName}.sh`)], { stdio: 'inherit' })
     // The seed is written into whatever document is current — and the *previous* reload of this
     // Background's chain can still be alive at that moment (its own `location.href` navigation is
     // asynchronous). That lingering page is a freshly mounted RepoView whose `apiOpenRepo(...)`
@@ -221,7 +235,28 @@ Then(/^the daily briefing headline becomes "([^"]*)"$/, async (expected: string)
   // The rendered summary proves the real get_ai_activity → ai_complete(schema) → parse chain ran end
   // to end (whether triggered by the morning auto-run or the on-demand button).
   const content = $('[data-testid="daily-summary-content"]')
-  await content.waitForExist({ timeout: 20000 })
+  await content.waitForExist({ timeout: 20000 }).catch(async (e) => {
+    // The content never rendering has had more than one cause (a fixture outside the generation
+    // window, leaked settings) — capture what the panel actually shows and what the app believes,
+    // so the next occurrence is data rather than another bisection.
+    const diag = await browser.execute(() => {
+      const panel =
+        document.querySelector('[data-testid="daily-summary-refresh-button"]')?.closest('aside,div,section')
+      const settings = JSON.parse(localStorage.getItem('git-manager-settings') ?? '{}')?.state
+        ?.settings
+      return {
+        dailySummary: settings?.dailySummary ?? null,
+        aiUrl: settings?.ai?.url ?? null,
+        panelText: panel?.textContent?.slice(0, 300) ?? null,
+        panelTestids: panel
+          ? [...panel.querySelectorAll('[data-testid]')].map((el) => el.getAttribute('data-testid'))
+          : null,
+      }
+    })
+    throw new Error(`daily-summary-content never existed. Diagnostics: ${JSON.stringify(diag)}`, {
+      cause: e,
+    })
+  })
   await browser.waitUntil(async () => (await content.getText()).includes(expected), {
     timeout: 20000,
     timeoutMsg: `daily briefing content never included the headline "${expected}"`,

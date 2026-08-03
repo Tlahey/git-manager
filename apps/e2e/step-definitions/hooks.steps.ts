@@ -66,7 +66,16 @@ Before(async () => {
     },
   }
 
-  const rootEmpty = await applyBaseline(baseline)
+  // Belt to the After hook's braces: if the previous scenario still left the session on a dead
+  // window handle (every path there re-anchors on `main`, but none of them can be guaranteed to
+  // have run — a killed worker, a hook that itself threw), the first execute here would die with
+  // "no such window". Re-anchor and retry once rather than failing the scenario before its first
+  // step.
+  const rootEmpty = await applyBaseline(baseline).catch(async () => {
+    const handles = await browser.getWindowHandles()
+    if (handles.includes('main')) await browser.switchToWindow('main')
+    return await applyBaseline(baseline)
+  })
 
   // A React render crash (observed as WebKit's "NotFoundError: The object can not be found here",
   // with a Monaco "Canceled" rejection alongside) unmounts everything under #root. The app window
@@ -107,14 +116,31 @@ Before(async () => {
 After(async () => {
   try {
     const handles = await browser.getWindowHandles()
-    if (handles.length <= 1 || !handles.includes('main')) return
+    if (!handles.includes('main')) return
     for (const handle of handles) {
       if (handle === 'main') continue
-      await browser.switchToWindow(handle)
-      await browser.closeWindow()
+      try {
+        await browser.switchToWindow(handle)
+        await browser.closeWindow()
+      } catch {
+        // The window can beat us to it (a notch card closing on its own timer mid-cleanup) —
+        // what matters is the re-anchor below, not who closed it.
+      }
     }
+    // ALWAYS re-anchor, even when there was nothing to close: `getWindowHandles()` is a
+    // session-level command that succeeds while the session's *current* window is a dead handle
+    // (a self-closed notch card the service had switched onto). Returning without this switch
+    // left the next scenario's Before hook running `execute` against that dead context — two
+    // anonymous "no such window" scenario failures in a row, until a fixture-open step happened
+    // to re-anchor on main.
     await browser.switchToWindow('main')
   } catch {
-    // Cleanup that cannot run must not fail a scenario that otherwise passed.
+    // Cleanup that cannot run must not fail a scenario that otherwise passed — but still try to
+    // leave the session somewhere alive.
+    try {
+      await browser.switchToWindow('main')
+    } catch {
+      /* the next scenario's own recovery is the last resort */
+    }
   }
 })
