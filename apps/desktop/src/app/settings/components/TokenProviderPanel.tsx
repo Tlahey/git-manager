@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Tag } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Tag, Alert } from '@git-manager/ui'
 import { Check, Trash2, Key, Globe, User, Plus, RefreshCw } from 'lucide-react'
 import type { ProviderAccount } from '@git-manager/git-types'
 
@@ -15,6 +15,12 @@ export interface TokenProviderPanelProps {
   /** Placeholder for the token field: an example value, so a literal is correct here. */
   tokenPlaceholder: string
   defaultHost: string
+  /**
+   * Checks the credentials against the provider and returns who they belong to. Rejecting is how
+   * a wrong token is caught: without this the panel stored whatever had been typed, so a typo was
+   * indistinguishable from a working account until something later tried to use it.
+   */
+  onValidate: (host: string, username: string, token: string) => Promise<{ displayName?: string }>
   accounts: ProviderAccount[]
   activeAccountId: string | null
   onChange: (next: { accounts: ProviderAccount[]; activeAccountId: string | null }) => void
@@ -37,6 +43,7 @@ export function TokenProviderPanel({
   tokenLabelKey,
   tokenPlaceholder,
   defaultHost,
+  onValidate,
   accounts,
   activeAccountId,
   onChange,
@@ -46,18 +53,21 @@ export function TokenProviderPanel({
   const [username, setUsername] = useState('')
   const [token, setToken] = useState('')
   const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleConnect() {
+  async function handleConnect() {
     if (!username.trim() || !token.trim()) return
     setConnecting(true)
-
-    // Simulate key validation and connect
-    setTimeout(() => {
+    setError(null)
+    try {
+      const identity = await onValidate(host.trim(), username.trim(), token.trim())
       const account: ProviderAccount = {
         id: `${username.trim()}@${host.replace('https://', '').replace('http://', '')}`,
         host: host.trim(),
         username: username.trim(),
         token: token.trim(),
+        displayName: identity.displayName,
+        authMethod: 'token',
       }
       const next = accounts.filter((a) => a.id !== account.id)
       next.push(account)
@@ -65,8 +75,11 @@ export function TokenProviderPanel({
       onChange({ accounts: next, activeAccountId: account.id })
       setUsername('')
       setToken('')
+    } catch (e) {
+      setError(String(e))
+    } finally {
       setConnecting(false)
-    }, 800)
+    }
   }
 
   function handleRemove(id: string) {
@@ -140,7 +153,7 @@ export function TokenProviderPanel({
             <Button
               size="sm"
               className="h-8 w-full gap-1.5 text-xs"
-              onClick={handleConnect}
+              onClick={() => void handleConnect()}
               disabled={connecting || !username || !token}
               data-testid={`integration-${provider}-connect-button`}
             >
@@ -155,6 +168,12 @@ export function TokenProviderPanel({
             </Button>
           </div>
         </div>
+
+        {error && (
+          <Alert variant="destructive" data-testid={`integration-${provider}-error`}>
+            {error}
+          </Alert>
+        )}
 
         {/* Accounts list */}
         <div className="space-y-2">
@@ -176,7 +195,7 @@ export function TokenProviderPanel({
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs font-medium text-foreground">
-                        {account.username}
+                        {account.displayName || account.username}
                       </span>
                       <span className="font-mono text-[10px] text-muted-foreground">
                         {account.host}

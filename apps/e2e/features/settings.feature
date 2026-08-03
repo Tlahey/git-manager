@@ -201,31 +201,31 @@ Feature: Settings
     And a full-window screenshot is saved as "doc-user-theme"
 
   @doc @screenshots
-  Scenario: Connecting a GitLab account with a token, and disconnecting it
-    GitHub is not the only forge the app talks to: GitLab and Bitbucket connect with a
-    personal access token instead of an OAuth round trip, so the form asks for the
-    instance URL, your username and the token — which is enough for a self-hosted
-    instance as much as for the public one. Accounts are listed under the form, the
-    most recently added one becomes the active one, and disconnecting removes the
-    account and its token from the app's settings entirely.
+  Scenario: Signing in to GitLab is the same three steps as GitHub
+    GitLab connects the way GitHub does — no token to create and paste: click
+    Sign in, approve the short code on the page that opens, and the app waits.
+    The one extra question is *which* GitLab, because it can also be self-hosted;
+    a self-hosted instance keeps its own list of applications, so it asks for that
+    instance's Application ID, and gitlab.com never shows that field at all.
     Given the app language is English
     And the git-manager application is running
     When I open the settings
     And I open the "integrations" settings tab
     And I select the "gitlab" integration provider
     Then the "gitlab" integration provider is selected
-    And the "gitlab" integration form asks for a host, a username and a token
     And no "gitlab" account is connected
-    When I connect a "gitlab" account named "e2e-user"
-    Then the "gitlab" account "e2e-user" on "https://gitlab.com" is listed as active
-    And no error notification is displayed
+    And the GitLab Application ID field is not shown
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-integrations"
-    When I disconnect the "gitlab" account "e2e-user" on "https://gitlab.com"
-    Then no "gitlab" account is connected
-    And the persisted settings hold no "gitlab" account
+    When I set the GitLab instance URL to "https://gitlab.acme.dev"
+    Then the GitLab Application ID field is shown
+    And the GitLab sign-in button is disabled
 
-  Scenario: Bitbucket connects the same way, on its own account list
+  # Bitbucket is the one provider that still takes a typed credential — Atlassian has no device
+  # flow. This asserts the part that actually changed: the credential is *checked* against the real
+  # API before anything is stored. The previous implementation was a `setTimeout` that stored
+  # whatever had been typed, so this scenario would have passed while doing the opposite.
+  Scenario: Bitbucket refuses credentials it cannot verify
     Given the app language is English
     And the git-manager application is running
     When I open the settings
@@ -233,8 +233,7 @@ Feature: Settings
     And I select the "bitbucket" integration provider
     Then the "bitbucket" integration form asks for a host, a username and a token
     And no "bitbucket" account is connected
-    When I connect a "bitbucket" account named "e2e-user"
-    Then the "bitbucket" account "e2e-user" on "https://bitbucket.org" is listed as active
-    # The two providers keep separate lists: connecting one must not populate the other.
-    When I select the "gitlab" integration provider
-    Then no "gitlab" account is connected
+    When I connect a "bitbucket" account named "e2e-user-that-does-not-exist"
+    Then the "bitbucket" connection is reported as failed
+    And no "bitbucket" account is connected
+    And the persisted settings hold no "bitbucket" account

@@ -712,6 +712,21 @@ export interface ProviderAccount {
   token: string
   username: string
   avatarUrl?: string
+  /** Display name when the provider gives one distinct from `username` (Bitbucket, GitLab). */
+  displayName?: string
+  /**
+   * How this account was authenticated. `oauth` accounts came from a device flow and hold an
+   * access token the provider issued; `token` accounts hold something the user pasted. Recorded
+   * because it decides what a re-connection has to do, and because a token the user owns must not
+   * be silently replaced by one the app obtained (or the reverse).
+   */
+  authMethod?: 'oauth' | 'token'
+  /**
+   * The OAuth application id this account was obtained with — only for a self-hosted GitLab, whose
+   * instance has its own application registry and therefore its own id. Kept with the account so
+   * re-authenticating later does not ask for it again.
+   */
+  clientId?: string
 }
 
 export interface IntegrationSettings {

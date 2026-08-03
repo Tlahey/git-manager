@@ -3,6 +3,8 @@ import { useTranslation } from '@git-manager/i18n'
 import { Github, Flame, Gitlab, type LucideIcon } from 'lucide-react'
 import { GithubSection } from './GithubSection'
 import { TokenProviderPanel } from './TokenProviderPanel'
+import { GitlabPanel } from './GitlabPanel'
+import { apiBitbucketGetUser } from '../../../api/integrations.api'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 type Provider = 'github' | 'gitlab' | 'bitbucket'
@@ -69,17 +71,13 @@ export function IntegrationSection() {
       <div className="h-full flex-1 overflow-hidden bg-background/50">
         {activeProvider === 'github' && <GithubSection />}
 
-        {/* GitLab and Bitbucket share one panel: both connect with a host + username + token, and
-            differ only in their name and two strings. GitHub does not — it goes through the OAuth
-            device flow and keeps its own section. */}
+        {/* Each provider authenticates the way it actually supports, which is not the same way:
+            GitHub and GitLab both do the OAuth device flow (a code, a page, polling), while
+            Bitbucket has no device grant at all — Atlassian offers only the authorization-code
+            grant, which needs a redirect URI and so a local HTTP server. A verified token is the
+            honest answer there, and `TokenProviderPanel` now checks it instead of pretending. */}
         {activeProvider === 'gitlab' && (
-          <TokenProviderPanel
-            provider="gitlab"
-            label="GitLab"
-            hintKey="settings.integrations.gitlab.hint"
-            tokenLabelKey="settings.integrations.gitlab.tokenLabel"
-            tokenPlaceholder="glpat-..."
-            defaultHost="https://gitlab.com"
+          <GitlabPanel
             accounts={integrations.gitlabAccounts}
             activeAccountId={integrations.gitlabActiveAccountId}
             onChange={({ accounts, activeAccountId }) =>
@@ -99,6 +97,10 @@ export function IntegrationSection() {
             tokenLabelKey="settings.integrations.bitbucket.tokenLabel"
             tokenPlaceholder={t('settings.integrations.bitbucket.tokenPlaceholder')}
             defaultHost="https://bitbucket.org"
+            onValidate={async (_host, username, token) => {
+              const user = await apiBitbucketGetUser(username, token)
+              return { displayName: user.displayName }
+            }}
             accounts={integrations.bitbucketAccounts}
             activeAccountId={integrations.bitbucketActiveAccountId}
             onChange={({ accounts, activeAccountId }) =>

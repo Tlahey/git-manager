@@ -17,6 +17,7 @@ use commands::ai::{
 use commands::bisect::{
     bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
 };
+use commands::bitbucket::bitbucket_get_user;
 use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
@@ -42,6 +43,7 @@ use commands::github::{
     get_pr_template, github_commit_avatars, github_device_code, github_get_user, github_list_repos,
     github_poll_token,
 };
+use commands::gitlab::{gitlab_device_code, gitlab_get_user, gitlab_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{
     compare_commit_to_workdir, compare_refs, get_commit_diff, get_commit_file,
@@ -323,6 +325,10 @@ pub fn run() {
             github_device_code,
             github_poll_token,
             github_get_user,
+            gitlab_device_code,
+            gitlab_poll_token,
+            gitlab_get_user,
+            bitbucket_get_user,
             github_list_repos,
             github_commit_avatars,
             get_pr_template,

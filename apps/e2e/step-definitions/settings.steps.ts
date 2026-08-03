@@ -452,30 +452,6 @@ When(
   }
 )
 
-/** The account id the section builds: `<username>@<host without its scheme>`. */
-function accountId(username: string, host: string) {
-  return `${username}@${host.replace(/^https?:\/\//, '')}`
-}
-
-Then(
-  /^the "([^"]*)" account "([^"]*)" on "([^"]*)" is listed as active$/,
-  async (provider: string, username: string, host: string) => {
-    const row = $(`[data-testid="integration-${provider}-account-${accountId(username, host)}"]`)
-    // The connect button waits out a deliberate delay before the account lands.
-    await row.waitForDisplayed({ timeout: 15000 })
-    await expect($(`[data-testid="integration-${provider}-account-active"]`)).toBeDisplayed()
-  }
-)
-
-When(
-  /^I disconnect the "([^"]*)" account "([^"]*)" on "([^"]*)"$/,
-  async (provider: string, username: string, host: string) => {
-    const remove = $(`[data-testid="integration-${provider}-remove-${accountId(username, host)}"]`)
-    await remove.waitForClickable({ timeout: 10000 })
-    await remove.click()
-  }
-)
-
 /**
  * Reads the *persisted* settings rather than the rendered list: disconnecting has to remove the
  * account (and its token) from `git-manager-settings`, not merely stop drawing a row.
@@ -491,4 +467,38 @@ Then(/^the persisted settings hold no "([^"]*)" account$/, async (provider: stri
     return Array.isArray(list) ? list.length : null
   }, `${provider}Accounts`)
   await expect(accounts).toBe(0)
+})
+
+// ─── GitLab: the OAuth device flow, and the self-hosted Application ID ────────
+//
+// The flow itself is not driven here. Approving a device code happens on GitLab's own site, in a
+// browser this suite does not control — the same wall GitHub's OAuth scenario stops at, where only
+// the code request is real. What *is* checkable is the shape of the form, and the rule that only a
+// self-hosted instance has to supply an Application ID.
+
+When(/^I set the GitLab instance URL to "([^"]*)"$/, async (url: string) => {
+  const input = $('[data-testid="integration-gitlab-host-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(url)
+})
+
+Then(/^the GitLab Application ID field is shown$/, async () => {
+  await expect($('[data-testid="integration-gitlab-client-id-field"]')).toBeDisplayed()
+})
+
+Then(/^the GitLab Application ID field is not shown$/, async () => {
+  await expect($('[data-testid="integration-gitlab-client-id-field"]')).not.toBeExisting()
+})
+
+Then(/^the GitLab sign-in button is disabled$/, async () => {
+  await expect($('[data-testid="integration-gitlab-connect-button"]')).toBeDisabled()
+})
+
+/**
+ * The credential was rejected and nothing was stored. This is the assertion the old `setTimeout`
+ * implementation could not have passed: it reported success for anything typed.
+ */
+Then(/^the "([^"]*)" connection is reported as failed$/, async (provider: string) => {
+  const error = $(`[data-testid="integration-${provider}-error"]`)
+  await error.waitForDisplayed({ timeout: 20000 })
 })

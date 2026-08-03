@@ -107,7 +107,6 @@
   "settings.integrations.setActive": "Activer",
   "settings.integrations.noAccountConnected": "Aucun compte {{provider}} connecté",
   "settings.integrations.gitlab.hint": "Synchronisez vos dépôts GitLab en connectant vos comptes personnels ou auto-hébergés.",
-  "settings.integrations.gitlab.tokenLabel": "Jeton d'accès personnel (PAT)",
   "settings.integrations.bitbucket.hint": "Synchronisez vos dépôts Bitbucket en connectant vos comptes personnels ou Cloud.",
   "settings.integrations.bitbucket.tokenLabel": "Mot de passe d'application / Jeton",
   "settings.integrations.bitbucket.tokenPlaceholder": "Saisissez votre mot de passe d'application",
@@ -326,5 +325,10 @@
   "settings.ai.probeSuccess": "{{model}} a répondu en {{duration}} ms",
   "settings.ai.probeFailed": "{{model}} n'a pas répondu",
   "settings.ai.probeNoStructuredOutput": "{{model}} a répondu, mais a ignoré le format JSON demandé. Les fonctionnalités qui exigent une sortie structurée — message de commit, plan de commits, briefing quotidien, recherche d'historique — échoueront à chaque appel avec ce modèle.",
-  "settings.ai.probeNoModel": "Choisissez d'abord un modèle."
+  "settings.ai.probeNoModel": "Choisissez d'abord un modèle.",
+  "settings.integrations.gitlab.signIn": "Se connecter avec GitLab",
+  "settings.integrations.gitlab.authorization": "Autorisation GitLab",
+  "settings.integrations.gitlab.deviceCodeInstructions": "Saisissez ce code sur la page GitLab qui vient de s'ouvrir pour autoriser Git Manager.",
+  "settings.integrations.gitlab.clientIdLabel": "ID de l'application",
+  "settings.integrations.gitlab.clientIdHint": "Un GitLab auto-hébergé possède son propre registre d'applications : il lui faut donc une application enregistrée sur cette instance, avec le flux d'autorisation par appareil activé. gitlab.com n'a besoin de rien ici."
 }

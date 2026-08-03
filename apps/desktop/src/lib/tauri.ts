@@ -1016,6 +1016,52 @@ export const githubPollToken = (deviceCode: string) =>
 
 export const githubGetUser = (token: string) => invoke<GitHubUserInfo>('github_get_user', { token })
 
+// ─── GitLab OAuth (device flow) ───────────────────────────────────────────────
+//
+// Same shape as GitHub's above, plus the two things GitLab needs and GitHub does not: the
+// *instance* (gitlab.com or a self-hosted server) and, for a self-hosted one, its own client id —
+// every instance keeps a separate application registry, so the shipped gitlab.com id means nothing
+// there. Passing `null` uses the shipped one.
+
+export interface GitLabDeviceCodeResponse {
+  device_code: string
+  user_code: string
+  verification_uri: string
+  /** `verification_uri` with the code already filled in — GitLab provides this, GitHub does not. */
+  verification_uri_complete: string | null
+  expires_in: number
+  interval: number
+}
+
+export interface GitLabUserInfo {
+  username: string
+  name: string | null
+  email: string | null
+  avatarUrl: string | null
+}
+
+export const gitlabDeviceCode = (instanceUrl: string, clientId: string | null, scope: string) =>
+  invoke<GitLabDeviceCodeResponse>('gitlab_device_code', { instanceUrl, clientId, scope })
+
+export const gitlabPollToken = (instanceUrl: string, clientId: string | null, deviceCode: string) =>
+  invoke<PollTokenResponse>('gitlab_poll_token', { instanceUrl, clientId, deviceCode })
+
+export const gitlabGetUser = (instanceUrl: string, token: string) =>
+  invoke<GitLabUserInfo>('gitlab_get_user', { instanceUrl, token })
+
+// ─── Bitbucket (token, validated) ─────────────────────────────────────────────
+
+export interface BitbucketUserInfo {
+  accountId: string
+  displayName: string
+  nickname: string | null
+  avatarUrl: string | null
+}
+
+/** Verifies an app password / API token by asking Bitbucket who it belongs to. */
+export const bitbucketGetUser = (username: string, token: string) =>
+  invoke<BitbucketUserInfo>('bitbucket_get_user', { username, token })
+
 export interface GitHubRepoInfo {
   id: number
   name: string
