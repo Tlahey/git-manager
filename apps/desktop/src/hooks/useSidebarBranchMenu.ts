@@ -11,7 +11,6 @@ import {
   type BranchMenuActions,
   type BranchTipCommitActions,
   type CommitCopyActions,
-  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import {
   apiPullBranch,
@@ -79,10 +78,9 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
-  // The remote branch awaiting its delete confirmation, or null. The caller renders
-  // `<DeleteRemoteBranchDialog>` — same "own it locally, caller renders it" split as rename above.
-  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
-    useState<PendingDeleteRemoteBranch>(null)
+  // Shared state, not `useState`: the confirmation must survive `GitGraph` unmounting when the file
+  // explorer opens, and it is mounted once by `RepoGraphWorkspace`. See `pendingRemoteBranchDelete`.
+  const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
   // The branch whose "Set upstream" picker is open, or null — only reached when no default is
   // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.
   const [setUpstreamTarget, setSetUpstreamTarget] = useState<string | null>(null)
@@ -350,8 +348,6 @@ export function useSidebarBranchMenu(repoPath: string) {
     openBranchMenu,
     renameTarget,
     setRenameTarget,
-    pendingDeleteRemoteBranch,
-    setPendingDeleteRemoteBranch,
     setUpstreamTarget,
     setSetUpstreamTarget,
   }

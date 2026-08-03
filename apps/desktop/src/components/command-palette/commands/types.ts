@@ -8,6 +8,8 @@ export type PaletteGroup =
   | 'repo'
   | 'commit'
   | 'stash'
+  /** Branch- and tag-scoped actions (merge, fast-forward, tag push/delete). */
+  | 'ref'
   | 'settings'
 
 export interface PaletteCommand {

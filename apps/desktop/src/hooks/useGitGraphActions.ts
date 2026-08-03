@@ -40,7 +40,6 @@ import {
   remoteBranchTarget,
   buildConflictMenuSpec,
   type BranchMenuActions,
-  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
 import { resolveDefaultUpstream } from '../lib/branchUpstream'
@@ -160,8 +159,10 @@ export function useGitGraphActions({
   // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
   // top bar when that column is hidden), plus whether the tag should be annotated. `null` = idle.
   const [tagDraft, setTagDraft] = useState<{ oid: string; annotated: boolean } | null>(null)
-  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
-    useState<PendingDeleteRemoteBranch>(null)
+  // Shared state, not `useState` — see `pendingRemoteBranchDelete` on the repoUI store: the graph
+  // opens this dialog but `RepoGraphWorkspace` mounts it, so it survives the file explorer
+  // unmounting the graph.
+  const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
 
   function refreshLogAndStatus() {
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
@@ -773,7 +774,5 @@ export function useGitGraphActions({
     openMenuAt,
     handleCommitWip,
     openFixupWindow,
-    pendingDeleteRemoteBranch,
-    setPendingDeleteRemoteBranch,
   }
 }

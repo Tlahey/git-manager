@@ -90,6 +90,7 @@ describe('useCommitCommands', () => {
       'commit-tag-annotated',
       'commit-fixup',
       'commit-cherry-pick',
+      'commit-create-patch',
       'commit-copy-sha',
       'commit-open-github',
     ])

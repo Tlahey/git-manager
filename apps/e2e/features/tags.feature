@@ -54,3 +54,35 @@ Feature: Tagging a commit
   Scenario: A tag badge carries its own context-menu marker
     Given the "showcase" fixture repository is opened
     Then the tag "v0.1.0" badge carries the context-menu marker on its commit row
+
+  # Publishing and removing tags. These live on the tag's context menu, which WebDriver cannot open
+  # — the palette entries they run through (`useRefCommands`) are the keyboard route to the same
+  # handlers, added so these actions stop requiring a mouse.
+  @doc
+  Scenario: Publishing a tag to the remote, and taking it back
+    A tag you create is yours alone until you publish it: "Push tag" sends it to
+    the remote, and the two deletions are deliberately separate — removing your
+    local copy leaves the published one alone, and removing the remote's copy
+    (which asks for confirmation, since it affects everyone who has fetched it)
+    leaves yours.
+    Given the app language is English
+    And the "remote-ahead" fixture repository is opened
+    When I open the command palette
+    And I run the command palette action "ref-push-tag-v0.9"
+    Then the remote "origin" has the tag "v0.9"
+    And no error notification is displayed
+    When I open the command palette
+    And I run the command palette action "ref-delete-remote-tag-v1.0"
+    Then the remote tag deletion dialog is shown
+    When I confirm the remote tag deletion
+    Then the remote "origin" no longer has the tag "v1.0"
+    # The local copy is untouched: the two deletions are separate actions on purpose.
+    And the local tag "v1.0" still exists
+
+  Scenario: Deleting a local tag leaves the remote's copy alone
+    Given the "remote-ahead" fixture repository is opened
+    When I open the command palette
+    And I run the command palette action "ref-delete-tag-v1.0"
+    Then the local tag "v1.0" no longer exists
+    And the remote "origin" has the tag "v1.0"
+    And no error notification is displayed

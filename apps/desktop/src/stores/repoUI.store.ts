@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MockIssue } from '../app/pull-requests/types'
+import type { PendingDeleteRemoteBranch } from '../lib/graphContextMenus'
 import { closeRepoScopedPanels } from './repoScopedPanels'
 
 /** Ids of the pinned special tabs (always present, not closeable). */
@@ -71,6 +72,18 @@ export type GraphCommitAction =
    * separate counts, and a user who picked one should not have to re-pick it inside the dialog.
    */
   | { kind: 'recompose'; includeChildren: boolean }
+
+/**
+ * A tag-scoped dialog awaiting confirmation or input, or `null` for "no dialog open".
+ *
+ * Sibling of {@link GraphCommitAction}, and separate from it for the reason that decides where
+ * both are mounted: a commit action needs its commit to exist in the graph's *loaded page*, while
+ * these need only the tag itself. See `pendingTagDialog` on the store.
+ */
+export type TagDialogAction =
+  | { kind: 'annotate'; tagName: string; oid: string; shortOid: string }
+  | { kind: 'deleteRemote'; tagName: string; oid: string; remote: string }
+  | null
 
 /**
  * What the right panel's AI output is about. A branch carries the base it is compared against; a
@@ -301,6 +314,25 @@ interface RepoUIState {
   pendingCommitMenuOid: string | null
   setPendingCommitMenuOid: (oid: string | null) => void
 
+  /**
+   * The two ref-scoped dialogs — a tag's annotate/remote-delete, and a remote branch's delete —
+   * awaiting confirmation, or `null` for "no dialog open".
+   *
+   * They live here rather than in the menu hooks for the same reason the branch-comparison dialog
+   * is mounted by `RepoGraphWorkspace`: they are about a **ref**, not about a commit in the graph's
+   * loaded page, so they must stay open — and openable — while the file explorer has `GitGraph`
+   * unmounted. Held as component state they were owned *twice*, once by the graph and once by the
+   * workspace, and the graph's copy took its open dialog down with it the moment the user opened
+   * the file explorer.
+   *
+   * One store field means one mount site: `RepoGraphWorkspace` renders these, and `GitGraph` must
+   * not — two mounts of one shared value draw the dialog twice.
+   */
+  pendingTagDialog: TagDialogAction
+  setPendingTagDialog: (action: TagDialogAction) => void
+  pendingRemoteBranchDelete: PendingDeleteRemoteBranch
+  setPendingRemoteBranchDelete: (target: PendingDeleteRemoteBranch) => void
+
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
   openTab: (path: string) => void
@@ -336,6 +368,8 @@ export const useRepoUIStore = create<RepoUIState>()(
       compareRefsTarget: null,
       pendingGraphSelection: null,
       selectedCommitOid: null,
+      pendingTagDialog: null,
+      pendingRemoteBranchDelete: null,
       selectedStashIndex: null,
       pendingGraphAction: null,
       pendingCommitMenuOid: null,
@@ -442,6 +476,9 @@ export const useRepoUIStore = create<RepoUIState>()(
       setPendingGraphAction: (action) => set({ pendingGraphAction: action }),
       setPendingCommitMenuOid: (oid) => set({ pendingCommitMenuOid: oid }),
 
+      setPendingTagDialog: (action) => set({ pendingTagDialog: action }),
+      setPendingRemoteBranchDelete: (target) => set({ pendingRemoteBranchDelete: target }),
+
       setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
 
       setActiveRepo: (path) => {
@@ -465,6 +502,8 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
+          pendingTagDialog: null,
+          pendingRemoteBranchDelete: null,
         })
       },
 
@@ -490,6 +529,8 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
+          pendingTagDialog: null,
+          pendingRemoteBranchDelete: null,
         }))
       },
 

@@ -43,6 +43,7 @@ vi.mock('../lib/graphWindows', () => ({
 
 import * as gitApi from '../api/git.api'
 import { useTagContextMenu } from './useTagContextMenu'
+import { useRepoUIStore } from '../stores/repoUI.store'
 
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 
@@ -149,11 +150,13 @@ describe('useTagContextMenu', () => {
     )
   })
 
-  it('opens the remote-delete confirmation via pendingTagAction', () => {
+  // The dialog is opened on the shared store, not on hook state: `RepoGraphWorkspace` mounts it,
+  // so it survives the file explorer unmounting the graph this menu belongs to.
+  it('opens the remote-delete confirmation on the shared store', () => {
     const { result } = setup()
     act(() => result.current.openTagMenu(fakeEvent(), TAG))
     act(() => getItem('gitTree.tagMenu.deleteRemote').action!())
-    expect(result.current.pendingTagAction).toEqual({
+    expect(useRepoUIStore.getState().pendingTagDialog).toEqual({
       kind: 'deleteRemote',
       tagName: 'v1',
       oid: TAG.commitOid,
@@ -161,11 +164,14 @@ describe('useTagContextMenu', () => {
     })
   })
 
-  it('opens the annotate dialog via pendingTagAction', () => {
+  it('opens the annotate dialog on the shared store', () => {
     const { result } = setup()
     act(() => result.current.openTagMenu(fakeEvent(), TAG))
     act(() => getItem('gitTree.tagMenu.annotate').action!())
-    expect(result.current.pendingTagAction).toMatchObject({ kind: 'annotate', tagName: 'v1' })
+    expect(useRepoUIStore.getState().pendingTagDialog).toMatchObject({
+      kind: 'annotate',
+      tagName: 'v1',
+    })
   })
 
   it('copies the tag name to the clipboard', async () => {

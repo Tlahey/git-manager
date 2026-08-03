@@ -12,10 +12,17 @@ import {
   GitPullRequest,
   Wrench,
   Github,
+  FileDiff,
 } from 'lucide-react'
 import { toast } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl } from '../../../api/git.api'
+import {
+  apiCopyCommitSha,
+  apiCherryPickCommit,
+  apiGetCommitWebUrl,
+  apiCreatePatch,
+} from '../../../api/git.api'
+import { pickSaveDestination } from '../../../lib/pickSaveDestination'
 import { apiOpenUrl } from '../../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../../api/github.api'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
@@ -134,6 +141,26 @@ export function useCommitCommands(): PaletteCommand[] {
             queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
             queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
             toast.success(tGit('gitTree.contextMenu.cherryPicked'))
+          })
+          .catch((err) => toast.error(String(err)))
+      },
+    },
+    {
+      // Mirrors the graph menu's "Create patch" — including its native save dialog, which is why
+      // this one stays out of reach of the e2e suite even though the palette entry exists. The
+      // point here is the keyboard route, not the coverage.
+      id: 'commit-create-patch',
+      group: 'commit',
+      title: t('commandPalette.commit.createPatch'),
+      keywords: shaKeyword,
+      icon: createElement(FileDiff),
+      run: () => {
+        pickSaveDestination(`${shortOid}.patch`)
+          .then((destPath) => {
+            if (!destPath) return null
+            return apiCreatePatch(activeRepo, selectedCommitOid, destPath).then(() =>
+              toast.success(tGit('gitTree.contextMenu.patchCreated'))
+            )
           })
           .catch((err) => toast.error(String(err)))
       },

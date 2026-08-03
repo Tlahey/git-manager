@@ -836,7 +836,8 @@ describe('useGitGraphActions — per-branch submenus', () => {
     act(() => getItem('gitTree.branchMenu.delete').action!())
 
     expect(mocked.apiDeleteBranch).not.toHaveBeenCalled()
-    expect(result.current.pendingDeleteRemoteBranch).toEqual({
+    // On the shared store, not on hook state — see `pendingRemoteBranchDelete`.
+    expect(useRepoUIStore.getState().pendingRemoteBranchDelete).toEqual({
       remote: 'origin',
       branchName: 'main',
     })

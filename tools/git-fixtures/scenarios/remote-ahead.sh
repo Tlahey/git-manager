@@ -57,4 +57,12 @@ git add shared.txt
 git commit -q -m "feat: my own take on shared.txt"
 git checkout -q main
 
-register_fixture "remote-ahead" "A clone of a bare origin: main is one commit ahead (clean push), feature/diverged has a locally-diverged commit (rejected push)"
+# Tags for the palette's tag actions, in the two states that matter:
+#   v0.9 — local only, so "Push tag" has something to publish and the remote can be checked after.
+#   v1.0 — on both sides, so "Delete local tag" and "Delete remote tag" can be told apart (each
+#          must leave the other copy alone).
+git tag v0.9
+git tag v1.0
+git push -q origin v1.0
+
+register_fixture "remote-ahead" "A clone of a bare origin: main is one commit ahead (clean push), feature/diverged has a locally-diverged commit (rejected push), tag v0.9 is local-only and v1.0 is on both sides"

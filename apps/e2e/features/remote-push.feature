@@ -52,3 +52,13 @@ Feature: Pushing to a remote
     And I click the toolbar push button
     Then the branch "feature/tracked" has upstream tracking configured for "origin"
     And no error notification is displayed
+
+  # Reached through the palette rather than the branch context menu, which WebDriver cannot open.
+  Scenario: Deleting a remote branch removes it on the remote
+    Given the "remote-ahead" fixture repository is opened
+    When I open the command palette
+    And I run the command palette action "ref-delete-remote-branch-origin/feature/diverged"
+    Then the remote branch deletion dialog is shown
+    When I confirm the remote branch deletion
+    Then the remote "origin" no longer has the branch "feature/diverged"
+    And no error notification is displayed

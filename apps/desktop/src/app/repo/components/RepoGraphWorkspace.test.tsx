@@ -40,17 +40,19 @@ vi.mock('../../../hooks/useSidebarBranchMenu', () => ({
   }),
 }))
 vi.mock('../../../hooks/useSidebarTagMenu', () => ({
-  useSidebarTagMenu: () => ({
-    openTagMenu: vi.fn(),
-    pendingTagAction: null,
-    setPendingTagAction: vi.fn(),
-  }),
+  useSidebarTagMenu: () => ({ openTagMenu: vi.fn() }),
+}))
+vi.mock('../../../components/git-graph/DeleteRemoteBranchDialog', () => ({
+  DeleteRemoteBranchDialog: (props: { branchName: string; remote: string }) => (
+    <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
+  ),
 }))
 
 import { RepoGraphWorkspace } from './RepoGraphWorkspace'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_EXPLORER = useFileExplorerStore.getState()
@@ -59,6 +61,7 @@ beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useFileExplorerStore.setState(INITIAL_EXPLORER, true)
   useSoloModeStore.setState({ active: false, soloed: new Set() })
+  useRepoUIStore.setState({ pendingTagDialog: null, pendingRemoteBranchDelete: null })
 })
 
 describe('RepoGraphWorkspace', () => {
@@ -103,5 +106,34 @@ describe('RepoGraphWorkspace', () => {
     useSoloModeStore.setState({ active: false })
     rerender(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('graph-solo')).toHaveTextContent('')
+  })
+})
+
+/**
+ * The ref-scoped dialogs are mounted here and nowhere else. `GitGraph` used to own a second copy of
+ * this state, and it is unmounted whenever the file explorer opens — so a confirmation opened from
+ * a tag badge disappeared the moment the user switched view, mid-action.
+ */
+describe('RepoGraphWorkspace — ref dialogs survive the graph being unmounted', () => {
+  it('renders the remote-branch confirmation from the shared store', () => {
+    useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-delete-remote-branch')).toHaveTextContent('origin/feat')
+  })
+
+  it('keeps it open once the file explorer has replaced the graph', () => {
+    useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
+    useFileExplorerStore.setState({ isOpen: true })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
+    expect(screen.getByTestId('fake-delete-remote-branch')).toBeInTheDocument()
+    expect(screen.getByTestId('fake-tag-dialogs')).toBeInTheDocument()
+  })
+
+  it('draws each dialog once — two mount sites would double them', () => {
+    useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getAllByTestId('fake-delete-remote-branch')).toHaveLength(1)
+    expect(screen.getAllByTestId('fake-tag-dialogs')).toHaveLength(1)
   })
 })

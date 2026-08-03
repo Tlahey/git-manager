@@ -29,8 +29,6 @@ import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
 import { TagMenuProvider } from './TagMenuContext'
-import { TagDialogsManager } from './components/TagDialogsManager'
-import { DeleteRemoteBranchDialog } from './DeleteRemoteBranchDialog'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
@@ -392,8 +390,6 @@ export function GitGraph({
     cancelTagDraft,
     openMenuAt,
     handleCommitWip,
-    pendingDeleteRemoteBranch,
-    setPendingDeleteRemoteBranch,
   } = useGitGraphActions({
     repoPath,
     nodes,
@@ -409,9 +405,10 @@ export function GitGraph({
     t,
   })
 
-  // Tag badge right-click menu: reuses the commit dialogs above (via selectSingle + setPendingAction)
-  // and owns its two tag-only dialogs through `pendingTagAction`.
-  const { openTagMenu, pendingTagAction, setPendingTagAction } = useTagContextMenu({
+  // Tag badge right-click menu: reuses the commit dialogs above (via selectSingle +
+  // setPendingAction). Its own two dialogs are opened on the shared store and mounted by
+  // `RepoGraphWorkspace`, not here.
+  const { openTagMenu } = useTagContextMenu({
     repoPath,
     currentBranch: headBranchName ?? null,
     isDetached: headIsDetached,
@@ -919,24 +916,10 @@ export function GitGraph({
             onClearPendingAction={() => setPendingAction(null)}
           />
 
-          {/* Tag-only dialogs (annotate / remote delete) driven by the tag context menu */}
-          <TagDialogsManager
-            repoPath={repoPath}
-            pendingTagAction={pendingTagAction}
-            onClearPendingTagAction={() => setPendingTagAction(null)}
-          />
-
-          {/* Remote branch delete confirmation, driven by the branch menus' Delete item on a remote ref */}
-          {pendingDeleteRemoteBranch && (
-            <DeleteRemoteBranchDialog
-              key={`${pendingDeleteRemoteBranch.remote}/${pendingDeleteRemoteBranch.branchName}`}
-              repoPath={repoPath}
-              branchName={pendingDeleteRemoteBranch.branchName}
-              remote={pendingDeleteRemoteBranch.remote}
-              open
-              onClose={() => setPendingDeleteRemoteBranch(null)}
-            />
-          )}
+          {/* The tag dialogs and the remote-branch delete confirmation are NOT mounted here: they
+              are about a ref rather than a commit in this page, and this component is unmounted
+              whenever the file explorer is open — which used to take an open dialog down with it.
+              `RepoGraphWorkspace` mounts them from the shared store state this menu writes. */}
         </div>
       </TagMenuProvider>
     </RefDropProvider>

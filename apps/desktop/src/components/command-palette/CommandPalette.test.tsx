@@ -44,14 +44,16 @@ vi.mock('@git-manager/ui', () => ({
   ),
 }))
 
-const { globalCommands, commitCommands, stashCommands } = vi.hoisted(() => ({
+const { globalCommands, commitCommands, stashCommands, refCommands } = vi.hoisted(() => ({
   globalCommands: { current: [] as PaletteCommand[] },
   commitCommands: { current: [] as PaletteCommand[] },
   stashCommands: { current: [] as PaletteCommand[] },
+  refCommands: { current: [] as PaletteCommand[] },
 }))
 vi.mock('./commands/useGlobalCommands', () => ({ useGlobalCommands: () => globalCommands.current }))
 vi.mock('./commands/useCommitCommands', () => ({ useCommitCommands: () => commitCommands.current }))
 vi.mock('./commands/useStashCommands', () => ({ useStashCommands: () => stashCommands.current }))
+vi.mock('./commands/useRefCommands', () => ({ useRefCommands: () => refCommands.current }))
 
 import { CommandPalette } from './CommandPalette'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
