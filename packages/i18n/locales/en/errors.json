@@ -13,5 +13,8 @@
   "errors.AI_EMPTY_RESPONSE": "The model answered with an empty response.",
   "errors.AI_NO_BRANCH_CHANGES": "This branch has no changes compared to its base branch.",
   "errors.AI_NO_COMMIT_CHANGES": "This commit has no textual changes to explain.",
-  "errors.AI_NO_WORKING_CHANGES": "There are no uncommitted changes to summarize."
+  "errors.AI_NO_WORKING_CHANGES": "There are no uncommitted changes to summarize.",
+  "appCrash.title": "Something went wrong",
+  "appCrash.description": "The interface hit an unexpected error and had to stop. Your repositories are untouched — reloading brings everything back.",
+  "appCrash.reload": "Reload the app"
 }

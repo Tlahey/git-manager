@@ -98,11 +98,15 @@ export async function applyBaseline(baseline: Baseline): Promise<boolean> {
         JSON.stringify({ state: { columns }, version: 0 })
       )
 
-      // Reports whether React is still mounted. A render crash (e.g. the WebKit `NotFoundError:
-      // The object can not be found here` seen mid-run) unmounts everything under #root, and a
-      // scenario that never navigates would otherwise inherit that blank page and time out on
-      // every element — the caller recovers by reloading when this comes back true.
-      return (document.getElementById('root')?.childElementCount ?? 0) === 0
+      // Reports whether the app is still standing. A render crash (e.g. the WebKit
+      // `NotFoundError: The object can not be found here` seen mid-run) used to unmount
+      // everything under #root; with AppErrorBoundary in place it shows the crash fallback
+      // instead — either way, a scenario that never navigates would inherit a dead page and time
+      // out on every element, so the caller recovers by reloading when this comes back true.
+      return (
+        (document.getElementById('root')?.childElementCount ?? 0) === 0 ||
+        document.querySelector('[data-testid="app-error-boundary"]') !== null
+      )
     },
     JSON.stringify({ ...baseline, volatileKeys: VOLATILE_PERSISTED_KEYS })
   )

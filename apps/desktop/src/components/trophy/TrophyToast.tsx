@@ -12,33 +12,43 @@ export function TrophyToast() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (recentUnlock) {
-      setActiveUnlock(recentUnlock)
-      setVisible(true)
+    if (!recentUnlock) {
+      // Cleared from outside this component — the e2e baseline resets the store between
+      // scenarios, and any future "dismiss from elsewhere" surface lands here too. Retire the
+      // toast through React: without this branch the toast kept rendering forever (this effect's
+      // cleanup had already cancelled its hide timer), and the e2e suite's old workaround —
+      // removing the DOM node externally — made React's next commit throw WebKit's
+      // "NotFoundError: The object can not be found here" and unmount the entire tree.
+      setVisible(false)
+      setActiveUnlock(null)
+      return
+    }
+
+    setActiveUnlock(recentUnlock)
+    setVisible(true)
 
       // Mirror the toast as an OS banner; clicking it opens the Rewards tab, where the trophy is.
-      void apiSendNativeNotification({
-        title: t('rewards.toast.nativeTitle', { tier: t(`rewards.${recentUnlock.type}`) }),
-        body: t('rewards.toast.nativeBody', {
-          title: t(achievementI18nKey(recentUnlock.id, 'title')),
-          description: t(achievementI18nKey(recentUnlock.id, 'description')),
-          reward: t(achievementI18nKey(recentUnlock.id, 'reward')),
-        }),
-        route: { kind: 'rewards' },
-      })
+    void apiSendNativeNotification({
+      title: t('rewards.toast.nativeTitle', { tier: t(`rewards.${recentUnlock.type}`) }),
+      body: t('rewards.toast.nativeBody', {
+        title: t(achievementI18nKey(recentUnlock.id, 'title')),
+        description: t(achievementI18nKey(recentUnlock.id, 'description')),
+        reward: t(achievementI18nKey(recentUnlock.id, 'reward')),
+      }),
+      route: { kind: 'rewards' },
+    })
 
-      // Hide the visual toast after 4.5 seconds
-      const timer = setTimeout(() => {
-        setVisible(false)
-        // Let transition finish before resetting state
-        setTimeout(() => {
-          clearRecentUnlock()
-          setActiveUnlock(null)
-        }, 300)
-      }, 4500)
+    // Hide the visual toast after 4.5 seconds
+    const timer = setTimeout(() => {
+      setVisible(false)
+      // Let transition finish before resetting state
+      setTimeout(() => {
+        clearRecentUnlock()
+        setActiveUnlock(null)
+      }, 300)
+    }, 4500)
 
-      return () => clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [recentUnlock, clearRecentUnlock, t])
 
   if (!activeUnlock) return null

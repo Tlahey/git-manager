@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { AppErrorBoundary } from './components/app-error-boundary/AppErrorBoundary'
 import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWindow'
 import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
@@ -136,7 +137,12 @@ e2eSetup
     }
 
     ReactDOM.createRoot(document.getElementById('root')!).render(
-      <React.StrictMode>{content}</React.StrictMode>
+      // The boundary is the difference between one crashed view and a silently blank window: an
+      // uncaught commit-phase error otherwise unmounts everything under #root (seen on WKWebView
+      // as "NotFoundError: The object can not be found here" during full e2e runs).
+      <React.StrictMode>
+        <AppErrorBoundary>{content}</AppErrorBoundary>
+      </React.StrictMode>
     )
     if (!isAppWindow) requestAnimationFrame(hideAppSplash)
   })
