@@ -40,3 +40,18 @@ Feature: Repository-specific settings
     Then the global theme setting shows as overridden
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-repository-override"
+
+  @doc @screenshots
+  Scenario: The repository's own scripts are suggested when adding a task
+    Tasks are the commands you start from the app rather than retyping in a
+    terminal — a build, a test run, a dev server. You name them yourself, and
+    the command field suggests the scripts your repository's `package.json`
+    already declares, so the common ones are one click rather than one recall.
+    Given the "package-health" fixture repository is opened
+    When I open the settings
+    And I open the "run" repository settings tab
+    And I start adding a repository task
+    Then the task command suggestions include "build"
+    And the task command suggestions include "test"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-repository-tasks"

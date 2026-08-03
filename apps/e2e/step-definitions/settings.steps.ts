@@ -379,3 +379,22 @@ After({ tags: '@settings' }, () => {
     rmSync(file, { force: true })
   }
 })
+
+When(/^I start adding a repository task$/, async () => {
+  const add = $('[data-testid="run-tasks-add"]')
+  await add.waitForClickable({ timeout: 15000 })
+  await add.click()
+})
+
+/**
+ * The command field suggests what `get_project_commands` read from the repository's own
+ * `package.json` — so this asserts the fixture's real file reached the UI, not merely that an
+ * autocomplete rendered. Each option carries its script name in its testid
+ * (`CommandAutocomplete`), which keeps the assertion independent of how the row is labelled.
+ */
+Then(/^the task command suggestions include "([^"]*)"$/, async (name: string) => {
+  const input = $('[data-testid="run-tasks-command"]')
+  await input.waitForDisplayed({ timeout: 15000 })
+  await input.click()
+  await $(`[data-testid="run-tasks-command-option-${name}"]`).waitForDisplayed({ timeout: 10000 })
+})

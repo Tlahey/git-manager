@@ -63,11 +63,10 @@ what's missing has to live here, where a human maintains it.
 
 | Missing                                    | Commands / UI involved                                                       | Notes |
 | ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
-| **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. The *integrated terminal* itself is now covered (`terminal.feature`), including a real command's output. |
+| **Running a task** (`run_task_in_terminal`) | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The *listing* half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`). |
 | **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
 | **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |
 | **Tag push/delete, remote branch delete**  | `push_tag`, `delete_tag`, `delete_remote_branch`, `delete_remote_tag`        | The file-based remote fixtures (`remote-ahead`/`remote-behind`) would carry these fine — the entry points are native menus, so they need the same store-bridge technique as branch-upstream. |
-| **Worktree agent activity**                | `get_worktree_agent_activity`                                                | The sidebar's agent-activity badge on worktree rows. |
 | **Undo/redo breadth**                      | undo stack beyond checkout / reset / commit                                  | Other undoable actions (stash pop, branch create/rename…) never get Cmd+Z coverage. |
 | **GitLab / Bitbucket accounts**            | settings `gitlabAccounts` / `bitbucketAccounts`                              | No scenario touches either provider's settings UI. |
 
@@ -79,6 +78,7 @@ what's missing has to live here, where a human maintains it.
 | **Merge a branch / fast-forward** (`merge_branch`, `fast_forward_branch`) | Native branch context menu only, and — unlike "set upstream" or "compare with" — its handlers call the API **directly**, with no `pendingGraphAction` store write to dispatch instead (`useGitGraphActions.ts`'s `onMergeInto`/`onFastForward`). Driving it e2e would mean giving the app a palette entry or a bridge kind first, i.e. a feature change, not a test. The merge *editor* and merge-*commit* actions are covered. |
 | **Branch delete**                         | Native context menu only — investigated and confirmed genuinely blocked, not just unattempted. |
 | **Native OS surfaces**                    | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them. |
+| **Worktree agent activity** (`get_worktree_agent_activity`) | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`. |
 | **The notch window's own rendering**      | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. |
 
 ## Rebase progress view ✅ 📷
