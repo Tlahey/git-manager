@@ -32,6 +32,25 @@ interface RecordedCard {
  */
 Given(/^the notch queue is being recorded$/, async () => {
   const installed = await browser.execute(() => {
+    // The suite-wide baseline (hooks.steps.ts) disables notifications so no scenario opens the
+    // notch window by accident — but some producers check that setting before enqueuing at all
+    // (useNotchOperation's `enabled`), and these scenarios exist to see real hook cards reach the
+    // queue. Re-enable delivery for this scenario only; the next scenario's Before re-disables it.
+    const settingsStore = (
+      window as unknown as {
+        __e2eSettingsStore?: {
+          getState: () => {
+            settings: { notifications?: Record<string, unknown> }
+            updateSettings: (partial: Record<string, unknown>) => void
+          }
+        }
+      }
+    ).__e2eSettingsStore
+    if (settingsStore) {
+      const current = settingsStore.getState().settings.notifications ?? {}
+      settingsStore.getState().updateSettings({ notifications: { ...current, enabled: true } })
+    }
+
     const store = (
       window as unknown as {
         __e2eNotchQueueStore?: {

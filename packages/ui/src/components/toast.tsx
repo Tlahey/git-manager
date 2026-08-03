@@ -98,6 +98,8 @@ function ToastCard({ item }: { item: ToastItem }) {
   return (
     <div
       role="status"
+      data-testid="toast"
+      data-variant={item.variant}
       className={cn(
         'border-border bg-popover/95 pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-2.5 rounded-lg border border-l-4 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out',
         border,

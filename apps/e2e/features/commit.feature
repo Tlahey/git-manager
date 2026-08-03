@@ -35,6 +35,7 @@ Feature: Committing staged changes
     And I enter the commit message "test: commit staged changes via e2e"
     And I commit the staged changes
     Then the repository HEAD commit subject is "test: commit staged changes via e2e"
+    And no error notification is displayed
     When I undo the last action
     Then the repository HEAD commit subject is "base: add config"
     When I redo the last undone action

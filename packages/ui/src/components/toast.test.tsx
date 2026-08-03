@@ -30,7 +30,12 @@ describe('toast store + Toaster', () => {
     act(() => {
       toast.success('Saved', { description: 'Your changes were committed.' })
     })
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    const card = screen.getByRole('status')
+    expect(card).toBeInTheDocument()
+    // The testid + variant attributes are a contract: the e2e suite's "no error notification is
+    // displayed" step queries `[data-testid="toast"][data-variant="error"]`.
+    expect(card).toHaveAttribute('data-testid', 'toast')
+    expect(card).toHaveAttribute('data-variant', 'success')
     expect(screen.getByText('Saved')).toBeInTheDocument()
     expect(screen.getByText('Your changes were committed.')).toBeInTheDocument()
   })
@@ -41,6 +46,7 @@ describe('toast store + Toaster', () => {
       toast('Just FYI')
     })
     expect(screen.getByText('Just FYI')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveAttribute('data-variant', 'info')
   })
 
   it('stacks multiple toasts instead of replacing the previous one', () => {

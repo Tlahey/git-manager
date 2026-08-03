@@ -51,3 +51,4 @@ Feature: Pushing to a remote
     And I check out the "feature/tracked" branch
     And I click the toolbar push button
     Then the branch "feature/tracked" has upstream tracking configured for "origin"
+    And no error notification is displayed

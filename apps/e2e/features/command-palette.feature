@@ -147,3 +147,4 @@ Feature: Command palette (⌘K)
     When I run the command palette action "stash-pop"
     Then the repository has 1 stash
     And the file "notes.txt" exists in the working tree
+    And no error notification is displayed

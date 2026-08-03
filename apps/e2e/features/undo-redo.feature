@@ -40,6 +40,7 @@ Feature: Undo and redo a branch checkout
     Then the reset dialog is shown
     When I confirm the reset
     Then the repository HEAD commit subject is "chore: bump counter to 2"
+    And no error notification is displayed
     When I undo the last action
     Then the repository HEAD commit subject is "chore: bump counter to 4"
     When I redo the last undone action

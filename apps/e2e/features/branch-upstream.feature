@@ -31,3 +31,4 @@ Feature: Setting a local branch's upstream
     Then the set-upstream dialog preselects "origin/feature/diverged"
     When I confirm the set-upstream dialog
     Then the branch "feature/diverged" has upstream tracking configured for "origin"
+    And no error notification is displayed
