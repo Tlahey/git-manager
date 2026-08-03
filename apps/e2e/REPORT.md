@@ -5,9 +5,9 @@ point without anyone having to run an 18-minute suite first. It is a snapshot of
 last run: treat the shape (which files dominate, how little sits inside steps) as the signal, and
 the absolute numbers as indicative._
 
-**163 scenarios** across **52 feature files** · 0 failing · **6.7 min** of scenario time, of which 4.4 min (66%) is inside steps.
+**170 scenarios** across **53 feature files** · 0 failing · **6.9 min** of scenario time, of which 4.7 min (67%) is inside steps.
 
-Plus **0.1 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 52 times, ~0.1s each.
+Plus **0.1 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 53 times, ~0.1s each.
 
 This is a report on the scenarios that **exist**. What the suite does *not* cover — the untested command surface, and what is deliberately out of reach — lives in [COVERAGE.md § Not covered today](COVERAGE.md#not-covered-today).
 
@@ -17,56 +17,57 @@ Read the last column first. "In steps" is what cucumber's `afterStep` reported, 
 
 | Feature | Scenarios | Failing | App launch | Scenarios | In steps | Outside steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `settings.feature` | 15 |  | 0.1s | 29.0s | 19.0s | **10.0s** |
-| `working-tree.feature` | 9 |  | 0.2s | 24.7s | 18.0s | **6.7s** |
-| `rebase-progress.feature` | 10 |  | 0.1s | 23.4s | 18.8s | **4.6s** |
-| `command-palette.feature` | 10 |  | 0.1s | 17.9s | 14.7s | **3.2s** |
-| `merge-editor.feature` | 4 |  | 0.1s | 17.7s | 6.3s | **11.5s** |
-| `git-hooks.feature` | 4 |  | 0.1s | 14.8s | 5.6s | **9.2s** |
-| `merge-commit-actions.feature` | 4 |  | 0.1s | 13.6s | 7.4s | **6.2s** |
-| `bisect.feature` | 6 |  | 0.1s | 13.6s | 10.5s | **3.1s** |
-| `remote-push.feature` | 3 |  | 0.2s | 13.1s | 9.6s | **3.5s** |
-| `worktree.feature` | 4 |  | 0.1s | 11.8s | 10.5s | **1.3s** |
-| `rebase-conflict.feature` | 5 |  | 0.2s | 10.9s | 8.5s | **2.4s** |
-| `tags.feature` | 3 |  | 0.2s | 10.4s | 7.9s | **2.5s** |
-| `undo-redo.feature` | 2 |  | 0.2s | 10.1s | 7.9s | **2.3s** |
+| `working-tree.feature` | 10 |  | 0.2s | 29.5s | 21.5s | **8.0s** |
+| `settings.feature` | 15 |  | 0.1s | 29.2s | 18.9s | **10.4s** |
+| `rebase-progress.feature` | 10 |  | 0.2s | 23.4s | 17.8s | **5.6s** |
+| `command-palette.feature` | 10 |  | 0.1s | 17.8s | 14.6s | **3.2s** |
+| `git-hooks.feature` | 4 |  | 0.1s | 14.6s | 5.5s | **9.1s** |
+| `merge-commit-actions.feature` | 4 |  | 0.1s | 14.0s | 7.8s | **6.2s** |
+| `bisect.feature` | 6 |  | 0.1s | 13.3s | 10.2s | **3.1s** |
+| `worktree.feature` | 4 |  | 0.2s | 13.0s | 10.6s | **2.4s** |
+| `remote-push.feature` | 3 |  | 0.2s | 12.8s | 9.4s | **3.4s** |
+| `merge-editor.feature` | 4 |  | 0.1s | 12.6s | 6.4s | **6.2s** |
+| `stash-stack.feature` | 3 |  | 0.2s | 12.1s | 8.7s | **3.3s** |
+| `rebase-conflict.feature` | 5 |  | 0.1s | 10.8s | 8.4s | **2.4s** |
+| `tags.feature` | 3 |  | 0.1s | 10.0s | 7.7s | **2.3s** |
+| `undo-redo.feature` | 2 |  | 0.1s | 9.7s | 7.4s | **2.4s** |
 | `blame-history.feature` | 4 |  | 0.1s | 9.4s | 5.3s | **4.1s** |
-| `ai-explanation.feature` | 4 |  | 0.1s | 9.1s | 5.1s | **4.1s** |
-| `patch-workspace.feature` | 2 |  | 0.2s | 9.1s | 6.0s | **3.1s** |
-| `sidebar-navigation.feature` | 2 |  | 0.2s | 8.7s | 6.6s | **2.1s** |
-| `ai-generation.feature` | 4 |  | 0.1s | 8.4s | 6.3s | **2.1s** |
-| `open-repo.feature` | 5 |  | 0.1s | 8.2s | 7.0s | **1.2s** |
-| `fixup-autosquash.feature` | 4 |  | 0.1s | 7.6s | 6.5s | **1.1s** |
-| `settings-repository.feature` | 2 |  | 0.2s | 7.4s | 5.1s | **2.3s** |
-| `launchpad-organize.feature` | 3 |  | 0.1s | 7.4s | 4.2s | **3.2s** |
-| `marketing-screenshots.feature` | 2 |  | 0.1s | 6.9s | 2.8s | **4.1s** |
+| `ai-explanation.feature` | 4 |  | 0.1s | 9.2s | 5.1s | **4.1s** |
+| `sidebar-navigation.feature` | 2 |  | 0.1s | 8.9s | 6.8s | **2.1s** |
+| `patch-workspace.feature` | 2 |  | 0.2s | 8.9s | 6.7s | **2.2s** |
+| `open-repo.feature` | 5 |  | 0.2s | 8.4s | 7.3s | **1.2s** |
+| `fixup-autosquash.feature` | 4 |  | 0.1s | 7.5s | 6.4s | **1.1s** |
+| `launchpad-organize.feature` | 3 |  | 0.1s | 7.4s | 4.2s | **3.1s** |
+| `settings-repository.feature` | 2 |  | 0.1s | 7.1s | 4.9s | **2.3s** |
+| `ai-generation.feature` | 4 |  | 0.1s | 7.1s | 5.0s | **2.1s** |
+| `dashboard.feature` | 2 |  | 0.1s | 7.1s | 3.0s | **4.0s** |
+| `marketing-screenshots.feature` | 2 |  | 0.1s | 7.0s | 2.9s | **4.1s** |
 | `interface-overview.feature` | 3 |  | 0.1s | 6.8s | 3.7s | **3.1s** |
-| `commit-graph.feature` | 2 |  | 0.1s | 6.6s | 2.5s | **4.0s** |
-| `rewards.feature` | 2 |  | 0.2s | 6.1s | 4.7s | **1.4s** |
+| `commit-graph.feature` | 2 |  | 0.1s | 6.5s | 2.5s | **4.1s** |
+| `terminal.feature` | 3 |  | 0.2s | 6.4s | 5.1s | **1.3s** |
+| `rewards.feature` | 2 |  | 0.2s | 6.2s | 4.7s | **1.4s** |
 | `daily-summary.feature` | 3 |  | 0.1s | 5.8s | 4.7s | **1.1s** |
 | `commit.feature` | 2 |  | 0.1s | 5.6s | 3.5s | **2.1s** |
-| `file-explorer.feature` | 4 |  | 0.1s | 5.2s | 4.2s | **1.1s** |
 | `action-journal.feature` | 1 |  | 0.1s | 5.2s | 2.1s | **3.1s** |
-| `branch-rename.feature` | 2 |  | 0.1s | 4.9s | 2.8s | **2.0s** |
-| `compare-branches.feature` | 3 |  | 0.1s | 4.7s | 3.6s | **1.1s** |
-| `submodule.feature` | 1 |  | 0.2s | 4.5s | 2.3s | **2.2s** |
-| `remote-fetch-pull.feature` | 1 |  | 0.2s | 4.3s | 3.1s | **1.2s** |
-| `branch-upstream.feature` | 1 |  | 0.1s | 4.2s | 2.2s | **2.0s** |
+| `file-explorer.feature` | 4 |  | 0.1s | 5.1s | 4.0s | **1.1s** |
+| `branch-rename.feature` | 2 |  | 0.1s | 5.0s | 2.9s | **2.0s** |
+| `compare-branches.feature` | 3 |  | 0.1s | 4.6s | 3.6s | **1.1s** |
+| `remote-fetch-pull.feature` | 1 |  | 0.2s | 4.4s | 3.1s | **1.2s** |
+| `branch-upstream.feature` | 1 |  | 0.1s | 4.3s | 2.3s | **2.0s** |
 | `ai-code-review.feature` | 2 |  | 0.1s | 4.2s | 2.1s | **2.0s** |
-| `notifications.feature` | 3 |  | 0.1s | 4.0s | 2.8s | **1.1s** |
-| `stash-stack.feature` | 1 |  | 0.1s | 3.8s | 2.6s | **1.2s** |
-| `detached-head.feature` | 2 |  | 0.1s | 3.6s | 2.5s | **1.0s** |
-| `dashboard.feature` | 1 |  | 0.1s | 3.5s | 1.5s | **2.0s** |
-| `package-health.feature` | 1 |  | 0.1s | 2.9s | 1.6s | **1.3s** |
+| `submodule.feature` | 1 |  | 0.2s | 4.2s | 3.0s | **1.1s** |
+| `notifications.feature` | 3 |  | 0.2s | 3.9s | 2.7s | **1.2s** |
+| `detached-head.feature` | 2 |  | 0.1s | 3.5s | 2.5s | **1.1s** |
+| `package-health.feature` | 1 |  | 0.2s | 2.9s | 1.8s | **1.1s** |
 | `ai-summary-search.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.0s** |
-| `branch-create.feature` | 1 |  | 0.1s | 2.7s | 1.7s | **1.0s** |
-| `ai-pr-description.feature` | 1 |  | 0.1s | 2.4s | 1.4s | **1.0s** |
-| `launchpad-prs.feature` | 1 |  | 0.1s | 2.4s | 1.3s | **1.0s** |
-| `ai-commit-search.feature` | 1 |  | 0.1s | 2.3s | 1.3s | **1.0s** |
-| `launchpad-issues.feature` | 1 |  | 0.1s | 2.2s | 1.1s | **1.1s** |
-| `activity-log.feature` | 1 |  | 0.1s | 2.2s | 1.1s | **1.0s** |
-| `launchpad-commit-stats.feature` | 1 |  | 0.1s | 2.1s | 1.0s | **1.1s** |
-| `ai-commit-recompose.feature` | 1 |  | 0.1s | 1.4s | 1.4s | **0.0s** |
+| `branch-create.feature` | 1 |  | 0.1s | 2.8s | 1.8s | **1.0s** |
+| `ai-pr-description.feature` | 1 |  | 0.1s | 2.5s | 1.4s | **1.0s** |
+| `ai-commit-search.feature` | 1 |  | 0.1s | 2.4s | 1.3s | **1.0s** |
+| `launchpad-prs.feature` | 1 |  | 0.1s | 2.3s | 1.3s | **1.0s** |
+| `activity-log.feature` | 1 |  | 0.1s | 2.2s | 1.2s | **1.0s** |
+| `launchpad-issues.feature` | 1 |  | 0.1s | 2.1s | 1.0s | **1.1s** |
+| `launchpad-commit-stats.feature` | 1 |  | 0.1s | 2.0s | 1.0s | **1.0s** |
+| `ai-commit-recompose.feature` | 1 |  | 0.1s | 1.4s | 1.3s | **0.0s** |
 | `command-mocking.feature` | 6 |  | 0.1s | 0.2s | 0.1s | **0.1s** |
 | `app-launch.feature` | 2 |  | 0.1s | 0.1s | 0.1s | **0.0s** |
 
@@ -74,18 +75,18 @@ Read the last column first. "In steps" is what cucumber's `afterStep` reported, 
 
 | Scenario | Feature | Total | Outside steps |
 | --- | --- | ---: | ---: |
-| Auto-merging then resolving the remaining conflicts writes the merged result to disk | `merge-editor.feature` | 10.5s | 7.5s |
+| Discarding a file's changes throws them away | `working-tree.feature` | 5.7s | 2.1s |
 | A pre-commit hook that refuses stops the commit and shows its output | `git-hooks.feature` | 5.7s | 4.0s |
-| Hooks installed husky-style through core.hooksPath run just the same | `git-hooks.feature` | 5.6s | 4.0s |
-| Undoing a reset restores HEAD and redo re-applies it | `undo-redo.feature` | 5.3s | 1.0s |
+| Auto-merging then resolving the remaining conflicts writes the merged result to disk | `merge-editor.feature` | 5.5s | 2.3s |
+| Stashing puts your work aside and clears the tree | `stash-stack.feature` | 5.5s | 2.1s |
+| Hooks installed husky-style through core.hooksPath run just the same | `git-hooks.feature` | 5.5s | 4.0s |
 | Explaining the commands behind a recent action | `action-journal.feature` | 5.2s | 3.1s |
-| Adding a new worktree | `worktree.feature` | 5.2s | 1.2s |
-| Applying an external patch file | `patch-workspace.feature` | 5.0s | 2.1s |
-| Read a file's diff before you stage it | `working-tree.feature` | 4.9s | 2.2s |
-| Undoing a checkout returns to the previous branch and redo re-applies it | `undo-redo.feature` | 4.8s | 1.2s |
-| Tagging an earlier commit from the palette | `tags.feature` | 4.7s | 1.2s |
-| A rejected push reports the conflict instead of silently failing | `remote-push.feature` | 4.7s | 1.2s |
+| Adding a new worktree | `worktree.feature` | 5.2s | 1.3s |
+| Undoing a reset restores HEAD and redo re-applies it | `undo-redo.feature` | 5.2s | 1.1s |
+| Tagging an earlier commit from the palette | `tags.feature` | 4.7s | 1.1s |
+| Applying an external patch file | `patch-workspace.feature` | 4.6s | 1.1s |
+| A paused rebase takes over the content view with its step rail | `rebase-progress.feature` | 4.6s | 2.2s |
 | Searching the sidebar filters and can solo a branch | `sidebar-navigation.feature` | 4.6s | 1.1s |
-| A paused rebase takes over the content view with its step rail | `rebase-progress.feature` | 4.5s | 2.2s |
-| The sidebar lists a real git submodule | `submodule.feature` | 4.5s | 2.2s |
-| Reverting a merge commit with mainline 1 undoes the merged-in branch | `merge-commit-actions.feature` | 4.4s | 2.1s |
+| Reverting a merge commit with mainline 1 undoes the merged-in branch | `merge-commit-actions.feature` | 4.6s | 2.1s |
+| Undoing a checkout returns to the previous branch and redo re-applies it | `undo-redo.feature` | 4.6s | 1.3s |
+| A rejected push reports the conflict instead of silently failing | `remote-push.feature` | 4.5s | 1.2s |
