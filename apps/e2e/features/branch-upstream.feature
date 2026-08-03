@@ -21,14 +21,24 @@ Feature: Setting a local branch's upstream
   Background:
     Given the "remote-ahead" fixture repository is opened
 
+  # Test rationale (kept out of the published description): "feature/diverged" is a local branch
+  # this fixture creates straight from a raw commit (not from `origin/feature/diverged`), so it
+  # has no upstream configured yet even though a remote-tracking branch of the same name already
+  # exists — the "unambiguous default" case resolveDefaultUpstream is built for, here reached
+  # through the dialog instead of the direct-apply shortcut.
+  @doc @screenshots
   Scenario: Setting a branch's upstream configures tracking on disk
-    "feature/diverged" is a local branch this fixture creates straight from a raw commit (not from
-    `origin/feature/diverged`), so it has no upstream configured yet even though a remote-tracking
-    branch of the same name already exists — the "unambiguous default" case resolveDefaultUpstream
-    is built for, here reached through the dialog instead of the direct-apply shortcut.
+    A local branch that tracks nothing has no ahead/behind counts and nothing
+    to pull into. "Set upstream" fixes that in one dialog: it proposes the
+    remote branch matching your branch's name when there is exactly one, and
+    from the moment you confirm, push and pull know where to go and the
+    toolbar badges start counting.
+    Given the app language is English
     When I select the "HEAD" commit in the graph
     And I open the set-upstream dialog for branch "feature/diverged"
     Then the set-upstream dialog preselects "origin/feature/diverged"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-branch-upstream"
     When I confirm the set-upstream dialog
     Then the branch "feature/diverged" has upstream tracking configured for "origin"
     And no error notification is displayed

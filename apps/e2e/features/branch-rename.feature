@@ -19,12 +19,21 @@ Feature: Renaming a branch
   Background:
     Given the "feature-branches" fixture repository is opened
 
+  @doc @screenshots
   Scenario: Renaming a branch updates it on disk
+    Picked the wrong name? Rename the branch from its context menu: the dialog
+    pre-fills the current name, you type the new one, and the branch moves on
+    disk — history, upstream and all. The one branch that refuses is a
+    protected one (main, by default): the dialog tells you so inline instead
+    of letting the rename land.
+    Given the app language is English
     When I select the "HEAD" commit in the graph
     And I open the rename dialog for the branch "feature/login" via the store bridge
     Then the rename branch dialog is shown
     When I set the rename branch name to "feature/authentication"
-    And I confirm the branch rename
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-branch-rename"
+    When I confirm the branch rename
     Then the branch "feature/authentication" exists
     And the branch "feature/login" no longer exists
     And no error notification is displayed

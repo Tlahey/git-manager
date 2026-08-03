@@ -49,7 +49,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Reading your repository',
-    features: ['commit-graph', 'sidebar-navigation', 'blame-history', 'bisect'],
+    features: ['commit-graph', 'sidebar-navigation', 'file-explorer', 'blame-history', 'bisect'],
   },
   {
     // undo-redo lives here rather than with branches: it is the safety net over the actions this
@@ -59,11 +59,26 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'When Git gets in the way',
-    features: ['merge-editor', 'rebase-conflict', 'rebase-progress', 'fixup-autosquash'],
+    features: [
+      'merge-editor',
+      'rebase-conflict',
+      'rebase-progress',
+      'fixup-autosquash',
+      'merge-commit-actions',
+    ],
   },
   {
     title: 'Branches, stashes & worktrees',
-    features: ['branch-create', 'stash-stack', 'worktree', 'submodule', 'detached-head'],
+    features: [
+      'branch-create',
+      'branch-rename',
+      'branch-upstream',
+      'compare-branches',
+      'stash-stack',
+      'worktree',
+      'submodule',
+      'detached-head',
+    ],
   },
   {
     title: 'Syncing with remotes',

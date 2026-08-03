@@ -31,14 +31,22 @@ Feature: Merge commit actions (revert with mainline, compare against parent)
   fixture before writing the assertions below.
 
   Background:
-    Given the "showcase" fixture repository is opened
+    Given the app language is English
+    And the "showcase" fixture repository is opened
 
+  @doc @screenshots
   Scenario: Reverting a merge commit with mainline 1 undoes the merged-in branch
+    Reverting a merge is the one revert Git refuses to guess at: a merge has
+    two "before" states, so the dialog asks which parent is your mainline.
+    Pick parent 1 to undo everything the merged-in branch brought, as one new
+    commit — the usual way to back out a bad merge without rewriting history.
     When I select the "v0.2.0" commit in the graph
     And I open the command palette
     And I run the command palette action "commit-revert"
     Then the revert dialog is shown
     And the revert mainline picker is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-revert-merge"
     When I choose mainline parent "1" for the revert
     And I confirm the revert
     Then the repository HEAD commit subject contains "Revert"
@@ -59,12 +67,20 @@ Feature: Merge commit actions (revert with mainline, compare against parent)
     And the file "README.md" in the working tree does not contain "Badges!"
     And the file "README.md" in the working tree contains "Window drag region fix."
 
+  @doc @screenshots
   Scenario: Comparing a merge commit against parent 1 shows the merged-in branch's files
+    A merge commit's regular diff panel always reads it against the mainline.
+    To see the other side — or to make the first-parent reading explicit —
+    compare the merge against either parent: against parent 1 you get exactly
+    what the merged-in branch contributed, against parent 2 what the mainline
+    had done in the meantime.
     When I select the "v0.2.0" commit in the graph
     And I dispatch comparing the selected commit against parent "1"
     Then the compare-parent dialog is shown
     And the compare-parent diff lists the file "rollback.ts"
     And the compare-parent diff lists the file "rollback.test.ts"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-compare-parent"
 
   Scenario: Comparing a merge commit against parent 2 shows the mainline's own change
     When I select the "v0.2.0" commit in the graph
