@@ -48,11 +48,11 @@ Before(async () => {
   // passing in isolation, where no override was ever written.
   const repoOverrides = {}
 
-  // Same reason again: the integrations scenarios connect a GitLab/Bitbucket account, and a
-  // connected account is persisted settings like any other — it would still be listed when the
-  // next run's first integrations scenario asserts an empty state. Spelled out as the factory
-  // shape rather than `{}`: an empty object means "reset the group" to the baseline, and the
-  // section reads `gitlabAccounts.length` straight off it.
+  // Kept even though GitLab and Bitbucket are currently unlisted: a connected account is
+  // persisted settings like any other, and localStorage survives app relaunches, so one left by an
+  // older build (or by re-enabling a provider locally) would otherwise carry into every run.
+  // Spelled out as the factory shape rather than `{}` — an empty object means "reset the group" to
+  // the baseline, and the panels read `gitlabAccounts.length` straight off it.
   const integrations = {
     gitlabAccounts: [],
     gitlabActiveAccountId: null,
