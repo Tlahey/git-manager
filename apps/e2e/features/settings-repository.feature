@@ -55,3 +55,27 @@ Feature: Repository-specific settings
     And the task command suggestions include "test"
     And the interface has settled
     And a full-window screenshot is saved as "doc-repository-tasks"
+
+  @doc @screenshots
+  Scenario: A saved task becomes the toolbar's Launch button
+    Once a task is saved, it leaves Settings for good: the toolbar grows a
+    Launch button. Its main click starts the repository's default task, and
+    the arrow beside it lists every task you've defined. Tasks launch in
+    your external terminal (the one configured under External tools), in
+    the folder of the tab you're on — so in a worktree, the dev server
+    starts in that worktree, not in the main checkout.
+    Given the app language is English
+    And AI features are turned off
+    And the "package-health" fixture repository is opened
+    When I open the settings
+    And I open the "run" repository settings tab
+    And I start adding a repository task
+    And I name the repository task "Build"
+    And I pick the task command suggestion "build"
+    And I save the repository task
+    And I go back from the settings
+    Then the toolbar shows the Launch button
+    When I open the toolbar Launch menu
+    And the interface has settled
+    Then the toolbar Launch menu lists the task "Build"
+    And a full-window screenshot is saved as "doc-run-task"

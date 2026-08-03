@@ -336,7 +336,13 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
           isMac ? 'pl-[72px]' : ''
         }`}
       >
-        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-xs"
+          onClick={onClose}
+          data-testid="settings-back"
+        >
           <ArrowLeft className="h-3.5 w-3.5" />
           {t('settings.back')}
         </Button>
