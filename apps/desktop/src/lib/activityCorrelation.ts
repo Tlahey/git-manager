@@ -41,16 +41,25 @@ export function getActiveCorrelation(): ActivityCorrelation | null {
 
 /**
  * Run `fn` as a single correlated user action labelled `label`. Every `invoke` issued while `fn`
- * is on the stack shares one fresh correlation id. Nesting is supported: the previous correlation
- * is restored when `fn` settles, so an outer action's later calls keep their own id.
+ * is on the stack shares one correlation id.
+ *
+ * **The outermost call wins.** A nested `runActivity` keeps the correlation already in scope
+ * rather than opening a new one, because the outer call is the thing the user did: "create a
+ * branch here" is one gesture, even though it runs `apiCreateBranch` and `apiCheckoutBranch`,
+ * each of which wraps itself. Letting the inner calls take their own id split one gesture across
+ * several ids, which cost real behaviour rather than just log tidiness — the undo stack groups on
+ * this field (`UndoAction.correlationId`), so ⌘Z took back only the last operation of a gesture,
+ * and for create-branch that meant asking git to delete a branch it had just made HEAD, which it
+ * refuses. The label of the outermost call is the one that names the block, which is also the one
+ * worth reading in the journal.
  */
 export async function runActivity<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  const previous = activeCorrelation
+  if (activeCorrelation) return fn()
   activeCorrelation = { id: `corr-${Date.now()}-${seq++}`, label }
   try {
     return await fn()
   } finally {
-    activeCorrelation = previous
+    activeCorrelation = null
   }
 }
 

@@ -1,5 +1,5 @@
 import { getRebaseState, getBranches, pinObject } from '../../lib/tauri'
-import { closeActivitySession } from '../../lib/activityCorrelation'
+import { closeActivitySession, getActiveCorrelation } from '../../lib/activityCorrelation'
 import { i18next, type TFunction } from '@git-manager/i18n'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { useNotchQueueStore } from '../../stores/notchQueue.store'
@@ -18,8 +18,18 @@ export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+/**
+ * Records an undoable action, tagged with the user gesture in scope.
+ *
+ * The tag is what lets one ⌘Z take back a gesture that performed several git operations — see
+ * `ActionBase.correlationId`. Callers never pass it: it is read from the ambient activity
+ * correlation, so any action already wrapped in `runActivity` groups for free.
+ */
 export function pushAction(repoPath: string, action: UndoAction) {
-  useUndoHistoryStore.getState().push(repoPath, action)
+  const correlation = getActiveCorrelation()
+  useUndoHistoryStore
+    .getState()
+    .push(repoPath, correlation ? { ...action, correlationId: correlation.id } : action)
 }
 
 export function clearRedo(repoPath: string) {

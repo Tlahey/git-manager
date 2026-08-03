@@ -33,6 +33,34 @@ interface UndoHistoryState {
   validateAndPrune: (repoPath: string) => Promise<void>
 }
 
+/**
+ * The entries belonging to the same user gesture as the one at `pointer - 1`, oldest first.
+ *
+ * One gesture can perform several git operations — "create a branch here" creates the ref and
+ * checks it out — and `pushAction` stamps each with the gesture's correlation id. Undo takes the
+ * whole run back at once, so a single ⌘Z matches a single thing the user did. Entries with no
+ * correlation id (anything not wrapped in `runActivity`) stand alone, which keeps every existing
+ * one-operation action behaving exactly as before.
+ */
+function groupEndingAt(stack: UndoAction[], pointer: number): UndoAction[] {
+  const last = stack[pointer - 1]
+  if (!last) return []
+  if (!last.correlationId) return [last]
+  let start = pointer - 1
+  while (start > 0 && stack[start - 1]?.correlationId === last.correlationId) start--
+  return stack.slice(start, pointer)
+}
+
+/** The mirror of {@link groupEndingAt} for redo: the gesture starting at `pointer`, oldest first. */
+function groupStartingAt(stack: UndoAction[], pointer: number): UndoAction[] {
+  const first = stack[pointer]
+  if (!first) return []
+  if (!first.correlationId) return [first]
+  let end = pointer + 1
+  while (end < stack.length && stack[end]?.correlationId === first.correlationId) end++
+  return stack.slice(pointer, end)
+}
+
 function emptyHistory(): RepoHistory {
   return { stack: [], pointer: 0 }
 }
@@ -89,26 +117,37 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
       undo: async (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return
-        const action = history.stack[history.pointer - 1]
-        if (!action) return
-        await executeUndo(repoPath, action)
+        const group = groupEndingAt(history.stack, history.pointer)
+        if (group.length === 0) return
+        // Newest operation first: a gesture's steps have to come apart in the reverse order they
+        // were performed, or a step undoes into a state its predecessor has not left yet.
+        for (let i = group.length - 1; i >= 0; i--) {
+          await executeUndo(repoPath, group[i]!)
+        }
         set((state) => {
           const h = state.byRepo[repoPath]
           if (!h) return state
-          return { byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer - 1 } } }
+          return {
+            byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer - group.length } },
+          }
         })
       },
 
       redo: async (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return
-        const action = history.stack[history.pointer]
-        if (!action) return
-        await executeRedo(repoPath, action)
+        const group = groupStartingAt(history.stack, history.pointer)
+        if (group.length === 0) return
+        // Oldest first — the order they originally happened in.
+        for (const action of group) {
+          await executeRedo(repoPath, action)
+        }
         set((state) => {
           const h = state.byRepo[repoPath]
           if (!h) return state
-          return { byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer + 1 } } }
+          return {
+            byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer + group.length } },
+          }
         })
       },
 
@@ -139,18 +178,20 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
         return !!history && history.pointer < history.stack.length
       },
 
+      // Both peeks name the *gesture*, i.e. the oldest entry of the group about to be undone or
+      // redone — "create branch", not the checkout that followed it. `?.` guards against a
+      // corrupted/out-of-bounds entry so a bad persisted stack can't crash the toolbar on render
+      // (see the sanitizing `merge` below).
       peekUndoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return null
-        // `?.` guards against a corrupted/out-of-bounds entry so a bad persisted stack can't crash
-        // the whole toolbar on render (see the sanitizing `merge` below).
-        return history.stack[history.pointer - 1]?.label ?? null
+        return groupEndingAt(history.stack, history.pointer)[0]?.label ?? null
       },
 
       peekRedoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return null
-        return history.stack[history.pointer]?.label ?? null
+        return groupStartingAt(history.stack, history.pointer)[0]?.label ?? null
       },
 
       validateAndPrune: async (repoPath) => {

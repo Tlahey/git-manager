@@ -33,6 +33,18 @@ interface ActionBase {
   timestamp: number
   /** Hidden refs (refs/git-manager/undo/<name>) to release when the entry leaves the history. */
   pinnedRefs: string[]
+  /**
+   * The user gesture this entry belongs to — the activity log's correlation id
+   * (`lib/activityCorrelation.ts`), stamped by `pushAction`.
+   *
+   * One gesture routinely performs several git operations: "create a branch here" creates the ref
+   * *and* checks it out. Undo has to take them back as a unit, or it takes back half of what the
+   * user did — and, worse, can leave the repository in a state where the remaining half cannot be
+   * undone at all (deleting a branch git has just made HEAD is refused, which is exactly how this
+   * field came to exist). Entries sharing a correlation id are undone and redone together, newest
+   * operation first; an entry without one is its own group.
+   */
+  correlationId?: string
 }
 
 export type UndoAction = ActionBase &

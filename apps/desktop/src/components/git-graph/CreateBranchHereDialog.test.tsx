@@ -75,7 +75,13 @@ describe('CreateBranchHereDialog — creating a branch', () => {
     )
 
     expect(mockedCreateBranch).toHaveBeenCalledWith('/repo', 'feature-x', 'abc123')
-    expect(mockedCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature-x')
+    // `opts` is not decoration: without it `apiCheckoutBranch` records no undo entry, and ⌘Z then
+    // tries to delete a branch git has just made HEAD — which it refuses (see the store's
+    // correlated-gesture tests).
+    expect(mockedCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature-x', {
+      fromRef: '',
+      fromDetached: false,
+    })
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
