@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (53 feature files / 169 scenarios)
+## Covered today (54 feature files / 172 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -63,8 +63,7 @@ what's missing has to live here, where a human maintains it.
 
 | Missing                                    | Commands / UI involved                                                       | Notes |
 | ------------------------------------------ | ---------------------------------------------------------------------------- | ----- |
-| **Integrated terminal** (I/O)              | `terminal_open/write/resize/close`, `components/terminal`                    | Only the Graph ↔ Terminal ↔ Settings tab *switch* is covered; nothing types into a shell or asserts output. |
-| **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. |
+| **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. The *integrated terminal* itself is now covered (`terminal.feature`), including a real command's output. |
 | **Dashboard repo summary panel**           | `get_repo_summary`                                                           | The README panel is covered (opened, rendered content, raw/rendered toggle); the *summary* panel is not. |
 | **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
 | **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |

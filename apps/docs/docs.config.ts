@@ -93,7 +93,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Repository tools',
-    features: ['patch-workspace', 'package-health'],
+    features: ['terminal', 'patch-workspace', 'package-health'],
   },
   {
     // Ordered by how the features feed each other: composing commits, then the briefings pair
