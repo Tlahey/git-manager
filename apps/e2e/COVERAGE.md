@@ -69,7 +69,8 @@ keyboard route at all, which was a product gap before it was a testing one.
 > **Closed 2026-08-03.** Tag push/delete, remote-branch delete, merge, fast-forward, local branch
 > delete and create-patch were all native-context-menu-only, which WebDriver cannot open. They now
 > have command-palette entries (`useRefCommands`, `useCommitCommands`) and scenarios in
-> `tags.feature`, `remote-push.feature` and `command-palette.feature`, asserted against git itself
+> `tags.feature`, `remote-push.feature`, `command-palette.feature` and `merge-branches.feature`
+> (merge and fast-forward moved there when they were promoted into the docs), asserted against git itself
 > (`ls-remote` for the remote ones, `rev-parse`/`log` for the local ones). Undo/redo breadth closed
 > with them: the branch-delete scenario is the ⌘Z coverage for a ref deletion, and
 > `detached-head.feature` covers undoing a checkout back into a detached HEAD.
