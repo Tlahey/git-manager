@@ -88,6 +88,7 @@ export const DOC_SECTIONS: DocSection[] = [
       'merge-editor',
       'rebase-conflict',
       'rebase-progress',
+      'interactive-rebase',
       'fixup-autosquash',
       'merge-commit-actions',
     ],
