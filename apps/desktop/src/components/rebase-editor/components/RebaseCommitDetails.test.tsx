@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitCommit } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../../../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
 
 const { useFileRawContents } = vi.hoisted(() => ({ useFileRawContents: vi.fn() }))
@@ -127,7 +126,7 @@ describe('RebaseCommitDetails — file list', () => {
 describe('RebaseCommitDetails — diff panel', () => {
   it('shows a hint when no file is active yet', () => {
     renderDetails()
-    expect(screen.getByText('rebaseEditor.selectFileHint')).toBeInTheDocument()
+    expect(screen.getByText('Select a file to see its diff')).toBeInTheDocument()
   })
 
   it('renders the two-way merge editor with parent/commit labels once a file has contents', async () => {
@@ -191,7 +190,7 @@ describe('RebaseCommitDetails — diff panel', () => {
     const { getByText: getByTextInLabel } = render(
       lastMergeEditorProps.current!.originalLabel as React.ReactElement
     )
-    expect(getByTextInLabel('rebaseEditor.noParent')).toBeInTheDocument()
+    expect(getByTextInLabel('Root commit (no parent)')).toBeInTheDocument()
   })
 })
 

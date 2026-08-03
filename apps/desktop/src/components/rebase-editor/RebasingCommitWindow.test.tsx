@@ -3,12 +3,6 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitCommit } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
 vi.mock('../../hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
 vi.mock('../../api/git.api', () => ({
@@ -112,7 +106,7 @@ describe('RebasingCommitWindow — loading and plan rendering', () => {
     mockedListCommits.mockResolvedValue([commit('aaa1111'), commit('bbb2222')])
     renderWindow()
     await waitFor(() =>
-      expect(screen.getByText('rebaseEditor.commitCount:{"count":2}')).toBeInTheDocument()
+      expect(screen.getByText('2 commits')).toBeInTheDocument()
     )
   })
 })
@@ -121,7 +115,7 @@ describe('RebasingCommitWindow — selection and details panel', () => {
   it('shows a hint when nothing is selected', async () => {
     mockedListCommits.mockResolvedValue([commit('aaa1111')])
     renderWindow()
-    await waitFor(() => expect(screen.getByText('rebaseEditor.selectHint')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Select a commit to see its changes and details')).toBeInTheDocument())
   })
 
   it('selects a row on click and shows its details', async () => {
@@ -171,7 +165,7 @@ describe('RebasingCommitWindow — reword', () => {
     expect(screen.getByTestId('rebase-reword-input')).toHaveValue('Original message')
     await user.clear(screen.getByTestId('rebase-reword-input'))
     await user.type(screen.getByTestId('rebase-reword-input'), 'New message')
-    await user.click(screen.getByText('rebaseEditor.saveMessage'))
+    await user.click(screen.getByText('Save message'))
 
     await waitFor(() => expect(stepRow('aaa1111').badgeLabel).toBe('reword'))
   })
@@ -183,7 +177,9 @@ describe('RebasingCommitWindow — reword', () => {
     await waitFor(() => expect(lastStepRailCalls.current.length).toBeGreaterThan(0))
     await user.click(screen.getByTestId('rebase-step-aaa1111'))
     await user.click(screen.getByTestId('rebase-reword'))
-    await user.click(screen.getByText('rebaseEditor.cancelEdit'))
+    // By testid, not by label: the reword editor's Cancel and the window's own Cancel carry the
+    // same copy, so the text is ambiguous once the real translations are in play.
+    await user.click(screen.getByTestId('rebase-reword-cancel'))
 
     expect(screen.queryByTestId('rebase-reword-input')).not.toBeInTheDocument()
     expect(stepRow('aaa1111').badgeLabel).toBe('pick')
@@ -209,7 +205,7 @@ describe('RebasingCommitWindow — combine (squash/fixup)', () => {
     ;(stepRow('bbb2222').onRowClick as (i: number, e: unknown) => void)(1, { ctrlKey: true })
 
     await user.click(screen.getByTestId('rebase-squash'))
-    await user.click(screen.getByText('rebaseEditor.squashKeepMessages'))
+    await user.click(screen.getByText('Squash (keep both messages)'))
 
     await waitFor(() => expect(stepRow('bbb2222').badgeLabel).toBe('squash'))
   })
@@ -223,7 +219,7 @@ describe('RebasingCommitWindow — combine (squash/fixup)', () => {
     ;(stepRow('bbb2222').onRowClick as (i: number, e: unknown) => void)(1, { ctrlKey: true })
 
     await user.click(screen.getByTestId('rebase-squash'))
-    await user.click(screen.getByText('rebaseEditor.fixupDiscardMessage'))
+    await user.click(screen.getByText('Fixup (discard message)'))
 
     await waitFor(() => expect(stepRow('bbb2222').badgeLabel).toBe('fixup'))
   })
@@ -238,7 +234,7 @@ describe('RebasingCommitWindow — drop/restore', () => {
     await user.click(screen.getByTestId('rebase-step-aaa1111'))
     await user.click(screen.getByTestId('rebase-drop'))
     await waitFor(() => expect(stepRow('aaa1111').badgeLabel).toBe('drop'))
-    expect(screen.getByTestId('rebase-drop')).toHaveTextContent('rebaseEditor.restore')
+    expect(screen.getByTestId('rebase-drop')).toHaveTextContent('Restore')
 
     await user.click(screen.getByTestId('rebase-drop'))
     await waitFor(() => expect(stepRow('aaa1111').badgeLabel).toBe('pick'))
@@ -272,7 +268,7 @@ describe('RebasingCommitWindow — plan validation', () => {
     await user.click(screen.getByTestId('rebase-drop'))
 
     await waitFor(() =>
-      expect(screen.getByText('rebaseEditor.errorAllDropped')).toBeInTheDocument()
+      expect(screen.getByText('Every commit is dropped — nothing to rebase')).toBeInTheDocument()
     )
     expect(screen.getByTestId('rebase-start')).toBeDisabled()
   })

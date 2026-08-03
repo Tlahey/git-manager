@@ -38,14 +38,38 @@ export function formatRelativeDate(timestamp: number): string {
   return `${Math.floor(diff / (86400 * 365))}y ago`
 }
 
-/** Locale-formatted absolute date/time, for tooltips. */
+/**
+ * Locale-formatted absolute date/time, for tooltips.
+ *
+ * `locale` is the app's own language (`i18n.language`), and every caller must pass it. Omitting
+ * it falls back to the **system** locale, which is not the same thing: an app running in English
+ * on a French macOS printed "03 août 2026 à 14:20:18" next to otherwise English copy — the bug
+ * that prompted routing every date site through these helpers.
+ */
 export function formatExactDate(timestamp: number, locale?: string): string {
   return new Date(timestamp * 1000).toLocaleString(locale)
 }
 
-/** Locale-formatted date only (no time), for the blame column. */
+/** Locale-formatted date only (no time), for the blame column. See `formatExactDate` on `locale`. */
 export function formatShortDate(timestamp: number, locale?: string): string {
   return new Date(timestamp * 1000).toLocaleDateString(locale)
+}
+
+/**
+ * `12 Mar 2026, 14:20:18` — the long form the commit-details header and the rebase editor show.
+ *
+ * Spelled-out month rather than a numeric one because this is the one place a commit's date is
+ * read rather than scanned, and `03/08` is ambiguous across locales in a way `3 Aug` is not.
+ */
+export function formatDateTimeLong(timestamp: number, locale?: string): string {
+  return new Date(timestamp * 1000).toLocaleString(locale, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
 }
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [

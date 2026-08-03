@@ -19,17 +19,8 @@ import type { GitGraphNode, GitRef } from '@git-manager/git-types'
 import { useGitStashes } from '../../../hooks/useGitStashes'
 import { useCommitMessageEdit } from '../../../hooks/useCommitMessageEdit'
 import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
+import { formatDateTimeLong } from '../../../lib/relativeDate'
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString(undefined, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
 
 interface CommitHeaderInfoProps {
   isWip: boolean
@@ -62,7 +53,7 @@ export function CommitHeaderInfo({
   wipBranch,
   wipFileCount,
 }: CommitHeaderInfoProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
 
   const { data: stashes } = useGitStashes(repoPath)
   const stash = useMemo(() => {
@@ -168,7 +159,7 @@ export function CommitHeaderInfo({
                 &lt;{commit.author.email}&gt;
               </span>
               <span className="mt-0.5 text-[9px] font-medium text-muted-foreground/60">
-                {formatDate(commit.author.timestamp)}
+                {formatDateTimeLong(commit.author.timestamp, i18n.language)}
               </span>
             </div>
           </div>

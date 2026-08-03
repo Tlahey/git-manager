@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import { formatShortDate } from '../../lib/relativeDate'
 import { Progress, ScrollArea, Spinner } from '@git-manager/ui'
 import { Search, X } from 'lucide-react'
 import {
@@ -23,9 +24,9 @@ import { CommitSearchMatchList } from './components/CommitSearchMatchList'
 import { CommitSearchUnreadList } from './components/CommitSearchUnreadList'
 
 /** The oldest date a run reached, or an em dash for a run saved before the span was recorded. */
-function formatReadDate(epochSeconds: number | undefined): string {
+function formatReadDate(epochSeconds: number | undefined, locale: string): string {
   if (epochSeconds === undefined) return '—'
-  return new Date(epochSeconds * 1000).toLocaleDateString()
+  return formatShortDate(epochSeconds, locale)
 }
 
 interface AiCommitSearchPanelProps {
@@ -46,7 +47,7 @@ interface AiCommitSearchPanelProps {
  * saved run wins while it is open, and any new search drops back to the live view.
  */
 export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const { t: tErrors } = useTranslation('errors')
   const search = useAiCommitSearch(repoPath)
 
@@ -118,7 +119,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         answer: viewedRun.answer,
         matches: viewedRun.matches,
         scanned: viewedRun.scanned,
-        oldestRead: formatReadDate(viewedRun.oldestEpoch),
+        oldestRead: formatReadDate(viewedRun.oldestEpoch, i18n.language),
         // A saved run kept the count and the reason, not the commits: which ones failed is only
         // actionable while they are still on screen (see `aiCommitSearch.store`).
         unread: [],
@@ -135,7 +136,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         // Commits actually read, matching the denominator the answer was given: a commit that went
         // unread said nothing, so counting it here would overstate what "none found" rests on.
         scanned: search.results.length - search.unread.length,
-        oldestRead: formatReadDate(search.oldestEpoch),
+        oldestRead: formatReadDate(search.oldestEpoch, i18n.language),
         unread: search.unread,
         failed: search.unread.length,
         failureReason: dominantFailure(search.unread),
