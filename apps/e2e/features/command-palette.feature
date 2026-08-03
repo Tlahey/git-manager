@@ -63,11 +63,24 @@ Feature: Command palette (⌘K)
     Then the repository HEAD commit subject is "chore: bump counter to 3"
     And the working tree is clean
 
+  @doc @screenshots
   Scenario: Reverting the last commit from the palette
+    Revert is the safe way to undo a commit that's already shared: instead
+    of rewriting history like a reset, it writes a new commit that applies
+    the old one in reverse, so the branch keeps its past and anyone who
+    pulled it stays in sync. Running Revert on the selected commit opens a
+    confirmation dialog first — nothing is written until you confirm. For
+    reverting a merge commit, which needs to pick a side, see
+    [Merge commit actions](./merge-commit-actions).
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I open the command palette
     Then the command palette shows commit actions for "HEAD"
     When I run the command palette action "commit-revert"
     Then the revert dialog is shown
+    When the interface has settled
+    Then a full-window screenshot is saved as "doc-revert-commit"
     When I confirm the revert
     Then the repository HEAD commit subject contains "chore: bump counter to 4"
 
@@ -81,11 +94,23 @@ Feature: Command palette (⌘K)
     And I confirm the branch creation
     Then the branch "feature/from-palette" points at the commit "chore: bump counter to 3"
 
+  @doc @screenshots
   Scenario: Cherry-picking a commit from another branch via the palette
-    Given the "feature-branches" fixture repository is opened
+    Cherry-pick copies a single commit from another branch onto the one you
+    have checked out — the fix you need now, without merging everything
+    around it. Select the commit anywhere in the graph, even on a branch
+    you're not on, open the palette, and its scoped actions include
+    Cherry-pick; running it replays that commit onto your current branch as
+    a new commit of its own.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
     When I select the "feature/login" commit in the graph
     And I open the command palette
+    And I type "cherry" into the command palette
+    And the interface has settled
     Then the command palette shows commit actions for "feature/login"
+    And a full-window screenshot is saved as "doc-cherry-pick"
     When I run the command palette action "commit-cherry-pick"
     Then the commit "feat: add login screen" is reachable from "main"
 
