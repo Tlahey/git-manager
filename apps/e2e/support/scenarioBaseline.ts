@@ -75,8 +75,14 @@ export async function applyBaseline(baseline: Baseline): Promise<boolean> {
         const current = store.getState().settings
         const merged: Record<string, unknown> = {}
         for (const [group, value] of Object.entries(settings)) {
+          const isPlainObject = value && typeof value === 'object' && !Array.isArray(value)
+          // An empty-object seed means "reset this group", not "change nothing": merging `{}`
+          // into the live group is a no-op, which is exactly how a leaked `repoOverrides` theme
+          // survived every baseline. Non-empty groups still merge, so a seed can pin two fields
+          // without clobbering the rest.
+          const isReset = isPlainObject && Object.keys(value as object).length === 0
           merged[group] =
-            value && typeof value === 'object' && !Array.isArray(value)
+            isPlainObject && !isReset
               ? { ...(current[group] ?? {}), ...(value as Record<string, unknown>) }
               : value
         }

@@ -40,13 +40,20 @@ Before(async () => {
   // Any settings group a scenario toggles belongs in this baseline for the same reason.
   const dailySummary = { enabled: true, autoGenerate: true, saveToRepo: false }
 
+  // Same leak class as dailySummary above: settings-repository.feature seeds a per-repo theme
+  // override, and an override outlives its scenario (and the run — localStorage persists across
+  // relaunches). The settings.feature snapshots then capture the overridden theme instead of the
+  // baseline one and mismatch by ~97% against baselines recorded without the override — while
+  // passing in isolation, where no override was ever written.
+  const repoOverrides = {}
+
   // One driver command for the whole baseline — clearing the volatile persisted slices, patching
   // the live settings store, and seeding settings + graph columns. It used to be three, and the
   // hook runs before all 160 scenarios; a measured full run spent 58.6 of its 62 minutes outside
   // step execution, with these round trips the dominant remaining candidate. See
   // support/scenarioBaseline.ts for the ordering constraints inside it.
   const baseline = {
-    settings: { appearance, ai, notifications, dailySummary, language: 'en' },
+    settings: { appearance, ai, notifications, dailySummary, repoOverrides, language: 'en' },
     columns: {
       refs: { visible: true, width: 160 },
       // Wide enough that no fixture's lane count pushes the graph column into its
