@@ -34,19 +34,28 @@ export interface DocSection {
   features: string[]
 }
 
-/** Feature pages grouped into sidebar sections, top to bottom. */
+/**
+ * Feature pages grouped into sidebar sections, top to bottom — ordered as a reader's journey:
+ * open something, learn the window, read history, change it, survive the hard parts, then the
+ * layers around the core (remotes, everyday tools, AI, GitHub, settings). Within a section the
+ * first page is the one a newcomer needs first.
+ */
 export const DOC_SECTIONS: DocSection[] = [
   {
+    // The first session: get a repository open, meet the home screen, learn the window's fixed
+    // landmarks before any single feature.
     title: 'Getting started',
-    features: ['open-repo'],
+    features: ['open-repo', 'dashboard', 'interface-overview'],
   },
   {
     title: 'Reading your repository',
-    features: ['commit-graph', 'blame-history', 'bisect', 'sidebar-navigation'],
+    features: ['commit-graph', 'sidebar-navigation', 'blame-history', 'bisect'],
   },
   {
+    // undo-redo lives here rather than with branches: it is the safety net over the actions this
+    // section teaches, not a branch concept.
     title: 'Making changes',
-    features: ['working-tree', 'commit', 'git-hooks'],
+    features: ['working-tree', 'commit', 'git-hooks', 'undo-redo'],
   },
   {
     title: 'When Git gets in the way',
@@ -54,37 +63,38 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Branches, stashes & worktrees',
-    features: ['stash-stack', 'worktree', 'submodule', 'detached-head', 'undo-redo'],
+    features: ['branch-create', 'stash-stack', 'worktree', 'submodule', 'detached-head'],
   },
   {
     title: 'Syncing with remotes',
-    features: ['remote-fetch-pull', 'remote-push', 'branch-create'],
+    features: ['remote-fetch-pull', 'remote-push'],
   },
   {
-    title: 'Tools',
+    // Cross-cutting helpers used all day, whatever you are doing — distinct from the
+    // repository-scoped tools below.
+    title: 'Everyday workflow',
+    features: ['command-palette', 'notifications', 'activity-log', 'rewards'],
+  },
+  {
+    title: 'Repository tools',
     features: ['patch-workspace', 'package-health'],
   },
   {
+    // Ordered by how the features feed each other: composing commits, then the briefings pair
+    // (summary search reads what the daily summary writes), then the explainers, then the one
+    // feature about the app's own actions rather than the repository.
     title: 'AI features',
     features: [
       'ai-generation',
-      'daily-summary',
       'ai-commit-recompose',
+      'daily-summary',
+      'ai-summary-search',
       'ai-explanation',
       'ai-code-review',
       'ai-pr-description',
       'ai-commit-search',
       'action-journal',
-      'ai-summary-search',
     ],
-  },
-  {
-    title: 'Dashboard',
-    features: ['dashboard'],
-  },
-  {
-    title: 'Rewards',
-    features: ['rewards'],
   },
   {
     title: 'Launchpad',
@@ -96,8 +106,8 @@ export const DOC_SECTIONS: DocSection[] = [
     ],
   },
   {
-    title: 'Workflow tools',
-    features: ['command-palette', 'settings', 'settings-repository', 'notifications', 'activity-log'],
+    title: 'Settings',
+    features: ['settings', 'settings-repository'],
   },
 ]
 

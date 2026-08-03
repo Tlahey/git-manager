@@ -1,4 +1,5 @@
 import { mkdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, $ } from '@wdio/globals'
@@ -41,3 +42,59 @@ Then(/^a full-window screenshot is saved as "([^"]*)"$/, async (name: string) =>
   mkdirSync(SHOT_DIR, { recursive: true })
   await browser.saveScreenshot(join(SHOT_DIR, `${name}.png`))
 })
+
+// The zone variant: crops the capture to one element, for pages documenting a single piece of
+// the chrome (the tab bar, the toolbar, the footer) where a full window would bury the subject.
+// The docs generator recognises this step too (apps/docs/scripts/lib/parseDocFeatures.ts) — the
+// captured name becomes the page's illustration exactly like the full-window step's.
+//
+// The crop is done here, with `sips` (macOS-native, and this suite is macOS-only like the
+// embedded provider itself): this WebKit driver has no element-screenshot endpoint —
+// `element.saveScreenshot()` silently answers with the full window, and even the visual
+// service's `saveElement` stores the full window on this provider (its element handling happens
+// at compare time, not capture time). Measured: both produced 3200×2000 for a 36px-tall tab bar.
+Then(
+  /^a screenshot of the "([^"]*)" area is saved as "([^"]*)"$/,
+  async (testid: string, name: string) => {
+    mkdirSync(SHOT_DIR, { recursive: true })
+    const el = $(`[data-testid="${testid}"]`)
+    await el.waitForDisplayed({ timeout: 10000 })
+    const rect = await browser.execute((id: string) => {
+      const r = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect()
+      return {
+        x: r.x,
+        y: r.y,
+        w: r.width,
+        h: r.height,
+        dpr: window.devicePixelRatio,
+        viewportW: window.innerWidth,
+        viewportH: window.innerHeight,
+      }
+    }, testid)
+    const target = join(SHOT_DIR, `${name}.png`)
+    await browser.saveScreenshot(target)
+    // Clamp to the viewport in device pixels, keeping one spare pixel on each axis: sips
+    // *silently* refuses a crop whose offset + size reaches the image edge exactly (measured —
+    // 1936+64 on a 2000px image is a no-op with exit code 0, 1935+64 crops fine), which is
+    // precisely where an edge-flush element like the footer lands.
+    const imgW = Math.floor(rect.viewportW * rect.dpr)
+    const imgH = Math.floor(rect.viewportH * rect.dpr)
+    const w = Math.min(Math.round(rect.w * rect.dpr), imgW)
+    const h = Math.min(Math.round(rect.h * rect.dpr), imgH)
+    let x = Math.max(0, Math.floor(rect.x * rect.dpr))
+    let y = Math.max(0, Math.floor(rect.y * rect.dpr))
+    // Only a NON-ZERO offset triggers the quirk (offset 0 + full size crops fine), so shift the
+    // window up/left by the pixel rather than shrinking the capture.
+    if (x > 0 && x + w >= imgW) x = Math.max(0, imgW - w - 1)
+    if (y > 0 && y + h >= imgH) y = Math.max(0, imgH - h - 1)
+    execFileSync('sips', [
+      '--cropToHeightWidth',
+      String(h),
+      String(w),
+      '--cropOffset',
+      String(y),
+      String(x),
+      target,
+    ])
+  }
+)

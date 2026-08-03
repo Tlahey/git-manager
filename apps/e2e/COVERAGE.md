@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (51 feature files / 160 scenarios)
+## Covered today (52 feature files / 163 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -30,6 +30,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
 | **Command palette (⌘K)**: 12 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
+| **Interface chrome tour**: tab bar / toolbar / footer, each with a zone-cropped doc capture | app shell | fixture:feature-branches | 📷 (doc, per-zone) | ✅ (`interface-overview.feature` — also the reference for the "area screenshot" step) |
 | Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
 | Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |

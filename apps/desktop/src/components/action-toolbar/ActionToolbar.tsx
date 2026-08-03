@@ -91,7 +91,10 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
 
   return (
-    <div className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2">
+    <div
+      data-testid="action-toolbar"
+      className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2"
+    >
       {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />

@@ -153,7 +153,10 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
     : shortcuts
 
   return (
-    <footer className="chrome-surface flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground">
+    <footer
+      data-testid="app-footer"
+      className="chrome-surface flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground"
+    >
       {/* LEFT SECTION: contextual state */}
       <div className="flex items-center gap-3 overflow-hidden">
         {activeTab === DASHBOARD_TAB && (

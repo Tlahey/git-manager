@@ -92,6 +92,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
       />
       <div
         data-tauri-drag-region
+        data-testid="tab-bar"
         className={`flex h-9 shrink-0 items-stretch gap-0.5 border-b border-sidebar-border bg-sidebar pr-1 ${
           isMac ? 'pl-[72px]' : 'pl-1'
         }`}
@@ -99,7 +100,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         {/* Dashboard tab (pinned) */}
         <PinnedTab
           icon={<LayoutDashboard className="h-3.5 w-3.5" />}
-          label="Accueil"
+          label={t('tabs.dashboard')}
           active={activeTab === DASHBOARD_TAB}
           onClick={() => setActiveTab(DASHBOARD_TAB)}
           hideLabel={true}
