@@ -20,6 +20,24 @@ fn pin_oid(repo: &Repository, ref_name: &str, oid: Oid) -> Result<(), git2::Erro
     Ok(())
 }
 
+/// Resolves a revision (`HEAD`, a branch or tag name, a short sha, `HEAD~2`, …) to its full OID.
+///
+/// Exists for the undo history, which has to record *where HEAD was* as something it can come back
+/// to later. A name is not good enough: `HEAD` means something different after the checkout that
+/// entry is undoing, and a detached HEAD reports its branch name as the literal string `"HEAD"`
+/// (`build_git_repo`/`get_repo_summary`), which resolves to nothing at all. Undoing a checkout made
+/// from a detached HEAD therefore failed with "Branch not found: HEAD", and the pin meant to keep
+/// that commit alive failed too, silently — `pin_object` takes an OID and was handed the same
+/// string.
+#[tauri::command]
+pub async fn resolve_revision(path: String, revision: String) -> Result<String, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let object = repo.revparse_single(&revision).map_err(AppError::Git)?;
+    let commit = object.peel_to_commit().map_err(AppError::Git)?;
+    let oid = commit.id().to_string();
+    Ok(oid)
+}
+
 // ─── Generic pinning (used to protect an object that already exists, e.g. the
 // commit behind a stash before pop/drop) ────────────────────────────────────
 

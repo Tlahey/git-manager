@@ -194,11 +194,26 @@ describe('RepoView — opening the active repo', () => {
     expect(useUndoHistoryStore.getState().validateAndPrune).toHaveBeenCalledWith('/repo')
   })
 
-  it('does not re-open the repo if it is already cached', () => {
+  it('does not re-open the repo if it is already cached and the branch list has not loaded', () => {
+    useBranchesMock.mockReturnValue({ data: undefined })
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
     render(<RepoView />)
     expect(apiOpenRepo).not.toHaveBeenCalled()
+  })
+
+  // `head`/`isDetached` used to be read once and kept forever, so the toolbar could go on naming a
+  // branch the repository had already left — visible after undoing a checkout back into a detached
+  // HEAD, where there is no branch for it to read instead.
+  it('re-reads the repo whenever the branch list does, since HEAD may have moved', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
+    apiOpenRepo.mockResolvedValue(repo({ head: 'HEAD', isDetached: true }))
+    render(<RepoView />)
+    await waitFor(() => expect(apiOpenRepo).toHaveBeenCalledWith('/repo'))
+    await waitFor(() =>
+      expect(useRepoDataStore.getState().repoCache['/repo']).toMatchObject({ isDetached: true })
+    )
   })
 
   it('silently ignores an open-repo failure', async () => {

@@ -22,6 +22,7 @@ import {
   getTagWebUrl,
   getBranchWebUrl,
   getRepoSummary,
+  resolveRevision,
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
 import { generateId, pushAction, clearRedo, withHookFailureCard } from './gitApiShared'
@@ -44,9 +45,18 @@ export async function apiCheckoutBranch(path: string, toRef: string, opts?: Chec
     if (force) {
       snapshot = await snapshotWorktree(path, id)
     }
+
+    // What undo will come back to. On a detached HEAD every caller passes the literal string
+    // `"HEAD"` — that is what `GitRepo.head`/`GitRepoSummary.head` report when HEAD is not on a
+    // branch — and that string is useless in both places it was used: `pin_object` rejected it (so
+    // the commit being left behind was never protected, and the failure was swallowed by the
+    // `.catch` below), and undo checked out a name that, by then, resolved to the branch it was
+    // supposed to be leaving. Resolve it here, once, rather than asking four call sites to.
+    let fromRef = opts?.fromRef ?? ''
     if (opts?.fromDetached) {
+      fromRef = await resolveRevision(path, 'HEAD')
       // The detached commit won't be referenced by any branch anymore once we leave it.
-      await pinObject(path, `${id}-detached`, opts.fromRef).catch(() => {})
+      await pinObject(path, `${id}-detached`, fromRef).catch(() => {})
     }
 
     await checkoutBranch(path, toRef, force)
@@ -62,7 +72,7 @@ export async function apiCheckoutBranch(path: string, toRef: string, opts?: Chec
         label: { key: 'undoRedo.checkout', params: { branch: toRef } },
         pinnedRefs,
         type: 'checkout',
-        fromRef: opts.fromRef,
+        fromRef,
         toRef,
         force,
         snapshot,

@@ -28,3 +28,17 @@ Feature: Detached HEAD state
     Then the branch indicator reads "HEAD"
     When I check out the "main" branch
     Then the branch indicator reads "main"
+
+  # Undoing a checkout made *from* a detached HEAD has to come back to that commit. It used to fail
+  # outright — every caller passes the string "HEAD" as "where we came from" (that is what the repo
+  # summary reports off-branch), which by undo time resolves to the branch just checked out. The
+  # commit was not pinned either, for the same reason.
+  Scenario: Undoing a checkout made from a detached HEAD returns to that commit
+    Then the branch indicator reads "HEAD"
+    And the repository HEAD commit subject is "chore: v1"
+    When I check out the "main" branch
+    Then the branch indicator reads "main"
+    When I undo the last action
+    Then the repository HEAD commit subject is "chore: v1"
+    And the branch indicator reads "HEAD"
+    And no error notification is displayed

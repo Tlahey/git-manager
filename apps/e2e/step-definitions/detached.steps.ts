@@ -8,8 +8,18 @@ import { Then } from '@wdio/cucumber-framework'
 Then(/^the branch indicator reads "([^"]*)"$/, async (expected: string) => {
   const label = $('[data-testid="branch-context-label"]')
   await label.waitForDisplayed({ timeout: 10000 })
-  await browser.waitUntil(async () => (await label.getText()).trim() === expected, {
-    timeout: 10000,
-    timeoutMsg: `branch indicator never read "${expected}"`,
-  })
+  let last = ''
+  try {
+    await browser.waitUntil(
+      async () => {
+        last = (await label.getText()).trim()
+        return last === expected
+      },
+      { timeout: 10000 }
+    )
+  } catch {
+    // Report what it settled on: "never read X" alone cannot tell a stale label apart from a wrong
+    // one, and those have different causes.
+    throw new Error(`branch indicator never read "${expected}" (last read: "${last}")`)
+  }
 })

@@ -47,10 +47,12 @@ export function BranchContext() {
 
   if (!activeRepo) return null
 
-  // The displayed branch/workspace comes primarily from the branch log (always up to date after
-  // a checkout) / the worktree list, falling back to the repo cache (head / detached).
-  const branchLabel =
-    headBranch?.shortName ?? (repo?.isDetached ? repo.head.slice(0, 10) : (repo?.head ?? '—'))
+  // A detached HEAD is checked *first*, not as a fallback: no branch is HEAD in that state, so a
+  // `headBranch` still coming out of the branch list can only be data from before the detach, and
+  // preferring it made the toolbar name a branch the repository had already left.
+  const branchLabel = repo?.isDetached
+    ? repo.head.slice(0, 10)
+    : (headBranch?.shortName ?? repo?.head ?? '—')
   const currentLabel = activeWorkspacePath ? (activeWorkspace?.branch ?? '—') : branchLabel
 
   const q = query.trim().toLowerCase()

@@ -817,6 +817,10 @@ export const restoreWorktreeSnapshot = (path: string, snapshot: WorktreeSnapshot
 export const pinObject = (path: string, refName: string, oid: string) =>
   invoke<void>('pin_object', { path, refName, oid })
 
+/** Resolves a revision (`HEAD`, a branch/tag name, a short sha) to its full commit OID. */
+export const resolveRevision = (path: string, revision: string) =>
+  invoke<string>('resolve_revision', { path, revision })
+
 export const unpinObject = (path: string, refName: string) =>
   invoke<void>('unpin_object', { path, refName })
 

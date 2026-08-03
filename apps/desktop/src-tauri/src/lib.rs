@@ -80,8 +80,9 @@ use commands::tasks::{get_project_commands, run_task_in_terminal};
 use commands::terminal::{terminal_close, terminal_open, terminal_resize, terminal_write};
 use commands::themes::get_user_themes;
 use commands::undo::{
-    objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
-    snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
+    objects_exist, pin_object, recreate_branch_ref, resolve_revision, restore_file_blob,
+    restore_worktree_snapshot, snapshot_file, snapshot_worktree, snapshot_worktree_always,
+    unpin_object,
 };
 use commands::window::{
     clear_window_backdrop, get_notch_metrics, raise_above_menu_bar, set_window_vibrancy,
@@ -344,6 +345,7 @@ pub fn run() {
             restore_worktree_snapshot,
             recreate_branch_ref,
             pin_object,
+            resolve_revision,
             unpin_object,
             objects_exist,
             // Worktree
