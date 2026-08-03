@@ -75,6 +75,23 @@ Feature: Working tree staging
     And I stage all unstaged files
     Then the file "IN_PROGRESS.md" is staged
 
+  @doc @screenshots
+  Scenario: Discarding a file's changes throws them away
+    Next to each changed file, the discard button undoes your edits to that
+    one file and puts it back to what the last commit says — the working
+    tree's equivalent of closing a document without saving. It asks for
+    confirmation first, because unlike everything else here there is no undo:
+    the changes were never committed, so Git has no copy to restore.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
+    When I select the working-tree changes in the graph
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-discard-changes"
+    And I discard the changes to "config.yml"
+    Then the file "config.yml" has no working-tree changes
+    And no error notification is displayed
+
   Scenario: Bulk-unstaging all staged files
     When I select the working-tree changes in the graph
     And I unstage all staged files

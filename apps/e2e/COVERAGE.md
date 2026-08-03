@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (53 feature files / 165 scenarios)
+## Covered today (53 feature files / 168 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -66,8 +66,6 @@ what's missing has to live here, where a human maintains it.
 | **Integrated terminal** (I/O)              | `terminal_open/write/resize/close`, `components/terminal`                    | Only the Graph ↔ Terminal ↔ Settings tab *switch* is covered; nothing types into a shell or asserts output. |
 | **Project tasks** (run in terminal)        | `get_project_commands`, `run_task_in_terminal`                               | The tasks menu is never opened. |
 | **Merge a branch / fast-forward**          | `merge_branch`, `fast_forward_branch`, `get_merge_target_status`             | The merge *editor* (conflict resolution) and merge-commit *actions* are covered; the act of merging branch B into A from the UI is not. |
-| **Discard file changes**                   | `discard_file_changes`                                                       | Staging/unstaging/bulk both ways are covered; the destructive discard path (and its confirm) is not. |
-| **Stash creation + message edit**          | `stash_push`, `edit_stash_message`                                           | Fixtures pre-create the stashes; the app's own "stash my changes" action and message editing are never driven. |
 | **Dashboard README / repo summary panels** | `get_repo_readme`, `get_repo_summary`                                        | dashboard.feature only covers pinning. |
 | **Package health beyond the counts**       | `check_outdated_packages`, `update_packages`, `get_package_changelog`, `scan_package_usage` | Only the initial scan's counts are asserted — the update flow (the risky part) is untested. |
 | **Commit/dependency patches**              | `create_commits_patch`, `preview_working_patch`, `list_patchable_dependencies`, `prepare_dependency_patch`, `commit_dependency_patch` | patch-workspace.feature covers create-from-working-tree + apply-external only. |

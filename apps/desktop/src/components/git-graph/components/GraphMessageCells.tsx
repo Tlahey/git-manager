@@ -106,6 +106,7 @@ export function WipCommitInput({
           swallowed that click and made "click WIP to see changed files" look broken. */}
       <input
         type="text"
+        data-testid="wip-row-message-input"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

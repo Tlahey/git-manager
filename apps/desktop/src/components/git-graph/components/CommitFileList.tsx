@@ -396,6 +396,7 @@ export function CommitFileList({
           {isWip && (
             <button
               onClick={() => handleDiscard(node.path)}
+              data-testid={`file-discard-${node.path}`}
               className={cn(
                 'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                 hoverStage && 'opacity-0 group-hover/file:opacity-100'
@@ -719,6 +720,7 @@ export function CommitFileList({
                     {isWip && (
                       <button
                         onClick={() => handleDiscard(file.path)}
+                        data-testid={`file-discard-${file.path}`}
                         className={cn(
                           'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                           hoverStage && 'opacity-0 group-hover/file:opacity-100'
