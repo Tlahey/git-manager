@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { $, browser } from '@wdio/globals'
-import { Then } from '@wdio/cucumber-framework'
+import { Then, When } from '@wdio/cucumber-framework'
 
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
 
@@ -30,4 +30,38 @@ Then(/^the footer reports the AI provider status$/, async () => {
     timeout: 10000,
     timeoutMsg: 'the footer AI pill never reported the provider as connected',
   })
+})
+
+// The Run split button only mounts once the active repo has at least one task configured (see
+// RunButton.tsx) — its appearance IS the assertion that a saved task reached the toolbar.
+Then(/^the toolbar shows the Launch button$/, async () => {
+  await $('[data-testid="toolbar-run-button"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// Radix dropdown triggers open on pointerdown, not click (see the rebase editor's squash menu and
+// COVERAGE.md's worktree gotcha) — dispatch the full pointer sequence, re-dispatching until a menu
+// item actually exists.
+When(/^I open the toolbar Launch menu$/, async () => {
+  await $('[data-testid="toolbar-run-button-menu"]').waitForDisplayed({ timeout: 10000 })
+  await browser.waitUntil(
+    async () => {
+      const open = () => browser.execute(() => !!document.querySelector('[role="menuitem"]'))
+      if (await open()) return true
+      await browser.execute(() => {
+        const el = document.querySelector('[data-testid="toolbar-run-button-menu"]')
+        if (!el) throw new Error('no toolbar-run-button-menu trigger')
+        for (const type of ['pointerdown', 'pointerup', 'click']) {
+          el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, button: 0 }))
+        }
+      })
+      return open()
+    },
+    { timeout: 15000, interval: 1000, timeoutMsg: 'the toolbar Launch menu never opened' }
+  )
+})
+
+// Task ids are generated, so the menu item is matched by its visible label rather than testid.
+Then(/^the toolbar Launch menu lists the task "([^"]*)"$/, async (name: string) => {
+  const item = $(`//div[@role="menuitem"][contains(., "${name}")]`)
+  await item.waitForDisplayed({ timeout: 10000 })
 })

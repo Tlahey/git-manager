@@ -31,11 +31,18 @@ not enough.
 
 The sidebar follows what you are trying to do rather than the app's menus:
 
+- **The interface** — the window's fixed landmarks: tabs, toolbar, footer,
+  sidebar, and the helpers reachable from anywhere (palette, notifications).
 - **Reading your repository** — the commit graph, the view every repository opens
   on, and how to inspect a single commit from it.
 - **Making changes** — the staging panel: choosing what goes into the next
   commit, and reviewing it before you do.
 - **When Git gets in the way** — resolving a conflict in the three-way editor.
+
+Further down come the layers around that core: branches and stashes, remotes,
+the toolbox (bisect, patches, the built-in terminal), the AI features, the
+Launchpad, the [achievements you can unlock](/docs/features/achievements), and
+a debugging corner for when something misbehaves.
 
 Every page has the same shape: an explanation of the feature, a screenshot of it,
 the steps to perform it, and what you should see afterwards.
@@ -46,7 +53,8 @@ page below assumes the app is already open.
 :::
 
 ::: tip Already installed?
-Start with [the commit graph](/docs/features/commit-graph). It is where every
+Start with [your first repository](/docs/first-launch) to get something open,
+then [the commit graph](/docs/features/commit-graph) — it is where every
 repository opens, and the entry point to everything else.
 :::
 

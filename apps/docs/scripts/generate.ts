@@ -26,8 +26,20 @@ import { fileURLToPath } from 'node:url'
 import { parseDocFeature } from './lib/parseDocFeatures.ts'
 import { renderDocPage, SCREENSHOT_DIR } from './lib/renderDocPage.ts'
 import { buildSidebar } from './lib/buildSidebar.ts'
+import {
+  renderAchievementsPage,
+  ACHIEVEMENTS_SOURCE_PATH,
+  type AchievementEntry,
+} from './lib/renderAchievementsPage.ts'
 import type { DocFeature } from './lib/parseDocFeatures.ts'
-import { DOC_SECTIONS, DOCS_ROUTE, FALLBACK_SECTION } from '../docs.config.ts'
+import type { SidebarGroup } from './lib/buildSidebar.ts'
+import {
+  ACHIEVEMENTS_SECTION,
+  ACHIEVEMENTS_SLUG,
+  DOC_SECTIONS,
+  DOCS_ROUTE,
+  FALLBACK_SECTION,
+} from '../docs.config.ts'
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const REPO_ROOT = join(APP_ROOT, '../..')
@@ -35,6 +47,9 @@ const REPO_ROOT = join(APP_ROOT, '../..')
 const FEATURES_SRC = join(REPO_ROOT, 'apps/e2e/features')
 /** Where the e2e `screenshots` script exports its PNGs. */
 const SHOTS_SRC = join(REPO_ROOT, 'docs/screenshots')
+/** The achievement catalog and its English copy — inputs of the achievements reference page. */
+const ACHIEVEMENTS_SRC = join(REPO_ROOT, ACHIEVEMENTS_SOURCE_PATH)
+const ACHIEVEMENTS_COPY_SRC = join(REPO_ROOT, 'packages/i18n/locales/en/launchpad.json')
 
 /**
  * The landing page's images (icons, the OG card, the app screenshot it embeds).
@@ -117,6 +132,30 @@ function copyLandingCss(): string {
   return file
 }
 
+/**
+ * Renders the achievements reference page from the app's catalog and its English copy — the one
+ * generated page not backed by a `.feature` file, because it documents data, not a UI flow.
+ */
+function renderAchievements(): string {
+  const achievements: AchievementEntry[] = JSON.parse(readFileSync(ACHIEVEMENTS_SRC, 'utf8'))
+  const enLocale: Record<string, string> = JSON.parse(readFileSync(ACHIEVEMENTS_COPY_SRC, 'utf8'))
+  return renderAchievementsPage(achievements, enLocale)
+}
+
+/**
+ * Places the achievements page in the sidebar. Appended after `buildSidebar` rather than woven
+ * into `DOC_SECTIONS` because that config (and `buildSidebar`) deals in feature slugs only.
+ */
+function appendAchievementsLink(sidebar: SidebarGroup[]): void {
+  const item = {
+    text: 'All achievements',
+    link: `${DOCS_ROUTE}/features/${ACHIEVEMENTS_SLUG}`,
+  }
+  const section = sidebar.find((group) => group.text === ACHIEVEMENTS_SECTION)
+  if (section) section.items.push(item)
+  else sidebar.push({ text: ACHIEVEMENTS_SECTION, items: [item] })
+}
+
 function main(): void {
   const features = readDocFeatures()
   if (features.length === 0) {
@@ -138,7 +177,10 @@ function main(): void {
     writeFileSync(join(PAGES_OUT, `${feature.slug}.md`), renderDocPage(feature), 'utf8')
   }
 
+  writeFileSync(join(PAGES_OUT, `${ACHIEVEMENTS_SLUG}.md`), renderAchievements(), 'utf8')
+
   const sidebar = buildSidebar(features, DOC_SECTIONS, FALLBACK_SECTION)
+  appendAchievementsLink(sidebar)
   mkdirSync(dirname(SIDEBAR_OUT), { recursive: true })
   writeFileSync(SIDEBAR_OUT, `${JSON.stringify(sidebar, null, 2)}\n`, 'utf8')
 

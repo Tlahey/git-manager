@@ -6,6 +6,7 @@ import { After, Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { clickViaJs } from '../support/interactions.js'
 import { navigateAndSettle } from '../support/navigation.js'
+import { seedSettings } from '../support/settings.js'
 
 // W3C WebDriver key value for Meta (Command on macOS) — the value webdriverio exposes as
 // `Key.Command`. Inlined to avoid depending on the `webdriverio` package (only `@wdio/globals`
@@ -402,6 +403,112 @@ Then(/^the task command suggestions include "([^"]*)"$/, async (name: string) =>
   await input.waitForDisplayed({ timeout: 15000 })
   await input.click()
   await $(`[data-testid="run-tasks-command-option-${name}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
+/** The two editing inputs' current values, for failure messages — the save button only renders
+ *  once both are non-empty (RunTasksSetting's `canSave`), so "save never appeared" always means
+ *  one of these stayed blank. */
+async function taskRowProbe(): Promise<string> {
+  return browser.execute(() => {
+    const read = (id: string) =>
+      (document.querySelector(`[data-testid="${id}"]`) as HTMLInputElement | null)?.value ?? null
+    return JSON.stringify({
+      name: read('run-tasks-name'),
+      command: read('run-tasks-command'),
+      saveRendered: !!document.querySelector('[data-testid="run-tasks-save"]'),
+    })
+  })
+}
+
+// Both fields are controlled React inputs: set them through the native value setter and fire an
+// `input` event so React's onChange sees the value (same shape as the rebase reword textarea —
+// WebDriver's setValue proved unreliable against this WebKit build here).
+async function fillControlledInput(testid: string, value: string) {
+  await $(`[data-testid="${testid}"]`).waitForDisplayed({ timeout: 10000 })
+  await browser.execute(
+    (id: string, v: string) => {
+      const el = document.querySelector(`[data-testid="${id}"]`) as HTMLInputElement | null
+      if (!el) throw new Error(`no input with data-testid="${id}"`)
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(el, v)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    },
+    testid,
+    value
+  )
+}
+
+// The editor command lives in the `git` group, the terminal one in `externalTools` (see
+// ExternalToolsSection) — both are replaced whole so the capture shows the pristine "Select…"
+// state whatever the machine running the suite has configured. Neither group is in the suite
+// baseline, so without this a locally-picked editor would leak into the screenshot.
+Given(/^no external tools are configured$/, async () => {
+  await seedSettings({ externalTools: {}, git: {} })
+})
+
+When(/^I name the repository task "([^"]*)"$/, async (name: string) => {
+  await fillControlledInput('run-tasks-name', name)
+})
+
+// Clicks a suggestion in the command autocomplete. The option commits on mousedown — before the
+// input's blur can close the list (see CommandAutocomplete) — and the outcome (the command field
+// carrying the suggestion's command) is verified rather than trusting one click.
+When(/^I pick the task command suggestion "([^"]*)"$/, async (name: string) => {
+  const input = $('[data-testid="run-tasks-command"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  try {
+    await browser.waitUntil(
+      async () => {
+        const filled = async () =>
+          browser.execute(
+            () =>
+              ((document.querySelector('[data-testid="run-tasks-command"]') as HTMLInputElement)
+                ?.value ?? '') !== ''
+          )
+        if (await filled()) return true
+        await input.click()
+        const option = $(`[data-testid="run-tasks-command-option-${name}"]`)
+        await option.waitForDisplayed({ timeout: 5000 })
+        // A native click on the option lands without effect on this WebKit build (verified via the
+        // probe: the field stays empty). The handler commits on mousedown, so dispatch that
+        // directly — same remedy as the rebase editor's clickViaJs.
+        await browser.execute((n: string) => {
+          const el = document.querySelector(`[data-testid="run-tasks-command-option-${n}"]`)
+          if (!el) throw new Error(`suggestion option "${n}" vanished before the dispatch`)
+          el.dispatchEvent(
+            new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 })
+          )
+        }, name)
+        return filled()
+      },
+      { timeout: 15000, interval: 1000, timeoutMsg: 'the suggestion never filled the command field' }
+    )
+  } catch (err) {
+    throw new Error(`${(err as Error).message}\n[probe] ${await taskRowProbe()}`)
+  }
+})
+
+When(/^I save the repository task$/, async () => {
+  const save = $('[data-testid="run-tasks-save"]')
+  try {
+    await save.waitForClickable({ timeout: 10000 })
+  } catch (err) {
+    throw new Error(`${(err as Error).message}\n[probe] ${await taskRowProbe()}`)
+  }
+  await save.click()
+})
+
+Then(/^the external tools section offers editor and terminal pickers$/, async () => {
+  for (const id of ['externalEditor-select', 'externalTerminal-select']) {
+    await $(`[data-testid="${id}"]`).waitForDisplayed({ timeout: 10000 })
+  }
+})
+
+When(/^I go back from the settings$/, async () => {
+  const back = $('[data-testid="settings-back"]')
+  await back.waitForClickable({ timeout: 10000 })
+  await back.click()
+  await $('[data-testid="settings-page"]').waitForDisplayed({ timeout: 10000, reverse: true })
 })
 
 // The GitLab and Bitbucket steps that used to live here went with their scenarios: both providers

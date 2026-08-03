@@ -75,6 +75,25 @@ Feature: Settings
     Then the rewards setting is "off"
 
   @doc @screenshots
+  Scenario: Pointing the app at your own editor and terminal
+    External tools is where Git Manager learns which of your applications to
+    hand work to: the editor that "Open in editor" actions use — from the
+    dashboard's project rows to the toolbar — and the terminal that the
+    toolbar's terminal shortcut and your repository tasks launch in. Both are
+    picked straight from your installed applications. The terminal can stay
+    unset — macOS's own Terminal is used then — while the editor button only
+    appears in the toolbar once you've picked one.
+    Given the app language is English
+    And AI features are turned off
+    And no external tools are configured
+    And the "stash-stack" fixture repository is opened
+    When I open the settings
+    And I open the "external_tools" settings tab
+    Then the external tools section offers editor and terminal pickers
+    When the interface has settled
+    Then a full-window screenshot is saved as "doc-external-tools"
+
+  @doc @screenshots
   Scenario: Generating a new SSH key pair writes real key files to disk
     The SSH tab can generate a fresh Ed25519 key pair without leaving the app or opening a
     terminal — pick where it goes, and the app shells out to the real `ssh-keygen`, writing an

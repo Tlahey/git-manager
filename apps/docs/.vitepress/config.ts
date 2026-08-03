@@ -102,6 +102,7 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: DOCS_ENTRY },
           { text: 'Download & Install', link: DOCS_DOWNLOAD },
+          { text: 'Your first repository', link: `${DOCS_ROUTE}/first-launch` },
           { text: 'Private by design', link: `${DOCS_ROUTE}/privacy` },
           { text: 'Set up your AI provider', link: `${DOCS_ROUTE}/ai-setup` },
           { text: 'Keyboard shortcuts', link: `${DOCS_ROUTE}/shortcuts` },

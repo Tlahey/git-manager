@@ -278,6 +278,16 @@ Then(/^the command palette is shown$/, async () => {
   await expect($('[data-testid="command-palette-input"]')).toBeDisplayed()
 })
 
+// Filters the palette by typing into its search input — cmdk narrows the list as you type. Doc
+// captures use this to bring the documented command into the visible part of a long action list
+// before the screenshot; the run-action step below is filter-agnostic (it targets the item's
+// testid), so filtering first never changes what a scenario can run.
+When(/^I type "([^"]*)" into the command palette$/, async (text: string) => {
+  const input = $('[data-testid="command-palette-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(text)
+})
+
 // Confirms `selectedCommitOid` actually reached the palette (via the repoUI store) before running a
 // commit-scoped action — the "commit" group heading renders the selected commit's short sha
 // (commandPalette.group.commit). cmdk renders a group's `heading` prop as text content inside a

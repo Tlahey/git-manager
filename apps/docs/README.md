@@ -24,10 +24,22 @@ apps/docs/docs/features/*.md  +  .vitepress/sidebar.json
 the pages artifact
 ```
 
+One generated page is **not** backed by a `.feature` file:
+`docs/features/achievements.md`, the achievements reference, rendered by
+`scripts/lib/renderAchievementsPage.ts` from the app's own catalog
+(`apps/desktop/src/stores/achievements.json`) and its English copy in
+`packages/i18n/locales/en/launchpad.json` — it documents data, not a UI flow, so
+tying it to the catalog is what keeps it honest. It shares `docs/features/`'s
+wipe-and-rewrite lifecycle and is appended to the sidebar's Rewards section by
+the generator (`ACHIEVEMENTS_SECTION`/`ACHIEVEMENTS_SLUG` in `docs.config.ts`).
+
 A handful of Markdown files are **not** generated and are edited by hand — the pages with
 nothing to run a scenario against: [`index.md`](./index.md) (the landing page host),
 [`docs/index.md`](./docs/index.md) (the documentation's introduction),
 [`docs/download.md`](./docs/download.md) (how to get the app),
+[`docs/first-launch.md`](./docs/first-launch.md) (the first session — open/create/clone a
+repository, connect GitHub; it embeds the generated `doc-new-tab` screenshot, which is fine
+because `dev`/`build` always generate first),
 [`docs/privacy.md`](./docs/privacy.md) (what can leave the machine, exhaustively),
 [`docs/ai-setup.md`](./docs/ai-setup.md) (pointing the app at Ollama or any OpenAI-compatible
 endpoint), [`docs/shortcuts.md`](./docs/shortcuts.md) (the keyboard reference — check
