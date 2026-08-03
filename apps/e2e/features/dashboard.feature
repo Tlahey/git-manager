@@ -44,3 +44,20 @@ Feature: Your projects at a glance
     And a full-window screenshot is saved as "doc-dashboard-readme"
     When I switch the README panel to its source view
     Then the README source shows "# Showcase"
+
+  @doc @screenshots
+  Scenario: Each row reports its branch and what is waiting in it
+    Every row carries the state of its repository without opening it: the
+    branch it is on, and counters for what is staged, changed but unstaged,
+    untracked or conflicted — so a glance down the list says which projects
+    have work left in them. A repository with nothing pending collapses to a
+    single check mark, keeping a tidy list quiet.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" and "feature-branches" fixture repositories are listed in the dashboard
+    When I open the dashboard
+    Then the "stash-stack" row is on branch "main"
+    And the "stash-stack" row reports 1 staged and 1 untracked change
+    And the "feature-branches" row reports a clean working tree
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-status"

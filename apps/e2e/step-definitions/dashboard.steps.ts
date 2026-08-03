@@ -100,3 +100,34 @@ Then(/^the README source shows "([^"]*)"$/, async (text: string) => {
     timeoutMsg: `the README source never showed "${text}"`,
   })
 })
+
+/** The row for one fixture, matched on the repo path its `data-repo-path` carries. */
+function repoRow(name: string) {
+  return $(`[data-testid="dashboard-repo-row"][data-repo-path="${join(FIXTURE_ROOT, name)}"]`)
+}
+
+Then(/^the "([^"]*)" row is on branch "([^"]*)"$/, async (name: string, branch: string) => {
+  const cell = repoRow(name).$('[data-testid="repo-row-branch"]')
+  await cell.waitForDisplayed({ timeout: 15000 })
+  await expect(cell).toHaveText(branch)
+})
+
+/**
+ * The counters come from `get_repo_summary`, i.e. a real status read of the fixture on disk —
+ * `stash-stack` leaves exactly one staged file and one untracked one behind.
+ */
+Then(
+  /^the "([^"]*)" row reports (\d+) staged and (\d+) untracked change(?:s)?$/,
+  async (name: string, staged: string, untracked: string) => {
+    const row = repoRow(name)
+    await row.waitForDisplayed({ timeout: 15000 })
+    await expect(row.$('[data-testid="repo-row-staged"]')).toHaveText(`+${staged}`)
+    await expect(row.$('[data-testid="repo-row-untracked"]')).toHaveText(`?${untracked}`)
+  }
+)
+
+Then(/^the "([^"]*)" row reports a clean working tree$/, async (name: string) => {
+  const row = repoRow(name)
+  await row.waitForDisplayed({ timeout: 15000 })
+  await expect(row.$('[data-testid="repo-row-clean"]')).toBeDisplayed()
+})
