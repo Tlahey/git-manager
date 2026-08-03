@@ -286,6 +286,16 @@ interface RepoUIState {
   selectedCommitOid: string | null
   setSelectedCommitOid: (oid: string | null) => void
   /**
+   * OIDs of the real commits in the graph's current *multi*-selection, in graph order (newest
+   * first) — a mirror of `useCommitSelection`'s local `selected` set, published by `GitGraph` so
+   * out-of-tree UI (the command palette's "create patch from selection") can act on the whole
+   * selection, which `selectedCommitOid` alone (the primary row) cannot describe. Empty unless two
+   * or more real commits are selected: a single selection is already covered by `selectedCommitOid`,
+   * and the synthetic WIP/CONFLICT rows never join a group (see `useCommitSelection`).
+   */
+  selectedCommitOids: string[]
+  setSelectedCommitOids: (oids: string[]) => void
+  /**
    * Stash index (parsed from `stash@{N}`) when the selected row is a stash entry, `null` otherwise —
    * published alongside `selectedCommitOid` so out-of-tree UI can offer stash-scoped actions
    * (apply/pop/drop) without duplicating the stash-detection logic already in
@@ -368,6 +378,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       compareRefsTarget: null,
       pendingGraphSelection: null,
       selectedCommitOid: null,
+      selectedCommitOids: [],
       pendingTagDialog: null,
       pendingRemoteBranchDelete: null,
       selectedStashIndex: null,
@@ -471,6 +482,16 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setSelectedCommitOid: (oid) => set({ selectedCommitOid: oid }),
 
+      // Deduplicated by value, not reference: GitGraph republishes on every graph re-render with a
+      // freshly-mapped array, and an unconditional set would notify the store's whole-state
+      // subscribers (TabBar & co subscribe without a selector) on every one of those — the exact
+      // update-feedback shape that has produced a repo-wide render loop here before.
+      setSelectedCommitOids: (oids) => {
+        const current = get().selectedCommitOids
+        if (current.length === oids.length && current.every((oid, i) => oid === oids[i])) return
+        set({ selectedCommitOids: oids })
+      },
+
       setSelectedStashIndex: (index) => set({ selectedStashIndex: index }),
 
       setPendingGraphAction: (action) => set({ pendingGraphAction: action }),
@@ -499,6 +520,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           aiPanelTarget: null,
           compareRefsTarget: null,
           selectedCommitOid: null,
+          selectedCommitOids: [],
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
@@ -526,6 +548,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           aiPanelTarget: null,
           compareRefsTarget: null,
           selectedCommitOid: null,
+          selectedCommitOids: [],
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
@@ -578,6 +601,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             prCreateOpen: false,
             conflictFilePath: null,
             selectedCommitOid: null,
+            selectedCommitOids: [],
             selectedStashIndex: null,
             pendingGraphAction: null,
             pendingCommitMenuOid: null,

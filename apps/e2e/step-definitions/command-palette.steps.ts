@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
@@ -170,6 +171,90 @@ When(/^I select the "([^"]*)" commit in the graph$/, async (ref: string) => {
     )
   }
 })
+
+// Extends the current graph selection with one more commit — the multi-select a user performs
+// with a Cmd+click on a second row. WebDriver can't hold a modifier across a click here, so the
+// click is dispatched as a bubbling MouseEvent with `metaKey: true` on the same message-cell span
+// the single-select step clicks (React reads the modifier off the native event). A meta-click
+// TOGGLES membership and a dispatched click is sometimes delivered twice on this provider (see
+// the README's pin-toggle gotcha), so the step polls the store's `selectedCommitOids` mirror —
+// published by GitGraph exactly when two or more real commits are selected — and only re-clicks
+// while the commit is genuinely not in the group.
+When(/^I add the "([^"]*)" commit to the graph selection$/, async (ref: string) => {
+  const repoPath = activeRepoPath()
+  const oid = execFileSync('git', ['-C', repoPath, 'rev-parse', ref], {
+    encoding: 'utf8',
+  }).trim()
+  const subject = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', oid], {
+    encoding: 'utf8',
+  }).trim()
+
+  const row = $(`[data-testid="graph-row-${oid}"]`)
+  await row.waitForDisplayed({ timeout: 10000 })
+  await row.$(`span*=${subject}`).waitForDisplayed({ timeout: 10000 })
+
+  const inSelection = async () =>
+    browser.execute((target: string) => {
+      const store = (
+        window as unknown as {
+          __e2eRepoUIStore?: { getState: () => { selectedCommitOids: string[] } }
+        }
+      ).__e2eRepoUIStore
+      return !!store && store.getState().selectedCommitOids.includes(target)
+    }, oid)
+
+  await browser.waitUntil(
+    async () => {
+      if (await inSelection()) return true
+      await browser.execute(
+        (rowTestId: string, text: string) => {
+          const rowEl = document.querySelector(`[data-testid="${rowTestId}"]`)
+          if (!rowEl) throw new Error(`no graph row ${rowTestId}`)
+          const span = Array.from(rowEl.querySelectorAll('span')).find((el) =>
+            (el.textContent ?? '').includes(text)
+          )
+          if (!span) throw new Error(`no message span for "${text}" in ${rowTestId}`)
+          span.dispatchEvent(
+            new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, metaKey: true })
+          )
+        },
+        `graph-row-${oid}`,
+        subject
+      )
+      return inSelection()
+    },
+    {
+      timeout: 15000,
+      interval: 1000,
+      timeoutMsg: `commit ${oid} (${ref}) never joined the graph multi-selection`,
+    }
+  )
+})
+
+/**
+ * A multi-commit patch file: `create_commits_patch` concatenates one `git format-patch -1` mbox
+ * per commit, so the number of mbox "From <sha> ..." separators IS the number of commits covered —
+ * the proof the *selection* variant ran, which the single-patch "holds a diff" check can't give.
+ */
+Then(
+  /^the patch file "([^"]*)" holds patches for (\d+) commits$/,
+  async (fileName: string, count: string) => {
+    const target = join(tmpdir(), fileName)
+    await browser.waitUntil(() => existsSync(target), {
+      timeout: 15000,
+      timeoutMsg: `expected a patch file at ${target}`,
+    })
+    const content = readFileSync(target, 'utf8')
+    const commits = content.match(/^From [0-9a-f]{40} /gm) ?? []
+    if (commits.length !== Number(count) || !content.includes('diff --git')) {
+      throw new Error(
+        `${target} holds ${commits.length} commit patch(es) (expected ${count}); ` +
+          `diff header present: ${content.includes('diff --git')}`
+      )
+    }
+    rmSync(target, { force: true })
+  }
+)
 
 // ⌘K toggles the *actions* palette open in `all` mode (useKeyboardShortcuts). ⌘P opens the same
 // dialog in `files` mode, which renders only the lookup/files groups — no commit/stash/settings

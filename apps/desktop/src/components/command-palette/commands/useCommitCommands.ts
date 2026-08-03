@@ -21,6 +21,7 @@ import {
   apiCherryPickCommit,
   apiGetCommitWebUrl,
   apiCreatePatch,
+  apiCreateCommitsPatch,
 } from '../../../api/git.api'
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
 import { apiOpenUrl } from '../../../api/shell.api'
@@ -46,6 +47,7 @@ export function useCommitCommands(): PaletteCommand[] {
   const queryClient = useQueryClient()
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
   const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
+  const selectedCommitOids = useRepoUIStore((s) => s.selectedCommitOids)
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
   const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
 
@@ -146,9 +148,9 @@ export function useCommitCommands(): PaletteCommand[] {
       },
     },
     {
-      // Mirrors the graph menu's "Create patch" — including its native save dialog, which is why
-      // this one stays out of reach of the e2e suite even though the palette entry exists. The
-      // point here is the keyboard route, not the coverage.
+      // Mirrors the graph menu's "Create patch". The save dialog goes through pickSaveDestination,
+      // whose e2e build swaps in an in-webview picker (lib/pickPath.ts), so this is e2e-drivable
+      // despite the native dialog a production build shows.
       id: 'commit-create-patch',
       group: 'commit',
       title: t('commandPalette.commit.createPatch'),
@@ -165,6 +167,35 @@ export function useCommitCommands(): PaletteCommand[] {
           .catch((err) => toast.error(String(err)))
       },
     },
+    ...(selectedCommitOids.length > 1
+      ? [
+          {
+            // The multi-selection variant of "Create patch": acts on every commit in the graph's
+            // current multi-selection (published as `selectedCommitOids`, newest first — reversed
+            // here because `create_commits_patch` wants oldest→newest, the order `git am` applies).
+            // Mirrors `handleCreatePatchSelection` in `useGitGraphActions.ts`'s native-menu path,
+            // including the default file name.
+            id: 'commit-create-patch-selection',
+            group: 'commit' as const,
+            title: t('commandPalette.commit.createPatchSelection', {
+              count: selectedCommitOids.length,
+            }),
+            keywords: shaKeyword,
+            icon: createElement(FileDiff),
+            run: () => {
+              const oldestFirst = [...selectedCommitOids].reverse()
+              pickSaveDestination(`${shortOid}-and-${oldestFirst.length - 1}-more.patch`)
+                .then((destPath) => {
+                  if (!destPath) return null
+                  return apiCreateCommitsPatch(activeRepo, oldestFirst, destPath).then(() =>
+                    toast.success(tGit('gitTree.contextMenu.patchCreated'))
+                  )
+                })
+                .catch((err) => toast.error(String(err)))
+            },
+          },
+        ]
+      : []),
     {
       id: 'commit-copy-sha',
       group: 'commit',

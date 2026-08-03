@@ -18,6 +18,7 @@ const INITIAL = {
   conflictFilePath: null as string | null,
   pendingGraphSelection: null as string | null,
   selectedCommitOid: null as string | null,
+  selectedCommitOids: [] as string[],
   selectedStashIndex: null as number | null,
   pendingGraphAction: null as ReturnType<typeof useRepoUIStore.getState>['pendingGraphAction'],
 }
@@ -118,21 +119,25 @@ describe('useRepoUIStore — active repo/tab selection', () => {
   it('setActiveRepo and setActiveTab clear the selected commit, stash index, and pending graph action', () => {
     useRepoUIStore.setState({
       selectedCommitOid: 'deadbeef',
+      selectedCommitOids: ['deadbeef', 'cafef00d'],
       selectedStashIndex: 0,
       pendingGraphAction: { kind: 'reset', mode: 'mixed' },
     })
     useRepoUIStore.getState().setActiveRepo('/repo/a')
     expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+    expect(useRepoUIStore.getState().selectedCommitOids).toEqual([])
     expect(useRepoUIStore.getState().selectedStashIndex).toBeNull()
     expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
 
     useRepoUIStore.setState({
       selectedCommitOid: 'cafef00d',
+      selectedCommitOids: ['cafef00d', 'deadbeef'],
       selectedStashIndex: 1,
       pendingGraphAction: { kind: 'revert' },
     })
     useRepoUIStore.getState().setActiveTab('pull-requests')
     expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+    expect(useRepoUIStore.getState().selectedCommitOids).toEqual([])
     expect(useRepoUIStore.getState().selectedStashIndex).toBeNull()
     expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
   })
@@ -432,6 +437,13 @@ describe('useRepoUIStore — command-palette bridges', () => {
     expect(useRepoUIStore.getState().selectedCommitOid).toBe('abc1234')
     useRepoUIStore.getState().setSelectedCommitOid(null)
     expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+  })
+
+  it('setSelectedCommitOids publishes the multi-selection', () => {
+    useRepoUIStore.getState().setSelectedCommitOids(['abc1234', 'def5678'])
+    expect(useRepoUIStore.getState().selectedCommitOids).toEqual(['abc1234', 'def5678'])
+    useRepoUIStore.getState().setSelectedCommitOids([])
+    expect(useRepoUIStore.getState().selectedCommitOids).toEqual([])
   })
 
   it('setSelectedStashIndex publishes the selected stash index', () => {

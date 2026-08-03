@@ -1,26 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+// Real i18n (vitest.setup.ts initialises English) — assertions on ids stay untouched, and the one
+// title assertion below checks the real visible copy, interpolation included.
 vi.mock('@git-manager/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const invalidateQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))
 
-const { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(
-  () => ({
-    apiCopyCommitSha: vi.fn(),
-    apiCherryPickCommit: vi.fn(),
-    apiGetCommitWebUrl: vi.fn(),
-    apiOpenUrl: vi.fn(),
-  })
-)
+const {
+  apiCopyCommitSha,
+  apiCherryPickCommit,
+  apiGetCommitWebUrl,
+  apiOpenUrl,
+  apiCreatePatch,
+  apiCreateCommitsPatch,
+  pickSaveDestination,
+} = vi.hoisted(() => ({
+  apiCopyCommitSha: vi.fn(),
+  apiCherryPickCommit: vi.fn(),
+  apiGetCommitWebUrl: vi.fn(),
+  apiOpenUrl: vi.fn(),
+  apiCreatePatch: vi.fn(),
+  apiCreateCommitsPatch: vi.fn(),
+  pickSaveDestination: vi.fn(),
+}))
 vi.mock('../../../api/git.api', () => ({
   apiCopyCommitSha,
   apiCherryPickCommit,
   apiGetCommitWebUrl,
+  apiCreatePatch,
+  apiCreateCommitsPatch,
 }))
 vi.mock('../../../api/shell.api', () => ({ apiOpenUrl }))
+vi.mock('../../../lib/pickSaveDestination', () => ({ pickSaveDestination }))
 
 const { resolveTagOrReleaseUrl } = vi.hoisted(() => ({ resolveTagOrReleaseUrl: vi.fn() }))
 vi.mock('../../../api/github.api', () => ({ resolveTagOrReleaseUrl }))
@@ -47,6 +60,9 @@ beforeEach(() => {
   apiCherryPickCommit.mockResolvedValue('newoid')
   apiGetCommitWebUrl.mockResolvedValue('https://github.com/o/r/commit/deadbeefcafe')
   apiOpenUrl.mockResolvedValue(undefined)
+  apiCreatePatch.mockResolvedValue(undefined)
+  apiCreateCommitsPatch.mockResolvedValue(undefined)
+  pickSaveDestination.mockResolvedValue('/tmp/e2e.patch')
   resolveTagOrReleaseUrl.mockResolvedValue('https://github.com/o/r/releases/tag/v1.0')
   useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
   useCommitTag.mockReturnValue(null)
@@ -114,6 +130,36 @@ describe('useCommitCommands', () => {
 
     byId('commit-fixup').run()
     expect(useRepoUIStore.getState().pendingGraphAction).toEqual({ kind: 'fixup' })
+  })
+
+  it('omits the patch-from-selection command while fewer than two commits are selected', () => {
+    useRepoUIStore.setState({
+      selectedCommitOid: 'deadbeefcafe',
+      activeRepo: '/repo',
+      selectedCommitOids: [],
+    })
+    expect(commands().find((c) => c.id === 'commit-create-patch-selection')).toBeUndefined()
+  })
+
+  it('patch-from-selection picks a destination then writes the selection oldest first', async () => {
+    useRepoUIStore.setState({
+      selectedCommitOid: 'deadbeefcafe',
+      activeRepo: '/repo',
+      // Newest first, as GitGraph publishes them.
+      selectedCommitOids: ['c3newest', 'c2middle', 'c1oldest'],
+    })
+    const cmd = commands().find((c) => c.id === 'commit-create-patch-selection')!
+    expect(cmd).toBeTruthy()
+    expect(cmd.title).toBe('Create patch file from the 3 selected commits')
+    cmd.run()
+    expect(pickSaveDestination).toHaveBeenCalledWith('deadbee-and-2-more.patch')
+    await vi.waitFor(() => {
+      expect(apiCreateCommitsPatch).toHaveBeenCalledWith(
+        '/repo',
+        ['c1oldest', 'c2middle', 'c3newest'],
+        '/tmp/e2e.patch'
+      )
+    })
   })
 
   it('copy-sha copies the full selected oid', () => {

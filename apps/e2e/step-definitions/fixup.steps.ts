@@ -93,8 +93,8 @@ Then(/^the fixup commit message is prefilled with "([^"]*)"$/, async (expected: 
 // what was actually failing, not the click itself. Switching straight back to the always-alive
 // main window right after the click, before ever polling handles again, avoids depending on the
 // closing window's context at all. Driving the interactive-rebase squash flow in the third window
-// is a separate concern (still 🚫 elsewhere in COVERAGE.md) — this cancels it instead, which only
-// closes the window with no git side effect (`RebasingCommitWindow`'s handleCancel is a bare
+// is a separate concern (covered in its own window by interactive-rebase.feature) — this cancels
+// it instead, which only closes the window with no git side effect (`RebasingCommitWindow`'s handleCancel is a bare
 // `getCurrentWindow().close()`), then returns focus to the main window so subsequent scenarios see
 // a single, familiar window again.
 When(/^I confirm the fixup commit$/, async () => {
