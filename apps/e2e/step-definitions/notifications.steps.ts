@@ -1,5 +1,6 @@
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // Seeds the notification.store persist key directly (same "seed localStorage, then reload" pattern
 // as repo.steps.ts's fixture-open step) rather than driving the real GitHub-diff pipeline
@@ -42,14 +43,22 @@ Given(/^the notification tray is seeded with sample notifications$/, async () =>
     version: 0,
   }
 
+  // Seed, then navigate through WebDriver rather than assigning `window.location.href` inside
+  // the same execute (repo.steps.ts's pattern, for the same two reasons): a synchronous
+  // assignment can tear the context down before the driver's response is sent — the await then
+  // hangs for cucumber's whole 60s step timeout — and any deferred variant leaves a pending
+  // navigation that yanks the page mid-scenario later, since the bell-button wait below is
+  // satisfied by the OLD page too.
+  const origin = await browser.execute(() => window.location.origin)
   await browser.execute(
     (key: string, value: string) => {
       localStorage.setItem(key, value)
-      window.location.href = `/?e2e=${Date.now()}`
     },
     'git-manager-notifications',
     JSON.stringify(seeded)
   )
+  const stamp = `notif-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   await $('[data-testid="notification-bell-button"]').waitForDisplayed({ timeout: 15000 })
 })
 

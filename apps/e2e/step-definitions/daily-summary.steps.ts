@@ -1,10 +1,15 @@
-import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // Mirror repo.steps' fixture layout: fixtures live at /tmp/git-manager-fixtures/<name>, and a repo's
 // display name is the directory's basename.
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const SCENARIOS_DIR = join(__dirname, '../../../tools/git-fixtures/scenarios')
 
 // This suite shares ONE app window across all specs, and this feature is the first to write the
 // dashboard's persisted `savedRepos` + the `dailySummary` settings. Without cleanup those keys would
@@ -46,40 +51,27 @@ After({ tags: '@daily-summary' }, async () => {
 // Thens ("the sent prompt's system/user message contains …") are shared — see ai-generation.steps.
 // Opening a fixture repo is shared — see repo.steps.
 
-// `window.location.href = ...` navigates *asynchronously*: the assignment returns immediately and
-// the old document (with all its JS, including zustand-persist) keeps running until the new one
-// commits. Polling `getTitle()` can't tell the two documents apart (the title never changes), so a
-// step can carry on against the OLD page. Stamping the target URL with a unique marker and waiting
-// for `location.search` to carry it is the only reliable "the reload really happened" signal.
-async function waitForStampedReload(stamp: string) {
-  await browser.waitUntil(
-    async () =>
-      await browser
-        .execute((marker: string) => window.location.search.includes(marker), stamp)
-        .catch(() => false), // the execute can race the document swap itself — just poll again
-    { timeout: 10000, timeoutMsg: `The reload stamped "${stamp}" never committed` }
-  )
-}
-
 // Seeds `git-manager-settings` directly then reloads (the same pattern ai-generation.steps uses for
 // the `ai` block), merging the given settings keys into the persisted snapshot. Used here to toggle
 // the `dailySummary` feature flags without driving the Settings UI — those are covered by unit tests.
 async function seedSettingsAndReload(patch: Record<string, unknown>) {
   const stamp = `settings-${Date.now()}`
+  // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
+  // `location.href` assignment tears the context down while the driver is still completing the
+  // call — sometimes hanging the await until cucumber's own 60s step timeout.
+  const origin = await browser.execute(() => window.location.origin)
   await browser.execute(
-    (key: string, patchJson: string, marker: string) => {
+    (key: string, patchJson: string) => {
       const raw = localStorage.getItem(key)
       const parsed = raw ? JSON.parse(raw) : { state: { settings: {} }, version: 0 }
       parsed.state = parsed.state ?? {}
       parsed.state.settings = { ...parsed.state.settings, ...JSON.parse(patchJson) }
       localStorage.setItem(key, JSON.stringify(parsed))
-      window.location.href = `/?e2e=${marker}`
     },
     'git-manager-settings',
-    JSON.stringify(patch),
-    stamp
+    JSON.stringify(patch)
   )
-  await waitForStampedReload(stamp)
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 }
 
 // Two setup concerns folded into one reload:
@@ -97,6 +89,16 @@ Given(
   /^the "([^"]*)" project is listed in the dashboard with no briefing yet$/,
   async (fixtureName: string) => {
     const repoPath = join(FIXTURE_ROOT, fixtureName)
+
+    // Rebuild the fixture rather than trusting whatever a previous run left at this path. The
+    // daily-summary fixture is the one repo whose commit DATES are load-bearing: its script dates
+    // the newest commit to "the previous working day" *at build time*, and the morning auto-run
+    // only reads that exact day. A fixture built on Sunday carries Friday-the-1st commits; run
+    // the suite on Monday and the window is Friday-the-2nd — zero commits, a silently empty
+    // generation, and a scenario that fails on every machine whose fixture predates the current
+    // window (this is why ai-summary-search.feature, which has no fixture-open step of its own,
+    // failed in every full run but passed in isolation right after a same-day rebuild).
+    execFileSync('bash', [join(SCENARIOS_DIR, `${fixtureName}.sh`)], { stdio: 'inherit' })
     // The seed is written into whatever document is current — and the *previous* reload of this
     // Background's chain can still be alive at that moment (its own `location.href` navigation is
     // asynchronous). That lingering page is a freshly mounted RepoView whose `apiOpenRepo(...)`
@@ -110,8 +112,11 @@ Given(
     // clobberer gone), verify the seed survived, and re-seed if it didn't.
     for (let attempt = 1; attempt <= 3; attempt++) {
       const stamp = `repo-seed-${Date.now()}-${attempt}`
+      // Seed in one execute, then navigate driver-side (repo.steps.ts's pattern) — an in-page
+      // `location.href` assignment can hang this very execute until cucumber's 60s step timeout.
+      const origin = await browser.execute(() => window.location.origin)
       await browser.execute(
-        (path: string, name: string, marker: string) => {
+        (path: string, name: string) => {
           localStorage.setItem(
             'git-manager-repos',
             JSON.stringify({
@@ -120,13 +125,11 @@ Given(
             })
           )
           localStorage.removeItem('git-manager-daily-summaries')
-          window.location.href = `/?e2e=${marker}`
         },
         repoPath,
-        fixtureName,
-        stamp
+        fixtureName
       )
-      await waitForStampedReload(stamp)
+      await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
       const seedSurvived = await browser.execute((path: string) => {
         try {
           const raw = localStorage.getItem('git-manager-repos')
@@ -189,7 +192,24 @@ When(/^I open the project's daily briefing$/, async () => {
       'No dashboard-repo-row — the dashboard is in its empty state, the savedRepos seed did not survive',
   })
   const button = $('[data-testid="repo-summary-button"]')
-  await button.waitForDisplayed({ timeout: 15000 })
+  try {
+    await button.waitForDisplayed({ timeout: 15000 })
+  } catch (e) {
+    const diag = await browser.execute(() => {
+      const settings = JSON.parse(localStorage.getItem('git-manager-settings') ?? '{}')?.state
+        ?.settings
+      const row = document.querySelector('[data-testid="dashboard-repo-row"]')
+      return {
+        dailySummary: settings?.dailySummary ?? null,
+        aiEnabled: settings?.ai?.enabled ?? null,
+        rowHtml: row ? row.outerHTML.slice(0, 1500) : null,
+        rowCount: document.querySelectorAll('[data-testid="dashboard-repo-row"]').length,
+      }
+    })
+    throw new Error(`repo-summary-button never displayed. Diagnostics: ${JSON.stringify(diag)}`, {
+      cause: e,
+    })
+  }
   await button.click()
   // The panel header's refresh button exists in every panel state — proves the panel mounted.
   await $('[data-testid="daily-summary-refresh-button"]').waitForDisplayed({ timeout: 10000 })
@@ -199,7 +219,28 @@ Then(/^the daily briefing headline becomes "([^"]*)"$/, async (expected: string)
   // The rendered summary proves the real get_ai_activity → ai_complete(schema) → parse chain ran end
   // to end (whether triggered by the morning auto-run or the on-demand button).
   const content = $('[data-testid="daily-summary-content"]')
-  await content.waitForExist({ timeout: 20000 })
+  await content.waitForExist({ timeout: 20000 }).catch(async (e) => {
+    // The content never rendering has had more than one cause (a fixture outside the generation
+    // window, leaked settings) — capture what the panel actually shows and what the app believes,
+    // so the next occurrence is data rather than another bisection.
+    const diag = await browser.execute(() => {
+      const panel =
+        document.querySelector('[data-testid="daily-summary-refresh-button"]')?.closest('aside,div,section')
+      const settings = JSON.parse(localStorage.getItem('git-manager-settings') ?? '{}')?.state
+        ?.settings
+      return {
+        dailySummary: settings?.dailySummary ?? null,
+        aiUrl: settings?.ai?.url ?? null,
+        panelText: panel?.textContent?.slice(0, 300) ?? null,
+        panelTestids: panel
+          ? [...panel.querySelectorAll('[data-testid]')].map((el) => el.getAttribute('data-testid'))
+          : null,
+      }
+    })
+    throw new Error(`daily-summary-content never existed. Diagnostics: ${JSON.stringify(diag)}`, {
+      cause: e,
+    })
+  })
   await browser.waitUntil(async () => (await content.getText()).includes(expected), {
     timeout: 20000,
     timeoutMsg: `daily briefing content never included the headline "${expected}"`,

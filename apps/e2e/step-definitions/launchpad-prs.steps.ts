@@ -1,5 +1,6 @@
 import { browser, $, expect } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // The Launchpad is reachable purely via mock data (useGitHubData() falls back to it with no
 // GitHub token configured) — no fixture repo needed, unlike every other page in this suite. That
@@ -9,7 +10,8 @@ import { When, Then } from '@wdio/cucumber-framework'
 // here is what stands in for it.
 When(/^I open the launchpad$/, async () => {
   const origin = await browser.execute(() => window.location.origin)
-  await browser.url(`${origin}/?e2e=${Date.now()}`)
+  const stamp = `launchpad-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   await browser.waitUntil(
     async () =>
       await browser.execute(() => (document.getElementById('root')?.children.length ?? 0) > 0),

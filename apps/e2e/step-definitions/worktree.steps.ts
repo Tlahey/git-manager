@@ -93,8 +93,19 @@ Then(/^the sidebar no longer lists a worktree for branch "([^"]*)"$/, async (bra
 })
 
 When(/^I click the add-worktree button$/, async () => {
-  await clickViaJs('worktree-add-button')
-  await $('[data-testid="worktree-add-dialog"]').waitForDisplayed({ timeout: 10000 })
+  // Click-then-recheck rather than click-then-wait: a click dispatched during a sidebar
+  // re-render occasionally lands on nothing (measured in full runs — the dialog never mounted
+  // while the same step passes reliably in isolation). Radix's DialogTrigger is open-only, so a
+  // repeated click on the trigger is idempotent and safe.
+  const dialog = $('[data-testid="worktree-add-dialog"]')
+  await browser.waitUntil(
+    async () => {
+      if (await dialog.isDisplayed().catch(() => false)) return true
+      await clickViaJs('worktree-add-button')
+      return dialog.isDisplayed().catch(() => false)
+    },
+    { timeout: 10000, interval: 500, timeoutMsg: 'worktree-add-dialog never opened' }
+  )
 })
 
 // The branch picker is no longer a native `<select>` (so no `selectByAttribute`): the "searchable
@@ -153,9 +164,19 @@ When(/^I click the remove button for the linked worktree$/, async () => {
   const removeItem = $(
     `[data-testid="${testid.replace('worktree-actions-button-', 'worktree-remove-')}"]`
   )
-  await removeItem.waitForDisplayed({ timeout: 10000 })
-  await removeItem.click()
-  await $('[data-testid="worktree-remove-dialog"]').waitForDisplayed({ timeout: 10000 })
+  // Same click-then-recheck shape as the add button above, staged because this path has two
+  // fallible dispatches (the menu's pointerdown toggle, then the item click). Each pass only
+  // re-opens the menu when it actually closed, so the toggle can't be flipped shut by a retry.
+  const dialog = $('[data-testid="worktree-remove-dialog"]')
+  await browser.waitUntil(
+    async () => {
+      if (await dialog.isDisplayed().catch(() => false)) return true
+      if (!(await removeItem.isDisplayed().catch(() => false))) await openMenuViaJs(testid)
+      if (await removeItem.isDisplayed().catch(() => false)) await removeItem.click()
+      return dialog.isDisplayed().catch(() => false)
+    },
+    { timeout: 10000, interval: 500, timeoutMsg: 'worktree-remove-dialog never opened' }
+  )
 })
 
 When(/^I confirm the remove-worktree dialog$/, async () => {

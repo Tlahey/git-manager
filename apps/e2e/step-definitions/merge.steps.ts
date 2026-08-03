@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { browser, expect, $, $$ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
+import { navigateAndSettle } from '../support/navigation.js'
 
 // The embedded provider shares ONE app instance across features, run sequentially. This feature
 // navigates that shared window to the merge route, so it must hand it back on the main route or
@@ -40,7 +41,11 @@ After({ tags: '@merge' }, async () => {
   // window-state script against a dying document, taking the whole app process down. It surfaces as
   // ECONNREFUSED in the *next* scenario rather than here.
   const origin = await browser.execute(() => window.location.origin)
-  await browser.url(`${origin}/`)
+  // Settled navigation (see support/navigation.ts): returning while the swap is in flight lets
+  // the service's window probe race the dying document and burn its silent 30s timeout on the
+  // next scenario's first element command.
+  const stamp = `home-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -59,8 +64,11 @@ When(/^I open the merge editor for "([^"]*)"$/, async (filePath: string) => {
   // ConflictMergeWindow, independent of the repoUI store — so navigating the current window is
   // enough; no need to drive the native second-window flow (WebviewWindowBuilder).
   const origin = await browser.execute(() => window.location.origin)
-  const url = `${origin}/?window=merge&repoPath=${encodeURIComponent(currentRepoPath)}&filePath=${encodeURIComponent(filePath)}`
-  await browser.url(url)
+  // Stamped + settled so the editor wait below never fires while the swap is mid-flight (the
+  // service's window probe would otherwise burn its silent 30s timeout — support/navigation.ts).
+  const stamp = `merge-${Date.now()}`
+  const url = `${origin}/?window=merge&repoPath=${encodeURIComponent(currentRepoPath)}&filePath=${encodeURIComponent(filePath)}&e2e=${stamp}`
+  await navigateAndSettle(url, stamp)
   // `merge-accept-left` is rendered on `view.renderable`, i.e. exactly once get_merge_view has
   // resolved into something the editor can draw. The auto-merge wand is NOT a readiness signal:
   // it is behind `showAutoMerge`, so it only appears when the file happens to have one-sided

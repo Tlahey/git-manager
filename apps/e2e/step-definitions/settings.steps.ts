@@ -5,6 +5,7 @@ import { browser, expect, $ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { clickViaJs } from '../support/interactions.js'
+import { navigateAndSettle } from '../support/navigation.js'
 
 // W3C WebDriver key value for Meta (Command on macOS) — the value webdriverio exposes as
 // `Key.Command`. Inlined to avoid depending on the `webdriverio` package (only `@wdio/globals`
@@ -28,14 +29,48 @@ When(/^I open the settings$/, async () => {
   // safe. The happy path (listener already attached) satisfies the condition on the first pass, so
   // scenarios that open settings without a preceding reload are not slowed down.
   const page = $('[data-testid="settings-page"]')
+  let attempts = 0
   await browser.waitUntil(
     async () => {
       if (await page.isDisplayed().catch(() => false)) return true
+      attempts += 1
       await browser.keys([META, ','])
+      if (await page.isDisplayed().catch(() => false)) return true
+      // Native chords occasionally get lost for the whole wait — not just the reload gap above:
+      // when the OS takes focus off the window, `browser.keys` delivers nothing at all, and one
+      // random settings scenario per full run used to burn this whole timeout. After a few real
+      // attempts, also dispatch the same keydown synthetically on `window`: it drives the exact
+      // `useKeyboardShortcuts` handler a real Cmd+, reaches (the listener never checks
+      // `isTrusted`), minus the native key delivery that focus loss breaks. Real chords keep
+      // getting sent first on every pass, so a healthy run still exercises the true shortcut path.
+      if (attempts >= 4) {
+        console.warn('[e2e] Mod+, chord seems lost — falling back to a synthetic keydown')
+        await browser.execute(() => {
+          window.dispatchEvent(
+            new KeyboardEvent('keydown', { key: ',', metaKey: true, bubbles: true })
+          )
+        })
+      }
       return page.isDisplayed().catch(() => false)
     },
     { timeout: 10000, interval: 500, timeoutMsg: 'settings-page never appeared after Mod+,' }
-  )
+  ).catch(async (e) => {
+    // The chord and the synthetic fallback both failing means the app itself did not respond —
+    // capture what page it was actually on, so the next flaky run is data instead of a mystery.
+    const diag = await browser
+      .execute(() => ({
+        url: window.location.href,
+        rootChildren: document.getElementById('root')?.childElementCount ?? -1,
+        bodyMarkers: [...document.querySelectorAll('[data-testid]')]
+          .slice(0, 10)
+          .map((el) => el.getAttribute('data-testid')),
+      }))
+      .catch(() => 'diagnostics unavailable (execute failed)')
+    throw new Error(
+      `settings-page never appeared after Mod+, — app state: ${JSON.stringify(diag)}`,
+      { cause: e }
+    )
+  })
 })
 
 Then(/^the settings screen is shown$/, async () => {
@@ -79,17 +114,16 @@ Then(/^the row height setting is "([^"]*)"$/, async (value: string) => {
   await expect(radio).toBeChecked()
 })
 
-// Plain reload (not the fixture-opening step's cache-busting navigation) — this scenario isn't
-// switching repos/fixtures, just proving a settings value survives a fresh mount by reading back
-// from the same `git-manager-settings` localStorage key the persisted store writes to. Waiting for
-// the title to re-report (same check as the shared "application is running" step) is a
-// fixture-agnostic "the app finished remounting" signal, regardless of which tab ends up active.
+// A full remount — this scenario isn't switching repos/fixtures, just proving a settings value
+// survives a fresh mount by reading back from the same `git-manager-settings` localStorage key
+// the persisted store writes to. Navigated with a stamp rather than `location.reload()`: a title
+// poll cannot tell the old document from the new one (the title never changes), and returning
+// while the swap is mid-flight lets the service's window probe race the dying document and burn
+// its silent 30s timeout on the next element command (support/navigation.ts).
 When(/^I reload the application$/, async () => {
-  await browser.execute(() => window.location.reload())
-  await browser.waitUntil(async () => (await browser.getTitle()).length > 0, {
-    timeout: 10000,
-    timeoutMsg: 'The native window reports no title after reload',
-  })
+  const origin = await browser.execute(() => window.location.origin)
+  const stamp = `reload-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 })
 
 // Whether this actually resolves connected or disconnected depends on whether the machine running

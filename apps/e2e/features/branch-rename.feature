@@ -27,6 +27,7 @@ Feature: Renaming a branch
     And I confirm the branch rename
     Then the branch "feature/authentication" exists
     And the branch "feature/login" no longer exists
+    And no error notification is displayed
 
   Scenario: Renaming the protected main branch is rejected
     When I select the "HEAD" commit in the graph

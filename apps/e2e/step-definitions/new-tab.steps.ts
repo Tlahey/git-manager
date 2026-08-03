@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { browser, expect, $, $$ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { setActiveRepoPath } from '../support/activeRepo'
+import { navigateAndSettle } from '../support/navigation'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -90,7 +91,8 @@ When(/^I open a new tab$/, async () => {
   // Land on the base route first (same reasoning as repo.steps.ts's seedAndReload: a prior
   // feature may have left the shared app window on a different route or repo), then open a
   // genuinely blank tab on top of it.
-  await browser.url(`${origin}/?e2e=${Date.now()}`)
+  const stamp = `new-tab-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   // Wait for the app shell to actually mount before sending the chord: `useKeyboardShortcuts`'s
   // `window.addEventListener('keydown', ...)` only exists once React has, and firing the key
   // chord right after `browser.url()` races that mount. Whether the reload lands on the Dashboard

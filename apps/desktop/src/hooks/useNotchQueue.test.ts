@@ -148,6 +148,28 @@ describe('useNotchQueue — the surface decision', () => {
 
     await waitFor(() => expect(sendNative).toHaveBeenCalledTimes(2))
   })
+
+  // The e2e seam: cards still traverse the queue (the git-hooks suite records them from there),
+  // but nothing is painted — no notch window for the driver to mishandle, and no REAL macOS
+  // banner via the native fallback. Gated on VITE_E2E, so it is unreachable in production builds.
+  it('paints nothing when the e2e build forces the surface to none, but still drains the queue', async () => {
+    vi.stubEnv('VITE_E2E', 'true')
+    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface =
+      'none'
+    try {
+      setDisplayStyle('notch')
+      renderHook(() => useNotchQueue())
+      enqueue(request('a'))
+
+      await waitFor(() => expect(useNotchQueueStore.getState().queue.current).toBeNull())
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(sendNative).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+      delete (window as unknown as { __e2eNotificationSurface?: string })
+        .__e2eNotificationSurface
+    }
+  })
 })
 
 describe('useNotchQueue', () => {

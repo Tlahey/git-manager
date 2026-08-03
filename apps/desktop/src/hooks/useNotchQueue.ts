@@ -10,6 +10,7 @@ import {
   nativeSpecFor,
   resolveNotchFallbackSurface,
   resolveNotificationSurface,
+  type NotificationSurface,
 } from '../lib/notifications/notchDelivery'
 import { useNotchQueueStore } from '../stores/notchQueue.store'
 import { useSettingsStore } from '../stores/settings.store'
@@ -90,7 +91,20 @@ export function useNotchQueue() {
       // notifications go through — so a transfer or a search card opened a notch window even for a
       // user who had explicitly asked for macOS banners.
       const settings = useSettingsStore.getState().settings.notifications
-      const surface = resolveNotificationSurface(request, settings)
+      // e2e-only escape hatch, dead-code-eliminated from every real build: the git-hooks suite
+      // asserts on cards *reaching this queue* (a subscription installed from the test side), and
+      // needs producers enabled for that — but showing the cards from a test run is all cost: a
+      // real second WebviewWindow the WebKit driver handles badly, and, when that window cannot
+      // open, a REAL macOS banner via the native fallback (measured: test runs spamming the
+      // host's Notification Centre with "the pre-commit hook stopped the operation"). Forcing the
+      // surface downstream of the enqueue keeps the whole production chain real except the final
+      // paint. Set by the suite's recording step; cleared by its per-scenario baseline.
+      const forcedSurface =
+        import.meta.env.VITE_E2E === 'true'
+          ? (window as unknown as { __e2eNotificationSurface?: NotificationSurface })
+              .__e2eNotificationSurface
+          : undefined
+      const surface = forcedSurface ?? resolveNotificationSurface(request, settings)
 
       if (surface === 'none') {
         moveOn()

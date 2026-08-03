@@ -32,6 +32,33 @@ interface RecordedCard {
  */
 Given(/^the notch queue is being recorded$/, async () => {
   const installed = await browser.execute(() => {
+    // The suite-wide baseline (hooks.steps.ts) disables notifications so no scenario opens the
+    // notch window by accident — but some producers check that setting before enqueuing at all
+    // (useNotchOperation's `enabled`), and these scenarios exist to see real hook cards reach the
+    // queue. Re-enable delivery for this scenario only; the next scenario's Before re-disables it.
+    const settingsStore = (
+      window as unknown as {
+        __e2eSettingsStore?: {
+          getState: () => {
+            settings: { notifications?: Record<string, unknown> }
+            updateSettings: (partial: Record<string, unknown>) => void
+          }
+        }
+      }
+    ).__e2eSettingsStore
+    if (settingsStore) {
+      const current = settingsStore.getState().settings.notifications ?? {}
+      settingsStore.getState().updateSettings({ notifications: { ...current, enabled: true } })
+    }
+    // …but force the display surface to nothing (an e2e-only seam in useNotchQueue.ts,
+    // VITE_E2E-gated): these scenarios assert cards reaching the QUEUE, and actually painting
+    // them costs a real second WebviewWindow the driver mishandles ("no such window" mid-poll)
+    // — or, when that window can't open, a REAL macOS banner via the native fallback. The whole
+    // production chain (hook run, AppError, IPC, parse, enqueue) stays real; only the final
+    // paint is skipped. The suite baseline clears this flag between scenarios.
+    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface =
+      'none'
+
     const store = (
       window as unknown as {
         __e2eNotchQueueStore?: {
@@ -65,10 +92,23 @@ Given(/^the notch queue is being recorded$/, async () => {
   }
 })
 
-function recordedCards(): Promise<RecordedCard[]> {
-  return browser.execute(
-    () => (window as unknown as { __e2eNotchLog?: unknown[] }).__e2eNotchLog ?? []
-  ) as Promise<RecordedCard[]>
+async function recordedCards(): Promise<RecordedCard[]> {
+  const read = () =>
+    browser.execute(
+      () => (window as unknown as { __e2eNotchLog?: unknown[] }).__e2eNotchLog ?? []
+    ) as Promise<RecordedCard[]>
+  try {
+    return await read()
+  } catch {
+    // These scenarios run with notifications re-enabled, so a real notch window opens and closes
+    // on its own timer mid-scenario. The service's per-command window switch can leave the
+    // session parked on that window at the moment it self-closes — the next command then throws
+    // "no such window" even though the recording lives in the main window all along. Re-anchor on
+    // `main` and read again rather than letting one dying window fail the assertion.
+    const handles = await browser.getWindowHandles()
+    if (handles.includes('main')) await browser.switchToWindow('main')
+    return await read()
+  }
 }
 
 async function firstErrorCard(): Promise<RecordedCard | undefined> {

@@ -13,5 +13,8 @@
   "errors.AI_EMPTY_RESPONSE": "Le modèle a répondu par une réponse vide.",
   "errors.AI_NO_BRANCH_CHANGES": "Cette branche n'a aucun changement par rapport à sa branche de base.",
   "errors.AI_NO_COMMIT_CHANGES": "Ce commit n'a aucun changement de texte à expliquer.",
-  "errors.AI_NO_WORKING_CHANGES": "Aucune modification en cours à résumer."
+  "errors.AI_NO_WORKING_CHANGES": "Aucune modification en cours à résumer.",
+  "appCrash.title": "Une erreur est survenue",
+  "appCrash.description": "L'interface a rencontré une erreur inattendue et a dû s'arrêter. Vos dépôts sont intacts — recharger remet tout en place.",
+  "appCrash.reload": "Recharger l'application"
 }

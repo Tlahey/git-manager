@@ -62,17 +62,20 @@ async function clickViaJs(testid: string) {
 }
 
 Then(/^the fixup commit window is shown$/, async () => {
-  const before = await browser.getWindowHandles()
-  mainWindowHandle = before[0]
+  // Waits for the window by its label, not for the handle *count* to grow. The palette action
+  // that opens the window has already run by the time this step samples anything, so on a fast
+  // build the window is often open before the first sample — a count-based wait then times out
+  // against a window that is sitting right there, and the leaked window goes on to poison every
+  // feature that runs after this one in the shared app instance (the 2026-08-02 full run lost
+  // ~20 feature files to exactly that). The label is deterministic:
+  // `fixup-<sanitized repo path>-<short oid>` (useGitGraphActions.ts).
+  const handles = await browser.getWindowHandles()
+  mainWindowHandle = handles.includes('main') ? 'main' : handles[0]
   await browser.waitUntil(
-    async () => {
-      const handles = await browser.getWindowHandles()
-      return handles.length > before.length
-    },
-    { timeout: 10000, timeoutMsg: 'The fixup commit window never opened (window count unchanged)' }
+    async () => (await browser.getWindowHandles()).some((h) => h.startsWith('fixup-')),
+    { timeout: 10000, timeoutMsg: 'The fixup commit window never opened (no fixup-* handle)' }
   )
-  const after = await browser.getWindowHandles()
-  fixupWindowHandle = after.find((h) => !before.includes(h))!
+  fixupWindowHandle = (await browser.getWindowHandles()).find((h) => h.startsWith('fixup-'))!
   await browser.switchToWindow(fixupWindowHandle)
   await $('[data-testid="fixup-commit-message"]').waitForDisplayed({ timeout: 10000 })
 })

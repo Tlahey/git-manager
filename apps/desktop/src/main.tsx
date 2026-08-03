@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { AppErrorBoundary } from './components/app-error-boundary/AppErrorBoundary'
 import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWindow'
 import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
@@ -12,6 +13,7 @@ import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
+import { useGameStore } from './stores/game.store'
 import { hideAppSplash } from './lib/appSplash'
 import '@git-manager/ui/globals.css'
 import '@git-manager/editor/styles.css'
@@ -50,6 +52,11 @@ if (import.meta.env.VITE_E2E === 'true') {
   // exactly at the window boundary.
   ;(window as unknown as { __e2eNotchQueueStore: typeof useNotchQueueStore }).__e2eNotchQueueStore =
     useNotchQueueStore
+  // Exposed so the suite's `Before` hook can retire a live trophy toast: achievements unlock as a
+  // side effect of ordinary git actions, and the toast lives on `recentUnlock` in the live store —
+  // clearing the persisted game-store key alone leaves the previous scenario's toast on screen
+  // (4.5s lifetime, i.e. well into the next scenario), where it bleeds into visual captures.
+  ;(window as unknown as { __e2eGameStore: typeof useGameStore }).__e2eGameStore = useGameStore
 }
 
 // Initialize i18n before rendering, honoring the persisted language choice
@@ -130,7 +137,12 @@ e2eSetup
     }
 
     ReactDOM.createRoot(document.getElementById('root')!).render(
-      <React.StrictMode>{content}</React.StrictMode>
+      // The boundary is the difference between one crashed view and a silently blank window: an
+      // uncaught commit-phase error otherwise unmounts everything under #root (seen on WKWebView
+      // as "NotFoundError: The object can not be found here" during full e2e runs).
+      <React.StrictMode>
+        <AppErrorBoundary>{content}</AppErrorBoundary>
+      </React.StrictMode>
     )
     if (!isAppWindow) requestAnimationFrame(hideAppSplash)
   })

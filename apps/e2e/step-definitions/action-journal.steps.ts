@@ -1,5 +1,6 @@
 import { browser, $ } from '@wdio/globals'
 import { When, Then, After } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // This feature navigates the one shared app window to the journal route in place — same choice
 // merge.steps.ts makes for its read-only "open and view" scenarios, and for the same reason: the
@@ -9,7 +10,10 @@ import { When, Then, After } from '@wdio/cucumber-framework'
 // this one just needs the shared window handed back on the main route, which this hook does.
 After({ tags: '@action-journal' }, async () => {
   const origin = await browser.execute(() => window.location.origin)
-  await browser.url(`${origin}/`)
+  // Settled + stamped (support/navigation.ts): the next feature's first element command must not
+  // race the swap, or the service's window probe burns its silent 30s direct-eval timeout.
+  const stamp = `journal-home-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 })
 
 When(/^I open the action journal$/, async () => {
@@ -23,7 +27,7 @@ When(/^I open the action journal$/, async () => {
   // is what a real second-window flow gets for free.
   await browser.pause(2500)
   const origin = await browser.execute(() => window.location.origin)
-  await browser.url(`${origin}/?window=actions`)
+  await navigateAndSettle(`${origin}/?window=actions`, 'window=actions')
   await $('[data-testid="action-journal-window"]').waitForDisplayed({ timeout: 15000 })
 })
 

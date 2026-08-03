@@ -91,6 +91,24 @@ export async function stabiliseForSnapshot(): Promise<void> {
     reverse: true,
     timeoutMsg: 'The global loading overlay was still up when trying to take a visual snapshot',
   })
+  // The footer's AI pill resolves its liveness check asynchronously (unknown → checking →
+  // connected), so a full-window capture races it: sometimes the muted "checking" pill,
+  // sometimes the green "connected" one. Every scenario's baseline points the provider at the
+  // suite-wide fake server, which answers /v1/models immediately — so rather than mocking the
+  // status command, just wait out the short transient. Absent pill (AI off) settles instantly.
+  await browser.waitUntil(
+    async () =>
+      await browser.execute(() => {
+        const pill = document.querySelector('[data-testid="footer-ai-status"]')
+        if (!pill) return true
+        const state = pill.getAttribute('data-state')
+        return state !== 'unknown' && state !== 'checking'
+      }),
+    {
+      timeout: 10000,
+      timeoutMsg: 'The footer AI status pill never left its transient checking state',
+    }
+  )
   await browser.execute(async () => {
     await document.fonts.ready
   })
@@ -131,9 +149,26 @@ export async function stabiliseForSnapshot(): Promise<void> {
   // (see merge.steps.ts's note on that), so e.g. a prior scenario's first commit bleeds a toast
   // into a totally unrelated feature's snapshot a few steps later. Its exact presence/timing isn't
   // deterministic (depends on scenario execution order), so baking it into a baseline would just
-  // make that snapshot flaky the other way — yank it from the DOM instead of waiting out its own
-  // close animation, since we're about to screenshot and don't need the app to observe the close.
+  // make that snapshot flaky the other way.
+  //
+  // Retired through the live game store, NEVER by removing the DOM node: the toast is
+  // React-managed, and React's next commit against an externally-removed child throws WebKit's
+  // "NotFoundError: The object can not be found here" — which, with no error boundary, unmounted
+  // the entire app to a blank #root mid-run (TrophyToast.tsx documents the same contract from
+  // the other side). The store clear makes TrophyToast unmount itself, then the short wait below
+  // confirms React has actually committed that removal before anything is photographed.
   await browser.execute(() => {
-    document.querySelector('[data-testid="trophy-toast"]')?.remove()
+    const store = (
+      window as unknown as {
+        __e2eGameStore?: { getState: () => { clearRecentUnlock: () => void } }
+      }
+    ).__e2eGameStore
+    store?.getState().clearRecentUnlock()
   })
+  await $('[data-testid="trophy-toast"]')
+    .waitForExist({ timeout: 3000, reverse: true })
+    .catch(() => {
+      // A toast that re-appeared (an unlock mid-stabilisation) shouldn't fail the capture — the
+      // snapshot tolerance and the baseline's own purge cover the residual case.
+    })
 }

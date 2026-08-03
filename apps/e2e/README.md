@@ -121,6 +121,15 @@ source change introduced, e.g. a render loop, is silently baked into the binary 
 the run just hangs with no obvious error pointing at "rebuild me". Paying the rebuild cost
 (cargo incremental, so only genuinely fast when nothing changed) by default avoids that trap.
 
+Every wdio script here runs under `caffeinate -dims` (macOS-only, like the suite itself), and
+that is load-bearing, not a nicety: if the display sleeps mid-run, macOS throttles the occluded
+WKWebView — `requestAnimationFrame` stops, so anything animation-gated (Radix dialogs, the ⌘K
+palette, Monaco) never reaches "displayed" — and whole contiguous bands of features die on 10s
+waits while the basic page still renders. The failures look exactly like app bugs, pass in
+isolation, and land on different features every run. A related trap: a `@visual` baseline
+auto-saved during such a degraded run is corrupted (97-99% mismatch forever after) — delete it
+from `__visual__/.../baseline/` and let the next healthy run recapture it.
+
 If you're only iterating on `.feature`/step-definition files (no Rust or frontend source
 changed), skip the rebuild with `pnpm test:e2e:fast` (equivalent to
 `pnpm --filter @git-manager/e2e test:e2e`) or `pnpm --filter @git-manager/e2e exec wdio run

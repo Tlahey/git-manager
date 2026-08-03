@@ -1,5 +1,6 @@
 import { browser, $, expect } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // Without this, `savedFilters` (and `snoozed`) keep accumulating across separate test runs on the
 // same machine — zustand's persist middleware writes real localStorage, which this suite doesn't
@@ -53,11 +54,7 @@ Then(/^the "([^"]*)" saved filter is shown$/, async (name: string) => {
 When(/^I reload the launchpad$/, async () => {
   const stamp = `launchpad-reload-${Date.now()}`
   const origin = await browser.execute(() => window.location.origin)
-  await browser.url(`${origin}/?${stamp}=1`)
-  await browser.waitUntil(
-    async () => await browser.execute((s: string) => window.location.search.includes(s), stamp),
-    { timeout: 10000, timeoutMsg: `The reload stamped "${stamp}" never committed` }
-  )
+  await navigateAndSettle(`${origin}/?${stamp}=1`, stamp)
   await browser.waitUntil(
     async () =>
       await browser.execute(() => (document.getElementById('root')?.children.length ?? 0) > 0),

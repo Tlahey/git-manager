@@ -118,6 +118,22 @@ describe('TrophyToast — auto-dismiss / manual close', () => {
     expect(useGameStore.getState().recentUnlock).toBeNull()
   })
 
+  // The e2e baseline retires a leftover toast by calling `clearRecentUnlock()` on the live store
+  // between scenarios. The toast must unmount through React in response: the previous
+  // e2e workaround (removing the DOM node externally) made React's next commit throw WebKit's
+  // NotFoundError and unmount the whole tree.
+  it('unmounts the toast when the store unlock is cleared externally', async () => {
+    render(<TrophyToast />)
+    await unlock()
+    expect(screen.getByTestId('trophy-toast')).toBeInTheDocument()
+
+    await act(async () => {
+      useGameStore.getState().clearRecentUnlock()
+    })
+
+    expect(screen.queryByTestId('trophy-toast')).toBeNull()
+  })
+
   it('manually closing the toast fades it out immediately', async () => {
     render(<TrophyToast />)
     await unlock()

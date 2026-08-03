@@ -149,8 +149,16 @@ export const config: WebdriverIO.Config = {
   },
   // Runs once the session is up, so the delta is exactly what launching the app and connecting the
   // driver cost this worker — kept out of the first scenario's time, where it used to hide.
-  before: function (_caps, specs) {
+  before: async function (_caps, specs) {
     endSession(specs)
+    // The W3C default script timeout is 30s, and it is the price of any `browser.execute` that
+    // lands in a document a navigation is tearing down: the script vanishes with the page, and
+    // the driver waits the whole window before erroring ("Script execution timed out") — which
+    // is how even the stamped settle-poll in support/navigation.ts could still absorb a silent
+    // 30s on its first attempt. Every execute in this suite is a sub-second DOM/localStorage
+    // read; 5s caps the cost of losing one to a swap at 5s, and the caller's retry then lands
+    // on the committed document.
+    await browser.setTimeout({ script: 5000 })
   },
   beforeScenario: function (world) {
     startScenario()
