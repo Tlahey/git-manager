@@ -38,8 +38,13 @@ Given(
     }))
 
     const stamp = `dashboard-seed-${Date.now()}`
+    // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
+    // `location.href` assignment either tears the context down before the driver's response is
+    // sent (hanging the await for cucumber's 60s step timeout) or, deferred, fires mid-scenario
+    // later. The stamped wait below then proves the reload actually committed.
+    const origin = await browser.execute(() => window.location.origin)
     await browser.execute(
-      (reposJson: string, marker: string) => {
+      (reposJson: string) => {
         localStorage.setItem(
           'git-manager-repos',
           JSON.stringify({
@@ -47,11 +52,10 @@ Given(
             version: 0,
           })
         )
-        window.location.href = `/?e2e=${marker}`
       },
-      JSON.stringify(repos),
-      stamp
+      JSON.stringify(repos)
     )
+    await browser.url(`${origin}/?e2e=${stamp}`)
     await waitForStampedReload(stamp)
   }
 )

@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:e2e": "wdio run ./wdio.conf.ts",
-    "screenshots": "wdio run ./wdio.conf.ts --cucumberOpts.tags='@screenshots'",
-    "docs:screenshots": "wdio run ./wdio.conf.ts --cucumberOpts.tags='@doc'"
+    "test:e2e": "caffeinate -dims wdio run ./wdio.conf.ts",
+    "screenshots": "caffeinate -dims wdio run ./wdio.conf.ts --cucumberOpts.tags='@screenshots'",
+    "docs:screenshots": "caffeinate -dims wdio run ./wdio.conf.ts --cucumberOpts.tags='@doc'"
   },
   "devDependencies": {
     "@git-manager/config": "workspace:*",

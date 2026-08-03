@@ -66,19 +66,22 @@ async function waitForStampedReload(stamp: string) {
 // the `dailySummary` feature flags without driving the Settings UI — those are covered by unit tests.
 async function seedSettingsAndReload(patch: Record<string, unknown>) {
   const stamp = `settings-${Date.now()}`
+  // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
+  // `location.href` assignment tears the context down while the driver is still completing the
+  // call — sometimes hanging the await until cucumber's own 60s step timeout.
+  const origin = await browser.execute(() => window.location.origin)
   await browser.execute(
-    (key: string, patchJson: string, marker: string) => {
+    (key: string, patchJson: string) => {
       const raw = localStorage.getItem(key)
       const parsed = raw ? JSON.parse(raw) : { state: { settings: {} }, version: 0 }
       parsed.state = parsed.state ?? {}
       parsed.state.settings = { ...parsed.state.settings, ...JSON.parse(patchJson) }
       localStorage.setItem(key, JSON.stringify(parsed))
-      window.location.href = `/?e2e=${marker}`
     },
     'git-manager-settings',
-    JSON.stringify(patch),
-    stamp
+    JSON.stringify(patch)
   )
+  await browser.url(`${origin}/?e2e=${stamp}`)
   await waitForStampedReload(stamp)
 }
 
@@ -110,8 +113,11 @@ Given(
     // clobberer gone), verify the seed survived, and re-seed if it didn't.
     for (let attempt = 1; attempt <= 3; attempt++) {
       const stamp = `repo-seed-${Date.now()}-${attempt}`
+      // Seed in one execute, then navigate driver-side (repo.steps.ts's pattern) — an in-page
+      // `location.href` assignment can hang this very execute until cucumber's 60s step timeout.
+      const origin = await browser.execute(() => window.location.origin)
       await browser.execute(
-        (path: string, name: string, marker: string) => {
+        (path: string, name: string) => {
           localStorage.setItem(
             'git-manager-repos',
             JSON.stringify({
@@ -120,12 +126,11 @@ Given(
             })
           )
           localStorage.removeItem('git-manager-daily-summaries')
-          window.location.href = `/?e2e=${marker}`
         },
         repoPath,
-        fixtureName,
-        stamp
+        fixtureName
       )
+      await browser.url(`${origin}/?e2e=${stamp}`)
       await waitForStampedReload(stamp)
       const seedSurvived = await browser.execute((path: string) => {
         try {
@@ -189,7 +194,24 @@ When(/^I open the project's daily briefing$/, async () => {
       'No dashboard-repo-row — the dashboard is in its empty state, the savedRepos seed did not survive',
   })
   const button = $('[data-testid="repo-summary-button"]')
-  await button.waitForDisplayed({ timeout: 15000 })
+  try {
+    await button.waitForDisplayed({ timeout: 15000 })
+  } catch (e) {
+    const diag = await browser.execute(() => {
+      const settings = JSON.parse(localStorage.getItem('git-manager-settings') ?? '{}')?.state
+        ?.settings
+      const row = document.querySelector('[data-testid="dashboard-repo-row"]')
+      return {
+        dailySummary: settings?.dailySummary ?? null,
+        aiEnabled: settings?.ai?.enabled ?? null,
+        rowHtml: row ? row.outerHTML.slice(0, 1500) : null,
+        rowCount: document.querySelectorAll('[data-testid="dashboard-repo-row"]').length,
+      }
+    })
+    throw new Error(`repo-summary-button never displayed. Diagnostics: ${JSON.stringify(diag)}`, {
+      cause: e,
+    })
+  }
   await button.click()
   // The panel header's refresh button exists in every panel state — proves the panel mounted.
   await $('[data-testid="daily-summary-refresh-button"]').waitForDisplayed({ timeout: 10000 })

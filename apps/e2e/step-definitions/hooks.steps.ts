@@ -33,13 +33,20 @@ Before(async () => {
   // re-enable notifications themselves — in their "the notch queue is being recorded" step.
   const notifications = { enabled: false }
 
+  // Factory values, re-pinned because WKWebView's localStorage survives app relaunches: without
+  // this, whatever daily-summary.feature's last scenario seeded (`enabled: false`) leaks into the
+  // NEXT run, and its first scenario — which relies on the factory defaults — finds no briefing
+  // button at all. Diagnosed from the persisted settings captured at the moment of that failure.
+  // Any settings group a scenario toggles belongs in this baseline for the same reason.
+  const dailySummary = { enabled: true, autoGenerate: true, saveToRepo: false }
+
   // One driver command for the whole baseline — clearing the volatile persisted slices, patching
   // the live settings store, and seeding settings + graph columns. It used to be three, and the
   // hook runs before all 160 scenarios; a measured full run spent 58.6 of its 62 minutes outside
   // step execution, with these round trips the dominant remaining candidate. See
   // support/scenarioBaseline.ts for the ordering constraints inside it.
   await applyBaseline({
-    settings: { appearance, ai, notifications, language: 'en' },
+    settings: { appearance, ai, notifications, dailySummary, language: 'en' },
     columns: {
       refs: { visible: true, width: 160 },
       // Wide enough that no fixture's lane count pushes the graph column into its

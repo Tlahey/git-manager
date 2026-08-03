@@ -18,6 +18,13 @@ After({ tags: '@ai' }, async () => {
 // throughout this suite) rather than driving the Settings UI — this scenario is about the
 // generation flow itself, not about how the settings get there (see settings.feature for that).
 async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
+  // Seed, then navigate through WebDriver rather than assigning `window.location.href` inside
+  // the same execute (repo.steps.ts's pattern): the in-page assignment either tears the context
+  // down before the driver's response is sent (the await then hangs for cucumber's 60s step
+  // timeout) or — deferred — fires mid-scenario later. The title check below is also satisfied
+  // by the old page, so only a driver-owned navigation guarantees the seeded settings were
+  // actually rehydrated before the scenario goes on.
+  const origin = await browser.execute(() => window.location.origin)
   await browser.execute(
     (key: string, aiJson: string) => {
       const raw = localStorage.getItem(key)
@@ -25,15 +32,16 @@ async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
       parsed.state = parsed.state ?? {}
       parsed.state.settings = { ...parsed.state.settings, ai: JSON.parse(aiJson) }
       localStorage.setItem(key, JSON.stringify(parsed))
-      window.location.href = `/?e2e=${Date.now()}`
     },
     'git-manager-settings',
     JSON.stringify(ai)
   )
-  await browser.waitUntil(async () => (await browser.getTitle()).length > 0, {
-    timeout: 10000,
-    timeoutMsg: 'The native window reports no title after reload',
-  })
+  const stamp = `ai-seed-${Date.now()}`
+  await browser.url(`${origin}/?e2e=${stamp}`)
+  await browser.waitUntil(
+    async () => await browser.execute((s: string) => window.location.search.includes(s), stamp),
+    { timeout: 10000, timeoutMsg: 'The app never reloaded onto the AI-seeded page' }
+  )
 }
 
 Given(/^the AI provider is pointed at a fake server$/, async () => {
