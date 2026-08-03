@@ -195,3 +195,36 @@ When(/^I confirm the remote (tag|branch) deletion$/, async (kind: string) => {
 Then(/^the remote (tag|branch) deletion dialog is shown$/, async (kind: string) => {
   await expect($(`[data-testid="delete-remote-${kind}-dialog"]`)).toBeDisplayed()
 })
+
+// ─── Branch relationships, read from git itself ──────────────────────────────
+
+Then(
+  /^the branch "([^"]*)" contains the commit "([^"]*)"$/,
+  async (branch: string, subject: string) => {
+    const repoPath = getActiveRepoPath()
+    const contains = () =>
+      execFileSync('git', ['-C', repoPath, 'log', branch, '--format=%s'], {
+        encoding: 'utf8',
+      })
+        .split('\n')
+        .includes(subject)
+    await browser.waitUntil(contains, {
+      timeout: 15000,
+      timeoutMsg: `expected branch "${branch}" to contain a commit "${subject}"`,
+    })
+  }
+)
+
+/** Same tip = the fast-forward actually moved the branch, rather than merely not failing. */
+Then(
+  /^the branches "([^"]*)" and "([^"]*)" point at the same commit$/,
+  async (a: string, b: string) => {
+    const repoPath = getActiveRepoPath()
+    const tip = (ref: string) =>
+      execFileSync('git', ['-C', repoPath, 'rev-parse', ref], { encoding: 'utf8' }).trim()
+    await browser.waitUntil(() => tip(a) === tip(b), {
+      timeout: 15000,
+      timeoutMsg: `expected "${a}" (${tip(a)}) and "${b}" (${tip(b)}) to point at the same commit`,
+    })
+  }
+)
