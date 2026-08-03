@@ -81,28 +81,6 @@ Feature: Command palette (⌘K)
     And I confirm the branch creation
     Then the branch "feature/from-palette" points at the commit "chore: bump counter to 3"
 
-  Scenario: Creating a tag from an earlier commit via the palette
-    When I select the "HEAD~1" commit in the graph
-    And I open the command palette
-    Then the command palette shows commit actions for "HEAD~1"
-    When I run the command palette action "commit-tag"
-    Then the tag name input is shown
-    When I enter the tag name "v-from-palette"
-    And I confirm the tag creation
-    Then the tag "v-from-palette" points at the commit "chore: bump counter to 3"
-    And the tag "v-from-palette" is shown as a ref in the graph
-
-  Scenario: Creating an annotated tag from an earlier commit via the palette
-    When I select the "HEAD~1" commit in the graph
-    And I open the command palette
-    Then the command palette shows commit actions for "HEAD~1"
-    When I run the command palette action "commit-tag-annotated"
-    Then the tag name input is shown
-    When I enter the tag name "v-annotated-from-palette"
-    And I confirm the tag creation
-    Then the tag "v-annotated-from-palette" points at the commit "chore: bump counter to 3"
-    And the tag "v-annotated-from-palette" is annotated
-
   Scenario: Cherry-picking a commit from another branch via the palette
     Given the "feature-branches" fixture repository is opened
     When I select the "feature/login" commit in the graph

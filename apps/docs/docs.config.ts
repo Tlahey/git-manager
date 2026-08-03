@@ -74,6 +74,7 @@ export const DOC_SECTIONS: DocSection[] = [
       'branch-rename',
       'branch-upstream',
       'compare-branches',
+      'tags',
       'stash-stack',
       'worktree',
       'submodule',
