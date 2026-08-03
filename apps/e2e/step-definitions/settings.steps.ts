@@ -403,3 +403,92 @@ Then(/^the task command suggestions include "([^"]*)"$/, async (name: string) =>
   await input.click()
   await $(`[data-testid="run-tasks-command-option-${name}"]`).waitForDisplayed({ timeout: 10000 })
 })
+
+// ─── Integrations: GitLab / Bitbucket ────────────────────────────────────────
+//
+// Only the token providers. GitHub sits in the same section but authenticates through the OAuth
+// device flow, covered by its own scenario above.
+
+When(/^I select the "([^"]*)" integration provider$/, async (provider: string) => {
+  const tab = $(`[data-testid="integration-provider-${provider}"]`)
+  await tab.waitForClickable({ timeout: 15000 })
+  await tab.click()
+  await $(`[data-testid="integration-panel-${provider}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
+Then(/^the "([^"]*)" integration provider is selected$/, async (provider: string) => {
+  await expect($(`[data-testid="integration-provider-${provider}"]`)).toHaveAttribute(
+    'data-active',
+    'true'
+  )
+})
+
+Then(
+  /^the "([^"]*)" integration form asks for a host, a username and a token$/,
+  async (provider: string) => {
+    for (const field of ['host', 'username', 'token']) {
+      await expect($(`[data-testid="integration-${provider}-${field}-input"]`)).toBeDisplayed()
+    }
+    // The token never travels in the clear on screen — the field is a password input.
+    await expect($(`[data-testid="integration-${provider}-token-input"]`)).toHaveAttribute(
+      'type',
+      'password'
+    )
+  }
+)
+
+Then(/^no "([^"]*)" account is connected$/, async (provider: string) => {
+  await expect($(`[data-testid="integration-${provider}-empty"]`)).toBeDisplayed()
+})
+
+When(
+  /^I connect a "([^"]*)" account named "([^"]*)"$/,
+  async (provider: string, username: string) => {
+    await $(`[data-testid="integration-${provider}-username-input"]`).setValue(username)
+    await $(`[data-testid="integration-${provider}-token-input"]`).setValue('e2e-token')
+    const connect = $(`[data-testid="integration-${provider}-connect-button"]`)
+    await connect.waitForClickable({ timeout: 10000 })
+    await connect.click()
+  }
+)
+
+/** The account id the section builds: `<username>@<host without its scheme>`. */
+function accountId(username: string, host: string) {
+  return `${username}@${host.replace(/^https?:\/\//, '')}`
+}
+
+Then(
+  /^the "([^"]*)" account "([^"]*)" on "([^"]*)" is listed as active$/,
+  async (provider: string, username: string, host: string) => {
+    const row = $(`[data-testid="integration-${provider}-account-${accountId(username, host)}"]`)
+    // The connect button waits out a deliberate delay before the account lands.
+    await row.waitForDisplayed({ timeout: 15000 })
+    await expect($(`[data-testid="integration-${provider}-account-active"]`)).toBeDisplayed()
+  }
+)
+
+When(
+  /^I disconnect the "([^"]*)" account "([^"]*)" on "([^"]*)"$/,
+  async (provider: string, username: string, host: string) => {
+    const remove = $(`[data-testid="integration-${provider}-remove-${accountId(username, host)}"]`)
+    await remove.waitForClickable({ timeout: 10000 })
+    await remove.click()
+  }
+)
+
+/**
+ * Reads the *persisted* settings rather than the rendered list: disconnecting has to remove the
+ * account (and its token) from `git-manager-settings`, not merely stop drawing a row.
+ */
+Then(/^the persisted settings hold no "([^"]*)" account$/, async (provider: string) => {
+  const accounts = await browser.execute((key: string) => {
+    const raw = window.localStorage.getItem('git-manager-settings')
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as {
+      state?: { settings?: { integrations?: Record<string, unknown> } }
+    }
+    const list = parsed.state?.settings?.integrations?.[key]
+    return Array.isArray(list) ? list.length : null
+  }, `${provider}Accounts`)
+  await expect(accounts).toBe(0)
+})

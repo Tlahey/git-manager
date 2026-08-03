@@ -22,84 +22,81 @@ describe('IntegrationSection — provider navigation', () => {
   it('switches to GitLab and Bitbucket, hiding GitHub', async () => {
     const user = userEvent.setup()
     render(<IntegrationSection />)
-    await user.click(screen.getByText('GitLab'))
+    await user.click(screen.getByTestId('integration-provider-gitlab'))
     expect(screen.getByText('GitLab Integration')).toBeInTheDocument()
+    expect(screen.getByTestId('integration-panel-gitlab')).toBeInTheDocument()
     expect(screen.queryByTestId('github-section')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('Bitbucket'))
-    expect(screen.getByText('Bitbucket Integration')).toBeInTheDocument()
-    expect(screen.queryByText('GitLab Integration')).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('integration-provider-bitbucket'))
+    expect(screen.getByTestId('integration-panel-bitbucket')).toBeInTheDocument()
+    expect(screen.queryByTestId('integration-panel-gitlab')).not.toBeInTheDocument()
+  })
+
+  it('marks the selected provider so the choice is readable from outside', async () => {
+    const user = userEvent.setup()
+    render(<IntegrationSection />)
+    expect(screen.getByTestId('integration-provider-github')).toHaveAttribute('data-active', 'true')
+    await user.click(screen.getByTestId('integration-provider-gitlab'))
+    expect(screen.getByTestId('integration-provider-gitlab')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('integration-provider-github')).toHaveAttribute(
+      'data-active',
+      'false'
+    )
   })
 })
 
 describe.each([
   {
     provider: 'gitlab' as const,
-    navLabel: 'GitLab',
-    connectLabel: 'Add GitLab account',
     emptyLabel: 'No GitLab account connected',
-    userPlaceholder: 'Your username',
-    tokenPlaceholder: 'glpat-...',
     accountsKey: 'gitlabAccounts' as const,
     activeKey: 'gitlabActiveAccountId' as const,
     defaultHost: 'https://gitlab.com',
   },
   {
     provider: 'bitbucket' as const,
-    navLabel: 'Bitbucket',
-    connectLabel: 'Add Bitbucket account',
     emptyLabel: 'No Bitbucket account connected',
-    userPlaceholder: 'Your username',
-    tokenPlaceholder: 'Enter your app password',
     accountsKey: 'bitbucketAccounts' as const,
     activeKey: 'bitbucketActiveAccountId' as const,
     defaultHost: 'https://bitbucket.org',
   },
 ])(
   'IntegrationSection — $provider',
-  ({
-    navLabel,
-    connectLabel,
-    emptyLabel,
-    userPlaceholder,
-    tokenPlaceholder,
-    accountsKey,
-    activeKey,
-    defaultHost,
-  }) => {
+  ({ provider, emptyLabel, accountsKey, activeKey, defaultHost }) => {
     async function openProvider() {
       const user = userEvent.setup()
       render(<IntegrationSection />)
-      await user.click(screen.getByText(navLabel))
+      await user.click(screen.getByTestId(`integration-provider-${provider}`))
       return user
     }
 
     it('shows an empty state with no accounts', async () => {
       await openProvider()
       expect(screen.getByText(emptyLabel)).toBeInTheDocument()
+      expect(screen.getByTestId(`integration-${provider}-empty`)).toBeInTheDocument()
     })
 
     it('disables the connect button until both username and token are filled', async () => {
       const user = await openProvider()
-      const button = screen.getByText(connectLabel).closest('button')!
+      const button = screen.getByTestId(`integration-${provider}-connect-button`)
       expect(button).toBeDisabled()
-      await user.type(screen.getByPlaceholderText(userPlaceholder), 'someone')
+      await user.type(screen.getByTestId(`integration-${provider}-username-input`), 'someone')
       expect(button).toBeDisabled()
-      await user.type(screen.getByPlaceholderText(tokenPlaceholder), 'secret-token')
+      await user.type(screen.getByTestId(`integration-${provider}-token-input`), 'secret-token')
       expect(button).toBeEnabled()
     })
 
     it('connects a new account after a simulated delay, clears the form, and marks it active', async () => {
       vi.useFakeTimers()
       render(<IntegrationSection />)
-      fireEvent.click(screen.getByText(navLabel))
-      fireEvent.change(screen.getByPlaceholderText(userPlaceholder), {
+      fireEvent.click(screen.getByTestId(`integration-provider-${provider}`))
+      fireEvent.change(screen.getByTestId(`integration-${provider}-username-input`), {
         target: { value: 'someone' },
       })
-      fireEvent.change(screen.getByPlaceholderText(tokenPlaceholder), {
+      fireEvent.change(screen.getByTestId(`integration-${provider}-token-input`), {
         target: { value: 'secret-token' },
       })
-      fireEvent.click(screen.getByText(connectLabel).closest('button')!)
+      fireEvent.click(screen.getByTestId(`integration-${provider}-connect-button`))
 
       expect(screen.getByText('Connecting...')).toBeInTheDocument()
       await act(async () => vi.advanceTimersByTime(800))
@@ -114,7 +111,7 @@ describe.each([
         },
       ])
       expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe(accounts[0].id)
-      expect(screen.getByPlaceholderText(userPlaceholder)).toHaveValue('')
+      expect(screen.getByTestId(`integration-${provider}-username-input`)).toHaveValue('')
       vi.useRealTimers()
     })
 
@@ -142,16 +139,14 @@ describe.each([
         },
       })
       const user = await openProvider()
+      expect(screen.getByTestId(`integration-${provider}-account-${accountId}`)).toBeInTheDocument()
       expect(screen.getByText('someone')).toBeInTheDocument()
       expect(screen.getByText('Active')).toBeInTheDocument() // only the active one shows this badge
 
-      await user.click(screen.getByText('Set Active'))
+      await user.click(screen.getByTestId(`integration-${provider}-set-active-${accountId}`))
       expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe(accountId)
 
-      const removeButtons = screen
-        .getAllByRole('button', { name: '' })
-        .filter((b) => b.querySelector('.lucide-trash2'))
-      await user.click(removeButtons[0])
+      await user.click(screen.getByTestId(`integration-${provider}-remove-${accountId}`))
       expect(
         useSettingsStore.getState().settings.integrations![accountsKey].map((a) => a.id)
       ).toEqual(['other@host.com'])
@@ -175,10 +170,7 @@ describe.each([
         },
       })
       const user = await openProvider()
-      const removeButtons = screen
-        .getAllByRole('button', { name: '' })
-        .filter((b) => b.querySelector('.lucide-trash2'))
-      await user.click(removeButtons[0])
+      await user.click(screen.getByTestId(`integration-${provider}-remove-a@host.com`))
       expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe('b@host.com')
     })
 
@@ -199,10 +191,7 @@ describe.each([
         },
       })
       const user = await openProvider()
-      const removeButton = screen
-        .getAllByRole('button', { name: '' })
-        .find((b) => b.querySelector('.lucide-trash2'))!
-      await user.click(removeButton)
+      await user.click(screen.getByTestId(`integration-${provider}-remove-a@host.com`))
       expect(useSettingsStore.getState().settings.integrations![activeKey]).toBeNull()
       expect(screen.getByText(emptyLabel)).toBeInTheDocument()
     })

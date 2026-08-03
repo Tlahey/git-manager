@@ -199,3 +199,42 @@ Feature: Settings
     Then the active theme is "e2e-midnight"
     And the interface has settled
     And a full-window screenshot is saved as "doc-user-theme"
+
+  @doc @screenshots
+  Scenario: Connecting a GitLab account with a token, and disconnecting it
+    GitHub is not the only forge the app talks to: GitLab and Bitbucket connect with a
+    personal access token instead of an OAuth round trip, so the form asks for the
+    instance URL, your username and the token — which is enough for a self-hosted
+    instance as much as for the public one. Accounts are listed under the form, the
+    most recently added one becomes the active one, and disconnecting removes the
+    account and its token from the app's settings entirely.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "integrations" settings tab
+    And I select the "gitlab" integration provider
+    Then the "gitlab" integration provider is selected
+    And the "gitlab" integration form asks for a host, a username and a token
+    And no "gitlab" account is connected
+    When I connect a "gitlab" account named "e2e-user"
+    Then the "gitlab" account "e2e-user" on "https://gitlab.com" is listed as active
+    And no error notification is displayed
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-integrations"
+    When I disconnect the "gitlab" account "e2e-user" on "https://gitlab.com"
+    Then no "gitlab" account is connected
+    And the persisted settings hold no "gitlab" account
+
+  Scenario: Bitbucket connects the same way, on its own account list
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "integrations" settings tab
+    And I select the "bitbucket" integration provider
+    Then the "bitbucket" integration form asks for a host, a username and a token
+    And no "bitbucket" account is connected
+    When I connect a "bitbucket" account named "e2e-user"
+    Then the "bitbucket" account "e2e-user" on "https://bitbucket.org" is listed as active
+    # The two providers keep separate lists: connecting one must not populate the other.
+    When I select the "gitlab" integration provider
+    Then no "gitlab" account is connected

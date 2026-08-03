@@ -1,22 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Tag } from '@git-manager/ui'
-import {
-  Github,
-  Flame,
-  Gitlab,
-  Check,
-  Trash2,
-  Key,
-  Globe,
-  User,
-  Plus,
-  RefreshCw,
-  type LucideIcon,
-} from 'lucide-react'
+import { Github, Flame, Gitlab, type LucideIcon } from 'lucide-react'
 import { GithubSection } from './GithubSection'
+import { TokenProviderPanel } from './TokenProviderPanel'
 import { useSettingsStore } from '../../../stores/settings.store'
-import type { ProviderAccount } from '@git-manager/git-types'
 
 type Provider = 'github' | 'gitlab' | 'bitbucket'
 
@@ -25,24 +12,16 @@ export function IntegrationSection() {
   const [activeProvider, setActiveProvider] = useState<Provider>('github')
   const { settings, updateSettings } = useSettingsStore()
 
-  const integrations = settings.integrations || {
-    gitlabAccounts: [],
-    gitlabActiveAccountId: null,
-    bitbucketAccounts: [],
-    bitbucketActiveAccountId: null,
+  // Field by field, not `settings.integrations || {…}`: the persisted settings are deep-merged on
+  // rehydration, so a snapshot written by an older build (or trimmed by hand) can hold an
+  // `integrations` object that exists but is missing a list — and the panels read `.length` off it.
+  const stored = settings.integrations
+  const integrations = {
+    gitlabAccounts: stored?.gitlabAccounts ?? [],
+    gitlabActiveAccountId: stored?.gitlabActiveAccountId ?? null,
+    bitbucketAccounts: stored?.bitbucketAccounts ?? [],
+    bitbucketActiveAccountId: stored?.bitbucketActiveAccountId ?? null,
   }
-
-  // GitLab Form state
-  const [glHost, setGlHost] = useState('https://gitlab.com')
-  const [glUser, setGlUser] = useState('')
-  const [glToken, setGlToken] = useState('')
-  const [glConnecting, setGlConnecting] = useState(false)
-
-  // Bitbucket Form state
-  const [bbHost, setBbHost] = useState('https://bitbucket.org')
-  const [bbUser, setBbUser] = useState('')
-  const [bbToken, setBbToken] = useState('')
-  const [bbConnecting, setBbConnecting] = useState(false)
 
   const navProviders: { id: Provider; label: string; icon: LucideIcon }[] = [
     { id: 'github', label: 'GitHub', icon: Github },
@@ -54,90 +33,13 @@ export function IntegrationSection() {
     updateSettings({ integrations: { ...integrations, ...partial } })
   }
 
-  // --- GitLab Actions ---
-  function handleConnectGitLab() {
-    if (!glUser.trim() || !glToken.trim()) return
-    setGlConnecting(true)
-
-    // Simulate key validation and connect
-    setTimeout(() => {
-      const newAccount: ProviderAccount = {
-        id: `${glUser.trim()}@${glHost.replace('https://', '').replace('http://', '')}`,
-        host: glHost.trim(),
-        username: glUser.trim(),
-        token: glToken.trim(),
-      }
-
-      const updated = integrations.gitlabAccounts.filter((a) => a.id !== newAccount.id)
-      updated.push(newAccount)
-
-      updateIntegrations({
-        gitlabAccounts: updated,
-        gitlabActiveAccountId: newAccount.id,
-      })
-
-      setGlUser('')
-      setGlToken('')
-      setGlConnecting(false)
-    }, 800)
-  }
-
-  function handleRemoveGitLab(id: string) {
-    const updated = integrations.gitlabAccounts.filter((a) => a.id !== id)
-    let activeId = integrations.gitlabActiveAccountId
-    if (activeId === id) {
-      activeId = updated.length > 0 ? updated[0].id : null
-    }
-    updateIntegrations({
-      gitlabAccounts: updated,
-      gitlabActiveAccountId: activeId,
-    })
-  }
-
-  // --- Bitbucket Actions ---
-  function handleConnectBitbucket() {
-    if (!bbUser.trim() || !bbToken.trim()) return
-    setBbConnecting(true)
-
-    // Simulate connection
-    setTimeout(() => {
-      const newAccount: ProviderAccount = {
-        id: `${bbUser.trim()}@${bbHost.replace('https://', '').replace('http://', '')}`,
-        host: bbHost.trim(),
-        username: bbUser.trim(),
-        token: bbToken.trim(),
-      }
-
-      const updated = integrations.bitbucketAccounts.filter((a) => a.id !== newAccount.id)
-      updated.push(newAccount)
-
-      updateIntegrations({
-        bitbucketAccounts: updated,
-        bitbucketActiveAccountId: newAccount.id,
-      })
-
-      setBbUser('')
-      setBbToken('')
-      setBbConnecting(false)
-    }, 800)
-  }
-
-  function handleRemoveBitbucket(id: string) {
-    const updated = integrations.bitbucketAccounts.filter((a) => a.id !== id)
-    let activeId = integrations.bitbucketActiveAccountId
-    if (activeId === id) {
-      activeId = updated.length > 0 ? updated[0].id : null
-    }
-    updateIntegrations({
-      bitbucketAccounts: updated,
-      bitbucketActiveAccountId: activeId,
-    })
-  }
-
   return (
     <div className="flex h-[calc(100vh-53px)] w-full overflow-hidden border border-border bg-card text-card-foreground">
       {/* Sub-panel left: select provider */}
-      <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-muted/10 p-2">
+      <div
+        className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-muted/10 p-2"
+        data-testid="integration-providers"
+      >
         <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {t('settings.integrations.providers')}
         </p>
@@ -148,6 +50,8 @@ export function IntegrationSection() {
             <button
               key={prov.id}
               onClick={() => setActiveProvider(prov.id)}
+              data-testid={`integration-provider-${prov.id}`}
+              data-active={isActive}
               className={`flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors ${
                 isActive
                   ? 'bg-primary/10 font-medium text-primary'
@@ -165,278 +69,45 @@ export function IntegrationSection() {
       <div className="h-full flex-1 overflow-hidden bg-background/50">
         {activeProvider === 'github' && <GithubSection />}
 
+        {/* GitLab and Bitbucket share one panel: both connect with a host + username + token, and
+            differ only in their name and two strings. GitHub does not — it goes through the OAuth
+            device flow and keeps its own section. */}
         {activeProvider === 'gitlab' && (
-          <ScrollArea className="h-full">
-            <div className="max-w-xl space-y-6 p-6">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t('settings.integrations.title', { provider: 'GitLab' })}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.integrations.gitlab.hint')}
-                </p>
-              </div>
-
-              {/* Form connection */}
-              <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
-                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Plus className="h-3.5 w-3.5" />
-                  {t('settings.integrations.connectAccountTitle', { provider: 'GitLab' })}
-                </h4>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <Globe className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.instanceUrlLabel', { provider: 'GitLab' })}
-                    </label>
-                    <Input
-                      value={glHost}
-                      onChange={(e) => setGlHost(e.target.value)}
-                      placeholder="https://gitlab.com"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.usernameLabel')}
-                    </label>
-                    <Input
-                      value={glUser}
-                      onChange={(e) => setGlUser(e.target.value)}
-                      placeholder={t('settings.integrations.usernamePlaceholder')}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <Key className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.gitlab.tokenLabel')}
-                    </label>
-                    <Input
-                      type="password"
-                      value={glToken}
-                      onChange={(e) => setGlToken(e.target.value)}
-                      placeholder="glpat-..."
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <Button
-                    size="sm"
-                    className="h-8 w-full gap-1.5 text-xs"
-                    onClick={handleConnectGitLab}
-                    disabled={glConnecting || !glUser || !glToken}
-                  >
-                    {glConnecting ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        {t('settings.integrations.connecting')}
-                      </>
-                    ) : (
-                      t('settings.integrations.addAccountButton', { provider: 'GitLab' })
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Accounts list */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-foreground">
-                  {t('settings.integrations.connectedAccounts')}
-                </h4>
-                {integrations.gitlabAccounts.length > 0 ? (
-                  <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
-                    {integrations.gitlabAccounts.map((account) => {
-                      const isActive = integrations.gitlabActiveAccountId === account.id
-                      return (
-                        <div key={account.id} className="flex items-center justify-between p-3">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-medium text-foreground">
-                              {account.username}
-                            </span>
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              {account.host}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isActive ? (
-                              <Tag tone="success" className="font-normal">
-                                <Check className="h-3 w-3" /> {t('settings.integrations.active')}
-                              </Tag>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-[10px]"
-                                onClick={() =>
-                                  updateIntegrations({ gitlabActiveAccountId: account.id })
-                                }
-                              >
-                                {t('settings.integrations.setActive')}
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                              onClick={() => handleRemoveGitLab(account.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    {t('settings.integrations.noAccountConnected', { provider: 'GitLab' })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </ScrollArea>
+          <TokenProviderPanel
+            provider="gitlab"
+            label="GitLab"
+            hintKey="settings.integrations.gitlab.hint"
+            tokenLabelKey="settings.integrations.gitlab.tokenLabel"
+            tokenPlaceholder="glpat-..."
+            defaultHost="https://gitlab.com"
+            accounts={integrations.gitlabAccounts}
+            activeAccountId={integrations.gitlabActiveAccountId}
+            onChange={({ accounts, activeAccountId }) =>
+              updateIntegrations({
+                gitlabAccounts: accounts,
+                gitlabActiveAccountId: activeAccountId,
+              })
+            }
+          />
         )}
 
         {activeProvider === 'bitbucket' && (
-          <ScrollArea className="h-full">
-            <div className="max-w-xl space-y-6 p-6">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t('settings.integrations.title', { provider: 'Bitbucket' })}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.integrations.bitbucket.hint')}
-                </p>
-              </div>
-
-              {/* Form connection */}
-              <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
-                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Plus className="h-3.5 w-3.5" />
-                  {t('settings.integrations.connectAccountTitle', { provider: 'Bitbucket' })}
-                </h4>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <Globe className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.instanceUrlLabel', { provider: 'Bitbucket' })}
-                    </label>
-                    <Input
-                      value={bbHost}
-                      onChange={(e) => setBbHost(e.target.value)}
-                      placeholder="https://bitbucket.org"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.usernameLabel')}
-                    </label>
-                    <Input
-                      value={bbUser}
-                      onChange={(e) => setBbUser(e.target.value)}
-                      placeholder={t('settings.integrations.usernamePlaceholder')}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <Key className="h-3 w-3 text-muted-foreground" />
-                      {t('settings.integrations.bitbucket.tokenLabel')}
-                    </label>
-                    <Input
-                      type="password"
-                      value={bbToken}
-                      onChange={(e) => setBbToken(e.target.value)}
-                      placeholder={t('settings.integrations.bitbucket.tokenPlaceholder')}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <Button
-                    size="sm"
-                    className="h-8 w-full gap-1.5 text-xs"
-                    onClick={handleConnectBitbucket}
-                    disabled={bbConnecting || !bbUser || !bbToken}
-                  >
-                    {bbConnecting ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        {t('settings.integrations.connecting')}
-                      </>
-                    ) : (
-                      t('settings.integrations.addAccountButton', { provider: 'Bitbucket' })
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Accounts list */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-foreground">
-                  {t('settings.integrations.connectedAccounts')}
-                </h4>
-                {integrations.bitbucketAccounts.length > 0 ? (
-                  <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
-                    {integrations.bitbucketAccounts.map((account) => {
-                      const isActive = integrations.bitbucketActiveAccountId === account.id
-                      return (
-                        <div key={account.id} className="flex items-center justify-between p-3">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-medium text-foreground">
-                              {account.username}
-                            </span>
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              {account.host}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isActive ? (
-                              <Tag tone="success" className="font-normal">
-                                <Check className="h-3 w-3" /> {t('settings.integrations.active')}
-                              </Tag>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-[10px]"
-                                onClick={() =>
-                                  updateIntegrations({ bitbucketActiveAccountId: account.id })
-                                }
-                              >
-                                {t('settings.integrations.setActive')}
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                              onClick={() => handleRemoveBitbucket(account.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    {t('settings.integrations.noAccountConnected', { provider: 'Bitbucket' })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </ScrollArea>
+          <TokenProviderPanel
+            provider="bitbucket"
+            label="Bitbucket"
+            hintKey="settings.integrations.bitbucket.hint"
+            tokenLabelKey="settings.integrations.bitbucket.tokenLabel"
+            tokenPlaceholder={t('settings.integrations.bitbucket.tokenPlaceholder')}
+            defaultHost="https://bitbucket.org"
+            accounts={integrations.bitbucketAccounts}
+            activeAccountId={integrations.bitbucketActiveAccountId}
+            onChange={({ accounts, activeAccountId }) =>
+              updateIntegrations({
+                bitbucketAccounts: accounts,
+                bitbucketActiveAccountId: activeAccountId,
+              })
+            }
+          />
         )}
       </div>
     </div>
