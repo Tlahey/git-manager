@@ -51,8 +51,10 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 ## Not covered today
 
 Audited 2026-08-03, against the full `generate_handler!` command list in `lib.rs` and the app's
-`src/app` + `src/components` surface. What the suite does **not** exercise, split by why. This is
-the section REPORT.md points at —
+`src/app` + `src/components` surface. Tracked as a checklist in
+[#267](https://github.com/Tlahey/git-manager/issues/267) — tick the item there and update the row
+here in the same PR that lands a scenario. What the suite does **not** exercise, split by why.
+This is the section REPORT.md points at —
 REPORT.md itself is regenerated on every run and can only say how the *existing* scenarios did;
 what's missing has to live here, where a human maintains it.
 
