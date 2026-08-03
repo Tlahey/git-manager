@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (54 feature files / 170 scenarios)
+## Covered today (53 feature files / 170 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
