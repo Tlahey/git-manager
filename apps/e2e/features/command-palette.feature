@@ -194,3 +194,17 @@ Feature: Command palette (⌘K)
     And I choose "e2e-commit.patch" in the save dialog
     Then the patch file "e2e-commit.patch" holds a diff
     And no error notification is displayed
+
+  # The multi-selection variant: Cmd+click a second row, then the palette's "create patch from the
+  # N selected commits" entry (commit-create-patch-selection, fed by the store's
+  # `selectedCommitOids` mirror). Asserted by counting the mbox separators in the written file —
+  # two commits in, two patches out — which the single-commit check above can't distinguish.
+  Scenario: Creating a patch file from a multi-commit selection
+    Given the "rollback-history" fixture repository is opened
+    When I select the "HEAD~2" commit in the graph
+    And I add the "HEAD~1" commit to the graph selection
+    And I open the command palette
+    And I run the command palette action "commit-create-patch-selection"
+    And I choose "e2e-selection.patch" in the save dialog
+    Then the patch file "e2e-selection.patch" holds patches for 2 commits
+    And no error notification is displayed

@@ -175,6 +175,7 @@ export function GitGraph({
   const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const setSelectedCommitOid = useRepoUIStore((s) => s.setSelectedCommitOid)
+  const setSelectedCommitOids = useRepoUIStore((s) => s.setSelectedCommitOids)
   const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
@@ -455,6 +456,15 @@ export function GitGraph({
     })
   }, [selected, filteredNodes])
   const isMultiSelect = selectedCommitNodes.length > 1
+
+  // Publish the multi-selection's OIDs (newest first, like `selectedCommitNodes`) so out-of-tree
+  // UI (the command palette's "create patch from selection") can act on the whole group — the
+  // single `selectedCommitOid` mirror above only names the primary row. Cleared on unmount for the
+  // same reason as that mirror: a closed tab must not leave a stale selection behind.
+  useEffect(() => {
+    setSelectedCommitOids(selectedCommitNodes.map((n) => n.commit.oid))
+  }, [selectedCommitNodes, setSelectedCommitOids])
+  useEffect(() => () => setSelectedCommitOids([]), [setSelectedCommitOids])
 
   // OIDs of the commits that would be undone by the previewed step — i.e. every real commit newer
   // than the previewed HEAD (above it in the walk). Those rows animate out (collapse + color) while

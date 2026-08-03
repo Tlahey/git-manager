@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (53 feature files / 183 scenarios)
+## Covered today (54 feature files / 187 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -28,7 +28,8 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 | Feature                                                                                                  | Area       | Setup                                             | Snapshot                          | Status                                                                                                                                                                                                                                                       |
 | -------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Command palette (⌘K)**: 12 scenarios across settings/commit/stash                                      | palette    | rollback-history · feature-branches · stash-stack | —                                 | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk)                                                |
+| **Command palette (⌘K)**: 16 scenarios across settings/commit/stash/ref                                  | palette    | rollback-history · feature-branches · stash-stack | —                                 | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick/create-patch — single commit **and from a multi-commit selection** (`commit-create-patch-selection`) — on a commit; stash drop/apply/pop — each asserted via git on disk)                                        |
+| **Interactive rebase editor**: reword / squash / drop, run for real                                      | rebase     | fixture:rollback-history                          | —                                 | ✅ (`interactive-rebase.feature` — real second window on `?window=rebase`, real `run_interactive_rebase`, asserted via `git log`/`rev-list`/file content; see "11. Interactive rebase editor")                                                              |
 | App launches, React mounts                                                                               | app shell  | —                                                 | —                                 | ✅                                                                                                                                                                                                                                                           |
 | **Interface chrome tour**: tab bar / toolbar / footer, each with a zone-cropped doc capture              | app shell  | fixture:feature-branches                          | 📷 (doc, per-zone)                | ✅ (`interface-overview.feature` — also the reference for the "area screenshot" step)                                                                                                                                                                        |
 | Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC        | mock                                              | —                                 | ✅                                                                                                                                                                                                                                                           |
@@ -75,12 +76,21 @@ keyboard route at all, which was a product gap before it was a testing one.
 
 ### Blocked by the harness (documented, deliberate)
 
+> **Two rows left this table on 2026-08-03 because their reasons turned out to be stale, not
+> because the harness changed.** The **interactive rebase editor** row claimed the flow "opens a
+> third real window mid-flow" — but `RebasingCommitWindow` renders entirely from `?window=rebase`
+> URL params (main.tsx), so a real second window opened with production's own URL covers
+> reword/squash/drop end to end, asserted against `git log` on disk (see "11. Interactive rebase
+> editor" below and `interactive-rebase.feature`). The **patch from a multi-commit selection** row
+> claimed "the palette has no notion of a selection" — true only until the graph published its
+> multi-selection to the store (`selectedCommitOids` in `repoUI.store.ts`), which was a small
+> product gap, not a harness wall; the palette now carries `commit-create-patch-selection` and the
+> scenario lives in `command-palette.feature`.
+
 | Missing                                                            | Why                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Interactive rebase editor** (reword/squash/drop)                 | `run_interactive_rebase` opens a third real window mid-flow; the fixup scenario deliberately cancels it (see "Known blockers / gotchas").                                                                                                                                                                                                                                                                        |
 | **Package updates** (`update_packages`, `check_outdated_packages`) | Updating shells out to the project's real package manager (`services/package_update.rs`): network, minutes, and a mutated `node_modules`/lockfile in the fixture. A suite that runs in seven minutes and touches nothing outside `/tmp` should not do that; the health _scan_ and its counts are covered.                                                                                                        |
 | **GitLab / Bitbucket accounts**                                    | Not reachable because they are **not on screen**: both are built and tested but unlisted (`AVAILABLE_PROVIDERS` in `IntegrationSection.tsx`), pending an OAuth application registered on gitlab.com and something in the app that actually reads either account. Their panels, commands and settings shape have unit tests; the e2e scenarios that drove them are in `git log` for when the providers come back. |
-| **Patch from a multi-commit selection** (`create_commits_patch`)   | The single-commit half is covered (`commit-create-patch` in the palette, written to a real file and read back). Only the _selection_ variant is still menu-only: it acts on a multi-row graph selection, which has no palette equivalent because the palette has no notion of a selection. patch-workspace.feature covers create-from-working-tree and apply-external.                                           |
 | **Running a task** (`run_task_in_terminal`)                        | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The _listing_ half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`).                                                                                                                                           |
 | **Native OS surfaces**                                             | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them.                                                                                                                                                                                                       |
 | **Worktree agent activity** (`get_worktree_agent_activity`)        | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`.                                                     |
@@ -476,6 +486,46 @@ found the two land very differently once that's ruled out:
   `git revert -m 1` / `-m 2` against a built copy of the fixture before writing the assertions, not
   just inferred from the script.
 
+### 11. Interactive rebase editor (reword / squash / drop) ✅
+
+Sat in "Blocked by the harness" as "`run_interactive_rebase` opens a third real window mid-flow" —
+investigated 2026-08-03 and found stale on both halves: `run_interactive_rebase` opens no window
+(it's the command the editor *runs*), and the editor (`RebasingCommitWindow`) renders entirely
+from URL params — main.tsx routes `?window=rebase&repoPath=…&baseOid=…` to it, exactly like the
+merge editor's `?window=merge`. What *is* true: it cannot borrow the shared main window the way
+the merge opens+snapshot scenarios do, because **both** its exit paths (Start Rebasing and Cancel)
+call `getCurrentWindow().close()` — the FixupCommitWindow problem, not the merge one. So
+`interactive-rebase.feature` opens a **real second `WebviewWindow`** with production's own URL
+(the same string `lib/graphWindows.ts`'s `openRebaseWindow` builds, created through the
+`withGlobalTauri` global since the production triggers — the ref drag-drop menu and the fixup
+flow's hand-off — are a native menu and a third-window chain, neither drivable). Everything past
+the open is real: `list_rebase_commits` fills the plan, the toolbar edits it, Start runs the real
+`run_interactive_rebase` (`git rebase -i` with the injected todo), and every scenario asserts
+against `git log`/`git rev-list`/file content on disk.
+
+- Setup: `fixture:rollback-history` — five linear commits all rewriting `counter.txt`, which
+  forces honest plan design: a dropped/squashed step must sit at the tip of the edited range
+  (anything replayed on top of a dropped content change would pause on a real conflict), while a
+  reword can sit mid-range since it never changes a tree.
+- Covered: **reword** a mid-range commit (subject rewritten in place, history length and file
+  content untouched); **drop** the tip commit (gone from the log, file content rolled back);
+  **squash** the two newest commits with "keep messages" (one commit fewer, both subjects in the
+  combined message body, file content from the newer commit) — the last driving the real Radix
+  dropdown (`rebase-squash-keep-messages`, a new testid, as are `rebase-reword-save` and
+  `rebase-squash-discard-message`).
+- **Gotchas found building it** (all in `interactive-rebase.steps.ts`): the plan rows' selected
+  styling must be matched as an exact class token — every clickable `StepRailRow` also carries
+  `hover:bg-accent/40`, so a substring check for `bg-accent` reads *every* row as already selected
+  and silently turns the select steps into no-ops; multi-select needs a dispatched
+  `MouseEvent{metaKey:true}` (WebDriver can't hold a modifier here) with a repair path for the
+  toggle collapsing back to one row; and `$`-based waits inside the second window are unreliable
+  (the service's focus hook can re-point them at the main window mid-wait), so every in-window
+  poll goes through window-ensured `browser.execute` instead.
+- **Not covered, deliberately**: drag-reorder of plan rows (HTML5 drag-and-drop, which this
+  WebDriver cannot synthesize meaningfully) and the two native entry points above — the editor's
+  behaviour is the value; the triggers are one-line `openRebaseWindow` calls with their own unit
+  tests.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -488,7 +538,7 @@ found the two land very differently once that's ruled out:
 | Compare two branches                          | branch        | remote-ahead                | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`)                                                   |
 | Tags: create / shown in graph                 | tag           | rollback-history · showcase | —        | ✅ (`tags.feature` tells the whole tag story in one place — **create lightweight + annotated via ⌘K palette**, asserted via `git log`/`git cat-file -t`; the graph ref badge and its context-menu marker; published as one doc page)                                                                                                                                                                                                             |
 | Cherry-pick a commit                          | cherry-pick   | feature-branches            | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch)                                                                                                                                                                                                                                                                                                                                      |
-| Interactive rebase (reword/squash/drop)       | rebase        | fixup-chain                 | —        | 🚫 (native commit menu + child window)                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Interactive rebase (reword/squash/drop)       | rebase        | rollback-history            | —        | ✅ (`interactive-rebase.feature` — a real second window on `?window=rebase`, each plan asserted via `git log`/`rev-list` and the file content on disk; see "11. Interactive rebase editor" below)                                                                                                                                                                                                                                                |
 | Reset (soft/mixed/hard, RESET confirm)        | rollback      | rollback-history            | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`)                                                                                                                                                                                                                                                                                                                                          |
 | Revert a commit                               | rollback      | rollback-history            | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)                                                                                                                                                                                                                                                                                                                                                                 |
 | Revert a MERGE commit (mainline picker)       | rollback      | showcase                    | —        | ✅ (**via ⌘K palette**, both mainlines, asserted via `git log`/file presence — see "10. Merge commit actions" below)                                                                                                                                                                                                                                                                                                                             |
@@ -657,8 +707,12 @@ DOM value:
 'fixup' }` instead calls `openFixupWindow` (now exported from `useGitGraphActions.ts`) directly,
   opening a **real second `WebviewWindow`** — see the multi-window gotcha below for why this one
   couldn't reuse the merge/rebase editors' navigate-in-place trick. Still native-menu-only (no
-  palette command yet): interactive rebase, create-branch/tag from a _multi-selection_,
-  drag-reorder in the rebase editor, **branch delete (local and remote)**. Other non-menu entry
+  palette command yet): create-branch/tag from a _multi-selection_ and drag-reorder in the rebase
+  editor (the editor itself — reword/squash/drop and running the plan — is now covered, see
+  `interactive-rebase.feature`; only its native *triggers*, the ref drag-drop menu and the fixup
+  hand-off, stay out of reach). Patch from a multi-selection got a real palette command instead
+  (`commit-create-patch-selection`, fed by the graph's `selectedCommitOids` store mirror — see
+  command-palette.feature). Other non-menu entry
   points: branch checkout via `BranchContext` (undo-redo.feature), commit via the WIP panel buttons
   (commit.feature), undo/redo via keyboard.
 - **Branch-scoped dialog actions (rename, set upstream, …) have no command-palette entry at all** —
@@ -753,7 +807,8 @@ window"` — switch to a different, still-alive window **immediately** after tri
   reliable than clicking an in-app close/cancel button that does the same thing — one less
   real-window DOM interaction to hit the click quirk above. `RebasingCommitWindow` (opened as a
   third window by the fixup flow, to squash the new commit into place) is closed this way rather
-  than driving its interactive-rebase UI, which is separate, still-🚫 work. **The merge editor's
+  than driving its interactive-rebase UI, which is covered separately in its own real second
+  window (`interactive-rebase.feature` — see "11. Interactive rebase editor"). **The merge editor's
   block-resolution scenario hits the same tradeoff**: opening the file via `ConflictResolutionPanel`
   (matching production, unlike the navigate-in-place "opens + snapshot" scenario above) gives a
   real second window, since `merge-apply`/`merge-accept-left`/`-right`/keep-ours/keep-theirs all

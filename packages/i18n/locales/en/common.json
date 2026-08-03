@@ -362,6 +362,7 @@
   "commandPalette.ref.tagDeleted": "Deleted local tag {{tag}}",
   "commandPalette.ref.deleteRemoteTag": "Delete remote tag {{tag}}",
   "commandPalette.commit.createPatch": "Create patch file from commit",
+  "commandPalette.commit.createPatchSelection": "Create patch file from the {{count}} selected commits",
   "commandPalette.ref.deleteBranch": "Delete local branch {{branch}}",
   "commandPalette.ref.branchDeleted": "Deleted local branch {{branch}}"
 }

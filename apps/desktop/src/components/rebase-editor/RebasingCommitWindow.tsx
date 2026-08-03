@@ -169,10 +169,18 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-[220px]">
-            <DropdownMenuItem onSelect={() => handleCombine('squash')} className="text-xs">
+            <DropdownMenuItem
+              onSelect={() => handleCombine('squash')}
+              className="text-xs"
+              data-testid="rebase-squash-keep-messages"
+            >
               {t('rebaseEditor.squashKeepMessages')}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleCombine('fixup')} className="text-xs">
+            <DropdownMenuItem
+              onSelect={() => handleCombine('fixup')}
+              className="text-xs"
+              data-testid="rebase-squash-discard-message"
+            >
               {t('rebaseEditor.fixupDiscardMessage')}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -257,6 +265,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
                         className="h-6 text-[10px]"
                         onClick={handleRewordSave}
                         disabled={!rewordDraft.trim()}
+                        data-testid="rebase-reword-save"
                       >
                         {t('rebaseEditor.saveMessage')}
                       </Button>
