@@ -40,7 +40,8 @@ interface UndoHistoryState {
  * checks it out — and `pushAction` stamps each with the gesture's correlation id. Undo takes the
  * whole run back at once, so a single ⌘Z matches a single thing the user did. Entries with no
  * correlation id (anything not wrapped in `runActivity`) stand alone, which keeps every existing
- * one-operation action behaving exactly as before.
+ * one-operation action behaving exactly as before — and is also why other multi-operation
+ * gestures are still only half-undoable until they are wrapped too (issue #270).
  */
 function groupEndingAt(stack: UndoAction[], pointer: number): UndoAction[] {
   const last = stack[pointer - 1]
