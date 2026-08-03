@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { browser, $ } from '@wdio/globals'
 import { Given } from '@wdio/cucumber-framework'
 import { setActiveRepoPath } from '../support/activeRepo'
+import { navigateAndSettle } from '../support/navigation'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -47,7 +48,12 @@ async function seedAndReload(repoPath: string) {
   // Navigate through WebDriver rather than assigning `window.location.href` inside the same
   // `execute`: the assignment tears the page down while the driver is still completing that call,
   // and the navigation can be lost — leaving the old repo on screen with the step none the wiser.
-  await browser.url(`${origin}/?e2e=${Date.now()}`)
+  // `navigateAndSettle` then waits for the new document to be current before the element wait
+  // below fires — otherwise the service's per-command window probe races the swap and silently
+  // burns its 30s direct-eval timeout (see support/navigation.ts; this step runs ~150 times per
+  // full run, which made that race the single largest cost in REPORT.md).
+  const stamp = `${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 
   // RepoView's root renders for any opened repo — a fixture-agnostic "repo view is loaded" signal,
   // unlike the fixup banner which only exists for the fixup-chain fixture.

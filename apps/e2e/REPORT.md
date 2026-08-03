@@ -5,7 +5,7 @@ point without anyone having to run an 18-minute suite first. It is a snapshot of
 last run: treat the shape (which files dominate, how little sits inside steps) as the signal, and
 the absolute numbers as indicative._
 
-**3 scenarios** across **1 feature files** · 0 failing · **0.6 min** of scenario time, of which 0.1 min (9%) is inside steps.
+**4 scenarios** across **1 feature files** · 0 failing · **0.2 min** of scenario time, of which 0.1 min (56%) is inside steps.
 
 Plus **0.0 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 1 times, ~0.1s each.
 
@@ -15,12 +15,13 @@ Read the last column first. "In steps" is what cucumber's `afterStep` reported, 
 
 | Feature | Scenarios | Failing | App launch | Scenarios | In steps | Outside steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `daily-summary.feature` | 3 |  | 0.1s | 34.3s | 3.2s | **31.1s** |
+| `blame-history.feature` | 4 |  | 0.1s | 9.3s | 5.2s | **4.1s** |
 
 ## Slowest individual scenarios
 
 | Scenario | Feature | Total | Outside steps |
 | --- | --- | ---: | ---: |
-| Disabling the feature hides the briefing from the dashboard | `daily-summary.feature` | 30.7s | 30.0s |
-| Opening the dashboard auto-generates the morning briefing for an open project | `daily-summary.feature` | 2.3s | 1.0s |
-| With auto-generation off, the briefing is produced on demand | `daily-summary.feature` | 1.2s | 0.0s |
+| The File view shows blame avatars in the gutter | `blame-history.feature` | 3.9s | 2.0s |
+| Selecting a history version shows that version in the diff | `blame-history.feature` | 2.8s | 1.0s |
+| Blame mode annotates lines with the commit name | `blame-history.feature` | 1.9s | 1.0s |
+| The history panel lists the file's versions | `blame-history.feature` | 0.7s | 0.0s |

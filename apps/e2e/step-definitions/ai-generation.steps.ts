@@ -2,6 +2,7 @@ import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
 import { startFakeAiServer, type FakeAiServerHandle } from '../support/fakeAiServer.js'
 import { clickViaJs } from '../support/interactions.js'
+import { navigateAndSettle } from '../support/navigation.js'
 
 // "When I select the working-tree changes in the graph" is shared — see commit.steps.ts.
 
@@ -37,11 +38,7 @@ async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
     JSON.stringify(ai)
   )
   const stamp = `ai-seed-${Date.now()}`
-  await browser.url(`${origin}/?e2e=${stamp}`)
-  await browser.waitUntil(
-    async () => await browser.execute((s: string) => window.location.search.includes(s), stamp),
-    { timeout: 10000, timeoutMsg: 'The app never reloaded onto the AI-seeded page' }
-  )
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 }
 
 Given(/^the AI provider is pointed at a fake server$/, async () => {

@@ -5,6 +5,7 @@ import { browser, expect, $ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { clickViaJs } from '../support/interactions.js'
+import { navigateAndSettle } from '../support/navigation.js'
 
 // W3C WebDriver key value for Meta (Command on macOS) — the value webdriverio exposes as
 // `Key.Command`. Inlined to avoid depending on the `webdriverio` package (only `@wdio/globals`
@@ -113,17 +114,16 @@ Then(/^the row height setting is "([^"]*)"$/, async (value: string) => {
   await expect(radio).toBeChecked()
 })
 
-// Plain reload (not the fixture-opening step's cache-busting navigation) — this scenario isn't
-// switching repos/fixtures, just proving a settings value survives a fresh mount by reading back
-// from the same `git-manager-settings` localStorage key the persisted store writes to. Waiting for
-// the title to re-report (same check as the shared "application is running" step) is a
-// fixture-agnostic "the app finished remounting" signal, regardless of which tab ends up active.
+// A full remount — this scenario isn't switching repos/fixtures, just proving a settings value
+// survives a fresh mount by reading back from the same `git-manager-settings` localStorage key
+// the persisted store writes to. Navigated with a stamp rather than `location.reload()`: a title
+// poll cannot tell the old document from the new one (the title never changes), and returning
+// while the swap is mid-flight lets the service's window probe race the dying document and burn
+// its silent 30s timeout on the next element command (support/navigation.ts).
 When(/^I reload the application$/, async () => {
-  await browser.execute(() => window.location.reload())
-  await browser.waitUntil(async () => (await browser.getTitle()).length > 0, {
-    timeout: 10000,
-    timeoutMsg: 'The native window reports no title after reload',
-  })
+  const origin = await browser.execute(() => window.location.origin)
+  const stamp = `reload-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 })
 
 // Whether this actually resolves connected or disconnected depends on whether the machine running

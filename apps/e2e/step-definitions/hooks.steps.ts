@@ -2,6 +2,7 @@ import { After, Before } from '@wdio/cucumber-framework'
 import { browser } from '@wdio/globals'
 import { applyBaseline } from '../support/scenarioBaseline.js'
 import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
+import { navigateAndSettle } from '../support/navigation.js'
 
 // The app's own factory default is 'dark' (settings.store.ts), but every capture this suite takes
 // — doc screenshots, marketing screenshots, and every @visual baseline — should look like the
@@ -85,7 +86,8 @@ Before(async () => {
   if (rootEmpty) {
     console.warn('[e2e] #root was empty at scenario start — reloading to recover from a crash')
     const origin = await browser.execute(() => window.location.origin)
-    await browser.url(`${origin}/?e2e=recover-${Date.now()}`)
+    const stamp = `recover-${Date.now()}`
+    await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
     await browser.waitUntil(
       async () =>
         await browser.execute(

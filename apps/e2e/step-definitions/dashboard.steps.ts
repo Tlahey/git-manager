@@ -3,24 +3,11 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, $, expect } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
 const SCENARIOS_DIR = join(__dirname, '../../../tools/git-fixtures/scenarios')
-
-// `window.location.href = ...` navigates asynchronously — the same reason repo.steps.ts and
-// daily-summary.steps.ts drive the reload through `browser.url` / a stamped marker instead of a
-// bare assignment. Stamping and polling `location.search` is the reliable "the reload actually
-// committed" signal (see daily-summary.steps.ts's own note on this).
-async function waitForStampedReload(stamp: string) {
-  await browser.waitUntil(
-    async () =>
-      await browser
-        .execute((marker: string) => window.location.search.includes(marker), stamp)
-        .catch(() => false),
-    { timeout: 10000, timeoutMsg: `The reload stamped "${stamp}" never committed` }
-  )
-}
 
 // Both repos are seeded into `savedRepos` in one write + one reload, rather than one step per
 // repo: two separate seed-then-reload calls would race the same lingering-page zustand-persist
@@ -55,8 +42,7 @@ Given(
       },
       JSON.stringify(repos)
     )
-    await browser.url(`${origin}/?e2e=${stamp}`)
-    await waitForStampedReload(stamp)
+    await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   }
 )
 

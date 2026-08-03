@@ -1,5 +1,6 @@
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // Seeds the notification.store persist key directly (same "seed localStorage, then reload" pattern
 // as repo.steps.ts's fixture-open step) rather than driving the real GitHub-diff pipeline
@@ -56,7 +57,8 @@ Given(/^the notification tray is seeded with sample notifications$/, async () =>
     'git-manager-notifications',
     JSON.stringify(seeded)
   )
-  await browser.url(`${origin}/?e2e=${Date.now()}`)
+  const stamp = `notif-${Date.now()}`
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
   await $('[data-testid="notification-bell-button"]').waitForDisplayed({ timeout: 15000 })
 })
 

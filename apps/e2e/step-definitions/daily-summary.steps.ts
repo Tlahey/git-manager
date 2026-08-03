@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
+import { navigateAndSettle } from '../support/navigation'
 
 // Mirror repo.steps' fixture layout: fixtures live at /tmp/git-manager-fixtures/<name>, and a repo's
 // display name is the directory's basename.
@@ -50,21 +51,6 @@ After({ tags: '@daily-summary' }, async () => {
 // Thens ("the sent prompt's system/user message contains …") are shared — see ai-generation.steps.
 // Opening a fixture repo is shared — see repo.steps.
 
-// `window.location.href = ...` navigates *asynchronously*: the assignment returns immediately and
-// the old document (with all its JS, including zustand-persist) keeps running until the new one
-// commits. Polling `getTitle()` can't tell the two documents apart (the title never changes), so a
-// step can carry on against the OLD page. Stamping the target URL with a unique marker and waiting
-// for `location.search` to carry it is the only reliable "the reload really happened" signal.
-async function waitForStampedReload(stamp: string) {
-  await browser.waitUntil(
-    async () =>
-      await browser
-        .execute((marker: string) => window.location.search.includes(marker), stamp)
-        .catch(() => false), // the execute can race the document swap itself — just poll again
-    { timeout: 10000, timeoutMsg: `The reload stamped "${stamp}" never committed` }
-  )
-}
-
 // Seeds `git-manager-settings` directly then reloads (the same pattern ai-generation.steps uses for
 // the `ai` block), merging the given settings keys into the persisted snapshot. Used here to toggle
 // the `dailySummary` feature flags without driving the Settings UI — those are covered by unit tests.
@@ -85,8 +71,7 @@ async function seedSettingsAndReload(patch: Record<string, unknown>) {
     'git-manager-settings',
     JSON.stringify(patch)
   )
-  await browser.url(`${origin}/?e2e=${stamp}`)
-  await waitForStampedReload(stamp)
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
 }
 
 // Two setup concerns folded into one reload:
@@ -144,8 +129,7 @@ Given(
         repoPath,
         fixtureName
       )
-      await browser.url(`${origin}/?e2e=${stamp}`)
-      await waitForStampedReload(stamp)
+      await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
       const seedSurvived = await browser.execute((path: string) => {
         try {
           const raw = localStorage.getItem('git-manager-repos')
