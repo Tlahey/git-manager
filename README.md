@@ -51,6 +51,14 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 > that test it — which is what keeps that inventory from drifting away from the code. What is still
 > open lives in the [issue tracker](https://github.com/Tlahey/git-manager/issues).
 
+> **GitLab and Bitbucket are built, but not offered before v1.** Their commands, settings panels and
+> token / OAuth flows all ship in the binary with their tests — only `AVAILABLE_PROVIDERS` in
+> [`IntegrationSection.tsx`](apps/desktop/src/app/settings/components/IntegrationSection.tsx) lists
+> GitHub alone, on purpose: GitLab's device flow still needs an OAuth application registered on
+> gitlab.com, and nothing in the app reads either account yet. Nothing about them is on screen, so
+> they are deliberately absent from the documentation site rather than missing from it. Adding an id
+> back to that list is the whole of re-enabling one.
+
 ---
 
 ## Screenshots

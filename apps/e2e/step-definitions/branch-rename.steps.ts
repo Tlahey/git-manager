@@ -14,8 +14,12 @@ import { getActiveRepoPath } from '../support/activeRepo'
 // That effect is a no-op without a commit already selected (`primaryOid`) — the dialog resolves
 // the clicked node from `nodes`, not from the action payload — so a scenario must select a commit
 // first (`I select the "<ref>" commit in the graph`, shared from command-palette.steps.ts).
+//
+// The step's name says what the *reader* does — "open the rename dialog" — not how this gets
+// there. It used to end "via the store bridge", and the `@doc` scenario rendered that verbatim as
+// an instruction on the published page. How the dialog is reached is what this comment is for.
 When(
-  /^I open the rename dialog for the branch "([^"]*)" via the store bridge$/,
+  /^I open the rename dialog for the branch "([^"]*)"$/,
   async (branch: string) => {
     await browser.execute((branchName: string) => {
       const store = (

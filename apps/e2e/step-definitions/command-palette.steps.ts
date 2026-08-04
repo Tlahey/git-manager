@@ -268,8 +268,63 @@ When(/^I open the command palette$/, async () => {
 
 // Run a palette command by its stable id (`command-item-<id>`). cmdk fires onSelect on click; the
 // palette then closes itself and runs the command.
+//
+// This is the *regression* form, and the right one for scenarios that only have to be
+// deterministic: an id is immune to a copy change, and it never has to agree with the i18n
+// catalogue. Its cost is that a `@doc` scenario renders it verbatim as a reader instruction —
+// "Run the command palette action `ref-fast-forward-main`" — which is not a string any user ever
+// sees, let alone types. Documented scenarios use the label form below instead.
 When(/^I run the command palette action "([^"]*)"$/, async (id: string) => {
   const item = $(`[data-testid="command-item-${id}"]`)
+  await item.waitForDisplayed({ timeout: 10000 })
+  await item.click()
+})
+
+/**
+ * Run a palette command the way a reader would: by the entry they can actually see.
+ *
+ * The documentation form of the step above. `@doc` scenarios use this one so the published page
+ * says "Pick `Delete local branch release/1.0` from the palette" — a real label from
+ * `packages/i18n/locales/en/common.json`, rendered by `CommandPalette.tsx` as the item's first
+ * `<span>` (the icon before it is an `<svg>`, and the optional subtitle is a later span, so "first
+ * span" is the title and nothing else).
+ *
+ * Matching is exact, and a miss reports every label currently on screen. That matters because
+ * this step is the one place in the suite where a feature file has to agree with translated copy:
+ * changing a `commandPalette.*` string in `en/common.json` breaks it, and the failure should say
+ * "here is what the palette actually offers" rather than "element not found".
+ *
+ * Kept out of the untagged regression scenarios on purpose — see the id form above.
+ */
+When(/^I pick "([^"]*)" from the palette$/, async (label: string) => {
+  const findByLabel = () =>
+    browser.execute((wanted: string) => {
+      const items = Array.from(document.querySelectorAll('[data-testid^="command-item-"]'))
+      const match = items.find(
+        (el) => (el.querySelector('span')?.textContent ?? '').trim() === wanted
+      )
+      return match?.getAttribute('data-testid') ?? null
+    }, label)
+
+  let testid: string | null = null
+  try {
+    await browser.waitUntil(
+      async () => {
+        testid = await findByLabel()
+        return testid !== null
+      },
+      { timeout: 10000, timeoutMsg: `No palette entry is labelled "${label}"` }
+    )
+  } catch (err) {
+    const offered = await browser.execute(() =>
+      Array.from(document.querySelectorAll('[data-testid^="command-item-"]')).map((el) =>
+        (el.querySelector('span')?.textContent ?? '').trim()
+      )
+    )
+    throw new Error(`${(err as Error).message}\n[probe] the palette offers: ${offered.join(' · ')}`)
+  }
+
+  const item = $(`[data-testid="${testid}"]`)
   await item.waitForDisplayed({ timeout: 10000 })
   await item.click()
 })

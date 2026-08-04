@@ -52,6 +52,9 @@ function AgentStatusTag({ activity }: { activity: WorktreeAgentActivity }) {
       tone={working ? 'info' : 'neutral'}
       className={cn('min-w-0 gap-1 px-1 py-0.5 text-[9px]', working && 'animate-pulse')}
       title={`${agentLabel(activity.agent)} · ${stateLabel}`}
+      data-testid="agent-status-tag"
+      data-agent={activity.agent}
+      data-state={activity.state}
     >
       <AgentLogo agent={activity.agent} size={10} />
       <span className="truncate">{stateLabel}</span>

@@ -1,9 +1,17 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browser, expect, $, $$ } from '@wdio/globals'
-import { Given, When, Then } from '@wdio/cucumber-framework'
+import { After, Given, When, Then } from '@wdio/cucumber-framework'
 
 // "When I expand the ... sidebar section" is shared — see stash.steps.ts.
 // "When I reload the application" is shared — see settings.steps.ts.
@@ -234,4 +242,107 @@ Then(/^the fixture repo no longer has the linked worktree on disk$/, async () =>
 // timing matters, so this runs before the reload, not after).
 Given(/^the linked worktree has uncommitted changes$/, () => {
   writeFileSync(join(LINKED_WORKTREE_PATH, 'login.txt'), 'login screen, modified\n')
+})
+
+// ─── AI-agent activity ────────────────────────────────────────────────────────
+//
+// `get_worktree_agent_activity` (commands/agent.rs) has no cooperation from the agent: it reads
+// Claude Code's own session store, `$HOME/.claude/projects/<slug>/*.jsonl`, and calls a worktree
+// "working" when the newest transcript there was written in the last 60 seconds (see
+// services/agent_session.rs). So the only way to fixture it is to be that store — write a
+// transcript where the app is about to look, with a fresh mtime.
+//
+// `$HOME`, emphatically not the developer's home: `useIsolatedHome()` repoints it at
+// `/tmp/git-manager-e2e-home` for the whole run (support/isolatedAppState.ts), the app is a child
+// of that process, and the Rust side resolves the session root from `HOME` before anything else.
+// Reading `process.env.HOME` here rather than `os.homedir()` makes that agreement explicit instead
+// of relying on Node happening to prefer the same variable — get it wrong and this step writes
+// into somebody's real `~/.claude/projects` while the app looks somewhere else entirely.
+
+/** Claude Code's project-directory slug: every `/` and `.` in the absolute path becomes `-`.
+ *  Mirrors `claude_project_slug` in services/agent_session.rs — the two must agree or the app
+ *  looks in a directory this step never wrote to. */
+function claudeProjectSlug(worktreePath: string): string {
+  return worktreePath.replace(/[/.]/g, '-')
+}
+
+/**
+ * Both spellings of a fixture path.
+ *
+ * The app asks about the path *git* reports for a worktree, and on macOS `/tmp` is a symlink to
+ * `/private/tmp`, which git canonicalizes — so the string the fixture script used and the string
+ * the backend receives are usually not the same, and only one of them produces the right slug.
+ * Seeding both costs an empty directory and removes the guesswork.
+ */
+function pathVariants(worktreePath: string): string[] {
+  const variants = new Set([worktreePath])
+  try {
+    variants.add(realpathSync(worktreePath))
+  } catch {
+    // Not on disk (a scenario that never built the fixture) — the literal path is all there is.
+  }
+  return [...variants]
+}
+
+/** Session directories this run created, so the After hook removes those and nothing else. */
+const seededAgentSessionDirs: string[] = []
+
+/** The run's isolated home — the same string the app process resolves its session store from. */
+function agentSessionHome(): string {
+  return process.env.HOME ?? homedir()
+}
+
+/** Writes (or re-stamps) a transcript so the worktree reads as an agent actively at work. */
+function seedAgentSession(worktreePath: string): void {
+  for (const variant of pathVariants(worktreePath)) {
+    const dir = join(agentSessionHome(), '.claude', 'projects', claudeProjectSlug(variant))
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true })
+      seededAgentSessionDirs.push(dir)
+    }
+    const transcript = join(dir, 'e2e-session.jsonl')
+    // Shaped like a real transcript line, though nothing reads the contents — only the mtime of
+    // the newest `.jsonl` in the directory decides the reported state.
+    writeFileSync(transcript, `{"type":"assistant","text":"e2e fixture session"}\n`)
+    const now = new Date()
+    utimesSync(transcript, now, now)
+  }
+}
+
+Given(/^an AI coding agent is working in the linked worktree$/, () => {
+  seedAgentSession(LINKED_WORKTREE_PATH)
+})
+
+Then(/^the graph marks the linked worktree as having an agent at work$/, async () => {
+  // Re-stamp first: "working" is a 60-second window from the transcript's mtime, and the steps
+  // between the seed and here include a full app reload. A tag that had aged into `idle` would
+  // still pass a laxer assertion while quietly documenting the wrong state.
+  seedAgentSession(LINKED_WORKTREE_PATH)
+  const tag = $('[data-testid="agent-status-tag"][data-state="working"]')
+  // The hook polls every three seconds, so this waits out at least two polls before giving up.
+  await tag.waitForDisplayed({
+    timeout: 20000,
+    timeoutMsg:
+      'No working-agent tag ever appeared on a WIP row — check that the fabricated session directory matches the path git reports for the worktree',
+  })
+  expect(await tag.getAttribute('data-agent')).toBe('claude')
+})
+
+/**
+ * Removes only the session directories this run created.
+ *
+ * Belt and braces on top of the isolated `$HOME`: if that isolation ever stops applying — a step
+ * run outside the harness, a future config change — this still deletes by recorded path, and only
+ * where the directory did not already exist, rather than anything matching a pattern under
+ * `.claude/projects`. That directory holds real transcripts on a developer's machine.
+ */
+After({ tags: '@agentactivity' }, () => {
+  while (seededAgentSessionDirs.length > 0) {
+    const dir = seededAgentSessionDirs.pop()!
+    try {
+      rmSync(dir, { recursive: true, force: true })
+    } catch {
+      // A leftover fixture directory is inert; failing a passing scenario over it is not worth it.
+    }
+  }
 })

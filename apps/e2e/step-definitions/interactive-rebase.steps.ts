@@ -444,7 +444,7 @@ Then(/^the repository HEAD commit message contains "([^"]*)"$/, (fragment: strin
   expect(body).toContain(fragment)
 })
 
-Then(/^the fixture file "([^"]*)" holds the line "([^"]*)"$/, (filePath: string, line: string) => {
+Then(/^the working file "([^"]*)" holds the line "([^"]*)"$/, (filePath: string, line: string) => {
   const content = readFileSync(join(getActiveRepoPath(), filePath), 'utf8')
   expect(content.split('\n')).toContain(line)
 })

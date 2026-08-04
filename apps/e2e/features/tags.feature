@@ -23,7 +23,7 @@ Feature: Tagging a commit
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
-    When I run the command palette action "commit-tag"
+    When I pick "Create tag here" from the palette
     Then the tag name input is shown
     When I enter the tag name "v-from-palette"
     And I confirm the tag creation
@@ -41,7 +41,7 @@ Feature: Tagging a commit
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
-    When I run the command palette action "commit-tag-annotated"
+    When I pick "Create annotated tag here" from the palette
     Then the tag name input is shown
     When I enter the tag name "v-annotated-from-palette"
     And I confirm the tag creation
@@ -68,11 +68,11 @@ Feature: Tagging a commit
     Given the app language is English
     And the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-push-tag-v0.9"
+    And I pick "Push tag v0.9" from the palette
     Then the remote "origin" has the tag "v0.9"
     And no error notification is displayed
     When I open the command palette
-    And I run the command palette action "ref-delete-remote-tag-v1.0"
+    And I pick "Delete remote tag v1.0" from the palette
     Then the remote tag deletion dialog is shown
     When I confirm the remote tag deletion
     Then the remote "origin" no longer has the tag "v1.0"

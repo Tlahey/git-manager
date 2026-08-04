@@ -107,6 +107,30 @@ describe('parseDocFeature', () => {
     expect(feature.scenarios[0].outcomes.map((s) => s.text)).toEqual(['the merge editor is shown'])
   })
 
+  it('drops the settle step even when it is written after a Then, not just after a When', () => {
+    // `And` resolves to the keyword before it, so the same test-timing step lands on `Then` when a
+    // scenario asserts something before settling — which shipped it as a "You should see" bullet on
+    // 22 published pages. It is a timing step wherever it is written.
+    const settleAfterThen = parseDocFeature(
+      `Feature: Timing
+  Intro paragraph.
+
+  @doc
+  Scenario: Settle after an assertion
+    Prose for the reader.
+    When I open the panel
+    Then the panel is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-panel"
+`,
+      'apps/e2e/features/timing.feature'
+    )
+    expect(settleAfterThen?.scenarios[0].outcomes.map((s) => s.text)).toEqual([
+      'the panel is shown',
+    ])
+    expect(settleAfterThen?.scenarios[0].actions.map((s) => s.text)).toEqual(['I open the panel'])
+  })
+
   it('resolves And/But to the keyword they continue', () => {
     expect(feature.scenarios[0].outcomes.every((s) => s.keyword === 'Then')).toBe(true)
   })

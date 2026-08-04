@@ -46,7 +46,7 @@ Feature: Interactive rebase editor (reword / squash / drop)
     Then the repository log lists the subject "chore: bump counter to two"
     And the repository HEAD commit message contains "chore: bump counter to 4"
     And the repository log holds 4 commits
-    And the fixture file "counter.txt" holds the line "counter=4"
+    And the working file "counter.txt" holds the line "counter=4"
 
   Scenario: Rewording a commit rewrites its message in history
     When I open the interactive rebase editor from the "HEAD~2" commit
@@ -56,7 +56,7 @@ Feature: Interactive rebase editor (reword / squash / drop)
     Then the repository log lists the subject "chore: bump counter to three"
     And the repository log does not list the subject "chore: bump counter to 3"
     And the repository log holds 5 commits
-    And the fixture file "counter.txt" holds the line "counter=4"
+    And the working file "counter.txt" holds the line "counter=4"
 
   Scenario: Dropping the tip commit removes it from history
     When I open the interactive rebase editor from the "HEAD~1" commit
@@ -65,7 +65,7 @@ Feature: Interactive rebase editor (reword / squash / drop)
     And I start the interactive rebase
     Then the repository HEAD commit subject contains "chore: bump counter to 3"
     And the repository log holds 4 commits
-    And the fixture file "counter.txt" holds the line "counter=3"
+    And the working file "counter.txt" holds the line "counter=3"
 
   Scenario: Squashing the two newest commits combines them into one
     When I open the interactive rebase editor from the "HEAD~1" commit
@@ -76,4 +76,4 @@ Feature: Interactive rebase editor (reword / squash / drop)
     Then the repository HEAD commit subject contains "chore: bump counter to 3"
     And the repository HEAD commit message contains "chore: bump counter to 4"
     And the repository log holds 4 commits
-    And the fixture file "counter.txt" holds the line "counter=4"
+    And the working file "counter.txt" holds the line "counter=4"

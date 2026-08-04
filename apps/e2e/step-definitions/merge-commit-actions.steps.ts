@@ -64,8 +64,12 @@ Then(
 // same bridge and the real `GitGraphOverlayManager` routing/`CompareToParentDialog` rendering,
 // without needing a native right-click menu WebDriver cannot open — same pattern as
 // blame-history.steps.ts's `setActiveDiffFile` call.
+//
+// The step's name says what the *reader* does — "compare the selected commit against parent 2" —
+// not how it gets there. It used to start "I dispatch comparing…", and the `@doc` scenario
+// rendered that verbatim as an instruction on the published page.
 When(
-  /^I dispatch comparing the selected commit against parent "(\d+)"$/,
+  /^I compare the selected commit against parent "(\d+)"$/,
   async (parentNumber: string) => {
     await browser.execute((parent: number) => {
       const store = (

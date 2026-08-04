@@ -1,6 +1,7 @@
-import { browser, expect, $ } from '@wdio/globals'
+import { browser, expect, $, $$ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { navigateAndSettle } from '../support/navigation'
+import { forceLiveSettings } from '../support/settings'
 
 // Seeds the notification.store persist key directly (same "seed localStorage, then reload" pattern
 // as repo.steps.ts's fixture-open step) rather than driving the real GitHub-diff pipeline
@@ -105,4 +106,53 @@ When(/^I clear all notifications$/, async () => {
 
 Then(/^the notification tray is empty$/, async () => {
   await $('[data-testid="notification-empty-state"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// ─── Delivery: the settings that choose where a notification appears ─────────
+//
+// The suite-wide baseline (hooks.steps.ts) turns notifications OFF for every scenario, because the
+// notch card is a real second WebviewWindow this WebKit driver handles badly. The step below is
+// how the scenario that is *about* those settings gets them back — without letting a card paint.
+// notifications.feature's own comment records what happened the two times a scenario did let one
+// paint, and why there is no capture of the card itself.
+
+/**
+ * Notifications on, but pinned to the "no surface" e2e seam so nothing opens a window.
+ *
+ * The presentation and per-event blocks only render while notifications are enabled, so the
+ * baseline's `enabled: false` would leave a screenshot of a single switch. Live rather than seeded
+ * (`forceLiveSettings`), because this scenario never reloads — it opens Settings in the window the
+ * previous one left standing.
+ */
+Given(/^notifications are turned on$/, async () => {
+  await forceLiveSettings({ notifications: { enabled: true } })
+  await browser.execute(() => {
+    // See useNotchQueue.ts's VITE_E2E seam: forces the surface downstream of the enqueue, so the
+    // whole production chain stays real and only the final paint is skipped. Without it, a card
+    // raised mid-scenario opens a real window — or, when it cannot, a real macOS banner on the
+    // machine running the suite. The next scenario's baseline deletes this flag.
+    ;(window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface = 'none'
+  })
+})
+
+Then(/^the notification display options offer the notch card and the macOS banner$/, async () => {
+  const select = $('[data-testid="setting-notif-display-style"]')
+  await select.waitForDisplayed({ timeout: 10000 })
+  const values = await browser.execute(() =>
+    Array.from(document.querySelectorAll('[data-testid="setting-notif-display-style"] option')).map(
+      (option) => (option as HTMLOptionElement).value
+    )
+  )
+  expect(values).toEqual(['notch', 'native'])
+  // The second line under the picker is the part that says the choice changes *coverage*, not
+  // just appearance (notchDelivery.ts) — a blank one would make the screenshot a lie.
+  const description = $('[data-testid="setting-notif-display-style-desc"]')
+  await description.waitForDisplayed({ timeout: 10000 })
+  expect((await description.getText()).length).toBeGreaterThan(0)
+})
+
+Then(/^the notification settings offer a switch per event$/, async () => {
+  await $('[data-testid="setting-notif-events"]').waitForDisplayed({ timeout: 10000 })
+  const toggles = await $$('[data-testid^="setting-notifyOn"]')
+  expect(toggles.length).toBeGreaterThan(0)
 })

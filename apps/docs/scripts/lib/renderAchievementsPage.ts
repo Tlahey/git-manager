@@ -18,11 +18,21 @@ export const ACHIEVEMENTS_SOURCE_PATH = 'apps/desktop/src/stores/achievements.js
 /** The subset of `AchievementDefinition` (apps/desktop, `lib/rewards/types.ts`) the page reads.
  *  Redeclared rather than imported: the docs generator must not reach into the app's source
  *  tree, and extra fields (rule kind, events, thresholds) are deliberately not documented —
- *  the reader-facing "how to unlock" is the translated description, not the rule internals. */
+ *  the reader-facing "how to unlock" is the translated description, not the rule internals.
+ *
+ *  The two spoiler flags are read for exactly one reason: they are what the app itself conceals
+ *  (`RewardsTab.tsx` — a cosmetic reward stays "???" until its achievement unlocks, and a
+ *  prerequisite-gated one shows as a mystery challenge with no title and no description until the
+ *  achievement it depends on is done). A reference page that prints both in plain text takes that
+ *  away from whoever opens it for one lookup, so it hides the same cells behind a click. */
 export interface AchievementEntry {
   id: string
   points: number
   type: 'bronze' | 'silver' | 'gold' | 'platinum'
+  /** The reward is a cosmetic (a theme, a frame) the app hides behind "???" until unlocked. */
+  rewardIsCosmetic?: boolean
+  /** Id of the achievement that has to be unlocked before this one is even shown in the app. */
+  prerequisiteId?: string
 }
 
 const TIER_ORDER: AchievementEntry['type'][] = ['bronze', 'silver', 'gold', 'platinum']
@@ -52,6 +62,24 @@ function escapeCell(text: string): string {
   return text.replace(/\|/g, '\\|')
 }
 
+/**
+ * Wraps content the app would still be hiding in a click-to-reveal spoiler.
+ *
+ * A `<label>` around a visually-hidden checkbox rather than a script: this is generated Markdown
+ * with no component behind it, and a checkbox is focusable and toggles on Space, so the keyboard
+ * path comes for free and the page keeps working with JavaScript disabled. The styling lives in
+ * `.vitepress/theme/custom.css` (`.doc-spoiler`) — blurred until checked.
+ *
+ * The text stays in the DOM on purpose: this is a courtesy against reading a reward by accident,
+ * not a lock, and it is what keeps the page searchable and readable to a screen reader.
+ */
+function spoiler(content: string): string {
+  return (
+    `<label class="doc-spoiler"><input type="checkbox" aria-label="Reveal spoiler" />` +
+    `<span>${content}</span></label>`
+  )
+}
+
 export function renderAchievementsPage(
   achievements: AchievementEntry[],
   enLocale: Record<string, string>
@@ -75,9 +103,11 @@ export function renderAchievementsPage(
     'concrete: most of the color themes in Settings → Appearance start locked, and an achievement',
     'is how you earn each one.',
     '',
-    '::: warning Spoilers ahead',
-    'In the app, a cosmetic reward stays hidden behind “???” until you unlock its achievement.',
-    'This page reveals every reward — read on only if you want the full map.',
+    '::: tip Spoilers stay hidden until you click one',
+    'The app conceals two things until you have earned them: a cosmetic reward stays behind “???”',
+    'until its achievement unlocks, and a challenge that depends on another one is not shown at all',
+    'until that one is done. The blurred cells below are exactly those — click one to reveal it.',
+    'Nothing is revealed for you, so this page is safe to read for the ones you have already met.',
     ':::',
     '',
   ]
@@ -88,11 +118,21 @@ export function renderAchievementsPage(
 
     lines.push(`## ${TIER_TITLES[tier]}`, '', '| Achievement | How to unlock | Reward | Points |', '| --- | --- | --- | --- |')
     for (const entry of entries) {
-      const title = copyFor(enLocale, entry.id, 'title')
-      const description = copyFor(enLocale, entry.id, 'description')
-      const reward = copyFor(enLocale, entry.id, 'reward')
+      const title = `**${escapeCell(copyFor(enLocale, entry.id, 'title'))}**`
+      const description = escapeCell(copyFor(enLocale, entry.id, 'description'))
+      const reward = escapeCell(copyFor(enLocale, entry.id, 'reward'))
+
+      // A gated achievement is a "mystery challenge" in the app: no title, no description, only
+      // the name of the one to unlock first. That pointer is the part worth keeping visible —
+      // it is what tells a reader why the row is blurred and how to open it in the app.
+      const gate = entry.prerequisiteId
+        ? `_Unlock **${escapeCell(copyFor(enLocale, entry.prerequisiteId, 'title'))}** first._ `
+        : ''
+
       lines.push(
-        `| **${escapeCell(title)}** | ${escapeCell(description)} | ${escapeCell(reward)} | ${entry.points} |`
+        `| ${entry.prerequisiteId ? spoiler(title) : title} ` +
+          `| ${gate}${entry.prerequisiteId ? spoiler(description) : description} ` +
+          `| ${entry.rewardIsCosmetic ? spoiler(reward) : reward} | ${entry.points} |`
       )
     }
     lines.push('')

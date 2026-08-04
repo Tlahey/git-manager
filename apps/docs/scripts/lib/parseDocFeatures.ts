@@ -33,6 +33,19 @@ const SCREENSHOT_STEP = /^a full-window screenshot is saved as "([^"]+)"$/
 const AREA_SCREENSHOT_STEP = /^a screenshot of the "[^"]+" area is saved as "([^"]+)"$/
 
 /**
+ * Steps that exist purely to let the app catch up before a capture. They are never something a
+ * reader does, nor something they should look for.
+ *
+ * Dropped by *text*, ahead of the keyword rules below, and that placement is the point: the
+ * keyword a step ends up with depends on where it happens to sit, because `And` resolves to
+ * whatever came before it. Written after a `When` this step was already dropped (neither an "I …"
+ * action nor a `Then`), but the identical step written after a `Then` resolved to `Then` and
+ * shipped as a "You should see" bullet — "The interface has settled" appeared on 22 published
+ * pages that way. A test-timing step is a test-timing step wherever it is written.
+ */
+const TIMING_STEP = /^the interface has settled$/
+
+/**
  * The Connextra user-story lines conventionally opening a `Feature:` description.
  * They describe the *test's* actor, not the reader of the docs, so they are
  * dropped from the page intro — the prose paragraph below them is what ships.
@@ -128,6 +141,7 @@ function toDocScenario(scenario: Scenario): DocScenario {
       screenshot = shot[1]
       continue
     }
+    if (TIMING_STEP.test(step.text)) continue
     // `Given` steps build the fixture repository the test needs; they say nothing
     // to a reader who already has their own repository open.
     if (step.keyword === 'Given') continue

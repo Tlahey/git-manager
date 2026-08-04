@@ -6,9 +6,9 @@ editLink: false
 
 # Your first repository
 
-Everything in Git Manager happens inside a repository tab. This page walks the
-first session: getting a repository open, and connecting the one account the
-app can use on your behalf.
+Everything in Git Manager happens inside a repository tab. This page walks you
+through the first session: getting a repository open, and connecting the one
+account the app can use on your behalf.
 
 ## Open, create or clone
 
@@ -30,9 +30,9 @@ From here there are four ways in:
   you can generate a pair from **Settings → SSH** if you don't have one
   ([Settings](/docs/features/settings) shows how).
 
-All three buttons end at your Mac's native folder picker, then drop you into
-the [commit graph](/docs/features/commit-graph) — the view every repository
-opens on.
+**Open**, **Create** and **Clone** all end at your Mac's native folder picker,
+then drop you into the [commit graph](/docs/features/commit-graph) — the view
+every repository opens on.
 
 ## Connect your GitHub account
 
@@ -42,9 +42,11 @@ it:
 
 - the **[Launchpad](/docs/features/launchpad-prs)** — your pull requests,
   reviews waiting on you, [issues](/docs/features/launchpad-issues), and
-  [commit stats](/docs/features/launchpad-commit-stats) across repositories.
+  [commit stats](/docs/features/launchpad-commit-stats) across repositories;
+- the **[notification tray](/docs/features/notifications)** — the bell in the
+  toolbar, which collects review requests and merges as they happen.
 
-To connect, open **Settings → GitHub** and start the sign-in.
+To connect, open **Settings → Integrations** and start the sign-in.
 [Settings](/docs/features/settings) shows the flow: the app displays a one-time
 device code, sends you to `github.com/login/device` to type it, and never sees
 your password — that's GitHub's official *device flow*, and the token it
