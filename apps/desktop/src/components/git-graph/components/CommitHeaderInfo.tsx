@@ -20,6 +20,7 @@ import { useGitStashes } from '../../../hooks/useGitStashes'
 import { useCommitMessageEdit } from '../../../hooks/useCommitMessageEdit'
 import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
 import { formatDateTimeLong } from '../../../lib/relativeDate'
+import { shortOid } from '../../../lib/shortOid'
 
 interface CommitHeaderInfoProps {
   isWip: boolean
@@ -405,7 +406,7 @@ export function CommitHeaderInfo({
                       onClick={() => onSelectCommit?.(p)}
                       className="cursor-pointer rounded border border-border bg-accent/60 px-2 py-0.5 font-mono text-[10px] font-semibold transition-all hover:border-primary/45 hover:bg-primary/15 hover:text-primary"
                     >
-                      {p.substring(0, 7)}
+                      {shortOid(p)}
                     </button>
                   ))}
                 </div>

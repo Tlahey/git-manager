@@ -2,6 +2,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea } from '@git-manager/ui'
 import { Bug } from 'lucide-react'
 import { useBisectState } from '../../hooks/useBisectState'
+import { shortOid as toShortOid } from '../../lib/shortOid'
 
 interface BisectPanelProps {
   repoPath: string
@@ -12,7 +13,7 @@ function OidChip({ oid, dotClass }: { oid: string; dotClass: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[11px]">
       <span className={`h-2 w-2 rounded-full ${dotClass}`} />
-      {oid.slice(0, 7)}
+      {toShortOid(oid)}
     </span>
   )
 }
@@ -32,7 +33,7 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
   if (!bisect?.active) return null
 
   const finished = !!bisect.firstBadOid
-  const shortOid = bisect.currentOid?.slice(0, 7)
+  const shortOid = bisect.currentOid ? toShortOid(bisect.currentOid) : undefined
 
   return (
     <div className="flex h-full flex-col bg-background" data-testid="bisect-panel">

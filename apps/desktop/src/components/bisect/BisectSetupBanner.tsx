@@ -5,6 +5,7 @@ import { Bug, CircleX, CircleCheck, ArrowRight, AlertTriangle } from 'lucide-rea
 import { useBisectUIStore, type BisectSlot } from '../../stores/bisectUI.store'
 import { useBisectActions } from '../../hooks/useBisectActions'
 import { apiBisectCheckRange } from '../../api/git.api'
+import { shortOid } from '../../lib/shortOid'
 
 interface BisectSetupBannerProps {
   repoPath: string
@@ -44,7 +45,7 @@ function SlotButton({ kind, oid, active, label, placeholder, onClick }: SlotButt
           {label}
         </span>
         <span className="block truncate font-mono text-xs leading-tight">
-          {oid ? oid.slice(0, 7) : <span className="opacity-60">{placeholder}</span>}
+          {oid ? shortOid(oid) : <span className="opacity-60">{placeholder}</span>}
         </span>
       </span>
     </button>

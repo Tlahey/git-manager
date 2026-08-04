@@ -43,6 +43,7 @@ import {
 } from '../lib/graphContextMenus'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
 import { resolveDefaultUpstream } from '../lib/branchUpstream'
+import { shortOid } from '../lib/shortOid'
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSoloModeStore } from '../stores/soloMode.store'
@@ -251,7 +252,7 @@ export function useGitGraphActions({
 
   async function handleCreatePatch(oid: string) {
     try {
-      const destPath = await pickSaveDestination(`${oid.slice(0, 7)}.patch`)
+      const destPath = await pickSaveDestination(`${shortOid(oid)}.patch`)
       if (!destPath) return
       await apiCreatePatch(repoPath, oid, destPath)
       toast.success(t('gitTree.contextMenu.patchCreated'))
@@ -484,7 +485,7 @@ export function useGitGraphActions({
     async function handleCreatePatchSelection() {
       try {
         const destPath = await pickSaveDestination(
-          `${oid.slice(0, 7)}-and-${targets.length - 1}-more.patch`
+          `${shortOid(oid)}-and-${targets.length - 1}-more.patch`
         )
         if (!destPath) return
         await apiCreateCommitsPatch(repoPath, selectedOldestFirst, destPath)

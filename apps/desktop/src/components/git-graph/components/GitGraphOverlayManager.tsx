@@ -7,6 +7,7 @@ import { RevertDialog } from '../../rollback/RevertDialog'
 import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
 import { CompareToParentDialog } from '../CompareToParentDialog'
 import { RecomposeDialog } from './RecomposeDialog'
+import { shortOid } from '../../../lib/shortOid'
 import type { GitGraphNode } from '@git-manager/git-types'
 import type { RevertParent } from '../../rollback/RevertDialog'
 import type { PendingAction } from '../../../hooks/useGitGraphActions'
@@ -59,7 +60,7 @@ export function GitGraphOverlayManager({
     const node = nodes.find((n) => n.commit.oid === parentOid)
     return {
       oid: parentOid,
-      shortOid: node?.commit.shortOid ?? parentOid.slice(0, 7),
+      shortOid: node?.commit.shortOid ?? shortOid(parentOid),
       subject: node?.commit.subject ?? '',
     }
   })

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import { formatExactDate } from '../../../lib/relativeDate'
+import { shortOid } from '../../../lib/shortOid'
 import { Lock } from 'lucide-react'
 import { ScrollArea, Spinner } from '@git-manager/ui'
 import type { GitCommit } from '@git-manager/git-types'
@@ -60,7 +61,7 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
     commit.oid
   )
 
-  const parentShortOid = commit.parentOids[0]?.slice(0, 7)
+  const parentShortOid = commit.parentOids[0] ? shortOid(commit.parentOids[0]) : undefined
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

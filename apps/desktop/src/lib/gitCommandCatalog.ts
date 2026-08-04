@@ -23,6 +23,8 @@
  * redacted and truncated to 200 characters (see `debugLogRedact.ts`).
  */
 
+import { shortOid } from './shortOid'
+
 /** Broad family of an operation, for the row's icon and colour — not sent to the model. */
 export type GitCommandFamily =
   | 'staging'
@@ -131,14 +133,16 @@ function stashRef(args: RecordedArgs): string {
   return `stash@{${num(args, 'index') ?? 0}}`
 }
 
-/** Short form of an oid, so a command line reads like one a human wrote. */
-function shortOid(oid: string): string {
-  return /^[0-9a-f]{40}$/i.test(oid) ? oid.slice(0, 7) : oid
+/** Short form of an oid, so a command line reads like one a human wrote. Only a recognizable full
+ * 40-character SHA-1 gets truncated — anything else (a placeholder, an already-short value) is left
+ * alone rather than blindly sliced. */
+function shortOidArg(oid: string): string {
+  return /^[0-9a-f]{40}$/i.test(oid) ? shortOid(oid) : oid
 }
 
 function oidArg(args: RecordedArgs, key = 'oid'): string {
   const oid = str(args, key)
-  return oid ? shortOid(oid) : '<commit>'
+  return oid ? shortOidArg(oid) : '<commit>'
 }
 
 /** Remote name, defaulting the way the backend does when the argument is absent. */

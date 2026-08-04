@@ -7,6 +7,7 @@ import {
   type WorktreeSnapshot,
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
+import { shortOid } from '../../lib/shortOid'
 import { generateId, pushAction, clearRedo } from './gitApiShared'
 
 /**
@@ -102,7 +103,7 @@ export async function apiResetToCommit(path: string, oid: string, mode: 'soft' |
       pushAction(path, {
         id,
         timestamp: Date.now(),
-        label: { key: 'undoRedo.reset', params: { sha: oid.slice(0, 7) } },
+        label: { key: 'undoRedo.reset', params: { sha: shortOid(oid) } },
         pinnedRefs,
         type: 'reset',
         previousOid,

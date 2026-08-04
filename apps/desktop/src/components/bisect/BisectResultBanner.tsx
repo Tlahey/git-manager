@@ -4,6 +4,7 @@ import { Crosshair, Eye, RotateCcw } from 'lucide-react'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectActions } from '../../hooks/useBisectActions'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { shortOid as toShortOid } from '../../lib/shortOid'
 
 interface BisectResultBannerProps {
   repoPath: string
@@ -20,7 +21,7 @@ export function BisectResultBanner({ repoPath }: BisectResultBannerProps) {
 
   if (!bisect?.active || !bisect.firstBadOid) return null
 
-  const shortOid = bisect.firstBadOid.slice(0, 7)
+  const shortOid = toShortOid(bisect.firstBadOid)
   const summary = bisect.firstBadSummary ?? ''
 
   return (
