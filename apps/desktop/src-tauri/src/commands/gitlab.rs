@@ -74,7 +74,6 @@ pub async fn gitlab_device_code(
 ) -> Result<GitLabDeviceCodeResponse, String> {
     let base = instance_base(&instance_url);
     let id = resolve_client_id(client_id)?;
-    println!("[GitLab OAuth] Requesting device code from {base} for scopes: {scope}");
 
     let res = http_client()?
         .post(format!("{base}/oauth/authorize_device"))
@@ -87,7 +86,7 @@ pub async fn gitlab_device_code(
     if !res.status().is_success() {
         let status = res.status();
         let body = res.text().await.unwrap_or_default();
-        println!("[GitLab OAuth] Device code request failed: {status}, body {body}");
+        eprintln!("[GitLab OAuth] Device code request failed: HTTP {status}");
         return Err(AppError::Unknown(format!(
             "GitLab device authorization failed (HTTP {status}): {body}"
         ))
@@ -95,10 +94,6 @@ pub async fn gitlab_device_code(
     }
 
     let data: GitLabDeviceCodeResponse = res.json().await.map_err(AppError::Http)?;
-    println!(
-        "[GitLab OAuth] Device code response: user_code={}, verification_uri={}",
-        data.user_code, data.verification_uri
-    );
     Ok(data)
 }
 
@@ -145,7 +140,7 @@ pub async fn gitlab_poll_token(
     match serde_json::from_str::<GitLabPollTokenResponse>(&body) {
         Ok(data) => Ok(data),
         Err(_) => {
-            println!("[GitLab OAuth] Token poll failed: {status}, body {body}");
+            eprintln!("[GitLab OAuth] Token poll failed: HTTP {status}");
             Err(
                 AppError::Unknown(format!("GitLab token poll failed (HTTP {status}): {body}"))
                     .into(),
