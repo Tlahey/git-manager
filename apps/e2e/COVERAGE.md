@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (54 feature files / 187 scenarios)
+## Covered today (55 feature files / 192 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -45,7 +45,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Sidebar lists stashes                                                                                    | stash      | fixture:stash-stack                               | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file)                                                                                                                                                     |
 | Settings screen opens + **snapshot**                                                                     | settings   | keyboard (Mod+,)                                  | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel                                     | AI         | fake HTTP server                                  | —                                 | ✅ (see "6. AI commit-message generation" below)                                                                                                                                                                                                             |
-| **Worktree** list / add / remove (incl. dirty-remove force gate)                                         | worktree   | fixture:worktree-repo                             | —                                 | ✅ (see "Worktree management" below)                                                                                                                                                                                                                         |
+| **Worktree** list / add / remove (incl. dirty-remove force gate) + **AI-agent activity**                 | worktree   | fixture:worktree-repo                             | 📷 (doc)                          | ✅ (see "Worktree management" below; `get_worktree_agent_activity` covered end to end — the step fabricates a Claude transcript in the run's isolated `$HOME`, and the WIP row's agent glyph and working tag are asserted from the real graph)                |
 | **Repo tab views**: switch Graph ↔ Terminal ↔ Settings                                                   | navigation | fixture:feature-branches                          | 📷 (doc)                          | ✅ (see "Repo tab views" below)                                                                                                                                                                                                                              |
 
 ---
@@ -94,8 +94,7 @@ keyboard route at all, which was a product gap before it was a testing one.
 | **GitLab / Bitbucket accounts**                                    | Not reachable because they are **not on screen**: both are built and tested but unlisted (`AVAILABLE_PROVIDERS` in `IntegrationSection.tsx`), pending an OAuth application registered on gitlab.com and something in the app that actually reads either account. Their panels, commands and settings shape have unit tests; the e2e scenarios that drove them are in `git log` for when the providers come back. |
 | **Running a task** (`run_task_in_terminal`)                        | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The _listing_ half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`).                                                                                                                                           |
 | **Native OS surfaces**                                             | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them.                                                                                                                                                                                                       |
-| **Worktree agent activity** (`get_worktree_agent_activity`)        | Detection reads Claude Code's own transcripts under `~/.claude/projects/`. Faking one means writing into the developer's real Claude Code data to make a test pass, which is not a trade worth making for a badge — and the detection logic (slug derivation, newest-transcript pick, staleness) already has Rust unit tests in `services/agent_session.rs`.                                                     |
-| **The notch window's own rendering**                               | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at.                                                                                                                                                                                                                       |
+| **The notch window's own rendering**                               | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. Tried anyway, twice, for a documentation capture, and both attempts are recorded in `notifications.feature`: the `notch` handle registers and `switchToWindow` succeeds, but every `execute/sync` against it answers "No window could be found" (the window is `focus: false` / `decorations: false` and never becomes a key window) — and on the run where it failed to open at all, the queue's native fallback raised a **real macOS banner** on the host. Fixing the driver would not help: this provider captures the **webview only**, so the best possible capture is a context-free black rectangle that also shows the 32pt band a real notched Mac hides behind the camera housing. A picture of the card can only come from `packages/notch`'s Storybook harness, which was weighed on 2026-08-04 and declined (a staged image in a pipeline built on test-backed ones). What the notch _is_ and how to choose it is documented from the Settings screen instead.                     |
 
 ## Rebase progress view ✅ 📷
 
@@ -379,6 +378,19 @@ usable and e2e-coverable, rather than documenting it as blocked like Clone/Scan:
   key-generator scenario), remove, and a dirty-remove scenario that writes an uncommitted change to
   the linked worktree's tracked file directly on disk, reloads, and asserts the force-checkbox gate
   before removal succeeds.
+
+**AI-agent activity, added 2026-08-04** (`get_worktree_agent_activity`). This row used to sit in
+"Not covered today" on the grounds that faking a Claude Code session meant writing into the
+developer's real `~/.claude/projects/`. That premise was wrong: `useIsolatedHome()` repoints `$HOME`
+at `/tmp/git-manager-e2e-home` for the whole run (`support/isolatedAppState.ts`), the app is a child
+of that process, and `services/agent_session.rs` resolves the session root from `HOME` before
+anything else — so the fixture writes into the run's own scratch home, not anybody's data. The step
+(`worktree.steps.ts`) writes a `.jsonl` transcript under the slug the backend will look for, for
+**both** spellings of the fixture path (git canonicalizes `/tmp` to `/private/tmp` on macOS, and
+only one of them yields the right slug), re-stamps its mtime just before the assertion so the
+60-second `working` window cannot age out mid-scenario, and removes only the directories it created.
+The `@doc` scenario asserts the agent glyph and the `working` tag on the linked worktree's WIP row
+straight from the real graph, and exports `doc-worktree-agent-activity`.
 
 ### 8. GitHub OAuth device flow ✅
 
