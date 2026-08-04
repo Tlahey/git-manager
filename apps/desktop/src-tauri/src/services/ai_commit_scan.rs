@@ -11,6 +11,7 @@
 //! question being asked.
 
 use crate::error::AppError;
+use crate::utils::short_oid;
 use git2::{Delta, Repository};
 use serde::Serialize;
 use std::path::Path;
@@ -186,7 +187,7 @@ fn collect_commits(
 
         commits.push(ScanCommit {
             oid: commit.id().to_string(),
-            short_oid: commit.id().to_string()[..7].to_string(),
+            short_oid: short_oid(&commit.id().to_string()),
             subject,
             body,
             author: commit.author().name().unwrap_or("").to_string(),
