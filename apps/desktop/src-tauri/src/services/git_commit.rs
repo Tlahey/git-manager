@@ -287,9 +287,9 @@ pub fn create_commit(
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
     let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
 
-    let oid = if amend && amend_oid.is_some() {
+    let oid = if let Some(amend_oid) = amend_oid.filter(|_| amend) {
         // Amending a specific commit: build a new commit carrying the new message
-        let target_oid = git2::Oid::from_str(amend_oid.unwrap()).map_err(AppError::Git)?;
+        let target_oid = git2::Oid::from_str(amend_oid).map_err(AppError::Git)?;
         let target_commit = repo.find_commit(target_oid).map_err(AppError::Git)?;
 
         // Create a new commit with the new message and the same parents
@@ -324,7 +324,7 @@ pub fn create_commit(
                     .ok_or_else(|| AppError::Unknown("HEAD has no target".to_string()))?;
                 vec![repo.find_commit(parent_oid).map_err(AppError::Git)?]
             }
-            Err(_) => vec![], // Commit initial
+            Err(_) => vec![], // Initial commit
         };
 
         // A merge left mid-flight: its other side(s) belong on this commit, or the merge is lost.

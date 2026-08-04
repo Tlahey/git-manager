@@ -119,6 +119,15 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@dnd-kit/sortable':
+        specifier: ^10.0.0
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@dnd-kit/utilities':
+        specifier: ^3.2.2
+        version: 3.2.2(react@18.3.1)
       '@git-manager/ai':
         specifier: workspace:*
         version: link:../../packages/ai
@@ -1330,6 +1339,28 @@ packages:
 
   '@cucumber/tag-expressions@6.1.0':
     resolution: {integrity: sha512-+3DwRumrCJG27AtzCIL37A/X+A/gSfxOPLg8pZaruh5SLumsTmpvilwroVWBT2fPzmno/tGXypeK5a7NHU4RzA==}
+
+  '@dnd-kit/accessibility@3.1.1':
+    resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
+    peerDependencies:
+      react: '>=16.8.0'
+
+  '@dnd-kit/core@6.3.1':
+    resolution: {integrity: sha512-xkGBRQQab4RLwgXxoqETICr6S5JlogafbhNsidmrkVv2YRs5MLwpjoF2qpiGjQt8S9AoxtIV603s0GIUpY5eYQ==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  '@dnd-kit/sortable@10.0.0':
+    resolution: {integrity: sha512-+xqhmIIzvAYMGfBYYnbKuNicfSsk4RksY2XdmJhT+HAC01nix6fHCztU68jooFiMUB01Ky3F0FyOvhG/BZrWkg==}
+    peerDependencies:
+      '@dnd-kit/core': ^6.3.0
+      react: '>=16.8.0'
+
+  '@dnd-kit/utilities@3.2.2':
+    resolution: {integrity: sha512-+MKAJEOfaBe5SmV6t34p80MMKhjvUz0vRrvVJbPT0WElzaOJ/1xs+D+KDv+tD/NE5ujfrChEcshd4fLn0wpiqg==}
+    peerDependencies:
+      react: '>=16.8.0'
 
   '@docsearch/css@3.8.2':
     resolution: {integrity: sha512-y05ayQFyUmCXze79+56v/4HpycYF3uFqB78pLPrSV5ZKAlDuIAAJNhaRi8tTdRNXh05yxX/TyNnzD6LwSM89vQ==}
@@ -9579,6 +9610,31 @@ snapshots:
 
   '@cucumber/tag-expressions@6.1.0': {}
 
+  '@dnd-kit/accessibility@3.1.1(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      tslib: 2.8.1
+
+  '@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@dnd-kit/accessibility': 3.1.1(react@18.3.1)
+      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      tslib: 2.8.1
+
+  '@dnd-kit/sortable@10.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@dnd-kit/core': 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
+      react: 18.3.1
+      tslib: 2.8.1
+
+  '@dnd-kit/utilities@3.2.2(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      tslib: 2.8.1
+
   '@docsearch/css@3.8.2': {}
 
   '@docsearch/js@3.8.2(@algolia/client-search@5.56.0)(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(search-insights@2.17.3)':
@@ -11401,7 +11457,7 @@ snapshots:
       '@storybook/icons': 2.1.0(react@18.3.1)
       storybook: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
     optionalDependencies:
-      '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
+      '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
       '@vitest/runner': 3.2.7
       vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
     transitivePeerDependencies:

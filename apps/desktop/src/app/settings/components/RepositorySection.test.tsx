@@ -114,6 +114,41 @@ describe('RepositorySection — appearance page', () => {
     ).toBeUndefined()
   })
 
+  it('shows the view switcher position pills disabled while inheriting, enabled once overridden', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="appearance" />)
+    expect(
+      screen.getByTestId('repo-view-switcher-position-radio-tabs').querySelector('input')
+    ).toBeDisabled()
+    await user.click(screen.getByTestId('repo-override-viewSwitcherPosition-override'))
+    expect(
+      screen.getByTestId('repo-view-switcher-position-radio-tabs').querySelector('input')
+    ).toBeEnabled()
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.viewSwitcherPosition).toBe(
+      'toolbar'
+    )
+  })
+
+  it('picking a view switcher position pill writes the per-repo override', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="appearance" />)
+    await user.click(screen.getByTestId('repo-override-viewSwitcherPosition-override'))
+    await user.click(screen.getByTestId('repo-view-switcher-position-radio-tabs').querySelector('input')!)
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.viewSwitcherPosition).toBe(
+      'tabs'
+    )
+  })
+
+  it('inherit removes the view switcher position override again', async () => {
+    const user = userEvent.setup()
+    useSettingsStore.getState().setRepoSetting(REPO, 'viewSwitcherPosition', 'tabs')
+    render(<RepositorySection category="appearance" />)
+    await user.click(screen.getByTestId('repo-override-viewSwitcherPosition-inherit'))
+    expect(
+      useSettingsStore.getState().settings.repoOverrides[REPO]?.viewSwitcherPosition
+    ).toBeUndefined()
+  })
+
   it('filters to only the terminal-colours setting when searching "terminal"', () => {
     render(
       <SettingsSearchProvider query="terminal">

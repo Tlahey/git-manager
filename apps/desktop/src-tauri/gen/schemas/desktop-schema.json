@@ -21,7 +21,9 @@
     {
       "description": "A list of capabilities.",
       "type": "object",
-      "required": ["capabilities"],
+      "required": [
+        "capabilities"
+      ],
       "properties": {
         "capabilities": {
           "description": "The list of capabilities.",
@@ -37,7 +39,10 @@
     "Capability": {
       "description": "A grouping and boundary mechanism developers can use to isolate access to the IPC layer.\n\nIt controls application windows' and webviews' fine grained access to the Tauri core, application, or plugin commands. If a webview or its window is not matching any capability then it has no access to the IPC layer at all.\n\nThis can be done to create groups of windows, based on their required system access, which can reduce impact of frontend vulnerabilities in less privileged windows. Windows can be added to a capability by exact name (e.g. `main-window`) or glob patterns like `*` or `admin-*`. A Window can have none, one, or multiple associated capabilities.\n\n## Example\n\n```json { \"identifier\": \"main-user-files-write\", \"description\": \"This capability allows the `main` window on macOS and Windows access to `filesystem` write related commands and `dialog` commands to enable programmatic access to files selected by the user.\", \"windows\": [ \"main\" ], \"permissions\": [ \"core:default\", \"dialog:open\", { \"identifier\": \"fs:allow-write-text-file\", \"allow\": [{ \"path\": \"$HOME/test.txt\" }] }, ], \"platforms\": [\"macOS\",\"windows\"] } ```",
       "type": "object",
-      "required": ["identifier", "permissions"],
+      "required": [
+        "identifier",
+        "permissions"
+      ],
       "properties": {
         "identifier": {
           "description": "Identifier of the capability.\n\n## Example\n\n`main-user-files-write`",
@@ -88,7 +93,10 @@
         },
         "platforms": {
           "description": "Limit which target platforms this capability applies to.\n\nBy default all platforms are targeted.\n\n## Example\n\n`[\"macOS\",\"windows\"]`",
-          "type": ["array", "null"],
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "$ref": "#/definitions/Target"
           }
@@ -98,7 +106,9 @@
     "CapabilityRemote": {
       "description": "Configuration for remote URLs that are associated with the capability.",
       "type": "object",
-      "required": ["urls"],
+      "required": [
+        "urls"
+      ],
       "properties": {
         "urls": {
           "description": "Remote domains this capability refers to using the [URLPattern standard](https://urlpattern.spec.whatwg.org/).\n\n## Examples\n\n- \"https://*.mydomain.dev\": allows subdomains of mydomain.dev - \"https://mydomain.dev/api/*\": allows any subpath of mydomain.dev/api",
@@ -208,7 +218,10 @@
                       "anyOf": [
                         {
                           "type": "object",
-                          "required": ["cmd", "name"],
+                          "required": [
+                            "cmd",
+                            "name"
+                          ],
                           "properties": {
                             "args": {
                               "description": "The allowed arguments for the command execution.",
@@ -231,7 +244,10 @@
                         },
                         {
                           "type": "object",
-                          "required": ["name", "sidecar"],
+                          "required": [
+                            "name",
+                            "sidecar"
+                          ],
                           "properties": {
                             "args": {
                               "description": "The allowed arguments for the command execution.",
@@ -262,7 +278,10 @@
                       "anyOf": [
                         {
                           "type": "object",
-                          "required": ["cmd", "name"],
+                          "required": [
+                            "cmd",
+                            "name"
+                          ],
                           "properties": {
                             "args": {
                               "description": "The allowed arguments for the command execution.",
@@ -285,7 +304,10 @@
                         },
                         {
                           "type": "object",
-                          "required": ["name", "sidecar"],
+                          "required": [
+                            "name",
+                            "sidecar"
+                          ],
                           "properties": {
                             "args": {
                               "description": "The allowed arguments for the command execution.",
@@ -334,14 +356,20 @@
                 },
                 "allow": {
                   "description": "Data that defines what is allowed by the scope.",
-                  "type": ["array", "null"],
+                  "type": [
+                    "array",
+                    "null"
+                  ],
                   "items": {
                     "$ref": "#/definitions/Value"
                   }
                 },
                 "deny": {
                   "description": "Data that defines what is denied by the scope. This should be prioritized by validation logic.",
-                  "type": ["array", "null"],
+                  "type": [
+                    "array",
+                    "null"
+                  ],
                   "items": {
                     "$ref": "#/definitions/Value"
                   }
@@ -349,7 +377,9 @@
               }
             }
           ],
-          "required": ["identifier"]
+          "required": [
+            "identifier"
+          ]
         }
       ]
     },
@@ -2959,90 +2989,6 @@
           "type": "string",
           "const": "updater:deny-install",
           "markdownDescription": "Denies the install command without any pre-configured scope."
-        },
-        {
-          "description": "Allows all WebDriverIO plugin commands for testing\n#### This default permission set includes:\n\n- `wdio:allow-execute`\n- `wdio:allow-log-frontend`\n- `wdio:allow-debug-plugin`\n- `wdio:allow-get-active-window-label`\n- `wdio:allow-get-window-states`\n- `wdio:allow-list-windows`",
-          "type": "string",
-          "const": "wdio:default",
-          "markdownDescription": "Allows all WebDriverIO plugin commands for testing\n#### This default permission set includes:\n\n- `wdio:allow-execute`\n- `wdio:allow-log-frontend`\n- `wdio:allow-debug-plugin`\n- `wdio:allow-get-active-window-label`\n- `wdio:allow-get-window-states`\n- `wdio:allow-list-windows`"
-        },
-        {
-          "description": "Enables the debug_plugin command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-debug-plugin",
-          "markdownDescription": "Enables the debug_plugin command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the execute command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-execute",
-          "markdownDescription": "Enables the execute command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the get_active_window_label command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-get-active-window-label",
-          "markdownDescription": "Enables the get_active_window_label command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the get_window_states command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-get-window-states",
-          "markdownDescription": "Enables the get_window_states command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the list_windows command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-list-windows",
-          "markdownDescription": "Enables the list_windows command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the log_frontend command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:allow-log-frontend",
-          "markdownDescription": "Enables the log_frontend command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the debug_plugin command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-debug-plugin",
-          "markdownDescription": "Denies the debug_plugin command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the execute command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-execute",
-          "markdownDescription": "Denies the execute command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the get_active_window_label command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-get-active-window-label",
-          "markdownDescription": "Denies the get_active_window_label command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the get_window_states command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-get-window-states",
-          "markdownDescription": "Denies the get_window_states command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the list_windows command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-list-windows",
-          "markdownDescription": "Denies the list_windows command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the log_frontend command without any pre-configured scope.",
-          "type": "string",
-          "const": "wdio:deny-log-frontend",
-          "markdownDescription": "Denies the log_frontend command without any pre-configured scope."
-        },
-        {
-          "description": "Default permissions for the plugin",
-          "type": "string",
-          "const": "wdio-webdriver:default",
-          "markdownDescription": "Default permissions for the plugin"
         }
       ]
     },
@@ -3106,27 +3052,37 @@
         {
           "description": "MacOS.",
           "type": "string",
-          "enum": ["macOS"]
+          "enum": [
+            "macOS"
+          ]
         },
         {
           "description": "Windows.",
           "type": "string",
-          "enum": ["windows"]
+          "enum": [
+            "windows"
+          ]
         },
         {
           "description": "Linux.",
           "type": "string",
-          "enum": ["linux"]
+          "enum": [
+            "linux"
+          ]
         },
         {
           "description": "Android.",
           "type": "string",
-          "enum": ["android"]
+          "enum": [
+            "android"
+          ]
         },
         {
           "description": "iOS.",
           "type": "string",
-          "enum": ["iOS"]
+          "enum": [
+            "iOS"
+          ]
         }
       ]
     },
@@ -3140,7 +3096,9 @@
         {
           "description": "A variable that is set while calling the command from the webview API.",
           "type": "object",
-          "required": ["validator"],
+          "required": [
+            "validator"
+          ],
           "properties": {
             "raw": {
               "description": "Marks the validator as a raw regex, meaning the plugin should not make any modification at runtime.\n\nThis means the regex will not match on the entire string by default, which might be exploited if your regex allow unexpected input to be considered valid. When using this option, make sure your regex is correct.",

@@ -90,6 +90,14 @@ describe('AppearanceSection — font size / density / row height', () => {
     await user.click(screen.getByTestId('row-height-radio-small').querySelector('input')!)
     expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('small')
   })
+
+  it('switches the view switcher position', async () => {
+    const user = userEvent.setup()
+    render(<AppearanceSection />)
+    expect(useSettingsStore.getState().settings.appearance.viewSwitcherPosition).toBe('toolbar')
+    await user.click(screen.getByTestId('view-switcher-position-radio-tabs').querySelector('input')!)
+    expect(useSettingsStore.getState().settings.appearance.viewSwitcherPosition).toBe('tabs')
+  })
 })
 
 describe('AppearanceSection — notification location and checkboxes', () => {

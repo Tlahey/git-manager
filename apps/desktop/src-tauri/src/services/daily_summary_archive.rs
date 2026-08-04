@@ -24,11 +24,10 @@
 //! without a YAML crate, and the body is left as opaque markdown for the frontend to render.
 
 use crate::error::AppError;
+use crate::utils::repo_slug;
 use chrono::{Local, NaiveDate};
 use serde::Serialize;
-use std::collections::hash_map::DefaultHasher;
 use std::fs;
-use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -64,28 +63,6 @@ fn summaries_root() -> Option<PathBuf> {
         std::env::home_dir()
     })?;
     Some(home.join(".git-manager").join("summaries"))
-}
-
-/// Stable per-repository directory name: the readable directory name, plus a short hash of the
-/// absolute path so two checkouts called `git-manager` don't write into the same folder.
-fn repo_slug(repo_path: &str) -> String {
-    let name = Path::new(repo_path)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "repo".to_string());
-    let mut hasher = DefaultHasher::new();
-    repo_path.hash(&mut hasher);
-    let sanitized: String = name
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else {
-                '-'
-            }
-        })
-        .collect();
-    format!("{sanitized}-{:x}", hasher.finish() & 0xffff_ffff)
 }
 
 /// Reads one `key: value` out of the leading `---` front-matter block. Returns `None` when the file
@@ -312,22 +289,6 @@ mod tests {
         );
         assert!(front_matter_value(SAMPLE, "missing").is_none());
         assert!(front_matter_value("# no front matter\n", "repo").is_none());
-    }
-
-    /// Two checkouts sharing a directory name must not share an archive folder.
-    #[test]
-    fn repo_slug_disambiguates_same_named_checkouts() {
-        let a = repo_slug("/Users/x/Workspace/git-manager");
-        let b = repo_slug("/Users/x/other/git-manager");
-        assert_ne!(a, b);
-        assert!(a.starts_with("git-manager-"));
-        // Stable across calls, or yesterday's file would land in a new folder every run.
-        assert_eq!(a, repo_slug("/Users/x/Workspace/git-manager"));
-    }
-
-    #[test]
-    fn repo_slug_sanitizes_unusual_directory_names() {
-        assert!(repo_slug("/tmp/my repo!").starts_with("my-repo-"));
     }
 
     #[test]

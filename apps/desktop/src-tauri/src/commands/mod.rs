@@ -4,6 +4,7 @@ pub mod ai;
 pub mod bisect;
 pub mod bitbucket;
 pub mod blame;
+pub mod board;
 pub mod branch;
 pub mod cherry_pick;
 pub mod commit;

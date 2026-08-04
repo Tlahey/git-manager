@@ -286,16 +286,16 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         )}
 
         {!isLoading && (diffData || activeTab !== 'diff') && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {diffData?.isBinary ? (
               <div
                 data-testid="diff-binary-placeholder"
-                className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
+                className="border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
               >
                 Binary file diff content cannot be displayed.
               </div>
             ) : (
-              <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
+              <div className="flex flex-1 flex-col overflow-hidden border border-border/80 bg-background">
                 {/* SHA bar for the version on screen: click the SHA to copy it, or open it on GitHub. */}
                 {effectiveOid && (
                   <div

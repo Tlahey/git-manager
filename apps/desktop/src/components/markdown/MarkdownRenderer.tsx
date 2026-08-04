@@ -5,12 +5,13 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
-import { markdownSanitizeSchema } from './sanitizeSchema'
+import { authoredMarkdownSanitizeSchema, markdownSanitizeSchema } from './sanitizeSchema'
 import { CodeBlock } from './components/CodeBlock'
 import { MarkdownLink } from './components/MarkdownLink'
 import { MarkdownTable, MarkdownTableCell, MarkdownTableHead } from './components/MarkdownTable'
 import { MarkdownTaskListInput } from './components/MarkdownTaskList'
 import { MarkdownImage } from './components/MarkdownImage'
+import { MarkdownVideo } from './components/MarkdownVideo'
 import {
   MarkdownTaskItemLineContext,
   MarkdownTaskListContext,
@@ -31,6 +32,13 @@ export interface MarkdownRendererProps {
   onTaskToggle?: (nextContent: string) => void
   /** Freezes the checkboxes while a toggle is on its way to the server. */
   taskTogglePending?: boolean
+  /**
+   * Opts into the wider allow-list for markdown **the user wrote themselves** — currently only board
+   * cards and their comments — which additionally permits `<video>` so an attached recording plays
+   * inline. Leave it off (the default) for anything fetched from elsewhere: a README, a pull request
+   * body, a review comment. See `sanitizeSchema.ts`.
+   */
+  authored?: boolean
 }
 
 /** remark-gfm encodes a table column's alignment as an inline `text-align` style, whose CSS type is
@@ -51,6 +59,7 @@ export function MarkdownRenderer({
   repoPath,
   onTaskToggle,
   taskTogglePending,
+  authored = false,
 }: MarkdownRendererProps) {
   const handleTaskToggle = useCallback(
     (line: number, checked: boolean) => {
@@ -79,7 +88,7 @@ export function MarkdownRenderer({
         // clobbering the app's own elements. Without it a README's table of contents links nowhere.
         rehypePlugins={[
           rehypeRaw,
-          [rehypeSanitize, markdownSanitizeSchema],
+          [rehypeSanitize, authored ? authoredMarkdownSanitizeSchema : markdownSanitizeSchema],
           rehypeSlug,
           rehypeHighlight,
         ]}
@@ -169,6 +178,11 @@ export function MarkdownRenderer({
             </blockquote>
           ),
           hr: () => <hr className="my-4 border-border" />,
+          // Only ever reached under `authoredMarkdownSanitizeSchema` — the strict schema drops the
+          // tag before it gets here, so a README can't render one.
+          video: ({ node: _node, src, ...props }) => (
+            <MarkdownVideo src={src} repoPath={repoPath} {...props} />
+          ),
           img: ({ node: _node, src, alt, width, height, ...props }) => (
             <MarkdownImage
               src={src}

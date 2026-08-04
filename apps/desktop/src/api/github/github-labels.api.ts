@@ -14,6 +14,39 @@ export async function fetchAssignableUsers(
   )
 }
 
+/**
+ * Ensures a repo label exists with the given colour, creating it or recolouring an existing one.
+ *
+ * A board's tags *are* repo labels (see `api/board/remote-board.api.ts`), and adding a label to an
+ * issue creates a missing one with a random colour — so without this a tag would render in the app
+ * with the colour the user picked and on github.com with whatever GitHub rolled.
+ *
+ * `color` is sent without the leading `#`, which is the only form the API accepts.
+ */
+export async function createOrUpdateLabel(
+  owner: string,
+  repo: string,
+  name: string,
+  color: string,
+  token: string
+): Promise<void> {
+  const body = { name, color: color.replace(/^#/, '').toLowerCase() }
+  try {
+    await ghRequest(`https://api.github.com/repos/${owner}/${repo}/labels`, {
+      method: 'POST',
+      body,
+      token,
+    })
+  } catch {
+    // Already exists (422) — patch it so a recoloured tag reaches GitHub. A failure here is not
+    // worth aborting the caller's actual write over: the label still applies, just off-colour.
+    await ghRequest(
+      `https://api.github.com/repos/${owner}/${repo}/labels/${encodeURIComponent(name)}`,
+      { method: 'PATCH', body, token }
+    ).catch(() => undefined)
+  }
+}
+
 /** All labels defined in the repo (the candidate pool for a PR's labels). */
 export async function fetchRepoLabels(
   owner: string,

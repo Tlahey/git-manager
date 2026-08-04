@@ -13,6 +13,7 @@ pub mod daily_summary_archive;
 pub mod dependency_patch;
 pub mod git_bisect;
 pub mod git_blame;
+pub mod git_board;
 pub mod git_branch;
 pub mod git_cherry_pick;
 pub mod git_commit;

@@ -52,6 +52,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     terminalBackground: '#000000',
     terminalForeground: '#e4e4e7',
     glassTransparency: DEFAULT_GLASS_TRANSPARENCY,
+    viewSwitcherPosition: 'toolbar',
   },
   language: 'fr',
   advanced: {
@@ -98,6 +99,15 @@ const DEFAULT_SETTINGS: AppSettings = {
     // Off by default: the archive under `~/.git-manager/summaries/` already exists on disk, and
     // adding untracked files to the user's own repositories is not something to opt them into.
     saveToRepo: false,
+  },
+  board: {
+    autoSync: {
+      // Off by default — this commits and pushes `.git-manager/board.json` on the user's behalf on
+      // a timer, so it follows the same explicit-opt-in convention as e.g. force-push rather than
+      // silently touching the repo. See `useBoardConfigAutoSync`.
+      enabled: false,
+      intervalMinutes: 5,
+    },
   },
   repoOverrides: {},
 }

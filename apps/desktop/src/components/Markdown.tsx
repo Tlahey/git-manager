@@ -8,6 +8,7 @@ export function Markdown({
   repoPath,
   onTaskToggle,
   taskTogglePending,
+  authored,
 }: MarkdownProps) {
   return (
     <MarkdownRenderer
@@ -16,6 +17,7 @@ export function Markdown({
       repoPath={repoPath}
       onTaskToggle={onTaskToggle}
       taskTogglePending={taskTogglePending}
+      authored={authored}
     />
   )
 }

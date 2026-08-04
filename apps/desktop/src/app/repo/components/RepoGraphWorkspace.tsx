@@ -5,6 +5,7 @@ import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
+import { useBoardControlsStore } from '../../../stores/boardControls.store'
 import { GitGraph } from '../../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../../components/git-graph/RenameBranchDialog'
@@ -16,8 +17,12 @@ import { ProjectFilesView } from '../../../components/file-explorer/ProjectFiles
 import { FileTreeSidebar } from '../../../components/file-explorer/FileTreeSidebar'
 import { TimelineBar } from '../../../components/timeline/TimelineBar'
 import { BisectSetupBanner } from '../../../components/bisect/BisectSetupBanner'
+import { BoardPage } from '../../board/BoardPage'
+import { RepoViewTabBar } from './RepoViewTabBar'
 import { useSidebarBranchMenu } from '../../../hooks/useSidebarBranchMenu'
 import { useSidebarTagMenu } from '../../../hooks/useSidebarTagMenu'
+import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
+import { useBoardData } from '../../../hooks/useBoardData'
 
 interface RepoGraphWorkspaceProps {
   /** The path actually being viewed — the repo tab's own path, or a linked worktree's. */
@@ -42,6 +47,14 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
 
   const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
   const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
+  const isBoardOpen = useBoardControlsStore((s) => s.isOpen)
+
+  // Graph/Files/Board switcher as a tab strip below the toolbar instead of ActionToolbar's toggle
+  // buttons — see `RepoViewTabBar`'s doc comment. `useBoardData` here (not just inside `BoardPage`)
+  // is what supplies the board list for the tab labels; SWR dedupes the fetch against `BoardPage`'s
+  // own call when the board view is open, so this doesn't double the network cost.
+  const { viewSwitcherPosition } = useEffectiveRepoSettings(repoPath)
+  const { boards, activeBoard } = useBoardData(repoPath)
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
@@ -64,6 +77,16 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
 
   return (
     <>
+      {viewSwitcherPosition === 'tabs' && (
+        <RepoViewTabBar
+          repoPath={repoPath}
+          isFileExplorerOpen={isFileExplorerOpen}
+          isBoardOpen={isBoardOpen}
+          boards={boards}
+          activeBoardId={activeBoard?.id ?? null}
+        />
+      )}
+
       {/* ── Main layout: sidebar | central area ─────────────────── */}
       <div data-testid="repo-graph-view" className="relative flex flex-1 overflow-hidden">
         {/* Branch sidebar — resizable */}
@@ -86,9 +109,11 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
           onTagContextMenu={openTagMenu}
         />
 
-        {/* Central area — full-width history, or the file explorer */}
+        {/* Central area — full-width history, the file explorer, or the Kanban board */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {isFileExplorerOpen ? (
+          {isBoardOpen ? (
+            <BoardPage repoPath={repoPath} />
+          ) : isFileExplorerOpen ? (
             <ProjectFilesView />
           ) : (
             <GitGraph
@@ -100,7 +125,7 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
           )}
         </div>
 
-        {isFileExplorerOpen && isSidebarOpen && <FileTreeSidebar />}
+        {!isBoardOpen && isFileExplorerOpen && isSidebarOpen && <FileTreeSidebar />}
 
         <TimelineBar repoPath={repoPath} />
 

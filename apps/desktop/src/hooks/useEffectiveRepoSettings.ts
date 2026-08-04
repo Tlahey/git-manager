@@ -1,4 +1,4 @@
-import type { RepoScopedSettings, RunTask } from '@git-manager/git-types'
+import type { RepoScopedSettings, RunTask, ViewSwitcherPosition } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
 import { useCanonicalRepoPath } from './useCanonicalRepoPath'
 
@@ -32,6 +32,9 @@ export interface EffectiveRepoSettings {
   terminalBackground: string
   /** Integrated terminal text colour for this repo — falls back to the global appearance value. */
   terminalForeground: string
+  /** Where the Graph/Files/Board switcher lives for this repo — falls back to the global appearance
+   * value. See {@link ViewSwitcherPosition}. */
+  viewSwitcherPosition: ViewSwitcherPosition
   /** Glob patterns for gitignored local files to copy into new worktrees. Per-repo only — no
    * global fallback, so a repo without an override resolves to an empty list. */
   worktreeDefaultFiles: string[]
@@ -62,6 +65,9 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
   const globalTheme = useSettingsStore((s) => s.settings.appearance.theme)
   const globalTerminalBackground = useSettingsStore((s) => s.settings.appearance.terminalBackground)
   const globalTerminalForeground = useSettingsStore((s) => s.settings.appearance.terminalForeground)
+  const globalViewSwitcherPosition = useSettingsStore(
+    (s) => s.settings.appearance.viewSwitcherPosition
+  )
   const canonicalPath = useCanonicalRepoPath(repoPath)
   const override = useSettingsStore((s) =>
     canonicalPath
@@ -78,6 +84,7 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
     theme: override?.theme ?? globalTheme,
     terminalBackground: override?.terminalBackground ?? globalTerminalBackground,
     terminalForeground: override?.terminalForeground ?? globalTerminalForeground,
+    viewSwitcherPosition: override?.viewSwitcherPosition ?? globalViewSwitcherPosition,
     worktreeDefaultFiles: override?.worktreeDefaultFiles ?? [],
     runTasks: override?.runTasks ?? [],
     defaultRunTaskId: override?.defaultRunTaskId,

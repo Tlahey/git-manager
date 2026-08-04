@@ -26,8 +26,12 @@ import { ActionToolbar } from './ActionToolbar'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { useBoardControlsStore } from '../../stores/boardControls.store'
+import { useSettingsStore } from '../../stores/settings.store'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
+const INITIAL_SETTINGS = useSettingsStore.getState()
 
 function hookState(overrides: Partial<ReturnType<typeof useActionToolbarMock>> = {}) {
   return {
@@ -71,6 +75,7 @@ beforeEach(() => {
   useCommandPaletteStore.setState({ open: false })
   useCommitSearchStore.setState({ open: false, query: '' })
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
+  useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
 describe('ActionToolbar — composition', () => {
@@ -217,5 +222,64 @@ describe('ActionToolbar — composition', () => {
     render(<ActionToolbar />)
     await user.click(screen.getByRole('button', { name: 'Search' }))
     expect(useCommitSearchStore.getState().open).toBe(true)
+  })
+})
+
+describe('ActionToolbar — board / file explorer toggle', () => {
+  beforeEach(() => {
+    useFileExplorerStore.setState({ isOpen: false, isSidebarOpen: true })
+    useBoardControlsStore.setState({ isOpen: false })
+  })
+
+  it('opens the board panel when the board button is clicked', async () => {
+    const user = userEvent.setup()
+    render(<ActionToolbar />)
+    await user.click(screen.getByTestId('toolbar-board-button'))
+    expect(useBoardControlsStore.getState().isOpen).toBe(true)
+  })
+
+  it('closes the file explorer when the board panel opens, since they share one central slot', async () => {
+    useFileExplorerStore.setState({ isOpen: true })
+    const user = userEvent.setup()
+    render(<ActionToolbar />)
+    await user.click(screen.getByTestId('toolbar-board-button'))
+    expect(useBoardControlsStore.getState().isOpen).toBe(true)
+    expect(useFileExplorerStore.getState().isOpen).toBe(false)
+  })
+
+  it('closes the board panel when the file explorer opens', async () => {
+    useBoardControlsStore.setState({ isOpen: true })
+    const user = userEvent.setup()
+    render(<ActionToolbar />)
+    await user.click(screen.getByTestId('toolbar-files-button'))
+    expect(useFileExplorerStore.getState().isOpen).toBe(true)
+    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+  })
+})
+
+describe('ActionToolbar — view switcher position setting', () => {
+  it('shows the Files/Board toggle buttons by default (toolbar position)', () => {
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('toolbar-files-button')).toBeInTheDocument()
+    expect(screen.getByTestId('toolbar-board-button')).toBeInTheDocument()
+  })
+
+  it('hides the Files/Board toggle buttons when the effective position is "tabs"', () => {
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, appearance: { ...s.settings.appearance, viewSwitcherPosition: 'tabs' } },
+    }))
+    render(<ActionToolbar />)
+    expect(screen.queryByTestId('toolbar-files-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('toolbar-board-button')).not.toBeInTheDocument()
+  })
+
+  it('a per-repo override takes priority over the global setting', () => {
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, appearance: { ...s.settings.appearance, viewSwitcherPosition: 'tabs' } },
+    }))
+    useSettingsStore.getState().setRepoSetting('/repo', 'viewSwitcherPosition', 'toolbar')
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('toolbar-files-button')).toBeInTheDocument()
+    expect(screen.getByTestId('toolbar-board-button')).toBeInTheDocument()
   })
 })

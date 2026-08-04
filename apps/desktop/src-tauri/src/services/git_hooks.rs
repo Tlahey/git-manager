@@ -44,6 +44,9 @@ pub enum HookEvent {
     Finished { name: String, success: bool },
 }
 
+/// What a command installs to hear about the hooks it runs — see `OBSERVER`.
+type HookObserver = Box<dyn Fn(HookEvent)>;
+
 thread_local! {
     /// Who to tell about hooks running on *this* thread.
     ///
@@ -58,7 +61,7 @@ thread_local! {
     /// now" and "this operation" are the same span. Two concurrent commits on two blocking threads
     /// cannot see each other's observer, and {@link ObserverGuard} clears it on the way out, so a
     /// pooled thread never carries one into whatever it is reused for.
-    static OBSERVER: RefCell<Option<Box<dyn Fn(HookEvent)>>> = const { RefCell::new(None) };
+    static OBSERVER: RefCell<Option<HookObserver>> = const { RefCell::new(None) };
 }
 
 /// Clears the thread's observer when it goes out of scope.
@@ -158,11 +161,7 @@ fn resolve_login_path() -> Option<String> {
 /// back!", a version manager's notice) puts it on stdout ahead of the value, and taking the lot
 /// would produce a `PATH` with a greeting in it.
 pub fn parse_login_path(raw: &str) -> Option<String> {
-    let line = raw
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .next_back()?;
+    let line = raw.lines().map(str::trim).rfind(|l| !l.is_empty())?;
     if !line.contains('/') {
         return None;
     }

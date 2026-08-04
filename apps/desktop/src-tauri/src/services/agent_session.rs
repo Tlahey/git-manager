@@ -74,7 +74,9 @@ fn newest_transcript_mtime(dir: &Path) -> Option<SystemTime> {
         let Ok(mtime) = entry.metadata().and_then(|m| m.modified()) else {
             continue;
         };
-        if newest.is_none_or(|cur| mtime > cur) {
+        // `map_or`, not `is_none_or`: the latter is only stable since 1.82 and the crate declares
+        // `rust-version = "1.77"`.
+        if newest.map_or(true, |cur| mtime > cur) {
             newest = Some(mtime);
         }
     }

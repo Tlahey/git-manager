@@ -1,10 +1,37 @@
 use crate::error::AppError;
 use crate::models::{GitCommit, GitSignature};
 use git2::{Repository, Signature};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::path::Path;
 
 /// Shortens a full SHA-1 to 7 characters (or fewer if the SHA is shorter).
 pub fn short_oid(sha: &str) -> String {
     sha[..7.min(sha.len())].to_string()
+}
+
+/// Stable per-repository slug: the readable directory name, plus a short hash of the absolute path
+/// so two checkouts sharing a directory name (a worktree, a second clone) don't collide. Used to key
+/// app-local storage under `~/.git-manager/<feature>/<repo-slug>/...` — e.g. `daily_summary_archive`
+/// and the local board's disaster-recovery backup.
+pub fn repo_slug(repo_path: &str) -> String {
+    let name = Path::new(repo_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "repo".to_string());
+    let mut hasher = DefaultHasher::new();
+    repo_path.hash(&mut hasher);
+    let sanitized: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("{sanitized}-{:x}", hasher.finish() & 0xffff_ffff)
 }
 
 /// Converts a `git2::Commit` into the serializable `GitCommit` model (same
@@ -125,5 +152,21 @@ mod tests {
             Some("https://github.com/owner/repo/tree/main".to_string())
         );
         assert_eq!(github_branch_url("git@gitlab.com:o/r.git", "main"), None);
+    }
+
+    /// Two checkouts sharing a directory name must not share a storage folder.
+    #[test]
+    fn repo_slug_disambiguates_same_named_checkouts() {
+        let a = repo_slug("/Users/x/Workspace/git-manager");
+        let b = repo_slug("/Users/x/other/git-manager");
+        assert_ne!(a, b);
+        assert!(a.starts_with("git-manager-"));
+        // Stable across calls, or yesterday's file would land in a new folder every run.
+        assert_eq!(a, repo_slug("/Users/x/Workspace/git-manager"));
+    }
+
+    #[test]
+    fn repo_slug_sanitizes_unusual_directory_names() {
+        assert!(repo_slug("/tmp/my repo!").starts_with("my-repo-"));
     }
 }
