@@ -94,6 +94,64 @@
   color: var(--vp-c-text-2);
 }
 
+/* ── Spoilers on the achievements reference (scripts/lib/renderAchievementsPage.ts) ──
+   The app hides a cosmetic reward behind "???" until its achievement unlocks,
+   and hides a prerequisite-gated challenge outright until the one it depends
+   on is done. A reference page that prints both in plain text takes that away
+   from anyone who opens it for a single lookup, so the same cells ship blurred
+   and reveal on a click.
+
+   A label wrapping a visually-hidden checkbox, not JavaScript: these pages are
+   generated Markdown with no component behind them, and a checkbox is
+   focusable and toggles on Space, so the keyboard path comes for free and the
+   page still works with scripting off. The blur is a courtesy, not a lock —
+   the text stays in the DOM, which is what keeps the page searchable and
+   readable to a screen reader. */
+.vp-doc .doc-spoiler {
+  cursor: pointer;
+}
+
+.vp-doc .doc-spoiler input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.vp-doc .doc-spoiler > span {
+  display: inline-block;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: var(--vp-c-default-soft);
+  /* Enough to make words unreadable at this size without turning the cell into
+     a grey smear that hides how much text is behind it. */
+  filter: blur(4px);
+  transition: filter 0.15s ease;
+  /* Selecting the text would read it out as surely as revealing it. */
+  user-select: none;
+}
+
+.vp-doc .doc-spoiler input:checked ~ span {
+  padding: 0;
+  background: transparent;
+  filter: none;
+  user-select: auto;
+}
+
+/* Keyboard users get the same affordance: the checkbox itself is off-screen,
+   so the focus ring has to be drawn on what they can actually see. */
+.vp-doc .doc-spoiler input:focus-visible ~ span {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-doc .doc-spoiler > span {
+    transition: none;
+  }
+}
+
 /* ── Per-page feedback link (DocFeedback.vue) ──
    Injected via the `doc-after` layout slot, so it appears once, styled the
    same everywhere, after the content and before the prev/next footer. A
