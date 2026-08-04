@@ -2,8 +2,22 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NotchNotification } from './NotchNotification'
-import { NOTCH_ROW, withRule } from './notchGeometry'
-import type { NotchEventModel, NotchModel } from './types'
+import { measureCardHeight, NOTCH_ROW, withRule } from './notchGeometry'
+import { NOTCH_TONE_RGB } from './notchTones'
+import { NOTCH_TIER_RGB } from './notchRewardTiers'
+import type { NotchEventModel, NotchModel, NotchRewardModel } from './types'
+
+const reward: NotchRewardModel = {
+  kind: 'reward',
+  id: 'achievement-merge-master',
+  tone: 'highlight',
+  eyebrow: 'ACHIEVEMENT UNLOCKED · GOLD',
+  title: 'Merge Master',
+  description: 'Merged 50 pull requests',
+  reward: 'Aurora theme',
+  tier: 'gold',
+  badge: '+100 XP',
+}
 
 const model: NotchEventModel = {
   kind: 'event',
@@ -112,6 +126,49 @@ describe('NotchNotification', () => {
       },
     })
     expect(screen.getByTestId('notch-status-output')).toHaveTextContent('eslint --fix')
+  })
+
+  it('renders a reward model as a medal, a gain and a burst of confetti', () => {
+    renderCard({ model: reward })
+    expect(screen.getByTestId('notch-tier-medal')).toHaveAttribute('data-tier', 'gold')
+    expect(screen.getByTestId('notch-reward-gain')).toHaveTextContent('Aurora theme')
+    expect(screen.getByTestId('notch-badge')).toHaveTextContent('+100 XP')
+    expect(screen.getByTestId('notch-confetti')).toBeInTheDocument()
+  })
+
+  it('glows in the medal’s colour rather than the tone’s, which cannot say “gold”', () => {
+    renderCard({ model: reward })
+    expect(screen.getByTestId('notch-halo').style.getPropertyValue('--notch-tone-rgb')).toBe(
+      NOTCH_TIER_RGB.gold
+    )
+  })
+
+  it('leaves every other kind glowing in its tone', () => {
+    renderCard()
+    expect(screen.getByTestId('notch-halo').style.getPropertyValue('--notch-tone-rgb')).toBe(
+      NOTCH_TONE_RGB.highlight
+    )
+  })
+
+  it('throws no confetti at anything that is not a reward', () => {
+    renderCard()
+    expect(screen.queryByTestId('notch-confetti')).not.toBeInTheDocument()
+  })
+
+  it('holds the celebration back for a reward the user has already seen', () => {
+    // A replay from the rewards list is not an announcement, and confetti would make it one.
+    renderCard({ model: { ...reward, confetti: false } })
+    expect(screen.queryByTestId('notch-confetti')).not.toBeInTheDocument()
+    expect(screen.getByTestId('notch-tier-medal')).toBeInTheDocument()
+  })
+
+  it('sizes the burst to the card it is thrown inside', () => {
+    // The confetti is clipped by the card, so a layer measured off a different height would either
+    // leave paper visible at the bottom edge or cut the fall short.
+    renderCard({ model: reward, bandHeight: 38 })
+    expect(screen.getByTestId('notch-confetti')).toHaveStyle({
+      height: `${measureCardHeight(reward, 38)}px`,
+    })
   })
 
   it('omits the product name slot when the consumer does not want one', () => {

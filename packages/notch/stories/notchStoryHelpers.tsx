@@ -62,7 +62,12 @@ export interface NotchStageProps {
   viewportHeight?: number
 }
 
-/** A card frozen at its resting position — no host, no timers. */
+/**
+ * A card frozen at its resting position — no host, no timers.
+ *
+ * "Frozen" is about the slide: a reward card mounted here still throws its confetti, because the
+ * burst is CSS and starts from the moment the component appears. Re-key the element to replay it.
+ */
 export function StaticNotch({
   model,
   icon,
@@ -71,7 +76,8 @@ export function StaticNotch({
   scale = 0.8,
   viewportWidth,
   viewportHeight = DEFAULT_VIEWPORT_HEIGHT,
-}: NotchStageProps & { model: NotchModel; icon?: ReactNode }) {
+  reducedMotion,
+}: NotchStageProps & { model: NotchModel; icon?: ReactNode; reducedMotion?: boolean }) {
   const { window: win } = placementFor(preset, model)
   return (
     <MacBookScreen
@@ -95,6 +101,7 @@ export function StaticNotch({
           onAction={() => {}}
           onDismiss={() => {}}
           {...(icon !== undefined ? { icon } : {})}
+          {...(reducedMotion !== undefined ? { reducedMotion } : {})}
         />
       </div>
     </MacBookScreen>
@@ -109,6 +116,9 @@ export interface PresentedNotchProps {
   onClosed: () => void
   onEvent: (line: string) => void
   icon?: ReactNode
+  /** Forces a reward card's confetti on or off, so the degraded card can be reviewed on a machine
+   *  that is not set to reduce motion (and the other way round). */
+  reducedMotion?: boolean
 }
 
 /**
@@ -124,6 +134,7 @@ export function PresentedNotch({
   onClosed,
   onEvent,
   icon,
+  reducedMotion,
 }: PresentedNotchProps) {
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const { window: win } = placementFor(preset, model)
@@ -161,6 +172,7 @@ export function PresentedNotch({
           onEvent('countdown resumed')
         }}
         {...(icon !== undefined ? { icon } : {})}
+        {...(reducedMotion !== undefined ? { reducedMotion } : {})}
       />
     </MacBookSurface>
   )

@@ -51,17 +51,50 @@ the card in a separate webview whose content is baked into its URL, so anything 
 Copy arrives **already translated**. The package has no i18n dependency, the same rule
 `packages/components` follows.
 
-Three kinds:
+Four kinds:
 
-| Kind       | For                                                           |
-| ---------- | ------------------------------------------------------------- |
-| `event`    | something happened — fire and forget, fades on its own        |
-| `progress` | something is running — a live card, updated in place          |
-| `status`   | something finished — the outcome, plus the tail of its output |
+| Kind       | For                                                                     |
+| ---------- | ----------------------------------------------------------------------- |
+| `event`    | something happened — fire and forget, fades on its own                  |
+| `progress` | something is running — a live card, updated in place                    |
+| `status`   | something finished — the outcome, plus the tail of its output           |
+| `reward`   | the user unlocked something — a medal, and the one card that celebrates |
 
 and seven **tones** (`neutral` `info` `accent` `success` `error` `running` `highlight`) instead of
 the old palette keyed by concrete PR event types. The consumer maps its own domain onto a tone; the
 seven values are the previous eight de-duplicated, so nothing changed colour in the move.
+
+## The reward card, and its confetti
+
+The `reward` kind is the only card whose subject is the _user_ rather than a repository, and the only
+one allowed to depart from the shell's defaults. It does so twice: it wears a **medal** where the
+event card wears an avatar, and it **glows in its tier's colour** instead of its tone's — `haloRgb`
+on `NotchCard` exists for that one case, because "gold" is not something the seven tones can say.
+Four tiers (`bronze` `silver` `gold` `platinum`), mirroring the app's own `AchievementTier` without
+depending on it; each owns a medal colour, the halo, and the palette its paper is cut from.
+
+`confetti.ts` lays the burst out as **data** — 28 pieces, each with a start, an arc and a spin — and
+CSS animations fly them. No `requestAnimationFrame` and no canvas: the card lives in a window that
+exists for a few seconds, and with `fill-mode: both` every piece parks below the card's bottom edge
+and stops costing anything. Being data is also what makes it assertable: "every piece launches
+upwards", "nothing is left lying on the card", "the same reward throws the same paper".
+
+Seeded on the model's id, deliberately. `Math.random()` would make every screenshot of the same card
+different, and the pattern is not information — nobody should be able to tell two unlocks apart by
+their confetti.
+
+**The burst is clipped by the card, and that is a constraint rather than a taste.** The OS window is
+the card inflated by `HALO_MARGIN` (26 pt) and nothing more, so paper has nowhere else to go — and
+growing the window so it could land on the wallpaper would put a much larger transparent,
+always-on-top rectangle over the menu bar, swallowing the clicks that land in it. A celebration that
+eats a click on the Apple menu is not a celebration. So the burst is composed for a 440 × ~190 box:
+launched low from behind the medal, painted _behind_ the rows (white text on black is the one thing
+here that has to stay readable), leaving through the edges rather than settling.
+
+`prefers-reduced-motion: reduce` means **no confetti at all**, not a slower burst: pieces frozen in
+mid-air read as debris left on the card. What survives is the part that was never motion — the medal,
+the halo and the eyebrow. `CONFETTI_TOTAL_MS` is the other figure a consumer needs: a card dismissed
+sooner than that is a celebration cut off mid-air.
 
 ## The queue
 
@@ -109,5 +142,9 @@ enough wallpaper for the halo all stay in frame.
   presenter animates it. Selectors for display, wallpaper, zoom and auto-dismiss; a live view of
   the queue and an event log. Sending two cards close together is the behaviour that has no other
   way of being observed.
+- **`Notch/Reward`** — the card that replaces the bottom-right trophy toast, and the one to open for
+  the confetti. `Unlocked` is live: tier, wallpaper, zoom, auto-dismiss and a reduced-motion toggle,
+  with an “unlock it again” button because a burst runs once per mount. `Every tier` puts the four
+  medals side by side; `Reduced motion` shows what is left when the system asks for less.
 - `Notch/Comparisons` — the two questions that need cards side by side: every display (including a
   notchless one, the degradation case) and every tone against the busy wallpaper.

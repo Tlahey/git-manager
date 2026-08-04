@@ -4,6 +4,8 @@ import type {
   NotchEventModel,
   NotchModel,
   NotchProgressModel,
+  NotchRewardModel,
+  NotchRewardTier,
   NotchStatusModel,
   NotchTone,
 } from '../src'
@@ -198,6 +200,78 @@ export const devServerReadyIcon = (
   </NotchIcon>
 )
 
+// ── Rewards ────────────────────────────────────────────────────────────────────────────────────
+// The copy is the app's own English strings for four real achievements (`achievements.json` +
+// `launchpad.json`), one per tier, so the story is judging the layout at the lengths it will
+// actually get rather than at lorem ipsum's.
+
+const REWARDS: Record<NotchRewardTier, NotchRewardModel> = {
+  bronze: {
+    kind: 'reward',
+    id: 'achievement-commit_10',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED · BRONZE TROPHY',
+    context: 'Trophy cabinet · 6 / 28',
+    meta: 'just now',
+    title: 'Commit Regular',
+    description: 'Make 10 commits across your Git repositories.',
+    reward: 'XP boost',
+    tier: 'bronze',
+    badge: '+20 XP',
+    actions: [{ id: 'rewards', label: 'See rewards', variant: 'primary' }],
+  },
+  silver: {
+    kind: 'reward',
+    id: 'achievement-autosquash',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED · SILVER TROPHY',
+    context: 'Trophy cabinet · 14 / 28',
+    meta: 'just now',
+    title: 'History Architect',
+    description: "Run an automatic rebase with 'autosquash'.",
+    reward: 'Cyberpunk theme',
+    tier: 'silver',
+    badge: '+30 XP',
+    actions: [{ id: 'rewards', label: 'See rewards', variant: 'primary' }],
+  },
+  gold: {
+    kind: 'reward',
+    id: 'achievement-pr_50',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED · GOLD TROPHY',
+    context: 'Trophy cabinet · 22 / 28',
+    meta: 'just now',
+    title: 'Merge Master',
+    description: 'Have 50 pull requests merged or closed.',
+    reward: 'Gold avatar frame',
+    tier: 'gold',
+    badge: '+80 XP',
+    actions: [{ id: 'rewards', label: 'See rewards', variant: 'primary' }],
+  },
+  platinum: {
+    kind: 'reward',
+    id: 'achievement-commit_500',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED · PLATINUM TROPHY',
+    context: 'Trophy cabinet · 27 / 28',
+    meta: 'just now',
+    title: 'Git Legend',
+    description: 'Make 500 commits across your Git repositories.',
+    reward: 'Neon avatar frame',
+    tier: 'platinum',
+    badge: '+150 XP',
+    actions: [{ id: 'rewards', label: 'See rewards', variant: 'primary' }],
+  },
+}
+
+export const REWARD_TIERS: NotchRewardTier[] = ['bronze', 'silver', 'gold', 'platinum']
+
+/** The reward card for a tier. No header icon on purpose: the medal in the body is the glyph, and a
+ *  second trophy in the header is one trophy too many. */
+export function rewardSample(tier: NotchRewardTier): NotchRewardModel {
+  return REWARDS[tier]
+}
+
 /**
  * The cards the playground can send, in the order the buttons appear.
  *
@@ -219,4 +293,7 @@ export const NOTCH_SAMPLES: NotchSample[] = [
   { label: 'Pre-commit failed', model: preCommitFailed, icon: preCommitFailedIcon },
   { label: 'Dev server ready', model: devServerReady, icon: devServerReadyIcon },
   { label: 'No actions', model: minimalEvent },
+  // One tier here rather than four buttons: what the playground adds over `Notch/Reward` is the
+  // reward landing on a notch that is already busy — a clone running, an error cutting in.
+  { label: 'Achievement (gold)', model: rewardSample('gold') },
 ]

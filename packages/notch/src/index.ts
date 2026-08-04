@@ -13,12 +13,15 @@ export type {
   NotchKind,
   NotchModel,
   NotchProgressModel,
+  NotchRewardModel,
+  NotchRewardTier,
   NotchStatusModel,
   NotchTone,
 } from './types'
 export { STATUS_OUTPUT_MAX_LINES } from './types'
 
 export { NOTCH_TONE_RGB, toneColor, tonePriority } from './notchTones'
+export { NOTCH_TIER_CONFETTI, NOTCH_TIER_RGB, tierAlpha, tierColor } from './notchRewardTiers'
 
 export {
   bandSlotMaxWidth,
@@ -32,8 +35,11 @@ export {
   NOTCH_CARD_WIDTH,
   NOTCH_DEVICE_PRESETS,
   NOTCH_HOUSING_HALF_WIDTH,
+  NOTCH_REWARD_MEDAL_SIZE,
   NOTCH_ROW,
+  NOTCH_ROW_PADDING_X,
   notchRowHeights,
+  rewardConfettiOrigin,
   statusOutputHeight,
   withRule,
 } from './notchGeometry'
@@ -50,6 +56,19 @@ export {
   SLIDE_DISTANCE,
 } from './notchAnimation'
 export type { AnimateValueOptions, FrameScheduler } from './notchAnimation'
+
+export {
+  CONFETTI_MAX_DURATION_MS,
+  CONFETTI_MIN_DURATION_MS,
+  CONFETTI_PIECE_COUNT,
+  CONFETTI_STAGGER_MS,
+  CONFETTI_START_DELAY_MS,
+  CONFETTI_TOTAL_MS,
+  createConfettiPieces,
+} from './confetti'
+export type { ConfettiPiece, CreateConfettiOptions } from './confetti'
+
+export { usePrefersReducedMotion } from './usePrefersReducedMotion'
 
 export { createElementNotchHost, createRecordingNotchHost, noopNotchHost } from './notchHost'
 export type { NotchHost } from './notchHost'
@@ -68,13 +87,23 @@ export type { NotchQueueEntry, NotchQueueState } from './notchQueue'
 
 export { NotchCard } from './NotchCard'
 export type { NotchCardProps } from './NotchCard'
+export { NotchConfetti } from './NotchConfetti'
+export type { NotchConfettiProps } from './NotchConfetti'
 export { NotchNotification } from './NotchNotification'
 export type { NotchNotificationProps } from './NotchNotification'
 export { NotchHeaderRow } from './rows/NotchHeaderRow'
 export type { NotchHeaderRowProps } from './rows/NotchHeaderRow'
 export { NotchActionRow } from './rows/NotchActionRow'
 export type { NotchActionRowProps } from './rows/NotchActionRow'
-export { NotchBody, NotchEventBody, NotchProgressBody, NotchStatusBody } from './rows/NotchBody'
+export {
+  NotchBody,
+  NotchEventBody,
+  NotchProgressBody,
+  NotchRewardBody,
+  NotchStatusBody,
+} from './rows/NotchBody'
+export { NotchTierMedal } from './rows/NotchTierMedal'
+export type { NotchTierMedalProps } from './rows/NotchTierMedal'
 
 export { MacBookScreen, MacBookSurface } from './harness/MacBookScreen'
 export type { MacBookScreenProps, MacBookWallpaper } from './harness/MacBookScreen'

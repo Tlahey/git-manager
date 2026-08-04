@@ -26,6 +26,17 @@ const models: Record<NotchModel['kind'], NotchModel> = {
   event: { kind: 'event', id: 'e', tone: 'info', eyebrow: 'MERGED', title: 'a PR' },
   progress: { kind: 'progress', id: 'p', tone: 'running', eyebrow: 'CLONING', title: 'objects' },
   status: { kind: 'status', id: 's', tone: 'error', eyebrow: 'PRE-COMMIT', title: 'failed' },
+  // Nothing in the app raises one of these yet — the card is being designed in
+  // `packages/notch`'s Storybook (`Notch/Reward`). The map is keyed by every kind on purpose, so
+  // the compiler is what tells us a new one exists rather than a policy quietly not covering it.
+  reward: {
+    kind: 'reward',
+    id: 'r',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED',
+    title: 'Merge Master',
+    tier: 'gold',
+  },
 }
 
 function request(kind: NotchModel['kind'], importance: NotchImportance = 'key'): NotchRequest {
@@ -50,6 +61,12 @@ describe('isEligibleForNativeBanner', () => {
 
   it('accepts a key status — a failed hook is a finished, discrete fact', () => {
     expect(isEligibleForNativeBanner(request('status'))).toBe(true)
+  })
+
+  it('accepts a key reward — an unlock is a finished, discrete fact too', () => {
+    // The banner is what a reward degrades to when the user picked macOS notifications: it loses the
+    // medal and the confetti, and keeps the sentence. That is the same trade a failed hook makes.
+    expect(isEligibleForNativeBanner(request('reward'))).toBe(true)
   })
 
   it('rejects an ambient progress card on both counts', () => {

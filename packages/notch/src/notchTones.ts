@@ -1,4 +1,4 @@
-import type { NotchTone } from './types'
+import type { NotchKind, NotchTone } from './types'
 
 /**
  * The halo colour per tone — the glow around the card, and the accent on its eyebrow line.
@@ -38,8 +38,13 @@ export function toneColor(tone: NotchTone): string {
  * behind a queue of merged-PR confetti. A `progress` card outranks ordinary events because it is
  * *live* — kicking it off screen to show a transient event would strand an operation the user is
  * watching, and it would have nowhere to come back to mid-flight.
+ *
+ * A `reward` ranks with ordinary events, and deliberately not above them: an unlock is the least
+ * urgent thing the app has to say. It is also the card that suffers most from waiting — a
+ * celebration arriving after the user has moved on is worse than a late merge notice — but that is
+ * an argument for the queue draining, not for confetti cutting in front of a running clone.
  */
-export function tonePriority(tone: NotchTone, kind: 'event' | 'progress' | 'status'): number {
+export function tonePriority(tone: NotchTone, kind: NotchKind): number {
   if (tone === 'error') return 3
   if (kind === 'progress') return 2
   return 1

@@ -35,7 +35,7 @@ export interface RewardEffect {
  *
  * `title`/`description`/`reward` are deliberately NOT fields here — `id` is a module-level label
  * map key (CLAUDE.md's "module-level label maps can't call t()" pattern), resolved at render time
- * via `t(\`rewards.achievements.${id}.title\`)` etc. in RewardsTab.tsx/TrophyToast.tsx, with both
+ * via `t(\`rewards.achievements.${id}.title\`)` etc. in RewardsTab.tsx/rewardNotch.ts, with both
  * locales' `rewards.achievements.<id>.*` keys in packages/i18n/locales/{en,fr}/launchpad.json.
  */
 export interface AchievementDefinition {

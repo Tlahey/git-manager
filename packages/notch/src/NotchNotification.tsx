@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { NotchCard } from './NotchCard'
-import { hasActionRow } from './notchGeometry'
+import { NotchConfetti } from './NotchConfetti'
+import { hasActionRow, measureCardHeight, rewardConfettiOrigin } from './notchGeometry'
+import { NOTCH_TIER_RGB } from './notchRewardTiers'
 import { NotchHeaderRow } from './rows/NotchHeaderRow'
 import { NotchActionRow } from './rows/NotchActionRow'
 import { NotchBody } from './rows/NotchBody'
@@ -31,6 +33,9 @@ export interface NotchNotificationProps {
    *  package's own defaults. */
   housingHalfWidth?: number
   bandHeight?: number
+  /** Forces the reward card's confetti on or off, overriding `prefers-reduced-motion`. Omit outside
+   *  of a story: the system setting is the answer. */
+  reducedMotion?: boolean
 }
 
 /**
@@ -54,11 +59,34 @@ export function NotchNotification({
   onPointerLeave,
   housingHalfWidth,
   bandHeight,
+  reducedMotion,
 }: NotchNotificationProps) {
+  // The reward card is the only one that departs from the shell's defaults, and it does so twice: it
+  // glows in its medal's colour instead of its tone's, and it throws confetti. Both are read off the
+  // model here rather than inside `NotchCard`, which knows nothing about notifications.
+  const reward = model.kind === 'reward' ? model : null
+  const celebrates = reward !== null && (reward.confetti ?? true)
+
   return (
     <NotchCard
       tone={model.tone}
       visible={visible}
+      {...(reward ? { haloRgb: NOTCH_TIER_RGB[reward.tier] } : {})}
+      {...(reward && celebrates
+        ? {
+            backdrop: (
+              <NotchConfetti
+                tier={reward.tier}
+                // One burst per unlock, replayable: the same achievement always throws the same
+                // paper, so nobody can read anything into the pattern.
+                seed={reward.id}
+                height={measureCardHeight(reward, bandHeight)}
+                origin={rewardConfettiOrigin(bandHeight)}
+                {...(reducedMotion !== undefined ? { reducedMotion } : {})}
+              />
+            ),
+          }
+        : {})}
       {...(onActivate ? { onActivate } : {})}
       {...(onPointerEnter ? { onPointerEnter } : {})}
       {...(onPointerLeave ? { onPointerLeave } : {})}

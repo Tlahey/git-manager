@@ -5,7 +5,17 @@ import userEvent from '@testing-library/user-event'
 const { notify } = vi.hoisted(() => ({ notify: vi.fn() }))
 vi.mock('./lib/appEventBus', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/appEventBus')>()
-  return { ...actual, appEventBus: { ...actual.appEventBus, notify } }
+  // `subscribe` is bound off the real bus rather than spread from it: the bus is a class instance,
+  // so its methods live on the prototype and a spread drops them. `game.store` subscribes at
+  // module scope — reachable from `App` since the reward card replaced the trophy toast — and a
+  // mock without `subscribe` takes the whole import graph down with it.
+  return {
+    ...actual,
+    appEventBus: {
+      notify,
+      subscribe: actual.appEventBus.subscribe.bind(actual.appEventBus),
+    },
+  }
 })
 
 const { listenCallbacks, unlisten } = vi.hoisted(() => ({
@@ -62,9 +72,6 @@ vi.mock('./components/footer/Footer', () => ({
       <button onClick={() => props.onOpenSettings('ssh')}>footer-open-ssh-settings</button>
     </div>
   ),
-}))
-vi.mock('./components/trophy/TrophyToast', () => ({
-  TrophyToast: () => <div data-testid="fake-trophy-toast" />,
 }))
 vi.mock('./components/command-palette/CommandPalette', () => ({
   CommandPalette: () => <div data-testid="fake-command-palette" />,
@@ -188,7 +195,7 @@ describe('App — settings overlay', () => {
     expect(screen.getByTestId('fake-tab-bar')).toBeInTheDocument()
   })
 
-  it('hides TabBar/OperationProgressBar/Footer/page content while settings are open, but keeps toasts', async () => {
+  it('hides TabBar/OperationProgressBar/Footer/page content while settings are open, but keeps the toaster', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByText('tabbar-open-settings'))
@@ -196,7 +203,6 @@ describe('App — settings overlay', () => {
     expect(screen.queryByTestId('fake-operation-progress-bar')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fake-ai-status-banner')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fake-footer')).not.toBeInTheDocument()
-    expect(screen.getByTestId('fake-trophy-toast')).toBeInTheDocument()
     expect(screen.getByTestId('fake-toaster')).toBeInTheDocument()
   })
 })

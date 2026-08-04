@@ -3,7 +3,13 @@ import { render, screen } from '@testing-library/react'
 import { NotchBody } from './NotchBody'
 import { NOTCH_ROW, statusOutputHeight } from '../notchGeometry'
 import { toneColor } from '../notchTones'
-import type { NotchEventModel, NotchProgressModel, NotchStatusModel } from '../types'
+import { tierColor } from '../notchRewardTiers'
+import type {
+  NotchEventModel,
+  NotchProgressModel,
+  NotchRewardModel,
+  NotchStatusModel,
+} from '../types'
 
 const event: NotchEventModel = {
   kind: 'event',
@@ -23,6 +29,17 @@ const progress: NotchProgressModel = {
   title: 'Scanning commits',
   ratio: 0.25,
   detail: '12 / 48 commits',
+}
+
+const reward: NotchRewardModel = {
+  kind: 'reward',
+  id: 'r',
+  tone: 'highlight',
+  eyebrow: 'ACHIEVEMENT UNLOCKED · GOLD',
+  title: 'Merge Master',
+  description: 'Merged 50 pull requests',
+  reward: 'Aurora theme',
+  tier: 'gold',
 }
 
 const status: NotchStatusModel = {
@@ -80,6 +97,46 @@ describe('NotchBody — progress', () => {
   it('names the bar after the operation it is measuring', () => {
     render(<NotchBody model={progress} />)
     expect(screen.getByRole('progressbar')).toHaveAccessibleName('Scanning commits')
+  })
+})
+
+describe('NotchBody — reward', () => {
+  it('renders what was unlocked, what earned it, and what it grants', () => {
+    render(<NotchBody model={reward} />)
+    expect(screen.getByTestId('notch-title')).toHaveTextContent('Merge Master')
+    expect(screen.getByTestId('notch-reward-description')).toHaveTextContent(
+      'Merged 50 pull requests'
+    )
+    expect(screen.getByTestId('notch-reward-gain')).toHaveTextContent('Aurora theme')
+  })
+
+  it('wears a medal where the event card wears an avatar', () => {
+    // The subject of a reward is the user; there is no face to show.
+    render(<NotchBody model={reward} />)
+    expect(screen.getByTestId('notch-tier-medal')).toHaveAttribute('data-tier', 'gold')
+  })
+
+  it('colours the gain by the tier rather than by the tone', () => {
+    // The tone is already spoken for by the eyebrow above; what the reward *is* belongs to the medal
+    // beside it.
+    render(<NotchBody model={{ ...reward, tier: 'bronze' }} />)
+    expect(screen.getByTestId('notch-reward-gain').style.color).toBe(tierColor('bronze'))
+  })
+
+  it('drops the lines it has nothing for, instead of leaving empty rows', () => {
+    const { description: _description, reward: _reward, ...bare } = reward
+    render(<NotchBody model={bare as NotchRewardModel} />)
+    expect(screen.queryByTestId('notch-reward-description')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('notch-reward-gain')).not.toBeInTheDocument()
+    expect(screen.getByTestId('notch-title')).toBeInTheDocument()
+  })
+
+  it('sizes itself to the geometry — the tallest body there is', () => {
+    render(<NotchBody model={reward} />)
+    expect(screen.getByTestId('notch-reward-body')).toHaveStyle({
+      height: `${NOTCH_ROW.rewardBody}px`,
+    })
+    expect(NOTCH_ROW.rewardBody).toBeGreaterThan(NOTCH_ROW.eventBody)
   })
 })
 

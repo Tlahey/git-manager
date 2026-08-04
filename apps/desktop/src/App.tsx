@@ -24,6 +24,7 @@ import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useNotchQueue } from './hooks/useNotchQueue'
+import { useRewardNotch } from './hooks/useRewardNotch'
 import { useNotchActionListener } from './hooks/useNotchActionListener'
 import { useRemoteProgressListener } from './hooks/useRemoteProgressListener'
 import { useHookProgressListener } from './hooks/useHookProgressListener'
@@ -39,7 +40,6 @@ import { AiStatusBanner } from './components/layout/AiStatusBanner'
 
 import { Toaster } from '@git-manager/ui'
 import { CommandPalette } from './components/command-palette/CommandPalette'
-import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { LoadingOverlay } from './components/layout/LoadingOverlay'
 import { E2ePathPickerDialog } from './components/E2ePathPickerDialog'
@@ -65,6 +65,10 @@ export default function App() {
   // *what* to notify about, these two decide what happens to a card once it exists — which is what
   // lets a producer that has nothing to do with GitHub raise one.
   useNotchQueue()
+  // An unlocked achievement, raised as a card like everything else. It used to be `<TrophyToast />`
+  // a few lines below — a rectangle in the corner of this window, which only existed while the
+  // window did and raised its own macOS banner behind the display setting's back.
+  useRewardNotch()
   useNotchActionListener()
   useRemoteProgressListener()
   useHookProgressListener()
@@ -209,7 +213,6 @@ export default function App() {
           onCloseSettings={() => setShowSettings(false)}
           onOpenActivityLogs={() => setShowActivityLogs(true)}
         />
-        <TrophyToast />
         <Toaster />
         <LoadingOverlay />
         {/* Renders nothing — it holds one notch card per transfer in flight, which needs a

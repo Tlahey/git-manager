@@ -8,12 +8,20 @@ import {
   measureCardHeight,
   NOTCH_CARD_WIDTH,
   NOTCH_DEVICE_PRESETS,
+  NOTCH_REWARD_MEDAL_SIZE,
   NOTCH_ROW,
+  NOTCH_ROW_PADDING_X,
   notchRowHeights,
+  rewardConfettiOrigin,
   statusOutputHeight,
   withRule,
 } from './notchGeometry'
-import type { NotchEventModel, NotchProgressModel, NotchStatusModel } from './types'
+import type {
+  NotchEventModel,
+  NotchProgressModel,
+  NotchRewardModel,
+  NotchStatusModel,
+} from './types'
 
 const event: NotchEventModel = {
   kind: 'event',
@@ -39,6 +47,16 @@ const status: NotchStatusModel = {
   tone: 'error',
   eyebrow: 'PRE-COMMIT',
   title: 'lint-staged failed',
+}
+
+const reward: NotchRewardModel = {
+  kind: 'reward',
+  id: 'r1',
+  tone: 'highlight',
+  eyebrow: 'ACHIEVEMENT UNLOCKED',
+  title: 'Merge Master',
+  tier: 'gold',
+  badge: '+100 XP',
 }
 
 /** band + rule + header + rule + body + rule + actions — the full event card. */
@@ -72,6 +90,20 @@ describe('measureCardHeight', () => {
     )
   })
 
+  it('gives the reward body its third line', () => {
+    // Medal, achievement, what earned it, what it grants — one line more than any other body, which
+    // is why it has a row height of its own instead of borrowing the event's.
+    expect(measureCardHeight(reward)).toBe(
+      NOTCH_ROW.band +
+        NOTCH_ROW.rule +
+        NOTCH_ROW.header +
+        NOTCH_ROW.rule +
+        NOTCH_ROW.rewardBody +
+        NOTCH_ROW.rule +
+        NOTCH_ROW.actions
+    )
+  })
+
   it('grows a status card by the output block it actually shows', () => {
     const bare = measureCardHeight(status)
     const withOutput = measureCardHeight({ ...status, outputLines: ['a', 'b'] })
@@ -95,7 +127,7 @@ describe('notchRowHeights', () => {
   })
 
   it('sums to the measured height', () => {
-    for (const model of [event, progress, { ...status, outputLines: ['x'] }]) {
+    for (const model of [event, progress, reward, { ...status, outputLines: ['x'] }]) {
       const sum = notchRowHeights(model).reduce((a, b) => a + b, 0)
       expect(sum).toBe(measureCardHeight(model))
     }
@@ -111,6 +143,32 @@ describe('notchRowHeights', () => {
 
   it('falls back to NOTCH_BAND_HEIGHT when no override is given', () => {
     expect(notchRowHeights(progress)[0]).toBe(NOTCH_ROW.band)
+  })
+})
+
+describe('rewardConfettiOrigin', () => {
+  it('starts the burst at the centre of the medal', () => {
+    expect(rewardConfettiOrigin()).toEqual({
+      x: NOTCH_ROW_PADDING_X + NOTCH_REWARD_MEDAL_SIZE / 2,
+      y: withRule(NOTCH_ROW.band) + withRule(NOTCH_ROW.header) + NOTCH_ROW.rewardBody / 2,
+    })
+  })
+
+  it('moves down with a taller safe area, since the medal really is lower on that machine', () => {
+    // Derived rather than tuned by eye — a row height changing above the medal takes the burst with
+    // it, instead of leaving paper coming out of the card's edge.
+    const taller = rewardConfettiOrigin(38)
+    expect(taller.y - rewardConfettiOrigin().y).toBe(38 - NOTCH_ROW.band)
+    expect(taller.x).toBe(rewardConfettiOrigin().x)
+  })
+
+  it('lands inside the card it is thrown in', () => {
+    const origin = rewardConfettiOrigin()
+    expect(origin.x).toBeGreaterThan(0)
+    expect(origin.x).toBeLessThan(NOTCH_CARD_WIDTH)
+    // Below the reserved band, or the burst would come out from behind the camera housing.
+    expect(origin.y).toBeGreaterThan(NOTCH_ROW.band)
+    expect(origin.y).toBeLessThan(measureCardHeight(reward))
   })
 })
 
