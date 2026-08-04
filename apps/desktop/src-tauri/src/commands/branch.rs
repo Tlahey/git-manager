@@ -117,9 +117,11 @@ pub async fn merge_branch(
         .args(["-C", &path, "checkout", &target])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
     if !checkout.status.success() {
-        return Err(String::from_utf8_lossy(&checkout.stderr).to_string());
+        return Err(
+            AppError::Unknown(String::from_utf8_lossy(&checkout.stderr).to_string()).into(),
+        );
     }
 
     let merge = app
@@ -129,7 +131,7 @@ pub async fn merge_branch(
         .env("GIT_EDITOR", "true")
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !merge.status.success() {
         // Restore a clean state — the app can't drive merge-conflict resolution yet.
@@ -139,7 +141,7 @@ pub async fn merge_branch(
             .args(["-C", &path, "merge", "--abort"])
             .output()
             .await;
-        return Err(String::from_utf8_lossy(&merge.stderr).to_string());
+        return Err(AppError::Unknown(String::from_utf8_lossy(&merge.stderr).to_string()).into());
     }
     Ok(())
 }
@@ -165,7 +167,7 @@ pub async fn fast_forward_branch(
         .args(["-C", &path, "merge-base", "--is-ancestor", &target, &source])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
     if !ancestor.status.success() {
         return Err(AppError::InvalidInput(format!(
             "{target} is not an ancestor of {source}; fast-forward is not possible"
@@ -179,7 +181,7 @@ pub async fn fast_forward_branch(
         .args(["-C", &path, "symbolic-ref", "--quiet", "--short", "HEAD"])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
     let current_branch = String::from_utf8_lossy(&current.stdout).trim().to_string();
 
     let output = if current.status.success() && current_branch == target {
@@ -195,10 +197,10 @@ pub async fn fast_forward_branch(
             .output()
             .await
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        return Err(AppError::Unknown(String::from_utf8_lossy(&output.stderr).to_string()).into());
     }
     Ok(())
 }

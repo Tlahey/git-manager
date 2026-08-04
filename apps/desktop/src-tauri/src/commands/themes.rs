@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use crate::models::UserTheme;
 use std::fs;
 use std::path::PathBuf;
@@ -21,7 +22,7 @@ pub async fn get_user_themes() -> Result<Vec<UserTheme>, String> {
         return Ok(vec![]);
     }
 
-    let entries = fs::read_dir(&dir).map_err(|e| e.to_string())?;
+    let entries = fs::read_dir(&dir).map_err(AppError::Io)?;
     let mut themes: Vec<UserTheme> = Vec::new();
 
     for entry in entries.flatten() {

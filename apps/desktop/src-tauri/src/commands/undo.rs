@@ -47,7 +47,7 @@ pub async fn resolve_revision(path: String, revision: String) -> Result<String, 
 #[tauri::command]
 pub async fn pin_object(path: String, ref_name: String, oid: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let target_oid = Oid::from_str(&oid).map_err(|_| "Invalid OID".to_string())?;
+    let target_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
     pin_oid(&repo, &ref_name, target_oid).map_err(AppError::Git)?;
     Ok(())
 }
@@ -106,7 +106,7 @@ pub async fn snapshot_file(
         return Ok(None);
     }
 
-    let bytes = fs::read(&full_path).map_err(|e| e.to_string())?;
+    let bytes = fs::read(&full_path).map_err(AppError::Io)?;
     let oid = repo.blob(&bytes).map_err(AppError::Git)?;
     pin_oid(&repo, &entry_id, oid).map_err(AppError::Git)?;
 
@@ -124,14 +124,14 @@ pub async fn restore_file_blob(
     blob_oid: String,
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let oid = Oid::from_str(&blob_oid).map_err(|_| "Invalid blob OID".to_string())?;
+    let oid = Oid::from_str(&blob_oid).map_err(AppError::Git)?;
     let blob = repo.find_blob(oid).map_err(AppError::Git)?;
 
     let full_path = Path::new(&path).join(&file_path);
     if let Some(parent) = full_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        fs::create_dir_all(parent).map_err(AppError::Io)?;
     }
-    fs::write(&full_path, blob.content()).map_err(|e| e.to_string())?;
+    fs::write(&full_path, blob.content()).map_err(AppError::Io)?;
 
     Ok(())
 }
@@ -246,8 +246,7 @@ pub async fn restore_worktree_snapshot(
     tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
 
-        let workdir_oid =
-            Oid::from_str(&workdir_tree_oid).map_err(|_| "Invalid workdir tree OID".to_string())?;
+        let workdir_oid = Oid::from_str(&workdir_tree_oid).map_err(AppError::Git)?;
         let workdir_tree = repo.find_tree(workdir_oid).map_err(AppError::Git)?;
 
         let mut checkout_opts = git2::build::CheckoutBuilder::new();
@@ -256,8 +255,7 @@ pub async fn restore_worktree_snapshot(
         repo.checkout_tree(workdir_tree.as_object(), Some(&mut checkout_opts))
             .map_err(AppError::Git)?;
 
-        let index_oid =
-            Oid::from_str(&index_tree_oid).map_err(|_| "Invalid index tree OID".to_string())?;
+        let index_oid = Oid::from_str(&index_tree_oid).map_err(AppError::Git)?;
         let index_tree = repo.find_tree(index_oid).map_err(AppError::Git)?;
         let mut index = repo.index().map_err(AppError::Git)?;
         index.read_tree(&index_tree).map_err(AppError::Git)?;
@@ -282,7 +280,7 @@ pub async fn recreate_branch_ref(
     upstream: Option<String>,
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let target_oid = Oid::from_str(&oid).map_err(|_| "Invalid commit OID".to_string())?;
+    let target_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
     let commit = repo.find_commit(target_oid).map_err(AppError::Git)?;
     let mut branch = repo.branch(&name, &commit, false).map_err(AppError::Git)?;
 

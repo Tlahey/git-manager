@@ -24,10 +24,10 @@ async fn run_git(app: &tauri::AppHandle, path: &str, args: &[&str]) -> Result<St
         .args(full)
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        return Err(AppError::Unknown(String::from_utf8_lossy(&output.stderr).to_string()).into());
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }

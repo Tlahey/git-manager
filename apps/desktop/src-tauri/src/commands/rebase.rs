@@ -45,7 +45,7 @@ pub async fn rebase_onto_commit(
         .args(["-C", &path, "rebase", &target_oid])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
         return err_unless_paused(&path, &output.stderr);
@@ -70,8 +70,7 @@ pub async fn continue_rebase(
         let repo = Repository::open(&path).map_err(AppError::Git)?;
         let message_path = repo.path().join("rebase-merge").join("message");
         if message_path.parent().map(|p| p.is_dir()).unwrap_or(false) {
-            std::fs::write(&message_path, format!("{trimmed}\n"))
-                .map_err(|e| AppError::Unknown(e.to_string()))?;
+            std::fs::write(&message_path, format!("{trimmed}\n")).map_err(AppError::Io)?;
         }
     }
 
@@ -82,7 +81,7 @@ pub async fn continue_rebase(
         .env("GIT_EDITOR", "true")
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
         return err_unless_paused(&path, &output.stderr);
@@ -102,7 +101,7 @@ pub async fn skip_rebase(path: String, app: tauri::AppHandle) -> Result<(), Stri
         .args(["-C", &path, "rebase", "--skip"])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
         return err_unless_paused(&path, &output.stderr);
@@ -120,7 +119,7 @@ pub(crate) fn err_unless_paused(path: &str, stderr: &[u8]) -> Result<(), String>
     if state.kind == "conflict" || state.kind == "edit_pause" {
         return Ok(());
     }
-    Err(String::from_utf8_lossy(stderr).to_string())
+    Err(AppError::Unknown(String::from_utf8_lossy(stderr).to_string()).into())
 }
 
 /// Aborts a paused rebase (`git rebase --abort`), restoring the original HEAD.
@@ -134,10 +133,10 @@ pub async fn abort_rebase(path: String, app: tauri::AppHandle) -> Result<(), Str
         .args(["-C", &path, "rebase", "--abort"])
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        return Err(AppError::Unknown(String::from_utf8_lossy(&output.stderr).to_string()).into());
     }
     Ok(())
 }
