@@ -279,3 +279,353 @@ pub fn group_into_autosquash(fixups: &[FixupInfo]) -> Vec<AutosquashGroup> {
 
     groups
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::get_git_signature;
+    use std::path::PathBuf;
+
+    // ── `group_into_autosquash` — pure, no repo needed ────────────────────────
+
+    fn fixup_info(fixup_short_oid: &str, target_oid: &str, target_subject: &str) -> FixupInfo {
+        FixupInfo {
+            fixup_oid: format!("{fixup_short_oid}-full"),
+            fixup_short_oid: fixup_short_oid.to_string(),
+            target_oid: target_oid.to_string(),
+            target_subject: target_subject.to_string(),
+        }
+    }
+
+    #[test]
+    fn empty_fixup_list_produces_no_groups() {
+        let groups = group_into_autosquash(&[]);
+        assert!(groups.is_empty());
+    }
+
+    #[test]
+    fn a_single_fixup_creates_a_single_group() {
+        let fixups = vec![fixup_info("abc1234", "deadbeef", "feat: add thing")];
+        let groups = group_into_autosquash(&fixups);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base_oid, "deadbeef");
+        assert_eq!(groups[0].base_subject, "feat: add thing");
+        assert_eq!(groups[0].fixups, vec!["abc1234".to_string()]);
+    }
+
+    #[test]
+    fn multiple_fixups_for_the_same_target_land_in_one_group_in_encounter_order() {
+        let fixups = vec![
+            fixup_info("f1", "target1", "feat: base"),
+            fixup_info("f2", "target1", "feat: base"),
+            fixup_info("f3", "target1", "feat: base"),
+        ];
+        let groups = group_into_autosquash(&fixups);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(
+            groups[0].fixups,
+            vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]
+        );
+    }
+
+    #[test]
+    fn independent_targets_produce_separate_groups_in_first_seen_order() {
+        // f2 (target-b) is interleaved between the two target-a fixups — grouping must not
+        // depend on the input being pre-sorted by target.
+        let fixups = vec![
+            fixup_info("f1", "target-a", "feat: a"),
+            fixup_info("f2", "target-b", "feat: b"),
+            fixup_info("f3", "target-a", "feat: a"),
+        ];
+        let groups = group_into_autosquash(&fixups);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].base_oid, "target-a");
+        assert_eq!(groups[0].fixups, vec!["f1".to_string(), "f3".to_string()]);
+        assert_eq!(groups[1].base_oid, "target-b");
+        assert_eq!(groups[1].fixups, vec!["f2".to_string()]);
+    }
+
+    #[test]
+    fn grouping_keys_purely_on_target_oid_not_target_subject() {
+        // In practice every FixupInfo for the same target carries an identical subject (both
+        // come from the same commit via `list_pending_fixups`), but `group_into_autosquash`
+        // itself only compares `target_oid` — pin that down, and confirm the group's label
+        // comes from whichever fixup is encountered first.
+        let fixups = vec![
+            fixup_info("f1", "target-a", "feat: original subject"),
+            fixup_info("f2", "target-a", "feat: a different subject string"),
+        ];
+        let groups = group_into_autosquash(&fixups);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base_subject, "feat: original subject");
+        assert_eq!(groups[0].fixups, vec!["f1".to_string(), "f2".to_string()]);
+    }
+
+    // ── Repo fixtures for `list_pending_fixups` / `check_fixup_target` / `create_fixup_commit` ──
+
+    fn init_repo(name: &str) -> (PathBuf, Repository) {
+        let dir =
+            std::env::temp_dir().join(format!("gm-test-fixup-{}-{}", name, std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        (dir, repo)
+    }
+
+    /// Commits `content` to `name` on top of HEAD (unborn HEAD produces the root commit).
+    fn commit_file(repo: &Repository, dir: &Path, name: &str, content: &str, msg: &str) -> Oid {
+        std::fs::write(dir.join(name), content).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new(name)).unwrap();
+        index.write().unwrap();
+        let tree_oid = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_oid).unwrap();
+        let sig = get_git_signature(repo).unwrap();
+        let parent = repo
+            .head()
+            .ok()
+            .and_then(|h| h.target())
+            .and_then(|o| repo.find_commit(o).ok());
+        let parents: Vec<&git2::Commit> = parent.iter().collect();
+        repo.commit(Some("HEAD"), &sig, &sig, msg, &tree, &parents)
+            .unwrap()
+    }
+
+    /// Stages `content` for `name` without committing, so `create_fixup_commit`/
+    /// `check_fixup_target` see it via `diff_tree_to_index`.
+    fn stage_file(repo: &Repository, dir: &Path, name: &str, content: &str) {
+        std::fs::write(dir.join(name), content).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new(name)).unwrap();
+        index.write().unwrap();
+    }
+
+    /// Builds a real, unresolved merge conflict directly in the repo's index (same technique
+    /// `git_conflict.rs`'s tests use) — `create_fixup_commit` must refuse to run while one is
+    /// pending, and this is the only way to get `index.has_conflicts()` true without shelling
+    /// out to `git merge`. HEAD stays on the (unconflicted) base commit — `our`/`their` are
+    /// side commits that never move any ref — so `create_fixup_commit`'s own `repo.head()`
+    /// lookup still succeeds and the test actually exercises the conflict check rather than
+    /// failing earlier on an unborn HEAD. Returns the base commit's oid, usable as a fixup
+    /// target.
+    fn make_index_conflicted(repo: &Repository, dir: &Path, name: &str) -> Oid {
+        let base_oid = commit_file(repo, dir, name, "base", "base");
+        let base_commit = repo.find_commit(base_oid).unwrap();
+        let base_tree = base_commit.tree().unwrap();
+        let sig = get_git_signature(repo).unwrap();
+
+        let side_commit = |content: &str, msg: &str| -> Oid {
+            let blob_oid = repo.blob(content.as_bytes()).unwrap();
+            let mut tb = repo.treebuilder(Some(&base_tree)).unwrap();
+            tb.insert(name, blob_oid, 0o100644).unwrap();
+            let tree = repo.find_tree(tb.write().unwrap()).unwrap();
+            repo.commit(None, &sig, &sig, msg, &tree, &[&base_commit])
+                .unwrap()
+        };
+        let our_oid = side_commit("ours", "our change");
+        let their_oid = side_commit("theirs", "their change");
+
+        // `merge_commits`'s own `Index` is in-memory only (no on-disk path), so copy its
+        // entries — including the conflict stages, preserved via `add`'s flags handling —
+        // into the repo's real, disk-backed index instead (see `git_conflict.rs`'s tests for
+        // the same technique, used there for the same reason).
+        let our_commit = repo.find_commit(our_oid).unwrap();
+        let their_commit = repo.find_commit(their_oid).unwrap();
+        let merged = repo
+            .merge_commits(&our_commit, &their_commit, None)
+            .unwrap();
+        let mut real_index = repo.index().unwrap();
+        real_index.clear().unwrap();
+        for entry in merged.iter() {
+            real_index.add(&entry).unwrap();
+        }
+        real_index.write().unwrap();
+
+        base_oid
+    }
+
+    // ── `list_pending_fixups` ──────────────────────────────────────────────────
+
+    #[test]
+    fn list_pending_fixups_is_empty_without_any_fixup_commits() {
+        let (dir, repo) = init_repo("list-none");
+        commit_file(&repo, &dir, "a.txt", "one", "feat: first");
+        commit_file(&repo, &dir, "a.txt", "two", "feat: second");
+
+        assert!(list_pending_fixups(&repo).unwrap().is_empty());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_pending_fixups_matches_a_fixup_to_its_target() {
+        let (dir, repo) = init_repo("list-match");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add thing");
+        commit_file(&repo, &dir, "a.txt", "two", "fixup! feat: add thing");
+
+        let fixups = list_pending_fixups(&repo).unwrap();
+        assert_eq!(fixups.len(), 1);
+        assert_eq!(fixups[0].target_oid, target.to_string());
+        assert_eq!(fixups[0].target_subject, "feat: add thing");
+        assert_eq!(fixups[0].fixup_short_oid.len(), 7);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_pending_fixups_ignores_a_fixup_with_no_matching_target() {
+        let (dir, repo) = init_repo("list-orphan");
+        commit_file(&repo, &dir, "a.txt", "one", "feat: unrelated");
+        commit_file(
+            &repo,
+            &dir,
+            "a.txt",
+            "two",
+            "fixup! feat: a subject that was never committed",
+        );
+
+        assert!(list_pending_fixups(&repo).unwrap().is_empty());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_pending_fixups_matches_multiple_independent_targets() {
+        let (dir, repo) = init_repo("list-multi");
+        let target_a = commit_file(&repo, &dir, "a.txt", "one", "feat: a");
+        let target_b = commit_file(&repo, &dir, "b.txt", "one", "feat: b");
+        commit_file(&repo, &dir, "a.txt", "two", "fixup! feat: a");
+        commit_file(&repo, &dir, "b.txt", "two", "fixup! feat: b");
+
+        let fixups = list_pending_fixups(&repo).unwrap();
+        assert_eq!(fixups.len(), 2);
+        assert!(fixups
+            .iter()
+            .any(|f| f.target_oid == target_a.to_string() && f.target_subject == "feat: a"));
+        assert!(fixups
+            .iter()
+            .any(|f| f.target_oid == target_b.to_string() && f.target_subject == "feat: b"));
+
+        // And grouping them lands each fixup in its own group, matching its own target.
+        let groups = group_into_autosquash(&fixups);
+        assert_eq!(groups.len(), 2);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── `check_fixup_target` ───────────────────────────────────────────────────
+
+    #[test]
+    fn check_fixup_target_is_clean_when_the_file_exists_and_is_untouched_since() {
+        let (dir, repo) = init_repo("check-clean");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+        stage_file(&repo, &dir, "a.txt", "two");
+
+        let warnings = check_fixup_target(&repo, &target.to_string()).unwrap();
+        assert!(warnings.missing_in_target.is_empty());
+        assert!(warnings.touched_after_target.is_empty());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn check_fixup_target_flags_a_staged_file_missing_from_the_target_tree() {
+        let (dir, repo) = init_repo("check-missing");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+        // b.txt doesn't exist yet at `target` — introduced only by this later commit.
+        commit_file(&repo, &dir, "b.txt", "one", "feat: add b");
+        stage_file(&repo, &dir, "b.txt", "two");
+
+        let warnings = check_fixup_target(&repo, &target.to_string()).unwrap();
+        assert_eq!(warnings.missing_in_target, vec!["b.txt".to_string()]);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn check_fixup_target_flags_a_staged_file_touched_between_target_and_head() {
+        let (dir, repo) = init_repo("check-touched");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+        let between = commit_file(&repo, &dir, "a.txt", "two", "feat: tweak a");
+        stage_file(&repo, &dir, "a.txt", "three");
+
+        let warnings = check_fixup_target(&repo, &target.to_string()).unwrap();
+        assert!(warnings.missing_in_target.is_empty());
+        assert_eq!(warnings.touched_after_target.len(), 1);
+        let risk = &warnings.touched_after_target[0];
+        assert_eq!(risk.path, "a.txt");
+        assert_eq!(risk.commits.len(), 1);
+        assert_eq!(risk.commits[0].oid, between.to_string());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn check_fixup_target_is_a_noop_with_no_staged_changes() {
+        let (dir, repo) = init_repo("check-empty");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+
+        let warnings = check_fixup_target(&repo, &target.to_string()).unwrap();
+        assert!(warnings.missing_in_target.is_empty());
+        assert!(warnings.touched_after_target.is_empty());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── `create_fixup_commit` ──────────────────────────────────────────────────
+
+    #[test]
+    fn create_fixup_commit_generates_the_conventional_fixup_message() {
+        let (dir, repo) = init_repo("create-default-message");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+        stage_file(&repo, &dir, "a.txt", "two");
+
+        let result = create_fixup_commit(&repo, &target.to_string(), None).unwrap();
+
+        let new_commit = repo
+            .find_commit(Oid::from_str(&result.oid).unwrap())
+            .unwrap();
+        assert_eq!(new_commit.summary(), Some("fixup! feat: add a"));
+        assert_eq!(new_commit.parent_id(0).unwrap(), target);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_fixup_commit_honors_a_custom_message() {
+        let (dir, repo) = init_repo("create-custom-message");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+        stage_file(&repo, &dir, "a.txt", "two");
+
+        let result =
+            create_fixup_commit(&repo, &target.to_string(), Some("  fixup! custom text  "))
+                .unwrap();
+
+        let new_commit = repo
+            .find_commit(Oid::from_str(&result.oid).unwrap())
+            .unwrap();
+        assert_eq!(new_commit.summary(), Some("fixup! custom text"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_fixup_commit_rejects_an_empty_target_oid() {
+        let (dir, repo) = init_repo("create-bad-oid");
+        commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+
+        let err = create_fixup_commit(&repo, "not-an-oid", None).unwrap_err();
+        assert_eq!(err, "Invalid target OID");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_fixup_commit_rejects_when_nothing_is_staged() {
+        let (dir, repo) = init_repo("create-no-staged");
+        let target = commit_file(&repo, &dir, "a.txt", "one", "feat: add a");
+
+        let err = create_fixup_commit(&repo, &target.to_string(), None).unwrap_err();
+        assert_eq!(err, "No staged changes to create a fixup commit");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_fixup_commit_rejects_a_conflicted_index() {
+        let (dir, repo) = init_repo("create-conflicted");
+        let target = make_index_conflicted(&repo, &dir, "a.txt");
+
+        let result = create_fixup_commit(&repo, &target.to_string(), None);
+        assert!(result.is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}
