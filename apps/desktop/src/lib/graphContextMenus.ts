@@ -69,7 +69,13 @@ export interface GraphCommitMenuContext {
 export interface CommitCopyActions {
   onCopySha: () => void
   onCopyLink: () => void
-  onCreatePatch: () => void
+  /**
+   * Optional because `buildSidebarBranchMenuSpec` hand-spells its copy section without a "Create
+   * patch" item — "a row's menu carries the four copies and not the patch, which belongs to a
+   * commit the user pointed at in the graph" (see that builder's comment) — so its hook has nothing
+   * to wire this to. The graph's own copy section (`copySection`) still requires it in practice.
+   */
+  onCreatePatch?: () => void
 }
 
 /**
@@ -125,8 +131,13 @@ export interface BranchMenuActions {
   onCompareWithBranch: (ref: GitRef) => void
   /** Opens the AI explanation of everything this branch changes vs its merge target. */
   onExplainBranch: (ref: GitRef) => void
-  /** Opens the AI review of everything this branch changes vs its merge target. */
-  onReviewBranch: (ref: GitRef) => void
+  /**
+   * Opens the AI review of everything this branch changes vs its merge target. Optional because
+   * `buildSidebarBranchMenuSpec` never renders a "Review branch changes" item — only the graph's own
+   * branch menu (`prAndExplainSection`) offers both explain and review, deliberately, per its
+   * builder's history (see `4b724da9`) — so the sidebar's hook has nothing to wire this to.
+   */
+  onReviewBranch?: (ref: GitRef) => void
   onRenameBranch: (ref: GitRef) => void
   onDeleteBranch: (ref: GitRef) => void
   onCopyBranchName: (ref: GitRef) => void
@@ -325,7 +336,7 @@ function prAndExplainSection(
       menuItem({
         text: t('gitTree.branchMenu.reviewChanges'),
         enabled: b.aiEnabled,
-        action: () => actions.onReviewBranch(b.ref),
+        action: () => actions.onReviewBranch?.(b.ref),
       }),
   ]
 }
