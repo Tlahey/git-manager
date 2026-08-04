@@ -2,6 +2,25 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Resolves a leading `~/` against `$HOME`, leaving any other path untouched.
+///
+/// `Command` doesn't run through a shell, so a tilde it receives stays a literal directory name —
+/// every path arriving from the frontend has to be expanded here first.
+fn expand_home(path: &str) -> Result<PathBuf, String> {
+    let Some(rest) = path.strip_prefix("~/") else {
+        return Ok(PathBuf::from(path));
+    };
+    let home = std::env::var("HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| {
+            #[allow(deprecated)]
+            std::env::home_dir()
+        })
+        .ok_or_else(|| "Could not locate home directory".to_string())?;
+    Ok(home.join(rest))
+}
+
 /// Runs on a blocking-pool thread: `ssh-keygen` blocks on `output()` until it's done, and a large
 /// RSA bit size can take real time — see `fetch_remote`'s doc comment for why that shouldn't run
 /// directly on this command's async task.
@@ -14,19 +33,7 @@ pub async fn generate_ssh_key(
     passphrase: Option<String>,
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let expanded_path = if path.starts_with("~/") {
-            let home = std::env::var("HOME")
-                .ok()
-                .map(PathBuf::from)
-                .or_else(|| {
-                    #[allow(deprecated)]
-                    std::env::home_dir()
-                })
-                .ok_or_else(|| "Could not locate home directory".to_string())?;
-            home.join(&path[2..])
-        } else {
-            PathBuf::from(&path)
-        };
+        let expanded_path = expand_home(&path)?;
 
         // Ensure parent directory exists
         if let Some(parent) = expanded_path.parent() {
@@ -46,7 +53,7 @@ pub async fn generate_ssh_key(
 
         cmd.arg("-C").arg(&comment);
         cmd.arg("-f").arg(&expanded_path);
-        cmd.arg("-N").arg(&passphrase.unwrap_or_default());
+        cmd.arg("-N").arg(passphrase.unwrap_or_default());
         cmd.arg("-q"); // quiet
 
         let output = cmd
@@ -71,19 +78,7 @@ pub async fn generate_ssh_key(
 
 #[tauri::command]
 pub async fn read_ssh_public_key(path: String) -> Result<String, String> {
-    let mut expanded_path = if path.starts_with("~/") {
-        let home = std::env::var("HOME")
-            .ok()
-            .map(PathBuf::from)
-            .or_else(|| {
-                #[allow(deprecated)]
-                std::env::home_dir()
-            })
-            .ok_or_else(|| "Could not locate home directory".to_string())?;
-        home.join(&path[2..])
-    } else {
-        PathBuf::from(&path)
-    };
+    let mut expanded_path = expand_home(&path)?;
 
     if expanded_path.exists() && expanded_path.is_file() {
         if expanded_path.extension().and_then(|ext| ext.to_str()) != Some("pub") {

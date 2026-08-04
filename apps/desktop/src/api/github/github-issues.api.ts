@@ -168,6 +168,46 @@ export async function updateIssue(
   })
 }
 
+/** One comment on an issue, as GitHub returns it. */
+export interface GhIssueComment {
+  id: number
+  body?: string | null
+  user?: GhUser
+  created_at: string
+}
+
+/**
+ * An issue's comments — the board's discussion thread for a GitHub-backed card.
+ *
+ * Fetched per card, on demand, rather than alongside the board's issue list: a board with fifty
+ * cards would otherwise cost fifty extra requests on every load, to show something only the opened
+ * card's dialog displays. The issue list already carries a comment *count* for the card face.
+ */
+export async function fetchIssueComments(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  token: string
+): Promise<GhIssueComment[]> {
+  return ghFetch<GhIssueComment[]>(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`,
+    token
+  )
+}
+
+export async function createIssueComment(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  body: string,
+  token: string
+): Promise<GhIssueComment> {
+  return ghRequest(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+    { method: 'POST', body: { body }, token }
+  )
+}
+
 /** Close an issue (`state: 'closed'`) or reopen it (`state: 'open'`). Shares the issues REST resource
  * with labels/assignees; requires the token's `repo` scope. */
 export async function setIssueState(

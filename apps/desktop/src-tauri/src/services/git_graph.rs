@@ -196,10 +196,8 @@ pub fn build_graph_nodes(
         let oid_str = oid.to_string();
         let short_oid_str = short_oid(&oid_str);
         let mut parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
-        if stash_oids.contains(oid) {
-            if !parent_oids.is_empty() {
-                parent_oids.truncate(1);
-            }
+        if stash_oids.contains(oid) && !parent_oids.is_empty() {
+            parent_oids.truncate(1);
         }
 
         let mut col_override = None;

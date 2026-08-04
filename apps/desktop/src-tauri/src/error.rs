@@ -23,6 +23,16 @@ pub enum AppError {
     ConflictNotFound(String),
     #[error("Unparseable conflict: {0}")]
     UnparseableConflict(String),
+    #[error("Board not found: {0}")]
+    BoardNotFound(String),
+    #[error("Board already exists: {0}")]
+    BoardAlreadyExists(String),
+    #[error("Card not found: {0}")]
+    CardNotFound(String),
+    /// A board/card mutation was rejected because the ref moved since the caller last read it
+    /// (`Repository::reference_matching` returned `GIT_EMODIFIED`) — someone else wrote first.
+    #[error("Board changed since it was last read: {0}")]
+    BoardConflict(String),
     /// A repository hook exited non-zero and stopped the operation it was gating.
     ///
     /// Its own variant, carrying the hook's own output, because that output *is* the error message
@@ -71,6 +81,10 @@ impl From<AppError> for String {
             AppError::WorktreePathExists(_) => ("WORKTREE_PATH_EXISTS", e.to_string()),
             AppError::ConflictNotFound(_) => ("CONFLICT_NOT_FOUND", e.to_string()),
             AppError::UnparseableConflict(_) => ("UNPARSEABLE_CONFLICT", e.to_string()),
+            AppError::BoardNotFound(_) => ("BOARD_NOT_FOUND", e.to_string()),
+            AppError::BoardAlreadyExists(_) => ("BOARD_ALREADY_EXISTS", e.to_string()),
+            AppError::CardNotFound(_) => ("CARD_NOT_FOUND", e.to_string()),
+            AppError::BoardConflict(_) => ("BOARD_CONFLICT", e.to_string()),
             AppError::AiProvider(_) => ("AI_PROVIDER_ERROR", e.to_string()),
             AppError::AiTimeout(_) => ("AI_TIMEOUT", e.to_string()),
             AppError::InvalidInput(_) => ("INVALID_INPUT", e.to_string()),

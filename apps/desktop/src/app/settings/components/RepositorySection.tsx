@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import type { ViewSwitcherPosition } from '@git-manager/git-types'
 import { Input, Textarea, NativeSelect } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
 import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
@@ -101,6 +102,11 @@ export function RepositorySection({ category }: RepositorySectionProps) {
   const effective = useEffectiveRepoSettings(activeRepo)
   const { data: userThemes } = useUserThemes()
 
+  const viewSwitcherPositions: { value: ViewSwitcherPosition; label: string }[] = [
+    { value: 'toolbar', label: t('settings.appearance.viewSwitcherPosition.toolbar') },
+    { value: 'tabs', label: t('settings.appearance.viewSwitcherPosition.tabs') },
+  ]
+
   if (!activeRepo) {
     return (
       <div data-testid="repository-section" className="space-y-3">
@@ -119,6 +125,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
     override?.terminalBackground !== undefined || override?.terminalForeground !== undefined
   const instructionsOverridden = override?.commitInstructions !== undefined
   const patternOverridden = override?.commitPattern !== undefined
+  const viewSwitcherOverridden = override?.viewSwitcherPosition !== undefined
 
   return (
     <div data-testid="repository-section" className="space-y-6">
@@ -226,6 +233,50 @@ export function RepositorySection({ category }: RepositorySectionProps) {
               >
                 $ git status
               </div>
+            </div>
+          </OverrideField>
+        </FilterableSetting>
+      )}
+
+      {/* Graph/Files/Board switcher position (appearance category) */}
+      {category === 'appearance' && (
+        <FilterableSetting
+          match={`${t('settings.appearance.viewSwitcherPosition')} view switcher tabs graph files board kanban onglets bascule vue`}
+        >
+          <OverrideField
+            label={t('settings.appearance.viewSwitcherPosition')}
+            isOverridden={viewSwitcherOverridden}
+            onInherit={() => resetRepoSetting(activeRepo, 'viewSwitcherPosition')}
+            onOverride={() =>
+              setRepoSetting(activeRepo, 'viewSwitcherPosition', effective.viewSwitcherPosition)
+            }
+            testId="repo-override-viewSwitcherPosition"
+          >
+            <div className="flex gap-2">
+              {viewSwitcherPositions.map((vs) => (
+                <label
+                  key={vs.value}
+                  data-testid={`repo-view-switcher-position-radio-${vs.value}`}
+                  className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
+                    !viewSwitcherOverridden ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  } ${
+                    effective.viewSwitcherPosition === vs.value
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : `border-border text-muted-foreground ${viewSwitcherOverridden ? 'hover:bg-accent' : ''}`
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="repoViewSwitcherPosition"
+                    value={vs.value}
+                    disabled={!viewSwitcherOverridden}
+                    checked={effective.viewSwitcherPosition === vs.value}
+                    onChange={() => setRepoSetting(activeRepo, 'viewSwitcherPosition', vs.value)}
+                    className="sr-only"
+                  />
+                  {vs.label}
+                </label>
+              ))}
             </div>
           </OverrideField>
         </FilterableSetting>

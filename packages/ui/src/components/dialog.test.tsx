@@ -91,6 +91,50 @@ describe('Dialog', () => {
     )
   })
 
+  /**
+   * The width belongs to the kind of content: a confirmation and a searchable list have no business
+   * being the same size, which is what a single hardcoded `max-w` on every dialog produced.
+   */
+  describe('size', () => {
+    function renderSized(props: Partial<React.ComponentProps<typeof DialogContent>> = {}) {
+      render(
+        <Dialog defaultOpen>
+          <DialogContent {...props}>
+            <DialogTitle>Sized</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      )
+      return screen.getByRole('dialog')
+    }
+
+    /** Adding the prop must not have resized anything that didn't ask for it. */
+    it('defaults to the width every dialog had before the prop existed', () => {
+      expect(renderSized()).toHaveClass('max-w-lg')
+    })
+
+    it.each([
+      ['sm', 'max-w-sm'],
+      ['md', 'max-w-lg'],
+      ['lg', 'max-w-2xl'],
+      ['xl', 'max-w-4xl'],
+    ] as const)('maps %s to %s', (size, expected) => {
+      expect(renderSized({ size })).toHaveClass(expected)
+    })
+
+    /** `BoardCardDialog` sets an exact pixel width; the size step must not fight it. */
+    it('lets a caller’s own max-width win', () => {
+      const dialog = renderSized({ size: 'lg', className: 'max-w-[1100px]' })
+      expect(dialog).toHaveClass('max-w-[1100px]')
+      expect(dialog).not.toHaveClass('max-w-2xl')
+    })
+
+    it('ignores the size on a side panel, whose width is the viewport edge', () => {
+      const panel = renderSized({ position: 'right', size: 'xl' })
+      expect(panel).toHaveClass('max-w-none')
+      expect(panel).not.toHaveClass('max-w-4xl')
+    })
+  })
+
   it('renders a side panel flush right instead of centered', () => {
     render(
       <Dialog defaultOpen>

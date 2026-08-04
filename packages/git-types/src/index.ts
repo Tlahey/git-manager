@@ -569,6 +569,263 @@ export interface ThreeWayMergeView {
   conflictCount: number
 }
 
+// ─── Board (Kanban) ───────────────────────────────────────────────────────────
+
+/** Which backend produced a {@link Board}. The UI renders both generically, but actions (create/
+ * move/delete a card, edit columns) must dispatch to the matching `BoardBackend` implementation. */
+export type BoardSource = 'local' | 'remote'
+
+/** How urgent a card is. `normal` is the default and, on a GitHub-backed board, is represented by
+ * the *absence* of a priority label rather than a `priority:normal` one — so the common case adds no
+ * label noise to the repository. */
+export type BoardCardPriority = 'high' | 'normal' | 'low'
+
+export interface BoardColumn {
+  id: string
+  name: string
+  order: number
+  color?: string
+  /** Whether landing in this column means the work is finished. Drives the sprint statistics and
+   * decides which cards carry over when a sprint is closed. */
+  isDone?: boolean
+}
+
+/** One tag in a board's palette. Cards reference these by id ({@link BoardCard.tagIds}) rather than
+ * carrying free-form strings, so a given tag is the same colour on every card of the board. */
+export interface BoardTag {
+  id: string
+  name: string
+  /** CSS colour as `#rrggbb`. Also used verbatim as the GitHub label colour on a remote board. */
+  color: string
+}
+
+/** One message in a card's discussion. Append-only: {@link BoardCardPatch} deliberately can't touch
+ * these, so a card edit can never rewrite history that someone else wrote. */
+export interface BoardComment {
+  id: string
+  /** Whoever wrote it — the repo's git `user.name` on a local board (stamped in Rust rather than
+   * trusted from the frontend), the GitHub login on a remote one. */
+  author: string
+  /** Markdown. */
+  body: string
+  createdAt: string
+}
+
+/** What kind of work a card stands for. An epic is the one that groups others. */
+export type BoardCardKind = 'task' | 'bug' | 'epic'
+
+/**
+ * The forward half of a relationship between two cards.
+ *
+ * Only forward halves are storable, so the set of representable links is exactly the set of
+ * meaningful ones: `blocks` is written on the blocker, `contains` on the epic. The inverse
+ * (`blockedBy`, `partOf`) is derived when the *other* card is displayed and never written — two
+ * stored halves are two things that can disagree, and a half-deleted link is a bug with no natural
+ * repair. `relates` is its own inverse.
+ */
+export type BoardLinkKind = 'relates' | 'blocks' | 'contains'
+
+/** The inverse a link reads as from the target's side. `relates` is symmetric. */
+export type BoardLinkInverseKind = 'relates' | 'blockedBy' | 'partOf'
+
+export interface BoardCardLink {
+  /** Carried because a card can move to another board and its links must survive that. A link whose
+   * target sits on a board that isn't loaded renders as the board's name rather than as a card. */
+  targetBoardId: string
+  targetCardId: string
+  kind: BoardLinkKind
+}
+
+/**
+ * The GitHub issue a card on a *local* board tracks.
+ *
+ * Its presence changes where the card's content lives: the issue becomes the source of truth for
+ * everything GitHub can hold — title, body, assignee, and the fields encoded as labels — while the
+ * local board keeps only this ref and the placement (`columnId`, `order`), which has no
+ * GitHub-native home. So a tracked card can be dragged and reordered like any other, and editing one
+ * writes to the real issue.
+ */
+export interface BoardCardSourceIssue {
+  owner: string
+  repo: string
+  number: number
+}
+
+/** One issue linked into a board (remote) or a bare markdown task (local). Mirrors the Rust
+ * `BoardCard` struct for the local backend; the remote backend builds the same shape client-side
+ * from a GitHub issue + its `board:<id>:status:<column>` label. */
+export interface BoardCard {
+  id: string
+  boardId: string
+  columnId: string
+  title: string
+  /** Markdown. */
+  description: string
+  order: number
+  /** Branch created/checked out for this card via the "create/checkout branch" card action. */
+  linkedBranch?: string
+  /** Optimistic-concurrency token — see {@link Board.revision} (local backend) or the remote
+   * backend's use of the source issue's `updated_at`. Sent back on every update so a write that
+   * raced another one is rejected instead of silently overwriting it. */
+  revision: string
+  /** The card's own identifier prefix — `"GM"` renders it as `GM-7`. The card's, not the board's:
+   * that is what lets it keep its identifier when it moves to another board. */
+  prefix: string
+  /** The card's number within its {@link BoardCard.prefix}, shown as `<prefix>-<number>`. Allocated
+   * from {@link Board.nextCardNumbers} on a local board; the issue number on a remote one. `0` for
+   * cards created before the board had identifiers. */
+  number: number
+  /** What kind of work this is — drives the icon, and the colour for an epic. */
+  kind: BoardCardKind
+  /** Relationships this card declares to others — see {@link BoardCardLink}. */
+  links: BoardCardLink[]
+  /**
+   * Set when the card was archived: it leaves the columns but is not destroyed, and searching the
+   * board brings it back into view. Distinct from deleting, which is irreversible, and from a done
+   * column, which is a *state of the work* rather than a decision to stop showing it. */
+  archivedAt?: string
+  /** Set when this card tracks a GitHub issue — see {@link BoardCardSourceIssue}. Only meaningful on
+   * a `source: 'local'` board; a card on a remote board already *is* an issue. */
+  sourceIssue?: BoardCardSourceIssue
+  /** The tracked issue's live state, merged in at read time — never stored. `undefined` on an
+   * untracked card, and also when the issue could not be fetched, which is why the card keeps its own
+   * copy of the content: an unreachable GitHub degrades to stale data, not to a blank card. */
+  issueState?: 'open' | 'closed'
+  /** The single person responsible. A GitHub login on a remote board (the issue's native assignee),
+   * free text on a local one, where the repo has no user directory to pick from. */
+  assignee?: string
+  priority: BoardCardPriority
+  /** `YYYY-MM-DD`. Date only: a deadline with a time of day would be false precision here. */
+  dueDate?: string
+  /** Ids into the owning {@link Board.tags} palette. */
+  tagIds: string[]
+  /** Why this card is stuck. **Its presence is the blocked flag** — there is no separate boolean, so
+   * "blocked with no stated reason" is unrepresentable rather than merely discouraged. */
+  blockedReason?: string
+  /** Definition of Done, as a markdown task list (`- [ ] …`). Seeded from {@link Board.dodTemplate}
+   * at creation and fully editable per card afterwards. Markdown rather than a structured list
+   * because that is already GitHub's native checklist format *and* the app can already render and
+   * tick it (`MarkdownRenderer`'s `onTaskToggle` + `toggleTaskListItem`). */
+  dod: string
+  comments: BoardComment[]
+  schemaVersion: number
+  updatedAt: string
+}
+
+/** Mirrors the Rust `Board` struct (local backend) — the remote backend builds the same shape from
+ * `.git-manager/board.json` + GitHub issues/labels, so the UI never branches on `source` except to
+ * pick which `BoardBackend` implementation to call. */
+export interface Board {
+  id: string
+  name: string
+  source: BoardSource
+  columns: BoardColumn[]
+  /** Optimistic-concurrency token: for the local backend, the board's ref tip commit oid at read
+   * time (a whole-board version stamp — every {@link BoardCard} read alongside it carries the same
+   * value); for the remote backend, the board config's own version marker. */
+  revision: string
+  /** The board's tag palette. */
+  tags: BoardTag[]
+  /**
+   * The identifier prefixes this board offers when a card is created, in the order they were added.
+   *
+   * The board *offers* them; it does not own them. A card carries its own prefix (see
+   * {@link BoardCard.prefix}), which is what lets it keep its identifier when it moves to another
+   * board. Removing one here only stops it being offered — every `GM-7` already out there stays
+   * `GM-7`.
+   */
+  cardPrefixes: string[]
+  /**
+   * The number the next card will take, **per prefix** (local backend only).
+   *
+   * A stored counter rather than `max(existing) + 1`: deleting the newest card must not hand its
+   * number to the next one, or two different tickets end up having been `GM-7`. Per prefix so `GM`
+   * and `BUG` each run an unbroken sequence. The remote backend ignores this and uses the issue
+   * number, which GitHub already guarantees is unique and stable.
+   */
+  nextCardNumbers: Record<string, number>
+  /** Markdown task list copied into every new card's {@link BoardCard.dod}. Empty for a board that
+   * doesn't want one. */
+  dodTemplate: string
+  /** Set when the sprint was closed. A closed board is read-only and hidden from the default board
+   * list — see {@link Board.summary}. */
+  closedAt?: string
+  /** Statistics frozen at closing time. Stored rather than recomputed because closing a sprint
+   * *moves* its unfinished cards to the successor board: recomputing later would report a sprint
+   * that went better than it did. */
+  summary?: SprintSummary
+  schemaVersion: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** A sprint's outcome, computed by `app/board/sprintStats.ts` and frozen onto the board when it is
+ * closed. Deliberately computed in TypeScript and *passed to* the backend, so the arithmetic lives
+ * once and both backends store the same numbers. */
+export interface SprintSummary {
+  closedAt: string
+  totalCards: number
+  doneCards: number
+  unfinishedCards: number
+  /** Percentage of cards in a done column, 0-100, rounded. `0` for an empty sprint. */
+  completionRate: number
+  blockedCards: number
+  /** Cards past their due date that weren't done. */
+  overdueCards: number
+  byColumn: { columnId: string; columnName: string; count: number }[]
+  byPriority: { priority: BoardCardPriority; count: number }[]
+  byAssignee: { assignee: string; total: number; done: number }[]
+  /** The successor sprint the unfinished cards were moved into, when one was created. */
+  carriedOverToBoardId?: string
+}
+
+/** Result of `get_board`/`getBoard`: a board plus every one of its cards in one round trip. */
+export interface BoardWithCards {
+  board: Board
+  cards: BoardCard[]
+}
+
+/** Patch applied to one card — every field left `undefined` is left unchanged. Mirrors the Rust
+ * `BoardCardPatch`. The nullable fields distinguish "leave unchanged" (omitted) from "clear it"
+ * (`null`), since a plain optional can't express that third state.
+ *
+ * {@link BoardCard.comments} is absent on purpose: comments are append-only through `addComment`, so
+ * editing a card can never rewrite what someone else wrote. */
+export interface BoardCardPatch {
+  title?: string
+  description?: string
+  columnId?: string
+  order?: number
+  linkedBranch?: string | null
+  assignee?: string | null
+  priority?: BoardCardPriority
+  dueDate?: string | null
+  tagIds?: string[]
+  blockedReason?: string | null
+  dod?: string
+  /** `null` un-archives; a timestamp archives. */
+  archivedAt?: string | null
+  /** Starts or stops tracking a GitHub issue. `null` untracks — the card keeps the content it was
+   * last showing and becomes an ordinary local card, rather than vanishing with the link. */
+  sourceIssue?: BoardCardSourceIssue | null
+  kind?: BoardCardKind
+  /** The whole link list, replaced wholesale — adding or removing one link is a read-modify-write of
+   * this under the board's existing revision check, rather than two more mutations with their own
+   * conflict semantics. */
+  links?: BoardCardLink[]
+}
+
+/** What a new card *is*, as opposed to where it goes — mirrors the Rust `NewBoardCard`. */
+export interface NewBoardCard {
+  title: string
+  description?: string
+  /** Which identifier sequence to draw the number from. Empty means an unnumbered card. */
+  prefix?: string
+  kind?: BoardCardKind
+  /** Set to track a GitHub issue from the card's very first commit. */
+  sourceIssue?: BoardCardSourceIssue
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface GitHubUser {
@@ -677,6 +934,8 @@ export interface RepoScopedSettings {
   terminalBackground?: string
   /** Overrides `appearance.terminalForeground` (integrated terminal text colour) for this repo. */
   terminalForeground?: string
+  /** Overrides `appearance.viewSwitcherPosition` for this repo. */
+  viewSwitcherPosition?: ViewSwitcherPosition
   /** Glob patterns for gitignored local files (`.env`, local config, …) to copy from this repo
    * into every newly created worktree. Per-repo only — there is no global fallback, so an absent
    * value means "no default files". See `WorktreeAddResult` for the copy outcome. */
@@ -687,6 +946,17 @@ export interface RepoScopedSettings {
   /** Id of the `runTasks` entry launched by the primary "Lancer" button. Falls back to the first
    * task when absent or dangling. Per-repo only. */
   defaultRunTaskId?: string
+}
+
+/** Settings for the remote (GitHub-backed) board's `.git-manager/board.json` auto-sync — periodic
+ * commit+push of that config file so column/board structure edits reach teammates without a manual
+ * commit each time. Off by default: unlike the rest of the sync, this commits and pushes on the
+ * user's behalf on a timer, so it follows the same explicit-opt-in convention as e.g. force-push. */
+export interface BoardSettings {
+  autoSync: {
+    enabled: boolean
+    intervalMinutes: number
+  }
 }
 
 export interface AppSettings {
@@ -701,6 +971,7 @@ export interface AppSettings {
   notifications?: NotificationSettings
   integrations?: IntegrationSettings
   dailySummary?: DailySummarySettings
+  board?: BoardSettings
   /** Per-repository overrides for the subset of settings in `RepoScopedSettings`, keyed by repo
    * path. A repo absent from this map (or with an absent field) inherits every global setting. */
   repoOverrides: Record<string, RepoScopedSettings>
@@ -815,6 +1086,11 @@ export interface GitSettings {
   autoFetchIntervalMinutes?: number
 }
 
+/** Where the repo tab's Graph/Files/Board switcher lives: `'toolbar'` is today's pair of toggle
+ * buttons in `ActionToolbar`; `'tabs'` replaces them with a horizontal tab strip below the toolbar —
+ * Graph, Files, and one tab per board — via `RepoViewTabBar`. Per-repo overridable. */
+export type ViewSwitcherPosition = 'toolbar' | 'tabs'
+
 export interface AppearanceSettings {
   theme: string
   fontSize: number
@@ -837,6 +1113,9 @@ export interface AppearanceSettings {
    * native material already lightens it, so a fixed default is either invisible on
    * one desktop or unreadable on another. */
   glassTransparency?: number
+  /** See {@link ViewSwitcherPosition}. Defaults to `'toolbar'` — today's behavior. Per-repo
+   * overridable via `RepoScopedSettings.viewSwitcherPosition`. */
+  viewSwitcherPosition: ViewSwitcherPosition
 }
 
 export interface UserTheme {

@@ -4,7 +4,9 @@ use crate::utils::get_git_signature;
 use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 
-// ─── Local struct for GitRef with the correct "type" field name ─────────────
+// ─── Refs ───────────────────────────────────────────────────────────────────
+//
+// `ref_type` serializes as `type`, which is the name the frontend reads.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

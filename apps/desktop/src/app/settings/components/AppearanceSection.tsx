@@ -1,6 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Checkbox, NativeSelect, Slider, Tooltip } from '@git-manager/ui'
 import { Monitor, Check, Lock } from 'lucide-react'
+import type { ViewSwitcherPosition } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { FilterableSetting, Highlight } from './settingsSearch'
@@ -134,6 +135,11 @@ export function AppearanceSection() {
   const rowHeights: { value: 'standard' | 'small'; label: string }[] = [
     { value: 'standard', label: t('settings.appearance.rowHeight.standard') },
     { value: 'small', label: t('settings.appearance.rowHeight.small') },
+  ]
+
+  const viewSwitcherPositions: { value: ViewSwitcherPosition; label: string }[] = [
+    { value: 'toolbar', label: t('settings.appearance.viewSwitcherPosition.toolbar') },
+    { value: 'tabs', label: t('settings.appearance.viewSwitcherPosition.tabs') },
   ]
 
   const fontSizes = [12, 13, 14, 16]
@@ -381,6 +387,43 @@ export function AppearanceSection() {
                 className="sr-only"
               />
               {rh.label}
+            </label>
+          ))}
+        </div>
+      </FilterableSetting>
+
+      {/* View switcher position */}
+      <FilterableSetting
+        className="space-y-2"
+        testId="setting-view-switcher-position"
+        match={`${t('settings.appearance.viewSwitcherPosition')} view switcher tabs graph files board kanban onglets bascule vue`}
+      >
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-foreground">
+            <Highlight text={t('settings.appearance.viewSwitcherPosition')} />
+          </p>
+          <OverriddenBadge field="viewSwitcherPosition" />
+        </div>
+        <div className="flex gap-2">
+          {viewSwitcherPositions.map((vs) => (
+            <label
+              key={vs.value}
+              data-testid={`view-switcher-position-radio-${vs.value}`}
+              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
+                appearance.viewSwitcherPosition === vs.value
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              <input
+                type="radio"
+                name="viewSwitcherPosition"
+                value={vs.value}
+                checked={appearance.viewSwitcherPosition === vs.value}
+                onChange={() => updateAppearance({ viewSwitcherPosition: vs.value })}
+                className="sr-only"
+              />
+              {vs.label}
             </label>
           ))}
         </div>

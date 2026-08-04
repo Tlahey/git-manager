@@ -47,10 +47,39 @@ vi.mock('../../../components/git-graph/DeleteRemoteBranchDialog', () => ({
     <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
   ),
 }))
+vi.mock('../../board/BoardPage', () => ({
+  BoardPage: (props: { repoPath: string }) => (
+    <div data-testid="fake-board-page">{props.repoPath}</div>
+  ),
+}))
+
+const { useEffectiveRepoSettingsMock, useBoardDataMock } = vi.hoisted(() => ({
+  useEffectiveRepoSettingsMock: vi.fn(
+    (): { viewSwitcherPosition: 'toolbar' | 'tabs' } => ({ viewSwitcherPosition: 'toolbar' })
+  ),
+  useBoardDataMock: vi.fn(
+    (): {
+      boards: { id: string; name: string }[]
+      activeBoard: { id: string; name: string } | null
+    } => ({ boards: [], activeBoard: null })
+  ),
+}))
+vi.mock('../../../hooks/useEffectiveRepoSettings', () => ({
+  useEffectiveRepoSettings: useEffectiveRepoSettingsMock,
+}))
+vi.mock('../../../hooks/useBoardData', () => ({ useBoardData: useBoardDataMock }))
+// `RepoViewTabBar` has its own dedicated test — faked here so this stays a composition test of
+// *whether* it renders, not a retest of its internals.
+vi.mock('./RepoViewTabBar', () => ({
+  RepoViewTabBar: (props: { boards: { id: string; name: string }[] }) => (
+    <div data-testid="fake-repo-view-tab-bar">{props.boards.map((b) => b.name).join(',')}</div>
+  ),
+}))
 
 import { RepoGraphWorkspace } from './RepoGraphWorkspace'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
+import { useBoardControlsStore } from '../../../stores/boardControls.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
@@ -60,8 +89,11 @@ const INITIAL_EXPLORER = useFileExplorerStore.getState()
 beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useFileExplorerStore.setState(INITIAL_EXPLORER, true)
+  useBoardControlsStore.setState({ isOpen: false })
   useSoloModeStore.setState({ active: false, soloed: new Set() })
   useRepoUIStore.setState({ pendingTagDialog: null, pendingRemoteBranchDelete: null })
+  useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'toolbar' })
+  useBoardDataMock.mockReturnValue({ boards: [], activeBoard: null })
 })
 
 describe('RepoGraphWorkspace', () => {
@@ -97,6 +129,22 @@ describe('RepoGraphWorkspace', () => {
     expect(screen.getByTestId('fake-project-files')).toBeInTheDocument()
     expect(screen.getByTestId('fake-file-tree-sidebar')).toBeInTheDocument()
     expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
+  })
+
+  it('swaps the graph for the board when it is open', () => {
+    useBoardControlsStore.setState({ isOpen: true })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-board-page')).toHaveTextContent('/repo')
+    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
+  })
+
+  it('the board takes priority over the file explorer, and hides the file tree sidebar', () => {
+    useBoardControlsStore.setState({ isOpen: true })
+    useFileExplorerStore.setState({ isOpen: true, isSidebarOpen: true })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-board-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-project-files')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fake-file-tree-sidebar')).not.toBeInTheDocument()
   })
 
   it('passes the soloed branches to the graph only while solo mode is on', () => {
@@ -135,5 +183,23 @@ describe('RepoGraphWorkspace — ref dialogs survive the graph being unmounted',
     render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getAllByTestId('fake-delete-remote-branch')).toHaveLength(1)
     expect(screen.getAllByTestId('fake-tag-dialogs')).toHaveLength(1)
+  })
+})
+
+describe('RepoGraphWorkspace — view switcher tab bar', () => {
+  it('does not render the tab bar when the effective position is "toolbar"', () => {
+    useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'toolbar' })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.queryByTestId('fake-repo-view-tab-bar')).not.toBeInTheDocument()
+  })
+
+  it('renders the tab bar with the board list when the effective position is "tabs"', () => {
+    useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'tabs' })
+    useBoardDataMock.mockReturnValue({
+      boards: [{ id: 'b1', name: 'Sprint 12' }],
+      activeBoard: { id: 'b1', name: 'Sprint 12' },
+    })
+    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-repo-view-tab-bar')).toHaveTextContent('Sprint 12')
   })
 })

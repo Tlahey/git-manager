@@ -1,0 +1,204 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '@git-manager/i18n'
+import type { Board, BoardCard } from '@git-manager/git-types'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  ScrollArea,
+  Tooltip,
+} from '@git-manager/ui'
+import { ArchiveRestore, ExternalLink, Trash2 } from 'lucide-react'
+import { cardIdentifier } from '../cardMeta'
+
+interface ArchivedCardsDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  board: Board
+  /** Every card on the board — the archived ones are picked out here. */
+  cards: BoardCard[]
+  onOpenCard: (card: BoardCard) => void
+  onUnarchive: (card: BoardCard) => Promise<unknown>
+  onDelete: (card: BoardCard) => void
+}
+
+/**
+ * Everything the board has archived, in one place.
+ *
+ * Archiving takes a card out of the columns without destroying it, which only works as a promise if
+ * there is somewhere to find it again. Searching the board surfaces an archived card too, but that
+ * requires already knowing what to search for — this is the list you read when you don't.
+ *
+ * Deleting is delegated rather than done here: it is the one irreversible action on a card, and its
+ * confirmation lives in `DeleteCardDialog`, which the caller owns.
+ */
+export function ArchivedCardsDialog({
+  open,
+  onOpenChange,
+  board,
+  cards,
+  onOpenCard,
+  onUnarchive,
+  onDelete,
+}: ArchivedCardsDialogProps) {
+  const { t } = useTranslation('board')
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    if (open) setQuery('')
+  }, [open])
+
+  const archived = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return cards
+      .filter((c) => c.archivedAt)
+      .filter(
+        (c) =>
+          !needle ||
+          c.title.toLowerCase().includes(needle) ||
+          c.description.toLowerCase().includes(needle) ||
+          (cardIdentifier(c) ?? '').toLowerCase().includes(needle)
+      )
+      // Most recently archived first: the one you want back is usually the one you just put away.
+      .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
+    // `board` is no longer read here: the identifier comes off the card's own prefix.
+  }, [cards, query])
+
+  const totalArchived = cards.filter((c) => c.archivedAt).length
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* A list of card titles with three actions on each row — the default width left the titles
+          barely readable between the identifier and the buttons. */}
+      <DialogContent data-testid="archived-cards-dialog" size="lg" className="overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>{t('archived.title')}</DialogTitle>
+          <DialogDescription>{t('archived.description')}</DialogDescription>
+        </DialogHeader>
+
+        {totalArchived === 0 ? (
+          <p className="py-6 text-center text-xs italic text-muted-foreground" data-testid="archived-none">
+            {t('archived.none')}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('archived.searchPlaceholder')}
+              autoFocus
+              data-testid="archived-search-input"
+            />
+
+            <ScrollArea className="h-72 rounded-md border border-border">
+              <ul className="p-1" data-testid="archived-list">
+                {archived.length === 0 && (
+                  <li className="p-3 text-xs text-muted-foreground" data-testid="archived-empty">
+                    {t('archived.noResults')}
+                  </li>
+                )}
+                {archived.map((card) => (
+                  <ArchivedRow
+                    key={card.id}
+                    card={card}
+                    identifier={cardIdentifier(card) ?? ''}
+                    columnName={board.columns.find((c) => c.id === card.columnId)?.name ?? ''}
+                    onOpen={() => onOpenCard(card)}
+                    onUnarchive={() => void onUnarchive(card)}
+                    onDelete={() => onDelete(card)}
+                  />
+                ))}
+              </ul>
+            </ScrollArea>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ArchivedRow({
+  card,
+  identifier,
+  columnName,
+  onOpen,
+  onUnarchive,
+  onDelete,
+}: {
+  card: BoardCard
+  identifier: string
+  columnName: string
+  onOpen: () => void
+  onUnarchive: () => void
+  onDelete: () => void
+}) {
+  const { t } = useTranslation('board')
+
+  return (
+    <li
+      className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 hover:bg-muted"
+      data-testid={`archived-card-${card.id}`}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
+        data-testid={`archived-card-open-${card.id}`}
+      >
+        <span className="flex w-full min-w-0 items-center gap-1.5">
+          {identifier && (
+            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              {identifier}
+            </span>
+          )}
+          <span className="min-w-0 truncate text-xs text-foreground">{card.title}</span>
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          {t('archived.rowMeta', { column: columnName, date: (card.archivedAt ?? '').slice(0, 10) })}
+        </span>
+      </button>
+
+      <Tooltip content={t('card.actions.unarchive')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 shrink-0 p-0"
+          onClick={onUnarchive}
+          aria-label={t('card.actions.unarchive')}
+          data-testid={`archived-card-unarchive-${card.id}`}
+        >
+          <ArchiveRestore className="h-3.5 w-3.5" />
+        </Button>
+      </Tooltip>
+
+      <Tooltip content={t('archived.open')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 shrink-0 p-0"
+          onClick={onOpen}
+          aria-label={t('archived.open')}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Button>
+      </Tooltip>
+
+      <Tooltip content={t('card.dialog.delete')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 shrink-0 p-0 text-destructive hover:text-destructive"
+          onClick={onDelete}
+          aria-label={t('card.dialog.delete')}
+          data-testid={`archived-card-delete-${card.id}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </Tooltip>
+    </li>
+  )
+}

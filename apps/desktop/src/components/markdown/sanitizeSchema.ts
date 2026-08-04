@@ -18,3 +18,27 @@ import { defaultSchema } from 'rehype-sanitize'
  * `language-*` on `code`.
  */
 export const markdownSanitizeSchema = defaultSchema
+
+/**
+ * The same allow-list, plus `<video>`, for markdown the **user wrote themselves** — today only board
+ * cards and their comments.
+ *
+ * Kept as a separate schema rather than widening the one above, because that one also renders
+ * READMEs and pull requests from strangers, and `<video>` there would let an untrusted document
+ * autoplay media and make outbound requests. The distinction is provenance, not content: a board
+ * card is authored in this app, by this user, and stored in their own repository.
+ *
+ * `src` protocols are left at the default `http`/`https`. A local attachment reaches the renderer as
+ * a *relative* path (`.git-manager/attachments/…`), which carries no protocol for the sanitizer to
+ * reject, and is turned into an `asset://` URL afterwards by `MarkdownImage`/`MarkdownVideo` — after
+ * sanitizing, so no protocol needs whitelisting here.
+ */
+export const authoredMarkdownSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'video', 'source'],
+  attributes: {
+    ...defaultSchema.attributes,
+    video: ['src', 'controls', 'width', 'height', 'poster', 'loop', 'muted', 'playsInline'],
+    source: ['src', 'type'],
+  },
+}

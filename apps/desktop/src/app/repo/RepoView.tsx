@@ -14,6 +14,7 @@ import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashCon
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useBranches } from '../../hooks/useBranches'
+import { useBoardConfigAutoSync } from '../../hooks/useBoardConfigAutoSync'
 import { RepoGraphWorkspace } from './components/RepoGraphWorkspace'
 
 interface RepoViewProps {
@@ -85,6 +86,11 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   useEffect(() => {
     setTerminalTheme({ background: terminalBackground, foreground: terminalForeground })
   }, [terminalBackground, terminalForeground])
+
+  // Periodically commits/pushes a remote board's `.git-manager/board.json` when it's dirty (opt-in,
+  // off by default — see the hook's own doc comment). Runs for whichever repo/worktree this tab is
+  // showing, independent of whether the Board panel itself is open.
+  useBoardConfigAutoSync(effectiveRepoPath)
 
   if (!activeRepo) return null
 

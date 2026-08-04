@@ -45,6 +45,7 @@ describe('useEffectiveRepoSettings', () => {
       theme: 'dark',
       terminalBackground: '#000000',
       terminalForeground: '#e4e4e7',
+      viewSwitcherPosition: 'toolbar',
       worktreeDefaultFiles: [],
       runTasks: [],
       defaultRunTaskId: undefined,
@@ -67,6 +68,21 @@ describe('useEffectiveRepoSettings', () => {
     expect(result.current.terminalBackground).toBe('#abcdef')
     // The non-overridden colour still inherits the global value.
     expect(result.current.terminalForeground).toBe('#e4e4e7')
+  })
+
+  it('resolves the view switcher position to the global appearance value, or the repo override', () => {
+    useSettingsStore.setState((s) => ({
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, viewSwitcherPosition: 'tabs' },
+      },
+    }))
+    const { result: inherited } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(inherited.current.viewSwitcherPosition).toBe('tabs')
+
+    useSettingsStore.getState().setRepoSetting('/repo', 'viewSwitcherPosition', 'toolbar')
+    const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(result.current.viewSwitcherPosition).toBe('toolbar')
   })
 
   it('resolves the GitFlow fields to built-in defaults for a repo with no override', () => {

@@ -153,7 +153,7 @@ export function ProjectFilesView() {
         ) : (
           <div className="h-full overflow-y-auto">
             <table className="w-full text-left text-sm text-foreground">
-              <thead className="sticky top-0 bg-muted/40">
+              <thead className="sticky top-0 border-b border-border bg-background">
                 <tr>
                   <th className="px-4 py-2 font-medium text-muted-foreground">
                     {t('fileExplorer.columnName')}

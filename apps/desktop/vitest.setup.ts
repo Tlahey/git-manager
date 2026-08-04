@@ -76,3 +76,18 @@ Element.prototype.scrollIntoView ??= () => {}
 globalThis.requestAnimationFrame ??= (cb: FrameRequestCallback) =>
   setTimeout(() => cb(Date.now()), 0) as unknown as number
 globalThis.cancelAnimationFrame ??= (handle: number) => clearTimeout(handle)
+
+// jsdom implements `Blob`/`File` but not their `arrayBuffer()` — it landed in the spec after the
+// version jsdom targets. The real webview has it, so code that reads a pasted or dropped file (board
+// card attachments) is correct and only its tests would fail. `FileReader` *is* implemented, so it
+// backs the polyfill.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer !== 'function') {
+  Blob.prototype.arrayBuffer = function arrayBuffer(this: Blob): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as ArrayBuffer)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsArrayBuffer(this)
+    })
+  }
+}

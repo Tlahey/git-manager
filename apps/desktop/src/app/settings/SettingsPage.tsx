@@ -7,6 +7,7 @@ import {
   FolderTree,
   GitBranch,
   GitCommitHorizontal,
+  Kanban,
   Sparkles,
   Heart,
   KeyRound,
@@ -28,6 +29,7 @@ import { IntegrationSection } from './components/IntegrationSection'
 import { AiSection } from './components/AiSection'
 import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
+import { BoardSection } from './components/BoardSection'
 import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
 import { ChangelogSection } from './components/ChangelogSection'
@@ -49,6 +51,7 @@ export type Section =
   | 'ai_features'
   | 'external_tools'
   | 'notifications'
+  | 'board'
   | 'ui_customization'
   | 'rewards'
   | 'changelog'
@@ -235,6 +238,12 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
       label: t('settings.sections.notifications'),
       render: () =>
         scrolled(withReset(<NotificationSection />, () => resetSettingsGroups(['notifications']))),
+    },
+    {
+      id: 'board',
+      icon: Kanban,
+      label: t('settings.sections.board'),
+      render: () => scrolled(withReset(<BoardSection />, () => resetSettingsGroups(['board']))),
     },
     {
       id: 'ui_customization',

@@ -43,7 +43,7 @@ pub async fn get_user_themes() -> Result<Vec<UserTheme>, String> {
 
         // Capitalise first letter and replace separators with spaces for display
         let name = {
-            let raw = stem.replace('-', " ").replace('_', " ");
+            let raw = stem.replace(['-', '_'], " ");
             let mut chars = raw.chars();
             match chars.next() {
                 None => String::new(),

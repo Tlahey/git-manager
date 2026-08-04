@@ -10,6 +10,7 @@ import {
   Archive,
   ArchiveRestore,
   FolderOpen,
+  Kanban,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
@@ -22,6 +23,8 @@ import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { useBoardControlsStore } from '../../stores/boardControls.store'
+import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { deriveTimeline } from '../../lib/timelineModel'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
@@ -94,6 +97,23 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
 
   const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
   const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
+  // The board panel and the file explorer share one central-area slot in `RepoGraphWorkspace`
+  // (alongside the graph), so opening one closes the other.
+  const isBoardOpen = useBoardControlsStore((s) => s.isOpen)
+  function toggleBoard() {
+    const opening = !isBoardOpen
+    useBoardControlsStore.getState().setOpen(opening)
+    if (opening && isFileExplorerOpen) useFileExplorerStore.getState().actions.setIsOpen(false)
+  }
+  function handleToggleFileExplorer() {
+    const opening = !isFileExplorerOpen
+    toggleFileExplorer()
+    if (opening && isBoardOpen) useBoardControlsStore.getState().setOpen(false)
+  }
+  // These buttons are the toggle-button flavor of the Graph/Files/Board switcher; when the setting
+  // is 'tabs', `RepoViewTabBar` (rendered below the toolbar) takes over instead — no dual controls.
+  const { viewSwitcherPosition } = useEffectiveRepoSettings(effectiveRepoPath)
+  const showViewSwitcherButtons = viewSwitcherPosition !== 'tabs'
 
   return (
     <div
@@ -235,18 +255,34 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
 
       {/* ── Right section: actions & search ───────────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        <ToolbarButton
-          icon={
-            <FolderOpen
-              className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`}
+        {showViewSwitcherButtons && (
+          <>
+            <ToolbarButton
+              icon={
+                <FolderOpen
+                  className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`}
+                />
+              }
+              label={isFileExplorerOpen ? t('toolbar.filesClose') : t('toolbar.files')}
+              title={t('toolbar.filesTitle')}
+              disabled={disabled}
+              onClick={handleToggleFileExplorer}
+              data-testid="toolbar-files-button"
             />
-          }
-          label={isFileExplorerOpen ? t('toolbar.filesClose') : t('toolbar.files')}
-          title={t('toolbar.filesTitle')}
-          disabled={disabled}
-          onClick={() => toggleFileExplorer()}
-          data-testid="toolbar-files-button"
-        />
+            <ToolbarButton
+              icon={
+                <Kanban
+                  className={`h-4 w-4 ${isBoardOpen ? 'text-primary' : 'text-muted-foreground'}`}
+                />
+              }
+              label={isBoardOpen ? t('toolbar.boardClose') : t('toolbar.board')}
+              title={t('toolbar.boardTitle')}
+              disabled={disabled}
+              onClick={toggleBoard}
+              data-testid="toolbar-board-button"
+            />
+          </>
+        )}
         <ToolbarButton
           icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.actions')}
