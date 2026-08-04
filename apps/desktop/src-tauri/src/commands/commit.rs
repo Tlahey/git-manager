@@ -263,23 +263,17 @@ pub async fn get_file_raw_contents(
     oid: Option<String>,
     base_oid: Option<String>,
 ) -> Result<RawFileDiffContents, String> {
-    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     let original = if let Some(ref oid_str) = oid {
         // For a merged range the "before" side is the oldest selected commit's first parent
         // (`base_oid`); otherwise it's this commit's own first parent.
         let base_oid_str = base_oid.as_ref().unwrap_or(oid_str);
-        let base_commit_oid = Oid::from_str(base_oid_str).map_err(|e| e.to_string())?;
-        let commit = repo
-            .find_commit(base_commit_oid)
-            .map_err(|e| e.to_string())?;
+        let base_commit_oid = Oid::from_str(base_oid_str).map_err(AppError::Git)?;
+        let commit = repo.find_commit(base_commit_oid).map_err(AppError::Git)?;
         if commit.parent_count() > 0 {
-            let parent = commit.parent(0).map_err(|e| e.to_string())?;
-            get_file_content_from_tree(
-                &repo,
-                &parent.tree().map_err(|e| e.to_string())?,
-                &file_path,
-            )?
+            let parent = commit.parent(0).map_err(AppError::Git)?;
+            get_file_content_from_tree(&repo, &parent.tree().map_err(AppError::Git)?, &file_path)?
         } else {
             String::new()
         }
@@ -289,7 +283,7 @@ pub async fn get_file_raw_contents(
                 if let Ok(commit) = resolved.peel_to_commit() {
                     get_file_content_from_tree(
                         &repo,
-                        &commit.tree().map_err(|e| e.to_string())?,
+                        &commit.tree().map_err(AppError::Git)?,
                         &file_path,
                     )
                     .unwrap_or_default()
@@ -325,13 +319,9 @@ pub async fn get_file_raw_contents(
     };
 
     let modified = if let Some(ref oid_str) = oid {
-        let commit_oid = Oid::from_str(oid_str).map_err(|e| e.to_string())?;
-        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
-        get_file_content_from_tree(
-            &repo,
-            &commit.tree().map_err(|e| e.to_string())?,
-            &file_path,
-        )?
+        let commit_oid = Oid::from_str(oid_str).map_err(AppError::Git)?;
+        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+        get_file_content_from_tree(&repo, &commit.tree().map_err(AppError::Git)?, &file_path)?
     } else if staged {
         get_file_content_from_index(&repo, &file_path).unwrap_or_default()
     } else {
@@ -364,11 +354,11 @@ pub async fn get_commit_file_vs_workdir(
     file_path: String,
 ) -> Result<RawFileDiffContents, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
 
-        let commit_oid = Oid::from_str(&oid).map_err(|e| e.to_string())?;
-        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
-        let tree = commit.tree().map_err(|e| e.to_string())?;
+        let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
+        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+        let tree = commit.tree().map_err(AppError::Git)?;
         let original = get_file_content_from_tree(&repo, &tree, &file_path)?;
 
         let full_path = std::path::Path::new(&path).join(&file_path);
@@ -405,7 +395,7 @@ fn get_file_content_from_tree(
 }
 
 fn get_file_content_from_index(repo: &Repository, file_path: &str) -> Result<String, String> {
-    let index = repo.index().map_err(|e| e.to_string())?;
+    let index = repo.index().map_err(AppError::Git)?;
     if let Some(entry) = index.get_path(std::path::Path::new(file_path), 0) {
         if let Ok(blob) = repo.find_blob(entry.id) {
             if blob.is_binary() {
@@ -416,5 +406,7 @@ fn get_file_content_from_index(repo: &Repository, file_path: &str) -> Result<Str
             }
         }
     }
-    Err(format!("File not found in index: {file_path}"))
+    Err(String::from(AppError::Unknown(format!(
+        "File not found in index: {file_path}"
+    ))))
 }
