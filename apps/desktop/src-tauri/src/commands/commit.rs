@@ -307,8 +307,11 @@ pub async fn get_file_raw_contents(
             if let Ok(head) = repo.head() {
                 if let Ok(resolved) = head.resolve() {
                     if let Ok(commit) = resolved.peel_to_commit() {
-                        get_file_content_from_tree(&repo, &commit.tree().unwrap(), &file_path)
-                            .unwrap_or_default()
+                        if let Ok(tree) = commit.tree() {
+                            get_file_content_from_tree(&repo, &tree, &file_path).unwrap_or_default()
+                        } else {
+                            String::new()
+                        }
                     } else {
                         String::new()
                     }
