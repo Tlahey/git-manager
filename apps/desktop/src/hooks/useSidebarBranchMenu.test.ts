@@ -11,10 +11,8 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 const dialogOpen = vi.fn()
-const dialogSave = vi.fn()
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: (...a: unknown[]) => dialogOpen(...a),
-  save: (...a: unknown[]) => dialogSave(...a),
 }))
 
 const toastSuccess = vi.fn()
@@ -42,7 +40,6 @@ vi.mock('../api/git.api', () => ({
   apiCopyCommitSha: vi.fn(),
   apiGetCommitWebUrl: vi.fn(),
   apiGetBranchWebUrl: vi.fn(),
-  apiCreatePatch: vi.fn(),
   apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
@@ -442,10 +439,14 @@ describe('useSidebarBranchMenu — AI branch explanation / review', () => {
     })
   })
 
-  // `useSidebarBranchMenu` wires an `onReviewBranch` handler into `branchActionsFor` (to satisfy
-  // the shared `BranchMenuActions` interface), but `buildSidebarBranchMenuSpec` never renders a
-  // "Review branch changes" item for it — unlike the graph's own branch menu, which offers both
-  // explain and review. The handler is unreachable from this hook's actual menu today.
+  // The sidebar's branch row menu deliberately offers no "Review branch changes" item — only the
+  // graph's own branch menu does (see `graphContextMenus.ts`'s `buildSidebarBranchMenuSpec`, and
+  // `4b724da9`, the commit that split the sidebar spec out and stated this explicitly). The sidebar
+  // reaches the review panel a different way instead, via a PR row's own menu (`useSidebarPrMenu`).
+  it('never offers to review branch changes from a branch row (graph-only item)', () => {
+    const { spec } = openMenu(localBranch('feat'))
+    expect(findItem(spec, 'Review branch changes (LLM)')).toBeUndefined()
+  })
 
   it('refuses to explain a branch with no resolvable base', () => {
     useQueryMock.mockReturnValue({ data: [] })
@@ -486,14 +487,17 @@ describe('useSidebarBranchMenu — worktree from branch tip', () => {
   })
 })
 
-// `copyActionsFor` wires `onCreatePatch` (→ the hook's private `createPatch`, which drives
-// `apiCreatePatch` behind a save dialog) into `commitActions` alongside the copy-sha/copy-link
-// handlers, but `buildSidebarBranchMenuSpec`'s hand-spelled copy section deliberately omits a
-// "Create patch" item ("a row's menu carries the four copies and not the patch, which belongs to
-// a commit the user pointed at in the graph" — see its comment). So, like `onReviewBranch` above,
-// `onCreatePatch` is wired but unreachable from this hook's actual sidebar menu today.
-
 describe('useSidebarBranchMenu — copy actions', () => {
+  // `buildSidebarBranchMenuSpec`'s hand-spelled copy section deliberately omits a "Create patch"
+  // item — "a row's menu carries the four copies and not the patch, which belongs to a commit the
+  // user pointed at in the graph" (see that builder's comment, and `4b724da9`) — so this hook wires
+  // no `onCreatePatch` handler at all (the field is optional on `CommitCopyActions` for exactly
+  // this reason).
+  it('never offers to create a patch from a branch row (graph-only item)', () => {
+    const { spec } = openMenu(localBranch('feat'))
+    expect(findItem(spec, 'Create patch from commit…')).toBeUndefined()
+  })
+
   it('copies the branch tip sha', async () => {
     mocked.apiCopyCommitSha.mockResolvedValue(undefined)
     const { spec } = openMenu(localBranch('feat'))

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { open, save } from '@tauri-apps/plugin-dialog'
+import { open } from '@tauri-apps/plugin-dialog'
 import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef } from '@git-manager/git-types'
@@ -23,7 +23,6 @@ import {
   apiCopyCommitSha,
   apiGetCommitWebUrl,
   apiGetBranchWebUrl,
-  apiCreatePatch,
   apiSetBranchUpstream,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
@@ -154,24 +153,14 @@ export function useSidebarBranchMenu(repoPath: string) {
     }
   }
 
-  async function createPatch(oid: string) {
-    try {
-      const destPath = await save({ defaultPath: `${oid.slice(0, 7)}.patch` })
-      if (!destPath) return
-      await apiCreatePatch(repoPath, oid, destPath)
-      toast.success(t('gitTree.contextMenu.patchCreated'))
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
-
   /**
-   * Opens one of the two branch-scoped AI right panels, resolving the base to read the branch
-   * against. Mirrors the graph menu's helper of the same name — both entry points must resolve the
-   * base identically, or the same branch would be explained against one base and reviewed against
-   * another.
+   * Opens the branch-scoped AI explanation panel, resolving the base to read the branch against.
+   * Mirrors the graph menu's helper of the same name, minus the "review" branch that helper also
+   * serves — the sidebar's own branch row menu offers no "Review branch changes" item (only the
+   * graph's branch menu does; the sidebar's Pull Requests row menu reaches the review panel its own
+   * way, via `useSidebarPrMenu`), so this hook only ever opens the explanation kind.
    */
-  function openBranchAiPanel(r: GitRef, kind: 'branch' | 'reviewBranch') {
+  function openBranchExplanationPanel(r: GitRef) {
     const baseRef = resolveExplanationBase(
       r.shortName,
       targetBranches,
@@ -183,7 +172,7 @@ export function useSidebarBranchMenu(repoPath: string) {
       toast.error(t('gitTree.branchExplanation.noBase', { branch: r.shortName }))
       return
     }
-    setAiPanelTarget({ kind, branch: r.shortName, baseRef })
+    setAiPanelTarget({ kind: 'branch', branch: r.shortName, baseRef })
   }
 
   /** The branch-scoped callbacks both menus share, bound to one row's branch. */
@@ -237,8 +226,7 @@ export function useSidebarBranchMenu(repoPath: string) {
       // the dialog is mounted by `RepoView`, so it also works while the graph is unmounted.
       onCompareWithBranch: (r) =>
         setCompareRefsTarget({ baseRef: r.shortName, headRef: currentBranch ?? r.shortName }),
-      onExplainBranch: (r) => openBranchAiPanel(r, 'branch'),
-      onReviewBranch: (r) => openBranchAiPanel(r, 'reviewBranch'),
+      onExplainBranch: openBranchExplanationPanel,
       onRenameBranch: (r) => setRenameTarget(r.shortName),
       // Same split as the graph's own branch menu: a remote ref needs a real network push, so it
       // goes through a confirmation dialog rather than deleting outright.
@@ -269,7 +257,12 @@ export function useSidebarBranchMenu(repoPath: string) {
     }
   }
 
-  /** Copy/patch callbacks acting on the branch's tip commit. */
+  /**
+   * Copy callbacks acting on the branch's tip commit. No `onCreatePatch`: `buildSidebarBranchMenuSpec`
+   * hand-spells its copy section without that item — "a row's menu carries the four copies and not
+   * the patch, which belongs to a commit the user pointed at in the graph" — so this hook has nothing
+   * to wire it to (the field is optional on `CommitCopyActions` for exactly this reason).
+   */
   function copyActionsFor(branch: GitBranch): CommitCopyActions {
     return {
       onCopySha: () =>
@@ -277,7 +270,6 @@ export function useSidebarBranchMenu(repoPath: string) {
           toast.success(t('gitTree.contextMenu.shaCopied'))
         ),
       onCopyLink: () => void copyCommitLink(branch.commitOid),
-      onCreatePatch: () => void createPatch(branch.commitOid),
     }
   }
 
