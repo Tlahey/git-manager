@@ -93,18 +93,14 @@ pub async fn clone_repo(
         #[cfg(not(target_os = "windows"))]
         let mut cmd = Command::new("git");
 
-        let output = cmd
-            .args(&args)
-            .output()
-            .map_err(|e| format!("Failed to run git clone: {}", e))?;
+        let output = cmd.args(&args).output().map_err(AppError::Io)?;
 
         if !output.status.success() {
             let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
-            return Err(format!("Git clone failed: {}", err_msg));
+            return Err(AppError::Unknown(format!("Git clone failed: {}", err_msg)).into());
         }
 
-        let repo = Repository::open(&clone_dest)
-            .map_err(|e| format!("Failed to open cloned repository: {}", e))?;
+        let repo = Repository::open(&clone_dest).map_err(AppError::Git)?;
         Ok(build_git_repo(&repo, clone_dest))
     })
     .await
@@ -293,7 +289,7 @@ pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
 }
 
 fn get_repo_summary_blocking(path: String) -> Result<GitRepoSummary, String> {
-    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     let name = std::path::Path::new(&path)
         .file_name()
@@ -387,7 +383,7 @@ fn get_repo_summary_blocking(path: String) -> Result<GitRepoSummary, String> {
 #[tauri::command]
 pub async fn open_in_editor(path: String, command: String) -> Result<(), String> {
     if command.is_empty() {
-        return Err("No editor application configured".to_string());
+        return Err(AppError::InvalidInput("No editor application configured".to_string()).into());
     }
 
     // macOS .app bundles (picked via the native file dialog) can't be
@@ -398,7 +394,7 @@ pub async fn open_in_editor(path: String, command: String) -> Result<(), String>
             .args(["-a", &command, &path])
             .spawn()
             .map(|_| ())
-            .map_err(|e| format!("Failed to open editor: {}", e));
+            .map_err(|e| AppError::Io(e).into());
     }
 
     #[cfg(target_os = "windows")]
@@ -409,9 +405,7 @@ pub async fn open_in_editor(path: String, command: String) -> Result<(), String>
     #[cfg(not(target_os = "windows"))]
     let status = std::process::Command::new(&command).arg(&path).spawn();
 
-    status
-        .map(|_| ())
-        .map_err(|e| format!("Failed to open editor: {}", e))
+    status.map(|_| ()).map_err(|e| AppError::Io(e).into())
 }
 
 /// Reads the repository's README file if there is one.
@@ -419,7 +413,7 @@ pub async fn open_in_editor(path: String, command: String) -> Result<(), String>
 pub async fn get_repo_readme(app: AppHandle, path: String) -> Result<String, String> {
     let dir = std::path::Path::new(&path);
     if !dir.exists() {
-        return Err("Repository path does not exist".to_string());
+        return Err(AppError::RepoNotFound(path).into());
     }
 
     // The dashboard renders a README's images without necessarily having opened the repository in a
@@ -440,12 +434,12 @@ pub async fn get_repo_readme(app: AppHandle, path: String) -> Result<String, Str
         if file_path.exists() && file_path.is_file() {
             match std::fs::read_to_string(&file_path) {
                 Ok(content) => return Ok(content),
-                Err(e) => return Err(format!("Failed to read README: {}", e)),
+                Err(e) => return Err(AppError::Io(e).into()),
             }
         }
     }
 
-    Err("No README file found in this repository".to_string())
+    Err(AppError::Unknown("No README file found in this repository".to_string()).into())
 }
 
 /// Opens a terminal in the given directory using the user's chosen application (an absolute path to
@@ -467,13 +461,15 @@ pub async fn open_in_terminal(path: String, command: String) -> Result<(), Strin
                 .args(["-a", app, &path])
                 .spawn()
                 .map(|_| ())
-                .map_err(|e| format!("Failed to open terminal: {e}"));
+                .map_err(|e| AppError::Io(e).into());
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     if command.is_empty() {
-        return Err("No terminal application configured".to_string());
+        return Err(
+            AppError::InvalidInput("No terminal application configured".to_string()).into(),
+        );
     }
 
     #[cfg(target_os = "windows")]
@@ -487,9 +483,7 @@ pub async fn open_in_terminal(path: String, command: String) -> Result<(), Strin
         .current_dir(&path)
         .spawn();
 
-    status
-        .map(|_| ())
-        .map_err(|e| format!("Failed to open terminal: {e}"))
+    status.map(|_| ()).map_err(|e| AppError::Io(e).into())
 }
 
 /// Reveals an arbitrary filesystem path in the Finder — e.g. a linked worktree's directory from the
@@ -504,13 +498,16 @@ pub async fn reveal_path_in_finder(path: String) -> Result<(), String> {
             .arg(&path)
             .spawn()
             .map(|_| ())
-            .map_err(|e| format!("Failed to reveal path: {e}"))
+            .map_err(|e| AppError::Io(e).into())
     }
 
     #[cfg(not(target_os = "macos"))]
     {
         let _ = path;
-        Err("Revealing a path in the file manager is only supported on macOS".to_string())
+        Err(AppError::Unknown(
+            "Revealing a path in the file manager is only supported on macOS".to_string(),
+        )
+        .into())
     }
 }
 
@@ -526,7 +523,11 @@ pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
             #[allow(deprecated)]
             std::env::home_dir().map(|p| p.to_string_lossy().to_string())
         })
-        .ok_or_else(|| "Could not find home directory".to_string())?;
+        .ok_or_else(|| {
+            String::from(AppError::Unknown(
+                "Could not find home directory".to_string(),
+            ))
+        })?;
 
     let mut commands = Vec::new();
 

@@ -35,7 +35,7 @@ pub async fn run_interactive_rebase(
     // Upstream argument: the parent of the oldest commit, or --root for a root commit.
     let upstream_arg = {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        let oid = Oid::from_str(&base_oid).map_err(|_| format!("Invalid OID: {base_oid}"))?;
+        let oid = Oid::from_str(&base_oid).map_err(AppError::Git)?;
         let commit = repo.find_commit(oid).map_err(AppError::Git)?;
         if commit.parent_count() == 0 {
             "--root".to_string()
@@ -52,7 +52,7 @@ pub async fn run_interactive_rebase(
         std::process::id(),
         chrono_free_timestamp()
     ));
-    std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&tmp_dir).map_err(AppError::Io)?;
     let todo_path = git_interactive_rebase::write_todo(&steps, &tmp_dir)?;
 
     let sequence_editor = format!("cp \"{}\"", todo_path.display());
@@ -69,7 +69,7 @@ pub async fn run_interactive_rebase(
         .await
         .map_err(|e| {
             emit_progress(&app, &path, "error");
-            e.to_string()
+            AppError::Unknown(e.to_string())
         })?;
 
     if !output.status.success() {

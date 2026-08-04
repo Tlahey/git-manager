@@ -109,7 +109,7 @@ pub fn set_window_vibrancy(
                 // the content view accumulates a stack of NSVisualEffectViews.
                 let _ = clear_vibrancy(&window);
                 apply_vibrancy(&window, effect, Some(NSVisualEffectState::Active), None)
-                    .map_err(|e| e.to_string())
+                    .map_err(|e| String::from(crate::error::AppError::Unknown(e.to_string())))
                     .inspect(|_| {
                         clear_webview_backdrop(&window);
                         // The synchronous strip usually mutes nothing: the material's
@@ -121,7 +121,7 @@ pub fn set_window_vibrancy(
             }
             _ => clear_vibrancy(&window)
                 .map(|_| ())
-                .map_err(|e| e.to_string()),
+                .map_err(|e| String::from(crate::error::AppError::Unknown(e.to_string()))),
         };
 
         // The caller deliberately swallows this error (the effect is decoration, and
