@@ -19,6 +19,7 @@
 
 use crate::error::AppError;
 use crate::services::git_ref_resolve::resolve_first_ref;
+use crate::utils::short_oid;
 use git2::{Delta, DiffOptions, Repository};
 use serde::Serialize;
 use std::path::Path;
@@ -205,7 +206,7 @@ fn collect_commits(
         head_oid.get_or_insert_with(|| commit.id().to_string());
         base_oid = Some(commit.parent_id(0).unwrap_or(commit.id()).to_string());
         commits.push(ActivityCommit {
-            short_oid: commit.id().to_string()[..7].to_string(),
+            short_oid: short_oid(&commit.id().to_string()),
             subject,
             body,
             author: commit.author().name().unwrap_or("").to_string(),
