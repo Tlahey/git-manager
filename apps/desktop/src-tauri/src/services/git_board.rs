@@ -38,8 +38,8 @@
 
 use crate::error::AppError;
 use crate::models::{
-    Board, BoardCard, BoardCardPatch, BoardCardSourceIssue, BoardColumn, BoardComment, BoardTag,
-    GitCommit, NewBoardCard, SprintSummary, LOCAL_BOARD_SOURCE,
+    Board, BoardCard, BoardCardPatch, BoardColumn, BoardComment, BoardTag, GitCommit, NewBoardCard,
+    SprintSummary, LOCAL_BOARD_SOURCE,
 };
 use crate::utils::{commit_to_model, get_git_signature, repo_slug};
 use chrono::Utc;
@@ -976,6 +976,8 @@ pub fn restore_board_backup(repo: &Repository, board_id: &str) -> Result<Board, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Only the tests name this type directly — the service reaches it through `NewBoardCard`.
+    use crate::models::BoardCardSourceIssue;
 
     fn init_repo(name: &str) -> (PathBuf, Repository) {
         let dir =
