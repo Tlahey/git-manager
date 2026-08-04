@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:a11y": "vitest run themesRegistry userThemeValidation",
-    "build:e2e": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json"
+    "build:e2e": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
+    "clean": "rm -rf dist && cargo clean -p git-manager --manifest-path src-tauri/Cargo.toml",
+    "clean:deps": "rm -rf dist && cargo clean --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

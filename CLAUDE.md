@@ -16,7 +16,9 @@ pnpm build                # Production build
 pnpm typecheck            # TypeScript check across all packages (turbo)
 pnpm lint                 # Oxlint across all packages (turbo)
 pnpm format                # Prettier write across ts/tsx/json/md
-pnpm clean                # Remove build artifacts
+pnpm clean                # Remove build artifacts, including this crate's Rust objects
+pnpm clean:rust           # Just the Rust side — the cure for a poisoned target dir (see below)
+pnpm clean:deps           # Also drops every compiled dependency; minutes to rebuild, rarely needed
 
 # Per-package
 pnpm --filter @git-manager/desktop typecheck
@@ -31,6 +33,10 @@ pnpm fixture:build        # just rebuild the fixture repos on disk without relau
 ```
 
 Rust backend (`apps/desktop/src-tauri`): standard `cargo clippy` / `cargo fmt` from that directory; both are required to pass in CI.
+
+**If a build suddenly fails to link** with `ld: symbol(s) not found for architecture arm64` and a wall of `_anon.*.llvm.*` symbols, the shared `target/` holds artifacts from a differently-configured build (mixing `cargo clippy`, `cargo test` and `tauri dev` in it is enough). Nothing in the source is wrong. Run `pnpm clean:rust` — it drops **only this crate**, so the rebuild is ~20s rather than the many minutes a full `cargo clean` costs. To avoid causing it, give clippy its own target dir: `CARGO_TARGET_DIR=target/clippy cargo clippy --all-targets`.
+
+Note also that `cargo` reports a cached run as `Finished` in well under a second without recompiling anything, replaying the previous diagnostics — so a clean result that arrives instantly proves nothing about the code you just edited. `touch src/lib.rs` first when the answer matters.
 
 Frontend unit tests use Vitest (`apps/desktop/vitest.config.ts`/`vitest.setup.ts`), covering pure logic directly (e.g. `mergeBlockLayout.ts`) and components via React Testing Library with a fake `@monaco-editor/react` (see `components/merge-editor/__tests__/fakeMonacoPane.tsx`) — real Monaco can't run in jsdom. The Rust backend has no test runner wired into CI beyond `cargo clippy`/`cargo fmt`, though some modules (e.g. `git_merge_diff.rs`) have `#[cfg(test)]` unit tests you can run directly with `cargo test` from `apps/desktop/src-tauri`.
 
