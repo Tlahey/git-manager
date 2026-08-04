@@ -170,6 +170,42 @@ describe('NotchCard', () => {
     expect(onPointerLeave).toHaveBeenCalled()
   })
 
+  it('lets one card override the halo colour its tone would have given it', () => {
+    // The reward card glows in its medal's colour, and "gold" is not something the seven tones can
+    // say. Everything else leaves this alone.
+    render(
+      <NotchCard tone="highlight" visible haloRgb="255, 215, 0">
+        <div />
+      </NotchCard>
+    )
+    const halo = screen.getByTestId('notch-halo')
+    expect(halo.style.getPropertyValue('--notch-tone-rgb')).toBe('255, 215, 0')
+    expect(halo.style.getPropertyValue('--notch-tone-rgb')).not.toBe(NOTCH_TONE_RGB.highlight)
+  })
+
+  it('paints the backdrop behind the rows, so nothing flies over a title', () => {
+    render(
+      <NotchCard tone="highlight" visible backdrop={<div data-testid="paper" />}>
+        <div>body</div>
+      </NotchCard>
+    )
+    const shell = screen.getByTestId('notch-card')
+    const [first, second] = Array.from(shell.children)
+    expect(first).toBe(screen.getByTestId('paper'))
+    expect(second).toBe(screen.getByTestId('notch-content'))
+  })
+
+  it('keeps the backdrop out of the contents’ fade, the way the halo is', () => {
+    // The celebration belongs to the shell: it times itself against the card's arrival and fades on
+    // its own, rather than being switched off with the rows.
+    render(
+      <NotchCard tone="highlight" visible={false} backdrop={<div data-testid="paper" />}>
+        <div>body</div>
+      </NotchCard>
+    )
+    expect(screen.getByTestId('notch-content')).not.toContainElement(screen.getByTestId('paper'))
+  })
+
   it('keeps the halo out of the accessibility tree', () => {
     render(
       <NotchCard tone="info" visible>

@@ -27,10 +27,28 @@ export interface NotchCardProps {
    * enough along that the fade will finish as the card leaves.
    */
   visible: boolean
+  /**
+   * Overrides the halo's colour, as a bare `r, g, b` triple.
+   *
+   * For the one card whose accent is not its tone: a reward glows in its medal's colour, and "gold"
+   * is not something the seven tones can say. Everything else leaves this alone and gets
+   * {@link NOTCH_TONE_RGB}.
+   */
+  haloRgb?: string
   /** Content for the left sliver of the reserved band. Capped so it can't run under the housing. */
   bandStart?: ReactNode
   /** Content for the right sliver — the close button, in practice. */
   bandEnd?: ReactNode
+  /**
+   * Painted inside the shell, behind every row and clipped by the shell's own rounded rectangle —
+   * the reward card's confetti, and nothing else so far.
+   *
+   * Behind the rows rather than over them: white text on black is the one thing on this card that
+   * has to stay readable, and paper flying across a title is how a celebration turns into a
+   * legibility bug. Clipped rather than free: see `NotchConfetti` for why the burst cannot leave the
+   * card.
+   */
+  backdrop?: ReactNode
   children: ReactNode
   /** Clicking anywhere on the card. The action row's primary button is the same action made
    *  explicit and keyboard-reachable, which is why this stays a plain div rather than a
@@ -61,8 +79,10 @@ export interface NotchCardProps {
 export function NotchCard({
   tone,
   visible,
+  haloRgb,
   bandStart,
   bandEnd,
+  backdrop,
   children,
   onActivate,
   onPointerEnter,
@@ -73,7 +93,7 @@ export function NotchCard({
   bandHeight = NOTCH_ROW.band,
   'data-testid': testId = 'notch-card',
 }: NotchCardProps) {
-  const toneRgb = NOTCH_TONE_RGB[tone]
+  const toneRgb = haloRgb ?? NOTCH_TONE_RGB[tone]
   const inset = {
     top: haloMargin,
     left: haloMargin,
@@ -137,6 +157,11 @@ export function NotchCard({
           onActivate && 'cursor-pointer'
         )}
       >
+        {/* Before the content in document order, so it stays behind it without a z-index. Outside
+            the fading wrapper below for the same reason the halo is outside it: the celebration
+            belongs to the shell, times itself against the card's arrival, and fades on its own. */}
+        {backdrop}
+
         {/* Everything drawn *inside* the shell fades as one, so the card arrives and leaves as a
             solid object with its contents resolving in and out of it — rather than the whole
             thing dissolving, which is indistinguishable from it never having moved. */}

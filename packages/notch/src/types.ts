@@ -43,8 +43,19 @@ export type NotchTone =
  * - `event` — fire and forget: something happened, here it is, it fades on its own.
  * - `progress` — a live card, updated in place while an operation runs, closing when it ends.
  * - `status` — the outcome of an operation, optionally with the tail of its output.
+ * - `reward` — the user unlocked something, and the card celebrates it.
  */
-export type NotchKind = 'event' | 'progress' | 'status'
+export type NotchKind = 'event' | 'progress' | 'status' | 'reward'
+
+/**
+ * The medal a reward carries — its colour, and the palette its confetti is thrown in.
+ *
+ * Four values rather than a {@link NotchTone} because a tone says how an event *feels* and every
+ * reward feels the same way (good); what differs is how *rare* it was, and the seven tones have no
+ * way to say "bronze". Mirrors the app's own `AchievementTier` without depending on it — the same
+ * ranking any gamified surface uses, which is why it is allowed in a domain-agnostic package.
+ */
+export type NotchRewardTier = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 /** A button in the card's action row. `id` is what comes back through `onAction`. */
 export interface NotchAction {
@@ -103,7 +114,40 @@ export interface NotchStatusModel extends NotchModelBase {
   outputLines?: string[]
 }
 
-export type NotchModel = NotchEventModel | NotchProgressModel | NotchStatusModel
+/**
+ * Something was unlocked.
+ *
+ * The one card whose subject is the *user* rather than a repository, which is what earns it a shape
+ * of its own: it gets a medal in place of an avatar, its accent comes from its {@link tier} instead
+ * of its tone, and it is the only card allowed to throw confetti.
+ */
+export interface NotchRewardModel extends NotchModelBase {
+  kind: 'reward'
+  /** What was unlocked — the achievement's name. */
+  title: string
+  /** What earned it ("Merged 50 pull requests"). */
+  description?: string
+  /** What it grants ("Aurora theme"), rendered in the tier's own colour. XP goes in `badge`. */
+  reward?: string
+  /**
+   * Which medal, and which confetti palette.
+   *
+   * Purely visual: the medal is decorative and a colour cannot be read aloud, so a card whose tier
+   * matters should also say it in its {@link NotchModelBase.eyebrow} — where it is a translated
+   * string rather than a hue.
+   */
+  tier: NotchRewardTier
+  /**
+   * Whether to celebrate. Defaults to `true` — the card exists to celebrate.
+   *
+   * `false` is for showing a reward the user has already seen (a replay from the rewards list),
+   * where confetti would be a second announcement of old news. A user who asked their system for
+   * reduced motion gets no confetti whatever this says.
+   */
+  confetti?: boolean
+}
+
+export type NotchModel = NotchEventModel | NotchProgressModel | NotchStatusModel | NotchRewardModel
 
 /** How many output lines a `status` card shows; the rest is what "Show output" is for. */
 export const STATUS_OUTPUT_MAX_LINES = 3

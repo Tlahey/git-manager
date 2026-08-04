@@ -58,6 +58,9 @@ export const NOTCH_ROW = {
   progressBody: 56,
   /** Row 2, `status`: just the outcome line; output lines are added on top. */
   statusBody: 44,
+  /** Row 2, `reward`: medal + achievement + what earned it + what it grants — three lines, the
+   *  tallest body there is. */
+  rewardBody: 60,
   /** One line of monospace process output. */
   statusOutputLine: 15,
   /** Padding around the output block, when there is one. */
@@ -67,6 +70,35 @@ export const NOTCH_ROW = {
   /** A hairline rule between two rows. */
   rule: 1,
 } as const
+
+/**
+ * Horizontal padding inside every row — `px-3`, as a number.
+ *
+ * Written down because the confetti burst has to come out of the medal rather than out of the card's
+ * corner, and {@link rewardConfettiOrigin} can only work that out if the padding it is inset by is a
+ * figure rather than a Tailwind class.
+ */
+export const NOTCH_ROW_PADDING_X = 12
+
+/** The reward medal's diameter. Sized here for the same reason: the burst starts at its centre. */
+export const NOTCH_REWARD_MEDAL_SIZE = 36
+
+/**
+ * Where a reward card's confetti comes from: the centre of its medal, in card points.
+ *
+ * Derived rather than tuned by eye, so a row height changing above the medal moves the burst with
+ * it. Same `bandHeight` override as everything else here — on a machine reporting a taller safe
+ * area, the medal really is further down the card.
+ */
+export function rewardConfettiOrigin(bandHeight: number = NOTCH_BAND_HEIGHT): {
+  x: number
+  y: number
+} {
+  return {
+    x: NOTCH_ROW_PADDING_X + NOTCH_REWARD_MEDAL_SIZE / 2,
+    y: withRule(bandHeight) + withRule(NOTCH_ROW.header) + NOTCH_ROW.rewardBody / 2,
+  }
+}
 
 /**
  * A row's border-box height when it also draws a hairline rule on one of its edges.
@@ -111,12 +143,25 @@ export function notchRowHeights(
   // point short of what it actually rendered).
   const rows: number[] = [bandHeight, NOTCH_ROW.rule, NOTCH_ROW.header, NOTCH_ROW.rule]
 
-  if (model.kind === 'event') rows.push(NOTCH_ROW.eventBody)
-  else if (model.kind === 'progress') rows.push(NOTCH_ROW.progressBody)
-  else {
-    rows.push(NOTCH_ROW.statusBody)
-    const output = statusOutputHeight(model.outputLines?.length ?? 0)
-    if (output > 0) rows.push(output)
+  // A `switch` rather than a chain of `if`s: this is the second place a new kind has to be handled
+  // (`NotchBody` is the other), and an exhaustive switch is what makes forgetting it a compile error
+  // instead of a card rendered into a window one row too short.
+  switch (model.kind) {
+    case 'event':
+      rows.push(NOTCH_ROW.eventBody)
+      break
+    case 'progress':
+      rows.push(NOTCH_ROW.progressBody)
+      break
+    case 'reward':
+      rows.push(NOTCH_ROW.rewardBody)
+      break
+    case 'status': {
+      rows.push(NOTCH_ROW.statusBody)
+      const output = statusOutputHeight(model.outputLines?.length ?? 0)
+      if (output > 0) rows.push(output)
+      break
+    }
   }
 
   if (hasActionRow(model)) rows.push(NOTCH_ROW.rule, NOTCH_ROW.actions)
