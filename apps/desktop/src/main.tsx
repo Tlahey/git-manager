@@ -15,6 +15,7 @@ import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
 import { useGameStore } from './stores/game.store'
 import { hideAppSplash } from './lib/appSplash'
+import { shortOid as toShortOid } from './lib/shortOid'
 import '@git-manager/ui/globals.css'
 import '@git-manager/editor/styles.css'
 import './index.css'
@@ -107,7 +108,7 @@ e2eSetup
         <FixupCommitWindow
           repoPath={repoPath}
           targetOid={oid}
-          targetShortOid={shortOid ?? oid.slice(0, 7)}
+          targetShortOid={shortOid ?? toShortOid(oid)}
           targetSubject={subject ?? ''}
         />
       )

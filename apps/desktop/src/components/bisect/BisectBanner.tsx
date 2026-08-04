@@ -3,6 +3,7 @@ import { Button } from '@git-manager/ui'
 import { Bug, Check, X, SkipForward, Ban } from 'lucide-react'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectActions } from '../../hooks/useBisectActions'
+import { shortOid as toShortOid } from '../../lib/shortOid'
 
 interface BisectBannerProps {
   repoPath: string
@@ -20,7 +21,7 @@ export function BisectBanner({ repoPath }: BisectBannerProps) {
 
   if (!bisect?.active || bisect.firstBadOid) return null
 
-  const shortOid = bisect.currentOid?.slice(0, 7)
+  const shortOid = bisect.currentOid ? toShortOid(bisect.currentOid) : undefined
   const summary = bisect.currentSummary ?? ''
 
   return (

@@ -24,6 +24,7 @@ import {
   apiCreateCommitsPatch,
 } from '../../../api/git.api'
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
+import { shortOid as toShortOid } from '../../../lib/shortOid'
 import { apiOpenUrl } from '../../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../../api/github.api'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
@@ -63,7 +64,7 @@ export function useCommitCommands(): PaletteCommand[] {
 
   if (!selectedCommitOid || !activeRepo || selectedStashIndex !== null) return []
 
-  const shortOid = selectedCommitOid.slice(0, 7)
+  const shortOid = toShortOid(selectedCommitOid)
   const shaKeyword = [shortOid, selectedCommitOid]
 
   const commands: PaletteCommand[] = [

@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import { showNativeMenu } from '../../api/nativeMenu.api'
 import { buildStashMenuSpec } from '../../lib/graphContextMenus'
+import { shortOid } from '../../lib/shortOid'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
@@ -222,7 +223,7 @@ export function RepositorySidebar({
   // when detached, which the backend still resolves).
   const headBranch = allLocalBranches.find((b) => b.isHead)
   const createBranchOid = headBranch?.commitOid ?? 'HEAD'
-  const createBranchShortOid = headBranch ? headBranch.commitOid.slice(0, 7) : 'HEAD'
+  const createBranchShortOid = headBranch ? shortOid(headBranch.commitOid) : 'HEAD'
 
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))

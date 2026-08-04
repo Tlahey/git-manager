@@ -11,6 +11,7 @@ import {
 } from '@git-manager/ui'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { shortOid } from '../../lib/shortOid'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
@@ -149,7 +150,9 @@ function CommandPaletteBody({
         { group: 'lookup', heading: t('commandPalette.group.lookup') },
         {
           group: 'commit',
-          heading: t('commandPalette.group.commit', { sha: selectedCommitOid?.slice(0, 7) ?? '' }),
+          heading: t('commandPalette.group.commit', {
+            sha: selectedCommitOid ? shortOid(selectedCommitOid) : '',
+          }),
         },
         {
           group: 'stash',

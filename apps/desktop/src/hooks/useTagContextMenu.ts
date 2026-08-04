@@ -4,6 +4,7 @@ import { toast } from '@git-manager/ui'
 import type { GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import { buildTagMenuSpec } from '../lib/graphContextMenus'
+import { shortOid } from '../lib/shortOid'
 import {
   apiCherryPickCommit,
   apiMergeBranch,
@@ -142,7 +143,7 @@ export function useTagContextMenu({
               setAiPanelTarget({
                 kind: 'commit',
                 oid: gitRef.commitOid,
-                shortOid: gitRef.commitOid.slice(0, 7),
+                shortOid: shortOid(gitRef.commitOid),
                 subject: gitRef.shortName,
                 body: '',
                 author: '',
@@ -195,7 +196,7 @@ export function useTagContextMenu({
                 kind: 'annotate',
                 tagName: gitRef.shortName,
                 oid: gitRef.commitOid,
-                shortOid: gitRef.commitOid.slice(0, 7),
+                shortOid: shortOid(gitRef.commitOid),
               }),
           },
           t

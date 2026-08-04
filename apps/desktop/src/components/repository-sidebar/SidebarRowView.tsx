@@ -23,6 +23,7 @@ import { PullRequestItem } from './PullRequestItem'
 import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
+import { shortOid } from '../../lib/shortOid'
 
 interface SidebarRowViewProps {
   row: SidebarRow
@@ -328,7 +329,7 @@ export function SidebarRowView({
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
-            {row.tag.commitOid.slice(0, 7)}
+            {shortOid(row.tag.commitOid)}
           </span>
           <button
             data-toggle="tag-actions"
@@ -394,7 +395,7 @@ export function SidebarRowView({
             {highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}
           </HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
-            {row.stash.commitOid.slice(0, 7)}
+            {shortOid(row.stash.commitOid)}
           </span>
           {/* Same actions as the row's right-click, reachable by pointing — the context menu was
               the only way in, which is not something a hover-only affordance advertises. It opens
@@ -435,7 +436,7 @@ export function SidebarRowView({
           </div>
           {row.sm.headOid && (
             <span className="shrink-0 font-mono text-[10px] tabular-nums text-sidebar-muted-foreground/30">
-              {row.sm.headOid.slice(0, 7)}
+              {shortOid(row.sm.headOid)}
             </span>
           )}
         </div>

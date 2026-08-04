@@ -16,6 +16,7 @@ import {
 import { apiOpenUrl } from '../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../api/github.api'
 import { toAssetUrl, joinRepoPath } from '../../lib/assetUrl'
+import { shortOid } from '../../lib/shortOid'
 import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
 import { BlameFileViewer } from './BlameFileViewer'
 import { Markdown } from '../Markdown'
@@ -313,7 +314,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                         title={t('fileHistory.copySha')}
                         className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
                       >
-                        {effectiveOid.slice(0, 7)}
+                        {shortOid(effectiveOid)}
                         {shaCopied ? (
                           <CheckIcon className="h-3 w-3 text-green-400" />
                         ) : (

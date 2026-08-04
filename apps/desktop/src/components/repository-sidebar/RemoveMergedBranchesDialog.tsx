@@ -15,6 +15,7 @@ import {
 } from '@git-manager/ui'
 import { apiDeleteBranch } from '../../api/git.api'
 import { copyWithToast } from '../../lib/clipboard'
+import { shortOid } from '../../lib/shortOid'
 import { useMergedBranches, type BranchMergeStatus } from '../../hooks/useMergedBranches'
 
 interface RemoveMergedBranchesDialogProps {
@@ -216,7 +217,7 @@ export function RemoveMergedBranchesDialog({
                         aria-label={t('sidebar.copySha')}
                         data-testid={`branch-remove-merged-copy-sha-${b.shortName}`}
                       >
-                        <span className="truncate">{b.commitOid.slice(0, 7)}</span>
+                        <span className="truncate">{shortOid(b.commitOid)}</span>
                         <Copy className="h-2.5 w-2.5 shrink-0" />
                       </button>
                       {reason && (

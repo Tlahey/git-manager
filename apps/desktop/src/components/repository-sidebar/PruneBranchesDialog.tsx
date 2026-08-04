@@ -15,6 +15,7 @@ import {
 } from '@git-manager/ui'
 import { apiDeleteBranch, apiFetchRemote } from '../../api/git.api'
 import { runActivity } from '../../lib/activityCorrelation'
+import { shortOid } from '../../lib/shortOid'
 import { apiGoneUpstreamBranches } from '../../api/worktree.api'
 import { DEFAULT_PINNED } from './types'
 
@@ -171,7 +172,7 @@ export function PruneBranchesDialog({
                 <BranchIcon className="h-3 w-3 shrink-0 opacity-50" />
                 <span className="min-w-0 flex-1 truncate">{b.shortName}</span>
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground/60">
-                  {b.commitOid.slice(0, 7)}
+                  {shortOid(b.commitOid)}
                 </span>
               </li>
             ))}
