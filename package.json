@@ -18,10 +18,14 @@
     "test:e2e:fast": "pnpm --filter @git-manager/e2e test:e2e",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "@git-manager/config": "workspace:*",
+    "husky": "^9.1.7",
     "oxlint": "^1.73.0",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
