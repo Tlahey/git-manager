@@ -31,7 +31,7 @@ Feature: Merging branches
     And the interface has settled
     Then the command palette is shown
     And a full-window screenshot is saved as "doc-merge-branch"
-    When I run the command palette action "ref-merge-feature/login"
+    When I pick "Merge feature/login into main" from the palette
     Then the branch "main" contains the commit "feat: add login screen"
     And no error notification is displayed
 
@@ -46,18 +46,20 @@ Feature: Merging branches
     And AI features are turned off
     And the "rollback-history" fixture repository is opened
     # Build a branch that is strictly behind main, then catch it up — a fast-forward needs an
-    # ancestor relationship, which no shared fixture happens to carry.
-    When I select the "HEAD~2" commit in the graph
+    # ancestor relationship, which no shared fixture happens to carry. Kept on the `Given` keyword
+    # (they still run and still fail loudly) so the docs generator drops them: creating release/1.0
+    # is this test's scaffolding, and a reader following it as an instruction would be misled.
+    Given I select the "HEAD~2" commit in the graph
     And I open the command palette
     And I run the command palette action "commit-branch"
-    Then the create branch dialog is shown
-    When I enter the branch name "release/1.0"
+    And the create branch dialog is shown
+    And I enter the branch name "release/1.0"
     And I confirm the branch creation
-    Then the branch indicator reads "release/1.0"
+    And the branch indicator reads "release/1.0"
     When I open the command palette
     And I type "fast" into the command palette
     And the interface has settled
     Then a full-window screenshot is saved as "doc-fast-forward"
-    When I run the command palette action "ref-fast-forward-main"
+    When I pick "Fast-forward release/1.0 to main" from the palette
     Then the branches "release/1.0" and "main" point at the same commit
     And no error notification is displayed

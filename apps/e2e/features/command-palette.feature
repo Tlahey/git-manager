@@ -35,7 +35,7 @@ Feature: Command palette (⌘K)
     And the interface has settled
     Then the command palette shows commit actions for "HEAD~2"
     And a full-window screenshot is saved as "doc-command-palette"
-    When I run the command palette action "commit-reset-mixed"
+    When I pick "Reset (mixed) to this commit" from the palette
     Then the reset dialog is shown
     When I confirm the reset
     Then the repository HEAD commit subject is "chore: bump counter to 2"
@@ -77,7 +77,7 @@ Feature: Command palette (⌘K)
     And the "rollback-history" fixture repository is opened
     When I open the command palette
     Then the command palette shows commit actions for "HEAD"
-    When I run the command palette action "commit-revert"
+    When I pick "Revert this commit" from the palette
     Then the revert dialog is shown
     When the interface has settled
     Then a full-window screenshot is saved as "doc-revert-commit"
@@ -111,7 +111,7 @@ Feature: Command palette (⌘K)
     And the interface has settled
     Then the command palette shows commit actions for "feature/login"
     And a full-window screenshot is saved as "doc-cherry-pick"
-    When I run the command palette action "commit-cherry-pick"
+    When I pick "Cherry-pick this commit" from the palette
     Then the commit "feat: add login screen" is reachable from "main"
 
   Scenario: Dropping a stash via the palette
@@ -138,7 +138,7 @@ Feature: Command palette (⌘K)
     And the interface has settled
     Then the command palette is shown
     And a full-window screenshot is saved as "doc-stash-palette"
-    When I run the command palette action "stash-apply"
+    When I pick "Apply stash (keep in list)" from the palette
     Then the repository has 2 stashes
     And the file "notes.txt" exists in the working tree
 
@@ -159,29 +159,32 @@ Feature: Command palette (⌘K)
   @doc @screenshots
   Scenario: Deleting a local branch from the palette, and undoing it
     Every local branch offers Delete from the palette. It carries git's own
-    safety: a branch whose work isn't merged anywhere is refused rather
-    than silently dropped, exactly like `git branch -d`. Because the
-    deletion also goes through the app's undo history, ⌘Z brings the
-    branch back at the commit it pointed to — deleting the wrong one is a
-    two-keystroke mistake, not a reflog expedition.
+    safety: a branch whose commits aren't already in the branch you have
+    checked out is refused rather than silently dropped, exactly like
+    `git branch -d`. Because the deletion also goes through the app's undo
+    history, ⌘Z brings the branch back at the commit it pointed to —
+    deleting the wrong one is a two-keystroke mistake, not a reflog
+    expedition.
     Given the app language is English
     And AI features are turned off
     And the "rollback-history" fixture repository is opened
     # A branch has to be merged into HEAD before git will delete it, so build one that is: at an
     # earlier commit on main, which makes it an ancestor. Creating it checks it out, hence the
-    # step back onto main — git also refuses to delete the branch you are standing on.
-    When I select the "HEAD~2" commit in the graph
+    # step back onto main — git also refuses to delete the branch you are standing on. Kept on the
+    # `Given` keyword (they still run and still fail loudly) so the docs generator drops them: this
+    # is the test building something to delete, not a step the reader follows.
+    Given I select the "HEAD~2" commit in the graph
     And I open the command palette
     And I run the command palette action "commit-branch"
-    Then the create branch dialog is shown
-    When I enter the branch name "release/1.0"
+    And the create branch dialog is shown
+    And I enter the branch name "release/1.0"
     And I confirm the branch creation
     And I check out the "main" branch
-    And I open the command palette
+    When I open the command palette
     And I type "delete" into the command palette
     And the interface has settled
     Then a full-window screenshot is saved as "doc-branch-delete"
-    When I run the command palette action "ref-delete-branch-release/1.0"
+    When I pick "Delete local branch release/1.0" from the palette
     Then the branch "release/1.0" no longer exists
     And no error notification is displayed
     # The deletion goes through the undo-recording API wrapper, so the branch comes back at its
