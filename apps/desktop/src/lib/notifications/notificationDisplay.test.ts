@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { NotificationSettings } from '@git-manager/git-types'
+import { CONFETTI_TOTAL_MS, type NotchModel } from '@git-manager/notch'
 import {
   DEFAULT_DISPLAY_DURATION_MS,
   DISPLAY_DURATION_OPTIONS_MS,
@@ -7,6 +8,7 @@ import {
   migrateDisplayStyle,
   resolveDisplayDurationMs,
   resolveDisplayStyle,
+  resolveNotchDurationMs,
 } from './notificationDisplay'
 
 function settings(overrides: Partial<NotificationSettings> = {}): NotificationSettings {
@@ -81,6 +83,65 @@ describe('resolveDisplayDurationMs', () => {
 
   it('treats a negative stored value as no timer rather than an instant dismiss', () => {
     expect(resolveDisplayDurationMs(settings({ displayDurationMs: -1 }))).toBeNull()
+  })
+})
+
+describe('resolveNotchDurationMs', () => {
+  const event: NotchModel = {
+    kind: 'event',
+    id: 'e',
+    tone: 'info',
+    eyebrow: 'MERGED',
+    title: 'a PR',
+  }
+  const progress: NotchModel = {
+    kind: 'progress',
+    id: 'p',
+    tone: 'running',
+    eyebrow: 'CLONING',
+    title: 'objects',
+  }
+  const reward: NotchModel = {
+    kind: 'reward',
+    id: 'r',
+    tone: 'highlight',
+    eyebrow: 'ACHIEVEMENT UNLOCKED',
+    title: 'Merge Master',
+    tier: 'gold',
+  }
+
+  it('gives an ordinary card exactly what the user picked', () => {
+    expect(resolveNotchDurationMs(event, settings({ displayDurationMs: 5000 }))).toBe(5000)
+  })
+
+  it('never times a live card out, whatever the setting says', () => {
+    // A clone at 40 % that vanishes after five seconds takes away the only thing tracking the
+    // operation. It ends when its producer says so.
+    expect(resolveNotchDurationMs(progress, settings({ displayDurationMs: 3000 }))).toBeNull()
+  })
+
+  it('keeps a reward card up until its confetti has landed', () => {
+    // The floor does not bite at today's settings — it is written down so that adding a shorter
+    // option cannot silently truncate an animation that lives in another package.
+    expect(resolveNotchDurationMs(reward, settings({ displayDurationMs: 1000 }))).toBe(
+      CONFETTI_TOTAL_MS
+    )
+  })
+
+  it('does not stretch a reward card the user asked to keep longer', () => {
+    expect(resolveNotchDurationMs(reward, settings({ displayDurationMs: 12000 }))).toBe(12000)
+  })
+
+  it('outlasts the burst at every duration actually on offer', () => {
+    for (const ms of DISPLAY_DURATION_OPTIONS_MS.filter((value) => value > 0)) {
+      expect(resolveNotchDurationMs(reward, settings({ displayDurationMs: ms }))).toBeGreaterThan(
+        CONFETTI_TOTAL_MS - 1
+      )
+    }
+  })
+
+  it('still means "until I close it" for a reward', () => {
+    expect(resolveNotchDurationMs(reward, settings({ displayDurationMs: 0 }))).toBeNull()
   })
 })
 

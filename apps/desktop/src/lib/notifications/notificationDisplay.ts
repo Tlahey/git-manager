@@ -8,6 +8,7 @@
  */
 
 import type { NotificationDisplayStyle, NotificationSettings } from '@git-manager/git-types'
+import { CONFETTI_TOTAL_MS, type NotchModel } from '@git-manager/notch'
 
 /** The app's own card. The default: it's the surface this project actually designed. */
 export const DEFAULT_DISPLAY_STYLE: NotificationDisplayStyle = 'notch'
@@ -81,4 +82,30 @@ export function resolveDisplayDurationMs(
 ): number | null {
   const stored = notifications?.displayDurationMs ?? DEFAULT_DISPLAY_DURATION_MS
   return stored > 0 ? stored : null
+}
+
+/**
+ * How long *this* card stays, which is not always what the user picked.
+ *
+ * Two kinds overrule the setting, in opposite directions:
+ *
+ * - A `progress` card has no business timing out. Its whole point is a number that changes, and a
+ *   clone at 40 % that vanishes after five seconds has told the user nothing and taken away the
+ *   only thing tracking the operation. It ends when its producer says so.
+ * - A `reward` card must outlast its own confetti. The burst is the card — dismissing at 2 s would
+ *   slide it away mid-air, which reads as a bug rather than as a celebration. The floor never bites
+ *   at today's settings (the shortest option on offer is 3 s against {@link CONFETTI_TOTAL_MS}'s
+ *   ~2.1 s), and that is exactly why it is written down: the next person to add a shorter option
+ *   has no way of knowing it would truncate an animation living in another package.
+ *
+ * `null` means "no timer at all" — the caller arms nothing rather than a very long timeout.
+ */
+export function resolveNotchDurationMs(
+  model: NotchModel,
+  notifications: NotificationSettings | undefined
+): number | null {
+  if (model.kind === 'progress') return null
+  const chosen = resolveDisplayDurationMs(notifications)
+  if (chosen === null) return null
+  return model.kind === 'reward' ? Math.max(chosen, CONFETTI_TOTAL_MS) : chosen
 }

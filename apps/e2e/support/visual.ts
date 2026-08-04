@@ -144,31 +144,13 @@ export async function stabiliseForSnapshot(): Promise<void> {
     active?.blur?.()
   })
 
-  // The gamification TrophyToast (fixed bottom-right, 4.5s auto-dismiss) can still be on screen
-  // from an achievement unlocked earlier in the same run — every feature shares one app instance
-  // (see merge.steps.ts's note on that), so e.g. a prior scenario's first commit bleeds a toast
-  // into a totally unrelated feature's snapshot a few steps later. Its exact presence/timing isn't
-  // deterministic (depends on scenario execution order), so baking it into a baseline would just
-  // make that snapshot flaky the other way.
+  // Nothing to do about achievements any more, and that is worth recording: the gamification
+  // celebration used to be `TrophyToast`, a fixed bottom-right rectangle *inside this window*, so
+  // an achievement unlocked earlier in the same run (every feature shares one app instance — see
+  // merge.steps.ts) could bleed into a totally unrelated feature's snapshot. This function had to
+  // retire it through the live game store first, and never by removing the DOM node, which threw
+  // WebKit's "NotFoundError" on React's next commit and unmounted the whole app mid-run.
   //
-  // Retired through the live game store, NEVER by removing the DOM node: the toast is
-  // React-managed, and React's next commit against an externally-removed child throws WebKit's
-  // "NotFoundError: The object can not be found here" — which, with no error boundary, unmounted
-  // the entire app to a blank #root mid-run (TrophyToast.tsx documents the same contract from
-  // the other side). The store clear makes TrophyToast unmount itself, then the short wait below
-  // confirms React has actually committed that removal before anything is photographed.
-  await browser.execute(() => {
-    const store = (
-      window as unknown as {
-        __e2eGameStore?: { getState: () => { clearRecentUnlock: () => void } }
-      }
-    ).__e2eGameStore
-    store?.getState().clearRecentUnlock()
-  })
-  await $('[data-testid="trophy-toast"]')
-    .waitForExist({ timeout: 3000, reverse: true })
-    .catch(() => {
-      // A toast that re-appeared (an unlock mid-stabilisation) shouldn't fail the capture — the
-      // snapshot tolerance and the baseline's own purge cover the residual case.
-    })
+  // The unlock is a notch card now (`rewardNotch.ts`): a separate window, which the suite baseline
+  // keeps from ever painting. It cannot reach a screenshot of the main window at all.
 }

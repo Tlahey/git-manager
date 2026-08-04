@@ -2,30 +2,20 @@ import { execFileSync } from 'node:child_process'
 import { $, browser, expect } from '@wdio/globals'
 import { After, Given, Then, When } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
+import { recordedNotchCards, type RecordedCard } from '../support/notchRecording'
 
 /**
  * Asserting on a hook's card, without touching the window it renders in.
  *
- * Two things make the obvious approach wrong. The card renders in a second `WebviewWindow`, and
- * this provider handles a real second window badly enough — a click inside it throws, and the
- * command issued after one self-closes fails with "no such window" — that asserting there would
- * test the harness more than the app. And `queue.current` is *transient*: `useNotchQueue` retires
- * the card as soon as the notch window closes, and immediately if that window never opened at
- * all, so a poll can legitimately arrive after the only card the scenario cares about has already
- * gone.
+ * The reading side — and why it is a recording rather than a poll — lives in
+ * `support/notchRecording.ts`, shared with the rewards scenarios. What is specific here is what a
+ * recorded card proves: by the time one shows up, a real hook has run, refused, produced a real
+ * `AppError::HookFailed`, crossed IPC and been parsed by `hookFailureFrom`. The window boundary is
+ * the one part this stops short of.
  *
- * So the queue is recorded instead — a subscription installed from the test side, appending every
- * card the store makes current. Nothing about the app changes for it, and by the time a card is
- * recorded a real hook has already run, refused, produced a real `AppError::HookFailed`, crossed
- * IPC and been parsed by `hookFailureFrom`. The window boundary is the one part this stops short
- * of.
+ * The step that installs the recording is defined below and used by other features too, so it is
+ * deliberately worded about the queue rather than about hooks.
  */
-interface RecordedCard {
-  id: string
-  tone?: string
-  eyebrow?: string
-  outputLines?: string[]
-}
 
 /**
  * Must run *after* the fixture-open step, which reloads the page and would wipe the subscription.
@@ -93,27 +83,8 @@ Given(/^the notch queue is being recorded$/, async () => {
   }
 })
 
-async function recordedCards(): Promise<RecordedCard[]> {
-  const read = () =>
-    browser.execute(
-      () => (window as unknown as { __e2eNotchLog?: unknown[] }).__e2eNotchLog ?? []
-    ) as Promise<RecordedCard[]>
-  try {
-    return await read()
-  } catch {
-    // These scenarios run with notifications re-enabled, so a real notch window opens and closes
-    // on its own timer mid-scenario. The service's per-command window switch can leave the
-    // session parked on that window at the moment it self-closes — the next command then throws
-    // "no such window" even though the recording lives in the main window all along. Re-anchor on
-    // `main` and read again rather than letting one dying window fail the assertion.
-    const handles = await browser.getWindowHandles()
-    if (handles.includes('main')) await browser.switchToWindow('main')
-    return await read()
-  }
-}
-
 async function firstErrorCard(): Promise<RecordedCard | undefined> {
-  return (await recordedCards()).find((card) => card.tone === 'error')
+  return (await recordedNotchCards()).find((card) => card.tone === 'error')
 }
 
 function headSubject(): string {
@@ -147,7 +118,7 @@ Then(/^the notch shows the "([^"]*)" hook's output$/, async (hookName: string) =
   await browser.waitUntil(async () => (await firstErrorCard()) !== undefined, {
     timeout: 15000,
     timeoutMsg: `no error card ever reached the notch queue (recorded: ${JSON.stringify(
-      await recordedCards()
+      await recordedNotchCards()
     )})`,
   })
 
@@ -176,7 +147,7 @@ Then(/^the notch reported the "([^"]*)" hook running$/, async (hookName: string)
   // crossing IPC, the store, and a live card reaching the queue. Asserted from the recording
   // rather than by polling, because this card is deliberately short-lived — it exists for exactly
   // as long as the hook does, and a fast fixture hook is gone in milliseconds.
-  const cards = await recordedCards()
+  const cards = await recordedNotchCards()
   const running = cards.find((card) => card.tone === 'running')
   if (!running) {
     throw new Error(`no running-hook card was recorded (got: ${JSON.stringify(cards)})`)

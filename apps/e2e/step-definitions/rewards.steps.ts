@@ -1,5 +1,6 @@
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+import { waitForRecordedCard } from '../support/notchRecording'
 
 // Achievements persist in `git-manager-game-store` (zustand persist) across the whole session,
 // like a real user profile — this suite's many prior commits (across every feature/run) may have
@@ -14,11 +15,25 @@ Given(/^the game progress is reset$/, async () => {
   })
 })
 
-Then(/^the trophy toast shows the achievement "([^"]*)"$/, async (title: string) => {
-  const toast = $('[data-testid="trophy-toast"]')
-  await toast.waitForDisplayed({ timeout: 10000 })
-  const text = await toast.getText()
-  expect(text).toContain(title)
+/**
+ * The unlock reached the notch, carrying the trophy it is about.
+ *
+ * Read from the queue recording rather than from the card itself: the celebration renders in a
+ * second `WebviewWindow` this provider handles badly, and the suite's baseline deliberately never
+ * lets one paint (see `support/notchRecording.ts`). What is asserted here is everything up to that
+ * boundary — a real commit through the app, a real rule firing in the rewards engine, and a real
+ * reward card, with its medal and its XP, reaching the queue every surface reads from.
+ */
+Then(/^the notch celebrates the achievement "([^"]*)"$/, async (title: string) => {
+  const card = await waitForRecordedCard(
+    (recorded) => recorded.kind === 'reward',
+    'no reward card ever reached the notch queue'
+  )
+  expect(card.title).toBe(title)
+  // The medal and the XP are the two things that make this a celebration rather than a notice; a
+  // card that arrived without them would still pass a title-only assertion.
+  expect(card.tier).toBeTruthy()
+  expect(card.badge).toContain('XP')
 })
 
 // The Rewards tab (TabBar.tsx's `PinnedTab`) carries no testid to click, so this switches through

@@ -49,10 +49,10 @@ export async function applyBaseline(baseline: Baseline): Promise<boolean> {
         volatileKeys: string[]
       }
 
-      // 0. Retire a live trophy toast left by the previous scenario: achievements unlock as a side
-      // effect of ordinary git actions and the toast outlives its scenario (4.5s), bleeding into
-      // the next one's visual captures. The persisted game key is cleared below, but the toast
-      // renders from the LIVE store's `recentUnlock`.
+      // 0. Empty the unlock slot the previous scenario may have left: achievements unlock as a
+      // side effect of ordinary git actions, and `recentUnlock` is what `useRewardNotch` turns
+      // into a card — an unconsumed one would celebrate in the middle of an unrelated scenario.
+      // The persisted game key is cleared below; this is the LIVE store's copy.
       const gameStore = (
         window as unknown as {
           __e2eGameStore?: { getState: () => { clearRecentUnlock: () => void } }

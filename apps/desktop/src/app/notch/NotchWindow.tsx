@@ -17,7 +17,7 @@ import {
   apiOnNotchUpdate,
   NOTIFICATION_ACTIVATED_EVENT,
 } from '../../api/notification.api'
-import { resolveDisplayDurationMs } from '../../lib/notifications/notificationDisplay'
+import { resolveNotchDurationMs } from '../../lib/notifications/notificationDisplay'
 import { createTauriNotchHost, resizeNotchWindow } from '../../lib/notifications/tauriNotchHost'
 import { openUrl } from '../../lib/openUrl'
 import { getNotificationIcon } from '../../components/notification/utils'
@@ -89,12 +89,9 @@ export function NotchWindow({
     host,
     restY: windowY,
     slideDistance: windowHeight,
-    // A live card has no business timing out: a clone at 40 % that vanishes after five seconds
-    // has told the user nothing and taken away the only thing tracking the operation. It ends when
-    // its producer says so — by replacing it with a `status` card, or by clearing the queue.
-    // `null` is also what "until I close it" means for the other kinds; the presenter arms no
-    // timer at all rather than a very long one.
-    autoDismissMs: model.kind === 'progress' ? null : resolveDisplayDurationMs(notifications),
+    // The user's setting, except where the card itself overrules it — a live progress card never
+    // times out, a reward card outlasts its confetti. See `resolveNotchDurationMs`.
+    autoDismissMs: resolveNotchDurationMs(model, notifications),
     // Returned, not fired and forgotten: the presenter awaits this before closing the window, and
     // closing the window destroys the webview this emit travels out of.
     onDismissed: () => apiEmitNotchDismissed({ notchId: model.id }),
