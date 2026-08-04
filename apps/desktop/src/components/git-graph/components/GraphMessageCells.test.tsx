@@ -5,12 +5,8 @@ import { WipCommitInput, WorktreeWipRow, ConflictRowMessage } from './GraphMessa
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
+// No i18n mock: `vitest.setup.ts` initialises the real English catalogue, so the assertions below
+// read the copy a user actually sees — which is what makes them able to catch wrong or blank text.
 
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_REPO_UI = useRepoUIStore.getState()
@@ -91,7 +87,7 @@ describe('WorktreeWipRow', () => {
   it('hides the Open Worktree button by default (showOpenButton unset)', () => {
     render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} />)
     expect(
-      screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })
+      screen.queryByRole('button', { name: 'Open Worktree' })
     ).not.toBeInTheDocument()
   })
 
@@ -105,7 +101,7 @@ describe('WorktreeWipRow', () => {
         showOpenButton
       />
     )
-    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    await user.click(screen.getByRole('button', { name: 'Open Worktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
 
@@ -141,7 +137,7 @@ describe('WorktreeWipRow', () => {
         showOpenButton
       />
     )
-    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    await user.click(screen.getByRole('button', { name: 'Open Worktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
 
@@ -158,7 +154,7 @@ describe('WorktreeWipRow', () => {
         />
       </div>
     )
-    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    await user.click(screen.getByRole('button', { name: 'Open Worktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
     expect(onRowClick).not.toHaveBeenCalled()
   })
@@ -168,8 +164,55 @@ describe('ConflictRowMessage', () => {
   it('shows the translated banner with count/branch', () => {
     render(<ConflictRowMessage count={2} branchName="feature-x" />)
     expect(
-      screen.getByText('gitTree.contextMenu.conflictBannerMessage:{"count":2,"branch":"feature-x"}')
+      screen.getByText('2 file conflicts were found when attempting to merge into feature-x')
     ).toBeInTheDocument()
+  })
+})
+
+describe('AgentStatusTag (via WipCommitInput / WorktreeWipRow)', () => {
+  const noStats = { added: 0, modified: 0, deleted: 0 }
+
+  it('renders nothing when no agent is active in the worktree', () => {
+    const { container } = render(<WipCommitInput wipStats={noStats} />)
+    expect(container.querySelector('[data-testid="agent-status-tag"]')).toBeNull()
+  })
+
+  it('reports a live Claude session as working, on the primary WIP row', () => {
+    render(
+      <WipCommitInput
+        wipStats={noStats}
+        agentActivity={{
+          path: '/repo',
+          agent: 'claude',
+          state: 'working',
+          lastActivityMs: 1_700_000_000_000,
+        }}
+      />
+    )
+    const tag = screen.getByTestId('agent-status-tag')
+    expect(tag).toHaveTextContent('working')
+    expect(tag).toHaveAttribute('data-agent', 'claude')
+    // The pulse is the "output is arriving right now" signal, and the only thing that tells
+    // `working` apart from `idle` at a glance once the label is truncated.
+    expect(tag.className).toContain('animate-pulse')
+  })
+
+  it('reports a quiet session as idle, without the pulse, on a linked worktree row', () => {
+    render(
+      <WorktreeWipRow
+        wipStats={noStats}
+        agentActivity={{
+          path: '/repo/wt',
+          agent: 'claude',
+          state: 'idle',
+          lastActivityMs: 1_700_000_000_000,
+        }}
+      />
+    )
+    const tag = screen.getByTestId('agent-status-tag')
+    expect(tag).toHaveTextContent('idle')
+    expect(tag).toHaveAttribute('data-state', 'idle')
+    expect(tag.className).not.toContain('animate-pulse')
   })
 })
 

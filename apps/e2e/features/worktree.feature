@@ -45,6 +45,39 @@ Feature: Worktree management
     Then the sidebar no longer lists a worktree for branch "feature/login"
     And the fixture repo no longer has the linked worktree on disk
 
+  # The fixture is the agent's own session store: `get_worktree_agent_activity` reads
+  # `$HOME/.claude/projects/<slug>/*.jsonl` and reports "working" when the newest transcript there
+  # was written in the last minute, so the step fabricates one at exactly that path — inside the
+  # run's isolated `$HOME` (/tmp/git-manager-e2e-home), never the developer's. See
+  # worktree.steps.ts, which also cleans it up.
+  @doc @screenshots @agentactivity
+  Scenario: Seeing which worktree an AI coding agent is working in
+    Worktrees are how you keep several things going at once, and an AI coding
+    agent is one of the things that can be going on in one. When a Claude Code
+    session is running in a worktree, that worktree's uncommitted-changes row in
+    the graph says so: the dashed ring picks up the agent's colour and carries
+    its mark instead of an avatar, with a tag beside it reading either
+    **working** — output is being produced right now, and the ring pulses — or
+    **idle**, meaning the session is open but waiting on you.
+
+    Nothing is asked of the agent for this. Git Manager reads the session logs
+    the agent already writes to disk, which is also why the reading is a
+    reasonable guess rather than a fact: a long tool run or a long think can
+    leave a gap wide enough to show as idle for a moment mid-turn, and a session
+    you walked away from stops being reported after a quarter of an hour.
+    Given the app language is English
+    And AI features are turned off
+    And the linked worktree has uncommitted changes
+    And an AI coding agent is working in the linked worktree
+    # After the dirty/session fixtures, not before: the Background's fixture-open step rebuilds the
+    # repository from scratch, so anything written ahead of it is thrown away. Kept a `Given` so the
+    # docs generator drops it — reloading is fixture plumbing, not something a reader does.
+    Given I reload the application
+    When I expand the "worktrees" sidebar section
+    And the interface has settled
+    Then the graph marks the linked worktree as having an agent at work
+    And a full-window screenshot is saved as "doc-worktree-agent-activity"
+
   Scenario: Removing a dirty worktree requires forcing
     Given the linked worktree has uncommitted changes
     When I reload the application
