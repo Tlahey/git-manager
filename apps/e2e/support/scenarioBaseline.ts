@@ -7,6 +7,11 @@ const VOLATILE_PERSISTED_KEYS = [
   'git-manager-ai-explanations',
   'git-manager-ai-commit-searches',
   'git-manager-action-explanations',
+  // Which board a repo was last looking at, and which of its columns were folded. Every board id is
+  // generated per write (`git_board.rs`'s `generate_id`), and a fixture repo is rebuilt from
+  // scratch on each open — so this key can only ever carry ids that no longer resolve, plus fold
+  // state a board scenario would then inherit from the previous one.
+  'git-manager-board',
 ]
 
 export interface Baseline {

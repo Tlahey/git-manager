@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (55 feature files / 192 scenarios)
+## Covered today (57 feature files / 207 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -47,6 +47,8 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | **AI commit-message generation**: streaming + prompt-wiring + cancel                                     | AI         | fake HTTP server                                  | —                                 | ✅ (see "6. AI commit-message generation" below)                                                                                                                                                                                                             |
 | **Worktree** list / add / remove (incl. dirty-remove force gate) + **AI-agent activity**                 | worktree   | fixture:worktree-repo                             | 📷 (doc)                          | ✅ (see "Worktree management" below; `get_worktree_agent_activity` covered end to end — the step fabricates a Claude transcript in the run's isolated `$HOME`, and the WIP row's agent glyph and working tag are asserted from the real graph)                |
 | **Repo tab views**: switch Graph ↔ Terminal ↔ Settings                                                   | navigation | fixture:feature-branches                          | 📷 (doc)                          | ✅ (see "Repo tab views" below)                                                                                                                                                                                                                              |
+| **Kanban board**: create a board, add/move/archive a card, close a sprint with carry-over                | board      | fixture:feature-branches                          | 📷 (doc, ×3)                      | ✅ (local backend only — see "Kanban board" below; every write also asserted on disk against the board's own git ref, and the sprint scenario found and now guards a real bug)                                                                               |
+| **Kanban card record**: checklist, comments, side-panel fields, relations, columns, settings, delete, move | board      | fixture:feature-branches                          | —                                 | ✅ (`board-cards.feature`, 10 scenarios, none documented — see "Kanban board" below; three real bugs found, two fixed here and one copy correction)                                                                                                          |
 
 ---
 
@@ -93,6 +95,7 @@ keyboard route at all, which was a product gap before it was a testing one.
 | **Package updates** (`update_packages`, `check_outdated_packages`) | Updating shells out to the project's real package manager (`services/package_update.rs`): network, minutes, and a mutated `node_modules`/lockfile in the fixture. A suite that runs in seven minutes and touches nothing outside `/tmp` should not do that; the health _scan_ and its counts are covered.                                                                                                        |
 | **GitLab / Bitbucket accounts**                                    | Not reachable because they are **not on screen**: both are built and tested but unlisted (`AVAILABLE_PROVIDERS` in `IntegrationSection.tsx`), pending an OAuth application registered on gitlab.com and something in the app that actually reads either account. Their panels, commands and settings shape have unit tests; the e2e scenarios that drove them are in `git log` for when the providers come back. |
 | **Running a task** (`run_task_in_terminal`)                        | Launching a task opens an **external** terminal application — out of reach, and not something a test run should spawn. The _listing_ half is covered: the repository's `package.json` scripts reaching the task command's suggestions (`settings-repository.feature`).                                                                                                                                           |
+| **The GitHub-backed board** (`features/board`, `source: 'remote'`) | A shared board's cards **are** GitHub issues and its columns are labels, so there is nothing to drive without a connected account and a real repository to file against — the "GitHub" option in the new-board dialog is disabled outright without one (`canUseRemote`). Same wall as the Launchpad issue detail panel. The local backend, which is the whole feature minus its transport, is covered (`board.feature`), and the UI never branches on which backend is behind it beyond picking a `BoardBackend`. |
 | **Native OS surfaces**                                             | Folder pickers (`scan_repos`), `open_in_editor` / `open_in_terminal` / `reveal_path_in_finder`, real native notifications and system sounds, the auto-updater — WebDriver cannot see or drive any of them.                                                                                                                                                                                                       |
 | **The notch window's own rendering**                               | Deliberately not painted in e2e (the `__e2eNotificationSurface` seam) — the queue that feeds it is covered by git-hooks.feature; the window itself is the one boundary the suite stops at. Tried anyway, twice, for a documentation capture, and both attempts are recorded in `notifications.feature`: the `notch` handle registers and `switchToWindow` succeeds, but every `execute/sync` against it answers "No window could be found" (the window is `focus: false` / `decorations: false` and never becomes a key window) — and on the run where it failed to open at all, the queue's native fallback raised a **real macOS banner** on the host. Fixing the driver would not help: this provider captures the **webview only**, so the best possible capture is a context-free black rectangle that also shows the 32pt band a real notched Mac hides behind the camera housing. A picture of the card can only come from `packages/notch`'s Storybook harness, which was weighed on 2026-08-04 and declined (a staged image in a pipeline built on test-backed ones). What the notch _is_ and how to choose it is documented from the Settings screen instead.                     |
 
@@ -138,6 +141,139 @@ The toolbar's Files button (`toolbar-files-button`) swapping the graph for `Proj
   sidebar leaves `file-explorer-show-sidebar` behind — asserted explicitly, since a hide with no way
   back would make the sidebar unreachable for the rest of the session.
 - No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
+
+---
+
+## Kanban board ✅ 📷
+
+The third thing the central area can be (`features/board/`), reached from the same toolbar as the
+file explorer (`toolbar-board-button`). **Local backend only** — the GitHub-backed board needs a
+connected account and real issues; see the blocked row above for why that one stays out of reach.
+
+- Setup: **`fixture:feature-branches`**, which has nothing to do with boards and does not need to:
+  a board is created by the scenario itself, through the UI, because that is the only way one comes
+  into being. Every scenario therefore starts from a repository with no board at all — which is
+  also the state a first-time user is in.
+- Covered (`board.feature`, 5 scenarios, 4 of them `@doc`): creating a board with a card prefix and
+  the three default columns; adding a card and moving it between columns from the card's own status
+  picker; filling in a card's record (checklist, assignee, priority, discussion) — the one scenario
+  here that exists for the documentation as much as for the regression, since the record is what a
+  reader looks for and the three others only ever show a card from the outside; closing a sprint
+  with carry-over into a successor, then reading the closed one back through "Show closed sprints"
+  (read-only banner + frozen sprint report); archiving a card, finding it again through the board
+  search, and restoring it from the archive dialog.
+- **Every write is also asserted on disk.** A local board is a hidden ref per board
+  (`refs/git-manager/board/<id>/state`, see `services/git_board.rs`) carrying one commit per
+  mutation, so the steps read it with plain `git`: `for-each-ref` counts the boards,
+  `log --format=%s` proves the commit a gesture was supposed to write ("git-manager: create board",
+  "git-manager: update board card"), and `show <ref>:cards/<id>.json` proves the card's stored
+  `columnId`. A DOM assertion alone could pass on a render the backend never agreed to.
+- **Nothing on a board has a stable id**, so no `.feature` file names one: board and card ids are
+  generated per write (`generate_id`, seeded on a nanosecond timestamp). `board.steps.ts` resolves
+  every testid in the page from what a reader would say instead — a card by its title, a column by
+  its header label, a sprint by its name. The column _ids_ happen to be literal (`todo`,
+  `in-progress`, `done`), and are still resolved by name so a renamed column costs no step edit.
+- **Real bug found, and now guarded.** The sprint scenario failed on its first run with the sprint
+  still open: carrying the leftovers out commits on the board being closed as well, so the revision
+  read before it was already behind the ref tip and `close_board`'s compare-and-swap refused the
+  close — leaving a conflict toast, an open sprint, and its cards already gone to the successor.
+  Fixed in `useBoardActions.closeSprint` (re-read the revision from the refetch the carry-over
+  forces), with a unit test beside it in `useBoardActions.test.ts`.
+- **Two gotchas**, both in board.steps.ts. Radix's `DropdownMenuTrigger` opens on `pointerdown`,
+  and this provider's _native_ click does not produce the sequence it wants — even on a plainly
+  visible trigger, which is a wider claim than worktree.steps.ts's hover-revealed one, so
+  `support/interactions.ts`'s `openMenuViaJs` is now shared rather than copied a second time. And a
+  `(\d+)` capture arrives as a **number**, so comparing it to text read out of the DOM with `===`
+  is false however identical the two print — which is what an error message reading
+  `holds "1", expected "1"` turned out to mean.
+
+### The card record and the board's own shape (`board-cards.feature`) ✅
+
+The second half of the same feature, split into its own file **without a single `@doc` tag**: the
+board's documentation page is curated from `board.feature`, and a page is generated per documented
+scenario, so widening the tour is a decision someone should take on purpose rather than inherit from
+a regression suite. 10 scenarios, all reusing `board.feature`'s own steps for the board-level setup —
+Cucumber matches by text across files, so the two share everything down to `support/board.ts`, which
+now holds the card/column/ref resolution both need (it was `board.steps.ts`-private before; a second
+copy is what the `openMenuViaJs` note above already argued against).
+
+- **Inside the card**: the Definition-of-Done checklist (adding items, ticking one, the `1/2` badge
+  on the card's face and the `- [x]` on disk); a comment surviving a close-and-reopen; the blocked
+  switch, which shows its required-reason field and writes **nothing** until there is a reason —
+  asserted as an absence held for a stretch, since a write that has not been issued yet looks
+  exactly like one that never will; and the four side-panel fields (assignee, priority, due date,
+  tag) saved one after another, which is also a test of the card's `revision` being refreshed
+  between them.
+- **Between cards**: declaring "A is blocked by B" and proving on disk that the write landed on
+  **B** (`blocks`) with A holding nothing — then removing the relation from A, the side that only
+  *derives* it, and proving B's stored half is what went away. That asymmetry (`lib/cardLinks.ts`)
+  is invisible from the DOM alone: both cards render a row either way.
+- **Around the cards**: adding a column and flagging it "counts as done"; removing a column that
+  still holds a card; renaming the board, its prefix list and its tag palette; the delete
+  confirmation's "archive instead" escape hatch and then a real delete; and moving a card to another
+  sprint, asserted on **both** boards' refs.
+- **Three real bugs, found by these scenarios** — see below. Two are fixed here; the third was a
+  piece of copy that described the opposite of what the code does.
+
+#### 1. Removing a column made its cards disappear — fixed
+
+`BoardColumnsArea` only renders a card into a column that exists, so a card left in a removed column
+was gone from the board while still on disk: not in the columns, not in the archive dialog (which
+lists _archived_ cards, not orphaned ones), not findable by searching, and still holding its
+identifier. `update_board_columns` now re-homes such cards into the first remaining column **in the
+same commit** as the column change, which is the rule `move_cards_to_board` already applied when a
+card arrives on a board without its column — so the invariant "every card sits in a column that
+exists" is true of every state the ref ever holds. Rust test beside it
+(`removing_a_column_rehomes_the_cards_that_were_in_it`).
+
+#### 2. A card moved to another board was invisible on arrival — fixed
+
+The move scenario failed with the destination board showing three empty columns. It was not the
+backend: `get_board` returned the card, and the ref held it. `useBoardCardActions.moveCardToBoard`
+revalidated the board _list_ and the _open_ board's cards, but the destination's cards live under
+their own SWR key, populated the last time that board was looked at — and nothing ever asked for it
+again. Measured with the probe still worth remembering: the board stayed empty for **30 seconds**
+after the move, while `browser.tauri.execute` on `get_board` returned the card and a `rAF` probe
+fired in 0 ms, which is what ruled out the throttled-webview explanation. `useBoardDetail` now
+exposes `revalidateAllDetails`, and the move calls it; unit test in `useBoardCardActions.test.tsx`.
+
+#### 3. The board settings lied about renaming a prefix — copy fixed
+
+`boardSettings.prefixHint` read "Renaming it relabels every card at once — the numbers stay as they
+are." A card holds **its own** prefix — that is what lets its identifier survive a move to another
+board (`cardMeta.cardIdentifier`) — and `update_board_meta`'s doc comment says so explicitly, as does
+its Rust test `editing_the_prefix_list_never_touches_a_cards_own_prefix`. The hint was a leftover
+from the single-prefix era, promising a behaviour the storage design deliberately refuses. The
+scenario pins the real one (a card stays `GM-1` after the board stops offering `GM`, and the next
+card drawn from `OPS` starts its own sequence) and the copy now states it, en and fr.
+
+#### Gotchas paid for here
+
+- **A field that saves on its own has to be waited for on screen, not on disk.** A card's
+  `revision` is the _board's_ ref tip, so every write moves it; the next edit is only safe once the
+  page has re-read the card. Waiting for the write to land in git is not enough — the refetch is
+  fired but not awaited — so each field step waits for the **row** to render its new value, which
+  can only happen after the re-read. Four edits in a row otherwise fail on the second with a
+  conflict toast.
+- **The same applies to the checklist, in the other direction.** `CardDodSection` holds an
+  optimistic copy while its write is in flight and drops it the moment the write resolves, so for an
+  instant the editor renders the _previous_ checklist again. A step that typed the next item into
+  that window built it on the stale string and silently lost the one before. The steps wait for the
+  DOM and the stored markdown to agree **and** to contain what the edit was for, so the poll can't
+  be satisfied by the state it started in.
+- **A dialog opened _from_ the card record reopens it on the way out** (`useBoardDialogs`'s origin
+  trail), including after the card it was about has been deleted or moved away — the record flashes
+  back for one render until the refetch drops the card. Whether it is still up when the next step
+  runs is a race, so the delete and move steps dismiss it explicitly rather than leaving the next
+  click to land on a modal.
+- **`CardFieldRow` renders a field's open editor _inside_ the row**, so "the row's text changed" is
+  true the moment the editor opens and says nothing about the value being saved. Each field's
+  settled-check is its own (the assignee's name in the row, `card-priority-high`, a
+  `card-meta-tag-*` badge).
+- **A toggle needs re-checking after `clickViaJs`.** The doubled-dispatch trap README.md documents
+  is invisible on a button and fatal on a checkbox: the blocked switch, a checklist tick and the
+  column editor's "counts as done" all flip forward and straight back about half the time. Every
+  toggle here goes through a helper that verifies where it landed and re-clicks.
 
 ---
 

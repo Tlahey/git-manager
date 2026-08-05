@@ -12,6 +12,9 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browser, expect, $, $$ } from '@wdio/globals'
 import { After, Given, When, Then } from '@wdio/cucumber-framework'
+// Shared with board.steps.ts — the Radix `⋯` menu on a card face has the same problem this file's
+// per-row remove menu does. See support/interactions.ts.
+import { openMenuViaJs } from '../support/interactions'
 
 // "When I expand the ... sidebar section" is shared — see stash.steps.ts.
 // "When I reload the application" is shared — see settings.steps.ts.
@@ -38,23 +41,6 @@ async function clickViaJs(testid: string) {
     const target = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
     if (!target) throw new Error(`clickViaJs: no element with data-testid="${id}"`)
     target.click()
-  }, testid)
-}
-
-// Radix's DropdownMenuTrigger opens on `pointerdown`, not `click` — a synthetic `el.click()` fires
-// only a click event, so clickViaJs leaves the menu shut and the items never render. Dispatch a real
-// primary-button pointer sequence instead (Radix ignores anything with `button !== 0` or ctrlKey).
-async function openMenuViaJs(testid: string) {
-  const el = $(`[data-testid="${testid}"]`)
-  await el.waitForExist({ timeout: 10000 })
-  await browser.execute((id: string) => {
-    const target = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
-    if (!target) throw new Error(`openMenuViaJs: no element with data-testid="${id}"`)
-    for (const type of ['pointerdown', 'pointerup', 'click']) {
-      target.dispatchEvent(
-        new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, ctrlKey: false })
-      )
-    }
   }, testid)
 }
 
