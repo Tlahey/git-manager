@@ -18,7 +18,7 @@ import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useGraphLayout } from '../../hooks/useGraphLayout'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes } from '../../hooks/useGitGraphNodes'
-import type { RebaseProgressStep } from '@git-manager/git-types'
+import type { GitGraphNode, RebaseProgressStep } from '@git-manager/git-types'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
@@ -27,12 +27,15 @@ import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
 import { useSearchNavigation } from '../../hooks/useSearchNavigation'
 import { useCommitReorderDrag } from '../../hooks/useCommitReorderDrag'
 import { useCommitReorderFocus } from '../../hooks/useCommitReorderFocus'
+import { useTimelinePreviewAnchor } from '../../hooks/useTimelinePreviewAnchor'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
 import { CommitDragProvider } from './CommitDragProvider'
 import { CommitReorderDialog } from './CommitReorderDialog'
 import { CommitDragSlot } from './components/CommitDragSlot'
+import { TimelinePreviewBanner } from '../timeline/TimelinePreviewBanner'
+import { computeTimelineDelta, NO_TIMELINE_DELTA } from './timelineDelta'
 import { TagMenuProvider } from './TagMenuContext'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -90,6 +93,7 @@ interface GitGraphProps {
 // Row height is dynamic now based on settings
 
 const EMPTY_ARRAY: string[] = []
+const EMPTY_NODES: GitGraphNode[] = []
 
 export function GitGraph({
   repoPath,
@@ -466,6 +470,21 @@ export function GitGraph({
 
   // ── Virtualisation + scroll sync ──────────────────────────────────────────
   // (the scroll container's ref is declared with the graph column's scroll geometry above)
+  // Last graph the repository actually had. Kept so the previewed one can be diffed against it —
+  // the count of commits a step adds and removes is the thing the graph cannot show on its own,
+  // and it is an exact set difference rather than anything inferred. Updated only while NOT
+  // previewing, so it is never overwritten by the preview it is the reference for.
+  const liveNodes = useRef<GitGraphNode[]>(EMPTY_NODES)
+  useEffect(() => {
+    if (!timelinePreviewOpen) liveNodes.current = nodes
+  }, [timelinePreviewOpen, nodes])
+
+  const timelineDelta = useMemo(
+    () =>
+      timelinePreviewOpen ? computeTimelineDelta(liveNodes.current, nodes) : NO_TIMELINE_DELTA,
+    [timelinePreviewOpen, nodes]
+  )
+
   const { virtualizer } = useGraphScrollSync({
     parentRef,
     rowHeight,
@@ -482,6 +501,15 @@ export function GitGraph({
     pendingGraphSelection,
     setPendingGraphSelection,
     t,
+  })
+
+  // Scrubbing moves the whole list under a stationary viewport, which reads as a scroll rather
+  // than as a change. Pinning the previewed commit gives the eye something that stays put.
+  useTimelinePreviewAnchor({
+    active: timelinePreviewOpen,
+    previewOid: timelinePreviewOid,
+    filteredNodes,
+    scrollToIndex: virtualizer.scrollToIndex,
   })
 
   // Follow the commits a drag just moved into the rewritten history — they come back with new
@@ -655,6 +683,8 @@ export function GitGraph({
                     onPrevious={goToPreviousMatch}
                     onNext={goToNextMatch}
                   />
+
+                  <TimelinePreviewBanner delta={timelineDelta} />
 
                   {soloActive && (
                     <div

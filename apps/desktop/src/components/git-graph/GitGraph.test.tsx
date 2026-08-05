@@ -210,11 +210,15 @@ function actionsState(overrides: Partial<ReturnType<typeof useGitGraphActions>> 
 
 function renderGraph(props: Partial<React.ComponentProps<typeof GitGraph>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const tree = (
     <QueryClientProvider client={client}>
       <GitGraph repoPath="/repo" {...props} />
     </QueryClientProvider>
   )
+  const result = render(tree)
+  // Re-rendering through the same provider, so a test can change what the mocked hooks return
+  // without remounting the component — the only way to exercise state it carries across renders.
+  return { ...result, rerenderGraph: () => result.rerender(tree) }
 }
 
 beforeEach(() => {
@@ -1247,5 +1251,37 @@ describe('GitGraph — undo/redo timeline preview', () => {
     const row = lastGraphRowCalls.current.at(-1)!
     ;(row.onContextMenu as (e: unknown) => void)({ preventDefault: vi.fn() })
     expect(openMenuAt).toHaveBeenCalled()
+  })
+
+  // The graph shows the resulting state, so the commits a step removes are simply not in it — the
+  // change has no visible cause. The banner states it, from an exact set difference between the
+  // last real graph and the previewed one.
+  it('states what the previewed step adds and removes', () => {
+    const { rerenderGraph } = renderGraph()
+    expect(screen.queryByTestId('timeline-preview-banner')).not.toBeInTheDocument()
+
+    // The preview log comes back without ccc and bbb — an undo of the last two commits.
+    const previewed = [commitNode('aaa')]
+    useGitLog.mockReturnValue({ data: previewed, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(previewed))
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    rerenderGraph()
+
+    expect(screen.getByTestId('timeline-removed')).toHaveTextContent('2 commits removed')
+    expect(screen.queryByTestId('timeline-added')).not.toBeInTheDocument()
+  })
+
+  it('anchors the previewed commit on screen so scrubbing has a reference point', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+    expect(virtualizerScrollToIndex).toHaveBeenCalledWith(2, { align: 'center' })
+  })
+
+  it('leaves scrolling alone with no timeline open', () => {
+    renderGraph()
+    expect(virtualizerScrollToIndex).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ align: 'center' })
+    )
   })
 })
