@@ -144,10 +144,7 @@ describe('applyViewZones', () => {
           },
           addZone: (zone: never) => {
             const id = `zone-${nextId++}`
-            zones.set(
-              id,
-              zone as { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }
-            )
+            zones.set(id, zone)
             return id
           },
         })

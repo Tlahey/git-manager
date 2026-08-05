@@ -32,7 +32,7 @@ vi.mock('@git-manager/ui', () => ({
 const { runLlmGenerate, cancelLlmGenerate, llmStatus } = vi.hoisted(() => ({
   runLlmGenerate: vi.fn(),
   cancelLlmGenerate: vi.fn(),
-  llmStatus: { current: 'idle' as string },
+  llmStatus: { current: 'idle' },
 }))
 vi.mock('./useAiGeneration', () => ({
   useAiGeneration: () => ({
@@ -68,7 +68,7 @@ function file(path: string, overrides: Partial<ProcessedFileItem> = {}): Process
 }
 
 function status(overrides: Partial<GitStatus> = {}): GitStatus {
-  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides } as GitStatus
+  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
 /** A graph node carrying just what `handleToggleAmend` reads off the cached `git-log` query. */

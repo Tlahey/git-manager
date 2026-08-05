@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRef } from '@git-manager/git-types'
-import { TagMenuProvider, useTagMenuHandler } from './TagMenuContext'
+import { TagMenuProvider } from './TagMenuContext'
+import { useTagMenuHandler } from './useTagMenuHandler'
 
 const TAG: GitRef = { name: 'refs/tags/v1', shortName: 'v1', type: 'tag', commitOid: 'abc' }
 

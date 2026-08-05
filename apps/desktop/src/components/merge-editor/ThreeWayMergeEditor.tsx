@@ -11,7 +11,6 @@ import {
   type ConflictResolverPanel,
   type ConflictResolverRef,
   type ConflictResolverLabels,
-  type CodePaneEditorComponent,
 } from '@git-manager/editor'
 import { useSWRConfig } from 'swr'
 import { apiAutoMergeConflictView } from '../../api/conflict.api'
@@ -183,7 +182,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
     const editorConfig = useMemo(
       () => ({
-        component: MonacoEditor as unknown as CodePaneEditorComponent,
+        component: MonacoEditor,
         language: languageForFilePath(filePath),
         theme: 'git-manager-dynamic',
         onEditorMount: handleEditorMount,

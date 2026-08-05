@@ -51,9 +51,9 @@ function evictOldest(
   const keys = Object.keys(explanations)
   if (keys.length <= MAX_REMEMBERED) return explanations
   const kept = keys
-    .sort((a, b) => explanations[b]!.generatedAt - explanations[a]!.generatedAt)
+    .sort((a, b) => explanations[b].generatedAt - explanations[a].generatedAt)
     .slice(0, MAX_REMEMBERED)
-  return Object.fromEntries(kept.map((key) => [key, explanations[key]!]))
+  return Object.fromEntries(kept.map((key) => [key, explanations[key]]))
 }
 
 export const useActionExplanationStore = create<ActionExplanationState>()(

@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner, Checkbox, RadioGroup, RadioGroupItem } from '@git-manager/ui'
 import {
+  Button,
+  Spinner,
+  Checkbox,
+  RadioGroup,
+  RadioGroupItem,
   Dialog,
   DialogContent,
   DialogHeader,

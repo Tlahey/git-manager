@@ -20,7 +20,7 @@ function node(oid: string, name: string, email: string): GitGraphNode {
     color: '#000',
     connections: [],
     refs: [],
-  } as GitGraphNode
+  }
 }
 
 describe('collectGraphAuthors', () => {

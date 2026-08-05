@@ -51,7 +51,7 @@ function sanitizeHistory(raw: unknown): RepoHistory {
   let pointer = 0
   rawStack.forEach((action, i) => {
     if (action && typeof action === 'object' && 'label' in action) {
-      stack.push(action as UndoAction)
+      stack.push(action)
       if (i < rawPointer) pointer++
     }
   })
@@ -114,7 +114,7 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
           // Newest operation first: a gesture's steps have to come apart in the reverse order they
           // were performed, or a step undoes into a state its predecessor has not left yet.
           for (let i = group.length - 1; i >= 0; i--) {
-            await executeUndo(repoPath, group[i]!)
+            await executeUndo(repoPath, group[i])
             done++
           }
         } finally {

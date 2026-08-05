@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import type { ComponentProps } from 'react'
+import { Toaster } from '@git-manager/ui'
 
 const { useFileDiff, useFileRawContents } = vi.hoisted(() => ({
   useFileDiff: vi.fn(),
@@ -67,13 +68,18 @@ function renderCenter(
   const onClose = vi.fn()
   const onRefresh = vi.fn()
   const utils = render(
-    <DiffViewCenter
-      repoPath="/repo"
-      file={{ path: 'src/a.ts', staged: false, ...fileOverrides }}
-      onClose={onClose}
-      onRefresh={onRefresh}
-      {...extra}
-    />
+    <>
+      <DiffViewCenter
+        repoPath="/repo"
+        file={{ path: 'src/a.ts', staged: false, ...fileOverrides }}
+        onClose={onClose}
+        onRefresh={onRefresh}
+        {...extra}
+      />
+      {/* The component reports failures through the shared toast queue, so the sink has to be
+          mounted for those assertions to see anything. */}
+      <Toaster />
+    </>
   )
   return { ...utils, onClose, onRefresh }
 }
@@ -84,8 +90,6 @@ beforeEach(() => {
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
     configurable: true,
   })
-  vi.spyOn(window, 'alert').mockImplementation(() => {})
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
   useFileDiff.mockReturnValue({ data: undefined, isLoading: false, refetch: vi.fn() })
   useFileRawContents.mockReturnValue({ data: undefined, isLoading: false })
 })
@@ -260,47 +264,69 @@ describe('DiffViewCenter — stage toggle', () => {
     expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'src/a.ts')
   })
 
-  it('alerts on stage/unstage failure', async () => {
+  it('surfaces a stage/unstage failure as an error toast', async () => {
     mockedStage.mockRejectedValue(new Error('stage failed'))
     renderCenter({ staged: false })
     await act(async () => {
       await toolbarProps().onToggleStage()
     })
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('stage failed'))
+    // Address the toast by its own text: the queue is a module-level singleton, so an earlier
+    // test's toast can still be on screen and `getByTestId('toast')` would find two.
+    expect(screen.getByText(/stage failed/).closest('[data-testid="toast"]')).toHaveAttribute(
+      'data-variant',
+      'error'
+    )
   })
 })
 
 describe('DiffViewCenter — rollback', () => {
+  /**
+   * Opens the rollback confirmation and answers it. `onRollback` only settles once the user has
+   * clicked, so it is deliberately not awaited before the click — awaiting it first would
+   * deadlock on a dialog nobody has answered yet.
+   */
+  async function rollbackAnswering(answer: 'confirm' | 'cancel') {
+    let pending: Promise<void> | undefined
+    await act(async () => {
+      pending = toolbarProps().onRollback() ?? undefined
+    })
+    expect(screen.getByTestId('rollback-file-confirm-dialog')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Are you sure you want to discard all local changes to this file? This action is irreversible.'
+      )
+    ).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(`confirm-dialog-${answer}`))
+      await pending
+    })
+  }
+
   it('discards file changes after confirmation, then closes and refreshes', async () => {
     mockedDiscard.mockResolvedValue(undefined)
     const { onClose, onRefresh } = renderCenter()
-    await act(async () => {
-      await toolbarProps().onRollback()
-    })
-    expect(window.confirm).toHaveBeenCalledWith(
-      'Are you sure you want to discard all local changes to this file? This action is irreversible.'
-    )
+    await rollbackAnswering('confirm')
     expect(mockedDiscard).toHaveBeenCalledWith('/repo', 'src/a.ts')
     expect(onClose).toHaveBeenCalledOnce()
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
   it('does nothing when the confirmation is declined', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     const { onClose } = renderCenter()
-    await act(async () => {
-      await toolbarProps().onRollback()
-    })
+    await rollbackAnswering('cancel')
     expect(mockedDiscard).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('alerts on rollback failure', async () => {
+  it('surfaces a rollback failure as an error toast', async () => {
     mockedDiscard.mockRejectedValue(new Error('discard failed'))
     renderCenter()
-    await act(async () => {
-      await toolbarProps().onRollback()
-    })
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('discard failed'))
+    await rollbackAnswering('confirm')
+    // Address the toast by its own text: the queue is a module-level singleton, so an earlier
+    // test's toast can still be on screen and `getByTestId('toast')` would find two.
+    expect(screen.getByText(/discard failed/).closest('[data-testid="toast"]')).toHaveAttribute(
+      'data-variant',
+      'error'
+    )
   })
 })

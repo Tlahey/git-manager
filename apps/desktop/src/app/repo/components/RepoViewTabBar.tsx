@@ -3,8 +3,7 @@ import { InnerTab } from '@git-manager/components'
 import { GitCommitHorizontal, FolderOpen, Kanban } from 'lucide-react'
 import type { Board } from '@git-manager/git-types'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../features/board'
-import { useBoardStore } from '../../../features/board'
+import { useBoardControlsStore, useBoardStore } from '../../../features/board'
 
 interface RepoViewTabBarProps {
   repoPath: string
@@ -57,11 +56,7 @@ export function RepoViewTabBar({
       <InnerTab active={isGraphActive} onClick={selectGraph} data-testid="repo-view-tab-graph">
         <GitCommitHorizontal className="h-3.5 w-3.5" /> {t('viewTabs.graph')}
       </InnerTab>
-      <InnerTab
-        active={isFileExplorerOpen}
-        onClick={selectFiles}
-        data-testid="repo-view-tab-files"
-      >
+      <InnerTab active={isFileExplorerOpen} onClick={selectFiles} data-testid="repo-view-tab-files">
         <FolderOpen className="h-3.5 w-3.5" /> {t('toolbar.files')}
       </InnerTab>
       {/* A closed sprint is an archive, not a place to work — it keeps a tab only while it is the

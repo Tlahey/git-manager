@@ -39,6 +39,14 @@ export function formatActivityData(args: unknown): string {
   try {
     return JSON.stringify(root, (_key, value) => expand(value), 2)
   } catch {
-    return typeof args === 'string' ? args : String(args)
+    // `args` is `unknown`. Only a primitive has a meaningful string form; anything that reaches
+    // here and isn't one is a value JSON.stringify just refused, and `[object Object]` (or
+    // `function () { … }`) would say nothing useful about it.
+    return typeof args === 'string' ||
+      typeof args === 'number' ||
+      typeof args === 'boolean' ||
+      typeof args === 'bigint'
+      ? String(args)
+      : ''
   }
 }

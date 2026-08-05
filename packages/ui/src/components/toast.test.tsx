@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import type { toast as ToastFn, Toaster as ToasterComponent } from './toast'
+import type { Toaster as ToasterComponent } from './toast'
+import type { toast as ToastFn } from './toast.store'
 
 let toast: typeof ToastFn
 let Toaster: typeof ToasterComponent
@@ -10,9 +11,12 @@ beforeEach(async () => {
   vi.useFakeTimers()
   // Fresh module instance per test — the toast queue is a module-level singleton, so re-importing
   // after resetModules() gives each test its own isolated `toasts` array instead of leaking state.
-  const mod = await import('./toast')
-  toast = mod.toast
-  Toaster = mod.Toaster
+  // Both halves must come from the SAME fresh registry: `toast.tsx` reads the queue out of
+  // `toast.store.ts`, so importing them separately here still yields one shared instance.
+  const view = await import('./toast')
+  const store = await import('./toast.store')
+  toast = store.toast
+  Toaster = view.Toaster
 })
 
 afterEach(() => {

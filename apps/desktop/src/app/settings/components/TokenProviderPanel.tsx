@@ -85,7 +85,7 @@ export function TokenProviderPanel({
   function handleRemove(id: string) {
     const next = accounts.filter((a) => a.id !== id)
     const stillActive =
-      activeAccountId === id ? (next.length > 0 ? next[0]!.id : null) : activeAccountId
+      activeAccountId === id ? (next.length > 0 ? next[0].id : null) : activeAccountId
     onChange({ accounts: next, activeAccountId: stillActive })
   }
 

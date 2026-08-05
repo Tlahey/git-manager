@@ -2,14 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act, renderHook } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MockPR, SortDir } from '../types'
-import {
-  TableHeader,
-  GroupHeader,
-  LoadMore,
-  InfiniteScrollSentinel,
-  usePRSort,
-  useSetFilter,
-} from './ListHelpers'
+import { TableHeader, GroupHeader, LoadMore, InfiniteScrollSentinel } from './ListHelpers'
+import { usePRSort, useSetFilter } from './listHooks'
 
 function lastObserver() {
   return (

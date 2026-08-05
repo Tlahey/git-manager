@@ -3,6 +3,7 @@ import { Check, Copy } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Tooltip } from '@git-manager/ui'
 import { MermaidBlock } from './MermaidBlock'
+import { codeText } from '../markdownText'
 
 interface CodeBlockProps {
   inline?: boolean
@@ -14,7 +15,7 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
   const { t } = useTranslation('common')
   const match = /language-(\w+)/.exec(className || '')
   const language = match ? match[1] : ''
-  const codeString = String(children || '').replace(/\n$/, '')
+  const codeString = codeText(children).replace(/\n$/, '')
 
   const [copied, setCopied] = useState(false)
 

@@ -8,6 +8,7 @@ import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 import { PrBaseBranchDialog } from './PrBaseBranchDialog'
+import { useConfirm } from '@git-manager/components'
 
 interface PrComposerExpanderProps {
   repoPath: string
@@ -34,6 +35,7 @@ export function PrComposerExpander({
 }: PrComposerExpanderProps) {
   const { t } = useTranslation('git')
   const { t: tErrors } = useTranslation('errors')
+  const { confirm, confirmDialog } = useConfirm()
   const aiEnabled = useAiEnabled()
   const { template } = usePrTemplate(repoPath)
   // `aiError` is distinct from the `error` prop: that one is the publish failure, this one is the
@@ -76,7 +78,16 @@ export function PrComposerExpander({
 
   async function aiFill() {
     if (!baseRef) return
-    if (body.trim() && !window.confirm(t('pr.publish.aiOverwriteConfirm'))) return
+    if (body.trim()) {
+      const ok = await confirm({
+        title: t('pr.publish.aiOverwriteTitle'),
+        description: t('pr.publish.aiOverwriteConfirm'),
+        confirmLabel: t('pr.publish.aiOverwriteAction'),
+        cancelLabel: t('common:actions.cancel'),
+        testId: 'ai-overwrite-confirm-dialog',
+      })
+      if (!ok) return
+    }
     setBody('')
     setBodyTouched(true)
     await generate(
@@ -207,6 +218,7 @@ export function PrComposerExpander({
         onSelect={setBaseRef}
         onClose={() => setBaseDialogOpen(false)}
       />
+      {confirmDialog}
     </div>
   )
 }

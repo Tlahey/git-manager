@@ -86,7 +86,7 @@ function branch(shortName: string): GitBranch {
     commitTimestamp: 0,
     aheadCount: 0,
     behindCount: 0,
-  } as GitBranch
+  }
 }
 
 function baseProps(overrides: Partial<Parameters<typeof SidebarDialogsManager>[0]> = {}) {

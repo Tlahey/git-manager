@@ -148,7 +148,7 @@ describe('mergeSettingsWithDefaults', () => {
   it('preserves a persisted repoOverrides map through rehydration', () => {
     const merged = mergeSettingsWithDefaults({
       repoOverrides: { '/repo': { theme: 'nord', protectedBranches: ['main'] } },
-    } as unknown as Partial<typeof DEFAULT_SETTINGS>)
+    })
     expect(merged.repoOverrides).toEqual({
       '/repo': { theme: 'nord', protectedBranches: ['main'] },
     })

@@ -1,6 +1,5 @@
 import type { editor, IRange } from 'monaco-editor'
-import type { DecorationSpec } from '../mergeDecorations'
-import type { ViewZoneSpec } from '../mergeDecorations'
+import type { DecorationSpec, ViewZoneSpec } from '../mergeDecorations'
 import type { InlineDecorationSpec } from '../mergeIntraLineDiff'
 
 /** `DecorationSpec.endLine` is already inclusive (see mergeDecorations.ts) — exactly what
@@ -88,6 +87,10 @@ export function setHiddenAreas(
   editorInstance: editor.IStandaloneCodeEditor | null,
   ranges: IRange[]
 ): void {
+  // The assertion IS necessary — `setHiddenAreas` isn't on `IStandaloneCodeEditor` (see the type
+  // above) and dropping it fails `tsc`. oxlint's type-aware rule mis-reads the optional call as
+  // making the cast redundant, and its autofix breaks the build; verified with `pnpm typecheck`.
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
   ;(editorInstance as EditorWithHiddenAreas | null)?.setHiddenAreas?.(ranges)
 }
 

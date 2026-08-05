@@ -7,7 +7,7 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 const { flow } = vi.hoisted(() => ({
   flow: {
     composer: null as { head: string; baseRef: string; title: string } | null,
-    defaultBaseRef: 'main' as string | null,
+    defaultBaseRef: 'main',
     busy: false,
     error: null as string | null,
     createPr: vi.fn(),

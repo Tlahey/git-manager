@@ -10,6 +10,7 @@ import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 import type { CreatePrArgs } from '../../../hooks/usePrCreateFlow'
+import { useConfirm } from '@git-manager/components'
 
 interface PrCreateFormProps {
   repoPath: string
@@ -38,6 +39,7 @@ export function PrCreateForm({
 }: PrCreateFormProps) {
   const { t } = useTranslation('git')
   const { t: tErrors } = useTranslation('errors')
+  const { confirm, confirmDialog } = useConfirm()
   const aiEnabled = useAiEnabled()
   const { data: branches = [] } = useBranches(repoPath)
   const { template } = usePrTemplate(repoPath)
@@ -94,7 +96,16 @@ export function PrCreateForm({
 
   async function aiFill() {
     if (!base) return
-    if (body.trim() && !window.confirm(t('pr.publish.aiOverwriteConfirm'))) return
+    if (body.trim()) {
+      const ok = await confirm({
+        title: t('pr.publish.aiOverwriteTitle'),
+        description: t('pr.publish.aiOverwriteConfirm'),
+        confirmLabel: t('pr.publish.aiOverwriteAction'),
+        cancelLabel: t('common:actions.cancel'),
+        testId: 'ai-overwrite-confirm-dialog',
+      })
+      if (!ok) return
+    }
     setBody('')
     setBodyTouched(true)
     await generate(
@@ -254,6 +265,7 @@ export function PrCreateForm({
           {isSubmitting ? t('pr.publish.creating') : t('pr.create.submit')}
         </Button>
       </div>
+      {confirmDialog}
     </div>
   )
 }

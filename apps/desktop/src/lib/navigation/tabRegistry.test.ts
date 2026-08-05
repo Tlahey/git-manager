@@ -25,7 +25,7 @@ describe('renderActiveTab', () => {
 
   it('returns null when no tab matches activeId', () => {
     const tabs: TabDef<Id>[] = [{ id: 'a', label: 'A', render: () => 'a-content' }]
-    expect(renderActiveTab(tabs, 'b' as Id)).toBeNull()
+    expect(renderActiveTab(tabs, 'b')).toBeNull()
   })
 
   it('returns null for an empty tab list', () => {

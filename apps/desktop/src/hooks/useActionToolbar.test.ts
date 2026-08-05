@@ -79,7 +79,7 @@ function repo(overrides: Partial<GitRepo> = {}): GitRepo {
 }
 
 function gitStatus(overrides: Partial<GitStatus> = {}): GitStatus {
-  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides } as GitStatus
+  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
 beforeEach(() => {

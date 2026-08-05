@@ -74,7 +74,7 @@ export function usePrPublishFlow(repoPath: string) {
       setError(null)
       setBusy(true)
       try {
-        let head = currentBranch as string
+        let head = currentBranch
         let base = ghDefaultBranch ?? currentBranch ?? ''
 
         // One gesture: on a protected branch this branches, checks out *and* commits, and a ⌘Z
@@ -86,7 +86,7 @@ export function usePrPublishFlow(repoPath: string) {
             if (!name) throw new Error('A new branch name is required on a protected branch')
             await apiCreateAndCheckoutBranch(repoPath, name, 'HEAD')
             head = name
-            base = currentBranch as string // PR targets the protected branch you branched from
+            base = currentBranch // PR targets the protected branch you branched from
           }
 
           await apiCreateCommit(repoPath, commitMessage)

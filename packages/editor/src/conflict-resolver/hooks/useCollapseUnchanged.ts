@@ -317,12 +317,20 @@ export function useCollapseUnchanged({
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
+      // Read `.current` HERE rather than reusing the `theirsEditor`/`centerEditor`/`oursEditor`
+      // captured at the top of the effect — which is what `exhaustive-deps` asks for, and is
+      // wrong in this one place. On unmount the pane refs are nulled *before* this cleanup runs,
+      // so reading them now makes clearZones/clearStickyOverlays no-op; the disposed Monaco
+      // instance takes its own view zones with it. Using the captured value instead would call
+      // `changeViewZones` on an already-disposed editor.
+      /* oxlint-disable react-hooks/exhaustive-deps */
       clearZones(editors.theirsEditorRef.current, editors.theirsCollapsedViewZonesRef)
       clearZones(editors.centerEditorRef.current, editors.centerCollapsedViewZonesRef)
       clearZones(editors.oursEditorRef.current, editors.oursCollapsedViewZonesRef)
       clearStickyOverlays(editors.theirsEditorRef.current, 'theirs')
       clearStickyOverlays(editors.centerEditorRef.current, 'center')
       clearStickyOverlays(editors.oursEditorRef.current, 'ours')
+      /* oxlint-enable react-hooks/exhaustive-deps */
     }
   }, [
     editors,

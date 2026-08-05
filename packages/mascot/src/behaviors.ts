@@ -74,7 +74,7 @@ export function attachEyeTracking(svg: SVGSVGElement): () => void {
 
   const onLeave = (e: PointerEvent | MouseEvent) => {
     // Only reset when the pointer actually leaves the window, not on child transitions.
-    if ((e as MouseEvent).relatedTarget === null) rest()
+    if (e.relatedTarget === null) rest()
   }
 
   window.addEventListener('pointermove', onMove, { passive: true })

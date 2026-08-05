@@ -275,7 +275,7 @@ function PrSimulator() {
   const [action, setAction] = useState<SimulatedChange>('merge')
 
   useEffect(() => {
-    if (mockPRs.length > 0 && !prId) setPrId(mockPRs[0]!.id)
+    if (mockPRs.length > 0 && !prId) setPrId(mockPRs[0].id)
   }, [mockPRs, prId])
 
   // Hidden unless the fixtures are actually what the app is reading. `simulateChange` mutates

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { AuthorAvatar, getAuthorColor } from './AuthorAvatar'
+import { AuthorAvatar } from './AuthorAvatar'
+import { getAuthorColor } from './authorColor'
 
 const getAvatarUrl = vi.fn<(email?: string, name?: string) => string | null>()
 vi.mock('../../../lib/avatar', () => ({

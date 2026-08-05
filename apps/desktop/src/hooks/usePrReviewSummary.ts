@@ -28,8 +28,7 @@ export function usePrReviewSummary(
     enabled && prNumber != null && ownerRepo && token
       ? ['pr-review-summary', ownerRepo.owner, ownerRepo.repo, prNumber, token]
       : null,
-    ([, owner, repo, number, tok]) =>
-      fetchPrReviewSummary(owner as string, repo as string, number as number, tok as string),
+    ([, owner, repo, number, tok]) => fetchPrReviewSummary(owner, repo, number, tok),
     {
       revalidateOnFocus: false,
       // A review or a check landing isn't urgent enough to re-poll a card that is only on screen

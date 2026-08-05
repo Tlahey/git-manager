@@ -1,17 +1,12 @@
 import React from 'react'
 import { apiOpenUrl } from '../../../api/shell.api'
+import { isExternalHref } from './isExternalHref'
 
 interface MarkdownLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string
   children?: React.ReactNode
   /** react-markdown hands custom components the hast node; it must not reach the DOM. */
   node?: unknown
-}
-
-const EXTERNAL_PROTOCOLS = ['http://', 'https://', 'mailto:']
-
-export function isExternalHref(href: string | undefined): boolean {
-  return Boolean(href && EXTERNAL_PROTOCOLS.some((protocol) => href.startsWith(protocol)))
 }
 
 /**

@@ -6,7 +6,7 @@ const codeReview = vi.hoisted(() => ({
   review: vi.fn(),
   cancel: vi.fn(),
   clear: vi.fn(),
-  status: 'idle' as string,
+  status: 'idle',
   isGenerating: false,
   error: null as string | null,
   text: '',

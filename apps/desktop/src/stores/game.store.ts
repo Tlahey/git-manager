@@ -7,7 +7,7 @@ import {
   unlockAchievementById,
   type RewardEngineState,
 } from '../lib/rewards/rewardEngine'
-import type { AchievementDefinition } from '../lib/rewards/types'
+import type { AchievementDefinition, Achievement } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
 /**
@@ -18,7 +18,6 @@ import JSON_ACHIEVEMENTS from './achievements.json'
  * exists (the whole engine used to live inline here).
  */
 export type { Achievement } from '../lib/rewards/types'
-import type { Achievement } from '../lib/rewards/types'
 
 export interface GameState {
   achievements: Achievement[]

@@ -84,7 +84,7 @@ describe('DebugMenu', () => {
 
   it('shows each action’s label and the hint about what to watch for', async () => {
     await openMenu()
-    const first = DEBUG_ACTIONS[0]!
+    const first = DEBUG_ACTIONS[0]
     expect(screen.getByText(first.label)).toBeInTheDocument()
     expect(screen.getByText(first.hint)).toBeInTheDocument()
   })

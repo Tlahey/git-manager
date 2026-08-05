@@ -30,7 +30,7 @@ function action(id: string, pinnedRefs: string[] = [], correlationId?: string): 
     type: 'commit',
     previousOid: 'p',
     newOid: 'n',
-  } as UndoAction
+  }
 }
 
 beforeEach(() => {
@@ -235,8 +235,8 @@ describe('useUndoHistoryStore — correlated gestures undo as one', () => {
     await store().undo(REPO)
 
     expect(executeUndo).toHaveBeenCalledTimes(2)
-    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'checkout' })
-    expect(executeUndo.mock.calls[1]![1]).toMatchObject({ id: 'create' })
+    expect(executeUndo.mock.calls[0][1]).toMatchObject({ id: 'checkout' })
+    expect(executeUndo.mock.calls[1][1]).toMatchObject({ id: 'create' })
     expect(store().canUndo(REPO)).toBe(false)
   })
 
@@ -268,7 +268,7 @@ describe('useUndoHistoryStore — correlated gestures undo as one', () => {
     executeUndo.mockClear()
     await store().undo(REPO)
     expect(executeUndo).toHaveBeenCalledTimes(1)
-    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'lonely' })
+    expect(executeUndo.mock.calls[0][1]).toMatchObject({ id: 'lonely' })
   })
 
   it('does not merge two gestures that happen to be adjacent', async () => {
@@ -277,7 +277,7 @@ describe('useUndoHistoryStore — correlated gestures undo as one', () => {
 
     await store().undo(REPO)
     expect(executeUndo).toHaveBeenCalledTimes(1)
-    expect(executeUndo.mock.calls[0]![1]).toMatchObject({ id: 'b1' })
+    expect(executeUndo.mock.calls[0][1]).toMatchObject({ id: 'b1' })
   })
 })
 
@@ -299,7 +299,7 @@ describe('useUndoHistoryStore — a gesture that fails halfway', () => {
 
     await expect(store().undo(REPO)).rejects.toThrow()
 
-    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(1)
+    expect(useUndoHistoryStore.getState().byRepo[REPO].pointer).toBe(1)
     // The failed entry is still there to retry — the reverted one is not replayed.
     expect(store().canUndo(REPO)).toBe(true)
     executeUndo.mockClear().mockResolvedValue(undefined)
@@ -312,7 +312,7 @@ describe('useUndoHistoryStore — a gesture that fails halfway', () => {
     executeUndo.mockRejectedValue(new Error('nope'))
 
     await expect(store().undo(REPO)).rejects.toThrow()
-    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(2)
+    expect(useUndoHistoryStore.getState().byRepo[REPO].pointer).toBe(2)
   })
 
   it('applies the same rule to redo', async () => {
@@ -321,6 +321,6 @@ describe('useUndoHistoryStore — a gesture that fails halfway', () => {
     executeRedo.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('nope'))
 
     await expect(store().redo(REPO)).rejects.toThrow()
-    expect(useUndoHistoryStore.getState().byRepo[REPO]!.pointer).toBe(1)
+    expect(useUndoHistoryStore.getState().byRepo[REPO].pointer).toBe(1)
   })
 })

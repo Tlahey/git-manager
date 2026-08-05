@@ -24,7 +24,7 @@ interface SummaryProgressNoticeProps {
  */
 export function SummaryProgressNotice({ progress, testIdPrefix }: SummaryProgressNoticeProps) {
   const { t } = useTranslation('git')
-  if (!progress || progress.phase !== 'summarizing') return null
+  if (progress?.phase !== 'summarizing') return null
 
   return (
     <div className="space-y-1" data-testid={`${testIdPrefix}-progress`}>

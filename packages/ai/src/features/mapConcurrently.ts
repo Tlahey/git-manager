@@ -101,7 +101,7 @@ export async function mapConcurrently<T, R>(
       const index = next++
       if (index >= items.length) return
 
-      const result = await run(items[index]!, index)
+      const result = await run(items[index], index)
       slots[index] = result
       settled[index] = true
       onSettled?.(result, index)
@@ -112,7 +112,7 @@ export async function mapConcurrently<T, R>(
   // siblings are still talking to the provider.
   const outcomes = await Promise.allSettled(Array.from({ length: width }, worker))
   const failure = outcomes.find((o) => o.status === 'rejected')
-  if (failure) throw (failure as PromiseRejectedResult).reason
+  if (failure) throw failure.reason
 
   const results: R[] = []
   for (let i = 0; i < items.length; i++) if (settled[i]) results.push(slots[i]!)

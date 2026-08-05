@@ -49,7 +49,7 @@ Output rules (STRICT):
 
 /** The template block, or the instruction to use the default structure. */
 function templateSection(templateContent: string | null): string {
-  return templateContent && templateContent.trim()
+  return templateContent?.trim()
     ? `\nFill in the following pull-request template, preserving its headings and structure exactly:\n\n--- TEMPLATE ---\n${templateContent}\n--- END TEMPLATE ---`
     : `\nNo template is provided — write the description using the default Summary / Changes / Test plan structure.`
 }

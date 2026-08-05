@@ -99,7 +99,7 @@ export function CiBadge({
   // When there's a run to open, the badge becomes a real link to the CI action so
   // the state and its "why" are one click away; stop propagation so it doesn't also
   // trigger the row's open-PR handler.
-  let badgeEl: ReactElement = actionUrl ? (
+  const badgeEl: ReactElement = actionUrl ? (
     <button
       type="button"
       onClick={(e) => {

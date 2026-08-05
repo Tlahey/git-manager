@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { SectionColorPicker, SECTION_COLOR_HEADER } from './SectionColorPicker'
+import { SectionColorPicker } from './SectionColorPicker'
+import { SECTION_COLOR_HEADER } from './sectionColor.config'
 import { SECTION_COLORS } from '../../../stores/dashboard.store'
 
 beforeEach(() => {

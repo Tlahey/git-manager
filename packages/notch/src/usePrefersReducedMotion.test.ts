@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { act } from '@testing-library/react'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { usePrefersReducedMotion } from './usePrefersReducedMotion'
 
 /** A media query list we can flip, standing in for the OS setting. */

@@ -10,7 +10,7 @@ beforeAll(() => {
     observe() {}
     unobserve() {}
     disconnect() {}
-  } as unknown as typeof ResizeObserver
+  }
 })
 
 function mockWidths({ scrollWidth, clientWidth }: { scrollWidth: number; clientWidth: number }) {

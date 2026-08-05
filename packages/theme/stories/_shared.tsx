@@ -24,7 +24,7 @@ export const RENDERABLE_THEMES: ThemeDefinition[] = BUILTIN_THEMES.filter((t) =>
 export function tokenVars(tokens: ThemeTokens): CSSProperties {
   const style: Record<string, string> = {}
   for (const [key, value] of tokens) style[key] = value
-  return style as CSSProperties
+  return style
 }
 
 const hsl = (v: string | undefined) => (v ? `hsl(${v})` : undefined)

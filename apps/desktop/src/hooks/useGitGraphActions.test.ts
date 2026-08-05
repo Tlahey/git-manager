@@ -157,11 +157,11 @@ function commitNode(oid: string, overrides: Partial<GitGraphNode> = {}): GitGrap
     connections: [],
     refs: [],
     ...overrides,
-  } as GitGraphNode
+  }
 }
 
 function status(overrides: Partial<GitStatus> = {}): GitStatus {
-  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides } as GitStatus
+  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
 function baseParams(overrides: Partial<Parameters<typeof useGitGraphActions>[0]> = {}) {
@@ -576,7 +576,7 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
   it('onCompareWithBranch opens the branch comparison from the clicked branch to HEAD', async () => {
     const node = commitNode('a', {
       refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
-    } as Partial<GitGraphNode>)
+    })
     const { result } = renderHook(() =>
       useGitGraphActions(baseParams({ nodes: [node], currentBranch: 'main' }))
     )
@@ -595,7 +595,7 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
   it('onCompareWithBranch starts on the same ref twice while HEAD is detached', async () => {
     const node = commitNode('a', {
       refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
-    } as Partial<GitGraphNode>)
+    })
     const { result } = renderHook(() =>
       useGitGraphActions(baseParams({ nodes: [node], currentBranch: null, isDetached: true }))
     )

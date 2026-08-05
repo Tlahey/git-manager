@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@git-manager/ui'
 import type { NotchDevicePreset } from '../notchGeometry'
 
@@ -188,7 +188,7 @@ export function MacBookSurface({
       data-testid="macbook-surface"
       // Starts hidden at y=0; the host reveals it and drives `top`, exactly as the real window is
       // created invisible and positioned before its first paint.
-      style={{ left: x, top: 0, width, height, visibility: 'hidden' } as CSSProperties}
+      style={{ left: x, top: 0, width, height, visibility: 'hidden' }}
       className="absolute"
     >
       {children}

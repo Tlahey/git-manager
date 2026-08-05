@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Focus, PanelLeftClose, Search, X } from 'lucide-react'
-import { Input } from '@git-manager/ui'
-import type { GitBranch, GitRef, GitWorktree, PullRequest } from '@git-manager/git-types'
+import { Input, toast } from '@git-manager/ui'
+import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
 import { useTranslation } from '@git-manager/i18n'
@@ -23,7 +23,6 @@ import { showNativeMenu } from '../../api/nativeMenu.api'
 import { buildStashMenuSpec } from '../../lib/graphContextMenus'
 import { shortOid } from '../../lib/shortOid'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
-import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
 import { SidebarDialogsManager } from './SidebarDialogsManager'
 import {
@@ -169,7 +168,7 @@ export function RepositorySidebar({
         queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
         queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       } catch (err) {
-        alert(String(err))
+        toast.error(String(err))
       }
     }
     void showNativeMenu(
@@ -193,6 +192,11 @@ export function RepositorySidebar({
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
+  // The three `= []` defaults look dead against `useSidebarRows`'s signature — and are, in
+  // production. They stay because this component's suites mock the hook with partial return
+  // shapes, so the arrays really do arrive `undefined` there; dropping the defaults turns 50
+  // tests red on `.map` of undefined. Widen the mocks before removing them.
+  /* oxlint-disable typescript/no-useless-default-assignment */
   const {
     sections,
     filterStats,
@@ -209,6 +213,7 @@ export function RepositorySidebar({
     filter: branchQuery,
     openState,
   })
+  /* oxlint-enable typescript/no-useless-default-assignment */
 
   // ── Solo mode (branch-visibility filter) ───────────────────────────────────
   const soloActive = useSoloModeStore((s) => s.active)

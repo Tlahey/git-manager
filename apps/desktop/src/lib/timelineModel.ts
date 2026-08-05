@@ -76,7 +76,7 @@ export function deriveTimeline(stack: UndoAction[], pointer: number): TimelineMo
   let lastHeadOid = baseHeadOid
   const gestures = splitIntoGestures(stack)
   gestures.forEach((gesture, i) => {
-    const first = gesture[0]!
+    const first = gesture[0]
     for (const action of gesture) {
       // Carry the previous known HEAD forward across HEAD-less actions so preview stays on the last
       // real commit instead of dropping to null (which would blank the graph mid-history).

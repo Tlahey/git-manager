@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { BookOpen, X, RefreshCw, FileText, Github, Gitlab, Code, Eye } from 'lucide-react'
-import { Button, Tooltip } from '@git-manager/ui'
+import { BookOpen, X, RefreshCw, FileText, Code, Eye } from 'lucide-react'
+import { Button, Tooltip, GithubIcon, GitlabIcon } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
 import { useRepoDataStore } from '../../../stores/repoData.store'
@@ -79,9 +79,9 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
                 data-testid="github-repo-button"
               >
                 {remoteUrl.includes('gitlab.com') ? (
-                  <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
+                  <GitlabIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 ) : (
-                  <Github className="h-3.5 w-3.5 text-muted-foreground" />
+                  <GithubIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
                 {/* Proper nouns, intentionally untranslated. */}
                 <span className="hidden text-[11px] font-medium sm:inline">

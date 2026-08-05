@@ -50,8 +50,11 @@ interface DiffToolbarProps {
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   onChangeActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   isProcessing: boolean
-  onToggleStage: () => void
-  onRollback: () => void
+  // Both handlers are async in `DiffViewCenter` (one awaits the API, the other a confirmation
+  // dialog). The button discards the promise, but saying so in the type is what lets a test
+  // await the action instead of guessing when it settled.
+  onToggleStage: () => void | Promise<void>
+  onRollback: () => void | Promise<void>
   hasPreview?: boolean
 }
 

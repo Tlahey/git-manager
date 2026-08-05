@@ -22,7 +22,7 @@ function file(overrides: Partial<GitDiffFile> = {}): GitDiffFile {
       },
     ],
     ...overrides,
-  } as GitDiffFile
+  }
 }
 
 describe('DiffViewer — header', () => {

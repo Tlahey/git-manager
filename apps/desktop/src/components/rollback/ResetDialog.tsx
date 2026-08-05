@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner, Input, RadioGroup, RadioGroupItem } from '@git-manager/ui'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
+import {
+  Button,
+  Spinner,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@git-manager/ui'
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'

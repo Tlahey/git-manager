@@ -112,7 +112,7 @@ function readSection(body: string, heading: string): string[] {
     const trimmed = line.trim()
     if (trimmed.startsWith('#')) break
     const bullet = /^[-*]\s+(.*)$/.exec(trimmed)
-    if (bullet && bullet[1].trim()) items.push(bullet[1].trim())
+    if (bullet?.[1].trim()) items.push(bullet[1].trim())
   }
   return items
 }

@@ -22,7 +22,7 @@ function node(oid: string, overrides: Partial<GitGraphNode> = {}): GitGraphNode 
     connections: [],
     refs: [],
     ...overrides,
-  } as GitGraphNode
+  }
 }
 
 const t = (key: string) => key

@@ -61,7 +61,7 @@ export function useGitHubRepoIssues(): RepoIssuesData {
         )
       ).filter((r): r is { owner: string; repo: string } => r !== null)
 
-      return fetchGitHubRepoIssues(ownerRepos, tok as string)
+      return fetchGitHubRepoIssues(ownerRepos, tok)
     },
     {
       refreshInterval: 60_000,

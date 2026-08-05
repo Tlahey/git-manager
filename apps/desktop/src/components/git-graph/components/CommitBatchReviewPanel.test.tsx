@@ -41,7 +41,7 @@ function review(overrides: Partial<CommitBatchReview> = {}): CommitBatchReview {
     progress: null,
     hasStagedChanges: false,
     ...overrides,
-  } as CommitBatchReview
+  }
 }
 
 describe('CommitBatchReviewPanel', () => {

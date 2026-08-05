@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Tag, Alert } from '@git-manager/ui'
-import { Check, Trash2, Globe, RefreshCw, Gitlab, Copy, Key } from 'lucide-react'
+import { Button, Input, ScrollArea, Tag, Alert, GitlabIcon } from '@git-manager/ui'
+import { Check, Trash2, Globe, RefreshCw, Copy, Key } from 'lucide-react'
 import type { ProviderAccount } from '@git-manager/git-types'
 import { useGitlabDeviceFlow } from '../../../hooks/useGitlabDeviceFlow'
 
@@ -138,7 +138,7 @@ export function GitlabPanel({ accounts, activeAccountId, onChange }: GitlabPanel
         ) : (
           <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <Gitlab className="h-3.5 w-3.5" />
+              <GitlabIcon className="h-3.5 w-3.5" />
               {t('settings.integrations.connectAccountTitle', { provider: 'GitLab' })}
             </h4>
 

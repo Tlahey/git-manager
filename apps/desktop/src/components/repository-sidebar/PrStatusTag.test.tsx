@@ -29,7 +29,7 @@ describe('PrStatusTag', () => {
   it('shows the GitHub mark and the PR number', () => {
     const { container } = render(<PrStatusTag pr={pr({ number: 77 })} />)
     expect(screen.getByText('#77')).toBeInTheDocument()
-    expect(container.querySelector('.lucide-github')).toBeTruthy()
+    expect(container.querySelector('[data-icon="github"]')).toBeTruthy()
   })
 
   it('renders a status-specific glyph', () => {

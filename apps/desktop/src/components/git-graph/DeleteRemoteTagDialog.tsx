@@ -10,8 +10,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  toast,
 } from '@git-manager/ui'
-import { toast } from '@git-manager/ui'
 import { apiDeleteRemoteTag } from '../../api/git.api'
 
 interface DeleteRemoteTagDialogProps {

@@ -18,6 +18,7 @@ import {
   type MarkdownTaskListContextValue,
 } from './taskListContext'
 import { toggleTaskListItem } from './toggleTaskListItem'
+import { codeText } from './markdownText'
 import './markdown.css'
 
 export interface MarkdownRendererProps {
@@ -113,7 +114,7 @@ export function MarkdownRenderer({
           // react-markdown dropped the `inline` prop in v9, so inline-ness is inferred: fenced code
           // carries a `language-*` class, inline code doesn't (and never spans several lines).
           code: ({ node: _node, className, children, ...props }) => {
-            const isInline = !className && !String(children || '').includes('\n')
+            const isInline = !className && !codeText(children).includes('\n')
             return (
               <CodeBlock inline={isInline} className={className} {...props}>
                 {children}

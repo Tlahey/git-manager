@@ -1,11 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  MergeConnectorOverlay,
-  buildCollapsedWavePath,
-  type ConnectorSegment,
-} from './MergeConnectorOverlay'
+import { MergeConnectorOverlay, type ConnectorSegment } from './MergeConnectorOverlay'
+import { buildCollapsedWavePath } from './collapsedWavePath'
 
 function segment(
   overrides: Partial<ConnectorSegment> & Pick<ConnectorSegment, 'id'>

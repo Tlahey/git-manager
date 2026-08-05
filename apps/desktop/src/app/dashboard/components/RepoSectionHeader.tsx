@@ -22,9 +22,13 @@ import type { PullStrategy } from '../../../lib/tauri'
 import type { SectionAction } from '../hooks/useSectionActions'
 import type { RepoSelection } from '../hooks/useRepoSelection'
 import type { BulkRunState } from '../hooks/useBulkRepoAction'
-import { useDashboardStore, type SectionColor } from '../../../stores/dashboard.store'
-import { SectionColorPicker, SECTION_COLOR_HEADER } from './SectionColorPicker'
-import type { DashboardSectionId } from '../../../stores/dashboard.store'
+import {
+  useDashboardStore,
+  type SectionColor,
+  type DashboardSectionId,
+} from '../../../stores/dashboard.store'
+import { SectionColorPicker } from './SectionColorPicker'
+import { SECTION_COLOR_HEADER } from './sectionColor.config'
 
 interface RepoSectionHeaderProps {
   sectionId: DashboardSectionId

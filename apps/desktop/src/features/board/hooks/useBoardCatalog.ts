@@ -24,7 +24,10 @@ export interface BoardCatalog {
  * it. The selection is persisted per repo (`../stores/board.store.ts`) and falls back to the first
  * board, so a board deleted elsewhere never leaves the page pointing at nothing.
  */
-export function useBoardCatalog(repoPath: string, remoteBackend: BoardBackend | null): BoardCatalog {
+export function useBoardCatalog(
+  repoPath: string,
+  remoteBackend: BoardBackend | null
+): BoardCatalog {
   const { mutate: globalMutate } = useSWRConfig()
 
   const { data: localBoards, isLoading: localLoading } = useSWR(
@@ -33,7 +36,7 @@ export function useBoardCatalog(repoPath: string, remoteBackend: BoardBackend | 
     { revalidateOnFocus: false }
   )
   const { data: remoteBoards, isLoading: remoteLoading } = useSWR(
-    remoteBackend ? ['board-list', 'remote' as BoardSource, repoPath] : null,
+    remoteBackend ? ['board-list', 'remote', repoPath] : null,
     () => remoteBackend!.listBoards(repoPath),
     { revalidateOnFocus: false }
   )

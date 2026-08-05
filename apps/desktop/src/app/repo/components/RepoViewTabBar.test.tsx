@@ -5,8 +5,7 @@ import type { Board } from '@git-manager/git-types'
 import { makeBoard } from '../../../features/board/test/boardFactories'
 import { RepoViewTabBar } from './RepoViewTabBar'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../features/board'
-import { useBoardStore } from '../../../features/board'
+import { useBoardControlsStore, useBoardStore } from '../../../features/board'
 
 const INITIAL_EXPLORER = useFileExplorerStore.getState()
 const path = '/repo'

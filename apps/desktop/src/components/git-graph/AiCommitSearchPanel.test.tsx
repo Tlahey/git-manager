@@ -8,7 +8,7 @@ const searchState = vi.hoisted(() => ({
   search: vi.fn(),
   cancel: vi.fn(),
   clear: vi.fn(),
-  phase: 'idle' as string,
+  phase: 'idle',
   isRunning: false,
   error: null as string | null,
   answer: '',

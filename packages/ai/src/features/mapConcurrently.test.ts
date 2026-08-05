@@ -49,7 +49,7 @@ describe('mapConcurrently', () => {
     const gates = [deferred<number>(), deferred<number>(), deferred<number>(), deferred<number>()]
     const tracker = peakTracker()
 
-    const run = mapConcurrently([0, 1, 2, 3], 2, (i: number) => tracker.wrap(gates[i]!.promise))
+    const run = mapConcurrently([0, 1, 2, 3], 2, (i: number) => tracker.wrap(gates[i].promise))
     await tick()
     // Two dispatched, two still queued: the pool is a window, not a fan-out.
     expect(tracker.peak).toBe(2)
@@ -74,15 +74,15 @@ describe('mapConcurrently', () => {
     const gates = [deferred<string>(), deferred<string>(), deferred<string>()]
     const settledIndices: number[] = []
 
-    const run = mapConcurrently([0, 1, 2], 3, (i: number) => gates[i]!.promise, {
+    const run = mapConcurrently([0, 1, 2], 3, (i: number) => gates[i].promise, {
       onSettled: (_result, index) => settledIndices.push(index),
     })
 
-    gates[2]!.resolve('third')
+    gates[2].resolve('third')
     await tick()
-    gates[0]!.resolve('first')
+    gates[0].resolve('first')
     await tick()
-    gates[1]!.resolve('second')
+    gates[1].resolve('second')
 
     const { results } = await run
     expect(settledIndices).toEqual([2, 0, 1])
@@ -147,7 +147,7 @@ describe('mapConcurrently', () => {
     const items = Array.from({ length: MAX_AI_CONCURRENCY + 10 }, (_, i) => i)
     const gates = items.map(() => deferred<number>())
 
-    const run = mapConcurrently(items, 500, (i: number) => tracker.wrap(gates[i]!.promise))
+    const run = mapConcurrently(items, 500, (i: number) => tracker.wrap(gates[i].promise))
     await tick()
     expect(tracker.peak).toBe(MAX_AI_CONCURRENCY)
 

@@ -13,12 +13,12 @@ import { normalizeMenuSpec, type MenuSpecEntry, type MenuSpecNode } from '../lib
 const ICON_NAMES = ['copy_sha', 'branch', 'tag', 'reset', 'revert', 'fixup'] as const
 type IconName = (typeof ICON_NAMES)[number]
 
-let resolvedIcons: Partial<Record<IconName, Image>> = {}
+const resolvedIcons: Partial<Record<IconName, Image>> = {}
 // Tinted variants of the same glyphs — macOS renders custom (non-template) menu
 // icons as-is regardless of dark mode or disabled state, so we recolor the RGBA
 // buffer ourselves instead of relying on the OS to do it.
-let whiteIcons: Partial<Record<IconName, Image>> = {}
-let greyIcons: Partial<Record<IconName, Image>> = {}
+const whiteIcons: Partial<Record<IconName, Image>> = {}
+const greyIcons: Partial<Record<IconName, Image>> = {}
 let blankImg: Image | undefined
 let hasAttemptedResolve = false
 

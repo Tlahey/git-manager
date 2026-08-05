@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Input, ScrollArea, Spinner } from '@git-manager/ui'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
+import {
+  Button,
+  Input,
+  ScrollArea,
+  Spinner,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { apiCreateFixupCommit } from '../../api/git.api'
 

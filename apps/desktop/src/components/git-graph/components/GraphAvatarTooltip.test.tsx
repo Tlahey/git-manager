@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import type { GitGraphNode } from '@git-manager/git-types'
-import { GraphAvatarTooltip, getAuthorInitials } from './GraphAvatarTooltip'
+import { GraphAvatarTooltip } from './GraphAvatarTooltip'
+import { getAuthorInitials } from './authorInitials'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()

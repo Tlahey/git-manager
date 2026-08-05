@@ -72,7 +72,7 @@ describe('StepRailRow', () => {
   // The GripVertical icon is itself made of <circle> elements, so queries must be scoped to the
   // second <svg> (the mini graph rail, the one after the grip icon), not the whole container.
   function railSvg(container: HTMLElement): SVGSVGElement {
-    return container.querySelectorAll('svg')[1] as SVGSVGElement
+    return container.querySelectorAll('svg')[1]
   }
 
   it('strikes the title through and uses an outline dot for the "dropped" variant', () => {

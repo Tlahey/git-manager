@@ -91,7 +91,7 @@ export function commitSearchNotchModel(input: CommitSearchNotchInput): NotchMode
  * bar reads as working, which is what is actually true.
  */
 function ratioFor(progress: CommitScanProgress | null): { ratio?: number } {
-  if (!progress || progress.phase !== 'scanning' || progress.total <= 0) return {}
+  if (progress?.phase !== 'scanning' || progress.total <= 0) return {}
   return { ratio: Math.min(1, progress.completed / progress.total) }
 }
 

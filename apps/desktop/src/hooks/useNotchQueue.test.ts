@@ -100,7 +100,7 @@ describe('useNotchQueue — the surface decision', () => {
     enqueue(request('push-failed'))
 
     await waitFor(() => expect(sendNative).toHaveBeenCalled())
-    expect(sendNative.mock.calls[0]![0]).toMatchObject({ route: { kind: 'app' } })
+    expect(sendNative.mock.calls[0][0]).toMatchObject({ route: { kind: 'app' } })
   })
 
   it('prefers the producer’s own banner when it has one', async () => {
@@ -200,7 +200,7 @@ describe('useNotchQueue', () => {
     enqueue(request('a'))
 
     await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(1))
-    expect(openWindow.mock.calls[0]![0]).toMatchObject({ model: { id: 'a' } })
+    expect(openWindow.mock.calls[0][0]).toMatchObject({ model: { id: 'a' } })
   })
 
   it('leaves the queued card alone until the first one is done', async () => {
@@ -222,7 +222,7 @@ describe('useNotchQueue', () => {
     await reportDismissed('a')
 
     await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(2))
-    expect(openWindow.mock.calls[1]![0]).toMatchObject({ model: { id: 'b' } })
+    expect(openWindow.mock.calls[1][0]).toMatchObject({ model: { id: 'b' } })
   })
 
   it('ignores a dismissal naming a card the queue has already moved past', async () => {
@@ -250,7 +250,7 @@ describe('useNotchQueue', () => {
     await reportWindowDestroyed()
 
     await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(2))
-    expect(openWindow.mock.calls[1]![0]).toMatchObject({ model: { id: 'b' } })
+    expect(openWindow.mock.calls[1][0]).toMatchObject({ model: { id: 'b' } })
   })
 
   it('ignores a window death for a card the queue has already moved past', async () => {
@@ -331,7 +331,7 @@ describe('useNotchQueue', () => {
     enqueue(request('b'))
 
     await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(2))
-    expect(openWindow.mock.calls[1]![0]).toMatchObject({ model: { id: 'b' } })
+    expect(openWindow.mock.calls[1][0]).toMatchObject({ model: { id: 'b' } })
   })
 
   it('survives the opener throwing', async () => {

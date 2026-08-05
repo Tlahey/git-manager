@@ -111,7 +111,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
                       cell.commits,
                       max
                     )}`}
-                    onMouseEnter={(e) => showTip(label, e.currentTarget as HTMLElement)}
+                    onMouseEnter={(e) => showTip(label, e.currentTarget)}
                     onMouseLeave={hideTip}
                   />
                 )

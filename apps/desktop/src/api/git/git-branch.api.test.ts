@@ -260,7 +260,7 @@ describe('apiCreateAndCheckoutBranch', () => {
     mocked.createBranch.mockResolvedValue(undefined)
     mocked.checkoutBranch.mockResolvedValue(undefined)
     // `apiCreateBranch` looks the new branch up by name to pin its OID.
-    mocked.getBranches.mockResolvedValue([{ ...headBranch('new-sha')[0]!, name: 'feat' }])
+    mocked.getBranches.mockResolvedValue([{ ...headBranch('new-sha')[0], name: 'feat' }])
     mocked.getRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
   })
 
@@ -273,8 +273,8 @@ describe('apiCreateAndCheckoutBranch', () => {
     expect(stack).toHaveLength(2)
     expect(stack[0]).toMatchObject({ type: 'createBranch', name: 'feat' })
     expect(stack[1]).toMatchObject({ type: 'checkout', toRef: 'feat', fromRef: 'main' })
-    expect(stack[0]!.correlationId).toBeTruthy()
-    expect(stack[1]!.correlationId).toBe(stack[0]!.correlationId)
+    expect(stack[0].correlationId).toBeTruthy()
+    expect(stack[1].correlationId).toBe(stack[0].correlationId)
   })
 
   it('reads where HEAD was itself, so the checkout is undoable without the caller helping', async () => {

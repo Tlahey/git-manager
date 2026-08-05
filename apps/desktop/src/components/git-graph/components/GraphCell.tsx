@@ -15,7 +15,8 @@ import { AlertTriangle } from 'lucide-react'
 import { GraphSvg } from '../GraphSvg'
 import type { GraphColumnLayout, MarkerPlacement } from '../graphColumnSizing'
 import { GraphAvatarTooltip } from './GraphAvatarTooltip'
-import { AgentLogo, agentColor, agentLabel } from './AgentLogo'
+import { AgentLogo } from './AgentLogo'
+import { agentColor, agentLabel } from './agentIdentity'
 import { isSyntheticRow } from '../syntheticRows'
 
 interface GraphCellProps {

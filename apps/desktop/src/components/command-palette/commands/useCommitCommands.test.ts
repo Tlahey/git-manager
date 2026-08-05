@@ -3,7 +3,12 @@ import { renderHook } from '@testing-library/react'
 
 // Real i18n (vitest.setup.ts initialises English) — assertions on ids stay untouched, and the one
 // title assertion below checks the real visible copy, interpolation included.
-vi.mock('@git-manager/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('@git-manager/ui', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+  // The commit set renders an open-on-GitHub entry, whose icon now comes from our own
+  // brand set rather than lucide's deprecated one.
+  GithubIcon: () => null,
+}))
 
 const invalidateQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))

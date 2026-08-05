@@ -5,7 +5,7 @@ import { describeFinding } from './describeFinding'
 
 /** The real English copy, so a wrong or blank key fails here rather than in the UI. */
 const t = (key: string, options?: Record<string, unknown>) =>
-  i18next.t(key, { ns: 'git', ...options }) as string
+  i18next.t(key, { ns: 'git', ...options })
 
 function finding(overrides: Partial<HealthFinding> = {}): HealthFinding {
   return {

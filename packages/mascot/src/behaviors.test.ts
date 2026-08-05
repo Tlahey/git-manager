@@ -3,23 +3,22 @@ import { attachEyeTracking } from './behaviors'
 import { MASCOT_SELECTORS } from './mascotArt'
 
 function makeSvg(pupilCount = 2): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   Object.defineProperty(svg, 'viewBox', {
     configurable: true,
     value: { baseVal: { x: 0, y: 0, width: 100, height: 100 } },
   })
-  svg.getBoundingClientRect = () =>
-    ({
-      left: 0,
-      top: 0,
-      width: 100,
-      height: 100,
-      right: 100,
-      bottom: 100,
-      x: 0,
-      y: 0,
-      toJSON() {},
-    }) as DOMRect
+  svg.getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    width: 100,
+    height: 100,
+    right: 100,
+    bottom: 100,
+    x: 0,
+    y: 0,
+    toJSON() {},
+  })
 
   for (let i = 0; i < pupilCount; i++) {
     const pupil = document.createElementNS(

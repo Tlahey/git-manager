@@ -34,7 +34,7 @@ describe('useDevFixturesStore', () => {
 
   it('does not re-seed on a second call, which would undo the simulated changes', async () => {
     await useDevFixturesStore.getState().load()
-    const target = useNotificationStore.getState().mockPRs[0]!.id
+    const target = useNotificationStore.getState().mockPRs[0].id
     useNotificationStore.getState().simulateChange(target, 'merge')
 
     await useDevFixturesStore.getState().load()

@@ -9,7 +9,8 @@ vi.mock('../../../lib/assetUrl', async (importOriginal) => ({
   toAssetUrl,
 }))
 
-import { MarkdownImage, resolveImageSrc } from './MarkdownImage'
+import { MarkdownImage } from './MarkdownImage'
+import { resolveImageSrc } from './resolveImageSrc'
 
 beforeEach(() => {
   vi.clearAllMocks()

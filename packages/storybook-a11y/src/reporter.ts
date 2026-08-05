@@ -1,4 +1,4 @@
-import axe from 'axe-core'
+import type axe from 'axe-core'
 import type { ViolationNodeRecord } from './apca-report-types'
 
 // Turns axe violations into structured per-node records (fed into task.meta by the
