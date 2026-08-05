@@ -89,4 +89,8 @@ jobs:
           releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: true
           prerelease: false
+          # tauri-action@v0 only looks for pnpm-lock.yaml directly inside projectPath, not up the
+          # workspace tree, so without this it silently falls back to `npm run tauri` — which
+          # fails since apps/desktop/package.json has no "tauri" script (only "build").
+          tauriScript: pnpm tauri
           args: --target universal-apple-darwin
