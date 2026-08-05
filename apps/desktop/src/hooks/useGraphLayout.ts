@@ -1,4 +1,4 @@
-import { useMemo, type RefObject } from 'react'
+import { useCallback, useMemo, type RefObject } from 'react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { useRefDragStore } from '../stores/refDrag.store'
 import {
@@ -7,7 +7,11 @@ import {
   type ColumnKey,
   type ResolvedColumn,
 } from '../components/git-graph/columns.config'
-import { getGraphColumnLayout, getGraphMaxWidth } from '../components/git-graph/graphColumnSizing'
+import {
+  getGraphColumnLayout,
+  getGraphMaxWidth,
+  laneCenterX,
+} from '../components/git-graph/graphColumnSizing'
 import { computeLaneBranchByOid, collectRefDropHighlight } from '../components/git-graph/laneBranch'
 import { useGraphColumnScroll } from './useGraphColumnScroll'
 
@@ -106,7 +110,19 @@ export function useGraphLayout({
     [refsWidth, graphWidth, graphMaxColumn, avatarSize]
   )
 
-  const graphScrollX = useGraphColumnScroll(parentRef, graphColumnBounds)
+  const [graphScrollX, setGraphScrollX] = useGraphColumnScroll(parentRef, graphColumnBounds)
+
+  // Pan the graph column so a lane's marker/avatar lands centered in the visible width — used to
+  // bring the clicked commit's avatar into view when the column has been resized narrow enough
+  // that its lane sits under the overflow zone or off-screen.
+  const scrollToColumn = useCallback(
+    (column: number) => {
+      if (graphWidth === 0) return
+      const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize)
+      setGraphScrollX(laneCenterX(column, avatarSize) - layout.innerWidth / 2)
+    },
+    [graphWidth, graphMaxColumn, avatarSize, setGraphScrollX]
+  )
 
   // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
   // segment per row left a one-pixel shadowless seam between rows). Its left counterpart renders
@@ -154,6 +170,7 @@ export function useGraphLayout({
     graphWidth,
     graphColumnBounds,
     graphScrollX,
+    scrollToColumn,
     graphOverflowZone,
     matchSet,
     totalMatches,

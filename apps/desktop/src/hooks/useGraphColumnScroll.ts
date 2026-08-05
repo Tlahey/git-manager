@@ -14,7 +14,7 @@
 //   effect first runs — and re-reading the ref at event time also means an unmounted list simply
 //   stops capturing anything.
 
-import { useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 
 export interface GraphColumnScrollBounds {
   /** x (px, relative to the scroll container's left edge) where the graph column's footprint
@@ -27,14 +27,15 @@ export interface GraphColumnScrollBounds {
 }
 
 /**
- * Pans the graph column horizontally on a wheel gesture over it, and returns the current offset,
- * clamped to `[0, maxScrollX]` on every render so a narrower graph (fewer lanes, wider column)
- * can never leave the view scrolled past the last lane.
+ * Pans the graph column horizontally on a wheel gesture over it, and returns the current offset
+ * plus a setter for programmatic scrolling (e.g. centering a lane on row selection). Both are
+ * clamped to `[0, maxScrollX]` so a narrower graph (fewer lanes, wider column) can never leave
+ * the view scrolled past the last lane.
  */
 export function useGraphColumnScroll(
   containerRef: RefObject<HTMLElement | null>,
   { left, width, maxScrollX }: GraphColumnScrollBounds
-): number {
+): [number, (x: number) => void] {
   const [scrollX, setScrollX] = useState(0)
 
   useEffect(() => {
@@ -55,5 +56,10 @@ export function useGraphColumnScroll(
     return () => window.removeEventListener('wheel', onWheel)
   }, [containerRef, left, width, maxScrollX])
 
-  return Math.min(scrollX, maxScrollX)
+  const scrollTo = useCallback(
+    (x: number) => setScrollX(Math.min(maxScrollX, Math.max(0, x))),
+    [maxScrollX]
+  )
+
+  return [Math.min(scrollX, maxScrollX), scrollTo]
 }

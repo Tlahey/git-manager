@@ -317,6 +317,7 @@ export function GitGraph({
     graphMaxColumn,
     visibleColumns,
     graphScrollX,
+    scrollToColumn,
     graphOverflowZone,
     matchSet,
     totalMatches,
@@ -733,6 +734,7 @@ export function GitGraph({
                                 isSelected={selected.has(oid)}
                                 isPrimary={oid === primaryOid}
                                 onSelect={(e) => {
+                                  scrollToColumn(node.column)
                                   if (bisectSettingUp) {
                                     e.preventDefault()
                                     e.stopPropagation()

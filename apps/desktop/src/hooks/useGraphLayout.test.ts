@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { useGraphLayout } from './useGraphLayout'
 import { useRefDragStore } from '../stores/refDrag.store'
@@ -122,6 +122,26 @@ describe('useGraphLayout', () => {
   it('has no drag highlight when nothing is drag-hovered', () => {
     const { result } = renderLayout()
     expect(result.current.dragHighlightSet).toBeNull()
+  })
+
+  it('scrollToColumn pans so the target lane centers in the visible width, clamped to maxScrollX', () => {
+    const columnState = defaultColumnState()
+    columnState.graph.width = 48 // GRAPH_MIN_WIDTH — forces overflow so scrolling has an effect
+    const renderNodes = Array.from({ length: 8 }, (_, i) => node(String(i), i))
+    const { result } = renderLayout({ columnState, renderNodes })
+    expect(result.current.graphColumnBounds.maxScrollX).toBeGreaterThan(0)
+
+    act(() => result.current.scrollToColumn(6))
+    expect(result.current.graphScrollX).toBeGreaterThan(0)
+    expect(result.current.graphScrollX).toBeLessThanOrEqual(result.current.graphColumnBounds.maxScrollX)
+  })
+
+  it('scrollToColumn is a no-op when the graph column is hidden', () => {
+    const columnState = defaultColumnState()
+    columnState.graph.visible = false
+    const { result } = renderLayout({ columnState })
+    act(() => result.current.scrollToColumn(3))
+    expect(result.current.graphScrollX).toBe(0)
   })
 
   it("highlights the hovered ref's own lane once a drag-drop target is set", () => {
