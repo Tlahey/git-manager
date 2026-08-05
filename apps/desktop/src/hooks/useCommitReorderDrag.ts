@@ -56,6 +56,7 @@ export function useCommitReorderDrag({
   selected,
   headBranchName,
   isRebasing,
+  enabled = true,
 }: {
   repoPath: string
   nodes: GitGraphNode[]
@@ -64,6 +65,12 @@ export function useCommitReorderDrag({
   headBranchName: string | null
   /** A rebase already in progress — every drop is refused until it settles. */
   isRebasing: boolean
+  /**
+   * False while the graph is showing something other than the repository's real history — today,
+   * the undo/redo timeline's preview. Rewriting from a hypothetical graph would submit a plan
+   * built against commits the branch does not point at, so nothing is draggable at all.
+   */
+  enabled?: boolean
 }) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
@@ -76,7 +83,10 @@ export function useCommitReorderDrag({
 
   const headOid = useMemo(() => findHeadOid(nodes, headBranchName), [nodes, headBranchName])
   // Named `movableOids` rather than `window` — that one is the global object here.
-  const movableOids = useMemo(() => collectReorderableOids(nodes, headOid), [nodes, headOid])
+  const movableOids = useMemo(
+    () => (enabled ? collectReorderableOids(nodes, headOid) : []),
+    [enabled, nodes, headOid]
+  )
   const reorderable = useMemo(() => new Set(movableOids), [movableOids])
   const publishedFrom = useMemo(() => firstPublishedIndex(nodes, movableOids), [nodes, movableOids])
 

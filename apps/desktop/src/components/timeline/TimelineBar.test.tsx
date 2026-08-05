@@ -8,6 +8,12 @@ vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }))
 
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
+vi.mock('@git-manager/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@git-manager/ui')>()),
+  toast: { success: vi.fn(), error: toastError },
+}))
+
 import { TimelineBar } from './TimelineBar'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
@@ -25,14 +31,18 @@ function commit(id: string, previousOid: string, newOid: string): UndoAction {
   }
 }
 
+/** Held at module scope so a test can spy on the very client the bar refreshes through. */
+let client: QueryClient
+
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
 const STACK = [commit('a', 'oid0', 'oid1'), commit('b', 'oid1', 'oid2')]
 
 beforeEach(() => {
+  vi.clearAllMocks()
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   useTimelineNavStore.setState({ isOpen: false, repoPath: null, previewIndex: 0 })
   useUndoHistoryStore.setState({ byRepo: { '/repo': { stack: STACK, pointer: 2 } } })
 })
@@ -123,5 +133,70 @@ describe('TimelineBar', () => {
     expect(undoSpy).not.toHaveBeenCalled()
     expect(redoSpy).not.toHaveBeenCalled()
     expect(useTimelineNavStore.getState().isOpen).toBe(false)
+  })
+
+  // The graph's live log sits in cache under its own key with no observer while the overlay is
+  // open (the active query is the preview's, keyed by its headOverride). Closing before that copy
+  // has been refetched shows one frame of the history the user just undid — the flicker.
+  it('refreshes the live graph before the overlay closes', async () => {
+    const user = userEvent.setup()
+    useUndoHistoryStore.setState({
+      undo: vi.fn().mockResolvedValue(undefined),
+      redo: vi.fn().mockResolvedValue(undefined),
+    })
+
+    let releaseRefetch: () => void = () => {}
+    const refetch = vi
+      .spyOn(client, 'refetchQueries')
+      .mockImplementation(() => new Promise<void>((resolve) => (releaseRefetch = resolve)))
+
+    useTimelineNavStore.getState().open('/repo', 0)
+    render(<TimelineBar repoPath="/repo" />, { wrapper })
+    await user.click(screen.getByTestId('timeline-scrubber-validate'))
+
+    await waitFor(() =>
+      expect(refetch).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'], type: 'inactive' })
+    )
+    // Still open: the close is behind the await, which is what keeps the stale copy off screen.
+    expect(useTimelineNavStore.getState().isOpen).toBe(true)
+
+    releaseRefetch()
+    await waitFor(() => expect(useTimelineNavStore.getState().isOpen).toBe(false))
+  })
+
+  it('marks the log stale without refetching the preview query it is about to discard', async () => {
+    const user = userEvent.setup()
+    useUndoHistoryStore.setState({
+      undo: vi.fn().mockResolvedValue(undefined),
+      redo: vi.fn().mockResolvedValue(undefined),
+    })
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    vi.spyOn(client, 'refetchQueries').mockResolvedValue(undefined)
+
+    useTimelineNavStore.getState().open('/repo', 0)
+    render(<TimelineBar repoPath="/repo" />, { wrapper })
+    await user.click(screen.getByTestId('timeline-scrubber-validate'))
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ['git-log', '/repo'],
+        refetchType: 'none',
+      })
+    )
+  })
+
+  it('does not report a failed refresh as a failed undo', async () => {
+    const user = userEvent.setup()
+    const undoSpy = vi.fn().mockResolvedValue(undefined)
+    useUndoHistoryStore.setState({ undo: undoSpy, redo: vi.fn() })
+    vi.spyOn(client, 'refetchQueries').mockRejectedValue(new Error('offline'))
+
+    useTimelineNavStore.getState().open('/repo', 0)
+    render(<TimelineBar repoPath="/repo" />, { wrapper })
+    await user.click(screen.getByTestId('timeline-scrubber-validate'))
+
+    await waitFor(() => expect(useTimelineNavStore.getState().isOpen).toBe(false))
+    expect(undoSpy).toHaveBeenCalledTimes(2)
+    expect(toastError).not.toHaveBeenCalled()
   })
 })

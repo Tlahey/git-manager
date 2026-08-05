@@ -73,11 +73,32 @@ export function TimelineBar({ repoPath }: TimelineBarProps) {
         ? t('timeline.hintUndo', { count: -delta })
         : t('timeline.hintRedo', { count: delta })
 
-  function invalidateRepo() {
+  /**
+   * Refreshes everything the applied step touched, and *waits* for the graph before returning.
+   *
+   * The wait is the whole point. While this overlay is open the graph's active query is the
+   * preview's — keyed by its `headOverride` — and the live log sits in cache under its own key with
+   * no observer, still holding the history the user just undid. `invalidateQueries` only refetches
+   * *active* queries, so it would leave that copy stale-but-populated; closing the overlay then
+   * makes it active again, react-query serves it instantly and refetches, and the graph shows one
+   * frame of the old history before the new one lands. That frame is the flicker.
+   *
+   * So the log is refetched explicitly, targeting `inactive` (the live key, not the preview one
+   * that is about to be discarded), and awaited before the caller closes. It is *also* invalidated
+   * with `refetchType: 'none'`, so that if the refetch fails the copy is still marked stale and
+   * refetches on its own once it becomes active.
+   */
+  async function refreshRepo() {
     queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
     queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath], refetchType: 'none' })
     mutate(['git-stashes', repoPath])
+    await queryClient
+      .refetchQueries({ queryKey: ['git-log', repoPath], type: 'inactive' })
+      .catch(() => {
+        // A failed refresh must not read as a failed undo — the step itself already landed, and
+        // the invalidation above guarantees the graph catches up on its own.
+      })
   }
 
   async function handleValidate() {
@@ -90,7 +111,7 @@ export function TimelineBar({ repoPath }: TimelineBarProps) {
       } else {
         for (let i = 0; i < delta; i++) await store.redo(repoPath)
       }
-      invalidateRepo()
+      await refreshRepo()
     } catch (err) {
       toast.error(String(err))
     } finally {

@@ -77,6 +77,19 @@ export interface GitGraphNode {
   refs: GitRef[]
 }
 
+/**
+ * Mirrors `HeadOverride` in `services/git_graph.rs`. Asks `get_log` to build the graph *as if*
+ * `branch` pointed at `oid` — the undo/redo timeline's read-only preview. Nothing is written; the
+ * walk is seeded from `oid` and the branch/HEAD badges are relabelled onto it, so the previewed
+ * graph comes out of the same layout code as the real one.
+ */
+export interface GitLogHeadOverride {
+  /** Short branch name to relocate, e.g. `main`. Empty on a detached HEAD. */
+  branch: string
+  /** Commit the branch is pretended to point at. */
+  oid: string
+}
+
 export interface GitGraphEdge {
   fromColumn: number
   toColumn: number

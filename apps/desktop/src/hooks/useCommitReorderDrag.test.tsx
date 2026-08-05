@@ -286,3 +286,19 @@ describe('useCommitReorderDrag — following the moved commits', () => {
     expect(result.current.landed).toBeNull()
   })
 })
+
+describe('useCommitReorderDrag — disabled', () => {
+  it('makes nothing draggable when the graph is not the real history', () => {
+    // The undo/redo timeline's preview: a plan built against it would name commits the branch does
+    // not point at.
+    const { result } = setup({ enabled: false })
+    expect([...result.current.dragContext.reorderable]).toEqual([])
+  })
+
+  it('refuses a drop that somehow still arrives', () => {
+    const { result } = setup({ enabled: false })
+    act(() => result.current.dragContext.onDrop({ kind: 'combine', oid: 'c' }, ['a']))
+    expect(result.current.pending).toBeNull()
+    expect(mocked.rebase).not.toHaveBeenCalled()
+  })
+})
