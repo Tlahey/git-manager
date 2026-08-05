@@ -1,6 +1,6 @@
 {
   "productName": "git-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.git-manager.app",
   "build": {
     "beforeDevCommand": "node node_modules/vite/bin/vite.js",
@@ -30,8 +30,12 @@
         "scope": []
       },
       "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost tauri:; worker-src 'self' blob: data:; frame-src 'self' blob:; img-src 'self' blob: data: asset: http://asset.localhost https:; media-src 'self' blob: asset: http://asset.localhost https:; style-src 'self' 'unsafe-inline';",
-      "dangerousDisableAssetCspModification": ["style-src"],
-      "capabilities": ["default"]
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ],
+      "capabilities": [
+        "default"
+      ]
     }
   },
   "bundle": {
@@ -44,13 +48,17 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["icons/menu/*"],
+    "resources": [
+      "icons/menu/*"
+    ],
     "createUpdaterArtifacts": true
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVFOTcyMDYzRUNBNTAxQUIKUldTckFhWHNZeUNYN2g2d2RBTFBET1FVYmVDdkN5Z1cxVmJVTU5YUXcvSFNYeGJIWHEwbWsvamEK",
-      "endpoints": ["https://github.com/Tlahey/git-manager/releases/latest/download/latest.json"]
+      "endpoints": [
+        "https://github.com/Tlahey/git-manager/releases/latest/download/latest.json"
+      ]
     }
   }
 }
