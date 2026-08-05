@@ -1188,7 +1188,9 @@ describe('GitGraph — undo/redo timeline preview', () => {
 
   beforeEach(() => {
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    // Reflects whatever list the graph hands it, so the transition's held-back history is what
+    // actually reaches the rows — a fixed return value would mask it entirely.
+    useGitGraphNodes.mockImplementation((input: GitGraphNode[]) => graphNodesState(input))
     useRepoDataStore.setState({
       repoCache: { '/repo': { head: 'main', isDetached: false } },
     } as never)
@@ -1263,7 +1265,6 @@ describe('GitGraph — undo/redo timeline preview', () => {
     // The preview log comes back without ccc and bbb — an undo of the last two commits.
     const previewed = [commitNode('aaa')]
     useGitLog.mockReturnValue({ data: previewed, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(previewed))
     useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
     rerenderGraph()
 
@@ -1283,5 +1284,30 @@ describe('GitGraph — undo/redo timeline preview', () => {
       expect.anything(),
       expect.objectContaining({ align: 'center' })
     )
+  })
+
+  // The commits a step removes are the ones that explain it, and they are absent from the
+  // previewed graph — so the graph holds the previous history just long enough for them to be
+  // seen leaving. Everything else stays put: the anchor scrolls back by exactly what removing the
+  // rows above it shifted.
+  it('plays the departing commits out before dropping them from the list', () => {
+    const { rerenderGraph } = renderGraph()
+
+    const previewed = [commitNode('aaa')]
+    useGitLog.mockReturnValue({ data: previewed, isLoading: false, isError: false })
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    rerenderGraph()
+
+    // Still on screen, on their way out.
+    expect(screen.getByTestId('graph-row-ccc')).toHaveClass('animate-out')
+    expect(screen.getByTestId('graph-row-bbb')).toHaveClass('animate-out')
+    expect(screen.getByTestId('graph-row-aaa')).not.toHaveClass('animate-out')
+  })
+
+  it('leaves rows unanimated with no timeline open', () => {
+    renderGraph()
+    const slot = screen.getByTestId('graph-row-ccc')
+    expect(slot).not.toHaveClass('animate-out')
+    expect(slot).not.toHaveClass('animate-in')
   })
 })

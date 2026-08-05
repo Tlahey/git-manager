@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, cn } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -28,6 +28,7 @@ import { useSearchNavigation } from '../../hooks/useSearchNavigation'
 import { useCommitReorderDrag } from '../../hooks/useCommitReorderDrag'
 import { useCommitReorderFocus } from '../../hooks/useCommitReorderFocus'
 import { useTimelinePreviewAnchor } from '../../hooks/useTimelinePreviewAnchor'
+import { useTimelineTransition } from '../../hooks/useTimelineTransition'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
@@ -311,6 +312,14 @@ export function GitGraph({
   // Unique authors of the loaded commits, for the AUTHOR column filter autocomplete.
   const authorOptions = useMemo(() => collectGraphAuthors(nodes), [nodes])
 
+  // Hold the previous history on screen while the commits this step removes are seen leaving.
+  // Everything downstream — the render pipeline, the layout, the virtualizer — follows the
+  // *displayed* list, so the graph stays internally consistent for the length of the transition.
+  const { displayedNodes, exitingOids, enteringOids } = useTimelineTransition({
+    active: timelinePreviewOpen,
+    nodes,
+  })
+
   // ── Derive the graph's display data (WIP, conflict, search, waterlines) ────
   const {
     wipNode,
@@ -321,7 +330,7 @@ export function GitGraph({
     matchingOids,
     authorMatchingOids,
   } = useGitGraphNodes(
-    nodes,
+    displayedNodes,
     searchQuery,
     totalChanges,
     t,
@@ -348,7 +357,7 @@ export function GitGraph({
     authorMatchSet,
     dragHighlightSet,
   } = useGraphLayout({
-    nodes,
+    nodes: displayedNodes,
     renderNodes,
     columnState,
     rowHeight,
@@ -772,13 +781,27 @@ export function GitGraph({
                             // solely on that row keeps every other (memoized) row from re-rendering.
                             const isTagDraftRow = tagDraft?.oid === oid
 
+                            // Timeline transition. Only these two sets carry any motion: the
+                            // survivors keep their screen position, because the anchor scrolls
+                            // back by exactly what removing the rows above them shifted.
+                            const isExiting = exitingOids.has(oid)
+                            const isEntering = enteringOids.has(oid)
+
                             return (
                               <CommitDragSlot
                                 key={virtualItem.key}
                                 oid={oid}
                                 testId={`graph-row-${oid}`}
                                 selected={oid === primaryOid || selected.has(oid)}
-                                className="hover:z-graph-row-hover"
+                                className={cn(
+                                  'hover:z-graph-row-hover',
+                                  // `fill-mode-forwards` matters: without it a departing row snaps
+                                  // back to full opacity for the few frames between the animation
+                                  // ending and the list swap that takes it away.
+                                  isExiting &&
+                                    'pointer-events-none animate-out fade-out zoom-out-95 fill-mode-forwards animate-duration-200',
+                                  isEntering && 'animate-in fade-in animate-duration-200'
+                                )}
                                 style={{
                                   position: 'absolute',
                                   top: 0,
