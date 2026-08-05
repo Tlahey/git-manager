@@ -23,6 +23,55 @@ pub struct LogRef {
     pub commit_oid: String,
 }
 
+/// "Render the graph as if `branch` pointed at `oid`" — the undo/redo timeline's read-only
+/// preview. Nothing is written: `get_log` seeds its walk from `oid` instead of the branch's real
+/// tip and relabels the refs to match, so the caller sees the history it *would* have.
+///
+/// This is what makes the preview work in the redo direction too. A commit an undo took off the
+/// branch is only kept alive by its `refs/git-manager/undo/*` pin, which the log deliberately does
+/// not walk (those refs are GC anchors, not history the user asked to see) — but walking from the
+/// pinned commit itself reaches it and everything below it.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HeadOverride {
+    /// Short name of the branch to relocate, e.g. `main`. Empty on a detached HEAD, where only the
+    /// `HEAD` badge moves.
+    pub branch: String,
+    /// Commit the branch is pretended to point at.
+    pub oid: String,
+}
+
+/// Moves `branch`'s badge — and `HEAD` with it — onto `oid` in an already-built refs map, so the
+/// previewed commit wears the labels it would wear after the timeline step is validated.
+///
+/// `HEAD` follows unconditionally because the caller only ever overrides the *checked-out* branch:
+/// a preview of some other branch's history would be showing a state the user cannot reach by
+/// validating, which the timeline has no way to produce.
+pub fn relocate_head_ref(refs_map: &mut HashMap<String, Vec<LogRef>>, branch: &str, oid: &str) {
+    let mut moved: Vec<LogRef> = Vec::new();
+
+    for refs in refs_map.values_mut() {
+        refs.retain(|r| {
+            let is_target =
+                r.ref_type == "HEAD" || (r.ref_type == "branch" && r.short_name == branch);
+            if is_target {
+                moved.push(LogRef {
+                    name: r.name.clone(),
+                    short_name: r.short_name.clone(),
+                    ref_type: r.ref_type.clone(),
+                    commit_oid: oid.to_string(),
+                });
+            }
+            !is_target
+        });
+    }
+    refs_map.retain(|_, refs| !refs.is_empty());
+
+    if !moved.is_empty() {
+        refs_map.entry(oid.to_string()).or_default().extend(moved);
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LogGraphNode {
@@ -506,6 +555,82 @@ mod tests {
     use super::*;
     use crate::utils::get_git_signature;
     use std::path::Path;
+
+    fn log_ref(ref_type: &str, short_name: &str, oid: &str) -> LogRef {
+        LogRef {
+            name: format!("refs/heads/{short_name}"),
+            short_name: short_name.to_string(),
+            ref_type: ref_type.to_string(),
+            commit_oid: oid.to_string(),
+        }
+    }
+
+    #[test]
+    fn relocate_head_ref_moves_the_branch_and_head_onto_the_previewed_commit() {
+        let mut refs: HashMap<String, Vec<LogRef>> = HashMap::new();
+        refs.insert(
+            "tip".to_string(),
+            vec![
+                log_ref("HEAD", "HEAD", "tip"),
+                log_ref("branch", "main", "tip"),
+            ],
+        );
+
+        relocate_head_ref(&mut refs, "main", "older");
+
+        assert!(!refs.contains_key("tip"), "the real tip keeps no badge");
+        let moved = &refs["older"];
+        assert_eq!(moved.len(), 2);
+        assert!(moved.iter().all(|r| r.commit_oid == "older"));
+        assert!(moved.iter().any(|r| r.ref_type == "HEAD"));
+        assert!(moved.iter().any(|r| r.short_name == "main"));
+    }
+
+    #[test]
+    fn relocate_head_ref_leaves_every_other_ref_where_it_is() {
+        // An undo moves one branch; the others, their remotes and any tag stay put — that is what
+        // makes the preview readable as "the same repository, one branch rewound".
+        let mut refs: HashMap<String, Vec<LogRef>> = HashMap::new();
+        refs.insert("tip".to_string(), vec![log_ref("branch", "main", "tip")]);
+        refs.insert(
+            "other".to_string(),
+            vec![
+                log_ref("branch", "feature", "other"),
+                log_ref("remote", "origin/main", "other"),
+                log_ref("tag", "v1.0.0", "other"),
+            ],
+        );
+
+        relocate_head_ref(&mut refs, "main", "older");
+
+        assert_eq!(refs["other"].len(), 3);
+        assert_eq!(refs["older"].len(), 1);
+    }
+
+    #[test]
+    fn relocate_head_ref_moves_head_alone_on_a_detached_head() {
+        let mut refs: HashMap<String, Vec<LogRef>> = HashMap::new();
+        refs.insert("tip".to_string(), vec![log_ref("HEAD", "HEAD", "tip")]);
+
+        relocate_head_ref(&mut refs, "", "older");
+
+        assert_eq!(refs["older"].len(), 1);
+        assert!(!refs.contains_key("tip"));
+    }
+
+    #[test]
+    fn relocate_head_ref_is_a_no_op_when_the_branch_is_not_in_the_map() {
+        let mut refs: HashMap<String, Vec<LogRef>> = HashMap::new();
+        refs.insert(
+            "other".to_string(),
+            vec![log_ref("branch", "feature", "other")],
+        );
+
+        relocate_head_ref(&mut refs, "main", "older");
+
+        assert_eq!(refs.len(), 1);
+        assert!(refs.contains_key("other"));
+    }
 
     /// Commits `content` to `name` on top of the current HEAD, returning the new commit oid.
     /// The first call (unborn HEAD) creates the root commit.

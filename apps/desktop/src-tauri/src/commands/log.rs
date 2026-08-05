@@ -4,7 +4,7 @@ use crate::services::{git_diff, git_graph};
 use git2::{Oid, Repository, Sort};
 use std::collections::HashMap;
 
-pub use crate::services::git_graph::{LogGraphNode, LogRef};
+pub use crate::services::git_graph::{HeadOverride, LogGraphNode, LogRef};
 
 /// Resolves a branch/reference name to a commit OID, trying (in order) a local branch, a remote
 /// branch, `<remote>/<name>` for every configured remote, a generic `revparse_single`, then a tag
@@ -49,6 +49,11 @@ fn resolve_ref_target(repo: &Repository, name: &str) -> Option<Oid> {
 /// when true, the lane running down to HEAD's tip is seeded at column 0 because that synthetic
 /// row is the graph's true first element; when false, columns follow pure top-to-bottom order.
 ///
+/// `head_override` — render the graph *as if* one branch pointed elsewhere, for the undo/redo
+/// timeline's read-only preview (see `HeadOverride`). Nothing is written; only this walk's seeds
+/// and ref labels change, so the previewed graph comes out of the same layout code as the real one
+/// rather than being reconstructed by the frontend.
+///
 /// Runs on a blocking-pool thread: the revwalk plus full-refs scan below scales with history
 /// length and branch/tag count, so on a large or long-lived repo it can take long enough to stall
 /// other IPC if left on this command's own async task (see `fetch_remote`'s doc comment for why
@@ -66,6 +71,7 @@ pub async fn get_log(
     show_stashes: Option<bool>,
     hidden_stashes: Option<Vec<String>>,
     head_has_wip: Option<bool>,
+    head_override: Option<HeadOverride>,
 ) -> Result<Vec<LogGraphNode>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<LogGraphNode>, String> {
         get_log_blocking(
@@ -77,6 +83,7 @@ pub async fn get_log(
             show_stashes,
             hidden_stashes,
             head_has_wip,
+            head_override,
         )
     })
     .await
@@ -93,6 +100,7 @@ fn get_log_blocking(
     show_stashes: Option<bool>,
     hidden_stashes: Option<Vec<String>>,
     head_has_wip: Option<bool>,
+    head_override: Option<HeadOverride>,
 ) -> Result<Vec<LogGraphNode>, String> {
     let mut repo = Repository::open(&path).map_err(AppError::Git)?;
 
@@ -156,8 +164,26 @@ fn get_log_blocking(
             ));
         }
     } else {
-        // Walk every branch and remote
-        let _ = revwalk.push_glob("refs/heads/*");
+        // Walk every branch and remote. Under an override the local branches are pushed one by one
+        // instead of by glob, so the overridden one can be skipped and its pretended tip pushed in
+        // its place — `push_glob` has no way to exclude a ref.
+        if let Some(ref over) = head_override {
+            if let Ok(branches) = repo.branches(Some(git2::BranchType::Local)) {
+                for (local, _) in branches.flatten() {
+                    if local.name().ok().flatten() == Some(over.branch.as_str()) {
+                        continue;
+                    }
+                    if let Some(oid) = local.get().target() {
+                        let _ = revwalk.push(oid);
+                    }
+                }
+            }
+            if let Ok(oid) = Oid::from_str(&over.oid) {
+                let _ = revwalk.push(oid);
+            }
+        } else {
+            let _ = revwalk.push_glob("refs/heads/*");
+        }
         let _ = revwalk.push_glob("refs/remotes/*");
         // Walk and push every stash
         if show_stashes.unwrap_or(true) {
@@ -171,10 +197,13 @@ fn get_log_blocking(
                 let _ = revwalk.push(*oid);
             }
         }
-        // Fallback HEAD
-        if let Ok(head) = repo.head() {
-            if let Some(oid) = head.target() {
-                let _ = revwalk.push(oid);
+        // Fallback HEAD — skipped under an override, where pushing the real tip would put back
+        // exactly the commits the preview is meant to take away.
+        if head_override.is_none() {
+            if let Ok(head) = repo.head() {
+                if let Some(oid) = head.target() {
+                    let _ = revwalk.push(oid);
+                }
             }
         }
     }
@@ -252,6 +281,11 @@ fn get_log_blocking(
             ref_type: "stash".to_string(),
             commit_oid: oid_str,
         });
+    }
+
+    // Relabel last, so the move applies to the finished map rather than racing the loops above.
+    if let Some(ref over) = head_override {
+        git_graph::relocate_head_ref(&mut refs_map, &over.branch, &over.oid);
     }
 
     // ── Collect the OIDs with pagination ────────────────────────────────────

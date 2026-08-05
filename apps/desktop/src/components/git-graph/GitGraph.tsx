@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
-import { Spinner, cn } from '@git-manager/ui'
+import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -171,9 +171,9 @@ export function GitGraph({
 
   useConflictMergeWindow(repoPath, conflictFilePath, setConflictFilePath)
 
-  // While the undo/redo timeline overlay is open for this repo, the previewed commit's changes take
-  // over the center (contentview) and the native right-hand detail panel is suppressed — the
-  // timeline's own steps panel owns the right side instead.
+  // While the undo/redo timeline overlay is open for this repo, the graph shows the history the
+  // repository *would* have at the previewed step — see `previewOverride` below — and the native
+  // right-hand detail panel is suppressed, the timeline's own steps panel owning that side.
   const timelinePreviewOpen = useTimelineNavStore((s) => s.isOpen && s.repoPath === repoPath)
   const timelinePreviewOid = useTimelineNavStore((s) => s.previewHeadOid)
 
@@ -270,6 +270,19 @@ export function GitGraph({
     Math.max(500, s.settings.git.initialGraphCommits ?? 2000)
   )
 
+  // Timeline preview: ask the backend for the graph as if the checked-out branch pointed at the
+  // previewed step's commit. This is what makes the preview show the *state*, rather than annotate
+  // the current one — the lanes, colours and badges come out of the same Rust layout code as the
+  // real graph, and it works in the redo direction too, where the commits to bring back are only
+  // reachable from their undo pins. Nothing is written; validating is still what applies it.
+  const previewOverride = useMemo(
+    () =>
+      timelinePreviewOpen && timelinePreviewOid
+        ? { branch: headIsDetached ? '' : (headBranchName ?? ''), oid: timelinePreviewOid }
+        : undefined,
+    [timelinePreviewOpen, timelinePreviewOid, headIsDetached, headBranchName]
+  )
+
   const {
     data: nodes = [],
     isLoading,
@@ -284,6 +297,7 @@ export function GitGraph({
     // graph's first element, so the lane running down to HEAD's tip must own column 0. Same
     // condition as useGitGraphNodes' "primary special row" (conflict row wins over WIP).
     headHasWip: isRebasePaused || totalChanges > 0,
+    headOverride: previewOverride,
   })
 
   // Surface the whole-app loading overlay (dark scrim + animated mascot) while the graph loads
@@ -371,6 +385,7 @@ export function GitGraph({
     selected,
     headBranchName: headBranchName ?? null,
     isRebasing: !!isRebasing,
+    enabled: !timelinePreviewOpen,
   })
 
   // Reset active diff on commit selection or repo changes
@@ -509,23 +524,6 @@ export function GitGraph({
     setSelectedCommitOids(selectedCommitNodes.map((n) => n.commit.oid))
   }, [selectedCommitNodes, setSelectedCommitOids])
   useEffect(() => () => setSelectedCommitOids([]), [setSelectedCommitOids])
-
-  // OIDs of the commits that would be undone by the previewed step — i.e. every real commit newer
-  // than the previewed HEAD (above it in the walk). Those rows animate out (collapse + color) while
-  // the timeline is open; scrubbing back toward the current position grows them back in. `null`
-  // when nothing is removed (tip at the top, or a step with no commit to resolve).
-  const timelinePreviewRemoved = useMemo(() => {
-    if (!timelinePreviewOpen || !timelinePreviewOid) return null
-    const tipIndex = renderNodes.findIndex((n) => n.commit.oid === timelinePreviewOid)
-    if (tipIndex <= 0) return null
-    const set = new Set<string>()
-    for (let i = 0; i < tipIndex; i++) {
-      const oid = renderNodes[i].commit.oid
-      if (isSyntheticRow(oid)) continue
-      set.add(oid)
-    }
-    return set
-  }, [timelinePreviewOpen, timelinePreviewOid, renderNodes])
 
   // The conflicted-files panel needs the CONFLICT row selected *and* not dismissed. The dismissal
   // is explicit state rather than "the row got deselected", so the header's toggle (and the graph
@@ -740,12 +738,6 @@ export function GitGraph({
                                 !(searchActive && matchSet.has(oid)) &&
                                 !(authorActive && authorMatchSet.has(oid))
 
-                            // Timeline preview: commits newer than the previewed HEAD collapse into a thin
-                            // colored marker (height + color animation) to show they'd be undone. The
-                            // transition is gated on preview mode so it never adds lag to normal scrolling
-                            // (where the virtualizer rewrites `translateY` on every frame).
-                            const previewRemoved = timelinePreviewRemoved?.has(oid) ?? false
-
                             // Only the drafted row shows the inline tag input; wiring the callbacks
                             // solely on that row keeps every other (memoized) row from re-rendering.
                             const isTagDraftRow = tagDraft?.oid === oid
@@ -756,24 +748,14 @@ export function GitGraph({
                                 oid={oid}
                                 testId={`graph-row-${oid}`}
                                 selected={oid === primaryOid || selected.has(oid)}
-                                previewRemoved={previewRemoved}
-                                className={cn(
-                                  'hover:z-graph-row-hover',
-                                  previewRemoved && 'bg-destructive/15'
-                                )}
+                                className="hover:z-graph-row-hover"
                                 style={{
                                   position: 'absolute',
                                   top: 0,
                                   left: 0,
                                   width: '100%',
                                   height: rowHeight,
-                                  transformOrigin: 'top',
-                                  transform: `translateY(${virtualItem.start}px)${previewRemoved ? ' scaleY(0.22)' : ''}`,
-                                  opacity: previewRemoved ? 0.55 : 1,
-                                  transition: timelinePreviewOpen
-                                    ? 'transform 300ms ease, opacity 300ms ease, background-color 300ms ease'
-                                    : undefined,
-                                  overflow: previewRemoved ? 'hidden' : undefined,
+                                  transform: `translateY(${virtualItem.start}px)`,
                                 }}
                               >
                                 <GraphRow
@@ -802,7 +784,11 @@ export function GitGraph({
                                     }
                                     handleRowSelect(e, virtualItem.index)
                                   }}
-                                  onContextMenu={(e) => openMenuAt(e, oid)}
+                                  // The previewed graph is a history the repository does not have
+                                  // yet; a commit action fired from it would target the wrong thing.
+                                  onContextMenu={(e) => {
+                                    if (!timelinePreviewOpen) openMenuAt(e, oid)
+                                  }}
                                   wipStats={wipStats}
                                   onCommitWip={handleCommitWip}
                                   isFirst={virtualItem.index === 0}

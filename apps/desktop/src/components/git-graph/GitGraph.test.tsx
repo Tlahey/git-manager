@@ -1179,51 +1179,73 @@ describe('GitGraph — conflict merge window', () => {
 // graph action bridge' describes, which is where their tests moved too.
 
 describe('GitGraph — undo/redo timeline preview', () => {
-  // ccc is the tip, aaa the oldest — so previewing aaa marks ccc and bbb as "would be undone".
+  // ccc is the tip, aaa the oldest.
   const nodes = [commitNode('ccc'), commitNode('bbb'), commitNode('aaa')]
 
   beforeEach(() => {
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
     useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useRepoDataStore.setState({
+      repoCache: { '/repo': { head: 'main', isDetached: false } },
+    } as never)
   })
 
   afterEach(() => {
     useTimelineNavStore.getState().close()
   })
 
-  it('tints the rows the previewed step would undo, and only those', () => {
+  /** The options the graph last asked the log for. */
+  const lastLogOptions = () => useGitLog.mock.calls.at(-1)?.[1]
+
+  it('asks the backend for the history the repo would have at the previewed step', () => {
+    // The whole point: the graph renders a *state*, not an annotation of the current one. The
+    // override is what gets that state — lanes and badges included — out of the same layout code.
     useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
     renderGraph()
-
-    // The tint is what says "this commit goes away" — the collapse alone reads as a rendering
-    // glitch. It lived in a template string with no separator for a while, which silently glued it
-    // onto the class before it and dropped it; assert the class itself, not just the data attribute.
-    for (const oid of ['ccc', 'bbb']) {
-      const slot = screen.getByTestId(`graph-row-${oid}`)
-      expect(slot).toHaveAttribute('data-preview-removed', 'true')
-      expect(slot).toHaveClass('bg-destructive/15')
-    }
-    const previewed = screen.getByTestId('graph-row-aaa')
-    expect(previewed).not.toHaveAttribute('data-preview-removed')
-    expect(previewed).not.toHaveClass('bg-destructive/15')
+    expect(lastLogOptions()).toMatchObject({ headOverride: { branch: 'main', oid: 'aaa' } })
   })
 
-  it('leaves every row untinted with no timeline open', () => {
+  it('asks for the real history when no timeline is open', () => {
     renderGraph()
-    for (const oid of ['ccc', 'bbb', 'aaa']) {
-      expect(screen.getByTestId(`graph-row-${oid}`)).not.toHaveClass('bg-destructive/15')
-    }
+    expect(lastLogOptions()?.headOverride).toBeUndefined()
   })
 
   it('ignores a timeline opened on another repo', () => {
     useTimelineNavStore.setState({ isOpen: true, repoPath: '/other', previewHeadOid: 'aaa' })
     renderGraph()
-    expect(screen.getByTestId('graph-row-ccc')).not.toHaveClass('bg-destructive/15')
+    expect(lastLogOptions()?.headOverride).toBeUndefined()
   })
 
-  it('animates the tint in with the collapse rather than popping it', () => {
+  it('previews nothing for a step that maps to no commit', () => {
+    // Discards, stashes and ref CRUD move no HEAD, so there is no state to ask for.
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: null })
+    renderGraph()
+    expect(lastLogOptions()?.headOverride).toBeUndefined()
+  })
+
+  it('moves only HEAD on a detached HEAD, since no branch follows it', () => {
+    useRepoDataStore.setState({
+      repoCache: { '/repo': { head: 'main', isDetached: true } },
+    } as never)
     useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
     renderGraph()
-    expect(screen.getByTestId('graph-row-ccc').style.transition).toContain('background-color')
+    expect(lastLogOptions()?.headOverride).toEqual({ branch: '', oid: 'aaa' })
+  })
+
+  it('refuses commit actions while the graph is a history the repo does not have', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+    const openMenuAt = useGitGraphActions.mock.results.at(-1)!.value.openMenuAt
+    const row = lastGraphRowCalls.current.at(-1)!
+    ;(row.onContextMenu as (e: unknown) => void)({ preventDefault: vi.fn() })
+    expect(openMenuAt).not.toHaveBeenCalled()
+  })
+
+  it('opens the commit menu normally once the timeline is closed', () => {
+    renderGraph()
+    const openMenuAt = useGitGraphActions.mock.results.at(-1)!.value.openMenuAt
+    const row = lastGraphRowCalls.current.at(-1)!
+    ;(row.onContextMenu as (e: unknown) => void)({ preventDefault: vi.fn() })
+    expect(openMenuAt).toHaveBeenCalled()
   })
 })

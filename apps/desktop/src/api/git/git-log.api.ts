@@ -17,6 +17,7 @@ import {
   listTrackedFiles,
   listSubmodules,
 } from '../../lib/tauri'
+import type { GitLogHeadOverride } from '@git-manager/git-types'
 import { clearRedo } from './gitApiShared'
 
 export async function apiGetCommitsBetween(path: string, fromOid: string, toOid: string) {
@@ -63,6 +64,8 @@ export async function apiGetLog(
     /** Whether a synthetic WIP / paused-rebase row will be rendered above the graph — an input
      * of the Rust column layout (seeds HEAD's lane at column 0 only when that row exists). */
     headHasWip?: boolean
+    /** Build the graph as if a branch pointed elsewhere — the timeline preview. Read-only. */
+    headOverride?: GitLogHeadOverride
   }
 ) {
   return getLog(path, opts)
