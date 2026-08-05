@@ -7,6 +7,7 @@ import type {
   GitRepo,
   GitStatus,
   GitGraphNode,
+  GitLogHeadOverride,
   GitBranch,
   MergeTargetStatus,
   GitRef,
@@ -227,6 +228,8 @@ export const getLog = (
     /** Whether a synthetic WIP / paused-rebase row will be rendered above the graph — an input
      * of the Rust column layout (seeds HEAD's lane at column 0 only when that row exists). */
     headHasWip?: boolean
+    /** Build the graph as if a branch pointed elsewhere — the timeline preview. Read-only. */
+    headOverride?: GitLogHeadOverride
   }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
@@ -1235,7 +1238,8 @@ export const moveBoardCard = (
   columnId: string,
   order: number,
   expectedRevision: string
-) => invoke<BoardCard>('move_board_card', { path, boardId, cardId, columnId, order, expectedRevision })
+) =>
+  invoke<BoardCard>('move_board_card', { path, boardId, cardId, columnId, order, expectedRevision })
 
 /** The comment's author is stamped in Rust from the repo's git signature, so none is passed here. */
 export const addBoardCardComment = (
@@ -1264,7 +1268,8 @@ export const writeBoardConfig = (path: string, contents: string) =>
   invoke<void>('write_board_config', { path, contents })
 
 /** `null` when `.git-manager/board.json` doesn't exist yet (no remote board created in this repo). */
-export const readBoardConfig = (path: string) => invoke<string | null>('read_board_config', { path })
+export const readBoardConfig = (path: string) =>
+  invoke<string | null>('read_board_config', { path })
 
 /** Writes a card attachment into `.git-manager/attachments/` and returns its repo-relative path.
  * The stored filename is the content's own blob hash, so the same image pasted twice is stored once;

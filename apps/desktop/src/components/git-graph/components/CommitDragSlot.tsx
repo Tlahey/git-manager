@@ -10,7 +10,6 @@ interface CommitDragSlotProps {
   className?: string
   testId: string
   selected: boolean
-  previewRemoved?: boolean
   children: ReactNode
 }
 
@@ -33,7 +32,6 @@ export function CommitDragSlot({
   className,
   testId,
   selected,
-  previewRemoved,
   children,
 }: CommitDragSlotProps) {
   const { rowProps, isDragging, indicator } = useCommitRowDrag(oid)
@@ -42,7 +40,6 @@ export function CommitDragSlot({
     <div
       data-testid={testId}
       data-selected={selected}
-      data-preview-removed={previewRemoved || undefined}
       className={cn(className, isDragging && 'opacity-40')}
       style={style}
       {...rowProps}

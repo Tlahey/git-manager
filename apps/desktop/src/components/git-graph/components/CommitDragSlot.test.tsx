@@ -133,7 +133,6 @@ describe('CommitDragSlot — drag source', () => {
           oid="a"
           testId="graph-row-a"
           selected
-          previewRemoved
           className="hover:z-graph-row-hover"
           style={{ height: 40 }}
         >
@@ -143,7 +142,6 @@ describe('CommitDragSlot — drag source', () => {
     )
     const slot = screen.getByTestId('graph-row-a')
     expect(slot).toHaveAttribute('data-selected', 'true')
-    expect(slot).toHaveAttribute('data-preview-removed', 'true')
     expect(slot).toHaveClass('hover:z-graph-row-hover')
   })
 
