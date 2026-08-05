@@ -65,14 +65,43 @@ The frontend never talks to git directly — every git/filesystem/network operat
 2. `apps/desktop/src/api/*.api.ts` — domain-grouped re-exports/composition over `lib/tauri.ts` (e.g. `git.api.ts`, `github.api.ts`, `repo.api.ts`). Components, hooks and stores import from here, never from `lib/tauri.ts` or `invoke()` directly. This is a **hard invariant**, not a style preference: several `api*` wrappers also drive undo/redo (`pushAction`/`clearRedo` in `stores/undoHistory.store.ts`) or notify `lib/appEventBus.ts` (achievements/gamification via `callCommand` in `api/service.ts`) — bypassing the wrapper silently drops that behavior. A repo-wide audit (`docs/architecture/2026-07-architecture-refactor-tracking.md`, action 6.5) found and fixed 27 such bypasses, including real silent bugs (e.g. a raw `checkoutBranch()` call that skipped `clearRedo`). Type-only imports from `lib/tauri.ts` (`import type { ... }`) are fine.
 3. `apps/desktop/src/hooks/` — data-fetching hooks wrapping the API layer.
 
+A feature with its own folder keeps the same three tiers inside it (`features/<name>/api/`, `features/<name>/hooks/`) — see "Feature folders" below. The tiers are the invariant; where they sit is not.
+
 Data fetching is in transition between two libraries — **new hooks should use `useSWR`** (per `.agents/AGENTS.md`); a number of older hooks (`useGitLog`, `useGitStatus`, `useBranches`, `useCommitDiff`, `useFileDiff`, `useFileRawContents`, `useSidebarRows`) still use `@tanstack/react-query` and haven't been migrated. Don't mix the two within one hook.
 
 Before adding non-trivial logic to a component, hook, or store, see [.claude/skills/architecture-guardian/SKILL.md](.claude/skills/architecture-guardian/SKILL.md) for the R1 (one file, one responsibility) / R2 (service/API layer) / R3 (safely retrofitting a file that's already grown too large — test-mapped incremental extraction, reusing an existing manager pattern before inventing a new one, barrel re-exports for a multi-domain split) rules and known anti-patterns to avoid repeating.
 
+### Feature folders (`apps/desktop/src/features/`)
+
+**A feature large enough to span several layers lives in one folder, not scattered across the app's layer folders.** `apps/desktop/src/features/<name>/` holds everything that feature is — its page, its components, its hooks, its API wrappers, its stores, its pure logic and its test factories — so that finding it, reviewing it, and knowing what a change touches are all one lookup instead of five.
+
+[features/board/](apps/desktop/src/features/board/) is the reference implementation and carries a `README.md` describing its own layout; copy that shape:
+
+```
+features/<name>/
+  index.ts           the public surface — the ONLY thing outside code may import
+  <Name>Page.tsx     the page itself
+  README.md          the map: what each folder holds, and what deliberately lives elsewhere
+  api/               the feature's *.api.ts — the only place in it allowed to touch lib/tauri
+  components/        views, presentational, handlers received as props
+  hooks/             data + UI state
+  lib/               pure logic, no React, each rule testable on its own
+  stores/            the feature's own Zustand stores
+  test/              factories shared by the feature's suites
+```
+
+- **`index.ts` is the boundary, and it is the thing that makes the folder one.** Outside code imports `from '../../features/<name>'`, never from a path inside it, so "the app depends on this" is one `grep` away instead of a reading of forty files. Keep the surface narrow — `features/board/index.ts` exports four names, and widening it is a decision about coupling that should be visible in a diff. Test factories are the one sanctioned exception: a suite may reach `features/<name>/test/…` directly, since shipping builders through the production barrel would put them in the bundle.
+
+- **The layering rules above still apply inside a feature.** `features/<name>/api/` is an `api/*.api.ts` layer, subject to the same hard invariant: components, hooks and stores go through it, never through `lib/tauri.ts`. Moving a feature into its own folder is a change of *address*, never of architecture.
+- **What stays outside**: the DTOs (`packages/git-types`, because Rust mirrors them), the copy (`packages/i18n`), the Rust half (`src-tauri/`), and anything genuinely shared with another feature — which belongs in `src/components/`, `src/hooks/` or a package, not in a second feature's folder.
+- **When to promote a folder to a feature**: it has its own page *and* its own store *or* its own `api/` domain. Below that, the existing `app/<page>/components/` convention is enough — don't create a feature folder for a page with three components.
+- **Not a package.** A feature folder is not a step towards `packages/<name>`: a feature reaches the app's IPC layer, its stores and its shared components, so extracting it would either drag the app in behind it or turn fifteen imports into injected dependencies. `packages/*` stays horizontal (primitives, DTOs, i18n, theme, AI runtime); `features/*` is vertical and stays in the app. `features/board/README.md` states this at length.
+- Pages that aren't features stay under `app/`. `app/` and `features/` coexist; migrating an existing page is worth it only when it is already spread across `app/`, `hooks/`, `api/` and `stores/`.
+
 ### Frontend organization rules (from `.agents/AGENTS.md`)
 
 - **1 feature = 1 component**: don't nest large sub-components (rows, cards, sections) inside a parent page file.
-- Split logical child components into a local `components/` folder next to the page (e.g. `app/dashboard/components/`).
+- Split logical child components into a local `components/` folder next to the page (e.g. `app/dashboard/components/`), or into the feature's own `components/` when it has one — see "Feature folders" above.
 - All Tauri IPC / HTTP calls go through `src/api/*.api.ts` files named by domain — never invoke `invoke()` or `fetch()` directly inside a component.
 - Add `data-testid` attributes to interactive/structural elements (buttons, rows, panels) to ease debugging — no test framework currently consumes these, but the convention is followed throughout the codebase.
 - When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [components/git-graph/columns.config.ts](apps/desktop/src/components/git-graph/columns.config.ts) for the existing shape to follow.
