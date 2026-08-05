@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
 
-vi.mock('./NewTabMenu', () => ({ NewTabMenu: () => <div data-testid="new-tab-menu" /> }))
 vi.mock('../action-toolbar/UserProfile', () => ({
   UserProfile: () => <div data-testid="user-profile" />,
 }))

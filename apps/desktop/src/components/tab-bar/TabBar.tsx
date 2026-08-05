@@ -20,7 +20,6 @@ import {
   Plus,
 } from 'lucide-react'
 import { useGameStore } from '../../stores/game.store'
-import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
 import { NotificationDropdown } from '../notification/NotificationDropdown'
 import type { Section } from '../../app/settings/SettingsPage'
@@ -221,12 +220,6 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
               </button>
             )
           })}
-        </div>
-
-        {/* "+" (new tab) button — outside the scrollable area so it stays visible to the right of
-            the tabs even when the strip overflows. */}
-        <div className="flex shrink-0 items-center px-1">
-          <NewTabMenu />
         </div>
 
         {/* Settings & profile (far right) */}
