@@ -27,7 +27,7 @@ import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../stores/boardControls.store'
+import { useBoardControlsStore } from '../../features/board'
 import { useSettingsStore } from '../../stores/settings.store'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()

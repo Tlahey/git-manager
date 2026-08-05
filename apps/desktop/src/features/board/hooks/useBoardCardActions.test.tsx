@@ -1,0 +1,428 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import type { Board, BoardCard } from '@git-manager/git-types'
+import { makeBoard, makeCard } from '../test/boardFactories'
+
+const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastError } = vi.hoisted(() => {
+  const make = () => ({
+    listBoards: vi.fn(),
+    getBoard: vi.fn(),
+    createBoard: vi.fn(),
+    updateBoardColumns: vi.fn(),
+    updateBoardMeta: vi.fn(),
+    closeBoard: vi.fn(),
+    deleteBoard: vi.fn(),
+    createCard: vi.fn(),
+    updateCard: vi.fn(),
+    addComment: vi.fn(),
+    moveCard: vi.fn(),
+    moveCardsToBoard: vi.fn(),
+    deleteCard: vi.fn(),
+  })
+  return {
+    localBackend: make(),
+    remoteBackend: make(),
+    pushCardToIssue: vi.fn(),
+    createIssueComment: vi.fn(),
+    toastError: vi.fn(),
+  }
+})
+
+/** A `BOARD_CONFLICT` as the backends raise it — see `api/boardConflict.ts`. */
+function conflict() {
+  return Object.assign(new Error('stale'), { code: 'BOARD_CONFLICT' })
+}
+
+vi.mock('../api/local-board.api', () => ({ localBoardBackend: localBackend }))
+vi.mock('@git-manager/ui', async () => {
+  const actual = await vi.importActual<typeof import('@git-manager/ui')>('@git-manager/ui')
+  return { ...actual, toast: { error: toastError, success: vi.fn() } }
+})
+vi.mock('../api/trackedIssue.api', () => ({ pushCardToIssue }))
+vi.mock('../../../api/github.api', () => ({ createIssueComment }))
+
+import { useBoardCardActions } from './useBoardCardActions'
+
+const path = '/repo'
+const local = makeBoard({ id: 'b1', source: 'local' })
+const remote = makeBoard({ id: 'b9', source: 'remote' })
+
+function renderActions(
+  activeBoard: Board | null = local,
+  boards: Board[] = [local, remote],
+  trackedRef: (card: BoardCard) => null | { owner: string; repo: string; number: number } = () => null
+) {
+  // SWR's `mutate(fn, opts)`: the writer runs and its rejection reaches the caller, which is the
+  // whole contract `moveCard` leans on for its rollback.
+  const mutateDetail = vi.fn(async (writer?: unknown, _options?: unknown) =>
+    typeof writer === 'function' ? await (writer as () => Promise<unknown>)() : undefined
+  )
+  const { result } = renderHook(() =>
+    useBoardCardActions({
+      repoPath: path,
+      activeBoard,
+      boards,
+      detail: {
+        boardDetail: activeBoard ? { board: activeBoard, cards: [] } : undefined,
+        cardsLoading: false,
+        mutateDetail: mutateDetail as never,
+        revisionFor: (b) => b.revision,
+        withConflictToast: (run) => run(),
+      },
+      backendFor: (source) => (source === 'local' ? localBackend : remoteBackend) as never,
+      remoteBackend: remoteBackend as never,
+      revalidateLists: vi.fn(),
+      trackedRef,
+      token: 'tok',
+    })
+  )
+  return { result, mutateDetail }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('useBoardCardActions — moveCardToBoard', () => {
+  it('hands a same-backend move to the backend, with the target column', async () => {
+    localBackend.moveCardsToBoard.mockResolvedValue(undefined)
+    const { result } = renderActions(local, [local, makeBoard({ id: 'b2', source: 'local' })])
+
+    await result.current.moveCardToBoard(makeCard({ boardId: 'b1' }), 'b2', 'done')
+
+    expect(localBackend.moveCardsToBoard).toHaveBeenCalledWith(path, 'b1', 'b2', ['c1'], 'done')
+    expect(remoteBackend.createCard).not.toHaveBeenCalled()
+  })
+
+  /**
+   * A tracked card already stands for an issue. Taking the create path would produce a second issue
+   * copying the first, leave the original open, and delete the only card that linked them — so it is
+   * refused here as well as hidden from the picker, since the picker isn't the only way in.
+   */
+  it('refuses to move a tracked card onto a GitHub board', async () => {
+    const tracked = makeCard({
+      boardId: 'b1',
+      sourceIssue: { owner: 'acme', repo: 'widgets', number: 42 },
+    })
+    const { result } = renderActions()
+
+    await expect(result.current.moveCardToBoard(tracked, 'b9', 'todo')).rejects.toThrow()
+    expect(remoteBackend.createCard).not.toHaveBeenCalled()
+    expect(localBackend.deleteCard).not.toHaveBeenCalled()
+  })
+
+  it('creates the issue, carries the rest of the card, then drops the local one', async () => {
+    remoteBackend.createCard.mockResolvedValue(makeCard({ id: 'gh-9', revision: 'r-gh' }))
+    remoteBackend.updateCard.mockResolvedValue(makeCard({ id: 'gh-9' }))
+    localBackend.deleteCard.mockResolvedValue(undefined)
+    const { result } = renderActions()
+
+    await result.current.moveCardToBoard(
+      makeCard({ boardId: 'b1', priority: 'high', dueDate: '2030-01-01' }),
+      'b9',
+      'todo'
+    )
+
+    expect(remoteBackend.updateCard).toHaveBeenCalledWith(
+      path,
+      'b9',
+      'gh-9',
+      expect.objectContaining({ priority: 'high', dueDate: '2030-01-01' }),
+      'r-gh'
+    )
+    expect(localBackend.deleteCard).toHaveBeenCalledWith(path, 'b1', 'c1')
+  })
+
+  /** Deleting last is what makes a failure recoverable: the card is still where it was. */
+  it('leaves the local card in place when the remote write fails', async () => {
+    remoteBackend.createCard.mockRejectedValue(new Error('offline'))
+    const { result } = renderActions()
+
+    await expect(result.current.moveCardToBoard(makeCard({ boardId: 'b1' }), 'b9', 'todo')).rejects.toThrow()
+    expect(localBackend.deleteCard).not.toHaveBeenCalled()
+  })
+
+  it('refuses a board that no longer exists', async () => {
+    const { result } = renderActions()
+    await expect(result.current.moveCardToBoard(makeCard(), 'gone', 'todo')).rejects.toThrow()
+  })
+})
+
+describe('useBoardCardActions — tracked cards', () => {
+  const ref = { owner: 'acme', repo: 'widgets', number: 42 }
+
+  /**
+   * The issue is written **before** the local store: the card is a cache of the issue, so a failed
+   * GitHub call must leave both sides untouched rather than a card showing an edit its issue never
+   * received.
+   */
+  it('writes the issue before the local card', async () => {
+    const order: string[] = []
+    pushCardToIssue.mockImplementation(() => {
+      order.push('issue')
+      return Promise.resolve()
+    })
+    localBackend.updateCard.mockImplementation(() => {
+      order.push('local')
+      return Promise.resolve(makeCard())
+    })
+    const { result } = renderActions(local, [local], () => ref)
+
+    await result.current.updateCard(makeCard(), { title: 'Renamed' })
+    expect(order).toEqual(['issue', 'local'])
+  })
+
+  it('does not touch the local store when the issue write fails', async () => {
+    pushCardToIssue.mockRejectedValue(new Error('offline'))
+    const { result } = renderActions(local, [local], () => ref)
+
+    await expect(result.current.updateCard(makeCard(), { title: 'Renamed' })).rejects.toThrow()
+    expect(localBackend.updateCard).not.toHaveBeenCalled()
+  })
+
+  /** A patch GitHub owns nothing of — the placement — needs no issue round trip. */
+  it('skips the issue entirely for a local-only field', async () => {
+    localBackend.updateCard.mockResolvedValue(makeCard())
+    const { result } = renderActions(local, [local], () => ref)
+
+    await result.current.updateCard(makeCard(), { columnId: 'done' })
+    expect(pushCardToIssue).not.toHaveBeenCalled()
+    expect(localBackend.updateCard).toHaveBeenCalled()
+  })
+
+  /** A tracked card's discussion belongs to its issue, or the two threads quietly diverge. */
+  it('posts a comment to the issue rather than the local card', async () => {
+    createIssueComment.mockResolvedValue(undefined)
+    const { result } = renderActions(local, [local], () => ref)
+
+    await result.current.addComment(makeCard(), 'Looks good')
+    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'tok')
+    expect(localBackend.addComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('useBoardCardActions — duplicateCard', () => {
+  /**
+   * A copy is the same kind of work under the same sequence, but a *new* ticket — and its comments
+   * stay behind, since a discussion happened on one card and reproducing it would attribute words to
+   * a conversation that never took place.
+   */
+  it('copies what the card is, not what was said about it', async () => {
+    localBackend.createCard.mockResolvedValue(makeCard({ id: 'c2', revision: 'r2' }))
+    localBackend.updateCard.mockResolvedValue(makeCard({ id: 'c2' }))
+    const { result } = renderActions()
+
+    await result.current.duplicateCard(
+      makeCard({
+        kind: 'bug',
+        prefix: 'GM',
+        priority: 'high',
+        linkedBranch: 'feature/x',
+        comments: [{ id: 'k1', author: 'Ada', body: 'Hi', createdAt: '2026-08-01T00:00:00.000Z' }],
+      })
+    )
+
+    expect(localBackend.createCard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'todo',
+      expect.objectContaining({ kind: 'bug', prefix: 'GM' })
+    )
+    const patch = localBackend.updateCard.mock.calls[0][3]
+    expect(patch.priority).toBe('high')
+    expect(patch).not.toHaveProperty('comments')
+    expect(patch).not.toHaveProperty('linkedBranch')
+  })
+})
+
+describe('useBoardCardActions — no active board', () => {
+  it('does nothing rather than writing to a board that isn’t there', async () => {
+    const { result } = renderActions(null, [])
+
+    await expect(result.current.createCard('todo', 'T', '')).resolves.toBeUndefined()
+    await expect(result.current.updateCard(makeCard(), { title: 'x' })).resolves.toBeNull()
+    expect(localBackend.createCard).not.toHaveBeenCalled()
+  })
+})
+
+describe('useBoardCardActions — createCard', () => {
+  /** Both chosen at creation: the sequence the number comes from, and what sort of work it is. */
+  it('carries the prefix and the kind to the backend', async () => {
+    localBackend.createCard.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.createCard('done', 'Crash on open', 'It overlaps', 'OPS', 'bug')
+    expect(localBackend.createCard).toHaveBeenCalledWith(path, 'b1', 'done', {
+      title: 'Crash on open',
+      description: 'It overlaps',
+      prefix: 'OPS',
+      kind: 'bug',
+    })
+  })
+
+  it('defaults to a task with no identifier', async () => {
+    localBackend.createCard.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.createCard('todo', 'Something', '')
+    expect(localBackend.createCard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'todo',
+      expect.objectContaining({ prefix: '', kind: 'task' })
+    )
+  })
+
+  /**
+   * The board itself moves on a create — the identifier counter advances, and a prefix used for the
+   * first time joins the board's list — so the *list* is stale too, not just the cards. That list is
+   * where the next create dialog reads its prefixes from.
+   */
+  it('refreshes the board list, not just the cards', async () => {
+    localBackend.createCard.mockResolvedValue(makeCard())
+    const revalidateLists = vi.fn()
+    const { result } = renderHook(() =>
+      useBoardCardActions({
+        repoPath: path,
+        activeBoard: local,
+        boards: [local],
+        detail: {
+          boardDetail: { board: local, cards: [] },
+          cardsLoading: false,
+          mutateDetail: vi.fn() as never,
+          revisionFor: (b) => b.revision,
+          withConflictToast: (run) => run(),
+        },
+        backendFor: () => localBackend as never,
+        remoteBackend: remoteBackend as never,
+        revalidateLists,
+        trackedRef: () => null,
+        token: 'tok',
+      })
+    )
+
+    await result.current.createCard('todo', 'Something', '')
+    expect(revalidateLists).toHaveBeenCalled()
+  })
+})
+
+describe('useBoardCardActions — moveCard (the optimistic one)', () => {
+  /**
+   * The one mutation that cannot be await-then-revalidate: a drag ends by dropping the card where the
+   * data says it belongs, so waiting for the round trip makes it snap back and then jump.
+   */
+  it('applies the reposition to the cache before the write lands', async () => {
+    localBackend.moveCard.mockResolvedValue(makeCard())
+    localBackend.getBoard.mockResolvedValue({ board: local, cards: [] })
+    const { result, mutateDetail } = renderActions()
+
+    await result.current.moveCard(makeCard({ order: 0 }), 'done', 2)
+
+    const options = mutateDetail.mock.calls[0][1] as unknown as {
+      optimisticData: (c: unknown) => { cards: { columnId: string; order: number }[] }
+      rollbackOnError: boolean
+    }
+    expect(options.rollbackOnError).toBe(true)
+    const optimistic = options.optimisticData({ board: local, cards: [makeCard()] })
+    expect(optimistic.cards[0]).toMatchObject({ columnId: 'done', order: 2 })
+  })
+
+  it('writes the move under the card’s own revision', async () => {
+    localBackend.moveCard.mockResolvedValue(makeCard())
+    localBackend.getBoard.mockResolvedValue({ board: local, cards: [] })
+    const { result } = renderActions()
+
+    await result.current.moveCard(makeCard({ revision: 'r-card' }), 'done', 2)
+    expect(localBackend.moveCard).toHaveBeenCalledWith(path, 'b1', 'c1', 'done', 2, 'r-card')
+  })
+
+  /** A lost race is recoverable by re-reading, so it says so and refreshes rather than throwing at a
+   * drag handler that has nowhere to put an error. */
+  it('absorbs a lost race into a message and a refresh', async () => {
+    localBackend.moveCard.mockRejectedValue(conflict())
+    const { result, mutateDetail } = renderActions()
+
+    await expect(result.current.moveCard(makeCard(), 'done', 1)).resolves.toBeUndefined()
+    expect(toastError).toHaveBeenCalled()
+    // Once for the optimistic write, once to re-read what actually landed.
+    expect(mutateDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it('lets any other failure through, rather than swallowing it', async () => {
+    localBackend.moveCard.mockRejectedValue(new Error('disk full'))
+    const { result } = renderActions()
+
+    await expect(result.current.moveCard(makeCard(), 'done', 1)).rejects.toThrow('disk full')
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('does nothing before the cards it would move are loaded', async () => {
+    const { result } = renderHook(() =>
+      useBoardCardActions({
+        repoPath: path,
+        activeBoard: local,
+        boards: [local],
+        detail: {
+          boardDetail: undefined,
+          cardsLoading: true,
+          mutateDetail: vi.fn() as never,
+          revisionFor: (b) => b.revision,
+          withConflictToast: (run) => run(),
+        },
+        backendFor: () => localBackend as never,
+        remoteBackend: remoteBackend as never,
+        revalidateLists: vi.fn(),
+        trackedRef: () => null,
+        token: 'tok',
+      })
+    )
+
+    await result.current.moveCard(makeCard(), 'done', 1)
+    expect(localBackend.moveCard).not.toHaveBeenCalled()
+  })
+})
+
+describe('useBoardCardActions — deleteCard and untrackCard', () => {
+  it('deletes through the backend of the board the card is on', async () => {
+    localBackend.deleteCard.mockResolvedValue(undefined)
+    const { result } = renderActions()
+
+    await result.current.deleteCard(makeCard())
+    expect(localBackend.deleteCard).toHaveBeenCalledWith(path, 'b1', 'c1')
+  })
+
+  /**
+   * Severing the link is not a reason to lose the content: the card keeps everything the issue put
+   * on it and becomes an ordinary local card.
+   */
+  it('untracks by clearing the link alone', async () => {
+    localBackend.updateCard.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.untrackCard(makeCard({ title: 'Kept' }))
+    expect(localBackend.updateCard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      { sourceIssue: null },
+      'rev-1'
+    )
+  })
+})
+
+describe('useBoardCardActions — addComment', () => {
+  it('refuses to post an empty comment', async () => {
+    const { result } = renderActions()
+
+    await expect(result.current.addComment(makeCard(), '   ')).resolves.toBeNull()
+    expect(localBackend.addComment).not.toHaveBeenCalled()
+  })
+
+  it('trims what it posts, and writes under the card’s revision', async () => {
+    localBackend.addComment.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.addComment(makeCard(), '  Looks good  ')
+    expect(localBackend.addComment).toHaveBeenCalledWith(path, 'b1', 'c1', 'Looks good', 'rev-1')
+  })
+})

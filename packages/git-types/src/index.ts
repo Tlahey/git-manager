@@ -759,7 +759,7 @@ export interface Board {
   updatedAt: string
 }
 
-/** A sprint's outcome, computed by `app/board/sprintStats.ts` and frozen onto the board when it is
+/** A sprint's outcome, computed by `features/board/lib/sprintStats.ts` and frozen onto the board when it is
  * closed. Deliberately computed in TypeScript and *passed to* the backend, so the arithmetic lives
  * once and both backends store the same numbers. */
 export interface SprintSummary {

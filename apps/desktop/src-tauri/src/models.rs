@@ -405,7 +405,7 @@ pub struct BoardComment {
 }
 
 /// A sprint's outcome, frozen onto the board when it is closed. Computed in TypeScript
-/// (`app/board/sprintStats.ts`) and passed in, so the arithmetic lives once rather than being
+/// (`features/board/lib/sprintStats.ts`) and passed in, so the arithmetic lives once rather than being
 /// duplicated in both languages — this struct only has to store it faithfully.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
