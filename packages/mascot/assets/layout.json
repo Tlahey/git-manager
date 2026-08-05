@@ -1,255 +1,119 @@
 {
-  "version": 1,
-  "sheet": {
-    "name": "sprites.png",
-    "width": 2048,
-    "height": 2048,
-    "chroma": {
-      "color": "#0dd445",
-      "t0": 55,
-      "t1": 150
-    }
-  },
+  "version": 2,
+  "parts": [
+    { "id": "head", "role": "head", "file": "head.png" },
+    { "id": "t6", "role": "tentacle", "file": "t6.png" },
+    { "id": "t7", "role": "tentacle", "file": "t7.png" },
+    { "id": "t1", "role": "tentacle", "file": "t1.png" },
+    { "id": "t4", "role": "tentacle", "file": "t4.png" },
+    { "id": "t8", "role": "tentacle", "file": "t8.png" },
+    { "id": "t5", "role": "tentacle", "file": "t5.png" },
+    { "id": "t3", "role": "tentacle", "file": "t3.png" },
+    { "id": "t2", "role": "tentacle", "file": "t2.png" }
+  ],
   "stage": {
     "width": 1000,
     "height": 1000
   },
-  "zones": [
-    {
-      "id": "head",
-      "role": "head",
-      "x": 14,
-      "y": 14,
-      "w": 687,
-      "h": 781
-    },
-    {
-      "id": "t6",
-      "role": "tentacle",
-      "x": 701,
-      "y": 14,
-      "w": 404,
-      "h": 664
-    },
-    {
-      "id": "t7",
-      "role": "tentacle",
-      "x": 1105,
-      "y": 14,
-      "w": 429,
-      "h": 648
-    },
-    {
-      "id": "t1",
-      "role": "tentacle",
-      "x": 1534,
-      "y": 14,
-      "w": 476,
-      "h": 556
-    },
-    {
-      "id": "t4",
-      "role": "tentacle",
-      "x": 14,
-      "y": 809,
-      "w": 401,
-      "h": 528
-    },
-    {
-      "id": "t8",
-      "role": "tentacle",
-      "x": 415,
-      "y": 809,
-      "w": 585,
-      "h": 502
-    },
-    {
-      "id": "t5",
-      "role": "tentacle",
-      "x": 1000,
-      "y": 809,
-      "w": 556,
-      "h": 416
-    },
-    {
-      "id": "t3",
-      "role": "tentacle",
-      "x": 14,
-      "y": 1351,
-      "w": 529,
-      "h": 337
-    },
-    {
-      "id": "t2",
-      "role": "tentacle",
-      "x": 543,
-      "y": 1351,
-      "w": 542,
-      "h": 323
-    }
-  ],
   "placements": [
     {
       "zone": "t1",
-      "x": 598,
-      "y": 227,
-      "scale": 0.5537,
+      "x": 604.5,
+      "y": 224.23,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 590,
-        "y": 423
-      },
-      "anim": {
-        "amp": 3.0,
-        "dur": 3.9,
-        "delay": 0.5
-      }
+      "pivot": { "x": 607.86, "y": 490.24 },
+      "anim": { "amp": 3.0, "dur": 3.9, "delay": 0.5 }
     },
     {
       "zone": "t4",
-      "x": 188,
-      "y": 239,
-      "scale": 0.5537,
+      "x": 186.18,
+      "y": 237.11,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 410,
-        "y": 428
-      },
-      "anim": {
-        "amp": 3.0,
-        "dur": 3.6,
-        "delay": 0.0
-      }
+      "pivot": { "x": 424.74, "y": 488.0 },
+      "anim": { "amp": 3.0, "dur": 3.6, "delay": 0.0 }
     },
     {
       "zone": "head",
-      "x": 320,
-      "y": 110,
-      "scale": 0.5979,
+      "x": 334.02,
+      "y": 108.31,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 510,
-        "y": 300
-      },
-      "anim": {
-        "amp": 0,
-        "dur": 4,
-        "delay": 0
-      }
+      "pivot": { "x": 0, "y": 0 },
+      "anim": { "amp": 0, "dur": 4, "delay": 0 }
     },
     {
       "zone": "t8",
-      "x": 575,
-      "y": 421,
-      "scale": 0.5537,
+      "x": 575.38,
+      "y": 424.72,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 607,
-        "y": 412
-      },
-      "anim": {
-        "amp": 2.4,
-        "dur": 4.2,
-        "delay": 0.9
-      }
+      "pivot": { "x": 579.3, "y": 546.8 },
+      "anim": { "amp": 2.4, "dur": 4.2, "delay": 0.9 }
     },
     {
       "zone": "t5",
-      "x": 133,
-      "y": 467,
-      "scale": 0.5537,
+      "x": 130.18,
+      "y": 425.28,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 426,
-        "y": 459
-      },
-      "anim": {
-        "amp": 2.4,
-        "dur": 4.0,
-        "delay": 0.35
-      }
+      "pivot": { "x": 456.66, "y": 550.72 },
+      "anim": { "amp": 2.4, "dur": 4.0, "delay": 0.35 }
     },
     {
       "zone": "t2",
-      "x": 211,
-      "y": 483,
-      "scale": 0.4928,
-      "rot": 7,
+      "x": 200.74,
+      "y": 454.96,
+      "scale": 0.56,
+      "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 434,
-        "y": 493
-      },
-      "anim": {
-        "amp": 2.6,
-        "dur": 3.4,
-        "delay": 0.2
-      }
+      "pivot": { "x": 485.22, "y": 532.24 },
+      "anim": { "amp": 2.6, "dur": 3.4, "delay": 0.2 }
     },
     {
       "zone": "t3",
-      "x": 562,
-      "y": 503,
-      "scale": 0.4928,
-      "rot": -8,
+      "x": 508.74,
+      "y": 473.44,
+      "scale": 0.56,
+      "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 594,
-        "y": 485
-      },
-      "anim": {
-        "amp": 2.6,
-        "dur": 3.7,
-        "delay": 0.7
-      }
+      "pivot": { "x": 523.3, "y": 535.04 },
+      "anim": { "amp": 2.6, "dur": 3.7, "delay": 0.7 }
     },
     {
       "zone": "t6",
-      "x": 327,
-      "y": 473,
-      "scale": 0.5537,
+      "x": 325.62,
+      "y": 468.4,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 514,
-        "y": 458
-      },
-      "anim": {
-        "amp": 2.2,
-        "dur": 3.5,
-        "delay": 0.6
-      }
+      "pivot": { "x": 509.86, "y": 542.32 },
+      "anim": { "amp": 2.2, "dur": 3.5, "delay": 0.6 }
     },
     {
       "zone": "t7",
-      "x": 488,
-      "y": 483,
-      "scale": 0.5537,
+      "x": 417.46,
+      "y": 443.76,
+      "scale": 0.56,
       "rot": 0,
       "flip": false,
       "opacity": 1,
-      "pivot": {
-        "x": 519,
-        "y": 470
-      },
-      "anim": {
-        "amp": 2.2,
-        "dur": 3.2,
-        "delay": 0.15
-      }
+      "pivot": { "x": 509.86, "y": 542.32 },
+      "anim": { "amp": 2.2, "dur": 3.2, "delay": 0.15 }
     }
   ]
 }

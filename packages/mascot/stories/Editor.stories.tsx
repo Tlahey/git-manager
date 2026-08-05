@@ -1,17 +1,22 @@
 /**
- * Layout editor — the sprite-sheet → JSON workflow:
+ * Layout editor — the parts → JSON workflow:
  *
- *   1. the package's sheet (`assets/sprites.png`) and its layout
- *      (`assets/layout.json`) are loaded on startup — the editor's initial state
- *      IS the current rig (another PNG can be loaded over it),
- *   2. define/adjust regions on it (drag to draw, name them, type them),
- *   3. place each region on the 1000×1000 stage (drag, scale, rotation, flip,
- *      opacity, pivot + animation params), with the brand reference aligned as
- *      an overlay; the "Layers" panel lists the placements in paint order
+ *   1. the package's parts (`assets/parts/*.png`, one file per element) and
+ *      the layout (`assets/layout.json`) are loaded on startup — the
+ *      editor's initial state IS the current rig (any part can be replaced
+ *      by loading another PNG over it),
+ *   2. place each part on the 1000×1000 stage (drag, scale, rotation, flip,
+ *      opacity, pivot + animation params), with the brand reference aligned
+ *      as an overlay; the "Layers" panel lists the placements in paint order
  *      (top = front) and reorders by drag-and-drop,
- *   4. export the JSON → `assets/layout.json`, then
+ *   3. export the JSON → `assets/layout.json`, then
  *      `pnpm --filter @git-manager/mascot generate` regenerates
  *      `src/generated/{sprites,layout}.ts`, which the apps consume.
+ *
+ * Unlike the old packed-sheet editor, there's no chroma-key step: every part
+ * file is already genuinely transparent. Each part is still auto-trimmed to
+ * its bounding box (padded a few px) exactly like `scripts/generate.mjs`, so
+ * the slice shown here matches what generation will actually ship.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -20,20 +25,27 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { ReferenceOverlay, SPRITES, Stage } from './rigUtils'
 import { LayersPanel } from './LayersPanel'
 import layoutJson from '../assets/layout.json'
-import defaultSheetUrl from '../assets/sprites.png'
 
 const meta: Meta = { title: 'Mascot/Layout editor' }
 export default meta
 
+/* the package's own parts (assets/parts/*.png), keyed by filename */
+const bundledParts = import.meta.glob('../assets/parts/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>
+const bundledPartUrl = (file: string): string | undefined =>
+  bundledParts[Object.keys(bundledParts).find((k) => k.endsWith(`/${file}`)) ?? '']
+
+const PAD = 4
+
 /* ── document model (this is the exported JSON's shape) ─────────────────── */
 
-interface Zone {
+interface Part {
   id: string
   role: 'tentacle' | 'head' | 'eye' | 'eyelid' | 'mouth' | 'other'
-  x: number
-  y: number
-  w: number
-  h: number
+  file: string
 }
 
 interface Placement {
@@ -49,17 +61,11 @@ interface Placement {
 }
 
 interface Doc {
-  version: 1
-  sheet: {
-    name: string | null
-    width: number
-    height: number
-    chroma: { color: string | null; t0: number; t1: number }
-  }
+  version: 2
+  parts: Part[]
   stage: { width: number; height: number }
   /** paint order: first = furthest back, last = furthest front */
   placements: Placement[]
-  zones: Zone[]
 }
 
 /** The committed layout (assets/layout.json) as the editor's starting document. */
@@ -67,37 +73,46 @@ function initialDoc(): Doc {
   return structuredClone(layoutJson) as Doc
 }
 
-/* ── slicing (canvas crop + optional chroma-key) ────────────────────────── */
+/* ── trimming (canvas crop to the alpha bounding box, padded) ───────────── */
 
-function sliceZone(img: HTMLImageElement, z: Zone, chroma: Doc['sheet']['chroma']): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = z.w
-  canvas.height = z.h
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(img, z.x, z.y, z.w, z.h, 0, 0, z.w, z.h)
-  if (chroma.color) {
-    const [br, bg, bb] = [1, 3, 5].map((i) => parseInt(chroma.color!.slice(i, i + 2), 16))
-    const data = ctx.getImageData(0, 0, z.w, z.h)
-    const px = data.data
-    for (let i = 0; i < px.length; i += 4) {
-      const d = Math.hypot(px[i] - br, px[i + 1] - bg, px[i + 2] - bb)
-      const a =
-        d <= chroma.t0
-          ? 0
-          : d >= chroma.t1
-            ? 255
-            : Math.round(((d - chroma.t0) / (chroma.t1 - chroma.t0)) * 255)
-      if (a < 255) {
-        const f = a / 255 || 1
-        px[i] = Math.min(255, Math.max(0, (px[i] - (1 - f) * br) / f))
-        px[i + 1] = Math.min(255, Math.max(0, (px[i + 1] - (1 - f) * bg) / f))
-        px[i + 2] = Math.min(255, Math.max(0, (px[i + 2] - (1 - f) * bb) / f))
+/** Mirrors scripts/generate.mjs's trim+pad, in-browser, so the editor shows
+ * exactly what generation will ship. No chroma-key step: parts are already
+ * genuinely transparent. */
+function trimImage(img: HTMLImageElement): { uri: string; w: number; h: number } {
+  const full = document.createElement('canvas')
+  full.width = img.naturalWidth
+  full.height = img.naturalHeight
+  const fctx = full.getContext('2d')!
+  fctx.drawImage(img, 0, 0)
+  const { data } = fctx.getImageData(0, 0, full.width, full.height)
+
+  let x0 = full.width,
+    y0 = full.height,
+    x1 = -1,
+    y1 = -1
+  for (let y = 0; y < full.height; y++) {
+    for (let x = 0; x < full.width; x++) {
+      if (data[(y * full.width + x) * 4 + 3] > 10) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        if (y > y1) y1 = y
       }
-      px[i + 3] = Math.min(px[i + 3], a)
     }
-    ctx.putImageData(data, 0, 0)
   }
-  return canvas.toDataURL()
+  if (x1 < 0) return { uri: full.toDataURL(), w: full.width, h: full.height }
+  x0 = Math.max(0, x0 - PAD)
+  y0 = Math.max(0, y0 - PAD)
+  x1 = Math.min(full.width - 1, x1 + PAD)
+  y1 = Math.min(full.height - 1, y1 + PAD)
+  const w = x1 - x0 + 1
+  const h = y1 - y0 + 1
+
+  const out = document.createElement('canvas')
+  out.width = w
+  out.height = h
+  out.getContext('2d')!.drawImage(full, x0, y0, w, h, 0, 0, w, h)
+  return { uri: out.toDataURL(), w, h }
 }
 
 /* ── the editor ─────────────────────────────────────────────────────────── */
@@ -122,59 +137,41 @@ const num: CSSProperties = {
 
 function Editor() {
   const [doc, setDoc] = useState<Doc>(initialDoc)
-  const [sheetImg, setSheetImg] = useState<HTMLImageElement | null>(null)
-  const [slices, setSlices] = useState<Record<string, string>>({})
-  const [selZone, setSelZone] = useState<string | null>(null)
+  const [slices, setSlices] = useState<Record<string, { uri: string; w: number; h: number }>>({})
   const [selPart, setSelPart] = useState<number | null>(null)
   const [refOpacity, setRefOpacity] = useState(0.35)
-  const [pickBg, setPickBg] = useState(false)
   const [pivotMode, setPivotMode] = useState(false)
   const [animate, setAnimate] = useState(false)
   const [importText, setImportText] = useState('')
-  const [draftZone, setDraftZone] = useState<Zone | null>(null)
   const dragRef = useRef<{ idx: number; dx: number; dy: number } | null>(null)
   const partEls = useRef<Map<number, HTMLImageElement>>(new Map())
 
-  const SHEET_W = 400
-  const STAGE_W = 540
-  const kSheet = SHEET_W / doc.sheet.width
-  const kStage = STAGE_W / doc.stage.width
+  const STAGE_W = 560
 
-  const uriFor = (zoneId: string): string | null =>
-    slices[zoneId] ?? (SPRITES as Record<string, { uri: string } | undefined>)[zoneId]?.uri ?? null
+  const uriFor = (partId: string): string | null =>
+    slices[partId]?.uri ?? (SPRITES as Record<string, { uri: string } | undefined>)[partId]?.uri ?? null
+  const widthFor = (partId: string): number =>
+    slices[partId]?.w ?? (SPRITES as Record<string, { w: number } | undefined>)[partId]?.w ?? 300
 
-  const reslice = (img = sheetImg, d = doc) => {
-    if (!img) return
-    const next: Record<string, string> = {}
-    for (const z of d.zones) next[z.id] = sliceZone(img, z, d.sheet.chroma)
-    setSlices(next)
-  }
-
-  const loadSheet = (file: File) => {
+  const loadPart = (id: string, file: File) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
     img.onload = () => {
-      setSheetImg(img)
-      setDoc((d) => {
-        const nd = {
-          ...d,
-          sheet: { ...d.sheet, name: file.name, width: img.width, height: img.height },
-        }
-        setTimeout(() => reslice(img, nd), 0)
-        return nd
-      })
+      setSlices((s) => ({ ...s, [id]: trimImage(img) }))
+      setDoc((d) => ({ ...d, parts: d.parts.map((p) => (p.id === id ? { ...p, file: file.name } : p)) }))
     }
     img.src = url
   }
 
-  /* the package's own sheet (assets/sprites.png) is loaded on mount */
+  /* the package's own parts (assets/parts/*.png) are loaded on mount */
   useEffect(() => {
-    const img = new Image()
-    img.onload = () => {
-      setSheetImg(img)
-      reslice(img, doc)
+    for (const part of doc.parts) {
+      const url = bundledPartUrl(part.file)
+      if (!url) continue
+      const img = new Image()
+      img.onload = () => setSlices((s) => ({ ...s, [part.id]: trimImage(img) }))
+      img.src = url
     }
-    img.src = defaultSheetUrl
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, [])
 
@@ -241,6 +238,27 @@ function Editor() {
     })
   }
 
+  const addToStage = (partId: string) => {
+    setDoc((d) => ({
+      ...d,
+      placements: [
+        ...d.placements,
+        {
+          zone: partId,
+          x: 400,
+          y: 400,
+          scale: 0.56,
+          rot: 0,
+          flip: false,
+          opacity: 1,
+          pivot: { x: 500, y: 450 },
+          anim: { amp: 0, dur: 3.5, delay: 0 },
+        },
+      ],
+    }))
+    setSelPart(doc.placements.length)
+  }
+
   const sel = selPart !== null ? doc.placements[selPart] : null
   const exportJson = useMemo(() => JSON.stringify(doc, null, 2), [doc])
 
@@ -257,186 +275,68 @@ function Editor() {
         alignItems: 'flex-start',
       }}
     >
-      {/* ── sheet + zones ── */}
-      <div style={{ ...panel, width: SHEET_W }}>
-        <strong>1. Sprite sheet & zones</strong>
-        <input
-          type="file"
-          accept="image/*"
-          style={{ display: 'block', margin: '8px 0' }}
-          onChange={(e) => e.target.files?.[0] && loadSheet(e.target.files[0])}
-        />
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setPickBg((v) => !v)}
-            style={{
-              background: pickBg ? '#35e0c2' : '#16345c',
-              color: pickBg ? '#062' : '#cfe3f5',
-              border: 'none',
-              borderRadius: 4,
-              padding: '3px 8px',
-            }}
-          >
-            pick background{' '}
-            {doc.sheet.chroma.color && (
-              <i
-                style={{
-                  background: doc.sheet.chroma.color,
-                  display: 'inline-block',
-                  width: 10,
-                  height: 10,
-                  marginLeft: 4,
-                }}
-              />
-            )}
-          </button>
-          <label>
-            thresholds {doc.sheet.chroma.t0}/{doc.sheet.chroma.t1}
-            <input
-              type="range"
-              min={10}
-              max={120}
-              value={doc.sheet.chroma.t0}
-              onChange={(e) =>
-                setDoc((d) => ({
-                  ...d,
-                  sheet: { ...d.sheet, chroma: { ...d.sheet.chroma, t0: +e.target.value } },
-                }))
-              }
-            />
-          </label>
-          <button
-            onClick={() => reslice()}
-            disabled={!sheetImg}
-            style={{
-              background: '#16345c',
-              color: '#cfe3f5',
-              border: 'none',
-              borderRadius: 4,
-              padding: '3px 8px',
-            }}
-          >
-            re-slice
-          </button>
-        </div>
-        <div
-          style={{
-            position: 'relative',
-            width: SHEET_W,
-            height: (doc.sheet.height * SHEET_W) / doc.sheet.width,
-            background: '#0a1426',
-            marginTop: 8,
-            cursor: pickBg ? 'crosshair' : 'default',
-            touchAction: 'none',
-          }}
-          onPointerDown={(e) => {
-            const r = e.currentTarget.getBoundingClientRect()
-            const x = (e.clientX - r.left) / kSheet
-            const y = (e.clientY - r.top) / kSheet
-            if (pickBg && sheetImg) {
-              const c = document.createElement('canvas')
-              c.width = c.height = 1
-              const ctx = c.getContext('2d')!
-              ctx.drawImage(sheetImg, x, y, 1, 1, 0, 0, 1, 1)
-              const [pr, pg, pb] = ctx.getImageData(0, 0, 1, 1).data
-              const hex = `#${[pr, pg, pb].map((v) => v.toString(16).padStart(2, '0')).join('')}`
-              setDoc((d) => ({
-                ...d,
-                sheet: { ...d.sheet, chroma: { ...d.sheet.chroma, color: hex } },
-              }))
-              setPickBg(false)
-              return
-            }
-            setDraftZone({ id: `zone-${doc.zones.length + 1}`, role: 'other', x, y, w: 0, h: 0 })
-          }}
-          onPointerMove={(e) => {
-            if (!draftZone) return
-            const r = e.currentTarget.getBoundingClientRect()
-            const x = (e.clientX - r.left) / kSheet
-            const y = (e.clientY - r.top) / kSheet
-            setDraftZone({ ...draftZone, w: x - draftZone.x, h: y - draftZone.y })
-          }}
-          onPointerUp={() => {
-            if (draftZone && Math.abs(draftZone.w) > 12 && Math.abs(draftZone.h) > 12) {
-              const z = {
-                ...draftZone,
-                x: Math.round(Math.min(draftZone.x, draftZone.x + draftZone.w)),
-                y: Math.round(Math.min(draftZone.y, draftZone.y + draftZone.h)),
-                w: Math.round(Math.abs(draftZone.w)),
-                h: Math.round(Math.abs(draftZone.h)),
-              }
-              setDoc((d) => ({ ...d, zones: [...d.zones, z] }))
-              setSelZone(z.id)
-            }
-            setDraftZone(null)
-          }}
-        >
-          {sheetImg && (
-            <img src={sheetImg.src} alt="sheet" style={{ width: '100%', pointerEvents: 'none' }} />
-          )}
-          {!sheetImg && (
-            <p style={{ color: '#40608f', textAlign: 'center', paddingTop: 100 }}>
-              load a sheet — until then the zones below use the bundled sprites
-            </p>
-          )}
-          {[...doc.zones, ...(draftZone ? [draftZone] : [])].map((z) => (
+      {/* ── parts ── */}
+      <div style={{ ...panel, width: 220 }}>
+        <strong>1. Parts</strong>
+        <p style={{ color: '#7d95b5', margin: '6px 0' }}>
+          one file per element — already transparent, no chroma-key step
+        </p>
+        {doc.parts.map((part) => {
+          const slice = slices[part.id]
+          const onStage = doc.placements.some((p) => p.zone === part.id)
+          return (
             <div
-              key={z.id}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                setSelZone(z.id)
-              }}
+              key={part.id}
               style={{
-                position: 'absolute',
-                left: z.x * kSheet,
-                top: z.y * kSheet,
-                width: Math.abs(z.w) * kSheet,
-                height: Math.abs(z.h) * kSheet,
-                border: `1.5px solid ${selZone === z.id ? '#35e0c2' : '#ff547088'}`,
-                color: '#ffd166',
-                fontSize: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 0',
+                borderTop: '1px solid #16294a',
               }}
             >
-              {z.id}
+              {slice ? (
+                <img
+                  src={slice.uri}
+                  alt={part.id}
+                  style={{ width: 32, height: 32, objectFit: 'contain' }}
+                />
+              ) : (
+                <span style={{ width: 32, height: 32 }} />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div>
+                  <code>{part.id}</code>{' '}
+                  <span style={{ color: '#7d95b5' }}>{part.role}</span>
+                </div>
+                <label style={{ display: 'block' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ fontSize: 10, width: '100%' }}
+                    onChange={(e) => e.target.files?.[0] && loadPart(part.id, e.target.files[0])}
+                  />
+                </label>
+              </div>
+              {!onStage && (
+                <button
+                  onClick={() => addToStage(part.id)}
+                  disabled={!slice}
+                  style={{
+                    background: '#16345c',
+                    color: '#cfe3f5',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '3px 6px',
+                    fontSize: 10,
+                  }}
+                >
+                  add
+                </button>
+              )}
             </div>
-          ))}
-        </div>
-        {selZone && (
-          <ZoneInspector
-            zone={doc.zones.find((z) => z.id === selZone)!}
-            onChange={(patch) =>
-              setDoc((d) => ({
-                ...d,
-                zones: d.zones.map((z) => (z.id === selZone ? { ...z, ...patch } : z)),
-              }))
-            }
-            onDelete={() => {
-              setDoc((d) => ({ ...d, zones: d.zones.filter((z) => z.id !== selZone) }))
-              setSelZone(null)
-            }}
-            onAddToStage={() => {
-              const z = doc.zones.find((zz) => zz.id === selZone)!
-              setDoc((d) => ({
-                ...d,
-                placements: [
-                  ...d.placements,
-                  {
-                    zone: z.id,
-                    x: 400,
-                    y: 400,
-                    scale: 1,
-                    rot: 0,
-                    flip: false,
-                    opacity: 1,
-                    pivot: { x: 500, y: 450 },
-                    anim: { amp: 0, dur: 3.5, delay: 0 },
-                  },
-                ],
-              }))
-              setSelPart(doc.placements.length)
-            }}
-          />
-        )}
+          )
+        })}
       </div>
 
       {/* ── stage ── */}
@@ -488,6 +388,7 @@ function Editor() {
           onPointerDown={(e) => {
             if (pivotMode && sel && selPart !== null) {
               const r = (e.currentTarget.firstChild as HTMLElement).getBoundingClientRect()
+              const kStage = STAGE_W / doc.stage.width
               patchPart(selPart, {
                 pivot: {
                   x: Math.round((e.clientX - r.left) / kStage),
@@ -501,6 +402,7 @@ function Editor() {
             const drag = dragRef.current
             if (!drag) return
             const r = (e.currentTarget.firstChild as HTMLElement).getBoundingClientRect()
+            const kStage = STAGE_W / doc.stage.width
             patchPart(drag.idx, {
               x: Math.round((e.clientX - r.left) / kStage - drag.dx),
               y: Math.round((e.clientY - r.top) / kStage - drag.dy),
@@ -511,12 +413,9 @@ function Editor() {
           <Stage width={STAGE_W}>
             {doc.placements.map((p, idx) => {
               const uri = uriFor(p.zone)
-              const z = doc.zones.find((zz) => zz.id === p.zone)
-              // width must follow the image actually shown: sheet slice → zone
-              // width; builtin fallback → that sprite's own (cropped) width.
-              const builtin = (SPRITES as Record<string, { w: number } | undefined>)[p.zone]
-              const w = slices[p.zone] && z ? z.w : (builtin?.w ?? z?.w ?? 300)
+              const w = widthFor(p.zone)
               if (!uri) return null
+              const kStage = STAGE_W / doc.stage.width
               return (
                 <img
                   key={`${p.zone}-${idx}`}
@@ -697,9 +596,7 @@ function Editor() {
             </button>
           </div>
         ) : (
-          <p style={{ color: '#7d95b5' }}>
-            click a part on the stage (or “add to stage” from a zone)
-          </p>
+          <p style={{ color: '#7d95b5' }}>click a part on the stage (or “add” from the parts list)</p>
         )}
 
         <hr style={{ border: 0, borderTop: '1px solid #24406a', margin: '12px 0' }} />
@@ -756,93 +653,16 @@ function Editor() {
           onClick={() => {
             try {
               const d = JSON.parse(importText) as Doc
-              if (d.version !== 1 || !Array.isArray(d.placements))
+              if (d.version !== 2 || !Array.isArray(d.placements))
                 throw new Error('unexpected format')
               setDoc(d)
               setSelPart(null)
-              setSelZone(null)
-              if (sheetImg) setTimeout(() => reslice(sheetImg, d), 0)
             } catch (err) {
               alert(`Import failed: ${String(err)}`)
             }
           }}
         >
           apply import
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ZoneInspector({
-  zone,
-  onChange,
-  onDelete,
-  onAddToStage,
-}: {
-  zone: Zone
-  onChange: (patch: Partial<Zone>) => void
-  onDelete: () => void
-  onAddToStage: () => void
-}) {
-  return (
-    <div style={{ marginTop: 8, borderTop: '1px solid #24406a', paddingTop: 8 }}>
-      <label style={label}>
-        id{' '}
-        <input
-          style={{ ...num, width: 90 }}
-          value={zone.id}
-          onChange={(e) => onChange({ id: e.target.value })}
-        />
-      </label>
-      <label style={label}>
-        role{' '}
-        <select
-          value={zone.role}
-          onChange={(e) => onChange({ role: e.target.value as Zone['role'] })}
-          style={{ ...num, width: 100 }}
-        >
-          {['tentacle', 'head', 'eye', 'eyelid', 'mouth', 'other'].map((r) => (
-            <option key={r}>{r}</option>
-          ))}
-        </select>
-      </label>
-      <label style={label}>
-        x/y/w/h{' '}
-        {(['x', 'y', 'w', 'h'] as const).map((k) => (
-          <input
-            key={k}
-            style={{ ...num, width: 48 }}
-            type="number"
-            value={zone[k]}
-            onChange={(e) => onChange({ [k]: +e.target.value })}
-          />
-        ))}
-      </label>
-      <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
-        <button
-          onClick={onAddToStage}
-          style={{
-            background: '#16345c',
-            color: '#cfe3f5',
-            border: 'none',
-            borderRadius: 4,
-            padding: '3px 8px',
-          }}
-        >
-          add to stage
-        </button>
-        <button
-          onClick={onDelete}
-          style={{
-            background: '#5c1626',
-            color: '#ffb3c0',
-            border: 'none',
-            borderRadius: 4,
-            padding: '3px 8px',
-          }}
-        >
-          delete
         </button>
       </div>
     </div>
