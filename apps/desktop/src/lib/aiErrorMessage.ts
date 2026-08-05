@@ -35,7 +35,7 @@ interface ErrorPayload {
 function parsePayload(raw: string): ErrorPayload | null {
   try {
     const parsed: unknown = JSON.parse(raw)
-    return typeof parsed === 'object' && parsed !== null ? (parsed as ErrorPayload) : null
+    return typeof parsed === 'object' && parsed !== null ? parsed : null
   } catch {
     // Not every rejection is an AppError — a JS-side throw arrives as plain text.
     return null

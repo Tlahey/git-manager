@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { GitGraphNode, GitRef, GitStash } from '@git-manager/git-types'
 import { apiCreateCommit, apiUpdateStashMessage } from '../api/git.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
+import { toast } from '@git-manager/ui'
 
 interface UseCommitMessageEditParams {
   commit: GitGraphNode['commit']
@@ -77,7 +78,7 @@ export function useCommitMessageEdit({
       setIsEditingMessage(false)
       onRefresh?.()
     } catch (err) {
-      alert(String(err))
+      toast.error(String(err))
     } finally {
       setIsSavingMessage(false)
     }

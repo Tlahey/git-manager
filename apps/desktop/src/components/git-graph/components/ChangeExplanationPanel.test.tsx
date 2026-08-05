@@ -7,7 +7,7 @@ const explanation = vi.hoisted(() => ({
   explain: vi.fn(),
   cancel: vi.fn(),
   reset: vi.fn(),
-  status: 'idle' as string,
+  status: 'idle',
   error: null as string | null,
   text: '',
   coverage: null as {

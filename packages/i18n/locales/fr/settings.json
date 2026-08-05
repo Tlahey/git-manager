@@ -279,6 +279,8 @@
   "settings.rewards.controlZoneHint": "Remet à zéro l'historique des succès complétés, votre XP et reverrouille les thèmes cosmétiques.",
   "settings.rewards.reset": "Réinitialiser toute la progression",
   "settings.rewards.resetConfirm": "Voulez-vous vraiment réinitialiser TOUS vos succès et XP accumulés ? Cette action est irréversible.",
+  "settings.rewards.resetTitle": "Réinitialiser toute la progression ?",
+  "settings.rewards.resetAction": "Réinitialiser",
   "settings.ai.dailySummary.enabled": "Résumé quotidien",
   "settings.ai.dailySummary.enabledHint": "Afficher un briefing IA par projet dans le launchpad, récapitulant le travail d'hier et suggérant le plan du jour.",
   "settings.ai.dailySummary.autoGenerate": "Générer chaque matin",

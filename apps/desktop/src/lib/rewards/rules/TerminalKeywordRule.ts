@@ -3,7 +3,7 @@ import type { RewardRule } from './RewardRule'
 
 function commandFromPayload(payload: unknown): string {
   if (payload && typeof payload === 'object' && 'command' in payload) {
-    const command = (payload as { command: unknown }).command
+    const command = payload.command
     if (typeof command === 'string') return command
   }
   return ''

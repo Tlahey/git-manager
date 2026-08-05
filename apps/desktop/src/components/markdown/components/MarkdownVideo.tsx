@@ -1,5 +1,5 @@
 import React from 'react'
-import { resolveImageSrc } from './MarkdownImage'
+import { resolveImageSrc } from './resolveImageSrc'
 
 interface MarkdownVideoProps extends React.VideoHTMLAttributes<HTMLVideoElement> {
   repoPath?: string

@@ -160,7 +160,7 @@ describe('WorktreeItem — working directory on hover', () => {
         x: 0,
         y: 100,
         toJSON: () => ({}),
-      } as DOMRect)
+      })
 
       fireEvent.mouseEnter(row)
       act(() => vi.advanceTimersByTime(500))

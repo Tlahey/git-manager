@@ -49,7 +49,7 @@ describe('parseThemeTokens', () => {
     // overrides (its APCA button fixes); the descendant `.border` selector sets no
     // custom properties, so the only keys present must be canonical or recognised
     // component tokens — anything else would be leaked selector pollution.
-    const platinum = themes.get('platinum') as ThemeTokens
+    const platinum = themes.get('platinum')!
     expect(platinum).toBeDefined()
     const allowed = new Set([...THEME_TOKEN_KEYS, ...Object.keys(COMPONENT_TOKEN_DEFAULTS)])
     const missing = THEME_TOKEN_KEYS.filter((k) => !platinum.has(k))
@@ -65,7 +65,7 @@ describe('token consistency across themes', () => {
   // primitives (e.g. --brand-500) alongside the canonical semantic tokens. The
   // platinum exact-set test below still guards against selector pollution.
   it.each(themeIds)('theme "%s" defines every canonical token', (id) => {
-    const tokens = themes.get(id) as ThemeTokens
+    const tokens = themes.get(id)!
     const missing = THEME_TOKEN_KEYS.filter((k) => !tokens.has(k))
     expect(missing, `Missing canonical tokens in "${id}": ${missing.join(', ')}`).toEqual([])
   })
@@ -75,7 +75,7 @@ describe('token consistency across themes', () => {
   // Values are var()-resolved first so a semantic token referencing the palette
   // (--primary: var(--brand-500)) is graded on its resolved triplet.
   it.each(themeIds)('theme "%s" declares every color token as an HSL triplet', (id) => {
-    const tokens = themes.get(id) as ThemeTokens
+    const tokens = themes.get(id)!
     const bad = [...tokens.entries()]
       .filter(([k]) => !NON_COLOR_TOKENS.has(k))
       .map(([k, v]) => [k, resolveTokenValue(tokens, v)] as const)
@@ -93,7 +93,7 @@ describe('resolveTokenValue / resolveThemeTokens', () => {
       ['--primary', 'var(--brand-500)'],
       ['--ring', 'var(--primary)'],
     ])
-    expect(resolveTokenValue(m, m.get('--ring') as string)).toBe('258 90% 68%')
+    expect(resolveTokenValue(m, m.get('--ring')!)).toBe('258 90% 68%')
   })
 
   it('uses the fallback when the reference is absent', () => {
@@ -113,7 +113,7 @@ describe('resolveTokenValue / resolveThemeTokens', () => {
   })
 
   it('returns the canonical set with palette references resolved (twilight)', () => {
-    const tw = themes.get('twilight') as ThemeTokens
+    const tw = themes.get('twilight')!
     const resolved = resolveThemeTokens(tw)
     expect([...resolved.keys()].sort()).toEqual([...THEME_TOKEN_KEYS].sort())
     // --primary points at the violet palette primitive.
@@ -139,7 +139,7 @@ describe('theme contrast (WCAG AA)', () => {
   it('reports the contrast ratio of every semantic pair', () => {
     const lines: string[] = []
     for (const id of themeIds) {
-      for (const r of evaluateThemeContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateThemeContrast(themes.get(id)!)) {
         const ratio = r.ratio === null ? 'n/a' : r.ratio.toFixed(2)
         lines.push(
           `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(28)} ${ratio} (min ${r.minRatio})`
@@ -154,7 +154,7 @@ describe('theme contrast (WCAG AA)', () => {
   it('has no new contrast failures beyond the known baseline', () => {
     const liveFailures = new Set<string>()
     for (const id of themeIds) {
-      for (const r of evaluateThemeContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateThemeContrast(themes.get(id)!)) {
         if (!r.passes) liveFailures.add(`${id}:${r.label}`)
       }
     }
@@ -177,7 +177,7 @@ describe('theme contrast (WCAG AA)', () => {
 describe('validateThemeTokens', () => {
   it('reports a clean bill for a fully valid theme', () => {
     // "dark" passes all three checks in themes.css.
-    const v = validateThemeTokens(themes.get('dark') as ThemeTokens)
+    const v = validateThemeTokens(themes.get('dark')!)
     expect(v).toEqual({ missingTokens: [], nonHslTokens: [], contrastFailures: [] })
     expect(isThemeValid(v)).toBe(true)
   })
@@ -230,19 +230,19 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
     // "github-light" declares no --button-bg override (its deep primary already
     // clears APCA) → --button-bg defaults to var(--primary), resolved against its own
     // primary. (Most themes now pin --button-bg explicitly for the APCA restyle.)
-    const gh = themes.get('github-light') as ThemeTokens
+    const gh = themes.get('github-light')!
     const merged = componentTokensForTheme(gh)
-    expect(resolveTokenValue(merged, merged.get('--button-bg') as string)).toBe(
-      resolveTokenValue(gh, gh.get('--primary') as string)
+    expect(resolveTokenValue(merged, merged.get('--button-bg')!)).toBe(
+      resolveTokenValue(gh, gh.get('--primary')!)
     )
   })
 
   it('applies a per-theme component override (twilight deepens the button fill for APCA)', () => {
-    const tw = themes.get('twilight') as ThemeTokens
+    const tw = themes.get('twilight')!
     const merged = componentTokensForTheme(tw)
     // Twilight re-points --button-bg to the deeper --brand-600 (light label), not --primary.
-    const buttonBg = resolveTokenValue(merged, merged.get('--button-bg') as string)
-    const primary = resolveTokenValue(tw, tw.get('--primary') as string)
+    const buttonBg = resolveTokenValue(merged, merged.get('--button-bg')!)
+    const primary = resolveTokenValue(tw, tw.get('--primary')!)
     expect(buttonBg).not.toBe(primary)
     const button = evaluateComponentContrast(tw).find((r) => r.label === 'button')
     expect(button?.passes).toBe(true)
@@ -250,10 +250,10 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
   })
 
   it('grades the default badge, and twilight overrides it to a more visible AA fill', () => {
-    const tw = themes.get('twilight') as ThemeTokens
+    const tw = themes.get('twilight')!
     const merged = componentTokensForTheme(tw)
-    const badgeBg = resolveTokenValue(merged, merged.get('--badge-bg') as string)
-    const primary = resolveTokenValue(tw, tw.get('--primary') as string)
+    const badgeBg = resolveTokenValue(merged, merged.get('--badge-bg')!)
+    const primary = resolveTokenValue(tw, tw.get('--primary')!)
     // Twilight re-points --badge-bg off the marginal --primary (~4.9:1).
     expect(badgeBg).not.toBe(primary)
     const badge = evaluateComponentContrast(tw).find((r) => r.label === 'badge')
@@ -262,7 +262,7 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
   })
 
   it('lets a theme override a component token, and re-grades the override', () => {
-    const base = themes.get('twilight') as ThemeTokens
+    const base = themes.get('twilight')!
     const overridden: ThemeTokens = new Map(base)
     // Point the button at a near-white fill with near-white text → must fail AA.
     overridden.set('--button-bg', '0 0% 100%')
@@ -275,7 +275,7 @@ describe('componentTokensForTheme / evaluateComponentContrast', () => {
     const KNOWN_COMPONENT_FAILURES = new Set<string>([])
     const liveFailures = new Set<string>()
     for (const id of themeIds) {
-      for (const r of evaluateComponentContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateComponentContrast(themes.get(id)!)) {
         if (!r.passes) liveFailures.add(`${id}:${r.label}`)
       }
     }
@@ -304,7 +304,7 @@ describe('non-text (graphical) contrast — WCAG 1.4.11', () => {
   it('reports each theme’s badge-fill vs surface ratio', () => {
     const lines: string[] = []
     for (const id of themeIds) {
-      for (const r of evaluateGraphicalContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateGraphicalContrast(themes.get(id)!)) {
         const ratio = r.ratio === null ? 'n/a' : r.ratio.toFixed(2)
         lines.push(
           `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(24)} ${ratio} (min ${r.minRatio})`
@@ -319,7 +319,7 @@ describe('non-text (graphical) contrast — WCAG 1.4.11', () => {
   it('has no badge fill that blends into its surface beyond the known baseline', () => {
     const liveFailures = new Set<string>()
     for (const id of themeIds) {
-      for (const r of evaluateGraphicalContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateGraphicalContrast(themes.get(id)!)) {
         if (!r.passes) liveFailures.add(`${id}:${r.label}`)
       }
     }
@@ -354,7 +354,7 @@ describe(`APCA perceptual contrast (component labels, |Lc| ≥ ${APCA_MIN_UI_TEX
   it('reports each theme’s component-label APCA Lc', () => {
     const lines: string[] = []
     for (const id of themeIds) {
-      for (const r of evaluateApcaComponentContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateApcaComponentContrast(themes.get(id)!)) {
         const lc = r.lc === null ? 'n/a' : r.lc.toFixed(1)
         lines.push(
           `${r.passes ? 'PASS' : 'FAIL'}  ${id.padEnd(18)} ${r.label.padEnd(20)} Lc ${lc} (min ${r.minLc})`
@@ -369,7 +369,7 @@ describe(`APCA perceptual contrast (component labels, |Lc| ≥ ${APCA_MIN_UI_TEX
   it('has no component label below the APCA bar beyond the known baseline', () => {
     const liveFailures = new Set<string>()
     for (const id of themeIds) {
-      for (const r of evaluateApcaComponentContrast(themes.get(id) as ThemeTokens)) {
+      for (const r of evaluateApcaComponentContrast(themes.get(id)!)) {
         if (!r.passes) liveFailures.add(`${id}:${r.label}`)
       }
     }

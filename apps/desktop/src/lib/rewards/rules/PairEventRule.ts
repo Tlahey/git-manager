@@ -3,7 +3,7 @@ import type { RewardRule } from './RewardRule'
 
 function filePathFromPayload(payload: unknown): string {
   if (payload && typeof payload === 'object' && 'filePath' in payload) {
-    const filePath = (payload as { filePath: unknown }).filePath
+    const filePath = payload.filePath
     if (typeof filePath === 'string' && filePath) return filePath
   }
   return 'default'

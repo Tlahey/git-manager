@@ -11,10 +11,9 @@ import {
   GitCommitHorizontal,
   GitPullRequest,
   Wrench,
-  Github,
   FileDiff,
 } from 'lucide-react'
-import { toast } from '@git-manager/ui'
+import { toast, GithubIcon } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import {
   apiCopyCommitSha,
@@ -216,7 +215,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.openGithub'),
       subtitle: shortOid,
       keywords: shaKeyword,
-      icon: createElement(Github),
+      icon: createElement(GithubIcon),
       run: () => {
         apiGetCommitWebUrl(activeRepo, selectedCommitOid)
           .then((url) => {

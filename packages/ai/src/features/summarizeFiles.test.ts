@@ -22,7 +22,7 @@ describe('summarizeFiles', () => {
 
     expect(summarize).toHaveBeenCalledTimes(3)
     expect(summaries.map((s) => s.path)).toEqual(['a.ts', 'b.ts', 'c.ts'])
-    expect(summaries[0]!.intent).toBe('did a.ts')
+    expect(summaries[0].intent).toBe('did a.ts')
   })
 
   it('keeps a file whose call failed, with empty fields rather than dropping it', async () => {

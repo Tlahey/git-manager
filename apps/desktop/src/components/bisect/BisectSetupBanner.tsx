@@ -94,7 +94,7 @@ export function BisectSetupBanner({ repoPath }: BisectSetupBannerProps) {
 
   async function handleValidate() {
     if (!canValidate) return
-    const ok = await start(pendingBadOid!, pendingGoodOid!)
+    const ok = await start(pendingBadOid, pendingGoodOid)
     if (ok) cancelSetup()
   }
 

@@ -68,9 +68,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       setAllSectionsCollapsed: (collapsed) =>
         set({
-          collapsedSections: Object.fromEntries(
-            DASHBOARD_SECTION_IDS.map((id) => [id, collapsed])
-          ) as Record<DashboardSectionId, boolean>,
+          collapsedSections: Object.fromEntries(DASHBOARD_SECTION_IDS.map((id) => [id, collapsed])),
         }),
 
       hideSection: (id) =>

@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { Button, buttonVariants } from './button'
+import { Button } from './button'
+import { buttonVariants } from './button.variants'
 import { cn } from '../lib/utils'
 
 describe('Button', () => {

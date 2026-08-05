@@ -1,7 +1,15 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner, toast } from '@git-manager/ui'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
+import {
+  Button,
+  Spinner,
+  toast,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@git-manager/ui'
 import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
 import { useState } from 'react'
 

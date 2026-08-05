@@ -1,12 +1,6 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { highlightMatch, normalizeForSearch } from '../../../lib/highlightMatch'
-
-/**
- * The active settings-search query, already normalized (lowercased, accent-stripped) — `''` when the
- * user isn't searching. Provided by `SettingsPage` around the section content so individual settings
- * can filter/highlight themselves without prop-drilling.
- */
-const SettingsSearchContext = createContext<string>('')
+import { SettingsSearchContext, useSettingsSearch } from './useSettingsSearch'
 
 export function SettingsSearchProvider({
   query,
@@ -17,11 +11,6 @@ export function SettingsSearchProvider({
   children: ReactNode
 }) {
   return <SettingsSearchContext.Provider value={query}>{children}</SettingsSearchContext.Provider>
-}
-
-/** The active normalized settings-search query (`''` when not searching). */
-export function useSettingsSearch(): string {
-  return useContext(SettingsSearchContext)
 }
 
 interface FilterableSettingProps {

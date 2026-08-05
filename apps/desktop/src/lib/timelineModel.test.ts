@@ -105,7 +105,7 @@ describe('deriveTimeline — one step per gesture', () => {
       correlated({ ...commit('create', 'oid0', 'oid1'), label: { key: 'undo.createBranch' } }, 'c'),
       correlated({ ...commit('checkout', 'oid1', 'oid2'), label: { key: 'undo.checkout' } }, 'c'),
     ]
-    expect(deriveTimeline(stack, 2).steps[1]!.label).toEqual({ key: 'undo.createBranch' })
+    expect(deriveTimeline(stack, 2).steps[1].label).toEqual({ key: 'undo.createBranch' })
   })
 
   it('counts currentIndex in gestures, not in entries', () => {

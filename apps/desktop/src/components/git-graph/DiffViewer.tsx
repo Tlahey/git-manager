@@ -1,6 +1,5 @@
 import type { GitDiffFile } from '@git-manager/git-types'
-import { Badge } from '@git-manager/ui'
-import { cn } from '@git-manager/ui'
+import { Badge, cn } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
 interface DiffViewerProps {

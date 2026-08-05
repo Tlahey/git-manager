@@ -79,7 +79,7 @@ function RewardStage() {
   const [onScreen, setOnScreen] = useState(true)
   const [log, setLog] = useState<string[]>([])
 
-  const preset = DEVICES[0]!
+  const preset = DEVICES[0]
   const zoom = ZOOMS[zoomId]
   const model = rewardSample(tier)
 
@@ -201,7 +201,7 @@ function EveryTierStage() {
               // Re-keyed on replay: the burst is a CSS animation that runs once per mount.
               key={`${tier}-${generation}`}
               model={rewardSample(tier)}
-              preset={DEVICES[0]!}
+              preset={DEVICES[0]}
               scale={0.52}
               viewportWidth={980}
               viewportHeight={280}
@@ -244,7 +244,7 @@ function ReducedMotionStage() {
             <StaticNotch
               key={`${variant.caption}-${generation}`}
               model={rewardSample('gold')}
-              preset={DEVICES[0]!}
+              preset={DEVICES[0]}
               reducedMotion={variant.reduced}
               scale={0.7}
               viewportWidth={1000}

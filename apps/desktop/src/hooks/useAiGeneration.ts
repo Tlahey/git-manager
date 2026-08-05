@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { CommitConvention, CommitValidation, SummaryProgress } from '@git-manager/ai'
+import type { CommitValidation, SummaryProgress } from '@git-manager/ai'
 import {
   composeCommitMessageFromSummaries,
   fileSummaryFeature,
@@ -107,7 +107,7 @@ export function useAiGeneration(repoPath: string) {
         setStatus('done')
         setValidation(
           validateCommitSubject(message, {
-            convention: (context.commitConvention ?? null) as CommitConvention | null,
+            convention: context.commitConvention ?? null,
             recentCommits: context.recentCommits ?? [],
             userInstructions: commitInstructions,
             pattern: commitPattern,

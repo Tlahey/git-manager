@@ -30,7 +30,7 @@ function node(oid: string, subject: string): GitGraphNode {
     color: '#000',
     connections: [],
     refs: [],
-  } as GitGraphNode
+  }
 }
 
 function renderSelector(

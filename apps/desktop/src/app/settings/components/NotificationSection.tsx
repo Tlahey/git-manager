@@ -93,7 +93,7 @@ export function NotificationSection() {
   const displayStyle = resolveDisplayStyle(notifications)
   const selectedStyleOption =
     DISPLAY_STYLE_OPTIONS.find((option) => option.value === displayStyle) ??
-    DISPLAY_STYLE_OPTIONS[0]!
+    DISPLAY_STYLE_OPTIONS[0]
 
   function updateNotifications(partial: Partial<typeof notifications>) {
     updateSettings({ notifications: { ...notifications, ...partial } })

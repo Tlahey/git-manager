@@ -101,10 +101,7 @@ describe('routeNotification — pull request', () => {
   })
 
   it('routes a notification that has no bell entry without throwing', async () => {
-    const { notificationId: _omitted, ...withoutId } = PR_ROUTE as Extract<
-      NotificationRoute,
-      { kind: 'pull-request' }
-    >
+    const { notificationId: _omitted, ...withoutId } = PR_ROUTE
     await expect(routeNotification(withoutId)).resolves.toBeUndefined()
     expect(useNotificationStore.getState().notifications[0].read).toBe(false)
   })

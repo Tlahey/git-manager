@@ -117,7 +117,7 @@ function findNodeByPath(root: Record<string, TreeNode>, path: string): TreeNode 
 
   for (const part of parts) {
     if (!part) continue
-    if (!current || !current[part]) {
+    if (!current?.[part]) {
       return null
     }
     node = current[part]
@@ -215,7 +215,7 @@ export function useFileTree<T extends FileTreeInputFile>(
           const keys = Object.keys(current.children)
           if (keys.length === 1) {
             const child = current.children[keys[0]]
-            if (child && child.isFolder) {
+            if (child?.isFolder) {
               foldersToToggle.add(child.path)
               current = child
             } else {

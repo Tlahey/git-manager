@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Github, Flame, Gitlab, type LucideIcon } from 'lucide-react'
+import type { ComponentType, SVGProps } from 'react'
+import { Flame } from 'lucide-react'
 import { GithubSection } from './GithubSection'
 import { TokenProviderPanel } from './TokenProviderPanel'
 import { GitlabPanel } from './GitlabPanel'
 import { apiBitbucketGetUser } from '../../../api/integrations.api'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { GithubIcon, GitlabIcon } from '@git-manager/ui'
 
 type Provider = 'github' | 'gitlab' | 'bitbucket'
 
@@ -26,15 +28,19 @@ type Provider = 'github' | 'gitlab' | 'bitbucket'
  */
 const AVAILABLE_PROVIDERS: Provider[] = ['github']
 
-const PROVIDER_NAV: { id: Provider; label: string; icon: LucideIcon }[] = [
-  { id: 'github', label: 'GitHub', icon: Github },
-  { id: 'gitlab', label: 'GitLab', icon: Gitlab },
+// Not `LucideIcon`: the GitHub/GitLab marks are our own components (lucide deprecated its
+// brand set), so the nav is typed on what it actually renders — an SVG component.
+type ProviderIcon = ComponentType<SVGProps<SVGSVGElement>>
+
+const PROVIDER_NAV: { id: Provider; label: string; icon: ProviderIcon }[] = [
+  { id: 'github', label: 'GitHub', icon: GithubIcon },
+  { id: 'gitlab', label: 'GitLab', icon: GitlabIcon },
   { id: 'bitbucket', label: 'Bitbucket', icon: Flame },
 ]
 
 export function IntegrationSection() {
   const { t } = useTranslation('settings')
-  const [activeProvider, setActiveProvider] = useState<Provider>(AVAILABLE_PROVIDERS[0]!)
+  const [activeProvider, setActiveProvider] = useState<Provider>(AVAILABLE_PROVIDERS[0])
   const { settings, updateSettings } = useSettingsStore()
 
   // Field by field, not `settings.integrations || {…}`: the persisted settings are deep-merged on

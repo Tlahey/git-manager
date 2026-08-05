@@ -59,7 +59,7 @@ const WALLPAPERS: { value: MacBookWallpaper; label: string }[] = [
 ]
 
 function NotchPlayground() {
-  const [deviceId, setDeviceId] = useState(DEVICES[0]!.id)
+  const [deviceId, setDeviceId] = useState(DEVICES[0].id)
   const [wallpaper, setWallpaper] = useState<MacBookWallpaper>('photo')
   const [zoomId, setZoomId] = useState<ZoomId>('80')
   const [durationId, setDurationId] = useState<DurationId>('5000')
@@ -71,7 +71,7 @@ function NotchPlayground() {
   // replays its entrance) instead of React reusing the previous instance.
   const [generation, setGeneration] = useState(0)
 
-  const preset = DEVICES.find((d) => d.id === deviceId) ?? DEVICES[0]!
+  const preset = DEVICES.find((d) => d.id === deviceId) ?? DEVICES[0]
   const zoom = ZOOMS[zoomId]
   const autoDismissMs = DURATIONS[durationId].ms
 

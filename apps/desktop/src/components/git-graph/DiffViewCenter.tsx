@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Button, toast } from '@git-manager/ui'
-import { Copy, Check as CheckIcon, Github, GitPullRequest, Tags } from 'lucide-react'
+import { Spinner, Button, toast, GithubIcon } from '@git-manager/ui'
+import { useConfirm } from '@git-manager/components'
+import { Copy, Check as CheckIcon, GitPullRequest, Tags } from 'lucide-react'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useFileRawContents } from '../../hooks/useFileRawContents'
 import { useCommitTag } from '../../hooks/useCommitTag'
@@ -45,6 +46,7 @@ interface DiffViewCenterProps {
 
 export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewCenterProps) {
   const { t } = useTranslation('git')
+  const { confirm, confirmDialog } = useConfirm()
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const isMarkdown = isPreviewableMarkdown(file.path)
@@ -221,7 +223,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
       refetch()
       onRefresh?.()
     } catch (err) {
-      alert(String(err))
+      toast.error(String(err))
     } finally {
       setIsProcessing(false)
     }
@@ -229,7 +231,14 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
 
   // Rollback file changes
   async function handleRollback() {
-    const ok = window.confirm(t('commitDetails.discardPrompt'))
+    const ok = await confirm({
+      title: t('commitDetails.discardTitle'),
+      description: t('commitDetails.discardPrompt'),
+      confirmLabel: t('commitDetails.discardConfirm'),
+      cancelLabel: t('common:actions.cancel'),
+      destructive: true,
+      testId: 'rollback-file-confirm-dialog',
+    })
     if (ok) {
       setIsProcessing(true)
       try {
@@ -237,7 +246,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         onClose()
         onRefresh?.()
       } catch (err) {
-        alert(String(err))
+        toast.error(String(err))
       } finally {
         setIsProcessing(false)
       }
@@ -329,7 +338,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                         onClick={handleOpenOnGithub}
                         title={t('fileHistory.openOnGithub')}
                       >
-                        <Github className="h-3.5 w-3.5" />
+                        <GithubIcon className="h-3.5 w-3.5" />
                         <span>GitHub</span>
                       </Button>
                       {commitPr && (
@@ -444,6 +453,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
           </div>
         )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

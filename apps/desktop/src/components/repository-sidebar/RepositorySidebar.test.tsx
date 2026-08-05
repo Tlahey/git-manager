@@ -3,6 +3,7 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitBranch } from '@git-manager/git-types'
+import { Toaster } from '@git-manager/ui'
 import type { SidebarRow, SidebarSection } from './types'
 import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 
@@ -867,12 +868,15 @@ describe('RepositorySidebar — stash context menu', () => {
     expect(mockedStashDrop).toHaveBeenCalledWith('/repo', 0)
   })
 
-  it('alerts when the apply/pop/delete action fails', async () => {
-    vi.spyOn(window, 'alert').mockImplementation(() => {})
+  it('surfaces an apply/pop/delete failure as an error toast', async () => {
     mockedStashApply.mockRejectedValue(new Error('apply failed'))
     triggerStashContextMenu()
+    render(<Toaster />)
     await act(async () => stashItem('Apply stash').action!())
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('apply failed'))
+    expect(screen.getByText(/apply failed/).closest('[data-testid="toast"]')).toHaveAttribute(
+      'data-variant',
+      'error'
+    )
   })
 
   it('routes to edit-message: selects the stash commit and sets editingOid', () => {

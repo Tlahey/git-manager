@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
 import { createRef } from 'react'
-import { Tooltip, useImperativeTooltip } from './tooltip'
+import { Tooltip } from './tooltip'
+import { useImperativeTooltip } from './useImperativeTooltip'
 
 function stubRect(el: Element, rect: Partial<DOMRect>) {
   vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
@@ -15,7 +16,7 @@ function stubRect(el: Element, rect: Partial<DOMRect>) {
     y: 0,
     toJSON: () => ({}),
     ...rect,
-  } as DOMRect)
+  })
 }
 
 beforeEach(() => {

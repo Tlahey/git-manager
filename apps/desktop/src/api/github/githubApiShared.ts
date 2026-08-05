@@ -26,7 +26,7 @@ export interface GhSearchResult<T> {
 
 export function ghHeaders(token?: string, accept = 'application/vnd.github.v3+json'): HeadersInit {
   const h: HeadersInit = { Accept: accept }
-  if (token) (h as Record<string, string>)['Authorization'] = `token ${token}`
+  if (token) h['Authorization'] = `token ${token}`
   return h
 }
 

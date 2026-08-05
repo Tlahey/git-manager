@@ -56,7 +56,7 @@ export function parseCardBody(body: string): ParsedCardBody {
   if (metaMatch) {
     try {
       const parsed: unknown = JSON.parse(metaMatch[1])
-      if (parsed && typeof parsed === 'object') meta = parsed as CardBodyMeta
+      if (parsed && typeof parsed === 'object') meta = parsed
     } catch {
       // A hand-mangled marker must not take the whole card down with it: the fields it carried are
       // lost, the description and checklist are not.
@@ -87,7 +87,8 @@ export function composeCardBody({ description, dod, meta }: ParsedCardBody): str
   // Only non-empty entries reach the marker, so a card with nothing extra to store carries no
   // marker at all rather than an empty one.
   const entries = Object.entries(meta).filter(
-    ([, value]) => value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0)
+    ([, value]) =>
+      value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0)
   )
   if (entries.length > 0) {
     sections.push(`<!-- git-manager:meta ${JSON.stringify(Object.fromEntries(entries))} -->`)

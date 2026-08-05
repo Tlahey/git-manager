@@ -4,7 +4,8 @@ import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { Tag, cn } from '@git-manager/ui'
-import { AgentLogo, agentLabel } from './AgentLogo'
+import { AgentLogo } from './AgentLogo'
+import { agentLabel } from './agentIdentity'
 
 interface WipStats {
   added: number

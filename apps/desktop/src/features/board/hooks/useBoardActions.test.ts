@@ -45,7 +45,7 @@ function renderActions(activeBoard: Board | null = makeBoard(), boards: Board[] 
         revisionFor: () => 'rev-detail',
         withConflictToast: (run) => run(),
       },
-      backendFor: () => backend as never,
+      backendFor: () => backend,
     })
   )
   return { result, setActiveBoard, revalidateLists, mutateDetail }

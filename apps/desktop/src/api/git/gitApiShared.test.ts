@@ -79,7 +79,7 @@ function withRedoTail(path: string) {
   useUndoHistoryStore.getState().push(path, makeAction({ id: 'a1' }))
   useUndoHistoryStore.getState().push(path, makeAction({ id: 'a2' }))
   useUndoHistoryStore.setState((state) => ({
-    byRepo: { ...state.byRepo, [path]: { ...state.byRepo[path]!, pointer: 1 } },
+    byRepo: { ...state.byRepo, [path]: { ...state.byRepo[path], pointer: 1 } },
   }))
 }
 
@@ -98,7 +98,7 @@ describe('pushAction', () => {
 
     pushAction(path, makeAction())
 
-    expect(historyOf(path).stack[0]!.correlationId).toBeUndefined()
+    expect(historyOf(path).stack[0].correlationId).toBeUndefined()
   })
 
   it('stamps the active correlation id when pushed inside runActivity', async () => {
@@ -108,7 +108,7 @@ describe('pushAction', () => {
       pushAction(path, makeAction())
     })
 
-    expect(historyOf(path).stack[0]!.correlationId).toBeTruthy()
+    expect(historyOf(path).stack[0].correlationId).toBeTruthy()
   })
 
   it('tags every action pushed during the same gesture with one shared correlation id', async () => {
@@ -120,7 +120,7 @@ describe('pushAction', () => {
     })
 
     const stack = historyOf(path).stack
-    expect(stack[0]!.correlationId).toBe(stack[1]!.correlationId)
+    expect(stack[0].correlationId).toBe(stack[1].correlationId)
   })
 
   it('drops any existing redo tail, like any push onto an undo stack', () => {
@@ -213,7 +213,7 @@ describe('settleRebase', () => {
 
     await settleRebase(path)
 
-    const entry = historyOf(path).stack[0]!
+    const entry = historyOf(path).stack[0]
     expect(entry).toMatchObject({
       type: 'interactiveRebase',
       previousOid: 'prev-sha',

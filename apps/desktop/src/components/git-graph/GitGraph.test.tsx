@@ -325,7 +325,7 @@ describe('GitGraph — rendering rows', () => {
     renderGraph()
 
     const onSelect = lastGraphRowCalls.current[1].onSelect as (e: unknown) => void
-    onSelect({} as never)
+    onSelect({})
     expect(handleRowSelect).toHaveBeenCalledWith({}, 1)
   })
 })

@@ -2,11 +2,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, GitPullRequest, AlertCircle, Plus, Layers, Pencil, Trash2 } from 'lucide-react'
 import { Input } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import {
-  useLaunchpadStore,
-  type SavedFilter,
-  type FilterStatus,
-} from '../../../stores/launchpad.store'
+import { useLaunchpadStore, type SavedFilter } from '../../../stores/launchpad.store'
 import type { MockPR, MockIssue } from '../types'
 import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
 import { TableHeader, LoadMore } from './ListHelpers'
@@ -28,8 +24,7 @@ function matchesPR(pr: MockPR, f: SavedFilter): boolean {
     !pr.labels.some((l) => l.toLowerCase().includes(f.labelContains!.toLowerCase()))
   )
     return false
-  if (f.statuses && f.statuses.length > 0 && !f.statuses.includes(pr.status as FilterStatus))
-    return false
+  if (f.statuses && f.statuses.length > 0 && !f.statuses.includes(pr.status)) return false
   if (f.needsMyReview === true && !pr.needsMyReview) return false
   return true
 }
@@ -283,7 +278,7 @@ export function CustomViewsTab({
   function handleDelete(id: string) {
     deleteFilter(id)
     if (activeFilterId === id) {
-      setActiveFilterId(savedFilters.filter((f) => f.id !== id)[0]?.id ?? null)
+      setActiveFilterId(savedFilters.find((f) => f.id !== id)?.id ?? null)
     }
     setConfirmDeleteId(null)
   }

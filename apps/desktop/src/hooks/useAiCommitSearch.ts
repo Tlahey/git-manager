@@ -267,7 +267,7 @@ export function useAiCommitSearch(repoPath: string) {
 
         const byOid = new Map(inspected.map((r) => [r.commit.shortOid, r]))
         const results = commitScan.commits.map(
-          (commit) => byOid.get(commit.shortOid) ?? skipped([commit])[0]!
+          (commit) => byOid.get(commit.shortOid) ?? skipped([commit])[0]
         )
         ordered.current = results
         setResults(results)

@@ -6,10 +6,10 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 
 const { flow } = vi.hoisted(() => ({
   flow: {
-    ownerRepo: { owner: 'o', repo: 'r' } as { owner: string; repo: string } | null,
-    token: 't' as string | null,
-    currentBranch: 'feat/x' as string | null,
-    defaultBase: 'main' as string | null,
+    ownerRepo: { owner: 'o', repo: 'r' },
+    token: 't',
+    currentBranch: 'feat/x',
+    defaultBase: 'main',
     busy: false,
     error: null as string | null,
     createPr: vi.fn(),

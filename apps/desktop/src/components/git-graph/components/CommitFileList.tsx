@@ -19,7 +19,7 @@ import {
   Check,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
-import { useFileTree, getSortedNodes, type TreeNode } from '@git-manager/components'
+import { useFileTree, getSortedNodes, useConfirm, type TreeNode } from '@git-manager/components'
 
 export interface ProcessedFileItem {
   path: string
@@ -95,6 +95,7 @@ export function CommitFileList({
   bulkStageTestId = 'file-list-bulk-stage',
 }: CommitFileListProps) {
   const { t } = useTranslation('git')
+  const { confirm, confirmDialog } = useConfirm()
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
   const [collapsed, setCollapsed] = useState(false)
   const bodyVisible = !collapsible || !collapsed
@@ -143,7 +144,14 @@ export function CommitFileList({
   }
 
   async function handleDiscard(file: string) {
-    const ok = window.confirm(t('commitDetails.discardPrompt'))
+    const ok = await confirm({
+      title: t('commitDetails.discardTitle'),
+      description: t('commitDetails.discardPrompt'),
+      confirmLabel: t('commitDetails.discardConfirm'),
+      cancelLabel: t('common:actions.cancel'),
+      destructive: true,
+      testId: 'discard-file-confirm-dialog',
+    })
     if (ok) {
       await apiDiscardFileChanges(repoPath, file)
       onRefresh?.()
@@ -782,6 +790,7 @@ export function CommitFileList({
           </div>
         )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

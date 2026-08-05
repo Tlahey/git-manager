@@ -16,7 +16,6 @@ import {
   Rocket,
   GitBranch,
   Keyboard,
-  Github,
   Terminal,
   ClipboardCopy,
   ClipboardCheck,
@@ -37,6 +36,7 @@ import {
   Tag,
   Card,
   Tooltip,
+  GithubIcon,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
@@ -383,7 +383,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                   className="h-3.5 w-3.5 rounded-full border border-border/80 object-cover"
                 />
               ) : (
-                <Github className="h-3.5 w-3.5 text-foreground/80" />
+                <GithubIcon className="h-3.5 w-3.5 text-foreground/80" />
               )}
               <span className="hidden font-medium text-foreground/80 sm:inline">
                 {activeAccount.user.name || activeAccount.user.login}
@@ -391,7 +391,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             </>
           ) : (
             <>
-              <Github className="h-3.5 w-3.5 text-muted-foreground/60" />
+              <GithubIcon className="h-3.5 w-3.5 text-muted-foreground/60" />
               <span className="hidden text-muted-foreground/60 sm:inline">
                 {t('footer.notConnected')}
               </span>

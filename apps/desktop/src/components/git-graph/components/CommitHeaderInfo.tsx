@@ -1,18 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Textarea, Spinner, Tag, cn } from '@git-manager/ui'
-import {
-  Copy,
-  Check,
-  GitCommit,
-  Layers,
-  Pencil,
-  X,
-  Github,
-  Gitlab,
-  GitMerge,
-  GitPullRequest,
-} from 'lucide-react'
+import { Button, Input, Textarea, Spinner, Tag, cn, GithubIcon, GitlabIcon } from '@git-manager/ui'
+import { Copy, Check, GitCommit, Layers, Pencil, X, GitMerge, GitPullRequest } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { apiOpenUrl } from '../../../api/shell.api'
 import type { GitGraphNode, GitRef } from '@git-manager/git-types'
@@ -361,9 +350,9 @@ export function CommitHeaderInfo({
                   data-testid="github-commit-link"
                 >
                   {remoteUrl.includes('gitlab.com') ? (
-                    <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
+                    <GitlabIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : (
-                    <Github className="h-3.5 w-3.5 text-muted-foreground" />
+                    <GithubIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   <span>{remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}</span>
                 </Button>
@@ -378,7 +367,7 @@ export function CommitHeaderInfo({
                 data-testid="commit-pr-label"
                 title={t('commitDetails.openPullRequest', { number: commitPr.number })}
               >
-                <Github className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <GithubIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 {commitPr.merged ? (
                   <GitMerge className="h-3.5 w-3.5 shrink-0 text-violet-400" />
                 ) : (

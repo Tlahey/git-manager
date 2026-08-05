@@ -572,7 +572,7 @@ export function registerAndApplyDynamicTheme(monacoInstance: typeof monaco | nul
     colors[binding.key] =
       binding.constant ?? getMonacoColorFromCssVar(binding.cssVar as string, binding.alpha)
   }
-  const base = (isDark ? 'vs-dark' : 'vs') as 'vs-dark' | 'vs'
+  const base = isDark ? 'vs-dark' : 'vs'
   const signature = `${base}|${JSON.stringify(colors)}`
 
   try {

@@ -48,7 +48,7 @@ export function useCardIssueTracking({
 
   /** The issue a card tracks, or `null` — tracking needs a local board and a usable token. */
   function trackedRef(card: BoardCard): BoardCardSourceIssue | null {
-    if (!activeBoard || activeBoard.source !== 'local') return null
+    if (activeBoard?.source !== 'local') return null
     if (!card.sourceIssue || !token) return null
     return card.sourceIssue
   }

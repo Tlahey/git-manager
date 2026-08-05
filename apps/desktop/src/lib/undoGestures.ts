@@ -46,7 +46,7 @@ export function gestureEndingAt(stack: UndoAction[], pointer: number): UndoActio
   const last = stack[pointer - 1]
   if (!last) return []
   let start = pointer - 1
-  while (start > 0 && stack[start - 1] && sameGesture(last, stack[start - 1]!)) start--
+  while (start > 0 && stack[start - 1] && sameGesture(last, stack[start - 1])) start--
   return stack.slice(start, pointer)
 }
 
@@ -55,6 +55,6 @@ export function gestureStartingAt(stack: UndoAction[], pointer: number): UndoAct
   const first = stack[pointer]
   if (!first) return []
   let end = pointer + 1
-  while (end < stack.length && stack[end] && sameGesture(first, stack[end]!)) end++
+  while (end < stack.length && stack[end] && sameGesture(first, stack[end])) end++
   return stack.slice(pointer, end)
 }

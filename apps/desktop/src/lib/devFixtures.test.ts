@@ -26,10 +26,10 @@ describe('loadDevFixtures', () => {
 
   it('hands out copies, so one session’s simulated changes cannot leak into the next', async () => {
     const first = await loadDevFixtures()
-    first!.prs[0]!.status = 'merged'
+    first!.prs[0].status = 'merged'
 
     const second = await loadDevFixtures()
-    expect(second!.prs[0]!.status).not.toBe('merged')
+    expect(second!.prs[0].status).not.toBe('merged')
   })
 
   it('copies the issues too, not just the pull requests', async () => {

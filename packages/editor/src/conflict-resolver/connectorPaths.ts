@@ -1,4 +1,5 @@
-import { buildCollapsedWavePath, type ConnectorSegment } from '../MergeConnectorOverlay'
+import { buildCollapsedWavePath } from '../collapsedWavePath'
+import type { ConnectorSegment } from '../MergeConnectorOverlay'
 import { GAP_WIDTH, stickyTopCorrection } from '../mergeViewConfig'
 
 /** Scroll-driven imperative repaint of one gap's connector overlay: rewrites every `<path d>`

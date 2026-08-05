@@ -1,16 +1,24 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Checkbox, Card } from '@git-manager/ui'
 import { Trophy, Trash2 } from 'lucide-react'
+import { useConfirm } from '@git-manager/components'
 import { useGameStore } from '../../../stores/game.store'
 
 export function RewardsSection() {
   const { t } = useTranslation('settings')
   const { rewardsEnabled, setRewardsEnabled, resetGameProgress } = useGameStore()
+  const { confirm, confirmDialog } = useConfirm()
 
-  const handleReset = () => {
-    if (confirm(t('settings.rewards.resetConfirm'))) {
-      resetGameProgress()
-    }
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: t('settings.rewards.resetTitle'),
+      description: t('settings.rewards.resetConfirm'),
+      confirmLabel: t('settings.rewards.resetAction'),
+      cancelLabel: t('common:actions.cancel'),
+      destructive: true,
+      testId: 'reset-rewards-confirm-dialog',
+    })
+    if (ok) resetGameProgress()
   }
 
   return (
@@ -55,13 +63,14 @@ export function RewardsSection() {
           </p>
         </div>
         <button
-          onClick={handleReset}
+          onClick={() => void handleReset()}
           className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-destructive/30 px-3 text-xs text-destructive/80 transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" />
           {t('settings.rewards.reset')}
         </button>
       </div>
+      {confirmDialog}
     </div>
   )
 }

@@ -130,7 +130,12 @@ describe('RefLabel — remote branches', () => {
     const badge = screen.getByText('main').parentElement!
     expect(badge.style.color).toBe('rgb(124, 58, 237)') // #7c3aed
     expect(badge.style.borderStyle).toBe('dashed')
-    expect(container.querySelector('[role="img"]')).toBeTruthy() // GithubIcon
+    // The solid mark from @git-manager/ui, addressed by its own hook rather than by `role=img`
+    // alone — it is the only thing here saying the branch lives on a remote, so it stays
+    // announced (`role`/`<title>`) as well as present.
+    const mark = container.querySelector('[data-icon="github-mark"]')
+    expect(mark).toBeTruthy()
+    expect(mark).toHaveAttribute('role', 'img')
     expect(container.querySelector('.lucide-laptop')).toBeFalsy()
   })
 })

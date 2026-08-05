@@ -139,7 +139,7 @@ export function createConfettiPieces(options: CreateConfettiOptions): ConfettiPi
       y: origin.y + between(-5, 5),
       width: pieceWidth,
       height: round ? pieceWidth : pieceWidth * between(1.4, 2.6),
-      color: colors[id % colors.length]!,
+      color: colors[id % colors.length],
       round,
       driftX: Math.cos(angle) * speed * 1.25,
       apexY: -Math.abs(Math.sin(angle)) * speed * 0.7,

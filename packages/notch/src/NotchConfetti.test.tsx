@@ -44,11 +44,11 @@ describe('NotchConfetti', () => {
       count: 1,
     })
     const sprite = screen.getByTestId('notch-confetti-piece')
-    expect(sprite.style.getPropertyValue('--nc-drift')).toBe(`${expected!.driftX.toFixed(1)}px`)
-    expect(sprite.style.getPropertyValue('--nc-apex')).toBe(`${expected!.apexY.toFixed(1)}px`)
-    expect(sprite.style.getPropertyValue('--nc-fall')).toBe(`${expected!.fallY.toFixed(1)}px`)
-    expect(sprite.style.getPropertyValue('--nc-duration')).toBe(`${expected!.durationMs}ms`)
-    expect(sprite.style.getPropertyValue('--nc-delay')).toBe(`${expected!.delayMs}ms`)
+    expect(sprite.style.getPropertyValue('--nc-drift')).toBe(`${expected.driftX.toFixed(1)}px`)
+    expect(sprite.style.getPropertyValue('--nc-apex')).toBe(`${expected.apexY.toFixed(1)}px`)
+    expect(sprite.style.getPropertyValue('--nc-fall')).toBe(`${expected.fallY.toFixed(1)}px`)
+    expect(sprite.style.getPropertyValue('--nc-duration')).toBe(`${expected.durationMs}ms`)
+    expect(sprite.style.getPropertyValue('--nc-delay')).toBe(`${expected.delayMs}ms`)
   })
 
   it('centres a sprite on its launch point rather than hanging it from a corner', () => {
@@ -61,8 +61,8 @@ describe('NotchConfetti', () => {
       count: 1,
     })
     expect(screen.getByTestId('notch-confetti-piece')).toHaveStyle({
-      left: `${piece!.x - piece!.width / 2}px`,
-      top: `${piece!.y - piece!.height / 2}px`,
+      left: `${piece.x - piece.width / 2}px`,
+      top: `${piece.y - piece.height / 2}px`,
     })
   })
 

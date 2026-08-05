@@ -278,8 +278,8 @@ describe('useAiCommitSearch', () => {
       mockedDiff.mockResolvedValue({
         ...diff,
         files: [
-          diff.files[0]!,
-          { ...diff.files[0]!, oldPath: 'pnpm-lock.yaml', newPath: 'pnpm-lock.yaml' },
+          diff.files[0],
+          { ...diff.files[0], oldPath: 'pnpm-lock.yaml', newPath: 'pnpm-lock.yaml' },
         ],
       })
 

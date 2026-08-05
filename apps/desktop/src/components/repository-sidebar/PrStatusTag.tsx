@@ -1,5 +1,4 @@
 import {
-  Github,
   GitMerge,
   GitPullRequest,
   GitPullRequestClosed,
@@ -10,6 +9,7 @@ import {
 import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import { derivePrTagStatus, PR_TAG_STATUS_LABEL_KEY, type PrTagStatus } from './prTagStatus'
+import { GithubIcon } from '@git-manager/ui'
 
 interface PrStatusTagProps {
   pr: PullRequest
@@ -80,7 +80,7 @@ export function PrStatusTag({ pr, onOpen }: PrStatusTagProps) {
       title={label}
       data-testid={`pr-status-tag-${pr.number}`}
     >
-      <Github className="h-3 w-3 shrink-0 opacity-80" />
+      <GithubIcon className="h-3 w-3 shrink-0 opacity-80" />
       <Icon className={`h-3 w-3 shrink-0 ${icon}`} />
       <span>#{pr.number}</span>
     </button>

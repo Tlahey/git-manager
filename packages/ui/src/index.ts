@@ -1,4 +1,5 @@
-export { Button, buttonVariants } from './components/button'
+export { Button } from './components/button'
+export { buttonVariants } from './components/button.variants'
 export type { ButtonProps } from './components/button'
 
 export { Badge, NumberBadge } from './components/badge'
@@ -61,9 +62,12 @@ export { Spinner } from './components/spinner'
 /** The one mark for an action that calls the language model — see `llm-icon.tsx` for why it is not
  * lucide's `Sparkles`. */
 export { LlmIcon } from './components/llm-icon'
+export { GithubIcon, GitlabIcon, GithubMark } from './components/forge-icons'
+export type { GithubMarkProps } from './components/forge-icons'
 
-export { toast, Toaster } from './components/toast'
-export type { ToastVariant, ToastOptions } from './components/toast'
+export { Toaster } from './components/toast'
+export { toast } from './components/toast.store'
+export type { ToastVariant, ToastOptions } from './components/toast.store'
 
 export { cn } from './lib/utils'
 
@@ -98,7 +102,8 @@ export {
 
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './components/popover'
 
-export { Tooltip, useImperativeTooltip } from './components/tooltip'
+export { Tooltip } from './components/tooltip'
+export { useImperativeTooltip } from './components/useImperativeTooltip'
 export type { TooltipProps } from './components/tooltip'
 
 export {

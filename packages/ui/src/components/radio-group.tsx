@@ -40,8 +40,14 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
     const generatedName = React.useMemo(() => `radio-group-${++radioGroupCount}`, [])
     const groupName = name ?? generatedName
 
+    // Memoised so every item below doesn't re-render on each render of the group's parent.
+    const ctx = React.useMemo<RadioGroupContextValue>(
+      () => ({ name: groupName, value, onValueChange, disabled }),
+      [groupName, value, onValueChange, disabled]
+    )
+
     return (
-      <RadioGroupContext.Provider value={{ name: groupName, value, onValueChange, disabled }}>
+      <RadioGroupContext.Provider value={ctx}>
         <div
           ref={ref}
           role="radiogroup"

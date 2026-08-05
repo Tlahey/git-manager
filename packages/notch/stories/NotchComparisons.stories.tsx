@@ -72,7 +72,7 @@ export const EveryTone: Story = {
           <figcaption className="text-xs text-neutral-400">{tone}</figcaption>
           <StaticNotch
             model={{ ...prMerged, tone, eyebrow: tone.toUpperCase() }}
-            preset={DEVICES[0]!}
+            preset={DEVICES[0]}
             scale={0.42}
             viewportWidth={900}
             viewportHeight={260}

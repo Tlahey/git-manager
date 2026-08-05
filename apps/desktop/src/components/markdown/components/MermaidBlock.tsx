@@ -62,8 +62,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           currentTheme.includes('dark') ||
           document.documentElement.classList.contains('dark') ||
           (typeof window !== 'undefined' &&
-            window.matchMedia &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches)
+            window.matchMedia?.('(prefers-color-scheme: dark)').matches)
 
         // `strict` (Mermaid's own default) is what makes the generated SVG safe to hand to
         // `dangerouslySetInnerHTML` below: it escapes HTML labels and ignores `click` directives.

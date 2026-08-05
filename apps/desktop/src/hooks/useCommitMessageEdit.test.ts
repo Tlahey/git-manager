@@ -7,6 +7,7 @@ vi.mock('../api/git.api', () => ({ apiCreateCommit: vi.fn(), apiUpdateStashMessa
 import { apiCreateCommit, apiUpdateStashMessage } from '../api/git.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { useCommitMessageEdit } from './useCommitMessageEdit'
+import { toast } from '@git-manager/ui'
 
 const mockedCreateCommit = apiCreateCommit as unknown as ReturnType<typeof vi.fn>
 const mockedUpdateStashMessage = apiUpdateStashMessage as unknown as ReturnType<typeof vi.fn>
@@ -211,8 +212,8 @@ describe('useCommitMessageEdit — saving (commit)', () => {
     expect(mockedCreateCommit).toHaveBeenCalledWith('/repo', 'WIP commit message', true, undefined)
   })
 
-  it('alerts on failure, leaves edit mode open (only success closes it), and clears the saving flag', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+  it('toasts on failure, leaves edit mode open (only success closes it), and clears the saving flag', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
     mockedCreateCommit.mockRejectedValue(new Error('amend failed'))
     const { result } = renderHook(() =>
       useCommitMessageEdit({
@@ -229,7 +230,7 @@ describe('useCommitMessageEdit — saving (commit)', () => {
     })
     await act(async () => result.current.handleUpdateCommitMessage())
 
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('amend failed'))
+    expect(errorToast).toHaveBeenCalledWith(expect.stringContaining('amend failed'))
     expect(result.current.isSavingMessage).toBe(false)
     expect(result.current.isEditingMessage).toBe(true)
   })

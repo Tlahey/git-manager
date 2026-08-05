@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { AgentLogo, agentColor, agentLabel } from './AgentLogo'
+import { AgentLogo } from './AgentLogo'
+import { agentColor, agentLabel } from './agentIdentity'
 
 describe('agentColor', () => {
   it('returns each known agent brand accent', () => {

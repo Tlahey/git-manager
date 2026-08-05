@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Alert, Tag, Card } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Alert, Tag, Card, GithubIcon } from '@git-manager/ui'
 import {
   ArrowLeft,
   Check,
@@ -9,7 +9,6 @@ import {
   Unlock,
   RefreshCw,
   AlertCircle,
-  Github,
   Key,
 } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -212,7 +211,7 @@ export function GithubSection() {
                         </>
                       ) : (
                         <>
-                          <Github className="h-4 w-4" />
+                          <GithubIcon className="h-4 w-4" />
                           {t('settings.github.loginButton')}
                         </>
                       )}
@@ -317,7 +316,7 @@ export function GithubSection() {
                     className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
                     data-testid="github-login-oauth-button"
                   >
-                    <Github className="h-4 w-4 text-muted-foreground" />
+                    <GithubIcon className="h-4 w-4 text-muted-foreground" />
                     <span>{t('settings.github.loginButton')}</span>
                   </Button>
                   <Button

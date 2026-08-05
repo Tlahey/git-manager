@@ -3,30 +3,32 @@ import { renderHook } from '@testing-library/react'
 import type { Board, BoardCard } from '@git-manager/git-types'
 import { makeBoard, makeCard } from '../test/boardFactories'
 
-const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastError } = vi.hoisted(() => {
-  const make = () => ({
-    listBoards: vi.fn(),
-    getBoard: vi.fn(),
-    createBoard: vi.fn(),
-    updateBoardColumns: vi.fn(),
-    updateBoardMeta: vi.fn(),
-    closeBoard: vi.fn(),
-    deleteBoard: vi.fn(),
-    createCard: vi.fn(),
-    updateCard: vi.fn(),
-    addComment: vi.fn(),
-    moveCard: vi.fn(),
-    moveCardsToBoard: vi.fn(),
-    deleteCard: vi.fn(),
-  })
-  return {
-    localBackend: make(),
-    remoteBackend: make(),
-    pushCardToIssue: vi.fn(),
-    createIssueComment: vi.fn(),
-    toastError: vi.fn(),
+const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastError } = vi.hoisted(
+  () => {
+    const make = () => ({
+      listBoards: vi.fn(),
+      getBoard: vi.fn(),
+      createBoard: vi.fn(),
+      updateBoardColumns: vi.fn(),
+      updateBoardMeta: vi.fn(),
+      closeBoard: vi.fn(),
+      deleteBoard: vi.fn(),
+      createCard: vi.fn(),
+      updateCard: vi.fn(),
+      addComment: vi.fn(),
+      moveCard: vi.fn(),
+      moveCardsToBoard: vi.fn(),
+      deleteCard: vi.fn(),
+    })
+    return {
+      localBackend: make(),
+      remoteBackend: make(),
+      pushCardToIssue: vi.fn(),
+      createIssueComment: vi.fn(),
+      toastError: vi.fn(),
+    }
   }
-})
+)
 
 /** A `BOARD_CONFLICT` as the backends raise it — see `api/boardConflict.ts`. */
 function conflict() {
@@ -50,7 +52,8 @@ const remote = makeBoard({ id: 'b9', source: 'remote' })
 function renderActions(
   activeBoard: Board | null = local,
   boards: Board[] = [local, remote],
-  trackedRef: (card: BoardCard) => null | { owner: string; repo: string; number: number } = () => null
+  trackedRef: (card: BoardCard) => null | { owner: string; repo: string; number: number } = () =>
+    null
 ) {
   // SWR's `mutate(fn, opts)`: the writer runs and its rejection reaches the caller, which is the
   // whole contract `moveCard` leans on for its rollback.
@@ -71,8 +74,8 @@ function renderActions(
         revisionFor: (b) => b.revision,
         withConflictToast: (run) => run(),
       },
-      backendFor: (source) => (source === 'local' ? localBackend : remoteBackend) as never,
-      remoteBackend: remoteBackend as never,
+      backendFor: (source) => (source === 'local' ? localBackend : remoteBackend),
+      remoteBackend: remoteBackend,
       revalidateLists: vi.fn(),
       trackedRef,
       token: 'tok',
@@ -140,7 +143,9 @@ describe('useBoardCardActions — moveCardToBoard', () => {
     remoteBackend.createCard.mockRejectedValue(new Error('offline'))
     const { result } = renderActions()
 
-    await expect(result.current.moveCardToBoard(makeCard({ boardId: 'b1' }), 'b9', 'todo')).rejects.toThrow()
+    await expect(
+      result.current.moveCardToBoard(makeCard({ boardId: 'b1' }), 'b9', 'todo')
+    ).rejects.toThrow()
     expect(localBackend.deleteCard).not.toHaveBeenCalled()
   })
 
@@ -315,8 +320,8 @@ describe('useBoardCardActions — createCard', () => {
           revisionFor: (b) => b.revision,
           withConflictToast: (run) => run(),
         },
-        backendFor: () => localBackend as never,
-        remoteBackend: remoteBackend as never,
+        backendFor: () => localBackend,
+        remoteBackend: remoteBackend,
         revalidateLists,
         trackedRef: () => null,
         token: 'tok',
@@ -340,7 +345,7 @@ describe('useBoardCardActions — moveCard (the optimistic one)', () => {
 
     await result.current.moveCard(makeCard({ order: 0 }), 'done', 2)
 
-    const options = mutateDetail.mock.calls[0][1] as unknown as {
+    const options = mutateDetail.mock.calls[0][1] as {
       optimisticData: (c: unknown) => { cards: { columnId: string; order: number }[] }
       rollbackOnError: boolean
     }
@@ -392,8 +397,8 @@ describe('useBoardCardActions — moveCard (the optimistic one)', () => {
           revisionFor: (b) => b.revision,
           withConflictToast: (run) => run(),
         },
-        backendFor: () => localBackend as never,
-        remoteBackend: remoteBackend as never,
+        backendFor: () => localBackend,
+        remoteBackend: remoteBackend,
         revalidateLists: vi.fn(),
         trackedRef: () => null,
         token: 'tok',

@@ -8,11 +8,11 @@ vi.mock('@git-manager/i18n', () => ({
 
 const { flow } = vi.hoisted(() => ({
   flow: {
-    mode: 'feature' as string,
+    mode: 'feature',
     busy: false,
     error: null as string | null,
     composer: null as { head: string; baseRef: string; title: string } | null,
-    defaultBaseRef: 'main' as string | null,
+    defaultBaseRef: 'main',
     commitAndPrepare: vi.fn(),
     createPr: vi.fn(),
     cancel: vi.fn(),

@@ -44,7 +44,6 @@ beforeEach(() => {
   mockedStage.mockResolvedValue(undefined)
   mockedUnstage.mockResolvedValue(undefined)
   mockedDiscard.mockResolvedValue(undefined)
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -237,18 +236,24 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, onRefresh })
     await user.click(screen.getByTitle('Discard Changes'))
-    expect(window.confirm).toHaveBeenCalledWith(
-      'Are you sure you want to discard all local changes to this file? This action is irreversible.'
-    )
+
+    expect(screen.getByTestId('discard-file-confirm-dialog')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Are you sure you want to discard all local changes to this file? This action is irreversible.'
+      )
+    ).toBeInTheDocument()
+    await user.click(screen.getByTestId('confirm-dialog-confirm'))
+
     expect(mockedDiscard).toHaveBeenCalledWith('/repo', 'a.ts')
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
   it('does not discard when the confirmation is declined', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true })
     await user.click(screen.getByTitle('Discard Changes'))
+    await user.click(screen.getByTestId('confirm-dialog-cancel'))
     expect(mockedDiscard).not.toHaveBeenCalled()
   })
 

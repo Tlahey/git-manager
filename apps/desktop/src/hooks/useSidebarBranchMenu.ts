@@ -199,12 +199,12 @@ export function useSidebarBranchMenu(repoPath: string) {
       },
       onFastForward: (r) =>
         void run(
-          () => apiFastForwardBranch(repoPath, r.shortName, currentBranch as string),
+          () => apiFastForwardBranch(repoPath, r.shortName, currentBranch),
           t('gitTree.branchMenu.fastForwarded', rel(r))
         ),
       onMergeInto: (r) =>
         void run(
-          () => apiMergeBranch(repoPath, r.shortName, currentBranch as string),
+          () => apiMergeBranch(repoPath, r.shortName, currentBranch),
           t('gitTree.branchMenu.merged', rel(r))
         ),
       onRebaseOntoBranch: (r) =>

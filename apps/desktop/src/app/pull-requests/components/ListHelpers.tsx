@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { Tag, type TagTone } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
@@ -82,9 +82,6 @@ export function LoadMore({ total, shown, onLoadMore }: LoadMoreProps) {
   )
 }
 
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
-import type { MockPR, SortKey, SortDir } from '../types'
-
 interface InfiniteScrollSentinelProps {
   /** Whether more rows remain to reveal. When false, nothing renders and no observer is attached. */
   hasMore: boolean
@@ -126,38 +123,4 @@ export function InfiniteScrollSentinel({
 
   if (!hasMore) return null
   return <div ref={ref} data-testid="infinite-scroll-sentinel" className="h-4 w-full shrink-0" />
-}
-
-export function usePRSort(prs: MockPR[], sortKey: SortKey, sortDir: SortDir): MockPR[] {
-  return useMemo(
-    () =>
-      [...prs].sort((a, b) => {
-        let cmp = 0
-        if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime()
-        else if (sortKey === 'status') cmp = a.status.localeCompare(b.status)
-        else if (sortKey === 'author') cmp = a.author.localeCompare(b.author)
-        else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo)
-        else if (sortKey === 'files') cmp = a.filesChanged - b.filesChanged
-        return sortDir === 'desc' ? -cmp : cmp
-      }),
-    [prs, sortKey, sortDir]
-  )
-}
-
-export function useSetFilter(
-  initial?: Iterable<string>
-): [Set<string>, (v: string) => void, () => void] {
-  const [set, setSet] = useState<Set<string>>(() => new Set(initial))
-  const toggle = useCallback(
-    (v: string) =>
-      setSet((prev) => {
-        const n = new Set(prev)
-        if (n.has(v)) n.delete(v)
-        else n.add(v)
-        return n
-      }),
-    []
-  )
-  const clear = useCallback(() => setSet(new Set()), [])
-  return [set, toggle, clear]
 }

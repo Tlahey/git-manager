@@ -104,7 +104,7 @@ export function getAvatarUrl(email?: string, name?: string): string | null {
   }
 
   // 2. Fall back to Gravatar
-  if (email && email.trim()) {
+  if (email?.trim()) {
     const hash = md5(email.trim().toLowerCase())
     return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=64`
   }

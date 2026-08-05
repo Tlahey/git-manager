@@ -70,7 +70,9 @@ async function readConfigFile(path: string): Promise<RemoteBoardConfigFile> {
             // A config written before per-card prefixes carries a single `cardPrefix`.
             cardPrefixes:
               b.cardPrefixes ??
-              ('cardPrefix' in b && b.cardPrefix ? [String(b.cardPrefix)] : []),
+              ('cardPrefix' in b && typeof b.cardPrefix === 'string' && b.cardPrefix
+                ? [b.cardPrefix]
+                : []),
             nextCardNumbers: b.nextCardNumbers ?? {},
           }))
         : [],
@@ -204,7 +206,7 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
       blockedReason:
         patch.blockedReason === undefined
           ? current.blockedReason
-          : (patch.blockedReason?.trim() || undefined),
+          : patch.blockedReason?.trim() || undefined,
     }
 
     // **Every** body-borne field is recomposed, not just the ones this patch touched: the marker is
@@ -228,9 +230,17 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
       await updateIssue(owner, repo, issueNumber, { title: next.title, body }, token)
     }
 
-    await syncLabels(board, next, (raw.labels ?? []).map((l) => l.name))
+    await syncLabels(
+      board,
+      next,
+      (raw.labels ?? []).map((l) => l.name)
+    )
     if (patch.assignee !== undefined) {
-      await syncAssignee(issueNumber, (raw.assignees ?? []).map((a) => a.login), next.assignee)
+      await syncAssignee(
+        issueNumber,
+        (raw.assignees ?? []).map((a) => a.login),
+        next.assignee
+      )
     }
 
     return readCard(board, issueNumber)
@@ -285,7 +295,15 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
     updateBoardColumns: (path, boardId, columns, expectedRevision) =>
       patchBoardInConfig(path, boardId, expectedRevision, (board) => ({ ...board, columns })),
 
-    updateBoardMeta: async (path, boardId, name, tags, dodTemplate, cardPrefixes, expectedRevision) => {
+    updateBoardMeta: async (
+      path,
+      boardId,
+      name,
+      tags,
+      dodTemplate,
+      cardPrefixes,
+      expectedRevision
+    ) => {
       // The tag palette *is* the repo's label set here, so colours are pushed to GitHub before the
       // config is rewritten — otherwise a tag would show the user's colour in-app and a random one
       // on github.com.
@@ -299,7 +317,9 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
         dodTemplate,
         cardPrefixes: cardPrefixes
           .map((prefix: string) => prefix.trim().toUpperCase())
-          .filter((prefix: string, i: number, all: string[]) => prefix !== '' && all.indexOf(prefix) === i),
+          .filter(
+            (prefix: string, i: number, all: string[]) => prefix !== '' && all.indexOf(prefix) === i
+          ),
       }))
     },
 

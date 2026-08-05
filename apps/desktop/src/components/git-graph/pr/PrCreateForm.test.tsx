@@ -7,7 +7,7 @@ const { usePrTemplateMock, generateMock, useBranchesMock, aiState } = vi.hoisted
   usePrTemplateMock: vi.fn(),
   generateMock: vi.fn(),
   useBranchesMock: vi.fn(),
-  aiState: { status: 'idle' as string, error: null as string | null },
+  aiState: { status: 'idle', error: null as string | null },
 }))
 vi.mock('../../../hooks/usePrTemplate', () => ({ usePrTemplate: usePrTemplateMock }))
 vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({

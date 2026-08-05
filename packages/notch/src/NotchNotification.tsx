@@ -65,6 +65,9 @@ export function NotchNotification({
   // glows in its medal's colour instead of its tone's, and it throws confetti. Both are read off the
   // model here rather than inside `NotchCard`, which knows nothing about notifications.
   const reward = model.kind === 'reward' ? model : null
+  // NOT `reward?.confetti` — confetti defaults to ON when the model omits the flag, and oxlint's
+  // `prefer-optional-chain` autofix silently drops the `?? true`, killing every celebration.
+  // oxlint-disable-next-line typescript/prefer-optional-chain
   const celebrates = reward !== null && (reward.confetti ?? true)
 
   return (

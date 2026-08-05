@@ -14,7 +14,7 @@ function diffFile(overrides: Partial<GitDiffFile> = {}): GitDiffFile {
     deletions: 1,
     hunks: [],
     ...overrides,
-  } as GitDiffFile
+  }
 }
 
 function baseProps(
