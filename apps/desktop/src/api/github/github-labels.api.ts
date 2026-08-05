@@ -17,7 +17,7 @@ export async function fetchAssignableUsers(
 /**
  * Ensures a repo label exists with the given colour, creating it or recolouring an existing one.
  *
- * A board's tags *are* repo labels (see `api/board/remote-board.api.ts`), and adding a label to an
+ * A board's tags *are* repo labels (see `features/board/api/remote-board.api.ts`), and adding a label to an
  * issue creates a missing one with a random colour — so without this a tag would render in the app
  * with the colour the user picked and on github.com with whatever GitHub rolled.
  *

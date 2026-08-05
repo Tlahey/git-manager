@@ -47,12 +47,6 @@ vi.mock('../../../components/git-graph/DeleteRemoteBranchDialog', () => ({
     <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
   ),
 }))
-vi.mock('../../board/BoardPage', () => ({
-  BoardPage: (props: { repoPath: string }) => (
-    <div data-testid="fake-board-page">{props.repoPath}</div>
-  ),
-}))
-
 const { useEffectiveRepoSettingsMock, useBoardDataMock } = vi.hoisted(() => ({
   useEffectiveRepoSettingsMock: vi.fn(
     (): { viewSwitcherPosition: 'toolbar' | 'tabs' } => ({ viewSwitcherPosition: 'toolbar' })
@@ -67,7 +61,27 @@ const { useEffectiveRepoSettingsMock, useBoardDataMock } = vi.hoisted(() => ({
 vi.mock('../../../hooks/useEffectiveRepoSettings', () => ({
   useEffectiveRepoSettings: useEffectiveRepoSettingsMock,
 }))
-vi.mock('../../../hooks/useBoardData', () => ({ useBoardData: useBoardDataMock }))
+/**
+ * One factory for the whole feature barrel — two `vi.mock` calls on the same module would leave only
+ * the later one, and `BoardPage` would come back undefined.
+ *
+ * The controls store is the *real* one: this test drives it to open the board panel, so a stub would
+ * make those cases assert against themselves. Imported from its own module rather than through
+ * `importActual` on the barrel, which would pull the whole page in behind it — the thing being faked
+ * two lines up.
+ */
+vi.mock('../../../features/board', async () => {
+  const controls = await vi.importActual<
+    typeof import('../../../features/board/stores/boardControls.store')
+  >('../../../features/board/stores/boardControls.store')
+  return {
+    BoardPage: (props: { repoPath: string }) => (
+      <div data-testid="fake-board-page">{props.repoPath}</div>
+    ),
+    useBoardData: useBoardDataMock,
+    useBoardControlsStore: controls.useBoardControlsStore,
+  }
+})
 // `RepoViewTabBar` has its own dedicated test — faked here so this stays a composition test of
 // *whether* it renders, not a retest of its internals.
 vi.mock('./RepoViewTabBar', () => ({
@@ -79,7 +93,7 @@ vi.mock('./RepoViewTabBar', () => ({
 import { RepoGraphWorkspace } from './RepoGraphWorkspace'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../stores/boardControls.store'
+import { useBoardControlsStore } from '../../../features/board'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 

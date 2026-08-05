@@ -5,7 +5,7 @@ import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../stores/boardControls.store'
+import { useBoardControlsStore } from '../../../features/board'
 import { GitGraph } from '../../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../../components/git-graph/RenameBranchDialog'
@@ -17,12 +17,12 @@ import { ProjectFilesView } from '../../../components/file-explorer/ProjectFiles
 import { FileTreeSidebar } from '../../../components/file-explorer/FileTreeSidebar'
 import { TimelineBar } from '../../../components/timeline/TimelineBar'
 import { BisectSetupBanner } from '../../../components/bisect/BisectSetupBanner'
-import { BoardPage } from '../../board/BoardPage'
+import { BoardPage } from '../../../features/board'
 import { RepoViewTabBar } from './RepoViewTabBar'
 import { useSidebarBranchMenu } from '../../../hooks/useSidebarBranchMenu'
 import { useSidebarTagMenu } from '../../../hooks/useSidebarTagMenu'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
-import { useBoardData } from '../../../hooks/useBoardData'
+import { useBoardData } from '../../../features/board'
 
 interface RepoGraphWorkspaceProps {
   /** The path actually being viewed — the repo tab's own path, or a linked worktree's. */

@@ -3,8 +3,8 @@ import { InnerTab } from '@git-manager/components'
 import { GitCommitHorizontal, FolderOpen, Kanban } from 'lucide-react'
 import type { Board } from '@git-manager/git-types'
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../stores/boardControls.store'
-import { useBoardStore } from '../../../stores/board.store'
+import { useBoardControlsStore } from '../../../features/board'
+import { useBoardStore } from '../../../features/board'
 
 interface RepoViewTabBarProps {
   repoPath: string

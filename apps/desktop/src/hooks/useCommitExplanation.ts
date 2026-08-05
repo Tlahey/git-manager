@@ -50,7 +50,10 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
   const remember = useAiExplanationStore((s) => s.set)
   const forget = useAiExplanationStore((s) => s.clear)
 
-  // What the diff is taken against, for the panel's subtitle and the stored entry.
+  // What the diff is taken against, for the panel's subtitle and the stored entry. Also the only
+  // route by which `parentCount` reaches `explain` below, which is why that isn't a dependency of
+  // its own down there: the run itself never reads it, and a merge going from two parents to three
+  // changes nothing about the explanation.
   const comparedTo = commit.parentCount === 0 ? 'root' : `${commit.shortOid}^`
 
   /** Progress of the map phase: one call per file the commit touches, before the stream starts. */
@@ -122,7 +125,6 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
       commit.subject,
       commit.body,
       commit.author,
-      commit.parentCount,
       comparedTo,
       aiConnection,
       language,

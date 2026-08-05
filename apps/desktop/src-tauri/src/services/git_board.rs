@@ -794,8 +794,12 @@ pub fn move_cards_to_board(
         "git-manager: carry cards into sprint",
     )?;
 
+    // The cards staying behind keep their relations to the ones that left — retargeted to the board
+    // those now live on, so they read as a cross-board link rather than as a dangling one.
     let mut from_tree_oid = from_tree.id();
     for card in &moving {
+        let tree = repo.find_tree(from_tree_oid).map_err(AppError::Git)?;
+        from_tree_oid = retarget_links_to(repo, &tree, from_board_id, &card.id, Some(to_board_id))?;
         let tree = repo.find_tree(from_tree_oid).map_err(AppError::Git)?;
         from_tree_oid = remove_card_blob(repo, &tree, &card.id)?;
     }
@@ -813,12 +817,62 @@ pub fn move_cards_to_board(
     Ok(())
 }
 
+/// Rewrites the board's cards so their links to `card_id` follow it — or go away.
+///
+/// **Only forward halves are stored** (see `BoardCardLink`), so a card leaving takes its *own* links
+/// with it. What survives it are the links other cards declared *towards* it, and nothing used to
+/// touch those: a deleted card left every incoming relation pointing at an id that resolves to
+/// nothing, and a card carried into another sprint left them pointing at the board it came from.
+/// Both rendered as a relation to "a card somewhere else" — naming, in the delete case, the very
+/// board being looked at, which reads as a lie rather than as a degradation.
+///
+/// `moved_to` is the board the card landed on, or `None` when it was destroyed.
+fn retarget_links_to(
+    repo: &Repository,
+    base_tree: &Tree,
+    board_id: &str,
+    card_id: &str,
+    moved_to: Option<&str>,
+) -> Result<Oid, String> {
+    let mut tree_oid = base_tree.id();
+    for mut card in read_cards(repo, base_tree)? {
+        if card.id == card_id {
+            continue;
+        }
+        let mut touched = false;
+        card.links.retain_mut(|link| {
+            if link.target_board_id != board_id || link.target_card_id != card_id {
+                return true;
+            }
+            touched = true;
+            match moved_to {
+                Some(next_board) => {
+                    link.target_board_id = next_board.to_string();
+                    true
+                }
+                None => false,
+            }
+        });
+        if !touched {
+            continue;
+        }
+        card.updated_at = now_iso();
+        let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        tree_oid = write_card_blob(repo, &tree, &card)?;
+    }
+    Ok(tree_oid)
+}
+
 pub fn delete_card(repo: &Repository, board_id: &str, card_id: &str) -> Result<(), String> {
     let tip = read_state(repo, board_id)?
         .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
     let tree = tip.tree().map_err(AppError::Git)?;
 
-    let new_tree_oid = remove_card_blob(repo, &tree, card_id)?;
+    // The incoming relations first, in the same commit: a card and the links pointing at it have to
+    // disappear together, or the board briefly describes a relation to nothing.
+    let swept_oid = retarget_links_to(repo, &tree, board_id, card_id, None)?;
+    let swept_tree = repo.find_tree(swept_oid).map_err(AppError::Git)?;
+    let new_tree_oid = remove_card_blob(repo, &swept_tree, card_id)?;
     commit_state_cas(
         repo,
         board_id,
@@ -976,8 +1030,9 @@ pub fn restore_board_backup(repo: &Repository, board_id: &str) -> Result<Board, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Only the tests name this type directly — the service reaches it through `NewBoardCard`.
-    use crate::models::BoardCardSourceIssue;
+    // Only the tests name these directly — the service reaches them through `NewBoardCard` and
+    // `BoardCardPatch`.
+    use crate::models::{BoardCardLink, BoardCardSourceIssue};
 
     fn init_repo(name: &str) -> (PathBuf, Repository) {
         let dir =
@@ -1083,6 +1138,129 @@ mod tests {
         let (_, cards) = get_board(&repo, &board.id).unwrap();
         assert_eq!(cards.len(), 1);
         assert_eq!(cards[0].id, other.id);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Only forward halves are stored, so a card leaving takes its own links with it — what has to
+    /// be swept is what other cards declared *towards* it. Left behind, the relation resolves to
+    /// nothing and renders as pointing at "a card somewhere else", naming the board being looked at.
+    #[test]
+    fn deleting_a_card_takes_the_links_pointing_at_it() {
+        let (dir, repo) = init_repo("delete-card-links");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let target = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Target".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let blocker = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Blocker".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let kept = BoardCardLink {
+            target_board_id: board.id.clone(),
+            target_card_id: "elsewhere".to_string(),
+            kind: "relates".to_string(),
+        };
+        update_card(
+            &repo,
+            &board.id,
+            &blocker.id,
+            BoardCardPatch {
+                links: Some(vec![
+                    kept.clone(),
+                    BoardCardLink {
+                        target_board_id: board.id.clone(),
+                        target_card_id: target.id.clone(),
+                        kind: "blocks".to_string(),
+                    },
+                ]),
+                ..Default::default()
+            },
+            &blocker.revision,
+        )
+        .unwrap();
+
+        delete_card(&repo, &board.id, &target.id).unwrap();
+
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        let survivor = cards.iter().find(|c| c.id == blocker.id).unwrap();
+        // The relation to the deleted card is gone; the unrelated one is untouched.
+        assert_eq!(survivor.links.len(), 1);
+        assert_eq!(survivor.links[0].target_card_id, "elsewhere");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A card carried into the next sprint is still there to point at — the link follows it to the
+    /// board it landed on rather than dangling on the board it left.
+    #[test]
+    fn carrying_a_card_over_retargets_the_links_left_behind() {
+        let (dir, repo) = init_repo("carry-card-links");
+        let from = board_with(&repo, "Sprint 12", vec![column("todo", 0)]);
+        let to = board_with(&repo, "Sprint 13", vec![column("todo", 0)]);
+        let moved = create_card(
+            &repo,
+            &from.id,
+            "todo",
+            NewBoardCard {
+                title: "Unfinished".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let stays = create_card(
+            &repo,
+            &from.id,
+            "todo",
+            NewBoardCard {
+                title: "Stays".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        update_card(
+            &repo,
+            &from.id,
+            &stays.id,
+            BoardCardPatch {
+                links: Some(vec![BoardCardLink {
+                    target_board_id: from.id.clone(),
+                    target_card_id: moved.id.clone(),
+                    kind: "blocks".to_string(),
+                }]),
+                ..Default::default()
+            },
+            &stays.revision,
+        )
+        .unwrap();
+
+        move_cards_to_board(
+            &repo,
+            &from.id,
+            &to.id,
+            std::slice::from_ref(&moved.id),
+            None,
+        )
+        .unwrap();
+
+        let (_, cards) = get_board(&repo, &from.id).unwrap();
+        let survivor = cards.iter().find(|c| c.id == stays.id).unwrap();
+        assert_eq!(survivor.links.len(), 1);
+        assert_eq!(survivor.links[0].target_board_id, to.id);
+        assert_eq!(survivor.links[0].target_card_id, moved.id);
 
         std::fs::remove_dir_all(&dir).ok();
     }
