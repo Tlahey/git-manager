@@ -86,6 +86,11 @@ objc2-foundation = { version = "0.2.2", default-features = false, features = [
 
 [features]
 e2e = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
+# Only enabled by release.yml's universal-apple-darwin build: pkg-config can't cross-compile
+# system OpenSSL from an aarch64 runner to x86_64, so that build vendors (compiles from source)
+# OpenSSL for each target instead. Left off by default so local dev builds keep using the fast,
+# already-installed system OpenSSL.
+vendored-openssl = ["git2/vendored-openssl"]
 
 [profile.release]
 panic = "abort"

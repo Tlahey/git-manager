@@ -93,4 +93,7 @@ jobs:
           # workspace tree, so without this it silently falls back to `npm run tauri` — which
           # fails since apps/desktop/package.json has no "tauri" script (only "build").
           tauriScript: pnpm tauri
-          args: --target universal-apple-darwin
+          # vendored-openssl: cross-compiling to x86_64 from this aarch64 runner can't find a
+          # system OpenSSL via pkg-config, so this build vendors it instead — see the feature's
+          # doc comment in apps/desktop/src-tauri/Cargo.toml.
+          args: --target universal-apple-darwin --features vendored-openssl
