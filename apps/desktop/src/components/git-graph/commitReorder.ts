@@ -234,3 +234,53 @@ export function buildReorderPlan(
   const tail = plan.filter((step) => !moved.has(step.commit.oid))
   return [...tail, ...desired.map((oid) => byOid.get(oid)!)]
 }
+
+/** The commits `operation` leaves standing, in their resulting order, newest first. */
+function survivingOids(operation: CommitReorderOperation): string[] {
+  if (operation.kind !== 'combine') return operation.resultOids
+  const folded = new Set(operation.sourceOids)
+  return operation.resultOids.filter((oid) => !folded.has(oid))
+}
+
+/**
+ * Where the commits the user just moved ended up, so the graph can put the selection back on
+ * *them* rather than on whatever now occupies the row they were dragged from.
+ *
+ * A rebase rewrites every commit whose parent changed, so a moved commit always comes back with a
+ * new OID and the old selection points at nothing. It can't be followed by identity — but it can be
+ * followed by **position**: the todo we submitted fixes the resulting order, so the rewritten range
+ * is `resultOids` commit-for-commit, and the new range is the top of HEAD's first-parent line.
+ * Matching the two by index is therefore exact, not a guess.
+ *
+ * `newWindow` is {@link collectReorderableOids} run on the *reloaded* graph. Returns the moved
+ * commits newest first (for a combine, the single commit the others were folded into), or an empty
+ * array if the window is too short to be the post-rebase one.
+ */
+export function locateMovedCommits(
+  operation: CommitReorderOperation,
+  newWindow: string[]
+): string[] {
+  const survivors = survivingOids(operation)
+  if (newWindow.length < survivors.length) return []
+
+  const positions =
+    operation.kind === 'combine'
+      ? [survivors.indexOf(operation.target.oid)]
+      : operation.sourceOids.map((oid) => survivors.indexOf(oid))
+
+  return positions.filter((index) => index >= 0).map((index) => newWindow[index])
+}
+
+/**
+ * Whether `newWindow` is still the pre-rebase history — i.e. the graph has not reloaded yet, and
+ * mapping {@link locateMovedCommits}' positions onto it would select the wrong commits.
+ *
+ * The test is that a moved commit's *old* OID is still on HEAD's first-parent line. Every moved
+ * commit is rewritten (its parent changed, by definition of having moved), so once the reload
+ * lands not one of them can still be there. An old OID kept alive by another branch doesn't
+ * confuse this: the window only walks HEAD.
+ */
+export function isStaleWindow(operation: CommitReorderOperation, newWindow: string[]): boolean {
+  const stillThere = new Set(newWindow)
+  return operation.sourceOids.some((oid) => stillThere.has(oid))
+}

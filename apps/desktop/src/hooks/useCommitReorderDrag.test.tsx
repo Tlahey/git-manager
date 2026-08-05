@@ -245,3 +245,44 @@ describe('useCommitReorderDrag — running the plan', () => {
     expect(result.current.pending).toBeNull()
   })
 })
+
+describe('useCommitReorderDrag — following the moved commits', () => {
+  it('records the landed operation so the graph can re-focus on the rewritten commits', async () => {
+    const { result } = setup()
+    act(() => result.current.dragContext.onDrop({ kind: 'gap', oid: 'c', edge: 'above' }, ['a']))
+    await act(async () => {
+      await result.current.confirm('fixup')
+    })
+    expect(result.current.landed).toMatchObject({ kind: 'reorder', sourceOids: ['a'] })
+  })
+
+  it('records nothing when the rebase paused — the commits have no final OIDs yet', async () => {
+    mocked.state.mockResolvedValue({ kind: 'conflict', steps: [] })
+    const { result } = setup()
+    act(() => result.current.dragContext.onDrop({ kind: 'combine', oid: 'c' }, ['a']))
+    await act(async () => {
+      await result.current.confirm('fixup')
+    })
+    expect(result.current.landed).toBeNull()
+  })
+
+  it('records nothing when the rebase failed outright', async () => {
+    mocked.rebase.mockRejectedValue(new Error('nope'))
+    const { result } = setup()
+    act(() => result.current.dragContext.onDrop({ kind: 'combine', oid: 'c' }, ['a']))
+    await act(async () => {
+      await result.current.confirm('fixup')
+    })
+    expect(result.current.landed).toBeNull()
+  })
+
+  it('forgets the landed operation once the graph reports it has re-focused', async () => {
+    const { result } = setup()
+    act(() => result.current.dragContext.onDrop({ kind: 'combine', oid: 'c' }, ['a']))
+    await act(async () => {
+      await result.current.confirm('fixup')
+    })
+    act(() => result.current.clearLanded())
+    expect(result.current.landed).toBeNull()
+  })
+})

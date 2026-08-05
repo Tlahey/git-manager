@@ -5,6 +5,8 @@ import {
   collectReorderableOids,
   findHeadOid,
   firstPublishedIndex,
+  isStaleWindow,
+  locateMovedCommits,
   planOperation,
   reorderWindow,
   resolveDropTarget,
@@ -213,5 +215,48 @@ describe('buildReorderPlan', () => {
   it('refuses a range the backend no longer covers', () => {
     const op = operation(['a', 'b', 'c'], ['a'], { kind: 'gap', oid: 'c', edge: 'below' })
     expect(() => buildReorderPlan([commit('c'), commit('b')], op, 'fixup')).toThrow()
+  })
+})
+
+describe('locateMovedCommits', () => {
+  // Moving `a` (newest) below `c`: the rewritten range comes back as b, c, a with fresh OIDs.
+  const reorder = operation(['a', 'b', 'c', 'd'], ['a'], { kind: 'gap', oid: 'd', edge: 'above' })
+
+  it('follows a moved commit to its new OID by position', () => {
+    // resultOids is ['b', 'c', 'a', 'd']; the rebase rewrote the first three.
+    expect(locateMovedCommits(reorder, ['b2', 'c2', 'a2', 'd2'])).toEqual(['a2'])
+  })
+
+  it('follows a whole group, newest first', () => {
+    const op = operation(['a', 'b', 'c'], ['a', 'b'], { kind: 'gap', oid: 'c', edge: 'below' })
+    // resultOids is ['c', 'a', 'b'].
+    expect(locateMovedCommits(op, ['c2', 'a2', 'b2'])).toEqual(['a2', 'b2'])
+  })
+
+  it('lands on the commit others were folded into, not on the folded ones', () => {
+    const op = operation(['a', 'b', 'c'], ['a'], { kind: 'combine', oid: 'c' })
+    // resultOids is ['b', 'c', 'a'] — `a` is gone after the fold, so the new range is b, c.
+    expect(locateMovedCommits(op, ['b2', 'c2'])).toEqual(['c2'])
+  })
+
+  it('gives up rather than guess when the new history is shorter than the plan', () => {
+    expect(locateMovedCommits(reorder, ['b2'])).toEqual([])
+  })
+})
+
+describe('isStaleWindow', () => {
+  const op = operation(['a', 'b', 'c'], ['a'], { kind: 'gap', oid: 'c', edge: 'below' })
+
+  it('reports the pre-rebase graph, where the moved commit is still on HEAD', () => {
+    expect(isStaleWindow(op, ['a', 'b', 'c'])).toBe(true)
+  })
+
+  it('clears once every moved commit has been rewritten', () => {
+    expect(isStaleWindow(op, ['b2', 'c2', 'a2'])).toBe(false)
+  })
+
+  it('is not fooled by the old commit surviving off HEAD, since the window only walks HEAD', () => {
+    // `a` kept alive by another branch is simply absent from HEAD's first-parent line.
+    expect(isStaleWindow(op, ['c2', 'a2', 'b2'])).toBe(false)
   })
 })

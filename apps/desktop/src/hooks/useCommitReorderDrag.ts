@@ -69,6 +69,10 @@ export function useCommitReorderDrag({
   const queryClient = useQueryClient()
   const [pending, setPending] = useState<PendingCommitReorder | null>(null)
   const [busy, setBusy] = useState(false)
+  // The operation that just landed, kept until the reloaded graph has been re-focused on the
+  // commits it moved (see `useCommitReorderFocus`) — the rebase gave them new OIDs, so the
+  // selection has to be re-derived rather than survive.
+  const [landed, setLanded] = useState<CommitReorderOperation | null>(null)
 
   const headOid = useMemo(() => findHeadOid(nodes, headBranchName), [nodes, headBranchName])
   // Named `movableOids` rather than `window` — that one is the global object here.
@@ -149,8 +153,12 @@ export function useCommitReorderDrag({
 
         const state = await apiGetRebaseState(repoPath).catch(() => null)
         if (state && state.kind !== 'idle') {
+          // Paused on a conflict: the commits don't have their final OIDs yet — the rest of the
+          // plan is still to replay — so there is nothing to re-focus on. The paused-rebase UI
+          // takes the screen over anyway.
           toast.error(t('commitReorder.paused'))
         } else {
+          setLanded(pending.operation)
           toast.success(
             pending.operation.kind === 'combine'
               ? t('commitReorder.combined', { count: pending.sources.length })
@@ -170,5 +178,7 @@ export function useCommitReorderDrag({
     [pending, repoPath, queryClient, t]
   )
 
-  return { dragContext, pending, busy, confirm, cancel }
+  const clearLanded = useCallback(() => setLanded(null), [])
+
+  return { dragContext, pending, busy, confirm, cancel, landed, clearLanded }
 }

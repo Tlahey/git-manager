@@ -26,6 +26,7 @@ import { useGraphScrollSync } from '../../hooks/useGraphScrollSync'
 import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
 import { useSearchNavigation } from '../../hooks/useSearchNavigation'
 import { useCommitReorderDrag } from '../../hooks/useCommitReorderDrag'
+import { useCommitReorderFocus } from '../../hooks/useCommitReorderFocus'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
@@ -347,6 +348,7 @@ export function GitGraph({
   // ── Selection (multiple) hook ───────────────────────────────────────────────
   const {
     selected,
+    setSelected,
     primaryOid,
     setPrimaryOid,
     selectSingle,
@@ -361,6 +363,8 @@ export function GitGraph({
     busy: reorderBusy,
     confirm: confirmReorder,
     cancel: cancelReorder,
+    landed: landedReorder,
+    clearLanded: clearLandedReorder,
   } = useCommitReorderDrag({
     repoPath,
     nodes,
@@ -463,6 +467,19 @@ export function GitGraph({
     pendingGraphSelection,
     setPendingGraphSelection,
     t,
+  })
+
+  // Follow the commits a drag just moved into the rewritten history — they come back with new
+  // OIDs, so the selection is re-derived by position once the reloaded log arrives.
+  useCommitReorderFocus({
+    landed: landedReorder,
+    clearLanded: clearLandedReorder,
+    nodes,
+    filteredNodes,
+    headBranchName: headBranchName ?? null,
+    setSelected,
+    setPrimaryOid,
+    scrollToIndex: virtualizer.scrollToIndex,
   })
 
   const primaryNode = useMemo(() => {
