@@ -9,25 +9,29 @@
  * for the two thin adapters, and `behaviors.ts` for the JS-driven eye tracking.
  *
  * ── How the artwork is built ──────────────────────────────────────────────
- * The octopus is assembled from the brand sprite sheet: a head (mouth and eye
- * whites/pupils baked into the art by the artist) and eight individual
- * tentacles. Parts are laid out on a 1000×1000 stage as SVG `<image>`
- * elements; every limb's root is tucked under the head, which is painted
- * after the limbs.
+ * The octopus is assembled from the brand illustration's individual layers —
+ * a head (mouth baked into the art; eye whites baked in but left blank, no
+ * pupil) and eight individual tentacles, one source file each. Parts are laid
+ * out on a 1000×1000 stage as SVG `<image>` elements; every limb's root is
+ * tucked under the head, which is painted after the limbs.
  *
- * The baked-in pupils can't move on their own, so each eye gets a thin code-
- * drawn overlay on top of the head: a flat circle in the eye-white's own
- * color masks the baked pupil, then a redrawn pupil + highlight (same size,
- * same rest position) sits on top of that mask — free to be pushed around by
- * `behaviors.ts`'s `attachEyeTracking` or the idle CSS glance animation
- * without ever uncovering the original baked pupil. A blink cross-fades that
- * pupil group with a drawn eyelid curve. The eye geometry (centers, radii,
- * highlight offset) below was measured directly off the head sprite via
- * connected-component analysis of its near-white/near-navy pixels (see the
- * `EYES`/`PUPIL_R`/etc. constants) — re-measure and update if the head
- * artwork is ever regenerated with a different face.
+ * The head carries no pupil at all, so each eye is entirely code-drawn on top
+ * of it: a flat circle in the eye-white's own color (a no-op mask today, kept
+ * because the eyelid curve below is sized off it — see `EYE_COVER_R_LOCAL`),
+ * then a pupil + highlight sits on top — free to be pushed around by
+ * `behaviors.ts`'s `attachEyeTracking` or the idle CSS glance animation. A
+ * blink cross-fades that pupil group with a drawn eyelid curve. The eye
+ * geometry (centers, radii, highlight offset) below was measured off two
+ * sources via connected-component analysis: the eye-white blobs from the head
+ * sprite itself (`assets/parts/head.png`), and the pupil's own radius/
+ * highlight/fill from its standalone reference art (`assets/parts/pupil.png`
+ * — not part of the generated sprite set, since the pupil stays vector-drawn
+ * rather than a raster layer; kept only so this geometry can be re-measured).
+ * Both files share one coordinate frame (see the README), which is how the
+ * pupil reference lines up with the head's right eye despite being measured
+ * independently — re-measure and update if either artwork changes.
  *
- * The editable sources live in `assets/` (sprites.png + layout.json, the
+ * The editable sources live in `assets/` (parts/*.png + layout.json, the
  * Storybook Layout editor's export); `pnpm generate` turns them into the
  * committed `src/generated/` modules imported here — placements, paint
  * order, pivots and animation params all come from there. This file owns
@@ -80,12 +84,13 @@ export interface LimbSpec {
 /**
  * Limbs keyed by zone, straight from the generated layout
  * (assets/layout.json → src/generated/layout.ts). All eight tentacles are
- * individually drawn (no flips); their placements were derived by
- * outline-matching each sprite against the brand reference (each was drawn
- * 1:1 over it). The paint order — including where the head sits in it —
- * comes from PLACEMENTS: the markup renders that array as-is, so layers can
- * be freely reordered in the Storybook Layout editor (currently the upper
- * arms are painted *over* the head).
+ * individually drawn (no flips); each source file already sits at its final
+ * pose in the shared reference frame (see the README), so every placement's
+ * `x/y/scale` is one affine transform of that frame into stage units — no
+ * per-part rotation needed. The paint order — including where the head sits
+ * in it — comes from PLACEMENTS: the markup renders that array as-is, so
+ * layers can be freely reordered in the Storybook Layout editor (currently
+ * the upper arms are painted *under* the head, the rest over it).
  * Zone naming gotcha (ids ≠ position): t1 is the upper *right* arm and t4
  * the upper left; t2/t3 the mid left/right; t5/t8 the outer left/right;
  * t6/t7 the inner left/right.
@@ -126,23 +131,33 @@ const HEAD = {
 const HEAD_REF_MAX_WIDTH = 627
 
 /**
- * Eye overlay geometry, measured directly off this head sprite's own pixels
- * (633×729 at generation time) rather than an external reference: connected-
- * component labeling of its near-white pixels isolated the two eye whites as
- * ~131px-diameter blobs centered at (193,474) and (439,474) — symmetric
- * around the head's horizontal center (316.5) to within 1px — plus two small
- * ~20px "shine" blobs at consistent offsets inside them. The same technique
- * on near-navy pixels found the baked pupils as ~65px-diameter solid discs
- * dead-centered in each white. Converted to stage units via this head
- * placement's own `x/y/scale` (no external transfer scale needed, since the
- * measurement was taken on the exact deployed asset).
+ * Eye overlay geometry, measured off two source files that share one
+ * coordinate frame (see the README) rather than off the deployed/padded
+ * sprite: connected-component labeling of the head's near-white pixels
+ * (`assets/parts/head.png`, trimmed to 621×771) isolated the two eye whites
+ * as ~123px-radius blobs centered at (187,467) and (433,467) — symmetric
+ * around the head's horizontal center (310.5) to within 1px. The pupil
+ * radius, highlight size/offset and ink color come from the standalone pupil
+ * reference (`assets/parts/pupil.png`, trimmed to 81×82, a solid disc plus a
+ * highlight blob) rather than from the head, since the head bakes in no
+ * pupil at all now (see the module doc comment) — that file's own bounding
+ * box sits dead-centered in the head's right eye in the shared frame, which
+ * is what confirms the two measurements are compatible. Local units are
+ * plain pixels in that shared, unscaled frame; generation pads the head
+ * sprite by `PAD` px (see `scripts/generate.mjs`) before cropping it, so the
+ * head-derived constants below add that same offset to stay anchored to the
+ * sprite's own (0,0) — the pupil-derived ones don't, since radii/offsets are
+ * translation-invariant. Converted to stage units via the head placement's
+ * own `x/y/scale` (no external transfer scale needed, since the measurement
+ * was taken on the exact deployed asset).
  */
-const EYE_HALF_SPACING_LOCAL = 123 // px, from head sprite's horizontal center
-const EYE_CY_LOCAL = 474.4 // px
-const PUPIL_R_LOCAL = 32.5 // px, baked pupil radius
-const EYE_COVER_R_LOCAL = 36 // px, just past the baked pupil + its shine highlight
-const HIGHLIGHT_R_LOCAL = 10 // px
-const HIGHLIGHT_OFFSET_LOCAL = { dx: 12.2, dy: -16 } // px, from pupil center
+const GENERATE_PAD = 4 // px, must match scripts/generate.mjs's PAD
+const EYE_HALF_SPACING_LOCAL = 122.76 // px, from head sprite's horizontal center
+const EYE_CY_LOCAL = 466.73 + GENERATE_PAD // px
+const PUPIL_R_LOCAL = 40.25 // px, from the pupil reference art
+const EYE_COVER_R_LOCAL = 44.6 // px, same margin-over-pupil ratio as the reference art's own proportions
+const HIGHLIGHT_R_LOCAL = 12 // px
+const HIGHLIGHT_OFFSET_LOCAL = { dx: 14.93, dy: -16.4 } // px, from pupil center
 
 const EYES = [
   {
@@ -161,9 +176,9 @@ const HIGHLIGHT_OFFSET = {
   dx: HIGHLIGHT_OFFSET_LOCAL.dx * HEAD.scale,
   dy: HIGHLIGHT_OFFSET_LOCAL.dy * HEAD.scale,
 }
-/** Flat fill colors sampled off the head sprite (eye white, baked-pupil ink, shine). */
-const EYE_COVER_FILL = '#fefefe'
-const PUPIL_FILL = '#141937'
+/** Flat fill colors sampled off the head sprite's eye white and the pupil reference art. */
+const EYE_COVER_FILL = '#ffffff'
+const PUPIL_FILL = '#1e315c'
 const HIGHLIGHT_FILL = '#ffffff'
 
 /**
@@ -213,12 +228,13 @@ function limb(name: string): string {
 }
 
 /**
- * The movable eye overlay: an opaque cover (hides the baked pupil), a
- * redrawn pupil + highlight on top of it (tracked by `attachEyeTracking`/the
- * idle glance animation), and a blink lid curve that cross-fades with the
- * pupil. Rendered right after the head image so it shares the head's paint-
- * order slot — any limb painted over the head in `PLACEMENTS` still occludes
- * the eyes along with it.
+ * The movable eye overlay: an opaque cover in the eye-white's own color (a
+ * no-op today since the head bakes in no pupil to hide, but still needed to
+ * size the eyelid curve), a pupil + highlight on top of it (tracked by
+ * `attachEyeTracking`/the idle glance animation), and a blink lid curve that
+ * cross-fades with the pupil. Rendered right after the head image so it
+ * shares the head's paint-order slot — any limb painted over the head in
+ * `PLACEMENTS` still occludes the eyes along with it.
  */
 function eyesOverlay(): string {
   const covers = EYES.map(

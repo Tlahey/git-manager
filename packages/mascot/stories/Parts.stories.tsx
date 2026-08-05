@@ -1,7 +1,7 @@
 /**
- * Every sprite of the sheet in its own frame — for checking the slicing
- * (chroma-key edges, cropped bounds) and each part's drawing against the
- * reference. Hover a card to zoom the part and reveal its bounding box.
+ * Every generated sprite in its own frame — for checking the trim (cropped
+ * bounds, edge anti-aliasing) and each part's drawing against the reference.
+ * Hover a card to zoom the part and reveal its bounding box.
  */
 
 import { useState } from 'react'

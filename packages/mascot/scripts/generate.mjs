@@ -1,24 +1,24 @@
 /**
- * generate.mjs — turns the editable sources (assets/sprites.png +
+ * generate.mjs — turns the editable sources (assets/parts/*.png +
  * assets/layout.json) into the committed modules the apps consume
  * (src/generated/sprites.ts + src/generated/layout.ts).
  *
  *   pnpm --filter @git-manager/mascot generate
  *
- * Run it whenever the sheet or the layout changes (the layout JSON is the
+ * Run it whenever a part or the layout changes (the layout JSON is the
  * Storybook Layout editor's export — see README). The output is committed so
  * consumers (landing, desktop) need no image tooling in their builds.
  *
- * Pipeline per zone (kept identical to the original slicing so existing
- * placements stay valid):
- *   1. crop the zone inset by SHAVE px (drops the sheet's grid-line halos);
- *   2. chroma-key the background color: alpha ramps from 0 to 255 between
- *      color-distance t0 and t1, anything below FLOOR is dropped, and
- *      semi-transparent edge pixels get the background "un-mixed" out of
- *      their RGB so no green fringe survives;
- *   3. crop to the bounding box of solid pixels (alpha ≥ 200) plus PAD px —
- *      faint noise doesn't stretch the sprite box;
- *   4. encode as WebP (quality 82) and inline as a base64 data URI.
+ * Unlike the old packed-sheet pipeline, each part is already its own
+ * genuinely-transparent PNG (no chroma-key background to remove) — every
+ * part file is a full-size export off the same master illustration canvas,
+ * so a part's pixels sit at the same coordinates across every file (this is
+ * what lets `assets/layout.json`'s placements be computed once from that
+ * shared frame rather than hand-picked per zone; see the README). Pipeline
+ * per part:
+ *   1. trim to the bounding box of non-transparent pixels, padded by PAD px
+ *      so anti-aliased edge pixels aren't clipped;
+ *   2. encode as WebP (quality 82) and inline as a base64 data URI.
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -27,87 +27,34 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SHAVE = 6;
-const FLOOR = 30;
-const PAD = 6;
+const PAD = 4;
 const WEBP_QUALITY = 82;
 
 const layout = JSON.parse(await readFile(join(pkgRoot, 'assets/layout.json'), 'utf8'));
-if (layout.version !== 1) throw new Error(`layout.json: unsupported version ${layout.version}`);
+if (layout.version !== 2) throw new Error(`layout.json: unsupported version ${layout.version}`);
 
-const sheetPath = join(pkgRoot, 'assets', layout.sheet.name);
-const sheet = sharp(sheetPath);
-const meta = await sheet.metadata();
-if (meta.width !== layout.sheet.width || meta.height !== layout.sheet.height) {
-  throw new Error(
-    `sheet is ${meta.width}x${meta.height} but layout.json says ${layout.sheet.width}x${layout.sheet.height}`,
-  );
-}
-
-const { color, t0, t1 } = layout.sheet.chroma;
-const bg = color
-  ? [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
-  : null;
-
-async function slice(zone) {
-  const x = zone.x + SHAVE;
-  const y = zone.y + SHAVE;
-  const w = zone.w - 2 * SHAVE;
-  const h = zone.h - 2 * SHAVE;
-  const { data } = await sharp(sheetPath)
-    .extract({ left: x, top: y, width: w, height: h })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  if (bg) {
-    for (let i = 0; i < data.length; i += 4) {
-      const d = Math.hypot(data[i] - bg[0], data[i + 1] - bg[1], data[i + 2] - bg[2]);
-      let a = d <= t0 ? 0 : d >= t1 ? 255 : Math.round(((d - t0) / (t1 - t0)) * 255);
-      if (a < FLOOR) a = 0;
-      if (a > 0 && a < 255) {
-        const f = a / 255;
-        for (let c = 0; c < 3; c++) {
-          data[i + c] = Math.min(255, Math.max(0, Math.round((data[i + c] - (1 - f) * bg[c]) / f)));
-        }
-      }
-      data[i + 3] = Math.min(data[i + 3], a);
-    }
-  }
-
-  // bounding box of solid pixels only
-  let x0 = w, y0 = h, x1 = -1, y1 = -1;
-  for (let py = 0; py < h; py++) {
-    for (let px = 0; px < w; px++) {
-      if (data[(py * w + px) * 4 + 3] >= 200) {
-        if (px < x0) x0 = px;
-        if (px > x1) x1 = px;
-        if (py < y0) y0 = py;
-        if (py > y1) y1 = py;
-      }
-    }
-  }
-  if (x1 < 0) throw new Error(`zone "${zone.id}" is empty after chroma-key`);
-  x0 = Math.max(0, x0 - PAD);
-  y0 = Math.max(0, y0 - PAD);
-  x1 = Math.min(w - 1, x1 + PAD);
-  y1 = Math.min(h - 1, y1 + PAD);
-  const cw = x1 - x0 + 1;
-  const ch = y1 - y0 + 1;
-
-  const webp = await sharp(data, { raw: { width: w, height: h, channels: 4 } })
-    .extract({ left: x0, top: y0, width: cw, height: ch })
+async function slice(part) {
+  const path = join(pkgRoot, 'assets/parts', part.file);
+  const source = sharp(path);
+  const { width: sw, height: sh } = await source.metadata();
+  const { info } = await source.trim({ threshold: 10 }).toBuffer({ resolveWithObject: true });
+  const left = Math.max(0, -info.trimOffsetLeft - PAD);
+  const top = Math.max(0, -info.trimOffsetTop - PAD);
+  const width = Math.min(sw - left, info.width + 2 * PAD);
+  const height = Math.min(sh - top, info.height + 2 * PAD);
+  const padded = await sharp(path)
+    .extract({ left, top, width, height })
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();
-
-  return { id: zone.id, w: cw, h: ch, uri: `data:image/webp;base64,${webp.toString('base64')}` };
+  const meta = await sharp(padded).metadata();
+  return { id: part.id, w: meta.width, h: meta.height, uri: `data:image/webp;base64,${padded.toString('base64')}` };
 }
 
 const sprites = [];
-for (const zone of layout.zones) sprites.push(await slice(zone));
+for (const part of layout.parts) sprites.push(await slice(part));
 
 const banner = `/**
- * GENERATED by scripts/generate.mjs from assets/sprites.png + assets/layout.json —
+ * GENERATED by scripts/generate.mjs from assets/parts/*.png + assets/layout.json —
  * do not edit by hand; run \`pnpm --filter @git-manager/mascot generate\`.
  */
 `;
@@ -147,7 +94,7 @@ export const STAGE = { width: ${layout.stage.width}, height: ${layout.stage.heig
 export const PLACEMENTS: readonly GeneratedPlacement[] = [
 ${layout.placements
   .map((p) => {
-    const role = layout.zones.find((z) => z.id === p.zone)?.role ?? 'other';
+    const role = layout.parts.find((z) => z.id === p.zone)?.role ?? 'other';
     return `  { zone: '${p.zone}', role: '${role}', sprite: SPRITES.${p.zone}, x: ${p.x}, y: ${p.y}, scale: ${p.scale}, rot: ${p.rot}, flip: ${p.flip}, opacity: ${p.opacity}, pivot: { x: ${p.pivot.x}, y: ${p.pivot.y} }, anim: { amp: ${p.anim.amp}, dur: ${p.anim.dur}, delay: ${p.anim.delay} } },`;
   })
   .join('\n')}
