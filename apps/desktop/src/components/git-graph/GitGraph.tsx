@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, cn } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -712,7 +712,10 @@ export function GitGraph({
                               data-testid={`graph-row-${oid}`}
                               data-selected={oid === primaryOid || selected.has(oid)}
                               data-preview-removed={previewRemoved || undefined}
-                              className={`hover:z-graph-row-hover${previewRemoved ? 'bg-destructive/15' : ''}`}
+                              className={cn(
+                                'hover:z-graph-row-hover',
+                                previewRemoved && 'bg-destructive/15'
+                              )}
                               style={{
                                 position: 'absolute',
                                 top: 0,
@@ -723,7 +726,7 @@ export function GitGraph({
                                 transform: `translateY(${virtualItem.start}px)${previewRemoved ? ' scaleY(0.22)' : ''}`,
                                 opacity: previewRemoved ? 0.55 : 1,
                                 transition: timelinePreviewOpen
-                                  ? 'transform 300ms ease, opacity 300ms ease'
+                                  ? 'transform 300ms ease, opacity 300ms ease, background-color 300ms ease'
                                   : undefined,
                                 overflow: previewRemoved ? 'hidden' : undefined,
                               }}

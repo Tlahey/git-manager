@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from '@git-manager/ui'
@@ -141,6 +141,7 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useRebaseViewStore } from '../../stores/rebaseView.store'
+import { useTimelineNavStore } from '../../stores/timelineNav.store'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
@@ -1176,3 +1177,53 @@ describe('GitGraph — conflict merge window', () => {
 // as effects reading useGitGraphActions' return values. Both moved into useGitGraphActions itself
 // (2026-08 retrofit) — see useGitGraphActions.test.ts's 'pending commit menu bridge' and 'pending
 // graph action bridge' describes, which is where their tests moved too.
+
+describe('GitGraph — undo/redo timeline preview', () => {
+  // ccc is the tip, aaa the oldest — so previewing aaa marks ccc and bbb as "would be undone".
+  const nodes = [commitNode('ccc'), commitNode('bbb'), commitNode('aaa')]
+
+  beforeEach(() => {
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+  })
+
+  afterEach(() => {
+    useTimelineNavStore.getState().close()
+  })
+
+  it('tints the rows the previewed step would undo, and only those', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+
+    // The tint is what says "this commit goes away" — the collapse alone reads as a rendering
+    // glitch. It lived in a template string with no separator for a while, which silently glued it
+    // onto the class before it and dropped it; assert the class itself, not just the data attribute.
+    for (const oid of ['ccc', 'bbb']) {
+      const slot = screen.getByTestId(`graph-row-${oid}`)
+      expect(slot).toHaveAttribute('data-preview-removed', 'true')
+      expect(slot).toHaveClass('bg-destructive/15')
+    }
+    const previewed = screen.getByTestId('graph-row-aaa')
+    expect(previewed).not.toHaveAttribute('data-preview-removed')
+    expect(previewed).not.toHaveClass('bg-destructive/15')
+  })
+
+  it('leaves every row untinted with no timeline open', () => {
+    renderGraph()
+    for (const oid of ['ccc', 'bbb', 'aaa']) {
+      expect(screen.getByTestId(`graph-row-${oid}`)).not.toHaveClass('bg-destructive/15')
+    }
+  })
+
+  it('ignores a timeline opened on another repo', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/other', previewHeadOid: 'aaa' })
+    renderGraph()
+    expect(screen.getByTestId('graph-row-ccc')).not.toHaveClass('bg-destructive/15')
+  })
+
+  it('animates the tint in with the collapse rather than popping it', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+    expect(screen.getByTestId('graph-row-ccc').style.transition).toContain('background-color')
+  })
+})
