@@ -25,9 +25,13 @@ import { useRebaseGraphView } from '../../hooks/useRebaseGraphView'
 import { useGraphScrollSync } from '../../hooks/useGraphScrollSync'
 import { useConflictMergeWindow } from '../../hooks/useConflictMergeWindow'
 import { useSearchNavigation } from '../../hooks/useSearchNavigation'
+import { useCommitReorderDrag } from '../../hooks/useCommitReorderDrag'
 import { GraphRow } from './GraphRow'
 import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
+import { CommitDragProvider } from './CommitDragProvider'
+import { CommitReorderDialog } from './CommitReorderDialog'
+import { CommitDragSlot } from './components/CommitDragSlot'
 import { TagMenuProvider } from './TagMenuContext'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -189,6 +193,7 @@ export function GitGraph({
   const {
     rebaseState,
     isRebasePaused,
+    isRebasing,
     conflictInfo,
     rebaseViewOpen,
     rebaseFilesHidden,
@@ -340,8 +345,29 @@ export function GitGraph({
   )
 
   // ── Selection (multiple) hook ───────────────────────────────────────────────
-  const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
-    useCommitSelection(filteredNodes, onSelectCommit)
+  const {
+    selected,
+    primaryOid,
+    setPrimaryOid,
+    selectSingle,
+    handleRowSelect,
+    clearSelection,
+  } = useCommitSelection(filteredNodes, onSelectCommit)
+
+  // ── Drag-and-drop reorder / combine (commits dragged inside the graph) ──────
+  const {
+    dragContext,
+    pending: pendingReorder,
+    busy: reorderBusy,
+    confirm: confirmReorder,
+    cancel: cancelReorder,
+  } = useCommitReorderDrag({
+    repoPath,
+    nodes,
+    selected,
+    headBranchName: headBranchName ?? null,
+    isRebasing: !!isRebasing,
+  })
 
   // Reset active diff on commit selection or repo changes
   useEffect(() => {
@@ -550,392 +576,404 @@ export function GitGraph({
   return (
     <RefDropProvider repoPath={repoPath}>
       <TagMenuProvider handler={openTagMenu}>
-        <div className="flex h-full select-none overflow-hidden">
-          {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
-          <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
-            {patchMode ? (
-              <PatchWorkspaceCenter repoPath={repoPath} />
-            ) : healthOpen ? (
-              <PackageHealthCenter repoPath={repoPath} />
-            ) : activePrNumber != null ? (
-              activePrFile != null ? (
-                <PrFileDiffCenter
+        <CommitDragProvider value={dragContext}>
+          <div className="flex h-full select-none overflow-hidden">
+            {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
+            <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
+              {patchMode ? (
+                <PatchWorkspaceCenter repoPath={repoPath} />
+              ) : healthOpen ? (
+                <PackageHealthCenter repoPath={repoPath} />
+              ) : activePrNumber != null ? (
+                activePrFile != null ? (
+                  <PrFileDiffCenter
+                    repoPath={repoPath}
+                    prNumber={activePrNumber}
+                    filename={activePrFile}
+                    onClose={() => setActivePrFile(null)}
+                  />
+                ) : (
+                  <PrDetailCenter
+                    repoPath={repoPath}
+                    prNumber={activePrNumber}
+                    onClose={() => setActivePrNumber(null)}
+                  />
+                )
+              ) : activeIssue != null ? (
+                // The repo's own path, not the `owner/repo` the Launchpad passes: `useRepoGitHub` resolves
+                // GitHub from the repo's remotes, which is exactly what the sidebar's issues came from.
+                <IssueDetailCenter
                   repoPath={repoPath}
-                  prNumber={activePrNumber}
-                  filename={activePrFile}
-                  onClose={() => setActivePrFile(null)}
+                  issueNumber={activeIssue.number}
+                  issue={activeIssue}
+                  onClose={() => setActiveIssue(null)}
+                />
+              ) : prCreateOpen ? (
+                <PrCreateCenter repoPath={repoPath} />
+              ) : prComposer != null ? (
+                <PrComposerCenter repoPath={repoPath} />
+              ) : activeDiffFile ? (
+                <DiffViewCenter
+                  repoPath={repoPath}
+                  file={activeDiffFile}
+                  onClose={() => setActiveDiffFile(null)}
+                  onRefresh={() => {
+                    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+                    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+                  }}
+                />
+              ) : rebaseViewOpen && rebaseState ? (
+                <RebaseProgressCenter
+                  repoPath={repoPath}
+                  rebaseState={rebaseState}
+                  onSelectStep={handleSelectRebaseStep}
+                  isStepSelectable={isRebaseStepLoaded}
+                  selectedOid={primaryOid}
+                  filesPanelOpen={isConflictPanelOpen}
+                  onToggleFilesPanel={handleToggleConflictFiles}
                 />
               ) : (
-                <PrDetailCenter
-                  repoPath={repoPath}
-                  prNumber={activePrNumber}
-                  onClose={() => setActivePrNumber(null)}
-                />
-              )
-            ) : activeIssue != null ? (
-              // The repo's own path, not the `owner/repo` the Launchpad passes: `useRepoGitHub` resolves
-              // GitHub from the repo's remotes, which is exactly what the sidebar's issues came from.
-              <IssueDetailCenter
-                repoPath={repoPath}
-                issueNumber={activeIssue.number}
-                issue={activeIssue}
-                onClose={() => setActiveIssue(null)}
-              />
-            ) : prCreateOpen ? (
-              <PrCreateCenter repoPath={repoPath} />
-            ) : prComposer != null ? (
-              <PrComposerCenter repoPath={repoPath} />
-            ) : activeDiffFile ? (
-              <DiffViewCenter
-                repoPath={repoPath}
-                file={activeDiffFile}
-                onClose={() => setActiveDiffFile(null)}
-                onRefresh={() => {
-                  queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-                  queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-                }}
-              />
-            ) : rebaseViewOpen && rebaseState ? (
-              <RebaseProgressCenter
-                repoPath={repoPath}
-                rebaseState={rebaseState}
-                onSelectStep={handleSelectRebaseStep}
-                isStepSelectable={isRebaseStepLoaded}
-                selectedOid={primaryOid}
-                filesPanelOpen={isConflictPanelOpen}
-                onToggleFilesPanel={handleToggleConflictFiles}
-              />
-            ) : (
-              <>
-                <CommitSearchPanel
-                  resultCount={totalMatches}
-                  activeIndex={clampedMatchIndex}
-                  onPrevious={goToPreviousMatch}
-                  onNext={goToNextMatch}
-                />
-
-                {soloActive && (
-                  <div
-                    className="flex shrink-0 items-center gap-2 border-b border-primary/30 bg-primary/10 px-3 py-1.5 text-xs text-primary"
-                    data-testid="graph-solo-banner"
-                  >
-                    <Focus className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1 truncate font-medium">
-                      {t('sidebar.solo.active', { count: soloBranches?.length ?? 0 })}
-                    </span>
-                    <button
-                      onClick={clearSolo}
-                      className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors hover:bg-primary/20"
-                      data-testid="graph-solo-clear"
-                    >
-                      <X className="h-3 w-3" />
-                      {t('sidebar.solo.clear')}
-                    </button>
-                  </div>
-                )}
-
-                {/* When the refs column is hidden there's no row cell to host the inline tag input, so
-                the tag name is entered from a top bar instead. */}
-                {tagDraft && !visibleColumns.some((c) => c.key === 'refs') && (
-                  <TagCreationInput
-                    variant="bar"
-                    onSubmit={submitTagDraft}
-                    onCancel={cancelTagDraft}
+                <>
+                  <CommitSearchPanel
+                    resultCount={totalMatches}
+                    activeIndex={clampedMatchIndex}
+                    onPrevious={goToPreviousMatch}
+                    onNext={goToNextMatch}
                   />
-                )}
 
-                {isLoading && (
-                  <div className="flex flex-1 items-center justify-center">
-                    <Spinner className="h-5 w-5 text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {t('gitTree.loading')}
-                    </span>
-                  </div>
-                )}
-
-                {isError && (
-                  <div className="flex flex-1 items-center justify-center">
-                    <p className="text-sm text-destructive">{t('gitGraph.loadError')}</p>
-                  </div>
-                )}
-
-                {!isLoading && !isError && nodes.length === 0 && (
-                  <EmptyRepoPanel repoPath={repoPath} />
-                )}
-
-                {!isLoading && !isError && nodes.length > 0 && (
-                  <>
-                    <GraphHeader columns={visibleColumns} authorOptions={authorOptions} />
-
+                  {soloActive && (
                     <div
-                      ref={parentRef}
-                      data-testid="commit-graph"
-                      className="flex-1 overflow-y-auto overflow-x-hidden"
+                      className="flex shrink-0 items-center gap-2 border-b border-primary/30 bg-primary/10 px-3 py-1.5 text-xs text-primary"
+                      data-testid="graph-solo-banner"
                     >
-                      <div
-                        style={{
-                          height: virtualizer.getTotalSize(),
-                          width: '100%',
-                          position: 'relative',
-                        }}
+                      <Focus className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate font-medium">
+                        {t('sidebar.solo.active', { count: soloBranches?.length ?? 0 })}
+                      </span>
+                      <button
+                        onClick={clearSolo}
+                        className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors hover:bg-primary/20"
+                        data-testid="graph-solo-clear"
                       >
-                        {virtualizer.getVirtualItems().map((virtualItem) => {
-                          const node = renderNodes[virtualItem.index]
-                          const oid = node.commit.oid
+                        <X className="h-3 w-3" />
+                        {t('sidebar.solo.clear')}
+                      </button>
+                    </div>
+                  )}
 
-                          // Dim rows the active filters exclude. Search and the author filter combine
-                          // with OR: a row stays fully visible if it matches EITHER active filter, and
-                          // is dimmed only when both are active-and-unmatched (or the single active one
-                          // is unmatched). With neither filter active, nothing is dimmed.
-                          const searchActive = matchSet !== null
-                          const authorActive = authorMatchSet !== null
-                          // A drag-hovered ref takes over the dimming: only its commits stay lit.
-                          const dimmed = dragHighlightSet
-                            ? !dragHighlightSet.has(oid)
-                            : (searchActive || authorActive) &&
-                              !(searchActive && matchSet.has(oid)) &&
-                              !(authorActive && authorMatchSet.has(oid))
+                  {/* When the refs column is hidden there's no row cell to host the inline tag input, so
+                the tag name is entered from a top bar instead. */}
+                  {tagDraft && !visibleColumns.some((c) => c.key === 'refs') && (
+                    <TagCreationInput
+                      variant="bar"
+                      onSubmit={submitTagDraft}
+                      onCancel={cancelTagDraft}
+                    />
+                  )}
 
-                          // Timeline preview: commits newer than the previewed HEAD collapse into a thin
-                          // colored marker (height + color animation) to show they'd be undone. The
-                          // transition is gated on preview mode so it never adds lag to normal scrolling
-                          // (where the virtualizer rewrites `translateY` on every frame).
-                          const previewRemoved = timelinePreviewRemoved?.has(oid) ?? false
+                  {isLoading && (
+                    <div className="flex flex-1 items-center justify-center">
+                      <Spinner className="h-5 w-5 text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        {t('gitTree.loading')}
+                      </span>
+                    </div>
+                  )}
 
-                          // Only the drafted row shows the inline tag input; wiring the callbacks
-                          // solely on that row keeps every other (memoized) row from re-rendering.
-                          const isTagDraftRow = tagDraft?.oid === oid
+                  {isError && (
+                    <div className="flex flex-1 items-center justify-center">
+                      <p className="text-sm text-destructive">{t('gitGraph.loadError')}</p>
+                    </div>
+                  )}
 
-                          return (
+                  {!isLoading && !isError && nodes.length === 0 && (
+                    <EmptyRepoPanel repoPath={repoPath} />
+                  )}
+
+                  {!isLoading && !isError && nodes.length > 0 && (
+                    <>
+                      <GraphHeader columns={visibleColumns} authorOptions={authorOptions} />
+
+                      <div
+                        ref={parentRef}
+                        data-testid="commit-graph"
+                        className="flex-1 overflow-y-auto overflow-x-hidden"
+                      >
+                        <div
+                          style={{
+                            height: virtualizer.getTotalSize(),
+                            width: '100%',
+                            position: 'relative',
+                          }}
+                        >
+                          {virtualizer.getVirtualItems().map((virtualItem) => {
+                            const node = renderNodes[virtualItem.index]
+                            const oid = node.commit.oid
+
+                            // Dim rows the active filters exclude. Search and the author filter combine
+                            // with OR: a row stays fully visible if it matches EITHER active filter, and
+                            // is dimmed only when both are active-and-unmatched (or the single active one
+                            // is unmatched). With neither filter active, nothing is dimmed.
+                            const searchActive = matchSet !== null
+                            const authorActive = authorMatchSet !== null
+                            // A drag-hovered ref takes over the dimming: only its commits stay lit.
+                            const dimmed = dragHighlightSet
+                              ? !dragHighlightSet.has(oid)
+                              : (searchActive || authorActive) &&
+                                !(searchActive && matchSet.has(oid)) &&
+                                !(authorActive && authorMatchSet.has(oid))
+
+                            // Timeline preview: commits newer than the previewed HEAD collapse into a thin
+                            // colored marker (height + color animation) to show they'd be undone. The
+                            // transition is gated on preview mode so it never adds lag to normal scrolling
+                            // (where the virtualizer rewrites `translateY` on every frame).
+                            const previewRemoved = timelinePreviewRemoved?.has(oid) ?? false
+
+                            // Only the drafted row shows the inline tag input; wiring the callbacks
+                            // solely on that row keeps every other (memoized) row from re-rendering.
+                            const isTagDraftRow = tagDraft?.oid === oid
+
+                            return (
+                              <CommitDragSlot
+                                key={virtualItem.key}
+                                oid={oid}
+                                testId={`graph-row-${oid}`}
+                                selected={oid === primaryOid || selected.has(oid)}
+                                previewRemoved={previewRemoved}
+                                className={cn(
+                                  'hover:z-graph-row-hover',
+                                  previewRemoved && 'bg-destructive/15'
+                                )}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: rowHeight,
+                                  transformOrigin: 'top',
+                                  transform: `translateY(${virtualItem.start}px)${previewRemoved ? ' scaleY(0.22)' : ''}`,
+                                  opacity: previewRemoved ? 0.55 : 1,
+                                  transition: timelinePreviewOpen
+                                    ? 'transform 300ms ease, opacity 300ms ease, background-color 300ms ease'
+                                    : undefined,
+                                  overflow: previewRemoved ? 'hidden' : undefined,
+                                }}
+                              >
+                                <GraphRow
+                                  node={node}
+                                  columns={visibleColumns}
+                                  isSelected={selected.has(oid)}
+                                  isPrimary={oid === primaryOid}
+                                  onSelect={(e) => {
+                                    scrollToColumn(node.column)
+                                    if (bisectSettingUp) {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      handleBisectPick(oid)
+                                      return
+                                    }
+                                    // The CONFLICT row is the paused rebase's banner: clicking it
+                                    // brings both rebase panels back. It must *set* them visible, never
+                                    // toggle — `handleRowSelect` clears the selection when the row is
+                                    // already the primary one (which it normally is during a pause), and
+                                    // that closed the files panel the user had just asked to see.
+                                    if (oid === 'CONFLICT') {
+                                      showRebaseProgress(repoPath)
+                                      showRebaseFiles(repoPath)
+                                      selectSingle('CONFLICT')
+                                      return
+                                    }
+                                    handleRowSelect(e, virtualItem.index)
+                                  }}
+                                  onContextMenu={(e) => openMenuAt(e, oid)}
+                                  wipStats={wipStats}
+                                  onCommitWip={handleCommitWip}
+                                  isFirst={virtualItem.index === 0}
+                                  conflictInfo={conflictInfo}
+                                  dimmed={dimmed}
+                                  bisectStatus={bisectStatusMap.get(oid)}
+                                  worktreeWipStatuses={worktreeWipStatuses}
+                                  onOpenWorktree={setActiveWorkspacePath}
+                                  worktreeAgentActivity={worktreeAgentActivity}
+                                  wipAgentActivity={wipAgentActivity}
+                                  wipRef={wipRef}
+                                  laneRef={laneRefByOid.get(oid)}
+                                  graphMaxColumn={graphMaxColumn}
+                                  graphScrollX={graphScrollX}
+                                  hiddenTags={hiddenTags}
+                                  hiddenBranches={hiddenBranches}
+                                  isTagDraft={isTagDraftRow}
+                                  onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
+                                  onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
+                                />
+                              </CommitDragSlot>
+                            )
+                          })}
+
+                          {/* Overflow zone: full height, above the colored bands (z-graph-overflow) but
+                        below the cells (z-content) — markers stay visible. */}
+                          {graphOverflowZone && (
                             <div
-                              key={virtualItem.key}
-                              data-testid={`graph-row-${oid}`}
-                              data-selected={oid === primaryOid || selected.has(oid)}
-                              data-preview-removed={previewRemoved || undefined}
-                              className={cn(
-                                'hover:z-graph-row-hover',
-                                previewRemoved && 'bg-destructive/15'
-                              )}
+                              data-testid="graph-overflow-zone"
+                              className="pointer-events-none absolute inset-y-0 z-graph-overflow"
                               style={{
-                                position: 'absolute',
+                                left: graphOverflowZone.left,
+                                width: graphOverflowZone.width,
+                                opacity: graphOverflowZone.opacity,
+                                // The zone is a transparent "card": its content keeps its own colors,
+                                // only an outer shadow on its left edge detaches it from the rest of
+                                // the graph.
+                                boxShadow: '-8px 0 12px -4px rgb(0 0 0 / 0.35)',
+                              }}
+                            />
+                          )}
+
+                          {/* Waterlines: full-width overlays on the boundaries, out of flow */}
+                          {waterlines.map((wl) => (
+                            <div
+                              key={wl.id}
+                              className="pointer-events-none absolute left-0 z-content w-full"
+                              style={{
                                 top: 0,
-                                left: 0,
-                                width: '100%',
                                 height: rowHeight,
-                                transformOrigin: 'top',
-                                transform: `translateY(${virtualItem.start}px)${previewRemoved ? ' scaleY(0.22)' : ''}`,
-                                opacity: previewRemoved ? 0.55 : 1,
-                                transition: timelinePreviewOpen
-                                  ? 'transform 300ms ease, opacity 300ms ease, background-color 300ms ease'
-                                  : undefined,
-                                overflow: previewRemoved ? 'hidden' : undefined,
+                                transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
                               }}
                             >
-                              <GraphRow
-                                node={node}
-                                columns={visibleColumns}
-                                isSelected={selected.has(oid)}
-                                isPrimary={oid === primaryOid}
-                                onSelect={(e) => {
-                                  scrollToColumn(node.column)
-                                  if (bisectSettingUp) {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    handleBisectPick(oid)
-                                    return
-                                  }
-                                  // The CONFLICT row is the paused rebase's banner: clicking it
-                                  // brings both rebase panels back. It must *set* them visible, never
-                                  // toggle — `handleRowSelect` clears the selection when the row is
-                                  // already the primary one (which it normally is during a pause), and
-                                  // that closed the files panel the user had just asked to see.
-                                  if (oid === 'CONFLICT') {
-                                    showRebaseProgress(repoPath)
-                                    showRebaseFiles(repoPath)
-                                    selectSingle('CONFLICT')
-                                    return
-                                  }
-                                  handleRowSelect(e, virtualItem.index)
-                                }}
-                                onContextMenu={(e) => openMenuAt(e, oid)}
-                                wipStats={wipStats}
-                                onCommitWip={handleCommitWip}
-                                isFirst={virtualItem.index === 0}
-                                conflictInfo={conflictInfo}
-                                dimmed={dimmed}
-                                bisectStatus={bisectStatusMap.get(oid)}
-                                worktreeWipStatuses={worktreeWipStatuses}
-                                onOpenWorktree={setActiveWorkspacePath}
-                                worktreeAgentActivity={worktreeAgentActivity}
-                                wipAgentActivity={wipAgentActivity}
-                                wipRef={wipRef}
-                                laneRef={laneRefByOid.get(oid)}
-                                graphMaxColumn={graphMaxColumn}
-                                graphScrollX={graphScrollX}
-                                hiddenTags={hiddenTags}
-                                hiddenBranches={hiddenBranches}
-                                isTagDraft={isTagDraftRow}
-                                onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
-                                onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
-                              />
+                              <Waterline label={wl.label} />
                             </div>
-                          )
-                        })}
-
-                        {/* Overflow zone: full height, above the colored bands (z-graph-overflow) but
-                        below the cells (z-content) — markers stay visible. */}
-                        {graphOverflowZone && (
-                          <div
-                            data-testid="graph-overflow-zone"
-                            className="pointer-events-none absolute inset-y-0 z-graph-overflow"
-                            style={{
-                              left: graphOverflowZone.left,
-                              width: graphOverflowZone.width,
-                              opacity: graphOverflowZone.opacity,
-                              // The zone is a transparent "card": its content keeps its own colors,
-                              // only an outer shadow on its left edge detaches it from the rest of
-                              // the graph.
-                              boxShadow: '-8px 0 12px -4px rgb(0 0 0 / 0.35)',
-                            }}
-                          />
-                        )}
-
-                        {/* Waterlines: full-width overlays on the boundaries, out of flow */}
-                        {waterlines.map((wl) => (
-                          <div
-                            key={wl.id}
-                            className="pointer-events-none absolute left-0 z-content w-full"
-                            style={{
-                              top: 0,
-                              height: rowHeight,
-                              transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
-                            }}
-                          >
-                            <Waterline label={wl.label} />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
+                    </>
+                  )}
+                </>
+              )}
 
-            {terminalOpen ? (
-              <TerminalPanel path={repoPath} />
-            ) : (
-              <TerminalStatusBar path={repoPath} />
-            )}
-          </div>
+              {terminalOpen ? (
+                <TerminalPanel path={repoPath} />
+              ) : (
+                <TerminalStatusBar path={repoPath} />
+              )}
+            </div>
 
-          {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
+            {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
           resolution, or commit details */}
-          {bisectActive ? (
-            <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-              <BisectPanel repoPath={repoPath} />
-            </GraphSidePanel>
-          ) : aiPanelTarget ? (
-            <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-              {/* Keyed on the subject so switching remounts with that subject's remembered
-              explanation instead of the previous one's. */}
-              {aiPanelTarget.kind === 'search' ? (
-                <AiCommitSearchPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
-              ) : aiPanelTarget.kind === 'working' ? (
-                <WorkingExplanationPanel
-                  repoPath={repoPath}
-                  onClose={() => setAiPanelTarget(null)}
-                />
-              ) : aiPanelTarget.kind === 'branch' ? (
-                <BranchExplanationPanel
-                  key={`branch:${aiPanelTarget.branch}`}
-                  repoPath={repoPath}
-                  branch={aiPanelTarget.branch}
-                  baseRef={aiPanelTarget.baseRef}
-                  onClose={() => setAiPanelTarget(null)}
-                />
-              ) : aiPanelTarget.kind === 'summaries' ? (
-                <DailySummariesPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
-              ) : aiPanelTarget.kind === 'reviewWorking' ? (
-                <CodeReviewPanel
-                  repoPath={repoPath}
-                  target={{ scope: 'working' }}
-                  onClose={() => setAiPanelTarget(null)}
-                />
-              ) : aiPanelTarget.kind === 'reviewBranch' ? (
-                <CodeReviewPanel
-                  key={`review:${aiPanelTarget.branch}`}
-                  repoPath={repoPath}
-                  target={{ scope: 'branch', branch: aiPanelTarget.branch }}
-                  baseRef={aiPanelTarget.baseRef}
-                  onClose={() => setAiPanelTarget(null)}
-                />
-              ) : (
-                <CommitExplanationPanel
-                  key={`commit:${aiPanelTarget.oid}`}
-                  repoPath={repoPath}
-                  commit={aiPanelTarget}
-                  onClose={() => setAiPanelTarget(null)}
-                />
-              )}
-            </GraphSidePanel>
-          ) : patchMode ? (
-            <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-              <PatchWorkspacePanel repoPath={repoPath} />
-            </GraphSidePanel>
-          ) : healthOpen ? (
-            <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-              <PackageHealthPanel repoPath={repoPath} />
-            </GraphSidePanel>
-          ) : activePrNumber != null ? (
-            prFilesVisible ? (
+            {bisectActive ? (
               <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
+                <BisectPanel repoPath={repoPath} />
               </GraphSidePanel>
-            ) : null
-          ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
-            <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-              {isConflictPanelOpen ? (
-                <ConflictResolutionPanel
-                  repoPath={repoPath}
-                  activeFile={conflictFilePath}
-                  onSelectFile={setConflictFilePath}
-                  onClose={closeConflictPanel}
-                />
-              ) : isMultiSelect ? (
-                <MultiCommitDetailsPanel
-                  nodes={selectedCommitNodes}
-                  repoPath={repoPath}
-                  onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                  onClose={clearSelection}
-                />
-              ) : (
-                <CommitDetailsPanel
-                  node={primaryNode}
-                  repoPath={repoPath}
-                  isHead={isSelectedCommitHead}
-                  onSelectCommit={selectSingle}
-                  onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                  onClose={clearSelection}
-                />
-              )}
-            </GraphSidePanel>
-          ) : null}
+            ) : aiPanelTarget ? (
+              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+                {/* Keyed on the subject so switching remounts with that subject's remembered
+              explanation instead of the previous one's. */}
+                {aiPanelTarget.kind === 'search' ? (
+                  <AiCommitSearchPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
+                ) : aiPanelTarget.kind === 'working' ? (
+                  <WorkingExplanationPanel
+                    repoPath={repoPath}
+                    onClose={() => setAiPanelTarget(null)}
+                  />
+                ) : aiPanelTarget.kind === 'branch' ? (
+                  <BranchExplanationPanel
+                    key={`branch:${aiPanelTarget.branch}`}
+                    repoPath={repoPath}
+                    branch={aiPanelTarget.branch}
+                    baseRef={aiPanelTarget.baseRef}
+                    onClose={() => setAiPanelTarget(null)}
+                  />
+                ) : aiPanelTarget.kind === 'summaries' ? (
+                  <DailySummariesPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
+                ) : aiPanelTarget.kind === 'reviewWorking' ? (
+                  <CodeReviewPanel
+                    repoPath={repoPath}
+                    target={{ scope: 'working' }}
+                    onClose={() => setAiPanelTarget(null)}
+                  />
+                ) : aiPanelTarget.kind === 'reviewBranch' ? (
+                  <CodeReviewPanel
+                    key={`review:${aiPanelTarget.branch}`}
+                    repoPath={repoPath}
+                    target={{ scope: 'branch', branch: aiPanelTarget.branch }}
+                    baseRef={aiPanelTarget.baseRef}
+                    onClose={() => setAiPanelTarget(null)}
+                  />
+                ) : (
+                  <CommitExplanationPanel
+                    key={`commit:${aiPanelTarget.oid}`}
+                    repoPath={repoPath}
+                    commit={aiPanelTarget}
+                    onClose={() => setAiPanelTarget(null)}
+                  />
+                )}
+              </GraphSidePanel>
+            ) : patchMode ? (
+              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+                <PatchWorkspacePanel repoPath={repoPath} />
+              </GraphSidePanel>
+            ) : healthOpen ? (
+              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+                <PackageHealthPanel repoPath={repoPath} />
+              </GraphSidePanel>
+            ) : activePrNumber != null ? (
+              prFilesVisible ? (
+                <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+                  <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
+                </GraphSidePanel>
+              ) : null
+            ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
+              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
+                {isConflictPanelOpen ? (
+                  <ConflictResolutionPanel
+                    repoPath={repoPath}
+                    activeFile={conflictFilePath}
+                    onSelectFile={setConflictFilePath}
+                    onClose={closeConflictPanel}
+                  />
+                ) : isMultiSelect ? (
+                  <MultiCommitDetailsPanel
+                    nodes={selectedCommitNodes}
+                    repoPath={repoPath}
+                    onSelectFileDiff={(file) => setActiveDiffFile(file)}
+                    onClose={clearSelection}
+                  />
+                ) : (
+                  <CommitDetailsPanel
+                    node={primaryNode}
+                    repoPath={repoPath}
+                    isHead={isSelectedCommitHead}
+                    onSelectCommit={selectSingle}
+                    onSelectFileDiff={(file) => setActiveDiffFile(file)}
+                    onClose={clearSelection}
+                  />
+                )}
+              </GraphSidePanel>
+            ) : null}
 
-          {/* Overlays (dialogs triggered by the native menu) */}
-          <GitGraphOverlayManager
-            repoPath={repoPath}
-            nodes={nodes}
-            primaryOid={primaryOid}
-            protectedBranches={protectedBranches}
-            pendingAction={pendingAction}
-            onClearPendingAction={() => setPendingAction(null)}
-          />
+            {/* Overlays (dialogs triggered by the native menu) */}
+            <GitGraphOverlayManager
+              repoPath={repoPath}
+              nodes={nodes}
+              primaryOid={primaryOid}
+              protectedBranches={protectedBranches}
+              pendingAction={pendingAction}
+              onClearPendingAction={() => setPendingAction(null)}
+            />
 
-          {/* The tag dialogs and the remote-branch delete confirmation are NOT mounted here: they
+            {/* Confirmation for a commit dropped on another commit (combine) or into a gap
+              (reorder) — nothing is rewritten until it is accepted. */}
+            <CommitReorderDialog
+              pending={pendingReorder}
+              busy={reorderBusy}
+              onCancel={cancelReorder}
+              onConfirm={(mode) => void confirmReorder(mode)}
+            />
+
+            {/* The tag dialogs and the remote-branch delete confirmation are NOT mounted here: they
               are about a ref rather than a commit in this page, and this component is unmounted
               whenever the file explorer is open — which used to take an open dialog down with it.
               `RepoGraphWorkspace` mounts them from the shared store state this menu writes. */}
-        </div>
+          </div>
+        </CommitDragProvider>
       </TagMenuProvider>
     </RefDropProvider>
   )
