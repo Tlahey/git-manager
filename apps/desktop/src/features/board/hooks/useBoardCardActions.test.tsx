@@ -57,6 +57,7 @@ function renderActions(
   const mutateDetail = vi.fn(async (writer?: unknown, _options?: unknown) =>
     typeof writer === 'function' ? await (writer as () => Promise<unknown>)() : undefined
   )
+  const revalidateAllDetails = vi.fn()
   const { result } = renderHook(() =>
     useBoardCardActions({
       repoPath: path,
@@ -66,6 +67,7 @@ function renderActions(
         boardDetail: activeBoard ? { board: activeBoard, cards: [] } : undefined,
         cardsLoading: false,
         mutateDetail: mutateDetail as never,
+        revalidateAllDetails,
         revisionFor: (b) => b.revision,
         withConflictToast: (run) => run(),
       },
@@ -76,7 +78,7 @@ function renderActions(
       token: 'tok',
     })
   )
-  return { result, mutateDetail }
+  return { result, mutateDetail, revalidateAllDetails }
 }
 
 beforeEach(() => {
@@ -145,6 +147,25 @@ describe('useBoardCardActions — moveCardToBoard', () => {
   it('refuses a board that no longer exists', async () => {
     const { result } = renderActions()
     await expect(result.current.moveCardToBoard(makeCard(), 'gone', 'todo')).rejects.toThrow()
+  })
+
+  /**
+   * The destination board's cards are cached under its own SWR key, which `mutateDetail` — bound to
+   * the board on screen — cannot reach. Without dropping it, switching to the board the card was
+   * just moved to showed it *without* the card, and went on doing so: nothing else asks for that
+   * key again. Found in e2e (`board-cards.feature`), where the destination still rendered three
+   * empty columns 30 seconds after the move.
+   */
+  it("drops every board's cached cards, not just the one on screen", async () => {
+    localBackend.moveCardsToBoard.mockResolvedValue(undefined)
+    const { result, revalidateAllDetails } = renderActions(local, [
+      local,
+      makeBoard({ id: 'b2', source: 'local' }),
+    ])
+
+    await result.current.moveCardToBoard(makeCard({ boardId: 'b1' }), 'b2', 'done')
+
+    expect(revalidateAllDetails).toHaveBeenCalled()
   })
 })
 
@@ -290,6 +311,7 @@ describe('useBoardCardActions — createCard', () => {
           boardDetail: { board: local, cards: [] },
           cardsLoading: false,
           mutateDetail: vi.fn() as never,
+          revalidateAllDetails: vi.fn(),
           revisionFor: (b) => b.revision,
           withConflictToast: (run) => run(),
         },
@@ -366,6 +388,7 @@ describe('useBoardCardActions — moveCard (the optimistic one)', () => {
           boardDetail: undefined,
           cardsLoading: true,
           mutateDetail: vi.fn() as never,
+          revalidateAllDetails: vi.fn(),
           revisionFor: (b) => b.revision,
           withConflictToast: (run) => run(),
         },
