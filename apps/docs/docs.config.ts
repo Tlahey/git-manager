@@ -122,6 +122,12 @@ export const DOC_SECTIONS: DocSection[] = [
     ],
   },
   {
+    // Tracking the work rather than the code — one repository's own board, whose cards live in its
+    // `.git`. Sits just above Launchpad, which is the same concern read across every repository.
+    title: 'Planning',
+    features: ['board'],
+  },
+  {
     title: 'Launchpad',
     features: ['launchpad-prs', 'launchpad-organize', 'launchpad-issues', 'launchpad-commit-stats'],
   },
