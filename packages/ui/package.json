@@ -9,6 +9,7 @@
     "./globals.css": "./src/globals.css"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src stories",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",

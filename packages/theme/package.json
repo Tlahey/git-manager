@@ -10,6 +10,7 @@
     "./themes/*.css": "./src/themes/*.css"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src stories",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

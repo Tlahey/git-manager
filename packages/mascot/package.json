@@ -9,6 +9,7 @@
     "./element": "./src/element.ts"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src stories",
     "typecheck": "tsc --noEmit",
     "generate": "node scripts/generate.mjs",
     "storybook": "storybook dev -p 6007",
