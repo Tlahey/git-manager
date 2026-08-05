@@ -5,6 +5,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
+import { all as allHighlightLanguages } from 'lowlight'
 import { authoredMarkdownSanitizeSchema, markdownSanitizeSchema } from './sanitizeSchema'
 import { CodeBlock } from './components/CodeBlock'
 import { MarkdownLink } from './components/MarkdownLink'
@@ -87,11 +88,16 @@ export function MarkdownRenderer({
         // `rehype-slug` runs after the sanitizer on purpose: the ids it generates are ours, and
         // the schema prefixes any id coming from the document with `user-content-` to keep it from
         // clobbering the app's own elements. Without it a README's table of contents links nowhere.
+        //
+        // rehype-highlight registers only its "common" ~40-language subset by default, which is
+        // missing languages this app's own docs use (toml for Cargo.toml, dockerfile, ...) — a
+        // fenced block in any of them would silently render unhighlighted. Passing the full `all`
+        // grammar set from lowlight makes highlighting depend on the fence's language tag alone.
         rehypePlugins={[
           rehypeRaw,
           [rehypeSanitize, authored ? authoredMarkdownSanitizeSchema : markdownSanitizeSchema],
           rehypeSlug,
-          rehypeHighlight,
+          [rehypeHighlight, { languages: allHighlightLanguages }],
         ]}
         components={{
           a: MarkdownLink,

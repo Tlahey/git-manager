@@ -24,9 +24,24 @@ describe('CodeBlock — inline vs fenced', () => {
     expect(screen.queryByTestId('code-block-copy-button')).not.toBeInTheDocument()
   })
 
-  it('treats code with no language class as inline, which is how the renderer signals it', () => {
+  it('only treats code as inline when explicitly told to, never by guessing from className', () => {
+    // MarkdownRenderer is the one place that decides inline vs. fenced (it also checks for a
+    // newline, which className alone can't do) and always passes `inline` explicitly — so absent
+    // that flag, a bare `!className` guess must not override it. See the regression below for the
+    // case this used to break: a fenced block with no language tag.
     render(<CodeBlock>plain</CodeBlock>)
-    expect(screen.getByTestId('inline-code')).toBeInTheDocument()
+    expect(screen.queryByTestId('inline-code')).not.toBeInTheDocument()
+    expect(screen.getByTestId('code-block')).toBeInTheDocument()
+  })
+
+  it('renders a fenced block with no language tag as a real code block, not inline text', () => {
+    // Regression: a plain ``` fence (no language) also has no `className`, which CodeBlock used to
+    // read as "this must be inline" — even though MarkdownRenderer correctly computed `inline=false`
+    // for it (multi-line content). The explicit `inline` flag must win.
+    render(<CodeBlock inline={false}>{'a/\nb/\nc/\n'}</CodeBlock>)
+    expect(screen.queryByTestId('inline-code')).not.toBeInTheDocument()
+    expect(screen.getByTestId('code-block')).toBeInTheDocument()
+    expect(screen.getByText('TEXT')).toBeInTheDocument()
   })
 
   it('renders a fenced block with its language in the header', () => {
