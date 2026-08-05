@@ -32,9 +32,6 @@ function baseProps(
     onChangeActiveTab: vi.fn(),
     activeLeftPanel: 'sidebar',
     onChangeActiveLeftPanel: vi.fn(),
-    isProcessing: false,
-    onToggleStage: vi.fn(),
-    onRollback: vi.fn(),
     ...overrides,
   }
 }
@@ -189,12 +186,7 @@ describe('DiffToolbar — folding contract with diffToolbar.css', () => {
     for (const testId of ['diff-tab-diff', 'diff-tab-file', 'diff-tab-preview']) {
       expect(screen.getByTestId(testId).querySelector('.diff-toolbar-tab-label')).not.toBeNull()
     }
-    for (const testId of [
-      'diff-blame-toggle',
-      'diff-history-toggle',
-      'diff-stage-toggle',
-      'diff-discard',
-    ]) {
+    for (const testId of ['diff-blame-toggle', 'diff-history-toggle']) {
       expect(screen.getByTestId(testId).querySelector('.diff-toolbar-action-label')).not.toBeNull()
     }
   })
@@ -206,8 +198,7 @@ describe('DiffToolbar — folding contract with diffToolbar.css', () => {
     expect(screen.getByRole('button', { name: 'Diff' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Blame' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Stage File' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'History' })).toBeInTheDocument()
   })
 
   it('clips the file identity rather than letting it run over the tabs', () => {
@@ -248,56 +239,19 @@ describe('DiffToolbar — blame/history panel toggle', () => {
 })
 
 describe('DiffToolbar — WIP actions', () => {
-  it('hides stage/discard actions when not WIP', () => {
-    render(<DiffToolbar {...baseProps({ isWip: false, diffData: diffFile() })} />)
-    expect(screen.queryByText('Discard')).not.toBeInTheDocument()
-  })
-
-  it('hides stage/discard actions when there is no diff data, even if WIP', () => {
-    render(<DiffToolbar {...baseProps({ isWip: true, diffData: undefined })} />)
-    expect(screen.queryByText('Discard')).not.toBeInTheDocument()
-  })
-
-  it('shows "Stage File" for an unstaged WIP file and calls onToggleStage', async () => {
-    const onToggleStage = vi.fn()
-    const user = userEvent.setup()
+  it('offers no stage or discard action, whatever the file state', () => {
+    // The working-tree panel on the right is where a file gets staged or discarded, for every
+    // file in the change set — including the one currently open here.
     render(
       <DiffToolbar
-        {...baseProps({
-          isWip: true,
-          diffData: diffFile(),
-          file: { path: 'a', staged: false },
-          onToggleStage,
-        })}
+        {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: false } })}
       />
     )
-    await user.click(screen.getByText('Stage File'))
-    expect(onToggleStage).toHaveBeenCalledOnce()
-  })
-
-  it('shows "Unstage" for a staged WIP file', () => {
-    render(
-      <DiffToolbar
-        {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: true } })}
-      />
-    )
-    expect(screen.getByText('Unstage')).toBeInTheDocument()
-  })
-
-  it('calls onRollback from the Discard button', async () => {
-    const onRollback = vi.fn()
-    const user = userEvent.setup()
-    render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), onRollback })} />)
-    await user.click(screen.getByText('Discard'))
-    expect(onRollback).toHaveBeenCalledOnce()
-  })
-
-  it('disables stage/discard while processing', () => {
-    render(
-      <DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), isProcessing: true })} />
-    )
-    expect(screen.getByText('Stage File').closest('button')).toBeDisabled()
-    expect(screen.getByText('Discard').closest('button')).toBeDisabled()
+    expect(screen.queryByText('Stage File')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unstage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Discard')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('diff-stage-toggle')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('diff-discard')).not.toBeInTheDocument()
   })
 })
 

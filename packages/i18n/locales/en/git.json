@@ -644,6 +644,7 @@
   "diffView.loading": "Loading diff…",
   "diffView.noDiffData": "No difference data found.",
   "diffView.noPendingChanges": "This file has no uncommitted changes.",
+  "diffView.showingLastChange": "No uncommitted changes — showing the last change to this file ({{sha}}).",
   "diffView.previewUnavailable": "No preview available for this file type.",
   "diffView.previewImageAlt": "Preview of {{path}}",
   "diffView.previewImageUnavailable": "This image can't be displayed — the file may have been moved or deleted.",

@@ -2,9 +2,6 @@ import { Button, Badge, Tag, Tooltip, cn } from '@git-manager/ui'
 import {
   X,
   ChevronLeft,
-  RotateCcw,
-  Plus,
-  Minus,
   Copy,
   Check as CheckedIcon,
   GitCompare,
@@ -49,21 +46,23 @@ interface DiffToolbarProps {
   onChangeActiveTab: (tab: 'diff' | 'file' | 'preview') => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   onChangeActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
-  isProcessing: boolean
-  // Both handlers are async in `DiffViewCenter` (one awaits the API, the other a confirmation
-  // dialog). The button discards the promise, but saying so in the type is what lets a test
-  // await the action instead of guessing when it settled.
-  onToggleStage: () => void | Promise<void>
-  onRollback: () => void | Promise<void>
   hasPreview?: boolean
 }
 
 /**
- * Header/toolbar for `DiffViewCenter`: file identity + status, diff/file view tabs, blame/history
- * toggle, and WIP stage/discard actions. Diff-viewing controls (change navigation, whitespace,
- * collapse-unchanged) live in `ConflictResolver`'s own header now that the diff tab renders
- * through `@git-manager/editor`'s `ThreeWayMergeEditor` instead of a raw Monaco diff editor.
- * Purely presentational — all state and handlers live in `DiffViewCenter`.
+ * Header/toolbar for `DiffViewCenter`: file identity + status, diff/file view tabs, and the
+ * blame/history toggle.
+ *
+ * It carries no stage/discard actions, deliberately. It used to, and that made the same file
+ * stageable from two places at once — here and in the working-tree panel on the right, which is
+ * where every other file in the change set is acted on. One file behaving differently from its
+ * neighbours because it happens to be the one open is the kind of split that costs more than the
+ * shortcut saves; the viewer shows, the panel acts.
+ *
+ * Diff-viewing controls (change navigation, whitespace, collapse-unchanged) live in
+ * `ConflictResolver`'s own header now that the diff tab renders through `@git-manager/editor`'s
+ * `ThreeWayMergeEditor` instead of a raw Monaco diff editor. Purely presentational — all state
+ * and handlers live in `DiffViewCenter`.
  */
 export function DiffToolbar({
   parsedPath,
@@ -77,9 +76,6 @@ export function DiffToolbar({
   onChangeActiveTab,
   activeLeftPanel,
   onChangeActiveLeftPanel,
-  isProcessing,
-  onToggleStage,
-  onRollback,
   hasPreview,
 }: DiffToolbarProps) {
   const { t } = useTranslation('git')
@@ -207,7 +203,7 @@ export function DiffToolbar({
         )}
       </div>
 
-      {/* Right Side: Blame/History toggles + Stage/Rollback actions */}
+      {/* Right Side: Blame/History toggles */}
       <div className="flex shrink-0 items-center gap-2">
         {/* Blame & History Toggles */}
         <div className="flex items-center overflow-hidden rounded border border-border bg-card">
@@ -237,31 +233,6 @@ export function DiffToolbar({
             }
           />
         </div>
-
-        {/* WIP Action buttons */}
-        {isWip && diffData && (
-          <>
-            <ActionButton
-              testId="diff-stage-toggle"
-              icon={
-                file.staged ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />
-              }
-              label={file.staged ? t('diffToolbar.unstage') : t('diffToolbar.stageFile')}
-              variant={file.staged ? 'outline' : 'default'}
-              disabled={isProcessing}
-              onClick={onToggleStage}
-            />
-            <ActionButton
-              testId="diff-discard"
-              icon={<RotateCcw className="h-3.5 w-3.5" />}
-              label={t('diffToolbar.discard')}
-              variant="destructive"
-              disabled={isProcessing}
-              className="hover:bg-destructive/90"
-              onClick={onRollback}
-            />
-          </>
-        )}
 
         <Tooltip content={t('actions.close')}>
           <Button

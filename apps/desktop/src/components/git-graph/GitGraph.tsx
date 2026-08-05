@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
@@ -100,7 +99,6 @@ export function GitGraph({
 }: GitGraphProps) {
   const { t } = useTranslation('git')
   const terminalOpen = useTerminalStore((s) => s.open)
-  const queryClient = useQueryClient()
   const { protectedBranches } = useEffectiveRepoSettings(repoPath)
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
@@ -632,10 +630,6 @@ export function GitGraph({
                   repoPath={repoPath}
                   file={activeDiffFile}
                   onClose={() => setActiveDiffFile(null)}
-                  onRefresh={() => {
-                    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-                    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-                  }}
                 />
               ) : rebaseViewOpen && rebaseState ? (
                 <RebaseProgressCenter
