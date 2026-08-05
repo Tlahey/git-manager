@@ -61,6 +61,70 @@ public class Main {
     expect(codeBlock.querySelector('.hljs-keyword')).not.toBeNull()
   })
 
+  it('highlights a language outside rehype-highlight\'s default "common" subset', () => {
+    // toml isn't in lowlight's `common` bundle (rehype-highlight's default) — this only passes
+    // because MarkdownRenderer explicitly registers lowlight's `all` grammar set instead.
+    const markdown = `
+\`\`\`toml
+[package]
+name = "git-manager"
+version = "0.1.0"
+\`\`\`
+`
+    render(<MarkdownRenderer content={markdown} />)
+
+    const codeBlock = screen.getByTestId('code-block')
+    expect(screen.getByText('TOML')).toBeInTheDocument()
+    expect(codeBlock.querySelector('.hljs-section, .hljs-string')).not.toBeNull()
+  })
+
+  it('renders a fenced block with no language tag as a real code block, not inline text', () => {
+    // Regression: a plain ``` fence carries no `className` (nothing to highlight, no `language-*`
+    // class gets added), and CodeBlock used to read that missing className as "must be inline",
+    // ignoring the `inline={false}` MarkdownRenderer had already worked out from the newlines.
+    const markdown = `
+\`\`\`
+meme-swap/
+├── apps/
+└── packages/
+\`\`\`
+`
+    render(<MarkdownRenderer content={markdown} />)
+
+    expect(screen.getByTestId('code-block')).toBeInTheDocument()
+    expect(screen.queryByTestId('inline-code')).not.toBeInTheDocument()
+    expect(screen.getByText('TEXT')).toBeInTheDocument()
+    expect(screen.getByTestId('code-block')).toHaveTextContent('meme-swap/')
+  })
+
+  it('copies the full source of a highlighted block, not just the untokenized fragments', async () => {
+    // Regression: `rehype-highlight` rewrites a fenced block's children into `hljs-*` <span>
+    // elements, one per token. `codeText` used to stop at the first non-string/non-array child, so
+    // the copy button silently dropped every keyword, string literal and identifier it had tokenized.
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    const markdown = `
+\`\`\`java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello Java");
+    }
+}
+\`\`\`
+`
+    render(<MarkdownRenderer content={markdown} />)
+    fireEvent.click(screen.getByTestId('code-block-copy-button'))
+
+    expect(writeText).toHaveBeenCalledWith(
+      'public class Main {\n' +
+        '    public static void main(String[] args) {\n' +
+        '        System.out.println("Hello Java");\n' +
+        '    }\n' +
+        '}'
+    )
+  })
+
   it('renders raw HTML tags like div align="center", sub, and img with relative paths', () => {
     const markdown = `
 <div align="center">

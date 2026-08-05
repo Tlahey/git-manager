@@ -19,8 +19,11 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
 
   const [copied, setCopied] = useState(false)
 
-  // Handle inline code snippet e.g. `const x = 1`
-  if (inline || !className) {
+  // Handle inline code snippet e.g. `const x = 1`. Trust the caller's `inline` flag alone: a fenced
+  // block with no language tag (a plain ``` fence) also has no `className`, so falling back to
+  // `!className` here used to misclassify it as inline — MarkdownRenderer already tells us apart by
+  // checking for a newline too, which a bare `!className` check can't do.
+  if (inline) {
     return (
       <code
         className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[11px] text-primary"
