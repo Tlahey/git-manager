@@ -26,16 +26,10 @@ import {
   computeInitialPlacements,
   deriveLivePlacements,
 } from './mergeBlockLayout'
-import { computeMergeVisuals } from './mergeDecorations'
 import { DEFAULT_LINE_HEIGHT, GAP_WIDTH } from './mergeViewConfig'
-import { computeTwoWayVisuals, type InternalMergeView } from './conflict-resolver/twoWayView'
-import {
-  type PaneSide,
-  collapsedRegionsForPane,
-  toBannerZones,
-  toHiddenRanges,
-} from './conflict-resolver/collapsedRegions'
-import { getTopForLineNumberSafe } from './conflict-resolver/editorGeometry'
+import { type InternalMergeView } from './conflict-resolver/twoWayView'
+import { type PaneSide } from './conflict-resolver/collapsedRegions'
+import { useLineTopGeometry } from './conflict-resolver/hooks/useLineTopGeometry'
 import { useMergeEditorRefs } from './conflict-resolver/hooks/useMergeEditorRefs'
 import { useScrollPreservation } from './conflict-resolver/hooks/useScrollPreservation'
 import { usePanelResize } from './conflict-resolver/hooks/usePanelResize'
@@ -180,8 +174,27 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     )
 
     // Compute diff dynamically in 2-way mode
-    const dynamicView = useTwoWayDiffView(isTwoWay, monaco, original, modified, whitespaceMode)
+    const dynamicDiff = useTwoWayDiffView(isTwoWay, monaco, original, modified, whitespaceMode)
+    const dynamicView = dynamicDiff?.view ?? null
     const viewToUse = isTwoWay ? (dynamicView ?? dummyView) : staticView
+
+    /* The texts the panes actually show in 2-way mode: the ones the current geometry describes,
+     * NOT the newest ones handed down as props.
+     *
+     * Monaco answers the diff asynchronously, so for a moment after switching files the props are
+     * the new file while the blocks are still the old one's. Painting the new text then means
+     * painting it with no blocks — no collapsed regions, no decorations — and the collapse snaps
+     * in a frame or two later, which is exactly the flicker this avoids. Deferring keeps the
+     * previous file on screen for that moment instead, then swaps text, blocks and placements in
+     * a single commit.
+     *
+     * The fallback to the raw props is not just for the first render: a diff result may never
+     * arrive at all (Monaco computes it in the detached editor `useTwoWayDiffView` creates, which
+     * an environment can leave unlaid-out and therefore silent — this package's own Storybook is
+     * one). Deferring unconditionally would turn "no diff geometry" into "no text", which is a far
+     * worse failure than showing the file uncollapsed. Nothing to defer *to* means show it. */
+    const displayedOriginal = isTwoWay ? (dynamicDiff?.original ?? original ?? '') : undefined
+    const displayedModified = isTwoWay ? (dynamicDiff?.modified ?? modified ?? '') : undefined
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     // The resolver's own root. Carries `--merge-editor-background` — Monaco's actual resolved
@@ -199,40 +212,45 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     blocksRef.current = viewToUse.blocks
 
     const initialCenterText = useMemo(() => {
-      if (isTwoWay) return modified ?? ''
+      if (isTwoWay) return displayedModified ?? ''
       return computeInitialCenterText(viewToUse.blocks)
-    }, [isTwoWay, modified, viewToUse.blocks])
+    }, [isTwoWay, displayedModified, viewToUse.blocks])
 
-    const [placements, setPlacements] = useState<Map<number, BlockPlacement>>(() => {
+    const [placementsState, setPlacementsState] = useState<Map<number, BlockPlacement>>(() => {
       if (isTwoWay) return new Map()
       return computeInitialPlacements(viewToUse.blocks)
     })
+
+    /* 2-panel placements are a pure function of the blocks — the panes are read-only, so nothing
+     * ever mutates them. Deriving instead of pushing them through an effect matters for the same
+     * reason `displayedOriginal` exists: an effect would land a render *after* the new blocks, so
+     * there would be one commit where the new content is paired with the previous file's
+     * placements. Read-only mode has no state to lose by recomputing. */
+    const twoWayPlacements = useMemo(() => {
+      if (!isTwoWay || !dynamicView) return null
+      const derived = new Map<number, BlockPlacement>()
+      for (const block of dynamicView.blocks) {
+        derived.set(block.blockId, {
+          blockId: block.blockId,
+          centerStartLine: block.oursStartLine, // modified start line!
+          centerLineCount: block.oursLineCount, // modified line count!
+          oursIncluded: false,
+          theirsIncluded: false,
+          oursTouched: false,
+          theirsTouched: false,
+        })
+      }
+      return derived
+    }, [isTwoWay, dynamicView])
+
+    const placements = twoWayPlacements ?? placementsState
     const placementsRef = useRef(placements)
     placementsRef.current = placements
 
     const updatePlacementsStateAndRef = useCallback((next: Map<number, BlockPlacement>) => {
       placementsRef.current = next
-      setPlacements(next)
+      setPlacementsState(next)
     }, [])
-
-    // Update placements when dynamicView updates in 2-way mode
-    useEffect(() => {
-      if (isTwoWay && dynamicView) {
-        const initialPlacements = new Map<number, BlockPlacement>()
-        dynamicView.blocks.forEach((block) => {
-          initialPlacements.set(block.blockId, {
-            blockId: block.blockId,
-            centerStartLine: block.oursStartLine, // modified start line!
-            centerLineCount: block.oursLineCount, // modified line count!
-            oursIncluded: false,
-            theirsIncluded: false,
-            oursTouched: false,
-            theirsTouched: false,
-          })
-        })
-        updatePlacementsStateAndRef(initialPlacements)
-      }
-    }, [isTwoWay, dynamicView, updatePlacementsStateAndRef])
 
     const editors = useMergeEditorRefs()
     const { ignoreScrollSyncRef, executeWithScrollPreservation, restoreSavedScrollTops } =
@@ -260,11 +278,23 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       editorsReady,
     })
 
+    const lineTopForSide = useLineTopGeometry({
+      blocksRef,
+      placementsRef,
+      expandedBlocks,
+      collapseUnchanged,
+      isTwoWay,
+      showBlockBorders,
+      highlightMode,
+    })
+
     /** A line's top Y offset in a pane's content space, accounting for collapsed (hidden)
      * regions and every alignment/banner view zone above it — the shared geometry basis for
-     * scroll sync and connector ribbons. */
+     * scroll sync and connector ribbons. The pane editor is only read for its line height; the
+     * geometry itself comes from `useLineTopGeometry`'s per-state memoized index (see that file
+     * for why resolving it per call is a performance trap on large files). */
     const getTop = useCallback(
-      (paneEditor: editor.IStandaloneCodeEditor, lineNumber: number, side: PaneSide): number => {
+      (_paneEditor: editor.IStandaloneCodeEditor, lineNumber: number, side: PaneSide): number => {
         const lineHeight =
           editors.monacoRef.current && editors.centerEditorRef.current
             ? editors.centerEditorRef.current.getOption(
@@ -272,38 +302,9 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               )
             : DEFAULT_LINE_HEIGHT
 
-        const collapsedRegions = collapseUnchanged
-          ? collapsedRegionsForPane(blocksRef.current, placementsRef.current, expandedBlocks, side)
-          : []
-
-        const visuals = isTwoWay
-          ? computeTwoWayVisuals(blocksRef.current, placementsRef.current, showBlockBorders)
-          : computeMergeVisuals(
-              blocksRef.current,
-              placementsRef.current,
-              showBlockBorders,
-              highlightMode === 'lines'
-            )
-
-        // In 2-way mode the `ours` pane doesn't exist — its visuals slot is always empty.
-        const paneVisualZones = isTwoWay && side === 'ours' ? [] : visuals[side].viewZones
-        const viewZones = [
-          ...toBannerZones(collapsedRegions),
-          ...paneVisualZones.map((vz) => ({
-            afterLineNumber: vz.afterLineNumber,
-            heightInLines: vz.heightInLines,
-          })),
-        ]
-
-        return getTopForLineNumberSafe(
-          paneEditor,
-          lineNumber,
-          lineHeight,
-          toHiddenRanges(collapsedRegions),
-          viewZones
-        )
+        return lineTopForSide(side, lineNumber, lineHeight)
       },
-      [editors, isTwoWay, collapseUnchanged, expandedBlocks, highlightMode, showBlockBorders]
+      [editors, lineTopForSide]
     )
 
     // Dynamic conflict/change stats
@@ -367,7 +368,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       const model = editors.centerEditorRef.current?.getModel()
       if (!model) return
 
-      setPlacements((prev) => {
+      setPlacementsState((prev) => {
         const next = deriveLivePlacements(
           (line) => model.getLineContent(line),
           model.getLineCount(),
@@ -456,7 +457,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       [handleActionById]
     )
 
-    useMergeDecorations({
+    const { refreshIntraHighlights } = useMergeDecorations({
       editors,
       editorsReady,
       isTwoWay,
@@ -470,6 +471,11 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       updateActiveBlockIndex,
       restoreSavedScrollTops,
     })
+
+    // Read through a ref for the same reason `scheduleRecomputeRef` exists: the scroll listener
+    // below is registered once at pane mount and Monaco never re-subscribes it.
+    const refreshIntraHighlightsRef = useRef(refreshIntraHighlights)
+    refreshIntraHighlightsRef.current = refreshIntraHighlights
 
     // Host mount hook kept in a ref so pane mount callbacks don't re-wire when the host passes
     // a new inline function on every render.
@@ -494,12 +500,24 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           if (pane === 'center') editors.centerEditorRef.current = editorInstance
           if (pane === 'theirs') editors.theirsEditorRef.current = editorInstance
 
-          if (pane === 'ours')
+          // Two collections per pane: whole-line block fills, and the word-level highlights that
+          // refresh on scroll (see useMergeDecorations for why they must not share one).
+          if (pane === 'ours') {
             editors.oursDecorationsRef.current = editorInstance.createDecorationsCollection([])
-          if (pane === 'center')
+            editors.oursIntraDecorationsRef.current = editorInstance.createDecorationsCollection([])
+          }
+          if (pane === 'center') {
             editors.centerDecorationsRef.current = editorInstance.createDecorationsCollection([])
-          if (pane === 'theirs')
+            editors.centerIntraDecorationsRef.current = editorInstance.createDecorationsCollection(
+              []
+            )
+          }
+          if (pane === 'theirs') {
             editors.theirsDecorationsRef.current = editorInstance.createDecorationsCollection([])
+            editors.theirsIntraDecorationsRef.current = editorInstance.createDecorationsCollection(
+              []
+            )
+          }
 
           // Standalone monaco-editor (unlike a real VS Code webview) never exposes its resolved
           // theme colors as CSS custom properties, and `monaco.editor` has no theme-change event
@@ -539,6 +557,9 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             applyStickyBanners()
             if (pane === 'center') {
               updateActiveBlockIndex()
+              // Word-level highlights are computed for the visible range only, so scrolling is
+              // what brings the next screenful's into existence (coalesced to one frame).
+              refreshIntraHighlightsRef.current()
             }
           })
           // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
@@ -631,13 +652,13 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         return [
           {
             id: 'theirs' as const,
-            value: original ?? '',
+            value: displayedOriginal ?? '',
             readOnly: true,
             modelPath: `${modelPathPrefix}.original`,
           },
           {
             id: 'center' as const,
-            value: modified ?? '',
+            value: displayedModified ?? '',
             readOnly: true,
             modelPath: `${modelPathPrefix}.modified`,
           },
@@ -663,7 +684,14 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           modelPath: `${modelPathPrefix}#ours`,
         },
       ]
-    }, [isTwoWay, original, modified, modelPathPrefix, staticView, initialCenterText])
+    }, [
+      isTwoWay,
+      displayedOriginal,
+      displayedModified,
+      modelPathPrefix,
+      staticView,
+      initialCenterText,
+    ])
 
     const headerActions: ConflictResolverActionsConfig = {
       ...(typeof header === 'object' ? header : {}),

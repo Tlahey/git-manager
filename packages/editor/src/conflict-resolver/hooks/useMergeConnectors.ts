@@ -1,6 +1,8 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type MutableRefObject,
@@ -17,6 +19,12 @@ import {
   buildTwoWaySegments,
 } from '../connectorSegments'
 import type { PaneSide } from '../collapsedRegions'
+import {
+  EMPTY_SEGMENT_WINDOW,
+  sameSegmentWindow,
+  visibleSegmentWindow,
+  type SegmentWindow,
+} from '../visibleSegments'
 import { DEFAULT_LINE_HEIGHT } from '../../mergeViewConfig'
 import type { MergeEditorRefs } from './useMergeEditorRefs'
 
@@ -53,6 +61,14 @@ export function useMergeConnectors({
   const [rightSegments, setRightSegments] = useState<ConnectorSegment[]>([])
   const leftSegmentsRef = useRef<ConnectorSegment[]>([])
   const rightSegmentsRef = useRef<ConnectorSegment[]>([])
+  // Which slice of each gap's segments is currently mounted. Mirrored into refs because
+  // `applyScrollOffset` runs from Monaco's own scroll handler, outside React's render cycle.
+  const [windows, setWindows] = useState<{ left: SegmentWindow; right: SegmentWindow }>({
+    left: EMPTY_SEGMENT_WINDOW,
+    right: EMPTY_SEGMENT_WINDOW,
+  })
+  const leftWindowRef = useRef<SegmentWindow>(EMPTY_SEGMENT_WINDOW)
+  const rightWindowRef = useRef<SegmentWindow>(EMPTY_SEGMENT_WINDOW)
   const leftOverlayRef = useRef<HTMLDivElement | null>(null)
   const rightOverlayRef = useRef<HTMLDivElement | null>(null)
   // Each gap's own horizontal offset from containerRef, same measurement basis as
@@ -86,11 +102,37 @@ export function useMergeConnectors({
     const centerScroll = centerEditor.getScrollTop()
     const oursScroll = oursEditor ? oursEditor.getScrollTop() : 0
 
+    // Re-window before repainting: only the ribbons that can actually be seen are kept in the
+    // DOM, so both this repaint and the browser's rasterization stay bounded no matter how many
+    // hunks the file has (see visibleSegments.ts for the measurements behind this).
+    const viewportHeight = containerRef.current?.clientHeight ?? 0
+    const nextLeft = visibleSegmentWindow(
+      leftSegmentsRef.current,
+      theirsScroll,
+      centerScroll,
+      viewportHeight
+    )
+    const nextRight = isTwoWay
+      ? EMPTY_SEGMENT_WINDOW
+      : visibleSegmentWindow(rightSegmentsRef.current, centerScroll, oursScroll, viewportHeight)
+
+    if (
+      !sameSegmentWindow(leftWindowRef.current, nextLeft) ||
+      !sameSegmentWindow(rightWindowRef.current, nextRight)
+    ) {
+      leftWindowRef.current = nextLeft
+      rightWindowRef.current = nextRight
+      // Renders the new slice; the effect below then re-runs this function so the freshly mounted
+      // paths get their viewport-space `d` straight away instead of a frame later.
+      setWindows({ left: nextLeft, right: nextRight })
+      return
+    }
+
     updateConnectorPaths(
       leftOverlayRef.current,
       theirsScroll,
       centerScroll,
-      leftSegmentsRef.current,
+      leftSegmentsRef.current.slice(nextLeft.start, nextLeft.end),
       'left',
       gapPhaseOffsetsRef.current.left
     )
@@ -99,16 +141,20 @@ export function useMergeConnectors({
         rightOverlayRef.current,
         centerScroll,
         oursScroll,
-        rightSegmentsRef.current,
+        rightSegmentsRef.current.slice(nextRight.start, nextRight.end),
         'right',
         gapPhaseOffsetsRef.current.right
       )
     }
-  }, [editors, isTwoWay])
+  }, [editors, isTwoWay, containerRef])
 
-  useEffect(() => {
+  // Layout effect, not a plain one: the render that mounts a new slice paints it at whatever
+  // `d` the JSX computed from `ConflictResolver`'s (render-time, possibly a tick stale) scroll
+  // reads. Correcting that after paint would show one frame of misplaced ribbons on every scroll
+  // that crosses a segment boundary.
+  useLayoutEffect(() => {
     applyScrollOffset()
-  }, [leftSegments, rightSegments, applyScrollOffset])
+  }, [leftSegments, rightSegments, windows, applyScrollOffset])
 
   const connectorRafRef = useRef<number | null>(null)
 
@@ -258,10 +304,21 @@ export function useMergeConnectors({
     scheduleRecompute()
   }, [panelWidths, scheduleRecompute])
 
+  // What the overlays actually render. `updateConnectorPaths` matches paths purely by document
+  // order, so it is handed the identical slice — the two must never diverge.
+  const leftVisibleSegments = useMemo(
+    () => leftSegments.slice(windows.left.start, windows.left.end),
+    [leftSegments, windows.left]
+  )
+  const rightVisibleSegments = useMemo(
+    () => rightSegments.slice(windows.right.start, windows.right.end),
+    [rightSegments, windows.right]
+  )
+
   return {
     gapHeight,
-    leftSegments,
-    rightSegments,
+    leftSegments: leftVisibleSegments,
+    rightSegments: rightVisibleSegments,
     leftOverlayRef,
     rightOverlayRef,
     gapPhaseOffsets,

@@ -64,6 +64,15 @@ export function createFakeModel(initialValue: string) {
 
   return {
     getValue: () => text,
+    /** Real Monaco replaces a model's contents when the host hands the editor a new `value` for
+     * the same path — which the resolver relies on, since a 2-panel pane mounts before its diff
+     * geometry exists and is filled once it does. */
+    setValue: (next: string) => {
+      if (next === text) return
+      text = next
+      updateAltId()
+      fire()
+    },
     getLineCount: () => currentLines().length,
     getLineContent: (n: number) => currentLines()[n - 1] ?? '',
     getLineMaxColumn: (n: number) => (currentLines()[n - 1]?.length ?? 0) + 1,
@@ -192,6 +201,7 @@ export interface FakeEditorInstance {
   getScrollTop: () => number
   setScrollTop: (val: number) => void
   getTopForLineNumber: (line: number) => number
+  getVisibleRanges: () => { startLineNumber: number; endLineNumber: number }[]
   addOverlayWidget: (widget: FakeOverlayWidget) => void
   removeOverlayWidget: (widget: FakeOverlayWidget) => void
   addCommand: (keybinding: number, handler: () => void) => void
@@ -203,8 +213,10 @@ export interface FakeEditorInstance {
   revealLineInCenter: (line: number) => void
   setPosition: (pos: FakePosition) => void
   setHiddenAreas: (ranges: FakeRange[]) => void
-  /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
+  /** Test-only: every live decoration across all of the pane's collections, concatenated. */
   decorations: unknown[]
+  /** Test-only: one entry per `createDecorationsCollection` call, each holding its own items. */
+  decorationCollections: { items: unknown[] }[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
   viewZones: FakeViewZone[]
   /** Test-only: the currently-live overlay widgets (adds minus removes). */
@@ -237,11 +249,21 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
   const instance: FakeEditorInstance = {
     path,
     getModel: () => model,
+    // A pane owns more than one collection (whole-line block fills, and the word-level highlights
+    // that refresh independently on scroll — see useMergeDecorations). Each keeps its own array
+    // and `decorations` exposes their concatenation, exactly as Monaco composes them on screen:
+    // modelling a single shared array would let one collection's `set([])` wipe the other's.
     createDecorationsCollection: (initial) => {
-      instance.decorations = initial
+      const collection = { items: initial }
+      instance.decorationCollections.push(collection)
+      const sync = () => {
+        instance.decorations = instance.decorationCollections.flatMap((c) => c.items)
+      }
+      sync()
       return {
         set: (d: unknown[]) => {
-          instance.decorations = d
+          collection.items = d
+          sync()
         },
       }
     },
@@ -268,6 +290,15 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       scrollTop = val
     },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
+    getVisibleRanges: () =>
+      fakeVisibleRange.current
+        ? [
+            {
+              startLineNumber: fakeVisibleRange.current.start,
+              endLineNumber: fakeVisibleRange.current.end,
+            },
+          ]
+        : [],
     addOverlayWidget: (widget) => {
       instance.overlayWidgets.push(widget)
     },
@@ -313,6 +344,7 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       }
     },
     decorations: [],
+    decorationCollections: [],
     viewZones: [],
     overlayWidgets: [],
     commands,
@@ -329,6 +361,16 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
  * `${modelPathPrefix}.original`/`.modified` in 2-panel mode), so tests can look up e.g.
  * `fakeEditors.get(\`${modelPathPrefix}#center\`)` after rendering. */
 export const fakeEditors = new Map<string, FakeEditorInstance>()
+
+/** What every fake pane reports from `getVisibleRanges`, in line numbers.
+ *
+ * `null` (the default) makes it report nothing at all, which is what a real pane does before it
+ * has laid out — consumers then fall back to treating the whole file as visible. Set it to a
+ * narrow range to exercise anything scoped to the viewport (the word-level highlight pass), then
+ * let `resetFakeEditors` put it back. */
+export const fakeVisibleRange: { current: { start: number; end: number } | null } = {
+  current: null,
+}
 
 /** One entry per `ILineChange` Monaco's diff engine would report between two models — the
  * subset `buildDynamicMergeView` (ConflictResolver.tsx) actually reads. */
@@ -358,6 +400,7 @@ export const fakeDiffEditors: FakeDiffEditorInstance[] = []
 export function resetFakeEditors() {
   fakeEditors.clear()
   fakeDiffEditors.length = 0
+  fakeVisibleRange.current = null
 }
 
 /** A deliberately simple stand-in for Monaco's real line-diff algorithm: trims the common
@@ -503,6 +546,13 @@ function FakeMonacoEditorInner({ path, value, onMount }: FakeMonacoEditorProps) 
     onMount?.(instance, fakeMonacoInstance)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path])
+
+  // A pane's text can change without its path changing — the resolver defers a 2-panel pane's
+  // content until the diff describing it has landed, so the value arrives after the mount.
+  useEffect(() => {
+    fakeEditors.get(path)?.getModel().setValue(value)
+  }, [path, value])
+
   return null
 }
 
