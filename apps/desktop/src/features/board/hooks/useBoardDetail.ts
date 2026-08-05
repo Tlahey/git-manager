@@ -1,4 +1,4 @@
-import useSWR, { type KeyedMutator } from 'swr'
+import useSWR, { useSWRConfig, type KeyedMutator } from 'swr'
 import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { Board, BoardSource, BoardWithCards } from '@git-manager/git-types'
@@ -10,6 +10,16 @@ export interface BoardDetail {
   boardDetail: BoardWithCards | undefined
   cardsLoading: boolean
   mutateDetail: KeyedMutator<BoardWithCards>
+  /**
+   * Drops **every** board's cached cards, the open one included.
+   *
+   * For the writes that change a board the page is *not* looking at — moving a card to another
+   * board is the whole of that list today. `mutateDetail` is bound to the key of the board on
+   * screen, so it cannot reach the destination's, and that cache is only re-read when something
+   * else happens to ask for it: switching to the board you just moved a card to would otherwise
+   * show it without the card, indefinitely.
+   */
+  revalidateAllDetails: () => void
   /** The board to build a board-level write's `expectedRevision` from — see below. */
   revisionFor: (board: Board) => string
   /** Runs a CAS-guarded mutation, absorbing a lost race into a toast + refresh. */
@@ -30,6 +40,7 @@ export function useBoardDetail(
   token: string | null
 ): BoardDetail {
   const { t } = useTranslation('board')
+  const { mutate: globalMutate } = useSWRConfig()
 
   const {
     data: boardDetail,
@@ -74,5 +85,17 @@ export function useBoardDetail(
     }
   }
 
-  return { boardDetail, cardsLoading, mutateDetail, revisionFor, withConflictToast }
+  // Keyed the same way `useBoardCatalog.revalidateLists` matches the two board-list keys.
+  const revalidateAllDetails = () => {
+    void globalMutate((key) => Array.isArray(key) && key[0] === 'board-detail')
+  }
+
+  return {
+    boardDetail,
+    cardsLoading,
+    mutateDetail,
+    revalidateAllDetails,
+    revisionFor,
+    withConflictToast,
+  }
 }

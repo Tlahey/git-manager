@@ -49,7 +49,7 @@ export function useBoardCardActions({
   token,
 }: BoardCardActionsDeps) {
   const { t } = useTranslation('board')
-  const { boardDetail, mutateDetail, withConflictToast } = detail
+  const { boardDetail, mutateDetail, revalidateAllDetails, withConflictToast } = detail
 
   /** `prefix` picks which identifier sequence the new card draws its number from; `kind` is what
    * sort of work it stands for. Both are chosen at creation — see `BoardCardDialog`'s create mode. */
@@ -293,6 +293,13 @@ export function useBoardCardActions({
     }
 
     revalidateLists()
+    // **Both** boards' cards are now stale, and only one of them is on screen. `mutateDetail` is
+    // bound to the open board's SWR key, so the destination's cached list — populated the last time
+    // that board was looked at — would survive untouched: switching to the board you just moved the
+    // card to showed it *without* the card, and kept showing it that way, since nothing else asks
+    // for that key again. Measured rather than deduced: 30 seconds after the move the destination
+    // still rendered three empty columns while `get_board` returned the card.
+    revalidateAllDetails()
     void mutateDetail()
   }
 

@@ -110,7 +110,7 @@
   "createBoard.prefixPlaceholder": "e.g. GM",
   "createBoard.prefixHint": "Cards get an identifier like {{example}}-1, {{example}}-2…",
   "boardSettings.prefixLabel": "Card prefix",
-  "boardSettings.prefixHint": "Renaming it relabels every card at once — the numbers stay as they are.",
+  "boardSettings.prefixHint": "A card keeps the prefix it was created with, so this list only changes what new cards are offered.",
   "deleteBoard.title": "Delete \"{{name}}\"?",
   "deleteBoard.description": "This removes the board and its column layout. Cards on a GitHub-backed board stay open, just unlabeled — nothing on GitHub is deleted.",
   "deleteBoard.confirm": "Delete board",

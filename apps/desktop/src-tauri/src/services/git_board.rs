@@ -396,6 +396,16 @@ pub fn create_board(
     Ok(board)
 }
 
+/// Replaces the board's columns, re-homing any card whose column just disappeared.
+///
+/// **Every card has to sit in a column that exists.** The board renders a card only into one of its
+/// own columns (`BoardColumnsArea`'s `cardsByColumn`), so a card left behind in a removed column
+/// would be invisible: off the board, absent from the archive dialog — which lists archived cards,
+/// not orphaned ones — and not reachable by searching either, while still holding its identifier and
+/// its number. Re-homing them into the first remaining column, **in the same commit as the column
+/// change**, is the same rule `move_cards_to_board` already applies when a card arrives on a board
+/// that has no column by its id; doing it in one commit is what keeps the invariant true of every
+/// state the ref ever holds.
 pub fn update_board_columns(
     repo: &Repository,
     board_id: &str,
@@ -411,7 +421,26 @@ pub fn update_board_columns(
     board.columns = columns;
     board.updated_at = now_iso();
 
-    let new_tree_oid = write_board_json(repo, &tree, &board)?;
+    let mut new_tree_oid = write_board_json(repo, &tree, &board)?;
+    // `None` only when the board was left with no column at all, which the editor refuses to save;
+    // there is then nowhere to re-home anything to, and the cards are better left where they are.
+    if let Some(fallback) = board
+        .columns
+        .iter()
+        .min_by_key(|c| c.order)
+        .map(|c| c.id.clone())
+    {
+        for mut card in read_cards(repo, &tree)? {
+            if board.columns.iter().any(|c| c.id == card.column_id) {
+                continue;
+            }
+            card.column_id = fallback.clone();
+            card.updated_at = now_iso();
+            let base = repo.find_tree(new_tree_oid).map_err(AppError::Git)?;
+            new_tree_oid = write_card_blob(repo, &base, &card)?;
+        }
+    }
+
     let new_oid = commit_state_cas(
         repo,
         board_id,
@@ -1138,6 +1167,61 @@ mod tests {
         let (_, cards) = get_board(&repo, &board.id).unwrap();
         assert_eq!(cards.len(), 1);
         assert_eq!(cards[0].id, other.id);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A card whose column is removed has to land somewhere: the board only renders a card into one
+    /// of its own columns, so one left behind in a column that no longer exists is invisible — and
+    /// invisible is worse than moved, because nothing on screen can then archive it, delete it or
+    /// even show that it is still there.
+    #[test]
+    fn removing_a_column_rehomes_the_cards_that_were_in_it() {
+        let (dir, repo) = init_repo("remove-column");
+        let board = board_with(
+            &repo,
+            "Board",
+            vec![column("todo", 0), column("doing", 1), column("done", 2)],
+        );
+        let orphan = create_card(
+            &repo,
+            &board.id,
+            "doing",
+            NewBoardCard {
+                title: "In the removed column".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let settled = create_card(
+            &repo,
+            &board.id,
+            "done",
+            NewBoardCard {
+                title: "Somewhere else".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        // The board's revision moved with each card; re-read it rather than reusing the create's.
+        let (current, _) = get_board(&repo, &board.id).unwrap();
+        update_board_columns(
+            &repo,
+            &board.id,
+            vec![column("todo", 0), column("done", 1)],
+            &current.revision,
+        )
+        .unwrap();
+
+        let (updated, cards) = get_board(&repo, &board.id).unwrap();
+        assert_eq!(updated.columns.len(), 2);
+        let moved = cards.iter().find(|c| c.id == orphan.id).unwrap();
+        // The *first* column by order, which is the one a reader sees at the left edge.
+        assert_eq!(moved.column_id, "todo");
+        // A card whose column survived is not touched, and no extra commit is spent on it.
+        let untouched = cards.iter().find(|c| c.id == settled.id).unwrap();
+        assert_eq!(untouched.column_id, "done");
 
         std::fs::remove_dir_all(&dir).ok();
     }

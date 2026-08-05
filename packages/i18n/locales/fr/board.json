@@ -110,7 +110,7 @@
   "createBoard.prefixPlaceholder": "ex. GM",
   "createBoard.prefixHint": "Les cartes reçoivent un identifiant du type {{example}}-1, {{example}}-2…",
   "boardSettings.prefixLabel": "Préfixe des cartes",
-  "boardSettings.prefixHint": "Le renommer réétiquette toutes les cartes d'un coup — les numéros ne bougent pas.",
+  "boardSettings.prefixHint": "Une carte conserve le préfixe avec lequel elle a été créée : cette liste ne change que ce qui est proposé aux nouvelles cartes.",
   "deleteBoard.title": "Supprimer « {{name}} » ?",
   "deleteBoard.description": "Cela supprime le tableau et la disposition de ses colonnes. Les cartes d'un tableau GitHub restent ouvertes, juste sans label — rien n'est supprimé sur GitHub.",
   "deleteBoard.confirm": "Supprimer le tableau",
