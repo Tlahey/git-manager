@@ -1,6 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { GitDiff } from '@git-manager/git-types'
+
+// The list is virtualized, and jsdom reports a 0px-tall scroll container — see virtualizerMock.
+vi.mock('@tanstack/react-virtual', async () =>
+  (await import('../../../test/virtualizerMock')).virtualizerModule()
+)
+
 import { DiffFilesPanel } from './DiffFilesPanel'
 
 const file = (path: string) => ({
@@ -32,7 +38,7 @@ describe('DiffFilesPanel', () => {
     expect(screen.getByText('Nothing here')).toBeInTheDocument()
   })
 
-  it('renders one viewer per changed file', () => {
+  it('renders one entry per changed file', () => {
     render(<DiffFilesPanel diff={diffOf('a.ts', 'b.ts')} isLoading={false} emptyMessage="none" />)
     expect(screen.getByText('a.ts')).toBeInTheDocument()
     expect(screen.getByText('b.ts')).toBeInTheDocument()

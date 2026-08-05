@@ -8,12 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
   NativeSelect,
-  ScrollArea,
   Spinner,
 } from '@git-manager/ui'
 import { useBranches } from '../../hooks/useBranches'
 import { useRefComparison } from '../../hooks/useRefComparison'
-import { DiffViewer } from './DiffViewer'
+import { DiffFilesPanel } from './components/DiffFilesPanel'
 
 interface CompareBranchesDialogProps {
   repoPath: string
@@ -30,10 +29,11 @@ interface CompareBranchesDialogProps {
 /**
  * Diffs two arbitrary refs against each other — the "compare two branches" view.
  *
- * Reuses {@link DiffViewer} (the same file renderer as the commit-vs-working-directory dialog)
- * rather than rendering patches its own way: a second diff renderer would drift from the first the
- * first time either is touched. What is specific here is only the pair of refs on top, which the
- * user can re-pick without reopening the dialog.
+ * Reuses {@link DiffFilesPanel} (the same body as the commit-vs-working-directory dialog) rather
+ * than rendering patches its own way: a second diff renderer would drift from the first the first
+ * time either is touched — as it had, until this dialog's own copy of the list was folded back in.
+ * What is specific here is only the pair of refs on top, which the user can re-pick without
+ * reopening the dialog.
  *
  * The two sides are a plain branch list, not a free-text field: the backend accepts any revspec, but
  * offering one would put "did I type the ref right?" between the user and the answer.
@@ -154,17 +154,12 @@ export function CompareBranchesDialog({
             <Spinner className="h-5 w-5" />
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-3 pr-3" data-testid="compare-branches-files">
-              {fileCount > 0 ? (
-                diff?.files.map((file, i) => <DiffViewer key={i} file={file} />)
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {t('gitTree.compareBranches.noDifferences')}
-                </p>
-              )}
-            </div>
-          </ScrollArea>
+          <DiffFilesPanel
+            diff={diff}
+            isLoading={false}
+            emptyMessage={t('gitTree.compareBranches.noDifferences')}
+            testId="compare-branches-files"
+          />
         )}
       </DialogContent>
     </Dialog>
