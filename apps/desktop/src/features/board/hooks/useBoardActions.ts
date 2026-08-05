@@ -105,6 +105,9 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
     const backend = backendFor(activeBoard.source)
 
     let carriedOverToBoardId: string | undefined
+    // The revision the close will be written under. It is read here and then kept up to date by
+    // hand, because the carry-over below writes to *this* board as well — see there.
+    let expectedRevision = revisionFor(activeBoard)
     if (successor) {
       const next = await backend.createBoard(
         repoPath,
@@ -116,7 +119,20 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
         activeBoard.cardPrefixes[0] ?? ''
       )
       if (successor.carryOverCardIds.length > 0) {
-        await backend.moveCardsToBoard(repoPath, activeBoard.id, next.id, successor.carryOverCardIds)
+        await backend.moveCardsToBoard(
+          repoPath,
+          activeBoard.id,
+          next.id,
+          successor.carryOverCardIds
+        )
+        // Carrying cards out commits on the board they leave too ("carry cards out of sprint"), so
+        // its revision — the ref tip on the local backend — has already moved past the one read
+        // above. Closing under the stale one loses the compare-and-swap, and the whole gesture then
+        // ended in a conflict toast and a sprint still open, with its leftovers already gone to the
+        // successor. `revisionFor` reads the render's `boardDetail` and cannot see this refresh, so
+        // the revision is taken from what the refetch returns rather than from it.
+        const refreshed = await mutateDetail()
+        if (refreshed) expectedRevision = refreshed.board.revision
       }
       carriedOverToBoardId = next.id
     }
@@ -126,7 +142,7 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
         repoPath,
         activeBoard.id,
         { ...summary, carriedOverToBoardId },
-        revisionFor(activeBoard)
+        expectedRevision
       )
     )
     revalidateLists()

@@ -48,7 +48,7 @@ function renderActions(activeBoard: Board | null = makeBoard(), boards: Board[] 
       backendFor: () => backend as never,
     })
   )
-  return { result, setActiveBoard, revalidateLists }
+  return { result, setActiveBoard, revalidateLists, mutateDetail }
 }
 
 beforeEach(() => {
@@ -175,6 +175,33 @@ describe('useBoardActions — closeSprint', () => {
       'rev-detail'
     )
     expect(setActiveBoard).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Regression, found by `apps/e2e/features/board.feature`: carrying the leftovers out commits on
+   * the board being closed as well, so the revision read before it is already behind the ref tip.
+   * Closing under that one lost the compare-and-swap every time — the whole gesture ended as a
+   * conflict toast, with the sprint still open and its cards already gone to the successor.
+   */
+  it('closes under the revision the carry-over left behind, not the one it started with', async () => {
+    backend.createBoard.mockResolvedValue(makeBoard({ id: 'next' }))
+    backend.moveCardsToBoard.mockResolvedValue(undefined)
+    backend.closeBoard.mockResolvedValue(makeBoard())
+    const { result, mutateDetail } = renderActions()
+    mutateDetail.mockResolvedValue({
+      board: makeBoard({ revision: 'rev-after-carry' }),
+      cards: [],
+    })
+
+    await result.current.closeSprint(summary, { name: 'Sprint 13', carryOverCardIds: ['c1'] })
+
+    expect(mutateDetail).toHaveBeenCalled()
+    expect(backend.closeBoard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      expect.anything(),
+      'rev-after-carry'
+    )
   })
 
   /** Nothing left to carry: a successor is still opened, just empty. */
