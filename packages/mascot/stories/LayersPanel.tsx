@@ -56,7 +56,7 @@ export function LayersPanel({
   return (
     <div data-testid="layers-panel">
       <p style={{ color: '#7d95b5', margin: '6px 0' }}>
-        haut = devant · glisse une ligne pour changer la profondeur
+        top = front · drag a row to change its depth
       </p>
       {displayRows.map((l) => {
         const isSel = selected === l.paint

@@ -56,7 +56,7 @@ export const SideBySideWithReference: Story = {
       <figure style={{ margin: 0 }}>
         <img src={referenceUrl} width={args.size} alt="reference" style={{ borderRadius: 8 }} />
         <figcaption style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13 }}>
-          référence
+          reference
         </figcaption>
       </figure>
     </div>
@@ -111,8 +111,8 @@ export const ReferenceOverlayOnLive: StoryObj<OverlayArgs> = {
           </div>
         </div>
         <p style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13, maxWidth: 560 }}>
-          La référence est alignée via le point de couronne + largeur max de tête
-          (MASCOT_LAYOUT.reference). Animations coupées pour comparer à la pose de repos.
+          The reference is aligned on the crown point + maximum head width
+          (MASCOT_LAYOUT.reference). Animations are off, to compare against the rest pose.
         </p>
       </div>
     )

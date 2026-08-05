@@ -129,8 +129,8 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
           <ReferenceOverlay opacity={refOpacity} />
         </Stage>
         <p style={{ color: '#7d95b5', fontSize: 12, maxWidth: stageWidth }}>
-          Ordre des lignes = ordre de peinture (haut = arrière). Survoler isole une couche ; la case
-          masque/affiche. Les pivots (rouges) sont les ancres d'ondulation.
+          Row order = paint order (top = back). Hovering isolates a layer; the checkbox shows or
+          hides it. The pivots (red) are the sway anchors.
         </p>
       </div>
 
@@ -144,10 +144,10 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
       >
         <thead>
           <tr style={{ color: '#7d95b5', textAlign: 'left' }}>
-            <th style={{ padding: '4px 8px' }}>couche</th>
+            <th style={{ padding: '4px 8px' }}>layer</th>
             <th style={{ padding: '4px 8px' }}>amp</th>
-            <th style={{ padding: '4px 8px' }}>durée</th>
-            <th style={{ padding: '4px 8px' }}>délai</th>
+            <th style={{ padding: '4px 8px' }}>duration</th>
+            <th style={{ padding: '4px 8px' }}>delay</th>
             <th style={{ padding: '4px 8px' }}>flip</th>
           </tr>
         </thead>
