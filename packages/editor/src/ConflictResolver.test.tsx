@@ -12,6 +12,7 @@ import {
   FakeMonacoEditor,
   fakeEditors,
   fakeDiffEditors,
+  fakeVisibleRange,
   resetFakeEditors,
 } from './__tests__/fakeMonacoPane'
 
@@ -1004,5 +1005,187 @@ describe('ConflictResolver — StrictMode double-mount', () => {
         'merge-connector-modification'
       )
     })
+  })
+})
+
+describe('ConflictResolver — connector windowing', () => {
+  /** `count` alternating unchanged/conflict blocks — a long diff, the shape a regenerated
+   * lockfile produces. */
+  function manyBlocks(count: number): MergeBlock[] {
+    return Array.from({ length: count }, (_, i) => ({
+      blockId: i,
+      kind: i % 2 === 0 ? ('unchanged' as const) : ('both-different' as const),
+      oursStartLine: i + 1,
+      oursLineCount: 1,
+      theirsStartLine: i + 1,
+      theirsLineCount: 1,
+      oursLines: [`ours ${i}`],
+      theirsLines: [`theirs ${i}`],
+    }))
+  }
+
+  it('mounts only the ribbons near the viewport, not one per hunk', async () => {
+    // The regression guard for the freeze: the overlay used to keep one SVG <path> per change
+    // block in the DOM and rewrite every one of them on every scroll event. jsdom reports a
+    // 0px-tall container, so what stays mounted here is purely the overscan band.
+    const blocks = manyBlocks(400)
+    renderMerge(blocks)
+
+    await waitFor(() => expect(fakeEditors.get(centerPath)).toBeDefined())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument()
+    )
+
+    const mounted = document.querySelectorAll('[data-testid^="merge-connector-ribbon-left-"]')
+    expect(mounted.length).toBeGreaterThan(0)
+    expect(mounted.length).toBeLessThan(60)
+
+    // A hunk hundreds of lines below the fold has no business being in the document.
+    expect(screen.queryByTestId('merge-connector-ribbon-left-399')).not.toBeInTheDocument()
+  })
+
+  it('still mounts every ribbon of a diff that fits in the band', async () => {
+    // The windowing must be invisible on ordinary diffs — nothing is dropped just because the
+    // feature exists.
+    const blocks = manyBlocks(6)
+    renderMerge(blocks)
+
+    await waitFor(() => expect(fakeEditors.get(centerPath)).toBeDefined())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument()
+    )
+    expect(screen.getByTestId('merge-connector-ribbon-left-3')).toBeInTheDocument()
+    expect(screen.getByTestId('merge-connector-ribbon-left-5')).toBeInTheDocument()
+  })
+})
+
+describe('ConflictResolver — intra-line highlight scoping', () => {
+  /** `count` conflicting blocks, each a one-line rewrite that shares a token with its counterpart
+   * so the word-level pass has something to highlight. */
+  function rewriteBlocks(count: number): MergeBlock[] {
+    return Array.from({ length: count }, (_, i) => ({
+      blockId: i,
+      kind: 'both-different' as const,
+      oursStartLine: i + 1,
+      oursLineCount: 1,
+      theirsStartLine: i + 1,
+      theirsLineCount: 1,
+      oursLines: [`alpha value ${i}`],
+      theirsLines: [`beta value ${i}`],
+    }))
+  }
+
+  function intraDecorationCount(path: string): number {
+    const pane = fakeEditors.get(path)
+    const decorations = (pane?.decorations ?? []) as { options?: { inlineClassName?: string } }[]
+    return decorations.filter((d) => d.options?.inlineClassName).length
+  }
+
+  it('computes word-level highlights only around the visible range', async () => {
+    // The cost this bounds is per changed *line* (a Myers diff per side↔center pair), which over a
+    // whole file is unbounded — 76ms measured on a 6000-hunk diff, all of it for lines off screen.
+    fakeVisibleRange.current = { start: 1, end: 10 }
+    renderMerge(rewriteBlocks(400))
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    await waitFor(() => expect(intraDecorationCount(theirsPath)).toBeGreaterThan(0))
+
+    // 10 visible lines plus the overscan — nowhere near all 400 blocks.
+    expect(intraDecorationCount(theirsPath)).toBeLessThan(120)
+  })
+
+  it('falls back to the whole file when the pane reports no visible range yet', async () => {
+    // A pane that hasn't laid out reports nothing; highlighting everything is correct then, just
+    // not bounded — and it is what keeps a freshly mounted editor from looking unhighlighted.
+    fakeVisibleRange.current = null
+    renderMerge(rewriteBlocks(400))
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    await waitFor(() => expect(intraDecorationCount(theirsPath)).toBeGreaterThan(300))
+  })
+
+  it('still highlights every line of a diff small enough to fit the viewport', async () => {
+    fakeVisibleRange.current = { start: 1, end: 3 }
+    renderMerge(rewriteBlocks(3))
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    await waitFor(() => expect(intraDecorationCount(theirsPath)).toBe(3))
+  })
+})
+
+describe('ConflictResolver — switching files in 2-panel mode', () => {
+  function renderDiff(original: string, modified: string) {
+    return render(
+      <ConflictResolver
+        panels={[{ content: original }, { content: modified }]}
+        modelPathPrefix={DIFF_PREFIX}
+        editor={{ component: FakeMonacoEditor }}
+      />
+    )
+  }
+
+  it('holds the previous file on screen until the new one has its diff geometry', async () => {
+    // Monaco answers the diff asynchronously. Painting the new text before its blocks exist means
+    // painting it uncollapsed and undecorated, with the collapse snapping in a frame later — the
+    // flicker. The panes therefore show the text the *current* geometry describes.
+    const { rerender } = renderDiff('alpha\nbeta', 'alpha\nBETA')
+    await waitFor(() => expect(fakeEditors.get(originalPath)).toBeDefined())
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe('alpha\nbeta')
+    )
+
+    rerender(
+      <ConflictResolver
+        panels={[{ content: 'gamma\ndelta' }, { content: 'gamma\nDELTA' }]}
+        modelPathPrefix={DIFF_PREFIX}
+        editor={{ component: FakeMonacoEditor }}
+      />
+    )
+
+    // Synchronously after the prop change, before the diff microtask lands: still the old file.
+    expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe('alpha\nbeta')
+    expect(fakeEditors.get(modifiedPath)!.getModel().getValue()).toBe('alpha\nBETA')
+  })
+
+  it('swaps to the new file once its geometry is ready', async () => {
+    const { rerender } = renderDiff('alpha\nbeta', 'alpha\nBETA')
+    await waitFor(() => expect(fakeEditors.get(originalPath)).toBeDefined())
+
+    rerender(
+      <ConflictResolver
+        panels={[{ content: 'gamma\ndelta' }, { content: 'gamma\nDELTA' }]}
+        modelPathPrefix={DIFF_PREFIX}
+        editor={{ component: FakeMonacoEditor }}
+      />
+    )
+
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe('gamma\ndelta')
+    )
+    expect(fakeEditors.get(modifiedPath)!.getModel().getValue()).toBe('gamma\nDELTA')
+  })
+
+  it('collapses the new file in the same commit as its content, never a frame later', async () => {
+    // 30 identical lines around one change: long enough for the collapse-unchanged pass to hide a
+    // middle. The assertion is that hidden areas are already applied for the *new* content by the
+    // time that content is on screen.
+    const longOriginal = Array.from({ length: 30 }, (_, i) => `line ${i}`).join('\n')
+    const longModified = longOriginal.replace('line 15', 'LINE 15')
+
+    const { rerender } = renderDiff('a', 'b')
+    await waitFor(() => expect(fakeEditors.get(originalPath)).toBeDefined())
+
+    rerender(
+      <ConflictResolver
+        panels={[{ content: longOriginal }, { content: longModified }]}
+        modelPathPrefix={DIFF_PREFIX}
+        editor={{ component: FakeMonacoEditor }}
+      />
+    )
+
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe(longOriginal)
+    )
+    expect(fakeEditors.get(originalPath)!.hiddenAreas.length).toBeGreaterThan(0)
   })
 })

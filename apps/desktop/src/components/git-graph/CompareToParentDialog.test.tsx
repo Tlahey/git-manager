@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('../../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
 
+// The diff list is virtualized, and jsdom reports a 0px-tall scroll container — see virtualizerMock.
+vi.mock('@tanstack/react-virtual', async () =>
+  (await import('../../test/virtualizerMock')).virtualizerModule()
+)
+
 import { apiGetCommitDiff } from '../../api/git.api'
 import { CompareToParentDialog } from './CompareToParentDialog'
 

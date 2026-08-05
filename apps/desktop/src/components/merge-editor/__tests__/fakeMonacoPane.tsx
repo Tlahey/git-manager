@@ -188,8 +188,10 @@ export interface FakeEditorInstance {
    * background-sync in ConflictResolver.tsx) without needing a real Monaco instance. */
   getDomNode: () => HTMLElement
   onDidDispose: (cb: () => void) => { dispose: () => void }
-  /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
+  /** Test-only: every live decoration across all of the pane's collections, concatenated. */
   decorations: unknown[]
+  /** Test-only: one entry per `createDecorationsCollection` call, each holding its own items. */
+  decorationCollections: { items: unknown[] }[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
   viewZones: FakeViewZone[]
   /** Test-only: map of registered commands for testing undo/redo key bindings. */
@@ -212,11 +214,22 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
   const instance: FakeEditorInstance = {
     path,
     getModel: () => model,
+    // A pane owns more than one collection (whole-line block fills, and the word-level highlights
+    // that refresh independently on scroll — see the editor package's useMergeDecorations). Each
+    // keeps its own array and `decorations` exposes their concatenation, exactly as Monaco
+    // composes them on screen: modelling a single shared array would let one collection's
+    // `set([])` wipe the other's.
     createDecorationsCollection: (initial) => {
-      instance.decorations = initial
+      const collection = { items: initial }
+      instance.decorationCollections.push(collection)
+      const sync = () => {
+        instance.decorations = instance.decorationCollections.flatMap((c) => c.items)
+      }
+      sync()
       return {
         set: (d: unknown[]) => {
-          instance.decorations = d
+          collection.items = d
+          sync()
         },
       }
     },
@@ -270,6 +283,7 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       }
     },
     decorations: [],
+    decorationCollections: [],
     viewZones: [],
     commands,
   }

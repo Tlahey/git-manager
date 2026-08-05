@@ -9,6 +9,11 @@ const { useBranchesMock } = vi.hoisted(() => ({ useBranchesMock: vi.fn() }))
 vi.mock('../../hooks/useBranches', () => ({ useBranches: () => useBranchesMock() }))
 vi.mock('../../api/git.api', () => ({ apiCompareRefs: vi.fn() }))
 
+// The diff list is virtualized, and jsdom reports a 0px-tall scroll container — see virtualizerMock.
+vi.mock('@tanstack/react-virtual', async () =>
+  (await import('../../test/virtualizerMock')).virtualizerModule()
+)
+
 import { apiCompareRefs } from '../../api/git.api'
 import { CompareBranchesDialog } from './CompareBranchesDialog'
 

@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import type { MergeBlock } from '../../types'
 import type { BlockPlacement } from '../../mergeBlockLayout'
 import { computeMergeVisuals } from '../../mergeDecorations'
@@ -8,6 +8,7 @@ import {
 } from '../../mergeIntraLineDiff'
 import { computeTwoWayVisuals } from '../twoWayView'
 import { applyViewZones, toInlineMonacoDecoration, toMonacoDecoration } from '../monacoInterop'
+import { blocksInCenterRange, type CenterLineRange } from '../visibleBlocks'
 import type { MergeEditorRefs } from './useMergeEditorRefs'
 
 interface UseMergeDecorationsParams {
@@ -30,7 +31,13 @@ interface UseMergeDecorationsParams {
  * filler zones sized so all three panes stay vertically aligned) all come from
  * computeMergeVisuals/computeTwoWayVisuals — this effect only translates them into Monaco
  * calls, reports the pending-conflict count to the host, and restores any scroll snapshot a
- * placement-changing action left behind. */
+ * placement-changing action left behind.
+ *
+ * The word-level (intra-line) pass is deliberately NOT part of that effect. It is the one piece
+ * whose cost scales with the number of *changed lines* rather than blocks — a Myers diff per
+ * side↔center line pair — so it is scoped to the center pane's visible range and refreshed on
+ * scroll through the returned `refreshIntraHighlights`. It writes to its own decoration
+ * collections, so a scroll tick never re-sets a block fill or re-applies a view zone. */
 export function useMergeDecorations({
   editors,
   editorsReady,
@@ -45,6 +52,73 @@ export function useMergeDecorations({
   updateActiveBlockIndex,
   restoreSavedScrollTops,
 }: UseMergeDecorationsParams) {
+  // Read inside the scroll-driven callback, which is registered once at pane mount and never
+  // re-subscribed, so it cannot close over the current values.
+  const placementsRef = useRef(placements)
+  placementsRef.current = placements
+  const highlightModeRef = useRef(highlightMode)
+  highlightModeRef.current = highlightMode
+  const isTwoWayRef = useRef(isTwoWay)
+  isTwoWayRef.current = isTwoWay
+
+  const intraRafRef = useRef<number | null>(null)
+
+  const applyIntraHighlights = useCallback(() => {
+    const centerEditor = editors.centerEditorRef.current
+    if (!centerEditor) return
+
+    const centerModel = centerEditor.getModel()
+    const getCenterLine = (line: number) =>
+      centerModel && line >= 1 && line <= centerModel.getLineCount()
+        ? centerModel.getLineContent(line)
+        : ''
+
+    // Only the lines actually on screen. `getVisibleRanges` is absent from the test harness's
+    // fake editor (and from a pane that hasn't laid out yet), in which case the whole file is
+    // used — correct, just not bounded.
+    const visibleRanges =
+      typeof centerEditor.getVisibleRanges === 'function' ? centerEditor.getVisibleRanges() : []
+    const range: CenterLineRange | null = visibleRanges.length
+      ? {
+          start: visibleRanges[0].startLineNumber,
+          end: visibleRanges[visibleRanges.length - 1].endLineNumber,
+        }
+      : null
+
+    const blocks = blocksInCenterRange(blocksRef.current, placementsRef.current, range)
+
+    const intra =
+      centerModel && highlightModeRef.current === 'words'
+        ? isTwoWayRef.current
+          ? computeTwoWayIntraLineHighlights(blocks, placementsRef.current, getCenterLine)
+          : computeIntraLineHighlights(blocks, placementsRef.current, getCenterLine)
+        : { ours: [], center: [], theirs: [] }
+
+    editors.oursIntraDecorationsRef.current?.set(intra.ours.map(toInlineMonacoDecoration))
+    editors.centerIntraDecorationsRef.current?.set(intra.center.map(toInlineMonacoDecoration))
+    editors.theirsIntraDecorationsRef.current?.set(intra.theirs.map(toInlineMonacoDecoration))
+  }, [editors, blocksRef])
+
+  /** Scroll-side entry point: coalesced to one recompute per frame, since Monaco fires
+   * `onDidScrollChange` far more often than that during an inertial scroll. */
+  const refreshIntraHighlights = useCallback(() => {
+    if (intraRafRef.current !== null) return
+    intraRafRef.current = requestAnimationFrame(() => {
+      intraRafRef.current = null
+      applyIntraHighlights()
+    })
+  }, [applyIntraHighlights])
+
+  useEffect(
+    () => () => {
+      if (intraRafRef.current !== null) {
+        cancelAnimationFrame(intraRafRef.current)
+        intraRafRef.current = null
+      }
+    },
+    []
+  )
+
   useEffect(() => {
     if (!editorsReady) return
     const oursEditor = editors.oursEditorRef.current
@@ -83,35 +157,18 @@ export function useMergeDecorations({
           highlightMode === 'lines'
         )
 
-    // Second diff pass (intra-line): reads the center buffer's live text so the highlights
-    // track manual typing too. Only run if highlightMode is 'words'.
-    const centerModel = centerEditor.getModel()
-    const getCenterLine = (line: number) =>
-      centerModel && line >= 1 && line <= centerModel.getLineCount()
-        ? centerModel.getLineContent(line)
-        : ''
-    const intra =
-      centerModel && highlightMode === 'words'
-        ? isTwoWay
-          ? computeTwoWayIntraLineHighlights(blocksRef.current, placements, getCenterLine)
-          : computeIntraLineHighlights(blocksRef.current, placements, getCenterLine)
-        : { ours: [], center: [], theirs: [] }
-
     const showWholeLineHighlights = true
     if (!isTwoWay && editors.oursDecorationsRef.current) {
-      editors.oursDecorationsRef.current.set([
-        ...(showWholeLineHighlights ? visuals.ours.decorations.map(toMonacoDecoration) : []),
-        ...intra.ours.map(toInlineMonacoDecoration),
-      ])
+      editors.oursDecorationsRef.current.set(
+        showWholeLineHighlights ? visuals.ours.decorations.map(toMonacoDecoration) : []
+      )
     }
-    editors.centerDecorationsRef.current?.set([
-      ...(showWholeLineHighlights ? visuals.center.decorations.map(toMonacoDecoration) : []),
-      ...intra.center.map(toInlineMonacoDecoration),
-    ])
-    editors.theirsDecorationsRef.current?.set([
-      ...(showWholeLineHighlights ? visuals.theirs.decorations.map(toMonacoDecoration) : []),
-      ...intra.theirs.map(toInlineMonacoDecoration),
-    ])
+    editors.centerDecorationsRef.current?.set(
+      showWholeLineHighlights ? visuals.center.decorations.map(toMonacoDecoration) : []
+    )
+    editors.theirsDecorationsRef.current?.set(
+      showWholeLineHighlights ? visuals.theirs.decorations.map(toMonacoDecoration) : []
+    )
 
     if (!isTwoWay && oursEditor) {
       editors.oursZoneIdsRef.current = applyViewZones(
@@ -131,6 +188,11 @@ export function useMergeDecorations({
       visuals.theirs.viewZones
     )
 
+    // Synchronously, not through the rAF path: a placement change (a gutter action, undo, typing)
+    // must land in the same commit as the block fills it belongs to, or the two disagree for a
+    // frame.
+    applyIntraHighlights()
+
     onPendingCountChange?.(pendingConflicts)
     scheduleRecompute()
     updateActiveBlockIndex()
@@ -149,4 +211,6 @@ export function useMergeDecorations({
     updateActiveBlockIndex,
     isTwoWay,
   ])
+
+  return { refreshIntraHighlights }
 }

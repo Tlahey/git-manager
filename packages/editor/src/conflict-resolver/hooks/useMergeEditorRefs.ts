@@ -13,6 +13,13 @@ export interface MergeEditorRefs {
   oursDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
   centerDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
   theirsDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
+  /** Word-level (intra-line) highlights, kept in their own collections rather than merged into
+   * the whole-line ones above. They are the only decorations recomputed on *scroll* — they are
+   * scoped to the visible range (see visibleBlocks.ts) — and sharing a collection would mean
+   * every scroll tick also re-set every block fill and re-applied every alignment view zone. */
+  oursIntraDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
+  centerIntraDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
+  theirsIntraDecorationsRef: MutableRefObject<editor.IEditorDecorationsCollection | null>
   /** Ids of the currently-injected alignment view zones per pane (see applyViewZones) — pure
    * bookkeeping for the next wholesale replacement. */
   oursZoneIdsRef: MutableRefObject<string[]>
@@ -34,6 +41,10 @@ export function useMergeEditorRefs(): MergeEditorRefs {
   const centerDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
   const theirsDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
 
+  const oursIntraDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
+  const centerIntraDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
+  const theirsIntraDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
+
   const oursZoneIdsRef = useRef<string[]>([])
   const centerZoneIdsRef = useRef<string[]>([])
   const theirsZoneIdsRef = useRef<string[]>([])
@@ -53,6 +64,9 @@ export function useMergeEditorRefs(): MergeEditorRefs {
       oursDecorationsRef,
       centerDecorationsRef,
       theirsDecorationsRef,
+      oursIntraDecorationsRef,
+      centerIntraDecorationsRef,
+      theirsIntraDecorationsRef,
       oursZoneIdsRef,
       centerZoneIdsRef,
       theirsZoneIdsRef,

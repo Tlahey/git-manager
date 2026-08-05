@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('../../api/git.api', () => ({ apiCompareCommitToWorkdir: vi.fn() }))
 
+// The diff list is virtualized, and jsdom reports a 0px-tall scroll container — see virtualizerMock.
+vi.mock('@tanstack/react-virtual', async () =>
+  (await import('../../test/virtualizerMock')).virtualizerModule()
+)
+
 import { apiCompareCommitToWorkdir } from '../../api/git.api'
 import { CompareToWorkdirDialog } from './CompareToWorkdirDialog'
 
@@ -50,7 +55,7 @@ describe('CompareToWorkdirDialog', () => {
     )
   })
 
-  it('renders a DiffViewer for each changed file', async () => {
+  it('renders an entry for each changed file', async () => {
     mockedCompare.mockResolvedValue({
       files: [
         {

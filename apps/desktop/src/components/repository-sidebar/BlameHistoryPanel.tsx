@@ -10,7 +10,7 @@ import { CommitAvatar } from '../git-graph/components/CommitAvatar'
 import { formatRelativeTime, formatExactDate } from '../../lib/relativeDate'
 
 interface BlameHistoryPanelProps {
-  file: { path: string; staged: boolean; oid?: string } | null
+  file: { path: string; staged: boolean; oid?: string; unmodified?: boolean } | null
   repoPath: string | null
   onClose: () => void
 }
@@ -36,6 +36,12 @@ export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanel
   )
 
   const hasHistory = (history?.length ?? 0) > 0
+
+  // A file with no uncommitted change has no "current" version distinct from its last commit —
+  // offering one would be a second row for the same bytes, and picking it would say "viewing
+  // version X" about the version already on screen. The newest commit *is* the current state, so
+  // it takes that role: it carries the default selection and clicking it clears any other pick.
+  const lastCommitIsCurrent = file?.unmodified === true
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar">
@@ -83,34 +89,42 @@ export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanel
 
         {file && !isLoading && hasHistory && (
           <ul className="flex flex-col py-1">
-            {/* Current (working) version */}
-            <li>
-              <button
-                data-testid="history-current-version"
-                onClick={() => setSelectedHistoryOid(null)}
-                className={cn(
-                  'flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/50',
-                  selectedHistoryOid === null && 'bg-sidebar-accent'
-                )}
-              >
-                <Dot className="h-5 w-5 shrink-0 text-green-500" />
-                <span className="truncate text-[11px] font-semibold text-sidebar-foreground">
-                  {t('fileHistory.currentVersion')}
-                </span>
-              </button>
-            </li>
+            {/* Current (working) version — only when there is one to distinguish from HEAD. */}
+            {!lastCommitIsCurrent && (
+              <li>
+                <button
+                  data-testid="history-current-version"
+                  onClick={() => setSelectedHistoryOid(null)}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/50',
+                    selectedHistoryOid === null && 'bg-sidebar-accent'
+                  )}
+                >
+                  <Dot className="h-5 w-5 shrink-0 text-green-500" />
+                  <span className="truncate text-[11px] font-semibold text-sidebar-foreground">
+                    {t('fileHistory.currentVersion')}
+                  </span>
+                </button>
+              </li>
+            )}
 
-            {(history ?? []).map((entry) => (
+            {(history ?? []).map((entry, index) => (
               <HistoryRow
                 key={entry.oid}
                 entry={entry}
                 avatarUrl={avatars[entry.oid]}
-                isSelected={selectedHistoryOid === entry.oid}
+                isCurrent={lastCommitIsCurrent && index === 0}
+                isSelected={
+                  selectedHistoryOid === entry.oid ||
+                  (lastCommitIsCurrent && index === 0 && selectedHistoryOid === null)
+                }
                 statusLabel={t(`fileHistory.status.${entry.status}`)}
                 relativeTime={formatRelativeTime(entry.timestamp, i18n.language)}
                 exactTime={formatExactDate(entry.timestamp, i18n.language)}
                 noMessage={t('fileHistory.noMessage')}
-                onSelect={() => setSelectedHistoryOid(entry.oid)}
+                onSelect={() =>
+                  setSelectedHistoryOid(lastCommitIsCurrent && index === 0 ? null : entry.oid)
+                }
               />
             ))}
 
@@ -133,6 +147,9 @@ export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanel
 interface HistoryRowProps {
   entry: FileHistoryEntry
   avatarUrl?: string
+  /** This commit *is* the file's current state (nothing uncommitted), so it carries the green dot
+   * the separate "current version" row would otherwise have shown. */
+  isCurrent?: boolean
   isSelected: boolean
   statusLabel: string
   relativeTime: string
@@ -144,6 +161,7 @@ interface HistoryRowProps {
 function HistoryRow({
   entry,
   avatarUrl,
+  isCurrent = false,
   isSelected,
   statusLabel,
   relativeTime,
@@ -173,6 +191,12 @@ function HistoryRow({
           isSelected && 'bg-sidebar-accent'
         )}
       >
+        {isCurrent && (
+          <Dot
+            data-testid="history-current-marker"
+            className="-ml-1.5 h-5 w-5 shrink-0 self-center text-green-500"
+          />
+        )}
         <CommitAvatar
           avatarUrl={avatarUrl}
           name={entry.authorName || entry.authorEmail || '?'}

@@ -8,18 +8,34 @@ import { getActiveRepoPath } from '../support/activeRepo'
 // Everything is asserted against real git state on disk rather than the UI's own rendering.
 
 /**
- * Discard is gated by `window.confirm` (CommitFileList.tsx) — a native dialog this embedded
- * WebKit provider cannot drive, and the one part of the flow that is the OS rather than the app.
- * Stubbing it to accept is what lets the rest run for real: the click, the `discard_file_changes`
- * command, and the file going back to its committed content are all genuine.
+ * Discard asks for confirmation, and the whole flow is now the app's own: the confirmation is a
+ * real React dialog (`useConfirm` in packages/components), not `window.confirm`.
+ *
+ * This step used to stub `window.confirm` to accept, on the grounds that a native dialog is the OS
+ * rather than the app. When the confirmations moved to `useConfirm` the stub became dead code
+ * pointed at a function nobody calls — so the click opened a dialog the suite then never answered,
+ * `discard_file_changes` was never reached, and the scenario failed on an assertion about git
+ * state that was, strictly speaking, correct: nothing had been discarded.
+ *
+ * So: answer the dialog. Every part of the flow is genuine now, the confirmation included — which
+ * is what the scenario claims to cover ("It asks for confirmation first").
  */
 When(/^I discard the changes to "([^"]*)"$/, async (filePath: string) => {
-  await browser.execute(() => {
-    window.confirm = () => true
-  })
   const button = $(`[data-testid="file-discard-${filePath}"]`)
+  // `waitForExist`, not `waitForDisplayed`: the button renders `opacity-0` until its row is
+  // hovered (see CommitFileList.tsx's `hoverStage` branch), which WebDriver reads as not displayed
+  // even though it occupies its box and takes the click.
   await button.waitForExist({ timeout: 10000 })
   await button.click()
+
+  const dialog = $('[data-testid="discard-file-confirm-dialog"]')
+  await dialog.waitForDisplayed({ timeout: 10000 })
+  const confirmButton = dialog.$('[data-testid="confirm-dialog-confirm"]')
+  await confirmButton.waitForClickable({ timeout: 10000 })
+  await confirmButton.click()
+  // The dialog unmounts as soon as it is answered (`settle` clears the options), so this is the
+  // signal that the click landed — without it the next step races the command it just triggered.
+  await dialog.waitForExist({ reverse: true, timeout: 10000 })
 })
 
 Then(/^the file "([^"]*)" has no working-tree changes$/, async (filePath: string) => {

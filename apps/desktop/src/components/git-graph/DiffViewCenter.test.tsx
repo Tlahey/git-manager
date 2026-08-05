@@ -3,12 +3,14 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { Toaster } from '@git-manager/ui'
 
-const { useFileDiff, useFileRawContents } = vi.hoisted(() => ({
+const { useFileDiff, useFileRawContents, useFileHistory } = vi.hoisted(() => ({
   useFileDiff: vi.fn(),
   useFileRawContents: vi.fn(),
+  useFileHistory: vi.fn(),
 }))
 vi.mock('../../hooks/useFileDiff', () => ({ useFileDiff }))
 vi.mock('../../hooks/useFileRawContents', () => ({ useFileRawContents }))
+vi.mock('../../hooks/useFileHistory', () => ({ useFileHistory }))
 // Commit-association hooks aren't under test here; keep them inert (no SWR/network).
 vi.mock('../../hooks/useRepoGitHub', () => ({
   useRepoGitHub: () => ({ ownerRepo: null, token: null }),
@@ -46,14 +48,9 @@ vi.mock('./components/DiffToolbar', () => ({
   },
 }))
 
-import { apiDiscardFileChanges, apiStageFile, apiUnstageFile } from '../../api/git.api'
 import { DiffViewCenter } from './DiffViewCenter'
 // Type-only: the module itself is mocked above, but the real props keep this harness honest.
 import type { DiffToolbar as DiffToolbarComponent } from './components/DiffToolbar'
-
-const mockedDiscard = apiDiscardFileChanges as unknown as ReturnType<typeof vi.fn>
-const mockedStage = apiStageFile as unknown as ReturnType<typeof vi.fn>
-const mockedUnstage = apiUnstageFile as unknown as ReturnType<typeof vi.fn>
 
 type ToolbarProps = ComponentProps<typeof DiffToolbarComponent>
 
@@ -66,14 +63,12 @@ function renderCenter(
   extra: Partial<React.ComponentProps<typeof DiffViewCenter>> = {}
 ) {
   const onClose = vi.fn()
-  const onRefresh = vi.fn()
   const utils = render(
     <>
       <DiffViewCenter
         repoPath="/repo"
         file={{ path: 'src/a.ts', staged: false, ...fileOverrides }}
         onClose={onClose}
-        onRefresh={onRefresh}
         {...extra}
       />
       {/* The component reports failures through the shared toast queue, so the sink has to be
@@ -81,7 +76,7 @@ function renderCenter(
       <Toaster />
     </>
   )
-  return { ...utils, onClose, onRefresh }
+  return { ...utils, onClose }
 }
 
 beforeEach(() => {
@@ -92,6 +87,7 @@ beforeEach(() => {
   })
   useFileDiff.mockReturnValue({ data: undefined, isLoading: false, refetch: vi.fn() })
   useFileRawContents.mockReturnValue({ data: undefined, isLoading: false })
+  useFileHistory.mockReturnValue({ data: undefined })
 })
 
 afterEach(() => {
@@ -241,92 +237,161 @@ describe('DiffViewCenter — copy path', () => {
   })
 })
 
-describe('DiffViewCenter — stage toggle', () => {
-  it('stages an unstaged file, refetches, and refreshes', async () => {
-    const refetch = vi.fn()
-    useFileDiff.mockReturnValue({ data: undefined, isLoading: false, refetch })
-    mockedStage.mockResolvedValue(undefined)
-    const { onRefresh } = renderCenter({ staged: false })
-    await act(async () => {
-      await toolbarProps().onToggleStage()
+describe('DiffViewCenter — actions', () => {
+  it('offers no stage or discard action: the working-tree panel owns those', () => {
+    // They used to live in the toolbar too, which made one file — whichever happened to be open —
+    // actionable from two places while its neighbours were actionable from one.
+    useFileDiff.mockReturnValue({
+      data: {
+        status: 'modified',
+        oldPath: 'src/a.ts',
+        newPath: 'src/a.ts',
+        isBinary: false,
+        additions: 1,
+        deletions: 0,
+        hunks: [],
+      },
+      isLoading: false,
+      refetch: vi.fn(),
     })
-    expect(mockedStage).toHaveBeenCalledWith('/repo', 'src/a.ts')
-    expect(refetch).toHaveBeenCalledOnce()
-    expect(onRefresh).toHaveBeenCalledOnce()
-  })
-
-  it('unstages a staged file', async () => {
-    mockedUnstage.mockResolvedValue(undefined)
-    renderCenter({ staged: true })
-    await act(async () => {
-      await toolbarProps().onToggleStage()
-    })
-    expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'src/a.ts')
-  })
-
-  it('surfaces a stage/unstage failure as an error toast', async () => {
-    mockedStage.mockRejectedValue(new Error('stage failed'))
+    useFileRawContents.mockReturnValue({ data: { original: 'a', modified: 'b' }, isLoading: false })
     renderCenter({ staged: false })
-    await act(async () => {
-      await toolbarProps().onToggleStage()
-    })
-    // Address the toast by its own text: the queue is a module-level singleton, so an earlier
-    // test's toast can still be on screen and `getByTestId('toast')` would find two.
-    expect(screen.getByText(/stage failed/).closest('[data-testid="toast"]')).toHaveAttribute(
-      'data-variant',
-      'error'
-    )
+
+    const props = toolbarProps() as unknown as Record<string, unknown>
+    expect(props.onToggleStage).toBeUndefined()
+    expect(props.onRollback).toBeUndefined()
   })
 })
 
-describe('DiffViewCenter — rollback', () => {
-  /**
-   * Opens the rollback confirmation and answers it. `onRollback` only settles once the user has
-   * clicked, so it is deliberately not awaited before the click — awaiting it first would
-   * deadlock on a dialog nobody has answered yet.
-   */
-  async function rollbackAnswering(answer: 'confirm' | 'cancel') {
-    let pending: Promise<void> | undefined
-    await act(async () => {
-      pending = toolbarProps().onRollback() ?? undefined
-    })
-    expect(screen.getByTestId('rollback-file-confirm-dialog')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Are you sure you want to discard all local changes to this file? This action is irreversible.'
-      )
-    ).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByTestId(`confirm-dialog-${answer}`))
-      await pending
+describe('DiffViewCenter — a file with no pending change', () => {
+  const DIFF_DATA = {
+    status: 'modified',
+    oldPath: 'src/a.ts',
+    newPath: 'src/a.ts',
+    isBinary: false,
+    additions: 1,
+    deletions: 0,
+    hunks: [],
+  }
+
+  function withHistory(oid: string) {
+    useFileHistory.mockReturnValue({ data: [{ oid, shortOid: oid.slice(0, 7) }] })
+    useFileDiff.mockReturnValue({ data: DIFF_DATA, isLoading: false, refetch: vi.fn() })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'before', modified: 'after' },
+      isLoading: false,
     })
   }
 
-  it('discards file changes after confirmation, then closes and refreshes', async () => {
-    mockedDiscard.mockResolvedValue(undefined)
-    const { onClose, onRefresh } = renderCenter()
-    await rollbackAnswering('confirm')
-    expect(mockedDiscard).toHaveBeenCalledWith('/repo', 'src/a.ts')
-    expect(onClose).toHaveBeenCalledOnce()
-    expect(onRefresh).toHaveBeenCalledOnce()
-  })
+  it('diffs against the last commit that touched it instead of showing nothing', () => {
+    // Its working copy *is* HEAD, so "the diff" can only mean the change that produced it.
+    withHistory('abcdef1234567890')
+    renderCenter({ unmodified: true })
 
-  it('does nothing when the confirmation is declined', async () => {
-    const { onClose } = renderCenter()
-    await rollbackAnswering('cancel')
-    expect(mockedDiscard).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
-  })
-
-  it('surfaces a rollback failure as an error toast', async () => {
-    mockedDiscard.mockRejectedValue(new Error('discard failed'))
-    renderCenter()
-    await rollbackAnswering('confirm')
-    // Address the toast by its own text: the queue is a module-level singleton, so an earlier
-    // test's toast can still be on screen and `getByTestId('toast')` would find two.
-    expect(screen.getByText(/discard failed/).closest('[data-testid="toast"]')).toHaveAttribute(
-      'data-variant',
-      'error'
+    expect(useFileRawContents).toHaveBeenCalledWith(
+      '/repo',
+      'src/a.ts',
+      false,
+      'abcdef1234567890',
+      undefined
     )
+    expect(useFileDiff).toHaveBeenCalledWith(
+      '/repo',
+      'src/a.ts',
+      false,
+      'abcdef1234567890',
+      undefined
+    )
+    expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument()
+  })
+
+  it('says which commit it fell back to, rather than showing an unexplained diff', () => {
+    withHistory('abcdef1234567890')
+    renderCenter({ unmodified: true })
+    expect(screen.getByTestId('diff-last-change-note')).toHaveTextContent('abcdef1')
+  })
+
+  it('leaves the History panel selection alone', () => {
+    // Pinning the commit by writing to the shared `selectedHistoryOid` would hijack the panel and
+    // leave a "Back to current" button that returns here — the fallback stays local on purpose.
+    withHistory('abcdef1234567890')
+    renderCenter({ unmodified: true })
+    expect(screen.queryByTestId('diff-version-bar')).not.toBeInTheDocument()
+  })
+
+  it('still reports an untracked file with no history as having nothing to show', () => {
+    useFileHistory.mockReturnValue({ data: [] })
+    renderCenter({ unmodified: true })
+    expect(screen.getByTestId('diff-no-data')).toHaveTextContent(
+      'This file has no uncommitted changes.'
+    )
+  })
+
+  it('does not fall back for a file that does have pending changes', () => {
+    useFileHistory.mockReturnValue({ data: [{ oid: 'abcdef1234567890' }] })
+    useFileDiff.mockReturnValue({ data: DIFF_DATA, isLoading: false, refetch: vi.fn() })
+    useFileRawContents.mockReturnValue({ data: { original: '', modified: '' }, isLoading: false })
+    renderCenter({ unmodified: false })
+
+    expect(useFileDiff).toHaveBeenCalledWith('/repo', 'src/a.ts', false, undefined, undefined)
+    expect(screen.queryByTestId('diff-last-change-note')).not.toBeInTheDocument()
+  })
+})
+
+describe('DiffViewCenter — switching files', () => {
+  it('keeps the editor mounted while the next file loads, instead of flashing a spinner', () => {
+    // react-query holds the previous file's data (keepPreviousData), so `isLoading` stays false
+    // and the Monaco panes survive the switch — tearing them down and rebuilding one per click is
+    // the flicker this avoids.
+    useFileDiff.mockReturnValue({
+      data: {
+        status: 'modified',
+        oldPath: 'src/a.ts',
+        newPath: 'src/a.ts',
+        isBinary: false,
+        additions: 1,
+        deletions: 0,
+        hunks: [],
+      },
+      isLoading: false,
+      isPlaceholderData: true,
+      refetch: vi.fn(),
+    })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'old', modified: 'new' },
+      isLoading: false,
+      isPlaceholderData: true,
+    })
+
+    renderCenter({ path: 'src/b.ts' })
+
+    expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument()
+    expect(screen.queryByText('Loading diff…')).not.toBeInTheDocument()
+    expect(screen.getByTestId('diff-content-area')).toHaveAttribute('data-stale', 'true')
+  })
+
+  it('marks the content settled once the new file has arrived', () => {
+    useFileDiff.mockReturnValue({
+      data: {
+        status: 'modified',
+        oldPath: 'src/b.ts',
+        newPath: 'src/b.ts',
+        isBinary: false,
+        additions: 1,
+        deletions: 0,
+        hunks: [],
+      },
+      isLoading: false,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
+    })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'old', modified: 'new' },
+      isLoading: false,
+      isPlaceholderData: false,
+    })
+
+    renderCenter({ path: 'src/b.ts' })
+    expect(screen.getByTestId('diff-content-area')).not.toHaveAttribute('data-stale')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { FileHistoryEntry } from '@git-manager/git-types'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
@@ -112,5 +112,50 @@ describe('BlameHistoryPanel — close', () => {
     renderPanel({ onClose })
     await user.click(screen.getByRole('button', { name: 'fileHistory.close' }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('BlameHistoryPanel — a file with no uncommitted change', () => {
+  const UNMODIFIED = { ...FILE, unmodified: true }
+
+  it('drops the separate "Current version" row', () => {
+    // Its working copy is its last commit, so a "current version" entry would be a second row for
+    // the same bytes — and picking it would claim to be "viewing version X" of what is on screen.
+    renderPanel({ file: UNMODIFIED })
+    expect(screen.queryByTestId('history-current-version')).not.toBeInTheDocument()
+  })
+
+  it('marks the newest commit as the current state instead', () => {
+    renderPanel({ file: UNMODIFIED })
+    expect(screen.getByTestId('history-current-marker')).toBeInTheDocument()
+    expect(screen.getByTestId(`history-row-${HISTORY[0].shortOid}`)).toHaveClass(
+      'bg-sidebar-accent'
+    )
+  })
+
+  it('leaves the newest commit selected by default, without pinning a version', () => {
+    // Selecting it for real would make the viewer show its "viewing version / back to current"
+    // bar for the version it is already on.
+    renderPanel({ file: UNMODIFIED })
+    expect(useRepoUIStore.getState().selectedHistoryOid).toBeNull()
+  })
+
+  it('clicking the newest commit clears any other version that was picked', () => {
+    useRepoUIStore.setState({ selectedHistoryOid: HISTORY[1].oid })
+    renderPanel({ file: UNMODIFIED })
+    fireEvent.click(screen.getByTestId(`history-row-${HISTORY[0].shortOid}`))
+    expect(useRepoUIStore.getState().selectedHistoryOid).toBeNull()
+  })
+
+  it('still pins an older commit normally', () => {
+    renderPanel({ file: UNMODIFIED })
+    fireEvent.click(screen.getByTestId(`history-row-${HISTORY[1].shortOid}`))
+    expect(useRepoUIStore.getState().selectedHistoryOid).toBe(HISTORY[1].oid)
+  })
+
+  it('keeps the "Current version" row for a file that does have pending changes', () => {
+    renderPanel({ file: FILE })
+    expect(screen.getByTestId('history-current-version')).toBeInTheDocument()
+    expect(screen.queryByTestId('history-current-marker')).not.toBeInTheDocument()
   })
 })

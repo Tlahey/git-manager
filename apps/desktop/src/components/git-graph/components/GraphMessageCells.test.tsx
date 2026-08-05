@@ -86,9 +86,7 @@ describe('WorktreeWipRow', () => {
 
   it('hides the Open Worktree button by default (showOpenButton unset)', () => {
     render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} />)
-    expect(
-      screen.queryByRole('button', { name: 'Open Worktree' })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open Worktree' })).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button and calls onOpenWorktree on click when showOpenButton is set', async () => {

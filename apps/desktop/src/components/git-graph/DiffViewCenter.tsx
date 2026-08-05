@@ -1,19 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Button, toast, GithubIcon } from '@git-manager/ui'
-import { useConfirm } from '@git-manager/components'
+import { Spinner, Button, toast, GithubIcon, cn } from '@git-manager/ui'
 import { Copy, Check as CheckIcon, GitPullRequest, Tags } from 'lucide-react'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useFileRawContents } from '../../hooks/useFileRawContents'
+import { useFileHistory } from '../../hooks/useFileHistory'
 import { useCommitTag } from '../../hooks/useCommitTag'
 import { useCommitPullRequest } from '../../hooks/useCommitPullRequest'
 import { useRepoGitHub } from '../../hooks/useRepoGitHub'
-import {
-  apiDiscardFileChanges,
-  apiStageFile,
-  apiUnstageFile,
-  apiGetCommitWebUrl,
-} from '../../api/git.api'
+import { apiGetCommitWebUrl } from '../../api/git.api'
 import { apiOpenUrl } from '../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../api/github.api'
 import { toAssetUrl, joinRepoPath } from '../../lib/assetUrl'
@@ -41,14 +36,11 @@ interface DiffViewCenterProps {
     unmodified?: boolean
   }
   onClose: () => void
-  onRefresh?: () => void
 }
 
-export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewCenterProps) {
+export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps) {
   const { t } = useTranslation('git')
-  const { confirm, confirmDialog } = useConfirm()
   const [copied, setCopied] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
   const isMarkdown = isPreviewableMarkdown(file.path)
   const isImage = isPreviewableImage(file.path)
   const hasPreview = hasPreviewTab(file.path)
@@ -102,24 +94,43 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const commitPr = useCommitPullRequest(repoPath, effectiveOid ?? null)
   const commitTag = useCommitTag(repoPath, effectiveOid ?? null)
 
+  const isWip = !effectiveOid
+  // A file opened from the explorer that has no pending change: there is nothing to diff its
+  // working copy against, since the working copy *is* HEAD.
+  const isUnmodifiedWip = isWip && file.unmodified
+
+  // What "the diff" can only mean for such a file: the change that produced the version on
+  // screen, i.e. the last commit that touched it. Resolved locally and used for the data hooks
+  // alone — writing it into the shared `selectedHistoryOid` would hijack the History panel's own
+  // selection and leave a "Back to current" button that returns here.
+  const { data: unmodifiedHistory } = useFileHistory(repoPath, isUnmodifiedWip ? file.path : null)
+  const lastChangeOid = isUnmodifiedWip ? unmodifiedHistory?.[0]?.oid : undefined
+  const showingLastChange = isUnmodifiedWip && !!lastChangeOid
+  // `modified` at that commit is byte-identical to the working copy (the file is unmodified), so
+  // the File tab reads the same content either way — only the `original` side gains a real
+  // counterpart to compare against.
+  const contentOid = effectiveOid ?? lastChangeOid
+
   // Use hook to fetch diff metadata
   const {
     data: diffData,
     isLoading: isLoadingMeta,
-    refetch,
-  } = useFileDiff(repoPath, file.path, file.staged, effectiveOid, effectiveBaseOid)
+    isPlaceholderData: isStaleMeta,
+  } = useFileDiff(repoPath, file.path, file.staged, contentOid, effectiveBaseOid)
 
   // Use hook to fetch raw contents
-  const { data: rawContents, isLoading: isLoadingRaw } = useFileRawContents(
-    repoPath,
-    file.path,
-    file.staged,
-    effectiveOid,
-    effectiveBaseOid
-  )
+  const {
+    data: rawContents,
+    isLoading: isLoadingRaw,
+    isPlaceholderData: isStaleRaw,
+  } = useFileRawContents(repoPath, file.path, file.staged, contentOid, effectiveBaseOid)
 
+  // Only true on the very first open: both hooks keep the previous file's data while the next one
+  // loads, which is what stops the editor being torn down and rebuilt on every file switch.
   const isLoading = isLoadingMeta || isLoadingRaw
-  const isWip = !effectiveOid
+  // Showing the previous file's contents while the new ones arrive — worth saying quietly, not
+  // worth replacing the view for.
+  const isStale = isStaleMeta || isStaleRaw
   const aiEnabled = useAiEnabled()
 
   // Image previews are read off disk through the asset protocol: a file that was deleted, renamed,
@@ -132,12 +143,6 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
     () => (isImage ? toAssetUrl(joinRepoPath(repoPath, file.path)) : ''),
     [isImage, repoPath, file.path]
   )
-
-  // A file opened from the explorer that has no pending change: there is no diff to show, and the
-  // Diff tab says so explicitly instead of falling through to the generic "no data" message.
-  // (Pinning its latest commit automatically instead would write to the *shared* `selectedHistoryOid`
-  // — the History panel's own selection — and leave a "Back to current" button that returns here.)
-  const isUnmodifiedWip = isWip && file.unmodified
 
   const displayPath = useMemo(() => {
     if (!diffData) return file.path
@@ -211,48 +216,6 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
     }
   }
 
-  // Toggle stage / unstage
-  async function handleToggleStage() {
-    setIsProcessing(true)
-    try {
-      if (file.staged) {
-        await apiUnstageFile(repoPath, file.path)
-      } else {
-        await apiStageFile(repoPath, file.path)
-      }
-      refetch()
-      onRefresh?.()
-    } catch (err) {
-      toast.error(String(err))
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Rollback file changes
-  async function handleRollback() {
-    const ok = await confirm({
-      title: t('commitDetails.discardTitle'),
-      description: t('commitDetails.discardPrompt'),
-      confirmLabel: t('commitDetails.discardConfirm'),
-      cancelLabel: t('common:actions.cancel'),
-      destructive: true,
-      testId: 'rollback-file-confirm-dialog',
-    })
-    if (ok) {
-      setIsProcessing(true)
-      try {
-        await apiDiscardFileChanges(repoPath, file.path)
-        onClose()
-        onRefresh?.()
-      } catch (err) {
-        toast.error(String(err))
-      } finally {
-        setIsProcessing(false)
-      }
-    }
-  }
-
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 animate-duration-100">
       <DiffToolbar
@@ -267,16 +230,20 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         onChangeActiveTab={setActiveTab}
         activeLeftPanel={activeLeftPanel}
         onChangeActiveLeftPanel={setActiveLeftPanel}
-        isProcessing={isProcessing}
-        onToggleStage={handleToggleStage}
-        onRollback={handleRollback}
         hasPreview={hasPreview}
       />
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
       <div
         data-testid="diff-content-area"
-        className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs"
+        data-stale={isStale ? 'true' : undefined}
+        className={cn(
+          'flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs',
+          // Switching files keeps the previous contents on screen for the moment the next ones
+          // take to arrive (see useFileRawContents). Dimmed rather than replaced: tearing the
+          // editor down and rebuilding it is exactly the flicker this avoids.
+          isStale && 'opacity-60 transition-opacity duration-100'
+        )}
       >
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center">
@@ -380,10 +347,22 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                     )}
                   </div>
                 )}
+                {/* No pending change, so the Diff tab is showing the commit that last touched the
+                    file rather than nothing at all. Said explicitly: without it the tab silently
+                    shows a diff the user never asked for. */}
+                {showingLastChange && activeTab === 'diff' && (
+                  <div
+                    data-testid="diff-last-change-note"
+                    className="shrink-0 border-b border-border/60 bg-muted/20 px-3 py-1.5 text-[11px] text-muted-foreground"
+                  >
+                    {t('diffView.showingLastChange', { sha: shortOid(lastChangeOid) })}
+                  </div>
+                )}
                 {/* AI reading of the pending change, above the diff itself. Scoped to the working
                     copy: "explain the changes in progress" is a question about work the user is
-                    still shaping, not about a commit that already has a message. */}
-                {aiEnabled && isWip && activeTab === 'diff' && diffData && (
+                    still shaping, not about a commit that already has a message — which is exactly
+                    what `showingLastChange` is, so it is excluded too. */}
+                {aiEnabled && isWip && !showingLastChange && activeTab === 'diff' && diffData && (
                   <ChangeExplanationPanel
                     repoPath={repoPath}
                     diffData={diffData}
@@ -453,7 +432,6 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
           </div>
         )}
       </div>
-      {confirmDialog}
     </div>
   )
 }

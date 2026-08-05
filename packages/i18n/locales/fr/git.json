@@ -644,6 +644,7 @@
   "diffView.loading": "Chargement du diff…",
   "diffView.noDiffData": "Aucune donnée de différence trouvée.",
   "diffView.noPendingChanges": "Ce fichier n'a aucune modification non validée.",
+  "diffView.showingLastChange": "Aucune modification non validée — affichage de la dernière modification de ce fichier ({{sha}}).",
   "diffView.previewUnavailable": "Aucun aperçu disponible pour ce type de fichier.",
   "diffView.previewImageAlt": "Aperçu de {{path}}",
   "diffView.previewImageUnavailable": "Cette image ne peut pas être affichée — le fichier a peut-être été déplacé ou supprimé.",

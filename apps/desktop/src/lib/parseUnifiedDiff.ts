@@ -28,7 +28,7 @@ export function reconstructDiffSides(file: GitDiffFile): { original: string; mod
 /**
  * Parses raw unified-diff / `git diff` text into the same `GitDiffFile[]` shape
  * the backend produces, so patch previews (apply / dependency patches, which we
- * only have as text) can render through the app's structured `DiffViewer`.
+ * only have as text) can render through the app's structured `DiffFileList`.
  *
  * Handles multi-file diffs, added/deleted/renamed files, and binary markers. It
  * is deliberately lenient: anything it can't classify falls back to `modified`.
