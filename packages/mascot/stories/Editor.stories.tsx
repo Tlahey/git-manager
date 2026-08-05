@@ -277,7 +277,7 @@ function Editor() {
               padding: '3px 8px',
             }}
           >
-            pipette fond{' '}
+            pick background{' '}
             {doc.sheet.chroma.color && (
               <i
                 style={{
@@ -291,7 +291,7 @@ function Editor() {
             )}
           </button>
           <label>
-            seuils {doc.sheet.chroma.t0}/{doc.sheet.chroma.t1}
+            thresholds {doc.sheet.chroma.t0}/{doc.sheet.chroma.t1}
             <input
               type="range"
               min={10}
@@ -316,7 +316,7 @@ function Editor() {
               padding: '3px 8px',
             }}
           >
-            redécouper
+            re-slice
           </button>
         </div>
         <div
@@ -376,7 +376,7 @@ function Editor() {
           )}
           {!sheetImg && (
             <p style={{ color: '#40608f', textAlign: 'center', paddingTop: 100 }}>
-              charge un sheet — les zones ci-dessous utilisent en attendant les sprites embarqués
+              load a sheet — until then the zones below use the bundled sprites
             </p>
           )}
           {[...doc.zones, ...(draftZone ? [draftZone] : [])].map((z) => (
@@ -441,7 +441,7 @@ function Editor() {
 
       {/* ── stage ── */}
       <div style={{ ...panel, width: STAGE_W + 24 }}>
-        <strong>2. Scène</strong>
+        <strong>2. Stage</strong>
         <div
           style={{
             display: 'flex',
@@ -452,7 +452,7 @@ function Editor() {
           }}
         >
           <label>
-            référence
+            reference
             <input
               type="range"
               min={0}
@@ -468,7 +468,7 @@ function Editor() {
               checked={animate}
               onChange={(e) => setAnimate(e.target.checked)}
             />{' '}
-            animer
+            animate
           </label>
           <button
             onClick={() => setPivotMode((v) => !v)}
@@ -480,7 +480,7 @@ function Editor() {
               padding: '3px 8px',
             }}
           >
-            {pivotMode ? 'clique la scène pour poser le pivot' : 'poser pivot'}
+            {pivotMode ? 'click the stage to place the pivot' : 'place pivot'}
           </button>
         </div>
         <div
@@ -572,13 +572,13 @@ function Editor() {
           </Stage>
         </div>
         <p style={{ color: '#7d95b5', margin: '6px 0 0' }}>
-          glisse une pièce pour la déplacer · clique pour sélectionner
+          drag a part to move it · click to select
         </p>
       </div>
 
       {/* ── layers (paint order) ── */}
       <div style={{ ...panel, width: 220 }}>
-        <strong>3. Couches</strong>
+        <strong>3. Layers</strong>
         <LayersPanel
           layers={doc.placements.map((p) => ({ zone: p.zone, x: p.x, y: p.y }))}
           selected={selPart}
@@ -590,16 +590,16 @@ function Editor() {
 
       {/* ── inspector + JSON ── */}
       <div style={{ ...panel, width: 300 }}>
-        <strong>4. Pièce sélectionnée</strong>
+        <strong>4. Selected part</strong>
         {sel && selPart !== null ? (
           <div>
             <p style={{ margin: '6px 0' }}>
-              <code>{sel.zone}</code> — couche {selPart + 1}/{doc.placements.length}{' '}
-              <button onClick={() => movePart(selPart, -1)} title="vers l'arrière">
-                ▼ arrière
+              <code>{sel.zone}</code> — layer {selPart + 1}/{doc.placements.length}{' '}
+              <button onClick={() => movePart(selPart, -1)} title="send backward">
+                ▼ back
               </button>{' '}
-              <button onClick={() => movePart(selPart, +1)} title="vers l'avant">
-                ▲ avant
+              <button onClick={() => movePart(selPart, +1)} title="bring forward">
+                ▲ front
               </button>
             </p>
             {(
@@ -618,9 +618,7 @@ function Editor() {
                   type="number"
                   step={k === 'scale' || k === 'opacity' ? 0.05 : 1}
                   value={v}
-                  onChange={(e) =>
-                    patchPart(selPart, { [k]: +e.target.value } as Partial<Placement>)
-                  }
+                  onChange={(e) => patchPart(selPart, { [k]: +e.target.value })}
                 />
               </label>
             ))}
@@ -652,7 +650,7 @@ function Editor() {
               />
             </label>
             <label style={label}>
-              anim amp/dur/délai{' '}
+              anim amp/dur/delay{' '}
               <input
                 style={{ ...num, width: 44 }}
                 type="number"
@@ -695,12 +693,12 @@ function Editor() {
                 setSelPart(null)
               }}
             >
-              supprimer la pièce
+              delete part
             </button>
           </div>
         ) : (
           <p style={{ color: '#7d95b5' }}>
-            clique une pièce sur la scène (ou « ajouter à la scène » depuis une zone)
+            click a part on the stage (or “add to stage” from a zone)
           </p>
         )}
 
@@ -730,13 +728,13 @@ function Editor() {
           }}
           onClick={() => navigator.clipboard.writeText(exportJson)}
         >
-          copier l'export
+          copy export
         </button>
-        <label style={label}>importer :</label>
+        <label style={label}>import:</label>
         <textarea
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
-          placeholder="colle un JSON exporté ici"
+          placeholder="paste an exported JSON here"
           style={{
             width: '100%',
             height: 60,
@@ -759,17 +757,17 @@ function Editor() {
             try {
               const d = JSON.parse(importText) as Doc
               if (d.version !== 1 || !Array.isArray(d.placements))
-                throw new Error('format inattendu')
+                throw new Error('unexpected format')
               setDoc(d)
               setSelPart(null)
               setSelZone(null)
               if (sheetImg) setTimeout(() => reslice(sheetImg, d), 0)
             } catch (err) {
-              alert(`Import impossible : ${String(err)}`)
+              alert(`Import failed: ${String(err)}`)
             }
           }}
         >
-          appliquer l'import
+          apply import
         </button>
       </div>
     </div>
@@ -798,7 +796,7 @@ function ZoneInspector({
         />
       </label>
       <label style={label}>
-        rôle{' '}
+        role{' '}
         <select
           value={zone.role}
           onChange={(e) => onChange({ role: e.target.value as Zone['role'] })}
@@ -817,7 +815,7 @@ function ZoneInspector({
             style={{ ...num, width: 48 }}
             type="number"
             value={zone[k]}
-            onChange={(e) => onChange({ [k]: +e.target.value } as Partial<Zone>)}
+            onChange={(e) => onChange({ [k]: +e.target.value })}
           />
         ))}
       </label>
@@ -832,7 +830,7 @@ function ZoneInspector({
             padding: '3px 8px',
           }}
         >
-          ajouter à la scène
+          add to stage
         </button>
         <button
           onClick={onDelete}
@@ -844,7 +842,7 @@ function ZoneInspector({
             padding: '3px 8px',
           }}
         >
-          supprimer
+          delete
         </button>
       </div>
     </div>
