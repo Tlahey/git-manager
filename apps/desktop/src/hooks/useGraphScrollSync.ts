@@ -31,6 +31,7 @@ export function useGraphScrollSync({
   clampedMatchIndex,
   pendingGraphSelection,
   setPendingGraphSelection,
+  getItemKey,
   t,
 }: {
   parentRef: RefObject<HTMLDivElement | null>
@@ -47,6 +48,13 @@ export function useGraphScrollSync({
   clampedMatchIndex: number
   pendingGraphSelection: string | null
   setPendingGraphSelection: (oid: string | null) => void
+  /**
+   * Identity of a virtual row, when the caller needs one that survives the list changing under it.
+   * Left undefined the virtualizer keys by index, which is what the graph wants at rest: scrolling
+   * then re-renders the same components with new props instead of unmounting and remounting a
+   * screenful of rows. Only the timeline preview overrides it — see `GitGraph`.
+   */
+  getItemKey?: (index: number) => string | number
   t: TranslateFn
 }) {
   const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({
@@ -59,6 +67,7 @@ export function useGraphScrollSync({
     getScrollElement: () => parentRef.current,
     estimateSize: () => rowHeight,
     overscan: 20,
+    getItemKey,
   })
 
   // Select and scroll the currently focused search match into view — as if it had been clicked —

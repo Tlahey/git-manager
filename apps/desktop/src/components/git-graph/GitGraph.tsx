@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, cn } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -466,6 +466,22 @@ export function GitGraph({
 
   // ── Virtualisation + scroll sync ──────────────────────────────────────────
   // (the scroll container's ref is declared with the graph column's scroll geometry above)
+  /**
+   * While the timeline is open — and only then — a row is identified by its commit rather than by
+   * its position, so React keeps the same DOM node for a commit as the previewed step moves it up
+   * or down the list and a CSS transition can carry it there. At rest the virtualizer keys by
+   * index, which is cheaper for scrolling (it re-renders rows in place instead of unmounting and
+   * remounting a screenful), and nothing outside the timeline changes behaviour.
+   *
+   * Switching identity re-mounts the list once, on open and on close. That costs nothing visible:
+   * on open the previewed step is the current one, so the graph it re-mounts into is the same one
+   * it was showing, and the fade below reads as the overlay arriving.
+   */
+  const previewItemKey = useCallback(
+    (index: number) => renderNodes[index]?.commit.oid ?? index,
+    [renderNodes]
+  )
+
   const { virtualizer } = useGraphScrollSync({
     parentRef,
     rowHeight,
@@ -481,6 +497,7 @@ export function GitGraph({
     clampedMatchIndex,
     pendingGraphSelection,
     setPendingGraphSelection,
+    getItemKey: timelinePreviewOpen ? previewItemKey : undefined,
     t,
   })
 
@@ -748,7 +765,14 @@ export function GitGraph({
                                 oid={oid}
                                 testId={`graph-row-${oid}`}
                                 selected={oid === primaryOid || selected.has(oid)}
-                                className="hover:z-graph-row-hover"
+                                className={cn(
+                                  'hover:z-graph-row-hover',
+                                  // A commit the previewed step introduces has no previous position
+                                  // to travel from, so it arrives by fading in. Only while the
+                                  // timeline is open: at rest rows mount constantly, as scrolling
+                                  // brings them into the window, and every one of them would flash.
+                                  timelinePreviewOpen && 'animate-in fade-in animate-duration-200'
+                                )}
                                 style={{
                                   position: 'absolute',
                                   top: 0,
@@ -756,6 +780,13 @@ export function GitGraph({
                                   width: '100%',
                                   height: rowHeight,
                                   transform: `translateY(${virtualItem.start}px)`,
+                                  // A commit that survives the step keeps its DOM node (see
+                                  // `previewItemKey`) and slides to its new row. Gated too: the
+                                  // virtualizer rewrites `translateY` on every frame of a scroll,
+                                  // and transitioning that would smear the whole list.
+                                  transition: timelinePreviewOpen
+                                    ? 'transform 220ms ease'
+                                    : undefined,
                                 }}
                               >
                                 <GraphRow

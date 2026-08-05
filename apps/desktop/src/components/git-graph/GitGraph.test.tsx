@@ -26,21 +26,33 @@ vi.mock('../../hooks/useGitGraphNodes', () => ({ useGitGraphNodes }))
 vi.mock('../../hooks/useGitGraphActions', () => ({ useGitGraphActions }))
 vi.mock('../../api/git.api', () => ({ apiGetRebaseState }))
 
-const { virtualizerScrollToIndex } = vi.hoisted(() => ({ virtualizerScrollToIndex: vi.fn() }))
+const { virtualizerScrollToIndex, virtualizerOptions } = vi.hoisted(() => ({
+  virtualizerScrollToIndex: vi.fn(),
+  virtualizerOptions: {
+    current: null as { getItemKey?: (index: number) => string | number } | null,
+  },
+}))
 // jsdom reports a 0-height scroll container, so the real @tanstack/react-virtual would only
 // produce virtual items that fit a 0px viewport (i.e. none) — mock it to always render every
 // item so GitGraph's own row-wiring logic (not react-virtual's windowing) is what's under test.
 vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: (opts: { count: number; estimateSize: () => number }) => ({
-    getTotalSize: () => opts.count * opts.estimateSize(),
-    getVirtualItems: () =>
-      Array.from({ length: opts.count }, (_, index) => ({
-        key: index,
-        index,
-        start: index * opts.estimateSize(),
-      })),
-    scrollToIndex: virtualizerScrollToIndex,
-  }),
+  useVirtualizer: (opts: {
+    count: number
+    estimateSize: () => number
+    getItemKey?: (index: number) => string | number
+  }) => {
+    virtualizerOptions.current = opts
+    return {
+      getTotalSize: () => opts.count * opts.estimateSize(),
+      getVirtualItems: () =>
+        Array.from({ length: opts.count }, (_, index) => ({
+          key: index,
+          index,
+          start: index * opts.estimateSize(),
+        })),
+      scrollToIndex: virtualizerScrollToIndex,
+    }
+  },
 }))
 
 const { webviewGetByLabel, WebviewWindowCtor } = vi.hoisted(() => ({
@@ -1247,5 +1259,33 @@ describe('GitGraph — undo/redo timeline preview', () => {
     const row = lastGraphRowCalls.current.at(-1)!
     ;(row.onContextMenu as (e: unknown) => void)({ preventDefault: vi.fn() })
     expect(openMenuAt).toHaveBeenCalled()
+  })
+
+  // Animating between two history states needs two things, and both are deliberately off at rest:
+  // stable per-commit identity (so a surviving row keeps its DOM node and can travel) and the
+  // transitions themselves (which would smear a scroll, where `translateY` is rewritten every
+  // frame). The graph outside the timeline must behave exactly as it did.
+  it('animates rows only while the timeline is open', () => {
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+    const slot = screen.getByTestId('graph-row-ccc')
+    expect(slot.style.transition).toContain('transform')
+    expect(slot).toHaveClass('animate-in')
+  })
+
+  it('leaves the graph unanimated at rest', () => {
+    renderGraph()
+    const slot = screen.getByTestId('graph-row-ccc')
+    expect(slot.style.transition).toBe('')
+    expect(slot).not.toHaveClass('animate-in')
+  })
+
+  it('identifies rows by commit while previewing, and by position at rest', () => {
+    renderGraph()
+    expect(virtualizerOptions.current?.getItemKey).toBeUndefined()
+
+    useTimelineNavStore.setState({ isOpen: true, repoPath: '/repo', previewHeadOid: 'aaa' })
+    renderGraph()
+    expect(virtualizerOptions.current?.getItemKey?.(1)).toBe('bbb')
   })
 })
