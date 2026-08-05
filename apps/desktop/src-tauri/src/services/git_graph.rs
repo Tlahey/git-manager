@@ -97,7 +97,20 @@ pub fn build_graph_nodes(
     refs_map: &HashMap<String, Vec<LogRef>>,
     branch: Option<&str>,
     head_has_wip: bool,
+    head_override: Option<&HeadOverride>,
 ) -> Result<Vec<LogGraphNode>, AppError> {
+    // Under a timeline preview the branch is pretended to point elsewhere, and its real tip is not
+    // in `oids` at all. Every "where is HEAD" question below has to be answered with the pretended
+    // tip, or the layout reserves lanes and colours for a commit that never arrives.
+    let effective_head_tip = |repo: &Repository| -> Option<Oid> {
+        match head_override {
+            Some(over) => Oid::from_str(&over.oid).ok(),
+            None => repo.head().ok().and_then(|h| {
+                h.target()
+                    .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
+            }),
+        }
+    };
     // active_lanes[i] = Some(oid) means lane i is waiting for this commit
     let mut active_lanes: Vec<Option<String>> = Vec::new();
     let mut lane_colors: Vec<String> = Vec::new();
@@ -123,7 +136,14 @@ pub fn build_graph_nodes(
         ];
 
         for (local_ref, remote_ref) in local_main_colors {
-            let local_oid = repo.find_reference(local_ref).ok().and_then(|r| r.target());
+            // Same substitution: previewing main at an older (or newer) commit means its blue has
+            // to be walked from there, else the commits the preview brings back get an unrelated
+            // lane colour and the mainline stops reading as one line.
+            let overridden = head_override
+                .filter(|over| local_ref == format!("refs/heads/{}", over.branch))
+                .and_then(|over| Oid::from_str(&over.oid).ok());
+            let local_oid =
+                overridden.or_else(|| repo.find_reference(local_ref).ok().and_then(|r| r.target()));
             let remote_oid = repo
                 .find_reference(remote_ref)
                 .ok()
@@ -218,10 +238,7 @@ pub fn build_graph_nodes(
     // anchor it. Skipped for the single-branch view (`branch` is Some), where the walked branch's
     // tip is the first commit and already owns column 0 on its own.
     if branch.is_none() && head_has_wip {
-        let head_tip_oid = repo.head().ok().and_then(|h| {
-            h.target()
-                .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
-        });
+        let head_tip_oid = effective_head_tip(repo);
         if let Some(oid) = head_tip_oid {
             let oid_str = oid.to_string();
             // Fixing the tip's color here (it propagates down its first-parent chain) keeps the
@@ -725,7 +742,7 @@ mod tests {
         let oids = vec![f.c4, f.c3, f.s, f.f1, f.c2, f.c1];
 
         let nodes =
-            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false).unwrap();
+            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false, None).unwrap();
 
         let stash = node(&nodes, f.s);
         let bridge_col = stash.column;
@@ -791,7 +808,7 @@ mod tests {
         let oids = vec![f.c4, f.c3, f.s, f.c2, f.c1];
 
         let nodes =
-            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false).unwrap();
+            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false, None).unwrap();
 
         let stash = node(&nodes, f.s);
         let bridge_col = stash.column;
@@ -872,7 +889,8 @@ mod tests {
         let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
         // Display order (newest first) — the merge is the first unpushed row.
         let oids = vec![m, p1, s1, b, _r];
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, Some("main"), false).unwrap();
+        let nodes =
+            build_graph_nodes(&repo, &oids, &[], &refs_map, Some("main"), false, None).unwrap();
 
         let merge = node(&nodes, m);
         assert_eq!(merge.column, 0, "merge sits on the mainline column");
@@ -951,7 +969,7 @@ mod tests {
         // Display order, newest first: the feature branch's commits are above main's tip.
         let oids = vec![f2, f1, base, r];
 
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false, None).unwrap();
 
         assert_eq!(
             node(&nodes, f2).column,
@@ -978,7 +996,7 @@ mod tests {
 
         // Dirty working tree: the WIP row above the graph is then the first element, so it — and
         // the lane running down to main's tip — legitimately owns column 0.
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true, None).unwrap();
         assert_eq!(
             node(&nodes, base).column,
             0,
@@ -998,6 +1016,59 @@ mod tests {
     /// graph's first element, so its lane — running down to the checked-out tip — owns column 0,
     /// and main's newer tip is pushed to a lane on the right. Without a WIP row, columns follow
     /// pure top-to-bottom order instead: the newest displayed commit owns column 0.
+    /// Timeline preview: the WIP row's column-0 reservation must anchor on the *previewed* tip,
+    /// not on the branch's real one. The real tip is not in the walk at all while previewing a
+    /// step that undoes it, so reserving a lane for it leaves the phantom, commit-less lane the
+    /// module comment above warns about — every row shifts one column right and the graph reads
+    /// as if it were laid out bottom-up.
+    #[test]
+    fn head_override_anchors_the_wip_lane_on_the_previewed_tip() {
+        let dir = std::env::temp_dir().join(format!("gm-test-graph-prev-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let c1 = commit_file(&repo, "file.txt", "one\n", "c1");
+        let c2 = commit_file(&repo, "file.txt", "two\n", "c2");
+        // c3 is the branch's real tip — deliberately unused below: previewing "undo the last
+        // commit" is exactly the case where it is absent from the walk.
+        let _c3 = commit_file(&repo, "file.txt", "three\n", "c3");
+        let branch_name = repo.head().unwrap().shorthand().unwrap().to_string();
+
+        let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+        // Previewing "undo the last commit": c3 is off the branch, so it is not in the walk.
+        let oids = vec![c2, c1];
+        let over = HeadOverride {
+            branch: branch_name,
+            oid: c2.to_string(),
+        };
+
+        let nodes =
+            build_graph_nodes(&repo, &oids, &[], &refs_map, None, true, Some(&over)).unwrap();
+
+        assert_eq!(
+            node(&nodes, c2).column,
+            0,
+            "the previewed tip owns column 0 under the WIP row"
+        );
+        assert_eq!(
+            node(&nodes, c1).column,
+            0,
+            "and its parent stays on the same lane — no phantom lane pinned to the left"
+        );
+
+        // Same walk, no override: the lane is reserved for the real tip c3, which never arrives,
+        // so column 0 is held by nothing and every row is pushed right. This is the bug.
+        let unfixed = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true, None).unwrap();
+        assert_eq!(
+            node(&unfixed, c2).column,
+            1,
+            "guard: without the override the reservation does shift the graph"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn checked_out_branch_tip_owns_column_zero_in_full_graph() {
         let dir = std::env::temp_dir().join(format!("gm-test-graph-head-{}", std::process::id()));
@@ -1035,7 +1106,7 @@ mod tests {
         let oids = vec![c3, f1, c2, c1];
 
         // Full graph view (branch = None), dirty working tree → a WIP row anchors column 0.
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true, None).unwrap();
 
         assert_eq!(
             node(&nodes, f1).column,
@@ -1049,7 +1120,7 @@ mod tests {
         );
 
         // Clean working tree → no WIP row → no seed: pure top-to-bottom order.
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false, None).unwrap();
 
         assert_eq!(
             node(&nodes, c3).column,
@@ -1118,7 +1189,7 @@ mod tests {
         let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
         // Display order newest-first — the merge tip `m1` sits at the top.
         let oids = vec![m1, feat, base, r];
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false, None).unwrap();
 
         assert_eq!(
             node(&nodes, m1).column,
@@ -1197,7 +1268,7 @@ mod tests {
         let oids = vec![m1, feat, base, r];
 
         // Clean tree: pure top-down — no phantom lane above `feat`.
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false, None).unwrap();
         assert_eq!(
             node(&nodes, m1).column,
             0,
@@ -1219,7 +1290,7 @@ mod tests {
         );
 
         // Dirty tree: the WIP row anchors column 0 for the checked-out tip.
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true, None).unwrap();
         assert_eq!(
             node(&nodes, feat).column,
             0,

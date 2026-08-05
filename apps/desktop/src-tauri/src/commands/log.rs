@@ -306,6 +306,7 @@ fn get_log_blocking(
         &refs_map,
         branch.as_deref(),
         head_has_wip.unwrap_or(false),
+        head_override.as_ref(),
     )
     .map_err(Into::into)
 }
