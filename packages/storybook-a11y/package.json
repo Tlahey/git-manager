@@ -12,6 +12,7 @@
     "./vitest-apca-reporter": "./src/vitest-apca-reporter.ts"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

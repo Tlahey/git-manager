@@ -8,6 +8,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,15 +1,202 @@
 {
   "$schema": "../../node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "plugins": ["typescript", "unicorn", "oxc", "react", "import"],
   "categories": {
     "correctness": "error"
   },
   "rules": {
     "typescript/no-explicit-any": "error",
     "react/rules-of-hooks": "error",
-    "react/exhaustive-deps": "warn"
+    "react/exhaustive-deps": "warn",
+
+    "react/display-name": "error",
+    "react/forward-ref-uses-ref": "error",
+    "react/hook-use-state": "error",
+    "react/iframe-missing-sandbox": "error",
+    "react/jsx-fragments": "error",
+    "react/jsx-no-constructed-context-values": "error",
+    "react/jsx-no-useless-fragment": "error",
+    "react/jsx-pascal-case": "error",
+    "react/jsx-props-no-spread-multi": "error",
+    "react/no-danger-with-children": "error",
+    "react/no-namespace": "error",
+    "react/no-this-in-sfc": "error",
+    "react/no-unstable-nested-components": "error",
+    "react/prefer-es6-class": "error",
+    "react/style-prop-object": "error",
+    "react/void-dom-elements-no-children": "error",
+
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+
+    "typescript/adjacent-overload-signatures": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/consistent-indexed-object-style": "error",
+    "typescript/consistent-type-imports": ["error", { "disallowTypeAnnotations": false }],
+    "typescript/no-confusing-non-null-assertion": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-extraneous-class": "error",
+    "typescript/no-inferrable-types": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-nullish-coalescing": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-this-alias": "error",
+    "typescript/no-unnecessary-parameter-property-assignment": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    // `warn`: type-aware, and it judges only the declared type. Removing the three defaults it
+    // flags in RepositorySidebar.tsx broke 50 tests — the suites mock `useSidebarRows` partially,
+    // so those arrays really are `undefined` at runtime despite the signature. The defaults are
+    // load-bearing; each hit needs `pnpm test` before it is believed.
+    "typescript/no-useless-default-assignment": "warn",
+    "typescript/no-useless-empty-export": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-function-type": "error",
+    "typescript/prefer-literal-enum-member": "error",
+    "typescript/prefer-ts-expect-error": "error",
+    "typescript/triple-slash-reference": "error",
+
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "import/no-empty-named-blocks": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-self-import": "error",
+
+    "eslint/default-case-last": "error",
+    "eslint/eqeqeq": ["error", "smart"],
+    "eslint/no-return-assign": "error",
+    "eslint/no-throw-literal": "error",
+    "eslint/no-useless-concat": "error",
+    "eslint/no-var": "error",
+    "eslint/prefer-const": "error",
+    "eslint/prefer-object-has-own": "error",
+    "eslint/symbol-description": "error",
+
+    "eslint/no-alert": "warn",
+
+    // --- Type-aware rules ---------------------------------------------------
+    // These need type information, so they only run when the `lint` script passes
+    // `--type-aware` (the `oxlint-tsgolint` devDependency provides the checker).
+    // Listing them here is harmless without the flag — oxlint just skips them.
+    // NOTE: the config schema advertises a `typeAware` key, but the 1.73 binary
+    // rejects it in JSON config ("unknown field"), hence the CLI flag.
+    //
+    // NEVER run `oxlint --type-aware --fix` on these and commit without running
+    // `pnpm typecheck` AND `pnpm test`. Three separate rules produced wrong fixes on
+    // this codebase (see the comments below), including one that silently turned
+    // `reward !== null && (reward.confetti ?? true)` into `reward?.confetti` and
+    // switched every reward celebration off — caught only by NotchNotification's tests.
+    "typescript/await-thenable": "error",
+    "typescript/no-array-delete": "error",
+    "typescript/no-duplicate-type-constituents": "error",
+    "typescript/no-for-in-array": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-misused-spread": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/no-unsafe-enum-comparison": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-find": "error",
+    "typescript/prefer-includes": "error",
+    "typescript/prefer-optional-chain": "error",
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/prefer-string-starts-ends-with": "error",
+    "typescript/restrict-template-expressions": "error",
+    // `considerDefaultExhaustiveForUnions` because all 12 hits without it were switches that
+    // already have a `default` and simply don't spell out `null`/`undefined`. With it on, the
+    // rule still catches what matters: a switch over a union, with no default, missing a member.
+    "typescript/switch-exhaustiveness-check": [
+      "error",
+      { "considerDefaultExhaustiveForUnions": true }
+    ],
+
+    // Deliberately NOT enabled: `typescript/non-nullable-type-assertion-style`. It is purely
+    // stylistic (`x as string` vs `x!`), it fires ~100 times — almost all on the house SWR
+    // pattern `useSWR(key, () => api(repoPath as string))` — and its autofix has been observed
+    // turning a downcast (`el as HTMLDivElement` on an `Element | null`) into a bare `!`, which
+    // silently widens the type. No correctness gain, real risk.
+
+    // `error` in src (which is clean), off in tests — see the override below. NEVER run its
+    // `--fix` unattended even so: it removed assertions that `tsc` needs (a cast to a type
+    // carrying a member Monaco's public typings omit), breaking the build in 7 files. Always
+    // follow a fix pass with `pnpm typecheck`.
+    "typescript/no-unnecessary-type-assertion": "error",
+
+    "typescript/no-base-to-string": "error",
+
+    // `warn`: every hit is lucide-react's `Github`/`Gitlab`. Brand icons are deprecated and
+    // scheduled for removal in lucide v1.0, so these WILL break on the next major bump — but
+    // replacing them needs new artwork (simpleicons), not a lint fix.
+    "typescript/no-deprecated": "warn",
+
+    // `--type-aware` turns this on via the correctness category. It fires on every
+    // `expect(obj.method)`-style reference in a test (76 hits, almost all in suites),
+    // where an unbound method reference is exactly what's being asserted on.
+    "typescript/unbound-method": "off",
+
+    // Also on by default under `--type-aware`, and deliberately deferred: 250 hits,
+    // heavily concentrated in App.tsx and useGitGraphActions.ts. Every one is a git
+    // `invoke()` whose rejection goes nowhere, so this is worth turning back on — but
+    // as its own change, not silently bundled into a lint-config bump.
+    "typescript/no-floating-promises": "off"
   },
   "env": {
-    "builtin": true
-  }
+    "builtin": true,
+    "browser": true,
+    "es2024": true
+  },
+  "overrides": [
+    {
+      // Fast Refresh and render-perf rules describe how a module behaves in the running
+      // app; a test module is never hot-replaced and never re-rendered for perf, so both
+      // rules only produce noise here. `stories/` is covered for the same reason: those
+      // files are Storybook fixtures (token tables, sample models, stage rigs), dev-only
+      // and never in the app bundle.
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "**/test/**", "**/stories/**"],
+      "rules": {
+        "react/only-export-components": "off",
+        "react/jsx-no-constructed-context-values": "off",
+        // Both fire only on `vi.mock` factories — spreading an `importActual` module namespace,
+        // and interpolating a mock's loosely-typed value into a `data-testid`. Legitimate in a
+        // test double, a genuine smell in src, where both stay at `error`.
+        "typescript/no-misused-spread": "off",
+        "typescript/restrict-template-expressions": "off",
+        // Fires on `await handler()` where the handler's declared type is `() => void` but the
+        // implementation is async. Awaiting it is the right defensive move in a test; the
+        // looseness is in the callback type, not in the suite. `error` in src, where it's 0.
+        "typescript/await-thenable": "off",
+        // Fires on `String(props.x ?? '')` in a `vi.mock` factory, where props is the deliberately
+        // loose `Record<string, unknown>` a fake component takes. `error` in src, where the
+        // stringified value's type is known and `[object Object]` would be a real bug.
+        "typescript/no-base-to-string": "off",
+        // Every hit is `{ current: null as unknown }` inside a `vi.hoisted` block — the assertion
+        // is what widens the captured ref so the mock can later store real props in it. The rule
+        // reads the object literal's own inferred type as "the receiver", so it calls the
+        // assertion redundant and its fix pins the property to `null`. `error` in src, where
+        // it's 0 and the reading is correct.
+        "typescript/no-unnecessary-type-assertion": "off"
+      }
+    },
+    {
+      // A story is a dev playground, not shipped UI: `alert` there is a developer telling
+      // themselves something on their own machine, not a dialog a user can ever meet.
+      "files": ["**/stories/**", "**/*.stories.tsx"],
+      "rules": {
+        "eslint/no-alert": "off"
+      }
+    },
+    {
+      // `react-markdown`'s `components={{ h1: ..., td: ... }}` map is a render-prop table,
+      // not components defined in the JSX tree — the remount hazard the rule guards against
+      // doesn't apply. Scoped to this file rather than turning on `allowAsProps` globally,
+      // which would blind the rule to the real bug everywhere else.
+      "files": ["**/MarkdownRenderer.tsx"],
+      "rules": {
+        "react/no-unstable-nested-components": ["error", { "allowAsProps": true }]
+      }
+    }
+  ]
 }

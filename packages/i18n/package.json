@@ -9,6 +9,7 @@
     "./locales/*": "./locales/*"
   },
   "scripts": {
+    "lint": "oxlint --type-aware src",
     "typecheck": "tsc --noEmit",
     "translation:check": "node scripts/validate-translations.mts"
   },
