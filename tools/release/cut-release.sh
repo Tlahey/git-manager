@@ -13,10 +13,18 @@
 # .claude/skills/release-process/SKILL.md for the rest of the pipeline (release.yml, drafting,
 # publishing).
 #
+# A tag push always fires release.yml's own `push: tags:` trigger regardless of which path you
+# take below — that's deliberate (see tools/release/README.md), not a bug: it's a free safety-net
+# CI build. --local-build additionally builds, signs and drafts the release from this machine, so
+# you don't have to wait 15-20+ minutes (and burn 10x-billed macOS runner minutes) on the CI build
+# just to get a reviewable draft; cancel the redundant CI run yourself if you don't want it (the
+# script prints its run id).
+#
 # Usage:
 #   pnpm release --tag=v0.3.0
-#   pnpm release --bump=minor          # computes the next version from the current tag
-#   pnpm release --bump=patch --yes    # skip the confirmation prompt (e.g. for scripting)
+#   pnpm release --bump=minor                 # computes the next version from the current tag
+#   pnpm release --bump=patch --yes            # skip the confirmation prompt (e.g. for scripting)
+#   pnpm release --bump=patch --local-build     # build/sign/draft here instead of waiting on CI
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -25,18 +33,28 @@ REPO="Tlahey/git-manager"
 TAG=""
 BUMP="patch"
 ASSUME_YES=false
+LOCAL_BUILD=false
 
 for arg in "$@"; do
   case "$arg" in
     --tag=*) TAG="${arg#--tag=}" ;;
     --bump=*) BUMP="${arg#--bump=}" ;;
     --yes) ASSUME_YES=true ;;
+    --local-build) LOCAL_BUILD=true ;;
     *)
-      echo "Unknown argument: $arg (expected --tag=vX.Y.Z, --bump=patch|minor|major, --yes)" >&2
+      echo "Unknown argument: $arg (expected --tag=vX.Y.Z, --bump=patch|minor|major, --yes, --local-build)" >&2
       exit 1
       ;;
   esac
 done
+
+if [ "$LOCAL_BUILD" = true ]; then
+  RELEASE_ENV="$HOME/.tauri/git-manager-release.env"
+  [ -f "$RELEASE_ENV" ] || {
+    echo "--local-build needs a signing key: $RELEASE_ENV not found (see tools/release/README.md)" >&2
+    exit 1
+  }
+fi
 
 if [ -n "$TAG" ] && [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "Invalid --tag: $TAG (expected vX.Y.Z)" >&2
@@ -167,7 +185,7 @@ echo "=== pushing commit + tag ==="
 git -C "$WORKTREE_DIR" push origin HEAD:main
 git -C "$WORKTREE_DIR" push origin "$TAG"
 
-echo "=== waiting for release.yml to start ==="
+echo "=== waiting for release.yml's tag-triggered run to appear ==="
 PREVIOUS_RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId // empty')"
 RUN_ID=""
 for _ in $(seq 1 30); do
@@ -175,18 +193,77 @@ for _ in $(seq 1 30); do
   RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 --json databaseId,headBranch --jq --arg tag "$TAG" '.[] | select(.headBranch == $tag) | .databaseId' | head -1)"
   [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$PREVIOUS_RUN_ID" ] && break
 done
+[ -n "$RUN_ID" ] && echo "release.yml also started automatically: https://github.com/$REPO/actions/runs/$RUN_ID"
 
-if [ -z "$RUN_ID" ]; then
-  echo "Tag pushed, but couldn't find the triggered release.yml run — check:"
-  echo "  gh run list --repo $REPO --workflow=release.yml --limit=3"
-  exit 1
+if [ "$LOCAL_BUILD" = true ]; then
+  if [ -n "$RUN_ID" ]; then
+    echo "Not waiting on it — building locally instead. Cancel the redundant CI run if you don't want it:"
+    echo "  gh run cancel $RUN_ID --repo $REPO"
+  fi
+
+  echo "=== building universal bundle locally (signed) ==="
+  BUNDLE_DIR="$WORKTREE_DIR/apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle"
+  (
+    cd "$WORKTREE_DIR/apps/desktop"
+    # shellcheck disable=SC1090
+    source "$RELEASE_ENV"
+    pnpm tauri build --target universal-apple-darwin --features vendored-openssl
+  )
+
+  DMG_PATH="$(find "$BUNDLE_DIR/dmg" -name '*.dmg' | head -1)"
+  APP_TARBALL_PATH="$(find "$BUNDLE_DIR/macos" -name '*.app.tar.gz' | head -1)"
+  APP_SIG_PATH="$APP_TARBALL_PATH.sig"
+  [ -f "$DMG_PATH" ] && [ -f "$APP_TARBALL_PATH" ] && [ -f "$APP_SIG_PATH" ] || {
+    echo "Build finished but expected artifacts are missing under $BUNDLE_DIR — was the signing key valid?" >&2
+    exit 1
+  }
+
+  echo "=== assembling latest.json ==="
+  ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$(basename "$APP_TARBALL_PATH")"
+  SIGNATURE="$(cat "$APP_SIG_PATH")"
+  # `gh release create`'s uploaded filename is this path's basename — it must be literally
+  # "latest.json" to match what releases/latest/download/latest.json (the updater endpoint) serves.
+  LATEST_JSON="$(mktemp -d)/latest.json"
+  node -e "
+    const fs = require('fs');
+    const platform = { signature: '$SIGNATURE', url: '$ASSET_URL' };
+    const manifest = {
+      version: '$NEXT_VERSION',
+      notes: fs.readFileSync('$NOTES_FILE', 'utf8').trim(),
+      pub_date: new Date().toISOString(),
+      platforms: {
+        'darwin-aarch64': platform,
+        'darwin-x86_64': platform,
+        'darwin-aarch64-app': platform,
+        'darwin-x86_64-app': platform,
+      },
+    };
+    fs.writeFileSync('$LATEST_JSON', JSON.stringify(manifest, null, 2));
+  "
+
+  echo "=== creating draft release $TAG ==="
+  gh release create "$TAG" \
+    --repo "$REPO" \
+    --title "$TAG" \
+    --notes-file "$NOTES_FILE" \
+    --draft \
+    "$DMG_PATH" \
+    "$APP_TARBALL_PATH" \
+    "$APP_SIG_PATH" \
+    "$LATEST_JSON"
+else
+  if [ -z "$RUN_ID" ]; then
+    echo "Tag pushed, but couldn't find the triggered release.yml run — check:"
+    echo "  gh run list --repo $REPO --workflow=release.yml --limit=3"
+    exit 1
+  fi
+
+  echo "=== watching release.yml run $RUN_ID ==="
+  gh run watch "$RUN_ID" --repo "$REPO" --exit-status || {
+    echo "Build failed — see: https://github.com/$REPO/actions/runs/$RUN_ID" >&2
+    exit 1
+  }
 fi
-
-echo "=== watching release.yml run $RUN_ID ==="
-gh run watch "$RUN_ID" --repo "$REPO" --exit-status || {
-  echo "Build failed — see: https://github.com/$REPO/actions/runs/$RUN_ID" >&2
-  exit 1
-}
 
 echo
 echo "=== done ==="
