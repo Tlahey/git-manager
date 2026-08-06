@@ -4,23 +4,30 @@
 instead of waiting on `release.yml`'s GitHub-hosted runner, which takes 15-20+ minutes for a
 universal build (two full `cargo build --release` passes with full LTO, one per architecture).
 
-The output is **unsigned by default**. `tauri build` itself signs automatically when
-`TAURI_SIGNING_PRIVATE_KEY_PATH` (or `TAURI_SIGNING_PRIVATE_KEY`) and
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` are set in the environment — same key as the
-`TAURI_SIGNING_PRIVATE_KEY` GitHub Actions secret that `release.yml` uses, so a locally-signed
-build is trusted by the same installs. Whoever holds that private key file locally can export:
+## Signing
+
+The script auto-signs if `~/.tauri/git-manager-release.env` exists — it's `source`d before the
+build and expected to export `TAURI_SIGNING_PRIVATE_KEY_PATH` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, which `tauri build` itself then picks up. This must be the
+same private key as the `TAURI_SIGNING_PRIVATE_KEY` GitHub secret `release.yml` signs with (see
+the pubkey in `apps/desktop/src-tauri/tauri.conf.json`'s `plugins.updater`) — otherwise a
+locally-signed build won't be trusted by an existing install's auto-updater, or vice versa.
+
+That file lives outside the repo (never commit a private key) and is not created by this script.
+To (re)create it after generating a keypair with `pnpm --filter @git-manager/desktop exec tauri
+signer generate -w ~/.tauri/git-manager-updater.key`:
 
 ```bash
-export TAURI_SIGNING_PRIVATE_KEY_PATH=~/.tauri/git-manager-updater.key
+cat > ~/.tauri/git-manager-release.env <<'EOF'
+export TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/git-manager-updater.key"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD='...'
+EOF
+chmod 600 ~/.tauri/git-manager-release.env
 ```
 
-before running the script to get a signed build. Without those two variables set, the build is
-unsigned — fine for sanity-checking that a build/bundle actually works before pushing a release
-tag, but not something an existing install's auto-updater would accept. The GitHub secret and any
-local copy of the private key must be rotated together (see the pubkey in
-`apps/desktop/src-tauri/tauri.conf.json`'s `plugins.updater` — it must match whichever private key
-signed the build) or old and new installs stop trusting each other's updates.
+Without that file (or those two vars set another way), the build is unsigned — still useful to
+sanity-check that a build/bundle actually works before pushing a release tag, just not something
+an existing install would accept as an update (see `.claude/skills/release-process/SKILL.md`).
 
 ```bash
 pnpm release:build:local              # this machine's architecture only, fastest
