@@ -9,6 +9,7 @@
     "dev:import-repo": "bash tools/git-fixtures/dev-import.sh",
     "fixture:build": "bash tools/git-fixtures/build-all.sh",
     "release:build:local": "bash tools/release/build-local.sh",
+    "release": "bash tools/release/cut-release.sh",
     "build": "turbo build",
     "build:desktop": "pnpm --filter @git-manager/desktop build",
     "build:e2e": "pnpm --filter @git-manager/desktop build:e2e",
