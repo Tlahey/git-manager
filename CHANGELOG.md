@@ -10,6 +10,15 @@ _Auto-populated at release time from the merged pull requests since the last tag
 
 ## [0.2.1] - 2026-08-06
 
+Release tooling only — no app-facing changes.
+
+## What's Changed
+* Rotate the Tauri updater signing key (safe now: v0.2.0 was the only release built against the previous one)
+* Add `tools/release/build-local.sh` (`pnpm release:build:local`) — builds the macOS bundle on this machine instead of waiting on CI, signs automatically if `~/.tauri/git-manager-release.env` is present
+* Add `tools/release/cut-release.sh` (`pnpm release`) — runs the whole release process locally (pre-flight checks, version bump, changelog, commit, tag, push), replacing `prepare-release.yml`'s job, which can't push to `main` under this repo's branch protection
+* Add `--local-build` to `cut-release.sh` — builds, signs and drafts the release from this machine instead of waiting 15-20+ minutes on GitHub's 10x-billed macOS runner
+* Fix `.github/workflows/release.yml`'s release title (`v0.2.0`, not `git-manager v0.2.0`), matching `v0.1.0`'s convention
+
 **Full Changelog**: https://github.com/Tlahey/git-manager/compare/v0.2.0...v0.2.1
 
 ## [0.2.0] - 2026-08-05
