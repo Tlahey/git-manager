@@ -22,9 +22,10 @@
 #
 # Usage:
 #   pnpm release --tag=v0.3.0
-#   pnpm release --bump=minor                 # computes the next version from the current tag
-#   pnpm release --bump=patch --yes            # skip the confirmation prompt (e.g. for scripting)
+#   pnpm release --bump=minor                   # computes the next version from the current tag
+#   pnpm release --bump=patch --yes             # skip the confirmation prompt (e.g. for scripting)
 #   pnpm release --bump=patch --local-build     # build/sign/draft here instead of waiting on CI
+#   pnpm release --bump=patch --skip-validation # skip typecheck/lint/test/fmt/clippy (fast iteration only)
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -34,6 +35,7 @@ TAG=""
 BUMP="patch"
 ASSUME_YES=false
 LOCAL_BUILD=false
+SKIP_VALIDATION=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -41,8 +43,9 @@ for arg in "$@"; do
     --bump=*) BUMP="${arg#--bump=}" ;;
     --yes) ASSUME_YES=true ;;
     --local-build) LOCAL_BUILD=true ;;
+    --skip-validation) SKIP_VALIDATION=true ;;
     *)
-      echo "Unknown argument: $arg (expected --tag=vX.Y.Z, --bump=patch|minor|major, --yes, --local-build)" >&2
+      echo "Unknown argument: $arg (expected --tag=vX.Y.Z, --bump=patch|minor|major, --yes, --local-build, --skip-validation)" >&2
       exit 1
       ;;
   esac
@@ -70,7 +73,15 @@ gh auth status >/dev/null 2>&1 || { echo "Run 'gh auth login' first" >&2; exit 1
 
 WORKTREE_DIR="$(mktemp -d -t git-manager-release)"
 rmdir "$WORKTREE_DIR" # git worktree add requires the target not to exist yet
-cleanup() { git -C "$ROOT_DIR" worktree remove "$WORKTREE_DIR" --force >/dev/null 2>&1 || true; }
+TAG_PUSHED=false
+cleanup() {
+  git -C "$ROOT_DIR" worktree remove "$WORKTREE_DIR" --force >/dev/null 2>&1 || true
+  # Worktrees share the repo's local refs — an aborted run's local tag would otherwise collide
+  # with the next run's tag creation even though it was never pushed anywhere.
+  if [ "$TAG_PUSHED" != true ] && [ -n "$TAG" ]; then
+    git -C "$ROOT_DIR" tag -d "$TAG" >/dev/null 2>&1 || true
+  fi
+}
 trap cleanup EXIT
 
 echo "=== fetching origin/main ==="
@@ -80,17 +91,21 @@ git -C "$ROOT_DIR" worktree add "$WORKTREE_DIR" origin/main --detach >/dev/null
 echo "=== installing dependencies ==="
 (cd "$WORKTREE_DIR" && pnpm install --frozen-lockfile)
 
-echo "=== pre-flight: typecheck, lint, test ==="
-(cd "$WORKTREE_DIR" && pnpm typecheck && pnpm lint && pnpm --filter @git-manager/desktop test)
+if [ "$SKIP_VALIDATION" = true ]; then
+  echo "=== --skip-validation: skipping typecheck/lint/test/fmt/clippy ==="
+else
+  echo "=== pre-flight: typecheck, lint, test ==="
+  (cd "$WORKTREE_DIR" && pnpm typecheck && pnpm lint && pnpm --filter @git-manager/desktop test)
 
-echo "=== pre-flight: cargo fmt --check, cargo clippy ==="
-(
-  cd "$WORKTREE_DIR/apps/desktop/src-tauri"
-  cargo fmt --check
-  # Not -D warnings: this repo carries pre-existing clippy warnings (see CLAUDE.md) that aren't
-  # release-blocking on their own — this only needs to fail on actual compile errors.
-  CARGO_TARGET_DIR="$(mktemp -d)" cargo clippy --all-targets
-)
+  echo "=== pre-flight: cargo fmt --check, cargo clippy ==="
+  (
+    cd "$WORKTREE_DIR/apps/desktop/src-tauri"
+    cargo fmt --check
+    # Not -D warnings: this repo carries pre-existing clippy warnings (see CLAUDE.md) that aren't
+    # release-blocking on their own — this only needs to fail on actual compile errors.
+    CARGO_TARGET_DIR="$(mktemp -d)" cargo clippy --all-targets
+  )
+fi
 
 CURRENT_VERSION="$(node -p "require('$WORKTREE_DIR/apps/desktop/src-tauri/tauri.conf.json').version")"
 PREVIOUS_TAG="v$CURRENT_VERSION"
@@ -184,6 +199,7 @@ fi
 echo "=== pushing commit + tag ==="
 git -C "$WORKTREE_DIR" push origin HEAD:main
 git -C "$WORKTREE_DIR" push origin "$TAG"
+TAG_PUSHED=true
 
 echo "=== waiting for release.yml's tag-triggered run to appear ==="
 PREVIOUS_RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId // empty')"
