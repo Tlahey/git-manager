@@ -85,7 +85,7 @@ jobs:
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'git-manager ${{ github.ref_name }}'
+          releaseName: ${{ github.ref_name }}
           releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: true
           prerelease: false
