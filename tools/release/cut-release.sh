@@ -206,7 +206,10 @@ PREVIOUS_RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 -
 RUN_ID=""
 for _ in $(seq 1 30); do
   sleep 2
-  RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 --json databaseId,headBranch --jq --arg tag "$TAG" '.[] | select(.headBranch == $tag) | .databaseId' | head -1)"
+  # $TAG is pre-validated against ^v[0-9]+\.[0-9]+\.[0-9]+$, safe to inline into the jq filter.
+  # (gh run list's --jq, unlike gh api's, doesn't support --arg.) `|| true`: a transient gh
+  # hiccup here shouldn't abort the whole release under set -e, just retry next loop iteration.
+  RUN_ID="$(gh run list --repo "$REPO" --workflow=release.yml --limit=1 --json databaseId,headBranch --jq ".[] | select(.headBranch == \"$TAG\") | .databaseId" 2>/dev/null | head -1 || true)"
   [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$PREVIOUS_RUN_ID" ] && break
 done
 [ -n "$RUN_ID" ] && echo "release.yml also started automatically: https://github.com/$REPO/actions/runs/$RUN_ID"
