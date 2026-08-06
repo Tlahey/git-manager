@@ -105,6 +105,19 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{Manager, WindowEvent};
 
+/// The tray icon: a monochrome octopus mascot mark, rather than the full-color app icon —
+/// `icon_as_template(true)` below tells macOS to treat it as a template image, so it renders as
+/// the same flat black/white glyph every other menu bar icon uses (auto-inverted for light/dark
+/// menu bars) instead of standing out as a colored square. A no-op on Windows/Linux, which ignore
+/// `icon_is_template`.
+///
+/// `iconTemplate.png` is rasterized from the vector source `icons/tray/source.svg` (a single
+/// black-filled path, no separate mascot rig) — regenerate it if that source changes:
+/// crop to the artwork's bounding box, then downscale to a 54px-tall PNG (3x of the 18pt macOS
+/// draws tray icons at) with antialiasing preserved as the alpha channel, keeping RGB pure black
+/// so the template recoloring has only coverage to work with.
+const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/tray/iconTemplate.png");
+
 /// Builds the system tray icon (Show/Quit menu) and wires left-click-to-show. Pairs with the
 /// `on_window_event` hook below: closing the window hides it instead of exiting, so the tray icon
 /// is the only way back in (or out) once the window is closed — see
@@ -115,7 +128,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
     TrayIconBuilder::with_id("main-tray")
-        .icon(app.default_window_icon().cloned().unwrap())
+        .icon(tauri::image::Image::from_bytes(TRAY_ICON_BYTES)?)
+        .icon_as_template(true)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
