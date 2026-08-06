@@ -1,6 +1,6 @@
 {
   "name": "git-manager",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @git-manager/desktop dev",
@@ -8,6 +8,8 @@
     "dev:doc": "pnpm --filter @git-manager/docs dev",
     "dev:import-repo": "bash tools/git-fixtures/dev-import.sh",
     "fixture:build": "bash tools/git-fixtures/build-all.sh",
+    "release:build:local": "bash tools/release/build-local.sh",
+    "release": "bash tools/release/cut-release.sh",
     "build": "turbo build",
     "build:desktop": "pnpm --filter @git-manager/desktop build",
     "build:e2e": "pnpm --filter @git-manager/desktop build:e2e",
