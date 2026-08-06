@@ -55,7 +55,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVFOTcyMDYzRUNBNTAxQUIKUldTckFhWHNZeUNYN2g2d2RBTFBET1FVYmVDdkN5Z1cxVmJVTU5YUXcvSFNYeGJIWHEwbWsvamEK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0MUY0NEYxRDBBNzE3NApSV1IwY1FvZFQvUkJDbG5BOEd3NFpLUVJRejhGVTNCb2JsM2dKcVRlckhrbFBrQlFidDIyQ1VmRAo=",
       "endpoints": [
         "https://github.com/Tlahey/git-manager/releases/latest/download/latest.json"
       ]
