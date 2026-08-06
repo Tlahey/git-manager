@@ -6,7 +6,11 @@ on Settings → Changelog (and via the version badge in the footer).
 
 ## [Unreleased]
 
-_Auto-populated at release time from the merged pull requests since the last tag, via the GitHub release notes API — see .github/workflows/prepare-release.yml._
+_Auto-populated at release time from the merged pull requests since the last tag, via the GitHub release notes API — see tools/release/cut-release.sh._
+
+## [0.2.1] - 2026-08-06
+
+**Full Changelog**: https://github.com/Tlahey/git-manager/compare/v0.2.0...v0.2.1
 
 ## [0.2.0] - 2026-08-05
 
