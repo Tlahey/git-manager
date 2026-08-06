@@ -111,11 +111,15 @@ use tauri::{Manager, WindowEvent};
 /// menu bars) instead of standing out as a colored square. A no-op on Windows/Linux, which ignore
 /// `icon_is_template`.
 ///
-/// `iconTemplate.png` is rasterized from the vector source `icons/tray/source.svg` (a single
-/// black-filled path, no separate mascot rig) — regenerate it if that source changes:
-/// crop to the artwork's bounding box, then downscale to a 54px-tall PNG (3x of the 18pt macOS
-/// draws tray icons at) with antialiasing preserved as the alpha channel, keeping RGB pure black
-/// so the template recoloring has only coverage to work with.
+/// `iconTemplate.png` is derived from the full-color mascot artwork `icons/tray/source.png` by
+/// keying on luminance rather than tracing a shape by hand: every pixel dark enough to be part of
+/// the artwork's navy ink (the outline strokes and the eye pupils, luma roughly 40–95, with the
+/// same range used as an antialiased falloff for the alpha channel) becomes opaque black, and
+/// everything else — the teal/blue fills, the white eye highlights, the page background — becomes
+/// fully transparent. That keeps only the line art, which is what reads at menu bar size; the
+/// gradient-filled body silhouette tried first was an indistinct blob at 18pt. Regenerate by
+/// re-running that luma threshold against `source.png`, then crop to the result's bounding box and
+/// downscale to a 54px-tall PNG (3x of the 18pt macOS draws tray icons at).
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/tray/iconTemplate.png");
 
 /// Builds the system tray icon (Show/Quit menu) and wires left-click-to-show. Pairs with the
