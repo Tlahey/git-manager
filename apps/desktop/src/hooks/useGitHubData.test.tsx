@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
@@ -106,9 +106,6 @@ beforeEach(() => {
   mocked.fetchGitHubContributions.mockResolvedValue([])
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useGitHubData — no GitHub token', () => {
   it('returns the fixtures while the mock flag is on, and never calls the GitHub API', () => {

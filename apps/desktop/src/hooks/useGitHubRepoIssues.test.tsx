@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
@@ -78,9 +78,6 @@ beforeEach(() => {
   mocked.fetchGitHubRepoIssues.mockResolvedValue([])
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useGitHubRepoIssues — signed out', () => {
   it('returns an empty list and never touches the network', async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -80,9 +80,6 @@ beforeEach(() => {
   useMergedBranchesMock.mockReturnValue(hookResult([mergedCheck(branch())]))
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RemoveMergedBranchesDialog — body states', () => {
   it('shows a no-GitHub-remote hint and disables confirm when nothing qualifies', () => {

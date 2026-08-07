@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useDevFixtureImport } from './useDevFixtureImport'
 import { useDevFixtureReposStore } from '../stores/devFixtureRepos.store'
@@ -7,10 +7,6 @@ beforeEach(() => {
   useDevFixtureReposStore.setState({ fixtures: [] })
 })
 
-afterEach(() => {
-  vi.unstubAllEnvs()
-  vi.restoreAllMocks()
-})
 
 describe('useDevFixtureImport', () => {
   it('does nothing when VITE_DEV_FIXTURES is unset', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   resolveResource,
@@ -100,9 +100,6 @@ beforeEach(() => {
   }))
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('icon loading', () => {
   it('resolves and loads every declared icon resource on first use', async () => {

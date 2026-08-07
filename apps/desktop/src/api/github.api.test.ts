@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../lib/tauri', () => ({
   githubDeviceCode: vi.fn(),
@@ -75,9 +75,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
 
 describe('parsePRStatus', () => {
   it('reports merged when merged_at is set, regardless of draft/state', () => {

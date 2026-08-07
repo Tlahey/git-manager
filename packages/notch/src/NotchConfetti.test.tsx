@@ -7,7 +7,6 @@ import { NOTCH_TIER_CONFETTI } from './notchRewardTiers'
 
 const props = { tier: 'gold', seed: 'reward-merge-master', height: 191 } as const
 
-afterEach(() => vi.unstubAllGlobals())
 
 describe('NotchConfetti', () => {
   it('renders one sprite per piece of the burst', () => {

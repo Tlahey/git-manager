@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 import { normalizeMenuSpec, type MenuSpecNode } from '../lib/nativeMenuSpec'
@@ -203,9 +203,6 @@ beforeEach(() => {
   showNativeMenu.mockResolvedValue(undefined)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useGitGraphActions — simple commit actions', () => {
   it('the copy-sha item copies the clicked commit sha and toasts', async () => {

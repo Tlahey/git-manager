@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { openMock } = vi.hoisted(() => ({ openMock: vi.fn() }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: openMock }))
@@ -11,9 +11,6 @@ beforeEach(() => {
   useE2ePathPickerStore.setState({ open: false, value: '', resolve: null })
 })
 
-afterEach(() => {
-  vi.unstubAllEnvs()
-})
 
 describe('pickFile', () => {
   it('delegates to the native dialog outside of e2e builds', async () => {

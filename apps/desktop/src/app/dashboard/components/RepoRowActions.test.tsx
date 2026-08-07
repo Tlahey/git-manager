@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -43,9 +43,6 @@ beforeEach(() => {
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RepoRowActions — editor button', () => {
   it('is hidden when no editor is configured', () => {

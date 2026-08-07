@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -70,7 +70,6 @@ beforeEach(() => {
     },
   })
 })
-afterEach(() => vi.restoreAllMocks())
 
 describe('CreatePatchPanel', () => {
   it('splits files into a Patch (staged) zone and a Files (unstaged/untracked) zone', () => {

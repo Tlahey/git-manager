@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -81,9 +81,6 @@ beforeEach(() => {
   mockedGetRebaseState.mockResolvedValue({ currentOid: null, currentMessage: null })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('ConflictResolutionPanel — header', () => {
   it('shows the step-progress badge only once currentStep/totalSteps are known', async () => {

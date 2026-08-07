@@ -16,7 +16,6 @@ initI18n('en')
 // so `screen` queries start matching stale duplicates from earlier tests in the file.
 afterEach(() => {
   cleanup()
-  vi.restoreAllMocks()
   // Reset language so a test that switched to another locale (via renderWithLanguage) doesn't
   // leak into the next test — the global default for assertions is English.
   if (i18next.language !== 'en') i18next.changeLanguage('en')
@@ -26,9 +25,9 @@ afterEach(() => {
 // recompute connector geometry on resize. Tests don't need real resize behavior, just a stub
 // that doesn't throw.
 class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 }
 globalThis.ResizeObserver ??= ResizeObserverStub
 
@@ -70,7 +69,7 @@ globalThis.IntersectionObserver ??=
 // jsdom doesn't implement scrollIntoView — cmdk (the Command list backing the command palette and
 // settings' provider combobox) calls it unconditionally on mount/selection to keep the highlighted
 // item in view, with no optional chaining we can rely on since it's third-party code.
-Element.prototype.scrollIntoView ??= () => {}
+Element.prototype.scrollIntoView ??= () => { }
 
 // jsdom doesn't schedule real frames — fall back to a macrotask so `scheduleRecompute`'s
 // rAF-coalesced connector redraw still resolves deterministically in tests.

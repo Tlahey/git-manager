@@ -1,9 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { newAiRequestId } from './aiRequestId'
 
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
 
 describe('newAiRequestId', () => {
   it('never returns the same id twice', () => {

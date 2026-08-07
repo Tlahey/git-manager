@@ -1,13 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { clearNotchActions, registerNotchAction, runNotchAction } from './notchActions'
 
 beforeEach(() => {
   clearNotchActions()
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('runNotchAction', () => {
   it('calls the handler with the card the button was on', () => {

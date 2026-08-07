@@ -1,9 +1,6 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { getMockContributions, MOCK_PRS, MOCK_ISSUES } from './mockData'
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('getMockContributions', () => {
   it('returns exactly 365 days, in ascending chronological order ending today', () => {

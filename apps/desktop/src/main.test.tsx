@@ -92,7 +92,6 @@ describe('main entry', () => {
 
   afterEach(() => {
     pendingFrames.clear()
-    vi.unstubAllGlobals()
   })
 
   it('initializes i18n in french and renders App when no window params are set', async () => {

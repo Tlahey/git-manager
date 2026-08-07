@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -66,7 +66,6 @@ beforeEach(() => {
     { name: 'ghost', version: '^1.0.0', installed: false, patched: false },
   ])
 })
-afterEach(() => vi.restoreAllMocks())
 
 describe('DependencyPatchPanel', () => {
   it('prepares a dependency and lists its changed files, previewing the first', async () => {

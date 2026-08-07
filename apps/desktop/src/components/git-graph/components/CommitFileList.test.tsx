@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CommitFileList, type ProcessedFileItem } from './CommitFileList'
@@ -46,9 +46,6 @@ beforeEach(() => {
   mockedDiscard.mockResolvedValue(undefined)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('CommitFileList — stats summary', () => {
   it('counts added/untracked, modified, deleted, and renamed files separately', () => {

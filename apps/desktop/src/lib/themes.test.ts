@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { BUILTIN_THEMES, getBuiltinTheme, resolveSystemTheme } from './themes'
 
 describe('BUILTIN_THEMES', () => {
@@ -36,9 +36,7 @@ describe('getBuiltinTheme', () => {
 })
 
 describe('resolveSystemTheme', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+  
 
   it('returns "dark" when the OS prefers dark', () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))

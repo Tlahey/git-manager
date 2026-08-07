@@ -5,7 +5,6 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.doUnmock('@tauri-apps/plugin-shell')
-  vi.restoreAllMocks()
 })
 
 describe('openUrl', () => {

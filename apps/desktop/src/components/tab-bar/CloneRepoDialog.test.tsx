@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
@@ -42,9 +42,6 @@ beforeEach(() => {
   useRepoUIStore.setState({ openTabs: [], activeRepo: null })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('CloneRepoDialog', () => {
   it('derives the destination folder name from a .git URL', async () => {

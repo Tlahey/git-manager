@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { useNotificationStore } from './notification.store'
 import type { MockPR } from '../app/pull-requests/types'
 
@@ -70,9 +70,6 @@ beforeEach(() => {
   localStorage.clear()
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useNotificationStore — notifications', () => {
   it('addNotification prepends the new notification, unread, with an id and timestamp', () => {

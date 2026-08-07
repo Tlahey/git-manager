@@ -73,7 +73,6 @@ describe('timeAgo', () => {
 
 describe('openUrl', () => {
   afterEach(() => {
-    vi.restoreAllMocks()
     vi.resetModules()
   })
 

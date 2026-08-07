@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { apiGetAppVersion, apiCheckForUpdate, apiDownloadAndInstallUpdate, apiRelaunchApp } =
   vi.hoisted(() => ({
@@ -25,9 +25,6 @@ beforeEach(() => {
   useAppUpdaterStore.setState(INITIAL, true)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('appUpdater.store — loadVersion', () => {
   it('stores the bundled version', async () => {

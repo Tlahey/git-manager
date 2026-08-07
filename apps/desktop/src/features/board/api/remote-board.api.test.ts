@@ -64,6 +64,9 @@ function mockIssue(overrides: Partial<MockIssue> = {}): MockIssue {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  tauriMocked.readBoardConfig.mockResolvedValue(
+    configJson([{ id: 'b1', name: 'Board', source: 'remote', columns: [{ id: 'todo', name: 'Todo', order: 0 }], revision: 'r1' }])
+  )
 })
 
 describe('board config (list/create/update/delete)', () => {

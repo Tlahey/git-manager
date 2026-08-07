@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { GitRepo, GitStatus, GitStash } from '@git-manager/git-types'
 
@@ -93,9 +93,6 @@ beforeEach(() => {
   useBranchesMock.mockReturnValue({ data: undefined })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useActionToolbar — derived state', () => {
   it('hasChanges is false with no git status data', () => {

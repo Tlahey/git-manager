@@ -5,7 +5,6 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  vi.restoreAllMocks()
   vi.doUnmock('@tauri-apps/api/app')
   vi.doUnmock('@tauri-apps/plugin-updater')
   vi.doUnmock('@tauri-apps/plugin-process')

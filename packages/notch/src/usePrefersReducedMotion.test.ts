@@ -28,7 +28,6 @@ function fakeMatchMedia(initial: boolean) {
   }
 }
 
-afterEach(() => vi.unstubAllGlobals())
 
 describe('usePrefersReducedMotion', () => {
   it('reports the setting as it stands on the first render', () => {

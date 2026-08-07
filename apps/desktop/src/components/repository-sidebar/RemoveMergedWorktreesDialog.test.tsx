@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -72,9 +72,6 @@ beforeEach(() => {
   useMergedWorktreesMock.mockReturnValue(hookResult([mergedCheck(worktree())]))
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RemoveMergedWorktreesDialog — body states', () => {
   it('shows a no-GitHub-remote message and disables confirm', () => {

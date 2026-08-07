@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SidebarUpdater } from './SidebarUpdater'
@@ -10,9 +10,6 @@ beforeEach(() => {
   useAppUpdaterStore.setState(INITIAL, true)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('SidebarUpdater', () => {
   it('shows the current version and a check button when idle', () => {

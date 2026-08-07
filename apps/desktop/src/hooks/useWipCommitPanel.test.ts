@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { GitCommit, GitGraphNode, GitRef, GitStatus } from '@git-manager/git-types'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
@@ -84,9 +84,6 @@ beforeEach(() => {
   mocked.apiGetPendingOperation.mockResolvedValue(null)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useWipCommitPanel — wipBatches grouping', () => {
   it('groups files by their top-level folder', () => {

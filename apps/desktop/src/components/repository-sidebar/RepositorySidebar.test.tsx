@@ -213,6 +213,7 @@ beforeEach(() => {
   useSidebarSearchStore.setState({ focusToken: 0 })
   useSidebarResize.mockReturnValue(resizeState())
   useSidebarRows.mockReturnValue({ sections: [], filterStats: { matched: 0, total: 0 } })
+  showNativeMenu.mockResolvedValue(undefined)
   useWorktreeWipStatuses.mockReturnValue({ data: [] })
 })
 

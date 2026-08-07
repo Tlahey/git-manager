@@ -25,7 +25,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
-  vi.restoreAllMocks()
 })
 
 describe('Tooltip — show/hide timing', () => {
