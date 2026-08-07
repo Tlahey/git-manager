@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { initI18n, i18next } from '@git-manager/i18n'
 
@@ -16,6 +16,7 @@ initI18n('en')
 // so `screen` queries start matching stale duplicates from earlier tests in the file.
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   // Reset language so a test that switched to another locale (via renderWithLanguage) doesn't
   // leak into the next test — the global default for assertions is English.
   if (i18next.language !== 'en') i18next.changeLanguage('en')

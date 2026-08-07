@@ -17,8 +17,6 @@ import {
   GitBranch,
   Keyboard,
   Terminal,
-  ClipboardCopy,
-  ClipboardCheck,
   Trophy,
   Search,
   Activity,
@@ -33,11 +31,11 @@ import {
   Input,
   ScrollArea,
   Kbd,
-  Tag,
   Card,
   Tooltip,
   GithubIcon,
 } from '@git-manager/ui'
+import { CopyToClipboard } from '../common/CopyToClipboard'
 import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
 import { DebugMenu } from './DebugMenu'
@@ -56,7 +54,6 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   const { points, rewardsEnabled } = useGameStore()
   const { level } = getLevelInfo(points)
 
-  const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
   const [shortcutQuery, setShortcutQuery] = useState('')
   const [appVersion, setAppVersion] = useState<string | null>(null)
@@ -85,18 +82,6 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   // Connected GitHub account
   const github = settings.github || { accounts: [], activeAccountId: null }
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
-
-  // Copies the repository path to the clipboard
-  const handleCopyPath = async () => {
-    if (!activeTab || !isRepoTab) return
-    try {
-      await navigator.clipboard.writeText(activeTab)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy path:', err)
-    }
-  }
 
   // Keyboard shortcuts, for display only — must stay in sync with useKeyboardShortcuts.ts and
   // with the shortcuts local to the commit search panel (CommitSearchPanel.tsx).
@@ -188,30 +173,30 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         {isRepoTab && (
           <div className="flex items-center gap-3 overflow-hidden text-ellipsis whitespace-nowrap">
             {/* Repository name & path */}
-            <button
-              onClick={handleCopyPath}
-              className="group flex shrink-0 cursor-pointer items-center gap-1.5 font-medium text-foreground/90 transition-colors hover:text-primary"
+            <CopyToClipboard
+              textToCopy={activeTab}
               title={t('footer.copyAbsolutePath')}
+              copiedLabel={t('footer.copiedPath')}
+              data-testid="footer-copy-path-button"
+              className="font-medium text-foreground/90"
             >
               <Terminal className="h-3.5 w-3.5 text-primary/70" />
               <span>{currentRepo?.name || activeTab.split('/').pop()}</span>
-              {copied ? (
-                <Tag tone="success" className="animate-fade-in shrink-0 font-normal">
-                  <ClipboardCheck className="h-2.5 w-2.5" />
-                  {t('footer.copiedPath')}
-                </Tag>
-              ) : (
-                <ClipboardCopy className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100" />
-              )}
-            </button>
+            </CopyToClipboard>
 
             <span className="text-border">|</span>
 
             {/* Current git branch */}
-            <div className="flex items-center gap-1 font-mono text-foreground/75">
+            <CopyToClipboard
+              textToCopy={currentRepo?.head || ''}
+              title={t('footer.copyBranch')}
+              copiedLabel={t('footer.copiedBranch')}
+              data-testid="footer-copy-branch-button"
+              className="font-mono text-foreground/75"
+            >
               <GitBranch className="h-3.5 w-3.5 text-emerald-500/80" />
               <span className="font-semibold">{currentRepo?.head || '...'}</span>
-            </div>
+            </CopyToClipboard>
 
             {currentRepo && currentRepo.remotes.length > 0 && (
               <>

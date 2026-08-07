@@ -33,6 +33,7 @@ export default defineConfig(
       test: {
         environment: 'jsdom',
         setupFiles: ['./vitest.setup.ts'],
+        restoreMocks: true,
         css: false,
         alias: {
           // See src/test/monacoEditorStub.ts — the real package can't be resolved under Vitest.
