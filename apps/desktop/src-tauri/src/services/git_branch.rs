@@ -154,8 +154,8 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
         });
     }
 
-    // Sort by tag name
-    tags.sort_by(|a, b| a.short_name.cmp(&b.short_name));
+    // Sort by tag name DESC (most recent first)
+    tags.sort_by(|a, b| b.short_name.cmp(&a.short_name));
 
     Ok(tags)
 }

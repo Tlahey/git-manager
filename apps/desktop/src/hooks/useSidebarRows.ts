@@ -246,7 +246,12 @@ export function useSidebarRows({
   )
 
   const filteredTags = useMemo(
-    () => tags.filter((tag) => includesQuery(tag.shortName)),
+    () =>
+      tags
+        .filter((tag) => includesQuery(tag.shortName))
+        .sort((a, b) =>
+          b.shortName.localeCompare(a.shortName, undefined, { numeric: true, sensitivity: 'base' })
+        ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tags, q]
   )

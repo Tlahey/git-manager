@@ -920,6 +920,20 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
     expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toBeDefined()
   })
 
+  it('orders tag rows in DESC order (most recent / highest version first)', async () => {
+    mockedGetTags.mockResolvedValue([tag('v1.0'), tag('v2.0'), tag('v10.0')])
+    const { result } = renderRows({ openState: { 'section:tags': true } })
+    await waitFor(() =>
+      expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
+    )
+    const tagRows = allRows(result.current.sections).filter((r) => r.kind === 'tag')
+    expect(tagRows.map((r) => (r as Extract<typeof r, { kind: 'tag' }>).tag.shortName)).toEqual([
+      'v10.0',
+      'v2.0',
+      'v1.0',
+    ])
+  })
+
   it('marks a tag row as selected when its commit is the one selected in the graph', async () => {
     mockedGetTags.mockResolvedValue([
       { name: 'refs/tags/v1.0', shortName: 'v1.0', type: 'tag', commitOid: 'commit-a' },
