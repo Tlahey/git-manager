@@ -35,11 +35,7 @@ vi.mock('swr', () => ({ mutate: swrMutate }))
 vi.mock('@git-manager/ui', () => ({ Toaster: () => <div data-testid="fake-toaster" /> }))
 
 vi.mock('./app/dashboard/DashboardPage', () => ({
-  DashboardPage: (props: { onOpenSettings: () => void }) => (
-    <div data-testid="fake-dashboard-page">
-      <button onClick={props.onOpenSettings}>dashboard-open-settings</button>
-    </div>
-  ),
+  DashboardPage: () => <div data-testid="fake-dashboard-page" />,
 }))
 vi.mock('./app/pull-requests/components/RewardsTab', () => ({
   RewardsTab: () => <div data-testid="fake-rewards-tab" />,
@@ -169,14 +165,6 @@ describe('App — settings overlay', () => {
     render(<App />)
     await user.click(screen.getByText('footer-open-ssh-settings'))
     expect(screen.getByTestId('settings-section')).toHaveTextContent('ssh')
-  })
-
-  it('opens settings with the "local_ai" section via the Dashboard', async () => {
-    const user = userEvent.setup()
-    useRepoUIStore.setState({ activeTab: DASHBOARD_TAB })
-    render(<App />)
-    await user.click(screen.getByText('dashboard-open-settings'))
-    expect(screen.getByTestId('settings-section')).toHaveTextContent('local_ai')
   })
 
   it('opens settings with the "local_ai" section from the AI status banner', async () => {
