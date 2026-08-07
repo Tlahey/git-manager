@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RewardsSection } from './RewardsSection'
@@ -12,9 +12,6 @@ beforeEach(() => {
   useGameStore.setState(INITIAL_GAME, true)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RewardsSection — toggle', () => {
   it('reflects the current rewardsEnabled state', () => {

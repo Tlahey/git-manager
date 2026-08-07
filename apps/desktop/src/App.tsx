@@ -191,7 +191,7 @@ export default function App() {
             <OperationProgressBar />
             <div className="flex-1 overflow-hidden">
               {activeTab === DASHBOARD_TAB ? (
-                <DashboardPage onOpenSettings={() => handleOpenSettings('local_ai')} />
+                <DashboardPage />
               ) : activeTab === PULL_REQUESTS_TAB ? (
                 <PullRequestsPage />
               ) : activeTab === REWARDS_TAB ? (

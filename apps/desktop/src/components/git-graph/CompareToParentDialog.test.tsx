@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -36,9 +36,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('CompareToParentDialog', () => {
   it('names the parent it is comparing against', () => {

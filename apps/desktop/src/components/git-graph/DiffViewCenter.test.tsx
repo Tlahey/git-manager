@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { Toaster } from '@git-manager/ui'
@@ -90,9 +90,6 @@ beforeEach(() => {
   useFileHistory.mockReturnValue({ data: undefined })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('DiffViewCenter — loading/empty states', () => {
   it('shows a loading indicator while diff metadata or raw contents load', () => {

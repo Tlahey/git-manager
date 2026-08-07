@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -26,9 +26,6 @@ beforeEach(() => {
   useSshPublicKey.mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('SshSection — key paths', () => {
   it('binds the private/public key path inputs', async () => {

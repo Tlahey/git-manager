@@ -67,7 +67,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
-  vi.restoreAllMocks()
 })
 
 describe('entrance', () => {
@@ -97,7 +96,7 @@ describe('entrance', () => {
   it('still reveals the card when the native preparation throws', async () => {
     // A denied permission or a missing window handle must not leave the user with an invisible
     // notification — the failure mode this guard exists for.
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => { })
     const host: NotchHost = {
       ...createRecordingNotchHost(),
       prepare: () => {
@@ -284,7 +283,7 @@ describe('auto-dismiss', () => {
   it('closes anyway when the announcement fails', async () => {
     // A surface stuck on screen forever is worse than an owner that has to find out some other way.
     const onDismissed = vi.fn().mockRejectedValue(new Error('the main window is gone'))
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => { })
     const { host } = setup({ autoDismissMs: 1000, onDismissed })
     await flush()
 

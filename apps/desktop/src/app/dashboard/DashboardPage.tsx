@@ -1,10 +1,9 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Tooltip } from '@git-manager/ui'
+import { Button, Input } from '@git-manager/ui'
 import {
   FolderOpen,
   FolderSearch,
-  Settings,
   GitMerge,
   X,
   AlertTriangle,
@@ -33,13 +32,9 @@ import { HiddenSectionsMenu } from './components/HiddenSectionsMenu'
 import { ReadmePanel } from './components/ReadmePanel'
 import { DailySummaryPanel } from './components/DailySummaryPanel'
 
-interface DashboardPageProps {
-  onOpenSettings: () => void
-}
-
 const SECTION_ICON = 'h-3.5 w-3.5'
 
-export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
+export function DashboardPage() {
   const { t } = useTranslation('dashboard')
   const addDiscoveredRepo = useRepoDataStore((s) => s.addDiscoveredRepo)
   const setAllSectionsCollapsed = useDashboardStore((s) => s.setAllSectionsCollapsed)
@@ -168,18 +163,6 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
               <FolderSearch className="mr-1.5 h-3.5 w-3.5" />
               {scanning ? t('dashboard.scanning') : t('dashboard.scanFolder')}
             </Button>
-            <Tooltip content={t('dashboard.settings')}>
-              <Button
-                data-testid="dashboard-settings-button"
-                size="sm"
-                variant="ghost"
-                onClick={onOpenSettings}
-                aria-label={t('dashboard.settings')}
-                className="h-8 w-8 hover:bg-accent"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </Tooltip>
           </div>
         </header>
 

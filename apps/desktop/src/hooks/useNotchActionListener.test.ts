@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useNotchActionListener } from './useNotchActionListener'
 import {
@@ -32,9 +32,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useNotchActionListener', () => {
   it('hands an action to the handler that registered for it', async () => {

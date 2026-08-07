@@ -42,7 +42,6 @@ beforeEach(() => {
 afterEach(() => {
   plainEl.remove()
   inputEl.remove()
-  vi.restoreAllMocks()
 })
 
 describe('useKeyboardShortcuts — ignoring shortcuts while typing', () => {

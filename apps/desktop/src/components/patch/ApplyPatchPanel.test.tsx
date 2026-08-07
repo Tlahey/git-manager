@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 vi.mock('@git-manager/i18n', () => ({
@@ -46,7 +46,6 @@ beforeEach(() => {
   usePatchWorkspaceStore.getState().open('apply')
   mockedRead.mockResolvedValue(PATCH)
 })
-afterEach(() => vi.restoreAllMocks())
 
 describe('ApplyPatchPanel', () => {
   it('parses a chosen patch into the file list and previews the first file with reconstructed sides', async () => {

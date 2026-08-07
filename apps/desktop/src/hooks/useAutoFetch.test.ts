@@ -33,7 +33,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
-  vi.restoreAllMocks()
 })
 
 /** Advances fake timers and lets the awaited fetch inside the tick settle. */

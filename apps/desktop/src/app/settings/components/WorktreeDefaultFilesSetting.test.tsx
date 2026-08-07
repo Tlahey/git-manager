@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -40,9 +40,6 @@ beforeEach(() => {
   useSettingsStore.setState(INITIAL, true)
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('WorktreeDefaultFilesSetting — per-line editing', () => {
   it('shows an empty state and only an add button when nothing is saved', () => {

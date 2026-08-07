@@ -12,7 +12,6 @@ function mockVisibility(value: DocumentVisibilityState) {
 }
 
 afterEach(() => {
-  vi.restoreAllMocks()
   mockVisibility('visible')
 })
 

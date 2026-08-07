@@ -11,7 +11,10 @@ import { useGlobalLoadingStore, selectIsGlobalLoading } from '../stores/globalLo
 const INSTANT_TABS = new Set<string>([DASHBOARD_TAB, REWARDS_TAB])
 
 /** Never let the splash hang if the initial load stalls or errors out. */
-const SPLASH_SAFETY_TIMEOUT_MS = 8000
+const SPLASH_SAFETY_TIMEOUT_MS = 15000
+
+/** Minimum time the splash screen is kept visible (5s minimum, 0s in unit tests). */
+const MIN_SPLASH_SHOW_MS = process.env.NODE_ENV === 'test' ? 0 : 5000
 
 /**
  * Keeps the startup splash on screen until the app is actually usable, then fades
@@ -28,16 +31,24 @@ export function useAppReadySplash(): void {
   useEffect(() => {
     let done = false
     let unsubscribe: (() => void) | undefined
+    const mountTime = Date.now()
 
     const hide = () => {
       if (done) return
       done = true
       unsubscribe?.()
       clearTimeout(safety)
-      hideAppSplash()
+
+      const elapsed = Date.now() - mountTime
+      const remaining = Math.max(0, MIN_SPLASH_SHOW_MS - elapsed)
+      if (remaining > 0) {
+        setTimeout(hideAppSplash, remaining)
+      } else {
+        hideAppSplash()
+      }
     }
 
-    const safety = setTimeout(hide, SPLASH_SAFETY_TIMEOUT_MS)
+    const safety = setTimeout(hide, Math.max(SPLASH_SAFETY_TIMEOUT_MS, MIN_SPLASH_SHOW_MS + 2000))
 
     // Wait one frame so freshly-mounted children (e.g. GitGraph) can register their
     // initial-load into the global loading store before we sample it.

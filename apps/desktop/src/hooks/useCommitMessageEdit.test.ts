@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { GitCommit, GitRef, GitStash } from '@git-manager/git-types'
 
@@ -32,9 +32,6 @@ beforeEach(() => {
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useCommitMessageEdit — initial subject/body derivation', () => {
   it('derives subject/body from the commit when not a stash', () => {

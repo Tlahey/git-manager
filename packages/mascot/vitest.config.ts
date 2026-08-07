@@ -6,6 +6,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
     css: false,
   },
 })

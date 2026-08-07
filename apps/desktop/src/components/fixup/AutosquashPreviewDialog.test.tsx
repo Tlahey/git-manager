@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -54,9 +54,6 @@ beforeEach(() => {
   mocked.apiGetRebaseState.mockResolvedValue({ kind: 'idle' })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('AutosquashPreviewDialog', () => {
   it('shows the group summary and per-group fixups once loaded', async () => {

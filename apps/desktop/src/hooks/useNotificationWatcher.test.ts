@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import type { MockPR } from '../app/pull-requests/types'
 import { i18next, type TFunction } from '@git-manager/i18n'
@@ -75,9 +75,6 @@ beforeEach(() => {
   mockGitHubData([])
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('useNotificationWatcher — click listener setup', () => {
   it('subscribes to notification clicks and unsubscribes on unmount', async () => {

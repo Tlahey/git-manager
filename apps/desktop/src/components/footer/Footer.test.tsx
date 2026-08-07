@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo, GitHubAccount } from '@git-manager/git-types'
@@ -60,9 +60,6 @@ beforeEach(() => {
   })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('Footer — contextual left section', () => {
   it('shows the dashboard state with the total repo count', () => {
@@ -167,6 +164,42 @@ describe('Footer — contextual left section', () => {
       })
       expect(consoleError).toHaveBeenCalled()
       expect(screen.queryByText('Repository path copied!')).not.toBeInTheDocument()
+    })
+
+    it('copies the branch name to the clipboard and shows a confirmation that reverts after 2s', async () => {
+      useRepoDataStore.setState({ repoCache: { '/repo/a': repo({ head: 'feature/login' }) } })
+      vi.useFakeTimers()
+      render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
+
+      await act(async () => {
+        fireEvent.click(screen.getByTitle('Click to copy branch name'))
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('feature/login')
+      expect(screen.getByText('Branch name copied!')).toBeInTheDocument()
+
+      await act(async () => vi.advanceTimersByTime(2000))
+      expect(screen.queryByText('Branch name copied!')).not.toBeInTheDocument()
+      vi.useRealTimers()
+    })
+
+    it('logs an error and does not show a confirmation when copying branch fails', async () => {
+      useRepoDataStore.setState({ repoCache: { '/repo/a': repo({ head: 'feature/login' }) } })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+        configurable: true,
+      })
+      render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
+
+      await act(async () => {
+        fireEvent.click(screen.getByTitle('Click to copy branch name'))
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(consoleError).toHaveBeenCalled()
+      expect(screen.queryByText('Branch name copied!')).not.toBeInTheDocument()
     })
   })
 })

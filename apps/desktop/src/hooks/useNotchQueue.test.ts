@@ -170,7 +170,6 @@ describe('useNotchQueue — the surface decision', () => {
       expect(openWindow).not.toHaveBeenCalled()
       expect(sendNative).not.toHaveBeenCalled()
     } finally {
-      vi.unstubAllEnvs()
       delete (window as unknown as { __e2eNotificationSurface?: string }).__e2eNotificationSurface
     }
   })

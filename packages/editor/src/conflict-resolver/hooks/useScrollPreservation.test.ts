@@ -47,7 +47,6 @@ describe('useScrollPreservation', () => {
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 

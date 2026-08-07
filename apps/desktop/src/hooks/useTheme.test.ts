@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
 vi.mock('../api/theme.api', () => ({
@@ -47,10 +47,6 @@ beforeEach(() => {
   )
 })
 
-afterEach(() => {
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
 
 describe('useTheme — applying the theme attribute', () => {
   it('applies a concrete theme id directly to <html data-theme>', () => {
@@ -92,7 +88,6 @@ describe('useTheme — applying the theme attribute', () => {
     listeners[0]()
     expect(document.documentElement.dataset.theme).toBe('light')
 
-    vi.unstubAllGlobals()
   })
 
   it('removes the media-query listener when switching away from "system"', () => {
@@ -105,7 +100,6 @@ describe('useTheme — applying the theme attribute', () => {
     rerender()
 
     expect(mq.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
-    vi.unstubAllGlobals()
   })
 })
 

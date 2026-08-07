@@ -174,6 +174,7 @@ beforeEach(() => {
   useCommitSearchStore.setState({ open: false, query: '' })
   apiOpenRepo.mockResolvedValue(repo())
   vi.spyOn(useUndoHistoryStore.getState(), 'validateAndPrune').mockResolvedValue(undefined)
+  showNativeMenu.mockResolvedValue(undefined)
   useBranchesMock.mockReturnValue({ data: [] })
 })
 

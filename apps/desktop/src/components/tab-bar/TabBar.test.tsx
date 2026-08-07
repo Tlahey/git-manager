@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
@@ -40,9 +40,6 @@ beforeEach(() => {
   useGameStore.setState({ rewardsEnabled: true })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('TabBar — pinned tabs', () => {
   // Dashboard/Rewards use hideLabel=true: their text only exists in a non-interactive hover

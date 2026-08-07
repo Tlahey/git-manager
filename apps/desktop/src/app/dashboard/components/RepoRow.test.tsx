@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -60,9 +60,6 @@ beforeEach(() => {
   useRepoOwner.mockReturnValue({ remote: null, url: null, isLoading: false })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RepoRow — identity and row activation', () => {
   it('shows the repo name', () => {

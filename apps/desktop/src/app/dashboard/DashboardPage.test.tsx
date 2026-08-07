@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -64,19 +64,16 @@ beforeEach(() => {
   useDashboardStore.setState({ collapsedSections: {} })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('DashboardPage — empty state', () => {
   it('shows the mascot and an empty-state message when there are no known repos', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.getByTestId('octopus-mascot')).toBeInTheDocument()
     expect(screen.getByText(/No repositories found/)).toBeInTheDocument()
   })
 
   it('hides the search bar when there are no known repos', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.queryByPlaceholderText('Filter repositories...')).not.toBeInTheDocument()
   })
 })
@@ -94,7 +91,7 @@ describe('DashboardPage — sections', () => {
   })
 
   it('renders the four repository sections', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.getByTestId('dashboard-section-open')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-section-favorites')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-section-recent')).toBeInTheDocument()
@@ -102,7 +99,7 @@ describe('DashboardPage — sections', () => {
   })
 
   it('titles each section', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.getByText('Open repositories')).toBeInTheDocument()
     expect(screen.getByText('Favorites')).toBeInTheDocument()
     expect(screen.getByText('Recent repositories')).toBeInTheDocument()
@@ -112,26 +109,26 @@ describe('DashboardPage — sections', () => {
   it('places each repo in every section it belongs to', () => {
     // /repo/b is an open tab, a recent, and in "all repos"; /repo/a is a favorite and in "all".
     useRepoUIStore.setState({ openTabs: ['/repo/b'] })
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.getAllByTestId('repo-row-/repo/b')).toHaveLength(3) // open + recent + all
     expect(screen.getAllByTestId('repo-row-/repo/a')).toHaveLength(2) // favorite + all
     expect(screen.getByTestId('repo-row-/repo/c')).toBeInTheDocument() // discovered, all only
   })
 
   it('shows empty-section messages when a section has nothing', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.getByText('No repositories open in tabs.')).toBeInTheDocument()
   })
 
   it('lists a recently opened repo in the recent section', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     const recent = screen.getByTestId('dashboard-section-recent')
     expect(recent).toHaveTextContent('repo-b')
     expect(recent).not.toHaveTextContent('repo-a')
   })
 
   it('passes isSaved/isPinned correctly to RepoRow', () => {
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     const rowA = lastRepoRowCalls.current.find((c) => c.path === '/repo/a' && c.isPinned === true)
     expect(rowA).toMatchObject({ isSaved: true, isPinned: true })
     const rowC = lastRepoRowCalls.current.find((c) => c.path === '/repo/c')
@@ -140,7 +137,7 @@ describe('DashboardPage — sections', () => {
 
   it('filters all sections by the search text', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.type(screen.getByPlaceholderText('Filter repositories...'), 'repo-a')
     expect(screen.getAllByTestId('repo-row-/repo/a')).toHaveLength(2) // favorites + all
     expect(screen.queryByTestId('repo-row-/repo/b')).not.toBeInTheDocument()
@@ -149,7 +146,7 @@ describe('DashboardPage — sections', () => {
 
   it('keeps the search bar reachable when the filter matches nothing', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     const input = screen.getByPlaceholderText('Filter repositories...')
     await user.type(input, 'zzz-no-match')
     expect(input).toBeInTheDocument()
@@ -158,7 +155,7 @@ describe('DashboardPage — sections', () => {
 
   it('clears the search filter', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     const input = screen.getByPlaceholderText('Filter repositories...')
     await user.type(input, 'repo-a')
     await user.click(screen.getByRole('button', { name: 'Clear search' }))
@@ -175,14 +172,14 @@ describe('DashboardPage — collapse/expand all', () => {
 
   it('collapses every section at once', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByTestId('dashboard-collapse-all'))
     expect(screen.queryByTestId('repo-row-/repo/a')).not.toBeInTheDocument()
   })
 
   it('expands every section again', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByTestId('dashboard-collapse-all'))
     await user.click(screen.getByTestId('dashboard-expand-all'))
     expect(screen.getAllByTestId('repo-row-/repo/a').length).toBeGreaterThan(0)
@@ -196,7 +193,7 @@ describe('DashboardPage — README panel toggle', () => {
 
   it('opens the readme panel for a repo, and closes it when toggled again', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.queryByTestId('readme-panel')).not.toBeInTheDocument()
 
     await user.click(screen.getAllByText('toggle-readme-/repo/a')[0])
@@ -208,7 +205,7 @@ describe('DashboardPage — README panel toggle', () => {
 
   it('closes the readme panel via its own onClose', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getAllByText('toggle-readme-/repo/a')[0])
     await user.click(screen.getByText('close-readme'))
     expect(screen.queryByTestId('readme-panel')).not.toBeInTheDocument()
@@ -216,17 +213,9 @@ describe('DashboardPage — README panel toggle', () => {
 })
 
 describe('DashboardPage — header actions', () => {
-  it('calls onOpenSettings from the settings button', async () => {
-    const onOpenSettings = vi.fn()
-    const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={onOpenSettings} />)
-    await user.click(screen.getByRole('button', { name: 'Settings' }))
-    expect(onOpenSettings).toHaveBeenCalledOnce()
-  })
-
   it('opens the clone dialog', async () => {
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     expect(screen.queryByTestId('clone-dialog')).not.toBeInTheDocument()
     await user.click(screen.getByText('Clone'))
     expect(screen.getByTestId('clone-dialog')).toBeInTheDocument()
@@ -243,7 +232,7 @@ describe('DashboardPage — header actions', () => {
       remotes: [],
     })
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByText('Browse'))
 
     expect(mockedOpenRepo).toHaveBeenCalledWith('/Users/me/projects/new-repo')
@@ -253,7 +242,7 @@ describe('DashboardPage — header actions', () => {
   it('does nothing when the open-repo picker is dismissed', async () => {
     dialogOpen.mockResolvedValue(null)
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByText('Browse'))
     expect(mockedOpenRepo).not.toHaveBeenCalled()
   })
@@ -262,7 +251,7 @@ describe('DashboardPage — header actions', () => {
     dialogOpen.mockResolvedValue('/bad/path')
     mockedOpenRepo.mockRejectedValue(new Error('not a git repo'))
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByText('Browse'))
     expect(await screen.findByText(/not a git repo/)).toBeInTheDocument()
   })
@@ -271,7 +260,7 @@ describe('DashboardPage — header actions', () => {
     dialogOpen.mockResolvedValue('/Users/me/projects')
     mockedScanRepos.mockResolvedValue(['/Users/me/projects/repo-x', '/Users/me/projects/repo-y'])
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByText('Scan folder'))
 
     expect(mockedScanRepos).toHaveBeenCalledWith('/Users/me/projects', 4)
@@ -283,7 +272,7 @@ describe('DashboardPage — header actions', () => {
     dialogOpen.mockResolvedValue('/Users/me/projects')
     mockedScanRepos.mockRejectedValue(new Error('scan failed'))
     const user = userEvent.setup()
-    render(<DashboardPage onOpenSettings={vi.fn()} />)
+    render(<DashboardPage />)
     await user.click(screen.getByText('Scan folder'))
     expect(await screen.findByText(/scan failed/)).toBeInTheDocument()
   })

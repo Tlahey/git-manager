@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -21,9 +21,6 @@ beforeEach(() => {
   useRepoUIStore.setState({ activeRepo: null })
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('RepositorySection — no repo', () => {
   it('shows a hint and no controls when no repo is active', () => {
