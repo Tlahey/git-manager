@@ -540,6 +540,27 @@ export const aiComplete = (
 export const cancelGeneration = (requestId: string) =>
   invoke<void>('cancel_generation', { requestId })
 
+// ─── Configuration file (~/.git-manager/settings.json) ────────────────────────
+
+/** Mirrors the Rust `AppConfigLoad`. `disabled` is `GIT_MANAGER_NO_CONFIG` — the app must then not
+ * touch the file in either direction (the e2e suite runs this way). */
+export interface AppConfigLoad {
+  disabled: boolean
+  /** The file verbatim, or `null` on a fresh install (and always when `disabled`). */
+  contents: string | null
+}
+
+export const readAppConfig = () => invoke<AppConfigLoad>('read_app_config')
+
+/** Replaces one section; a `null` value removes it. Per section rather than per file so a stale
+ * second window can't roll back what another window changed — see `services/app_config.rs`. */
+export const writeAppConfigSection = (section: string, version: number, value: unknown) =>
+  invoke<void>('write_app_config_section', { section, version, value })
+
+/** Absolute path of the configuration file, for Settings to show and reveal. `null` when there is
+ * none to point at — the configuration is switched off, or the home directory is unresolvable. */
+export const getAppConfigPath = () => invoke<string | null>('get_app_config_path')
+
 // ─── Themes ───────────────────────────────────────────────────────────────────
 
 export const getUserThemes = () => invoke<UserTheme[]>('get_user_themes')

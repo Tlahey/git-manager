@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../components/git-graph/columns.config'
 
 interface ColumnState {
@@ -50,6 +51,9 @@ export const useGitGraphColumnsStore = create<GitGraphColumnsState>()(
     }),
     {
       name: 'git-manager-git-graph-columns',
+      // The `graphColumns` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('graphColumns'),
+      skipHydration: true,
       // Merge the persisted state with the defaults, so any column added later still gets
       // its own default values.
       merge: (persisted, current) => {

@@ -58,11 +58,7 @@ pub struct StoredSummaryFile {
 }
 
 fn summaries_root() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
-        #[allow(deprecated)]
-        std::env::home_dir()
-    })?;
-    Some(home.join(".git-manager").join("summaries"))
+    crate::utils::app_data_dir().map(|dir| dir.join("summaries"))
 }
 
 /// Reads one `key: value` out of the leading `---` front-matter block. Returns `None` when the file

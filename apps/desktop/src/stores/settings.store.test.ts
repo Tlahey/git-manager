@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { apiWriteAppConfigSection } from '../api/config.api'
+import { flushConfigWrites, loadAppConfig, resetAppConfigForTests } from '../lib/appConfig'
 import {
   SETTINGS_VERSION,
   mergeSettingsWithDefaults,
@@ -6,11 +8,20 @@ import {
   useSettingsStore,
 } from './settings.store'
 
+vi.mock('../api/config.api', () => ({
+  apiReadAppConfig: vi.fn(() => Promise.resolve({ disabled: false, contents: null })),
+  apiWriteAppConfigSection: vi.fn(() => Promise.resolve()),
+}))
+
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
 beforeEach(() => {
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   localStorage.clear()
+  // The config document is module state shared by every store; a test that loads it must not leave
+  // the next one persisting to a file instead of localStorage.
+  resetAppConfigForTests()
+  vi.mocked(apiWriteAppConfigSection).mockClear()
 })
 
 describe('useSettingsStore', () => {
@@ -76,11 +87,19 @@ describe('useSettingsStore', () => {
     expect(useSettingsStore.getState().settings.ai.enabled).toBe(true)
   })
 
-  it('persists to localStorage under its own key', () => {
+  it('persists into the `settings` section of the config file once it has been loaded', async () => {
+    // The whole point of the file: a packaged build reads the same settings as a dev run, which a
+    // localStorage store — keyed by WebKit off the running process — could never do. The section is
+    // the settings themselves, not `{ settings: … }`, because it is a file people open.
+    await loadAppConfig()
     useSettingsStore.getState().updateSettings({ language: 'en' })
-    const raw = localStorage.getItem('git-manager-settings')
-    expect(raw).not.toBeNull()
-    expect(JSON.parse(raw!).state.settings.language).toBe('en')
+    await flushConfigWrites()
+
+    const [section, version, value] = vi.mocked(apiWriteAppConfigSection).mock.lastCall!
+    expect(section).toBe('settings')
+    expect(version).toBe(SETTINGS_VERSION)
+    expect((value as { language: string }).language).toBe('en')
+    expect(localStorage.getItem('git-manager-settings')).toBeNull()
   })
 })
 

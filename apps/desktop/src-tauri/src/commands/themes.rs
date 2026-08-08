@@ -4,11 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn user_themes_dir() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
-        #[allow(deprecated)]
-        std::env::home_dir()
-    })?;
-    Some(home.join(".git-manager").join("themes"))
+    crate::utils::app_data_dir().map(|dir| dir.join("themes"))
 }
 
 #[tauri::command]

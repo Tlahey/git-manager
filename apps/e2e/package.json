@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "check:config": "node check-config-file.ts",
     "test:e2e": "caffeinate -dims wdio run ./wdio.conf.ts",
     "screenshots": "caffeinate -dims wdio run ./wdio.conf.ts --cucumberOpts.tags='@screenshots'",
     "docs:screenshots": "caffeinate -dims wdio run ./wdio.conf.ts --cucumberOpts.tags='@doc'"

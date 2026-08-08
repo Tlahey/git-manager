@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 import type { GitRepo } from '@git-manager/git-types'
 import { useRepoUIStore } from './repoUI.store'
 import { isLinkedWorktree } from '../lib/linkedWorktree'
@@ -233,6 +234,9 @@ export const useRepoDataStore = create<RepoDataState>()(
     }),
     {
       name: 'git-manager-repos',
+      // The `repositories` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('repositories'),
+      skipHydration: true,
       // Don't persist the repo cache (volatile data)
       partialize: (state) => ({
         savedRepos: state.savedRepos,

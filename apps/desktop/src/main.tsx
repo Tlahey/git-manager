@@ -10,6 +10,7 @@ import { NotchWindow } from './app/notch/NotchWindow'
 import type { NotchPayload } from './lib/notifications/notchWindow'
 import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
+import { hydrateConfigStores, registerConfigFlushOnUnload } from './lib/appConfig'
 import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
@@ -60,10 +61,17 @@ if (import.meta.env.VITE_E2E === 'true') {
   ;(window as unknown as { __e2eGameStore: typeof useGameStore }).__e2eGameStore = useGameStore
 }
 
-// Initialize i18n before rendering, honoring the persisted language choice
-// (the zustand store rehydrates synchronously from localStorage on import).
+// Read the configuration off disk before anything reads it, then initialize i18n with the persisted
+// language choice. Every configuration-backed store is created with `skipHydration` because the file
+// (`~/.git-manager/settings.json`, see lib/appConfig/) is read asynchronously — without this gate
+// the app would paint its first frame with no tabs, in the default language and theme, and only
+// then become itself. It never rejects: a missing or unreadable file leaves the defaults in place.
 e2eSetup
-  .then(() => initI18n(useSettingsStore.getState().settings.language))
+  .then(() => hydrateConfigStores())
+  .then(() => {
+    registerConfigFlushOnUnload()
+    return initI18n(useSettingsStore.getState().settings.language)
+  })
   .then(() => {
     const params = new URLSearchParams(window.location.search)
     const windowKind = params.get('window')

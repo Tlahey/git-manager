@@ -7,7 +7,11 @@ import {
   SUITE_WIDE_FAKE_AI_PORT,
   type FakeAiServerHandle,
 } from './support/fakeAiServer.ts'
-import { useIsolatedHome, isolatedAppBinary } from './support/isolatedAppState.js'
+import {
+  useIsolatedHome,
+  isolatedAppBinary,
+  disableAppConfigFile,
+} from './support/isolatedAppState.js'
 import {
   resetRunReport,
   startSession,
@@ -81,6 +85,9 @@ export const config: WebdriverIO.Config = {
     // AI logs, summaries, user themes). Pairs with the renamed binary above, which covers
     // localStorage. See support/isolatedAppState.ts.
     useIsolatedHome()
+    // …and no configuration file at all, so the suite's localStorage seeds are the app's only
+    // persisted state and no run can read or write the developer's `~/.git-manager/settings.json`.
+    disableAppConfigFile()
     // Drop the previous run's per-scenario timings; workers append to it as they go.
     resetRunReport()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })

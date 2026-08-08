@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 import { apiGetTerminalCommands } from '../api/shell.api'
 import { appEventBus, type AppEvent } from '../lib/appEventBus'
 import {
@@ -278,6 +279,9 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'git-manager-game-store',
+      // The `rewards` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('rewards'),
+      skipHydration: true,
       // Convert sets to arrays for localstorage JSON serialization
       partialize: (state: GameState) => ({
         achievements: state.achievements,
