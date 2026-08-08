@@ -106,9 +106,11 @@ beforeEach(() => {
   mocked.fetchGitHubContributions.mockResolvedValue([])
 })
 
-
 describe('useGitHubData — no GitHub token', () => {
   it('returns the fixtures while the mock flag is on, and never calls the GitHub API', () => {
+    // Set explicitly: the flag now defaults to off in every build, so arming the fixtures is an
+    // act (the env variable or the debug toggle) rather than something a dev build assumes.
+    useDevFlagsStore.setState({ mockGitHub: true })
     const mockPr = pr({ id: 'mock-1' })
     useNotificationStore.setState({ mockPRs: [mockPr] })
     const { result } = renderHook(() => useGitHubData(), { wrapper })

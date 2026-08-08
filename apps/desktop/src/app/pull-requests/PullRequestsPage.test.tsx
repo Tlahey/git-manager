@@ -81,6 +81,11 @@ function mockHook(overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {
     isValidating: false,
     error: null,
     hasToken: true,
+    // The page's GitHub half is on by default here; the signed-out suite flips these.
+    githubConnected: true,
+    showConnectBanner: false,
+    dismissConnectBanner: vi.fn(),
+    isMocked: false,
     username: 'octocat',
     lastRefreshed: null,
     refresh: vi.fn(),
@@ -136,10 +141,25 @@ describe('PullRequestsPage — header sync status', () => {
     expect(screen.getByText('Rate limited')).toBeInTheDocument()
   })
 
-  it('shows a "no GitHub account" notice when hasToken is false', () => {
-    mockHook({ hasToken: false })
+  // Being signed out is not a fault worth an amber pill in the title bar: the connect banner below
+  // already says it *and* says what to do about it, and two notices for one fact left the header
+  // shouting about a state the user had chosen. Only invented data still warrants a warning here.
+  it('says nothing in the header about a missing account', () => {
+    mockHook({ hasToken: false, githubConnected: false, showConnectBanner: true })
     render(<PullRequestsPage />)
-    expect(screen.getByText(/No GitHub account/)).toBeInTheDocument()
+    expect(screen.queryByText(/No GitHub account/)).not.toBeInTheDocument()
+    // The guidance is not lost — it moved to the one place that can act on it.
+    expect(screen.getByTestId('launchpad-connect-github')).toBeInTheDocument()
+  })
+
+  it('drops the divider with it, rather than leaving a rule beside the title', () => {
+    const { container } = render(<PullRequestsPage />)
+    const withStatus = container.querySelectorAll('header .w-px').length
+
+    mockHook({ hasToken: false, githubConnected: false })
+    const { container: signedOut } = render(<PullRequestsPage />)
+    expect(withStatus).toBe(1)
+    expect(signedOut.querySelectorAll('header .w-px')).toHaveLength(0)
   })
 
   it('shows the last-refreshed time when present', () => {
@@ -317,5 +337,91 @@ describe('PullRequestsPage — pin toggling forwarded to a tab', () => {
     render(<PullRequestsPage />)
     await user.click(screen.getByTitle('Pin'))
     expect(togglePin).toHaveBeenCalledWith('pr-1')
+  })
+})
+
+// Signed out, the page used to render its whole GitHub apparatus anyway — five KPI cards reading
+// zero, a refresh button with nothing to refresh, seven tabs of empty lists — which reads as "there
+// is nothing here" when the truth is "the app has not been told whose data to fetch".
+describe('PullRequestsPage — no GitHub account connected', () => {
+  function renderSignedOut(
+    overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {},
+    onOpenSettings?: () => void
+  ) {
+    mockHook({
+      hasToken: false,
+      githubConnected: false,
+      showConnectBanner: true,
+      ...overrides,
+    })
+    return render(<PullRequestsPage onOpenSettings={onOpenSettings} />)
+  }
+
+  it('asks the user to connect an account', () => {
+    renderSignedOut()
+    expect(screen.getByTestId('launchpad-connect-github')).toBeInTheDocument()
+    expect(screen.getByText('Connect your GitHub account')).toBeInTheDocument()
+  })
+
+  it('hides the KPI bar, the global filter toolbar and the refresh control', () => {
+    renderSignedOut({ lastRefreshed: new Date(Date.now() - 5000) })
+    expect(screen.queryByText('Open PRs')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('launchpad-toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('manual-refresh-button')).not.toBeInTheDocument()
+    expect(screen.queryByText(/ago/)).not.toBeInTheDocument()
+  })
+
+  it('keeps only the local WIP tab, which needs no account', () => {
+    renderSignedOut()
+    expect(screen.getByTestId('launchpad-tab-wip')).toBeInTheDocument()
+    for (const id of ['prs', 'followed', 'issues', 'waiting', 'snoozed', 'stats', 'views']) {
+      expect(screen.queryByTestId(`launchpad-tab-${id}`)).not.toBeInTheDocument()
+    }
+  })
+
+  // The active tab is persisted, so a user who signs out (or whose store outlived an account)
+  // would otherwise land on a tab that is no longer in the bar and see a blank page.
+  it('falls back to the WIP tab when the persisted one is GitHub-backed', () => {
+    renderSignedOut({ activeTab: 'prs' })
+    expect(screen.getByTestId('launchpad-tab-wip')).toHaveClass('border-primary')
+  })
+
+  it('opens the integration settings from the prompt', async () => {
+    const onOpenSettings = vi.fn()
+    const user = userEvent.setup()
+    renderSignedOut({}, onOpenSettings)
+    await user.click(screen.getByTestId('launchpad-connect-github-button'))
+    expect(onOpenSettings).toHaveBeenCalledOnce()
+  })
+
+  it('closes the prompt through the hook, which is what remembers the dismissal', async () => {
+    const dismissConnectBanner = vi.fn()
+    const user = userEvent.setup()
+    renderSignedOut({ dismissConnectBanner })
+    await user.click(screen.getByTestId('launchpad-connect-github-dismiss'))
+    expect(dismissConnectBanner).toHaveBeenCalledOnce()
+  })
+
+  // Dismissed, the page keeps every other signed-out decision — the point of closing it is to get
+  // the row back for the WIP list, not to pretend an account is connected.
+  it('drops the prompt once dismissed while still hiding the GitHub half', () => {
+    renderSignedOut({ showConnectBanner: false })
+    expect(screen.queryByTestId('launchpad-connect-github')).not.toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-tab-wip')).toBeInTheDocument()
+    expect(screen.queryByTestId('launchpad-tab-prs')).not.toBeInTheDocument()
+    expect(screen.queryByText('Open PRs')).not.toBeInTheDocument()
+  })
+
+  // The one header warning that survives, because invented pull requests rendered as real ones is
+  // a genuine misreading risk — unlike simply having no account, which is a state, not a fault.
+  it('warns about demo data when the fixtures are on', () => {
+    renderSignedOut({ githubConnected: true, isMocked: true })
+    expect(screen.getByText(/showing demo data/)).toBeInTheDocument()
+  })
+
+  it('says nothing at all in the header when they are off', () => {
+    renderSignedOut({ isMocked: false })
+    expect(screen.queryByText(/showing demo data/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/No GitHub account/)).not.toBeInTheDocument()
   })
 })

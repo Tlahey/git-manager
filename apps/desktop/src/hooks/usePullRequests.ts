@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
-import { useSettingsStore } from '../stores/settings.store'
+import { useGithubAccount } from './useGithubAccount'
 import { fetchRepoPRs, rawToPullRequest } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 
@@ -15,22 +15,31 @@ export interface UsePullRequestsResult {
   myPrs: PullRequest[]
   allPrs: PullRequest[]
   isGithub: boolean
+  /** Whether a GitHub account (or an explicit `githubToken`) backs the request — see below. */
+  isConnected: boolean
   isLoading: boolean
   error: Error | null
   ownerRepo: { owner: string; repo: string } | null
 }
 
+/**
+ * The pull requests of one repository, resolved from its first GitHub remote.
+ *
+ * Nothing is fetched without a token. An anonymous call would work on a public repo and fail on
+ * every private one — and, when the rate limit is spent, on both — so the signed-out user was shown
+ * a transport error where the answer is "connect an account". `isConnected` is what the sidebar
+ * renders that answer from; see {@link useGithubAccount}.
+ */
 export function usePullRequests({
   remoteUrls,
   currentUser,
   githubToken,
   enabled = true,
 }: UsePullRequestsOptions): UsePullRequestsResult {
-  const githubSettings = useSettingsStore((s) => s.settings.github)
-  const activeAccount =
-    githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const resolvedToken = githubToken || (activeAccount?.token ?? undefined)
-  const resolvedUser = currentUser || (activeAccount?.user?.login ?? undefined)
+  const account = useGithubAccount()
+  const resolvedToken = githubToken || account.token || undefined
+  const resolvedUser = currentUser || account.login || undefined
+  const isConnected = !!resolvedToken
 
   // Find the first GitHub remote
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
@@ -38,7 +47,7 @@ export function usePullRequests({
   const isGithub = ownerRepo !== null
 
   const swrKey =
-    enabled && isGithub && ownerRepo
+    enabled && isGithub && isConnected && ownerRepo
       ? ['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, resolvedToken]
       : null
 
@@ -61,6 +70,7 @@ export function usePullRequests({
     myPrs,
     allPrs,
     isGithub,
+    isConnected,
     isLoading: !data && !error && swrKey !== null,
     error: error || null,
     ownerRepo,

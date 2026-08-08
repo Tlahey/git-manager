@@ -109,11 +109,15 @@ function allRows(sections: SidebarSection[]): SidebarRow[] {
   return sections.flatMap((s) => s.rows)
 }
 
-const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isLoading: false }
+// `isConnected` (a GitHub account is signed in) defaults to true throughout, so the suites below
+// keep exercising the states that come *after* the sign-in check. The signed-out branch has its own
+// tests, which flip it off explicitly.
+const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isConnected: true, isLoading: false }
 const DEFAULT_ISSUE_DATA = {
   groups: [],
   allIssues: [],
   isGithub: false,
+  isConnected: true,
   isLoading: false,
   refresh: () => {},
 }
@@ -124,7 +128,13 @@ const FILTER_B = { id: 'f2', name: 'Mine', query: 'is:open author:@me' }
 const PR_FILTER_A = { id: 'pf1', name: 'All open PRs', query: 'is:open' }
 const PR_FILTER_B = { id: 'pf2', name: 'Mine', query: 'is:open author:@me' }
 
-const DEFAULT_PR_FILTER_DATA = { groups: [], allMatched: [], isGithub: false, isLoading: false }
+const DEFAULT_PR_FILTER_DATA = {
+  groups: [],
+  allMatched: [],
+  isGithub: false,
+  isConnected: true,
+  isLoading: false,
+}
 
 /** Builds the grouped shape `useRepoPrFilters` returns, with the de-duplicated union it exposes. */
 function prFilterData(
@@ -468,7 +478,12 @@ describe('useSidebarRows — remotes section', () => {
 
 describe('useSidebarRows — pull requests section', () => {
   it('is collapsed by default, with the PR count still shown on the header', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(
       prFilterData([{ filter: PR_FILTER_A, prs: [{ number: 1 }, { number: 2 }] }])
     )
@@ -483,7 +498,12 @@ describe('useSidebarRows — pull requests section', () => {
 
   // The filters overlap by design, so the header count is the de-duplicated union, not the sum.
   it('counts each PR once on the header even when several filters match it', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(
       prFilterData([
         { filter: PR_FILTER_A, prs: [{ number: 1 }, { number: 2 }] },
@@ -496,14 +516,24 @@ describe('useSidebarRows — pull requests section', () => {
   })
 
   it('shows a loading message while the repo PR list is loading', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: true })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: true,
+    })
     const { result } = renderRows({ openState: { 'section:prs': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'pr:loading')).toBeDefined())
   })
 
   // The filter searches are a second request; the section is not ready until they land either.
   it('shows a loading message while the filter searches are in flight', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue({
       ...DEFAULT_PR_FILTER_DATA,
       isGithub: true,
@@ -519,8 +549,46 @@ describe('useSidebarRows — pull requests section', () => {
     await waitFor(() => expect(findRow(result.current.sections, 'pr:nogithub')).toBeDefined())
   })
 
+  // Signed out on a GitHub repo. Nothing is fetched in that state, so the saved views would sit
+  // here empty — and, before the fetch was gated, each carried GitHub's own transport error.
+  it('asks the user to connect an account when signed out, in place of the saved views', async () => {
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: false,
+      isLoading: false,
+    })
+    useRepoPrFiltersMock.mockReturnValue({
+      ...prFilterData([{ filter: PR_FILTER_A, prs: [], error: 'Load failed' }]),
+      isConnected: false,
+    })
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:noaccount')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr-filter:pf1')).toBeUndefined()
+    expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toBeUndefined()
+  })
+
+  // Signing out is not the repo losing its remote: the two have different answers, and the
+  // "no GitHub remote" one keeps winning where it applies.
+  it('prefers the "no GitHub remote" message over the sign-in one', async () => {
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: false,
+      isConnected: false,
+      isLoading: false,
+    })
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:nogithub')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:noaccount')).toBeUndefined()
+  })
+
   it('tells the user to add a filter when they have deleted every one', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(prFilterData([]))
     const { result } = renderRows({ openState: { 'section:prs': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'pr:nofilters')).toBeDefined())
@@ -536,7 +604,12 @@ describe('useSidebarRows — pull request sub-groups', () => {
     }>,
     openState: Record<string, boolean> = {}
   ) {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(prFilterData(groups))
     return renderRows({ openState: { 'section:prs': true, ...openState } })
   }
@@ -582,7 +655,12 @@ describe('useSidebarRows — pull request sub-groups', () => {
   })
 
   it('marks the row whose head branch is the selected one', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(
       prFilterData([
         {
@@ -606,7 +684,12 @@ describe('useSidebarRows — pull request sub-groups', () => {
   // Search returns the issue view of a PR, which has no head branch — an empty one must not match
   // an equally empty `selectedBranch`.
   it('never marks a PR with no known head branch as selected', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(
       prFilterData([{ filter: PR_FILTER_A, prs: [{ number: 1, headRef: '' }] }])
     )
@@ -765,6 +848,28 @@ describe('useSidebarRows — issues section', () => {
     await waitFor(() => expect(findRow(result.current.sections, 'issue:nogithub')).toBeDefined())
   })
 
+  // The PR section's twin — see its own sign-in test for why the saved views go with it.
+  it('asks the user to connect an account when signed out, in place of the saved views', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [], error: 'Load failed' }], { isConnected: false })
+    )
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:noaccount')).toBeDefined())
+    expect(findRow(result.current.sections, 'issue-filter:f1')).toBeUndefined()
+    expect(findRow(result.current.sections, 'issue-filter:f1:error')).toBeUndefined()
+  })
+
+  it('prefers the "no GitHub remote" message over the sign-in one', async () => {
+    useRepoIssuesMock.mockReturnValue({
+      ...DEFAULT_ISSUE_DATA,
+      isGithub: false,
+      isConnected: false,
+    })
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:nogithub')).toBeDefined())
+    expect(findRow(result.current.sections, 'issue:noaccount')).toBeUndefined()
+  })
+
   it('tells the user to add a filter when they have deleted every one', async () => {
     useRepoIssuesMock.mockReturnValue(issueData([]))
     const { result } = renderRows({ openState: { 'section:issues': true } })
@@ -870,6 +975,7 @@ describe('useSidebarRows — no pull request on branch/worktree rows', () => {
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 9, headRef: 'feature-x', state: 'open' }],
       isGithub: true,
+      isConnected: true,
       isLoading: false,
     })
     const { result } = renderRows({ openState: { 'section:local': true } })
@@ -886,6 +992,7 @@ describe('useSidebarRows — no pull request on branch/worktree rows', () => {
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 11, headRef: 'feature/login', state: 'open' }],
       isGithub: true,
+      isConnected: true,
       isLoading: false,
     })
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
@@ -1030,7 +1137,12 @@ describe('useSidebarRows — worktrees section', () => {
 
 describe('useSidebarRows — filter reaches every section, not just branches', () => {
   it('filters pull requests by title, headRef, author, or number', async () => {
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: true,
+      isLoading: false,
+    })
     useRepoPrFiltersMock.mockReturnValue(
       prFilterData([
         {
@@ -1167,6 +1279,7 @@ describe('useSidebarRows — hides sections with no matches while filtering', ()
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 1, title: 'Fix login bug', headRef: 'fix-login', author: 'alice' }],
       isGithub: true,
+      isConnected: true,
       isLoading: false,
     })
     const { result: filtered } = renderRows({ filter: 'zzz' })
@@ -1179,6 +1292,21 @@ describe('useSidebarRows — hides sections with no matches while filtering', ()
     })
     await waitFor(() => expect(findSection(noGithub.current.sections, 'prs')).toBeDefined())
     expect(findRow(noGithub.current.sections, 'pr:nogithub')).toBeDefined()
+
+    // Same for the sign-in message: an active filter matches nothing *because* nothing was
+    // fetched, so hiding the section on that count would take away the one row explaining why.
+    usePullRequestsMock.mockReturnValue({
+      allPrs: [],
+      isGithub: true,
+      isConnected: false,
+      isLoading: false,
+    })
+    const { result: signedOut } = renderRows({
+      filter: 'zzz',
+      openState: { 'section:prs': true },
+    })
+    await waitFor(() => expect(findSection(signedOut.current.sections, 'prs')).toBeDefined())
+    expect(findRow(signedOut.current.sections, 'pr:noaccount')).toBeDefined()
   })
 })
 

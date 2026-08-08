@@ -40,6 +40,19 @@ function rawPR(overrides: Partial<GhRawPR> & Record<string, unknown> = {}) {
   }
 }
 
+/** The connected-account state: nothing is fetched without one (see the hook's doc comment). */
+function signIn(login = 'account-user', token = 'account-tok') {
+  useSettingsStore.setState({
+    settings: {
+      ...DEFAULT_SETTINGS,
+      github: {
+        accounts: [{ id: 'acc1', token, user: { login, name: null, email: null, avatarUrl: '' } }],
+        activeAccountId: 'acc1',
+      },
+    },
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
@@ -105,7 +118,8 @@ describe('usePullRequests — fetching and mapping', () => {
   it('maps a draft PR\'s state to "draft"', async () => {
     mockedFetch.mockResolvedValue([rawPR({ draft: true })])
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }),
+      () =>
+        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
@@ -118,7 +132,12 @@ describe('usePullRequests — fetching and mapping', () => {
       rawPR({ number: 2, user: { login: 'other', avatar_url: '' } }),
     ])
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], currentUser: 'me' }),
+      () =>
+        usePullRequests({
+          remoteUrls: ['https://github.com/org/repo.git'],
+          currentUser: 'me',
+          githubToken: 'tok',
+        }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(2))
@@ -129,7 +148,8 @@ describe('usePullRequests — fetching and mapping', () => {
   it('myPrs is empty when there is no resolved current user', async () => {
     mockedFetch.mockResolvedValue([rawPR()])
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }),
+      () =>
+        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
@@ -137,21 +157,7 @@ describe('usePullRequests — fetching and mapping', () => {
   })
 
   it('resolves user/token from the active GitHub account when not explicitly given', async () => {
-    useSettingsStore.setState({
-      settings: {
-        ...DEFAULT_SETTINGS,
-        github: {
-          accounts: [
-            {
-              id: 'acc1',
-              token: 'account-tok',
-              user: { login: 'account-user', name: null, email: null, avatarUrl: '' },
-            },
-          ],
-          activeAccountId: 'acc1',
-        },
-      },
-    })
+    signIn()
     mockedFetch.mockResolvedValue([])
     renderHook(() => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }), {
       wrapper,
@@ -160,6 +166,7 @@ describe('usePullRequests — fetching and mapping', () => {
   })
 
   it('does not fetch when enabled is false', () => {
+    signIn()
     renderHook(
       () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], enabled: false }),
       { wrapper }
@@ -167,10 +174,26 @@ describe('usePullRequests — fetching and mapping', () => {
     expect(mockedFetch).not.toHaveBeenCalled()
   })
 
+  // An anonymous call works on a public repo and fails on every private one — and on both once
+  // the unauthenticated rate limit is spent — so the signed-out user was shown a transport error
+  // where the answer is "connect an account". The sidebar renders that from `isConnected`.
+  it('does not fetch when no account is connected, and reports it', () => {
+    const { result } = renderHook(
+      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }),
+      { wrapper }
+    )
+    expect(mockedFetch).not.toHaveBeenCalled()
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.isGithub).toBe(true)
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.allPrs).toEqual([])
+  })
+
   it('surfaces a fetch error', async () => {
     mockedFetch.mockRejectedValue(new Error('rate limited'))
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }),
+      () =>
+        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.error).not.toBeNull())

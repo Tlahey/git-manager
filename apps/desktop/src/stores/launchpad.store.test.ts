@@ -9,6 +9,7 @@ beforeEach(() => {
     activeTab: 'prs',
     snoozed: {},
     pendingOpenPrId: null,
+    connectBannerDismissed: false,
   })
   localStorage.clear()
 })
@@ -89,5 +90,26 @@ describe('useLaunchpadStore', () => {
   it('does not persist a pending open request', () => {
     useLaunchpadStore.getState().requestOpenPr('pr-42')
     expect(localStorage.getItem('git-manager-launchpad')).not.toContain('pendingOpenPrId')
+  })
+
+  // Unlike the pending open, this one *is* persisted: it answers "has the user already read the
+  // connect-your-account guidance", and re-asking on every launch would nag rather than inform.
+  it('remembers a dismissed connect banner, and persists it', () => {
+    useLaunchpadStore.getState().dismissConnectBanner()
+    expect(useLaunchpadStore.getState().connectBannerDismissed).toBe(true)
+    expect(localStorage.getItem('git-manager-launchpad')).toContain('connectBannerDismissed')
+  })
+
+  // Re-arming is what keeps a dismissal scoped to the signed-out spell it was made in.
+  it('armConnectBanner un-dismisses it', () => {
+    useLaunchpadStore.getState().dismissConnectBanner()
+    useLaunchpadStore.getState().armConnectBanner()
+    expect(useLaunchpadStore.getState().connectBannerDismissed).toBe(false)
+  })
+
+  it('armConnectBanner leaves the state untouched when nothing was dismissed', () => {
+    const before = useLaunchpadStore.getState()
+    useLaunchpadStore.getState().armConnectBanner()
+    expect(useLaunchpadStore.getState()).toBe(before)
   })
 })

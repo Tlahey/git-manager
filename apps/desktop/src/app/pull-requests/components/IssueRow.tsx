@@ -12,6 +12,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { MockIssue } from '../types'
 import { StatusBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
+import { CommitAvatar } from '../../../components/git-graph/components/CommitAvatar'
 import { SnoozeControl } from './SnoozeControl'
 import { IssueQuickActions } from './IssueQuickActions'
 import { openUrl, timeAgo } from '../utils'
@@ -111,12 +112,9 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
 
       {/* Author */}
       <div className="flex w-[90px] shrink-0 items-center gap-1.5">
-        <img
-          src={issue.authorAvatar}
-          alt={issue.author}
-          className="rounded-full border border-border bg-muted object-cover"
-          style={{ width: 18, height: 18 }}
-        />
+        {/* Coloured initials when GitHub reports no picture, exactly as `PRRow` and the graph do —
+            a raw <img> here rendered a broken-image glyph for a deleted author. */}
+        <CommitAvatar avatarUrl={issue.authorAvatar} name={issue.author} size={18} />
         <span className="truncate text-[10px] text-muted-foreground">{issue.author}</span>
       </div>
 

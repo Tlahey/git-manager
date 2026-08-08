@@ -29,7 +29,10 @@ function parseFollowedPR(url: string): MockPR | null {
     status: 'open',
     ciStatus: null,
     author: '—',
-    authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
+    // Nothing in the URL says who wrote it, so there is no avatar — not a stand-in one. The row
+    // renders the author's initials instead (`PRRow`), which is honest about what is unknown;
+    // `avatars.githubusercontent.com/u/1` used to sit here, and that is a real person's face.
+    authorAvatar: '',
     collaborators: [],
     filesChanged: 0,
     additions: 0,

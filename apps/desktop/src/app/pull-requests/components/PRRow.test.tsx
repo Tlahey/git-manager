@@ -98,6 +98,31 @@ describe('PRRow — content', () => {
     expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
   })
 
+  // GitHub reports no `user` for a deleted account, and a PR followed by URL has no author at all
+  // — both arrive as `authorAvatar: ''`, which a bare <img> rendered as a broken-image glyph.
+  it("falls back to the author's coloured initials when there is no picture", () => {
+    render(
+      <PRRow
+        pr={pr({ authorAvatar: '', author: 'octocat' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.queryByAltText('octocat')).not.toBeInTheDocument()
+    expect(screen.getByText('OC')).toBeInTheDocument()
+  })
+
+  it('still shows the real picture when there is one', () => {
+    render(
+      <PRRow
+        pr={pr({ authorAvatar: 'https://x/a.png', author: 'octocat' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByAltText('octocat')).toHaveAttribute('src', 'https://x/a.png')
+  })
+
   it('shows a rebase-required icon when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
     expect(screen.getByLabelText('Rebase required')).toBeInTheDocument()

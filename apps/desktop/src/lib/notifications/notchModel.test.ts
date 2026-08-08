@@ -6,6 +6,7 @@ import {
   notchModelFromNotification,
   notchRequestFromNotification,
 } from './notchModel'
+import { getAuthorAvatarStyle } from '../authorAvatar'
 import type { AppNotification } from '../../stores/notification.store'
 
 // The setup file initialises i18n in English, so this is the real copy the user reads.
@@ -21,7 +22,9 @@ function notification(overrides: Partial<AppNotification> = {}): AppNotification
     prTitle: 'feat(notch): extract the notification card',
     prId: 'pr-231',
     author: 'Tlahey',
-    authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
+    // A URL that resolves to nothing, on purpose: `avatars.githubusercontent.com/u/1` is a real
+    // person's account, and it does not belong in a fixture for an invented pull request.
+    authorAvatar: 'https://example.invalid/avatar.png',
     url: 'https://github.com/Tlahey/git-manager/pull/231',
     createdAt: Date.now(),
     read: false,
@@ -103,6 +106,34 @@ describe('notchModelFromNotification', () => {
     const model = notchModelFromNotification(notification({ authorAvatar: undefined }), t)
     expect(model.avatar?.src).toBeUndefined()
     expect(model.avatar?.fallback).toBe('TL')
+  })
+
+  // A stand-in URL would put a real stranger's face on someone else's pull request — the card
+  // used to be handed `avatars.githubusercontent.com/u/1`, which is an actual GitHub account.
+  it('never invents a picture for an author who has none', () => {
+    const model = notchModelFromNotification(notification({ authorAvatar: undefined }), t)
+    expect(JSON.stringify(model)).not.toContain('avatars.githubusercontent.com')
+    expect(model.avatar).not.toHaveProperty('src')
+  })
+
+  // The same coloured disc the commit graph gives a faceless author, so one person reads the same
+  // in a notification as in the history.
+  it("tints the initials with the author's own graph colour", () => {
+    const model = notchModelFromNotification(notification(), t)
+    expect(model.avatar?.fallbackClassName).toBe(
+      `bg-linear-to-tr ${getAuthorAvatarStyle('Tlahey')}`
+    )
+  })
+
+  it('gives two different authors two stable, independently-derived tints', () => {
+    const mine = notchModelFromNotification(notification({ author: 'Tlahey' }), t)
+    const theirs = notchModelFromNotification(notification({ author: 'octocat' }), t)
+    expect(mine.avatar?.fallbackClassName).toBe(
+      notchModelFromNotification(notification({ author: 'Tlahey' }), t).avatar?.fallbackClassName
+    )
+    expect(theirs.avatar?.fallbackClassName).toBe(
+      `bg-linear-to-tr ${getAuthorAvatarStyle('octocat')}`
+    )
   })
 
   it('offers the GitHub action only when there is somewhere to go', () => {

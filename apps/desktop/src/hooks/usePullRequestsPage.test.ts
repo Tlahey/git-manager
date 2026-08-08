@@ -9,6 +9,7 @@ const useGitHubRepoIssues = vi.fn()
 vi.mock('./useGitHubRepoIssues', () => ({ useGitHubRepoIssues: () => useGitHubRepoIssues() }))
 
 import { useLaunchpadStore } from '../stores/launchpad.store'
+import { useDevFlagsStore, DEV_FLAG_DEFAULTS } from '../stores/devFlags.store'
 import { usePullRequestsPage } from './usePullRequestsPage'
 
 const INITIAL_FILTERS = useLaunchpadStore.getState().savedFilters
@@ -88,7 +89,13 @@ function mockRepoIssues(issues: MockIssue[] = []) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs', snoozed: {} })
+  useLaunchpadStore.setState({
+    savedFilters: INITIAL_FILTERS,
+    activeTab: 'prs',
+    snoozed: {},
+    connectBannerDismissed: false,
+  })
+  useDevFlagsStore.setState({ mockGitHub: DEV_FLAG_DEFAULTS.mockGitHub })
   mockGitHubData()
   mockRepoIssues()
 })
@@ -227,5 +234,87 @@ describe('usePullRequestsPage — pinning and following', () => {
     const { result } = renderHook(() => usePullRequestsPage())
     act(() => result.current.addFollowed(pr({ id: 'pr-1' })))
     expect(result.current.tabCounts.followed).toBe(1)
+  })
+})
+
+// `githubConnected` is what hides the page's GitHub half, and it is deliberately *not* `hasToken`:
+// the dev fixture flag exists so a build with no account still renders the populated page, and
+// hiding the tabs from it would empty the e2e run and the documentation screenshots with it.
+describe('usePullRequestsPage — githubConnected', () => {
+  it('is true with a real account, and reports the data as real', () => {
+    useDevFlagsStore.setState({ mockGitHub: false })
+    mockGitHubData({ hasToken: true })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.githubConnected).toBe(true)
+    expect(result.current.isMocked).toBe(false)
+  })
+
+  it('is false with neither an account nor the fixture flag', () => {
+    useDevFlagsStore.setState({ mockGitHub: false })
+    mockGitHubData({ hasToken: false })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.githubConnected).toBe(false)
+    expect(result.current.isMocked).toBe(false)
+  })
+
+  it('is true on the fixture flag alone, and says the data is invented', () => {
+    useDevFlagsStore.setState({ mockGitHub: true })
+    mockGitHubData({ hasToken: false })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.githubConnected).toBe(true)
+    expect(result.current.isMocked).toBe(true)
+  })
+})
+
+// The strip explains an absence that lasts until the user acts on it, so re-raising it on every
+// visit would nag rather than inform — but a dismissal must not silence it forever either.
+describe('usePullRequestsPage — the connect banner', () => {
+  function signedOut() {
+    useDevFlagsStore.setState({ mockGitHub: false })
+    mockGitHubData({ hasToken: false })
+  }
+
+  it('is shown while signed out and never seen off', () => {
+    signedOut()
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.showConnectBanner).toBe(true)
+  })
+
+  it('stays hidden once dismissed, across a remount', () => {
+    signedOut()
+    const { result, unmount } = renderHook(() => usePullRequestsPage())
+    act(() => result.current.dismissConnectBanner())
+    expect(result.current.showConnectBanner).toBe(false)
+
+    // Leaving the Launchpad and coming back must not raise it again — that is the whole point of
+    // persisting the flag rather than holding it in the component.
+    unmount()
+    const { result: revisited } = renderHook(() => usePullRequestsPage())
+    expect(revisited.current.showConnectBanner).toBe(false)
+  })
+
+  it('has nothing to show once an account is connected', () => {
+    useDevFlagsStore.setState({ mockGitHub: false })
+    mockGitHubData({ hasToken: true })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.showConnectBanner).toBe(false)
+  })
+
+  // A dismissal silences the current signed-out spell, not the next one.
+  it('re-arms itself when an account is connected, so a later sign-out explains itself again', () => {
+    signedOut()
+    const { result, unmount } = renderHook(() => usePullRequestsPage())
+    act(() => result.current.dismissConnectBanner())
+    unmount()
+
+    // Connect: the flag is cleared even though the banner is not rendered in this state.
+    mockGitHubData({ hasToken: true })
+    const connected = renderHook(() => usePullRequestsPage())
+    expect(useLaunchpadStore.getState().connectBannerDismissed).toBe(false)
+    connected.unmount()
+
+    signedOut()
+    const { result: signedOutAgain } = renderHook(() => usePullRequestsPage())
+    expect(signedOutAgain.current.showConnectBanner).toBe(true)
   })
 })

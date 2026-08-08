@@ -21,7 +21,7 @@ import type { DayCommit, MockIssue, MockPR } from '../app/pull-requests/types'
  *
  * Deliberately written as literal comparisons rather than reusing `envFlag()` from
  * `devFlags.store.ts`: a function call is not something the bundler will fold away, and folding is
- * the entire point here. The two conditions mirror that store's `DEFAULT_MOCK_GITHUB` —
+ * the entire point here.
  *
  * - a development build, where the debug menu exists and can switch the flag on at any moment;
  * - any build whose `VITE_MOCK_GITHUB` explicitly asks for them, which is the documented way to pin
@@ -29,6 +29,12 @@ import type { DayCommit, MockIssue, MockPR } from '../app/pull-requests/types'
  *
  * A release build satisfies neither, and `VITE_MOCK_GITHUB` being unset there is what lets the
  * whole expression fold.
+ *
+ * Note this is **wider** than that store's `DEFAULT_MOCK_GITHUB`, and has to be: a development
+ * build *carries* the fixtures so the debug toggle has something to switch on, while defaulting to
+ * not showing them. What a build can load and what it shows unasked are two different questions —
+ * conflating them is what put a Launchpad full of invented pull requests in front of every
+ * developer who ran `pnpm dev` without a GitHub account.
  */
 export const DEV_FIXTURES_AVAILABLE =
   import.meta.env.DEV ||

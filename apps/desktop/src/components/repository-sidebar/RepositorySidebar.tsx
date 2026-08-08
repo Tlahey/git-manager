@@ -29,6 +29,7 @@ import {
   resolveSectionHeaderActions,
   type SectionHeaderActionHandlers,
 } from './sectionHeaderActions.config'
+import { useGithubAccount } from '../../hooks/useGithubAccount'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
 import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
@@ -71,6 +72,10 @@ export function RepositorySidebar({
   onOpenPr,
 }: RepositorySidebarProps) {
   const { t } = useTranslation('git')
+  // The `githubToken` prop is the caller's own copy of the active account's token; fall back to the
+  // account itself so a caller that doesn't pass one still gets the signed-in behaviour.
+  const { isConnected } = useGithubAccount()
+  const githubConnected = !!githubToken || isConnected
   const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
   const isFilterActive = branchQuery.trim().length > 0
@@ -235,8 +240,11 @@ export function RepositorySidebar({
 
   // Every section header action this component can wire, regardless of which section is currently
   // rendering — `resolveSectionHeaderActions` (below, in the JSX) narrows this down to the ones
-  // the section actually owns. `onCreatePr` stays gated on `githubToken` here: that's the action's
-  // own precondition, not a decision about which section shows it.
+  // the section actually owns. The GitHub-backed ones stay gated on `githubConnected` here: that's
+  // each action's own precondition, not a decision about which section shows it. A saved filter
+  // added while signed out could not be resolved, and neither a pull request nor an issue can be
+  // opened anonymously — so the whole set goes, rather than offering four dead-ends beside the
+  // "connect your account" row the section's body now shows.
   const sectionHeaderActionHandlers: SectionHeaderActionHandlers = {
     onCreateBranch: onCreateBranch ?? (() => setCreateBranchOpen(true)),
     onPruneBranches: () => setPruneBranchesOpen(true),
@@ -249,10 +257,14 @@ export function RepositorySidebar({
     onPruneWorktrees: () => setPruneWorktreesOpen(true),
     onRemoveMergedWorktrees: () => setRemoveMergedWorktrees('all'),
     onRemoveMyMergedWorktrees: () => setRemoveMergedWorktrees('mine'),
-    onCreatePr: githubToken ? () => setPrCreateOpen(true) : undefined,
-    onCreateIssue: () => setCreateIssueOpen(true),
-    onAddIssueFilter: () => setFilterDialog({ kind: 'issues', filter: null }),
-    onAddPrFilter: () => setFilterDialog({ kind: 'prs', filter: null }),
+    onCreatePr: githubConnected ? () => setPrCreateOpen(true) : undefined,
+    onCreateIssue: githubConnected ? () => setCreateIssueOpen(true) : undefined,
+    onAddIssueFilter: githubConnected
+      ? () => setFilterDialog({ kind: 'issues', filter: null })
+      : undefined,
+    onAddPrFilter: githubConnected
+      ? () => setFilterDialog({ kind: 'prs', filter: null })
+      : undefined,
   }
 
   const onTogglePin = (shortName: string) => {

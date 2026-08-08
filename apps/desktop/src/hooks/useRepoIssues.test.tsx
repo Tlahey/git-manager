@@ -110,11 +110,23 @@ describe('useRepoIssues — GitHub resolution', () => {
     expect(lastKey()![3]).toBe('explicit')
   })
 
-  // Public repos are readable unauthenticated, so a missing token still fetches.
-  it('still fetches when signed out', () => {
+  // GitHub's search API rejects an anonymous caller outright, so the request cannot succeed —
+  // every saved view reported that rejection ("Load failed") as if its own query were at fault.
+  // The sidebar reads `isConnected` and asks for an account instead.
+  it('skips the fetch entirely when signed out, and says why', () => {
     signIn(null)
-    render()
-    expect(lastKey()![3]).toBeUndefined()
+    const { result } = render()
+    expect(lastKey()).toBeNull()
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.isGithub).toBe(true)
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('counts an explicitly passed token as connected even with no account', () => {
+    signIn(null)
+    const { result } = render({ githubToken: 'explicit' })
+    expect(result.current.isConnected).toBe(true)
+    expect(lastKey()![3]).toBe('explicit')
   })
 
   // A rename changes only what is displayed, so it must not cost a round-trip per keystroke.

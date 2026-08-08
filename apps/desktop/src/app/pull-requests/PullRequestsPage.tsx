@@ -9,7 +9,6 @@ import {
   AlertCircle,
   BarChart2,
   Sliders,
-  GitCommit,
   BookOpen,
   FolderGit2,
   BellOff,
@@ -20,11 +19,13 @@ import { usePendingPrOpen } from '../../hooks/usePendingPrOpen'
 import { timeAgo } from './utils'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { InnerTab, KpiCard } from '@git-manager/components'
+import { InnerTab } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
 import { OpenIssueContext } from './OpenIssueContext'
 import { PrSidePanel } from './components/PrSidePanel'
 import { IssueSidePanel } from './components/IssueSidePanel'
+import { ConnectGithubBanner } from './components/ConnectGithubBanner'
+import { LaunchpadKpiBar } from './components/LaunchpadKpiBar'
 import { LaunchpadToolbar } from './components/LaunchpadToolbar'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { WipTab } from './components/WipTab'
@@ -38,9 +39,15 @@ import { appEventBus } from '../../lib/appEventBus'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 import { useLaunchpadControlsStore } from '../../stores/launchpadControls.store'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
+import { TAB_REQUIRES_GITHUB, resolveActiveTab } from './githubTabs.config'
 import type { InnerTab as InnerTabType, MockPR, MockIssue } from './types'
 
-export function PullRequestsPage() {
+interface PullRequestsPageProps {
+  /** Opens Settings on the Integrations page — what the signed-out state's one action does. */
+  onOpenSettings?: () => void
+}
+
+export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {}) {
   const { t } = useTranslation('launchpad')
   const [openedPr, setOpenedPr] = useState<MockPR | null>(null)
   const [openedIssue, setOpenedIssue] = useState<MockIssue | null>(null)
@@ -62,6 +69,10 @@ export function PullRequestsPage() {
     isValidating,
     error,
     hasToken,
+    githubConnected,
+    showConnectBanner,
+    dismissConnectBanner,
+    isMocked,
     username,
     lastRefreshed,
     refresh,
@@ -87,7 +98,7 @@ export function PullRequestsPage() {
   // tab's PR page (see `lib/notifications/notificationRouting.ts`); open its panel now.
   usePendingPrOpen({ prs, loading, onOpen: setOpenedPr })
 
-  const PR_TABS: TabDef<InnerTabType>[] = defineTabs([
+  const ALL_TABS: TabDef<InnerTabType>[] = defineTabs([
     {
       id: 'prs',
       label: t('tab.myPrs'),
@@ -187,6 +198,14 @@ export function PullRequestsPage() {
     },
   ])
 
+  // Signed out, only the tabs that read the local disk remain — see `githubTabs.config.ts`. The
+  // persisted active tab is resolved against what's left rather than rewritten, so signing back in
+  // returns the user to the tab they were on.
+  const PR_TABS = githubConnected
+    ? ALL_TABS
+    : ALL_TABS.filter((tab) => !TAB_REQUIRES_GITHUB[tab.id])
+  const visibleTab = resolveActiveTab(activeTab, githubConnected)
+
   function selectTab(id: InnerTabType) {
     setActiveTab(id)
     if (id === 'waiting') appEventBus.notify('view_waiting_reviews')
@@ -203,7 +222,9 @@ export function PullRequestsPage() {
                 <Rocket className="h-4 w-4 text-primary" />
                 <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
               </div>
-              <div className="h-4 w-px bg-border" />
+              {/* The divider belongs to the status that follows it — signed out with no fixtures
+                  there is no status, and a rule floating beside the title is just debris. */}
+              {(hasToken || isMocked) && <div className="h-4 w-px bg-border" />}
               {hasToken ? (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   {loading || isValidating ? (
@@ -223,26 +244,38 @@ export function PullRequestsPage() {
                   )}
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
-                  <WifiOff className="h-3 w-3" /> {t('page.noAccount')}
-                </span>
+                // Only the fixtures get a warning here. Being signed out is not a fault worth an
+                // amber strip in the title bar: the page below already says it, once, in the
+                // connect banner — and says what to do about it, which a status pill cannot. Two
+                // notices for one fact left the header shouting about a state the user had chosen.
+                // Invented pull requests are a different matter and keep their warning.
+                isMocked && (
+                  <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
+                    <WifiOff className="h-3 w-3" /> {t('page.demoData')}
+                  </span>
+                )
               )}
               <div className="ml-auto flex items-center gap-3">
-                {lastRefreshed && (
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                    <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
-                  </span>
+                {/* Nothing to refresh, and no last-refresh time to report, without an account. */}
+                {githubConnected && (
+                  <>
+                    {lastRefreshed && (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                        <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
+                      </span>
+                    )}
+                    <button
+                      onClick={refresh}
+                      disabled={isValidating}
+                      data-testid="manual-refresh-button"
+                      className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                      title={t('page.refreshNow')}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
+                      {t('page.refresh')}
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={refresh}
-                  disabled={isValidating}
-                  data-testid="manual-refresh-button"
-                  className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                  title={t('page.refreshNow')}
-                >
-                  <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
-                  {t('page.refresh')}
-                </button>
               </div>
             </header>
 
@@ -256,48 +289,33 @@ export function PullRequestsPage() {
               )}
             </div>
 
-            {/* Overview KPI Bar */}
-            <div className="flex shrink-0 items-stretch gap-3 border-b border-border bg-card/20 px-5 py-3">
-              <KpiCard
-                icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />}
-                label={t('kpi.openPrs')}
-                value={openPRsCount}
-                sub={t('kpi.openPrsSub')}
-                loading={loading}
+            {/* Signed out: the account is the only thing missing, so say that once, here, in place
+                of the whole GitHub-backed apparatus below (KPIs, global filters, remote tabs). One
+                closable strip rather than a centred empty state — the WIP tab underneath is local
+                and still full, and this way the guidance costs a single row of it, or none once
+                it has been read. */}
+            {showConnectBanner && (
+              <ConnectGithubBanner
+                onOpenSettings={onOpenSettings}
+                onDismiss={dismissConnectBanner}
               />
-              <KpiCard
-                icon={<Eye className="h-3.5 w-3.5 text-orange-400" />}
-                label={t('kpi.needsReview')}
-                value={needsReviewCount}
-                sub={t('kpi.needsReviewSub')}
-                accent="hover:border-orange-500/20"
-                loading={loading}
-              />
-              <KpiCard
-                icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />}
-                label={t('kpi.openIssues')}
-                value={openIssuesCount}
-                sub={t('kpi.openIssuesSub')}
-                loading={loading}
-              />
-              <KpiCard
-                icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
-                label={t('kpi.ciPassRate')}
-                value={`${ciPassRate}%`}
-                sub={t('kpi.ciPassRateSub')}
-                loading={loading}
-              />
-              <KpiCard
-                icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />}
-                label={t('kpi.commits')}
-                value={weekCommits}
-                sub={t('kpi.commitsSub')}
-                loading={loading}
-              />
-            </div>
+            )}
 
-            {/* Global controls shared across every inner tab (search + collapse/expand all) */}
-            <LaunchpadToolbar />
+            {/* Overview KPI Bar — every figure in it is the connected account's. */}
+            {githubConnected && (
+              <LaunchpadKpiBar
+                openPRsCount={openPRsCount}
+                needsReviewCount={needsReviewCount}
+                openIssuesCount={openIssuesCount}
+                ciPassRate={ciPassRate}
+                weekCommits={weekCommits}
+                loading={loading}
+              />
+            )}
+
+            {/* Global controls shared across every inner tab (search + collapse/expand all) —
+                every list they act on is GitHub's, save the WIP one, which carries its own. */}
+            {githubConnected && <LaunchpadToolbar />}
 
             {/* Inner Tab Bar */}
             <div className="flex shrink-0 items-center border-b border-border bg-card/30 px-3">
@@ -307,7 +325,7 @@ export function PullRequestsPage() {
                   <InnerTab
                     key={tab.id}
                     data-testid={`launchpad-tab-${tab.id}`}
-                    active={activeTab === tab.id}
+                    active={visibleTab === tab.id}
                     onClick={() => selectTab(tab.id)}
                     count={tabCounts[tab.id]}
                     loading={loading}
@@ -319,7 +337,7 @@ export function PullRequestsPage() {
             </div>
 
             {/* Tab Content */}
-            <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
+            <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, visibleTab)}</div>
           </div>
           {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
           {openedIssue && (

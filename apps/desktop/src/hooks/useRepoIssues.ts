@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import useSWR from 'swr'
-import { useSettingsStore } from '../stores/settings.store'
+import { useGithubAccount } from './useGithubAccount'
 import { fetchIssuesByQuery } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 import type { IssueFilter } from '../stores/issueFilters.store'
@@ -28,6 +28,8 @@ export interface UseRepoIssuesResult {
   /** Every issue matched by any filter, de-duplicated (the filters overlap by design). */
   allIssues: MockIssue[]
   isGithub: boolean
+  /** Whether a GitHub account (or an explicit `githubToken`) backs the queries — see below. */
+  isConnected: boolean
   isLoading: boolean
   error: Error | null
   ownerRepo: { owner: string; repo: string } | null
@@ -45,6 +47,10 @@ export interface UseRepoIssuesResult {
  * failure on its own group instead of failing the batch — a typo in one saved view must not blank
  * out the others.
  *
+ * Nothing is queried without a token: GitHub's search API rejects an anonymous caller outright, so
+ * every saved view of a signed-out user reported the transport's own failure ("Load failed") as if
+ * the *query* had been wrong. `isConnected` is what the sidebar renders "connect an account" from.
+ *
  * Kept separate from {@link useGitHubRepoIssues}, which searches across every repo *added* to the
  * app for the Launchpad: this one is scoped to a single repo. Mirrors {@link usePullRequests}, which
  * resolves its repo the same way.
@@ -55,10 +61,9 @@ export function useRepoIssues({
   filters,
   enabled = true,
 }: UseRepoIssuesOptions): UseRepoIssuesResult {
-  const githubSettings = useSettingsStore((s) => s.settings.github)
-  const activeAccount =
-    githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const resolvedToken = githubToken || (activeAccount?.token ?? undefined)
+  const account = useGithubAccount()
+  const resolvedToken = githubToken || account.token || undefined
+  const isConnected = !!resolvedToken
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
@@ -68,7 +73,7 @@ export function useRepoIssues({
   const queriesKey = filters.map((f) => `${f.id} ${f.query}`).join('\n')
 
   const swrKey =
-    enabled && isGithub && ownerRepo && filters.length > 0
+    enabled && isGithub && isConnected && ownerRepo && filters.length > 0
       ? ([
           'repo-issue-filters',
           ownerRepo.owner,
@@ -118,6 +123,7 @@ export function useRepoIssues({
     groups,
     allIssues,
     isGithub,
+    isConnected,
     isLoading: !data && !error && swrKey !== null,
     error: error || null,
     ownerRepo,

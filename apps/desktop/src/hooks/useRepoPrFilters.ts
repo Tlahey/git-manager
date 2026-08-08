@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
-import { useSettingsStore } from '../stores/settings.store'
+import { useGithubAccount } from './useGithubAccount'
 import { fetchPullRequestsByQuery } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 import type { PrFilter } from '../stores/prFilters.store'
@@ -34,6 +34,8 @@ export interface UseRepoPrFiltersResult {
   /** Every PR matched by any filter, de-duplicated (the filters overlap by design). */
   allMatched: PullRequest[]
   isGithub: boolean
+  /** Whether a GitHub account (or an explicit `githubToken`) backs the queries — see below. */
+  isConnected: boolean
   isLoading: boolean
   error: Error | null
   refresh: () => void
@@ -50,6 +52,10 @@ export interface UseRepoPrFiltersResult {
  * highlight and its actions menu working. A PR the list does not carry (a closed or merged one
  * matched by an explicit `is:closed` filter) keeps the search shape, and the branch-scoped actions
  * disable themselves on its empty `headRef` rather than acting on the wrong thing.
+ *
+ * Nothing is queried without a token: GitHub's search API rejects an anonymous caller outright, so
+ * every saved view of a signed-out user reported the transport's own failure ("Load failed") as if
+ * the *query* had been wrong. `isConnected` is what the sidebar renders "connect an account" from.
  */
 export function useRepoPrFilters({
   remoteUrls,
@@ -58,10 +64,9 @@ export function useRepoPrFilters({
   knownPrs,
   enabled = true,
 }: UseRepoPrFiltersOptions): UseRepoPrFiltersResult {
-  const githubSettings = useSettingsStore((s) => s.settings.github)
-  const activeAccount =
-    githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const resolvedToken = githubToken || (activeAccount?.token ?? undefined)
+  const account = useGithubAccount()
+  const resolvedToken = githubToken || account.token || undefined
+  const isConnected = !!resolvedToken
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
@@ -71,7 +76,7 @@ export function useRepoPrFilters({
   const queriesKey = filters.map((f) => `${f.id} ${f.query}`).join('\n')
 
   const swrKey =
-    enabled && isGithub && ownerRepo && filters.length > 0
+    enabled && isGithub && isConnected && ownerRepo && filters.length > 0
       ? (['repo-pr-filters', ownerRepo.owner, ownerRepo.repo, resolvedToken, queriesKey] as const)
       : null
 
@@ -121,6 +126,7 @@ export function useRepoPrFilters({
     groups,
     allMatched,
     isGithub,
+    isConnected,
     isLoading: !data && !error && swrKey !== null,
     error: error || null,
     refresh: () => void mutate(),
