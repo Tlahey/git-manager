@@ -25,7 +25,7 @@ export const buttonVariants = cva(
         // outline/ghost have no solid fill (page surface + accent hover). link has no
         // fill either but its text rides --link (defaults to --primary) so a
         // light-content theme can darken it for AA without touching --primary.
-        default: 'bg-button text-button-foreground shadow-sm hover:enabled:bg-button/90',
+        default: 'bg-button text-button-foreground shadow-xs hover:enabled:bg-button/90',
         destructive:
           'bg-button-destructive text-button-destructive-foreground shadow-xs hover:enabled:bg-button-destructive/90',
         success:

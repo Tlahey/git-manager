@@ -260,7 +260,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             if (!open) setShortcutQuery('')
           }}
         >
-          <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur-sm">
+          <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur-xs">
             <DialogHeader className="border-b border-border pb-3">
               <DialogTitle className="flex items-center gap-2 text-sm font-semibold tracking-wide">
                 <Keyboard className="h-4 w-4 text-primary" />

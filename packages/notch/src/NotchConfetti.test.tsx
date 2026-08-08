@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { NotchConfetti } from './NotchConfetti'
 import { CONFETTI_PIECE_COUNT, createConfettiPieces } from './confetti'

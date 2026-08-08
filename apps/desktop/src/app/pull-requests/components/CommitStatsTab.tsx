@@ -115,7 +115,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
                             className="relative w-full rounded-t bg-primary/70 transition-all duration-200 group-hover/bar:bg-primary"
                             style={{ height: `${Math.max(pct, 4)}%` }}
                           >
-                            <div className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1 py-px text-[9px] text-foreground shadow-sm group-hover/bar:block">
+                            <div className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1 py-px text-[9px] text-foreground shadow-xs group-hover/bar:block">
                               {day.commits}
                             </div>
                           </div>
