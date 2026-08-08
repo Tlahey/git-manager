@@ -208,7 +208,7 @@ describe('DiffToolbar — folding contract with diffToolbar.css', () => {
     // intrinsic width and paint over the neighbouring clusters.
     const identity = container.querySelector('.diff-toolbar > div')
     expect(identity?.className).toContain('overflow-hidden')
-    expect(identity?.className).toMatch(/min-w-\[/)
+    expect(identity?.className).toMatch(/min-w-(\[|\d)/)
   })
 })
 

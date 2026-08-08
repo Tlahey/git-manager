@@ -127,7 +127,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
       {/* Item: title #id + tags */}
       <div className="min-w-0 flex-1">
         <div className="leading-snug">
-          <span className="text-xs font-medium text-foreground transition-colors [overflow-wrap:anywhere] group-hover/pr:text-primary">
+          <span className="text-xs font-medium text-foreground transition-colors wrap-anywhere group-hover/pr:text-primary">
             {pr.title}
           </span>{' '}
           <button

@@ -37,7 +37,7 @@ export function CommandAutocomplete({
   testId,
 }: CommandAutocompleteProps) {
   const [open, setOpen] = useState(false)
-  const blurTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const blurTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Clear any pending blur-close timer on unmount so it can't call setOpen after teardown.
   useEffect(() => () => clearTimeout(blurTimeout.current), [])

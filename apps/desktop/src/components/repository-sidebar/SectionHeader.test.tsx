@@ -66,7 +66,7 @@ describe('SectionHeader — rendering', () => {
     const { container, rerender } = render(
       <SectionHeader title="Branches" icon={null} isOpen={false} onToggle={vi.fn()} count={1} />
     )
-    expect(container.querySelector('.lucide-filter')).toBeFalsy()
+    expect(container.querySelector('.lucide-funnel')).toBeFalsy()
 
     rerender(
       <SectionHeader
@@ -78,7 +78,7 @@ describe('SectionHeader — rendering', () => {
         isFiltered
       />
     )
-    expect(container.querySelector('.lucide-filter')).toBeTruthy()
+    expect(container.querySelector('.lucide-funnel')).toBeTruthy()
   })
 
   it('shows the action slot only when provided', () => {

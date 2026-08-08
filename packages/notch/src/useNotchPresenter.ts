@@ -77,9 +77,9 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
   const dismissingRef = useRef(false)
   const slidInRef = useRef(false)
   const cancelledRef = useRef(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
-  const deadlineRef = useRef<number>()
-  const remainingRef = useRef<number>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const deadlineRef = useRef<number>(undefined)
+  const remainingRef = useRef<number>(undefined)
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== undefined) clearTimeout(timerRef.current)

@@ -125,7 +125,7 @@ export function RecomposeDialog({
 
         {recompose.error && (
           <p
-            className="break-words rounded bg-destructive/20 px-3 py-2 text-xs text-destructive"
+            className="wrap-break-word rounded bg-destructive/20 px-3 py-2 text-xs text-destructive"
             data-testid="recompose-error"
           >
             {t('recompose.error')} — {recompose.error}

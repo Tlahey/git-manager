@@ -13,7 +13,7 @@ const PopoverAnchor = PopoverPrimitive.Anchor
  * Same collision-aware positioning as `DropdownMenuContent` (see dropdown-menu.tsx).
  */
 const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = 'center', sideOffset = 4, collisionPadding = 8, ...props }, ref) => (
   <PopoverPrimitive.Portal>
@@ -23,7 +23,7 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        'z-popover rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none',
+        'z-popover rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-hidden',
         className
       )}
       {...props}

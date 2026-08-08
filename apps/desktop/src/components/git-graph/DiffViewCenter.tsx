@@ -392,7 +392,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                             src={workingCopyUrl}
                             alt={t('diffView.previewImageAlt', { path: file.path })}
                             onError={() => setImageFailed(true)}
-                            className="max-h-[70vh] max-w-full rounded bg-muted object-contain shadow-sm"
+                            className="max-h-[70vh] max-w-full rounded bg-muted object-contain shadow-xs"
                             data-testid="file-preview-image"
                           />
                         )}

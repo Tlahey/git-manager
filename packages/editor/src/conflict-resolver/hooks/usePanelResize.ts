@@ -6,7 +6,7 @@ function initialWidths(isTwoWay: boolean): [number, number, number] {
 }
 
 /** Pane-width state plus the two gap-handle drag interactions. Dragging a handle redistributes
- * width between the two panes it separates (as flex-grow percentages of the container minus the
+ * width between the two panes it separates (as grow percentages of the container minus the
  * fixed connector gaps), clamped so neither pane collapses below MIN_PANE_PX. Mousedowns on the
  * connector accept/ignore buttons (which live inside the same gap) are ignored so clicking them
  * doesn't start a drag. */

@@ -27,7 +27,7 @@ export function PrSidePanel({ pr, onClose }: PrSidePanelProps) {
       data-testid="launchpad-pr-panel-overlay"
     >
       <div
-        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/70 backdrop-blur-xs"
         onClick={onClose}
         data-testid="launchpad-pr-panel-backdrop"
       />

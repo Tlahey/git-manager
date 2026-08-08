@@ -120,7 +120,7 @@ function ActionJournalContent() {
         <ScrollArea className="min-w-0 flex-1">
           {error ? (
             <p
-              className="break-words px-3 py-12 text-center text-[11px] text-tone-danger"
+              className="wrap-break-word px-3 py-12 text-center text-[11px] text-tone-danger"
               data-testid="action-journal-error"
             >
               {appErrorMessage(error.message)}

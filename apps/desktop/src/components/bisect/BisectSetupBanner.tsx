@@ -109,7 +109,7 @@ export function BisectSetupBanner({ repoPath }: BisectSetupBannerProps) {
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-overlay flex justify-center">
       <div
         data-testid="bisect-setup-banner"
-        className="pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card/95 px-3 py-2 shadow-[0_20px_52px_-10px_rgba(0,0,0,0.55)] backdrop-blur"
+        className="pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card/95 px-3 py-2 shadow-[0_20px_52px_-10px_rgba(0,0,0,0.55)] backdrop-blur-sm"
       >
         <div className="flex items-center gap-2.5">
           <Bug className="h-4 w-4 shrink-0 text-amber-500" />

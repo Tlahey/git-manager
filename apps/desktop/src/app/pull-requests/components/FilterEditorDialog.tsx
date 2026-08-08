@@ -127,7 +127,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                 data-testid="filter-editor-name-input"
                 onChange={(e) => set('name', e.target.value)}
                 placeholder={t('filterEditor.namePlaceholder')}
-                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
               />
             </div>
             <div>
@@ -138,7 +138,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                 <NativeSelect
                   value={form.emoji}
                   onChange={(e) => set('emoji', e.target.value)}
-                  className="h-8 appearance-none rounded-md border border-border bg-background px-2 pr-6 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="h-8 appearance-none rounded-md border border-border bg-background px-2 pr-6 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
                   style={{ minWidth: 60 }}
                 >
                   {EMOJI_OPTIONS.map((e) => (
@@ -195,7 +195,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.titleContains ?? ''}
                   onChange={(e) => set('titleContains', e.target.value)}
                   placeholder={t('filterEditor.titlePlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Author contains */}
@@ -208,7 +208,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.authorContains ?? ''}
                   onChange={(e) => set('authorContains', e.target.value)}
                   placeholder={t('filterEditor.authorPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Repo */}
@@ -221,7 +221,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.repo ?? ''}
                   onChange={(e) => set('repo', e.target.value)}
                   placeholder={t('filterEditor.repoPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Label contains */}
@@ -234,7 +234,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.labelContains ?? ''}
                   onChange={(e) => set('labelContains', e.target.value)}
                   placeholder={t('filterEditor.labelPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
                 />
               </div>
 

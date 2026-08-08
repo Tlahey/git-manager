@@ -189,7 +189,7 @@ export function AiProviderForm() {
                 data-testid="ai-model-select"
                 value={ai.model}
                 onChange={(e) => updateAi({ model: e.target.value })}
-                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
               >
                 {/* The persisted model may no longer be served; keep it selectable rather than
                     silently snapping the setting to whatever the provider listed first. */}
@@ -225,7 +225,7 @@ export function AiProviderForm() {
                 data-testid="ai-fast-model-select"
                 value={ai.fastModel ?? ''}
                 onChange={(e) => updateAi({ fastModel: e.target.value })}
-                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
               >
                 <option value="">{t('settings.ai.fastModelNone')}</option>
                 {ai.fastModel && !models.includes(ai.fastModel) && (

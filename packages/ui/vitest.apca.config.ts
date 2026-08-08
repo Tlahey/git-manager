@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { ApcaMatrixReporter } from '@git-manager/storybook-a11y/vitest-apca-reporter'
+import { playwright } from '@vitest/browser-playwright'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -34,7 +35,7 @@ export default defineConfig({
     reporters: ['default', new ApcaMatrixReporter()],
     browser: {
       enabled: true,
-      provider: 'playwright',
+      provider: playwright(),
       headless: true,
       instances: [{ browser: 'chromium' }],
     },

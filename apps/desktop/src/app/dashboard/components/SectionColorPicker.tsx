@@ -23,7 +23,7 @@ export function SectionColorPicker({ sectionId, value, onChange }: SectionColorP
         aria-label={t('dashboard.color.none')}
         aria-pressed={value === null}
         onClick={() => onChange(null)}
-        className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
           value === null ? 'border-foreground' : 'border-border hover:border-foreground/40'
         }`}
       >
@@ -38,7 +38,7 @@ export function SectionColorPicker({ sectionId, value, onChange }: SectionColorP
           aria-label={t(`dashboard.color.${color}`)}
           aria-pressed={value === color}
           onClick={() => onChange(color)}
-          className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full ${SECTION_COLOR_SWATCH[color]} ring-offset-1 ring-offset-popover transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full ${SECTION_COLOR_SWATCH[color]} ring-offset-1 ring-offset-popover transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
             value === color ? 'ring-2 ring-foreground' : ''
           }`}
         >

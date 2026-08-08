@@ -13,7 +13,7 @@ export interface KpiCardProps {
 export function KpiCard({ icon, label, value, sub, accent, loading }: KpiCardProps) {
   return (
     <Card
-      className={`bg-card/60 hover:border-border/80 flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:shadow-md ${
+      className={`bg-card/60 hover:border-border/80 flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl px-4 py-3 shadow-xs backdrop-blur-xs transition-all hover:shadow-md ${
         accent ?? ''
       }`}
     >

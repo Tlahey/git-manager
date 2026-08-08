@@ -241,7 +241,7 @@ export function CommitHeaderInfo({
               <div className="flex items-start justify-between gap-2">
                 <h4
                   data-testid="commit-subject-display"
-                  className="flex-1 break-words text-xs font-bold leading-snug text-foreground"
+                  className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground"
                 >
                   {commit.subject}
                 </h4>
@@ -266,7 +266,7 @@ export function CommitHeaderInfo({
               title={t('commitHeaderInfo.editStashMessage')}
             >
               <div className="flex items-start justify-between gap-2">
-                <h4 className="flex-1 break-words text-xs font-bold leading-snug text-foreground">
+                <h4 className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground">
                   {stash ? stash.message.split('\n\n')[0] : commit.subject}
                 </h4>
                 <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/0 transition-all duration-200 group-hover:text-muted-foreground/60" />
@@ -294,7 +294,7 @@ export function CommitHeaderInfo({
               title={t('commitHeaderInfo.editCommitMessage')}
             >
               <div className="flex items-start justify-between gap-2">
-                <h4 className="flex-1 break-words text-xs font-bold leading-snug text-foreground">
+                <h4 className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground">
                   {commit.subject}
                 </h4>
                 <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/0 transition-all duration-200 group-hover:text-muted-foreground/60" />

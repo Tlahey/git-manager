@@ -56,7 +56,7 @@ export function CommitSearchPanel({
           }
         }}
         placeholder={t('toolbar.findCommit')}
-        className="w-48 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        className="w-48 min-w-0 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
         data-testid="commit-search-input"
       />
       {hasQuery && (

@@ -1,6 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@config '../../../packages/config/tailwind.js';
+
+/* Tailwind v4 dropped the v3 `content: [...]` array in favor of these explicit `@source`
+ * directives — `@config`'s legacy-config compat loads `theme`/`plugins` but does NOT project
+ * `content` into v4's own source scanner, so without this every class that's only ever typed
+ * inside a workspace package (not literally duplicated in this app's own source) silently
+ * disappeared from the compiled CSS: dialogs with no centering/animation classes, badges with no
+ * variant color classes, etc. This app's own `./src` is auto-detected; everything it renders that
+ * lives in another workspace package needs to be listed here explicitly. */
+@source '../../../packages/ui/src';
+@source '../../../packages/components/src';
+@source '../../../packages/editor/src';
+@source '../../../packages/notch/src';
 
 /* Tauri-specific: disable default browser behaviors for desktop */
 * {
@@ -24,7 +36,7 @@ body {
 }
 
 :root {
-  /* Zone de drag ajoutée au-dessus de la barre d'onglets (macOS, titleBarStyle: Overlay) */
+  /* Drag zone added above the tab bar (macOS, titleBarStyle: Overlay) */
   --tab-bar-drag-spacer-height: 6px;
 }
 

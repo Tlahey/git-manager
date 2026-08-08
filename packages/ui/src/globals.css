@@ -3,9 +3,24 @@
    file stays the one stylesheet the app pulls in. Must precede @tailwind. */
 @import "@git-manager/theme/themes.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@config '../../config/tailwind.js';
+
+/* Tailwind v4 dropped the v3 `content: [...]` array in favor of these explicit `@source`
+ * directives (see the matching comment in apps/desktop/src/index.css for why `@config` alone
+ * isn't enough). This file is the one CSS entry shared by the desktop app AND every package's own
+ * Storybook (notch/editor/ui) — listing every consumer's source here once covers all of them, at
+ * the cost of a few packages scanning a little more than they strictly need for their own build. */
+@source '../stories';
+@source '../.storybook';
+@source '../../components/src';
+@source '../../editor/src';
+@source '../../editor/stories';
+@source '../../editor/.storybook';
+@source '../../notch/src';
+@source '../../notch/stories';
+@source '../../notch/.storybook';
 
 /* ── Stacking scale (z-index) ────────────────────────────────────────────────
    The single, theme-independent source of truth for layering. Each layer is a

@@ -126,7 +126,7 @@ export function DashboardPage() {
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* LEFT CONTAINER: Repo List Area */}
       <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-sm">
+        <header className="flex shrink-0 items-center justify-between border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-xs">
           <div className="flex items-center gap-2">
             <GitMerge className="h-4 w-4 animate-pulse text-primary" />
             <h1 className="text-sm font-semibold tracking-wide text-foreground">
@@ -221,7 +221,7 @@ export function DashboardPage() {
 
         <main className="flex-1 space-y-5 overflow-y-auto p-6">
           {sections.totalKnownCount === 0 ? (
-            <div className="mx-auto mt-12 flex max-w-lg flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border/60 bg-card/20 p-6 text-muted-foreground shadow-sm">
+            <div className="mx-auto mt-12 flex max-w-lg flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border/60 bg-card/20 p-6 text-muted-foreground shadow-xs">
               <OctopusMascot size={150} label={t('dashboard.title')} />
               <p className="text-center text-xs leading-relaxed">{t('dashboard.noAllRepos')}</p>
               <div className="flex gap-2">
@@ -272,14 +272,14 @@ export function DashboardPage() {
 
       {/* RIGHT CONTAINER: README or Daily-summary panel (mutually exclusive) */}
       {selectedSummaryPath ? (
-        <div className="flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur animate-in slide-in-from-right animate-duration-200">
+        <div className="flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur-sm animate-in slide-in-from-right animate-duration-200">
           <DailySummaryPanel
             path={selectedSummaryPath}
             onClose={() => setSelectedSummaryPath(null)}
           />
         </div>
       ) : selectedReadmePath ? (
-        <div className="flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur animate-in slide-in-from-right animate-duration-200">
+        <div className="flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur-sm animate-in slide-in-from-right animate-duration-200">
           <ReadmePanel path={selectedReadmePath} onClose={() => setSelectedReadmePath(null)} />
         </div>
       ) : null}

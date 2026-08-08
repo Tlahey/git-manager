@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import type { Reporter } from 'vitest/node'
-import type { RunnerTask, RunnerTestFile } from 'vitest'
+import type { Reporter, TestModule } from 'vitest/node'
 import type { ApcaCellMeta, ApcaTaskMeta, ViolationNodeRecord } from './apca-report-types'
 
 // NODE-side custom Vitest reporter for the APCA matrix (vitest.apca.config.ts adds it
@@ -26,14 +25,16 @@ export class ApcaMatrixReporter implements Reporter {
     this.outputDir = options.outputDir ?? 'a11y-report'
   }
 
-  onFinished(files: RunnerTestFile[] = []): void {
+  // Vitest 4 replaced the task-tree Reporter#onFinished(files) hook with a TestModule-based
+  // onTestRunEnd — see https://vitest.dev/guide/migration for the reporter API rewrite.
+  onTestRunEnd(testModules: ReadonlyArray<TestModule> = []): void {
     const cells: ApcaCellMeta[] = []
-    const walk = (task: RunnerTask): void => {
-      const { apca } = task.meta as ApcaTaskMeta
-      if (task.type === 'test' && apca) cells.push(apca)
-      if ('tasks' in task) task.tasks.forEach(walk)
+    for (const testModule of testModules) {
+      for (const testCase of testModule.children.allTests()) {
+        const { apca } = testCase.meta() as ApcaTaskMeta
+        if (apca) cells.push(apca)
+      }
     }
-    files.forEach((f) => f.tasks.forEach(walk))
     if (cells.length === 0) return
 
     const themes = [...new Set(cells.map((c) => c.theme))]

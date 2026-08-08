@@ -326,7 +326,7 @@ export function WipStagingPanel({
           </div>
 
           {/* ── CONTAINER (Textarea, checkbox, actions) ── */}
-          <div className="space-y-3 rounded-b-lg rounded-tr-lg border border-border/40 bg-card p-3 shadow-sm">
+          <div className="space-y-3 rounded-b-lg rounded-tr-lg border border-border/40 bg-card p-3 shadow-xs">
             {activeTab === 'commit' ? (
               /* COMMIT FORM */
               <div className="space-y-3">

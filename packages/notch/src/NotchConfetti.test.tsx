@@ -59,10 +59,11 @@ describe('NotchConfetti', () => {
       height: props.height,
       count: 1,
     })
-    expect(screen.getByTestId('notch-confetti-piece')).toHaveStyle({
-      left: `${piece.x - piece.width / 2}px`,
-      top: `${piece.y - piece.height / 2}px`,
-    })
+    const sprite = screen.getByTestId('notch-confetti-piece')
+    // Compared numerically rather than via toHaveStyle's string match: jsdom rounds the serialized
+    // px value to fewer significant digits than the raw JS float.
+    expect(parseFloat(sprite.style.left)).toBeCloseTo(piece.x - piece.width / 2, 2)
+    expect(parseFloat(sprite.style.top)).toBeCloseTo(piece.y - piece.height / 2, 2)
   })
 
   it('splits the drift, the arc and the tumble across three elements', () => {

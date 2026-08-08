@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import type { Monaco } from '@monaco-editor/react'
+import type * as monaco from 'monaco-editor'
 import { Lock } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import type { ThreeWayMergeView } from '@git-manager/git-types'
@@ -16,6 +16,12 @@ import { useSWRConfig } from 'swr'
 import { apiAutoMergeConflictView } from '../../api/conflict.api'
 import { useRebaseState } from '../../hooks/useRebaseState'
 import { useSettingsStore } from '../../stores/settings.store'
+
+// Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
+// type: that type resolves through a deep `monaco-editor/esm/vs/editor/editor.api` subpath that
+// typescript-go (oxlint's type-aware checker) can't follow through monaco-editor's package.json
+// `exports` map, silently widening it to `any` even though `tsc` resolves it fine.
+type Monaco = typeof monaco
 
 interface ThreeWayMergeEditorProps {
   repoPath: string

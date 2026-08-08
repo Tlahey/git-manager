@@ -1,5 +1,4 @@
 import plugin from 'tailwindcss/plugin'
-import tailwindcssAnimate from 'tailwindcss-animate'
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -144,10 +143,12 @@ export default {
     },
   },
   plugins: [
-    // Supplies `animate-in`/`animate-out` and their `fade-*`/`zoom-*`/`slide-*` modifiers, the
-    // vocabulary every shadcn/ui component in packages/ui is written against. Without it those
-    // classes emit nothing at all and the animations silently never play.
-    tailwindcssAnimate,
+    // The `animate-in`/`animate-out` + `fade-*`/`zoom-*`/`slide-*` vocabulary every shadcn/ui
+    // component in packages/ui is written against comes from `tw-animate-css` now — imported as
+    // plain CSS (`@import "tw-animate-css";`) next to `@import "tailwindcss";` in each package's
+    // entry stylesheet, not registered as a plugin here. `tailwindcss-animate` (the old JS-plugin
+    // form) was never updated for Tailwind v4's engine; `tw-animate-css` is its v4-native
+    // replacement.
     plugin(({ matchUtilities, theme }) => {
       // `animate-duration-*` times a keyframe animation, and ONLY that.
       //

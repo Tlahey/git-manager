@@ -141,7 +141,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
   return (
     <div className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background">
       {/* Header: plan actions */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2.5 shadow-sm">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2.5 shadow-xs">
         <Button
           variant="outline"
           size="sm"

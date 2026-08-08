@@ -109,7 +109,7 @@ export function GraphCell({
               // teaches `duration-*` both) and would otherwise cut the pulse down to 150ms, which
               // reads as a flicker rather than a breath.
               className={cn(
-                'flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150',
+                'flex select-none items-center justify-center rounded-full border border-dashed shadow-xs transition-all duration-150',
                 agent?.state === 'working' && 'animate-pulse animate-duration-1000'
               )}
               style={{

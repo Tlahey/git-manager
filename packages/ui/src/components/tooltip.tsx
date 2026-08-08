@@ -15,7 +15,7 @@ export interface TooltipProps {
   /** The content to display inside the tooltip */
   content: React.ReactNode
   /** The trigger element(s) — wrap a single child */
-  children: React.ReactElement
+  children: React.ReactElement<React.HTMLAttributes<HTMLElement>>
   /** Preferred placement (auto-flips if not enough room) */
   placement?: Placement
   /** Delay before showing in ms */
@@ -235,37 +235,37 @@ export function Tooltip({
 
   // Clone the child and attach mouse handlers + ref
   const child = React.Children.only(children)
+  const childProps = child.props
   const cloned = React.cloneElement(child, {
     ref: (node: HTMLElement | null) => {
       triggerRef.current = node
       // Forward ref if the child already has one
       const { ref } = child as { ref?: React.Ref<HTMLElement> }
       if (typeof ref === 'function') ref(node)
-      else if (ref && typeof ref === 'object')
-        (ref as React.MutableRefObject<HTMLElement | null>).current = node
+      else if (ref && typeof ref === 'object') ref.current = node
     },
     // Point assistive tech at the bubble only while it is visible.
-    'aria-describedby': show ? tooltipId : child.props['aria-describedby'],
-    onMouseEnter: (e: React.MouseEvent) => {
+    'aria-describedby': show ? tooltipId : childProps['aria-describedby'],
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
       handleEnter()
-      child.props.onMouseEnter?.(e)
+      childProps.onMouseEnter?.(e)
     },
-    onMouseLeave: (e: React.MouseEvent) => {
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
       handleLeave()
-      child.props.onMouseLeave?.(e)
+      childProps.onMouseLeave?.(e)
     },
-    onFocus: (e: React.FocusEvent) => {
+    onFocus: (e: React.FocusEvent<HTMLElement>) => {
       handleEnter()
-      child.props.onFocus?.(e)
+      childProps.onFocus?.(e)
     },
-    onBlur: (e: React.FocusEvent) => {
+    onBlur: (e: React.FocusEvent<HTMLElement>) => {
       handleLeave()
-      child.props.onBlur?.(e)
+      childProps.onBlur?.(e)
     },
-    onKeyDown: (e: React.KeyboardEvent) => {
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
       // Escape dismisses the tooltip without moving focus (WAI-ARIA tooltip pattern).
       if (e.key === 'Escape') handleLeave()
-      child.props.onKeyDown?.(e)
+      childProps.onKeyDown?.(e)
     },
   } as React.HTMLAttributes<HTMLElement>)
 

@@ -49,7 +49,7 @@ function ThemeCard({
     >
       {/* Swatch preview */}
       {isSystem ? (
-        <div className="flex h-12 w-full items-center justify-center rounded-md border border-border bg-gradient-to-br from-muted to-background">
+        <div className="flex h-12 w-full items-center justify-center rounded-md border border-border bg-linear-to-br from-muted to-background">
           <Monitor className="h-5 w-5 text-muted-foreground" />
         </div>
       ) : colors ? (
@@ -315,7 +315,7 @@ export function AppearanceSection() {
         <NativeSelect
           value={appearance.fontSize}
           onChange={(e) => updateAppearance({ fontSize: parseInt(e.target.value, 10) })}
-          className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
         >
           {fontSizes.map((size) => (
             <option key={size} value={size}>
@@ -449,7 +449,7 @@ export function AppearanceSection() {
                 | 'bottom-left',
             })
           }
-          className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
         >
           <option value="top-right">Haut droit (Top Right)</option>
           <option value="top-left">Haut gauche (Top Left)</option>

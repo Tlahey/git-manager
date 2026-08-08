@@ -48,12 +48,12 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
           background: `linear-gradient(to right, hsl(var(--badge-bg)) 0%, hsl(var(--badge-bg)) ${percent}%, hsl(var(--muted)) ${percent}%, hsl(var(--muted)) 100%)`,
         }}
         className={cn(
-          'h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none',
+          'h-1.5 w-full cursor-pointer appearance-none rounded-full outline-hidden',
           'focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           // The thumb has no cross-browser standard property, so both vendor
           // pseudo-elements are styled. It uses --background with a brand ring so it
           // stays visible against its own filled track on light and dark themes alike.
-          '[&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-badge [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform active:[&::-webkit-slider-thumb]:scale-110',
+          '[&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-badge [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-xs [&::-webkit-slider-thumb]:transition-transform active:[&::-webkit-slider-thumb]:scale-110',
           '[&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-badge [&::-moz-range-thumb]:bg-background',
           disabled && 'cursor-not-allowed opacity-50',
           className

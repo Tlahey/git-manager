@@ -127,7 +127,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
                   </p>
                   {command.status === 'error' && (
                     <p
-                      className="mt-1 break-words text-[10px] text-tone-danger"
+                      className="mt-1 wrap-break-word text-[10px] text-tone-danger"
                       data-testid="action-command-error"
                     >
                       {appErrorMessage(command.error ?? '')}
@@ -206,7 +206,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
               </p>
             ) : status === 'error' ? (
               <p
-                className="break-words text-xs text-tone-danger"
+                className="wrap-break-word text-xs text-tone-danger"
                 data-testid="action-explain-error"
               >
                 {aiErrorMessage(error ?? '', tErrors)}

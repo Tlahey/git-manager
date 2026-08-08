@@ -36,7 +36,7 @@ export function CommitAvatar({
       size={size}
       square={square}
       // The name-hashed gradient is the fallback fill; Avatar drops it under an image.
-      className={cn('shadow-sm', `bg-gradient-to-tr ${getAuthorAvatarStyle(name)}`, className)}
+      className={cn('shadow-xs', `bg-linear-to-tr ${getAuthorAvatarStyle(name)}`, className)}
     />
   )
 }

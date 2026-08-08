@@ -35,7 +35,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
 
   return (
     <div
-      className="flex w-[30rem] whitespace-normal"
+      className="flex w-120 whitespace-normal"
       data-testid={`issue-hover-card-${issue.number}`}
     >
       {/* Left: what the issue is about. */}

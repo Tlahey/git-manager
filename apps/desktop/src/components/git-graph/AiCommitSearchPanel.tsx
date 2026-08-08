@@ -246,7 +246,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
           )}
 
           {search.phase === 'error' && (
-            <p className="break-words text-xs text-tone-danger" data-testid="commit-search-error">
+            <p className="wrap-break-word text-xs text-tone-danger" data-testid="commit-search-error">
               {aiErrorMessage(search.error ?? '', tErrors)}
             </p>
           )}

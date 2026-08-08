@@ -81,7 +81,7 @@ export function BoardCardView({
       <Card
         onClick={onClick}
         data-testid={`board-card-${card.id}`}
-        className={`group cursor-pointer space-y-2 p-3 text-xs shadow-sm transition-shadow hover:shadow-md ${
+        className={`group cursor-pointer space-y-2 p-3 text-xs shadow-xs transition-shadow hover:shadow-md ${
           card.blockedReason ? 'border-destructive/50' : 'border-border'
         } ${card.archivedAt ? 'opacity-60' : ''}`}
       >

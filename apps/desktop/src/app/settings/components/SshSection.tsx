@@ -258,7 +258,7 @@ export function SshSection() {
                 <NativeSelect
                   value={genType}
                   onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
-                  className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                 >
                   <option value="ed25519">{t('settings.ssh.ed25519Recommended')}</option>
                   <option value="rsa">RSA</option>
@@ -273,7 +273,7 @@ export function SshSection() {
                   <NativeSelect
                     value={genBits}
                     onChange={(e) => setGenBits(parseInt(e.target.value, 10))}
-                    className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                   >
                     <option value={2048}>2048 bits</option>
                     <option value={3072}>{t('settings.ssh.bitsSecure')}</option>

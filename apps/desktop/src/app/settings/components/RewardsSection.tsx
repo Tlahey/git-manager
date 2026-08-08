@@ -33,7 +33,7 @@ export function RewardsSection() {
       <div className="h-px bg-border" />
 
       {/* Activation Toggle */}
-      <Card className="flex items-center justify-between bg-card/25 p-4 shadow-sm">
+      <Card className="flex items-center justify-between bg-card/25 p-4 shadow-xs">
         <div className="max-w-[80%] space-y-0.5">
           <label
             className="cursor-pointer text-xs font-semibold text-foreground"

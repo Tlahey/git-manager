@@ -1,4 +1,4 @@
-import type { ReactNode, ReactElement } from 'react'
+import type { ReactNode, ReactElement, HTMLAttributes } from 'react'
 import { CheckCircle2, XCircle, Loader2, Circle, ExternalLink } from 'lucide-react'
 import { Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
@@ -99,7 +99,7 @@ export function CiBadge({
   // When there's a run to open, the badge becomes a real link to the CI action so
   // the state and its "why" are one click away; stop propagation so it doesn't also
   // trigger the row's open-PR handler.
-  const badgeEl: ReactElement = actionUrl ? (
+  const badgeEl: ReactElement<HTMLAttributes<HTMLElement>> = actionUrl ? (
     <button
       type="button"
       onClick={(e) => {
@@ -108,7 +108,7 @@ export function CiBadge({
       }}
       title={t('ci.viewAction')}
       aria-label={t('ci.viewAction')}
-      className={`${baseClass} cursor-pointer rounded px-0.5 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
+      className={`${baseClass} cursor-pointer rounded px-0.5 hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
     >
       {inner}
       <ExternalLink className="h-2.5 w-2.5 opacity-50" />

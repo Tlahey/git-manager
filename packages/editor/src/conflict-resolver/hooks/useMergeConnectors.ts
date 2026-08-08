@@ -293,7 +293,7 @@ export function useMergeConnectors({
     return () => observer.disconnect()
   }, [containerRef, scheduleRecompute])
 
-  // Dragging the pane resize handle (usePanelResize) only changes CSS flex-grow ratios via
+  // Dragging the pane resize handle (usePanelResize) only changes CSS grow ratios via
   // panelWidths — the container's own size never changes, so the ResizeObserver above doesn't
   // fire, and Monaco's automaticLayout isn't enabled anywhere in this codebase, so a pure
   // CSS-driven resize doesn't make Monaco notice on its own either. Without this, connector

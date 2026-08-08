@@ -92,7 +92,7 @@ export function SummaryAskPanel({
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             {t('summaries.askError')}
           </div>
-          <p className="break-words font-mono text-[10px] opacity-80">{error}</p>
+          <p className="wrap-break-word font-mono text-[10px] opacity-80">{error}</p>
         </Alert>
       )}
 

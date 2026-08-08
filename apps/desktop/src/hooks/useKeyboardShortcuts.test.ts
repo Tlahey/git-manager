@@ -20,6 +20,12 @@ let plainEl: HTMLDivElement
 let inputEl: HTMLInputElement
 
 beforeEach(() => {
+  // Vitest 4 regression workaround: `vi.restoreAllMocks()` in the afterEach below no longer
+  // reliably un-wraps a `vi.spyOn(store.getState(), 'action')` spy between tests when the same
+  // store action gets re-spied test after test — the next test's spy call count then still
+  // carries the previous test's calls. Clearing here (before each test re-spies) keeps every
+  // spy's call history scoped to its own test regardless of whether the wrapper itself persisted.
+  vi.clearAllMocks()
   setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)') // non-Mac by default: ctrlKey path
   useRepoUIStore.setState({
     openTabs: [],
