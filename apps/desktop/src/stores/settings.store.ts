@@ -47,7 +47,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     showAvatars: true,
     enableAnimations: true,
     notificationLocation: 'top-right',
-    rowHeight: 'standard',
+    rowHeight: 'small',
     stickyScroll: false,
     terminalBackground: '#000000',
     terminalForeground: '#e4e4e7',

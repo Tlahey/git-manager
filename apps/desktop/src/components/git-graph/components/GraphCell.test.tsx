@@ -61,9 +61,17 @@ function renderCell(
   return { ...utils, layout, marker }
 }
 
+// AVATAR is the standard-row-height avatar, so pin that setting rather than inherit the app
+// default (the small row height, whose avatar is 24px) — the tooltip sizes itself from the store.
 beforeEach(() => {
   lastGraphSvgProps.current = null
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useSettingsStore.setState({
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'standard' },
+    },
+  })
 })
 
 describe('GraphCell — full mode', () => {

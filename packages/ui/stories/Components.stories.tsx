@@ -192,6 +192,22 @@ function ToggleGroupDemo() {
   )
 }
 
+// The labelled shape of the same control: no icon, so each segment shows its own text — how
+// the Settings row-height and density pickers are wired.
+function ToggleGroupTextDemo() {
+  const [rowHeight, setRowHeight] = useState<'small' | 'standard'>('small')
+  return (
+    <ToggleGroup
+      value={rowHeight}
+      onValueChange={setRowHeight}
+      options={[
+        { value: 'small', label: 'Small' },
+        { value: 'standard', label: 'Standard' },
+      ]}
+    />
+  )
+}
+
 export const Overview: Story = {
   render: () => (
     // <main> + heading so axe's page-structure rules pass — the demo inputs below
@@ -258,6 +274,10 @@ export const Overview: Story = {
 
       <Section title="ToggleGroup — segmented icon control">
         <ToggleGroupDemo />
+      </Section>
+
+      <Section title="ToggleGroup — segmented text control">
+        <ToggleGroupTextDemo />
       </Section>
 
       <Section title="NativeSelect">

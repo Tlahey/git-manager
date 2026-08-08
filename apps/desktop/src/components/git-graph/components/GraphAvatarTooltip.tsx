@@ -28,7 +28,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
   const avatarUrl = getAvatarUrl(commit.author.email, commit.author.name)
   const [imgError, setImgError] = useState(false)
 
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
   const nodeX = centerX ?? laneCenterX(node.column, avatarSize)

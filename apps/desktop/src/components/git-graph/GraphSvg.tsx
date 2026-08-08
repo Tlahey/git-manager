@@ -15,7 +15,7 @@ interface GraphSvgProps {
 const CORNER_RADIUS = 8
 
 export function GraphSvg({ column, connections, isWip, isStash, isFirst }: GraphSvgProps) {
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
   const avatarRadius = avatarSize / 2

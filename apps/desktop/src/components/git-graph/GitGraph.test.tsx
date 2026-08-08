@@ -230,6 +230,14 @@ beforeEach(() => {
   lastRebaseProgressProps.current = null
 
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  // The overflow-zone geometry below assumes the standard row height (32px avatar), so pin it
+  // rather than inherit the app default, which is the small row height.
+  useSettingsStore.setState({
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'standard' },
+    },
+  })
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useGitGraphColumnsStore.setState(INITIAL_COLUMNS, true)

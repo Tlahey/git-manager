@@ -84,11 +84,26 @@ describe('AppearanceSection — font size / density / row height', () => {
     expect(useSettingsStore.getState().settings.appearance.density).toBe('compact')
   })
 
-  it('switches row height', async () => {
+  it('switches row height, starting from the small default', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
+    expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('small')
+    await user.click(screen.getByTestId('row-height-radio-standard').querySelector('input')!)
+    expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('standard')
     await user.click(screen.getByTestId('row-height-radio-small').querySelector('input')!)
     expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('small')
+  })
+
+  it('lists the row heights smallest-first, without pixel values in their labels', () => {
+    render(<AppearanceSection />)
+    const labels = [
+      screen.getByTestId('row-height-radio-small'),
+      screen.getByTestId('row-height-radio-standard'),
+    ]
+    expect(labels[0].compareDocumentPosition(labels[1])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(labels[0]).toHaveTextContent('Small')
+    expect(labels[1]).toHaveTextContent('Standard')
+    labels.forEach((label) => expect(label.textContent).not.toMatch(/px/))
   })
 
   it('switches the view switcher position', async () => {

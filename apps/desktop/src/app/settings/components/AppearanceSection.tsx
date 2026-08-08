@@ -1,5 +1,12 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Checkbox, NativeSelect, Slider, Tooltip } from '@git-manager/ui'
+import {
+  Checkbox,
+  NativeSelect,
+  Slider,
+  ToggleGroup,
+  Tooltip,
+  type ToggleGroupOption,
+} from '@git-manager/ui'
 import { Monitor, Check, Lock } from 'lucide-react'
 import type { ViewSwitcherPosition } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -126,20 +133,37 @@ export function AppearanceSection() {
     updateSettings({ appearance: { ...appearance, ...partial } })
   }
 
-  const densities: { value: 'compact' | 'normal' | 'comfortable'; label: string }[] = [
+  const densities: ToggleGroupOption<'compact' | 'normal' | 'comfortable'>[] = [
     { value: 'compact', label: t('settings.appearance.density.compact') },
     { value: 'normal', label: t('settings.appearance.density.normal') },
     { value: 'comfortable', label: t('settings.appearance.density.comfortable') },
   ]
 
-  const rowHeights: { value: 'standard' | 'small'; label: string }[] = [
-    { value: 'standard', label: t('settings.appearance.rowHeight.standard') },
-    { value: 'small', label: t('settings.appearance.rowHeight.small') },
+  // Smallest first, so the row reads as an ascending scale — and leads with the default.
+  const rowHeights: ToggleGroupOption<'small' | 'standard'>[] = [
+    {
+      value: 'small',
+      label: t('settings.appearance.rowHeight.small'),
+      testId: 'row-height-radio-small',
+    },
+    {
+      value: 'standard',
+      label: t('settings.appearance.rowHeight.standard'),
+      testId: 'row-height-radio-standard',
+    },
   ]
 
-  const viewSwitcherPositions: { value: ViewSwitcherPosition; label: string }[] = [
-    { value: 'toolbar', label: t('settings.appearance.viewSwitcherPosition.toolbar') },
-    { value: 'tabs', label: t('settings.appearance.viewSwitcherPosition.tabs') },
+  const viewSwitcherPositions: ToggleGroupOption<ViewSwitcherPosition>[] = [
+    {
+      value: 'toolbar',
+      label: t('settings.appearance.viewSwitcherPosition.toolbar'),
+      testId: 'view-switcher-position-radio-toolbar',
+    },
+    {
+      value: 'tabs',
+      label: t('settings.appearance.viewSwitcherPosition.tabs'),
+      testId: 'view-switcher-position-radio-tabs',
+    },
   ]
 
   const fontSizes = [12, 13, 14, 16]
@@ -334,28 +358,12 @@ export function AppearanceSection() {
         <p className="text-xs font-medium text-foreground">
           <Highlight text={t('settings.appearance.density')} />
         </p>
-        <div className="flex gap-2">
-          {densities.map((d) => (
-            <label
-              key={d.value}
-              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-                appearance.density === d.value
-                  ? 'border-primary bg-primary/10 text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              <input
-                type="radio"
-                name="density"
-                value={d.value}
-                checked={appearance.density === d.value}
-                onChange={() => updateAppearance({ density: d.value })}
-                className="sr-only"
-              />
-              {d.label}
-            </label>
-          ))}
-        </div>
+        <ToggleGroup
+          name="density"
+          value={appearance.density}
+          onValueChange={(density) => updateAppearance({ density })}
+          options={densities}
+        />
       </FilterableSetting>
 
       {/* Row height */}
@@ -367,29 +375,12 @@ export function AppearanceSection() {
         <p className="text-xs font-medium text-foreground">
           <Highlight text={t('settings.appearance.rowHeight')} />
         </p>
-        <div className="flex gap-2">
-          {rowHeights.map((rh) => (
-            <label
-              key={rh.value}
-              data-testid={`row-height-radio-${rh.value}`}
-              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-                (appearance.rowHeight || 'standard') === rh.value
-                  ? 'border-primary bg-primary/10 text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              <input
-                type="radio"
-                name="rowHeight"
-                value={rh.value}
-                checked={(appearance.rowHeight || 'standard') === rh.value}
-                onChange={() => updateAppearance({ rowHeight: rh.value })}
-                className="sr-only"
-              />
-              {rh.label}
-            </label>
-          ))}
-        </div>
+        <ToggleGroup
+          name="rowHeight"
+          value={appearance.rowHeight ?? 'small'}
+          onValueChange={(rowHeight) => updateAppearance({ rowHeight })}
+          options={rowHeights}
+        />
       </FilterableSetting>
 
       {/* View switcher position */}
@@ -404,29 +395,12 @@ export function AppearanceSection() {
           </p>
           <OverriddenBadge field="viewSwitcherPosition" />
         </div>
-        <div className="flex gap-2">
-          {viewSwitcherPositions.map((vs) => (
-            <label
-              key={vs.value}
-              data-testid={`view-switcher-position-radio-${vs.value}`}
-              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-                appearance.viewSwitcherPosition === vs.value
-                  ? 'border-primary bg-primary/10 text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              <input
-                type="radio"
-                name="viewSwitcherPosition"
-                value={vs.value}
-                checked={appearance.viewSwitcherPosition === vs.value}
-                onChange={() => updateAppearance({ viewSwitcherPosition: vs.value })}
-                className="sr-only"
-              />
-              {vs.label}
-            </label>
-          ))}
-        </div>
+        <ToggleGroup
+          name="viewSwitcherPosition"
+          value={appearance.viewSwitcherPosition}
+          onValueChange={(viewSwitcherPosition) => updateAppearance({ viewSwitcherPosition })}
+          options={viewSwitcherPositions}
+        />
       </FilterableSetting>
 
       {/* Notification location */}
