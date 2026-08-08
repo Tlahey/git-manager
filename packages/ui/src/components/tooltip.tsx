@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
+import { cn } from '../lib/utils'
 
 // Accessible, portal-rendered tooltip. Unlike a bare `title=` attribute it renders
 // real formatted content, auto-flips away from viewport edges, appears on both hover
@@ -148,16 +149,21 @@ function TooltipBubble({
       ref={ref}
       id={id}
       role="tooltip"
-      className={[
+      // `cn` (tailwind-merge), not a hand-joined string: two Tailwind utilities of equal
+      // specificity are resolved by stylesheet order, not by the order they appear in the
+      // attribute, so plain concatenation left a caller's `className` at the mercy of how
+      // Tailwind happened to emit the CSS. `whitespace-nowrap` below is where that bit: a
+      // caller passing `whitespace-normal` for a two-sentence bubble kept the nowrap, and its
+      // text ran straight out of the box. `cn` drops the losing utility instead, so an override
+      // handed to this component actually wins — as it does in every other component here.
+      className={cn(
         'fixed z-tooltip rounded-lg px-2.5 py-1.5',
         'border border-border bg-popover shadow-xl',
         'text-[11px] leading-snug text-foreground',
         'pointer-events-none whitespace-nowrap',
-        animate ? 'animate-in fade-in-0 zoom-in-95' : '',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+        animate && 'animate-in fade-in-0 zoom-in-95',
+        className
+      )}
       // `transition: none` is load-bearing, not cosmetic. The bubble is mounted off-screen to be
       // measured and only then moved onto the trigger, so *any* transition reaching `top`/`left`
       // animates that move: the tooltip appears far above where it belongs and slides down into

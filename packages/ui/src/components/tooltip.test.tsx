@@ -126,6 +126,38 @@ describe('Tooltip — show/hide timing', () => {
     expect(screen.getByRole('tooltip').className).not.toContain('animate-in')
   })
 
+  // Regression: the class list used to be hand-joined, so a caller's `className` merely sat
+  // next to the base classes. Two Tailwind utilities of equal specificity are resolved by
+  // stylesheet order, not attribute order, so `whitespace-normal` passed for a two-sentence
+  // bubble lost to the base `whitespace-nowrap` — and the text ran out of the box instead of
+  // wrapping. `cn` drops the losing utility, so the override survives into the DOM.
+  it('lets a caller className override a conflicting base utility', () => {
+    render(
+      <Tooltip content="A long, wrapping explanation" className="max-w-[280px] whitespace-normal">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    const bubble = screen.getByRole('tooltip')
+    expect(bubble.className).toContain('whitespace-normal')
+    expect(bubble.className).not.toContain('whitespace-nowrap')
+    expect(bubble.className).toContain('max-w-[280px]')
+  })
+
+  it('keeps the base utilities a caller does not override', () => {
+    render(
+      <Tooltip content="Hello" className="max-w-[280px]">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    const bubble = screen.getByRole('tooltip')
+    expect(bubble.className).toContain('whitespace-nowrap')
+    expect(bubble.className).toContain('bg-popover')
+  })
+
   // Regression: the bubble carried a bare `duration-150`, which emits `transition-duration` —
   // leaving `transition-property` at its initial value, `all`. Since the bubble is mounted at
   // -9999px to be measured and only then moved onto the trigger, that move became a 150ms

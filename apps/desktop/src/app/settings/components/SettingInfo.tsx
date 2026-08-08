@@ -23,8 +23,8 @@ interface SettingInfoProps {
 export function SettingInfo({ summary, scope, label, testId }: SettingInfoProps) {
   return (
     <Tooltip
-      // The bubble is `whitespace-nowrap` by default, which is right for a short label and wrong
-      // for two sentences — a scope line would otherwise run off the window.
+      // The bubble defaults to `whitespace-nowrap`, right for a short label and wrong for two
+      // sentences; overriding it here works because Tooltip merges `className` with `cn`.
       className="max-w-[280px] whitespace-normal"
       content={
         <span className="block space-y-1 text-left">

@@ -25,6 +25,15 @@ describe('SettingInfo', () => {
     expect(screen.getByText(props.scope)).toBeVisible()
   })
 
+  it('lets the bubble wrap, instead of running two sentences off the window', async () => {
+    const user = userEvent.setup()
+    render(<SettingInfo {...props} />)
+    await user.hover(screen.getByTestId('setting-info-row-height'))
+    const bubble = await screen.findByRole('tooltip')
+    expect(bubble.className).toContain('whitespace-normal')
+    expect(bubble.className).not.toContain('whitespace-nowrap')
+  })
+
   it('reveals it on keyboard focus too, so the explanation is not mouse-only', async () => {
     const user = userEvent.setup()
     render(<SettingInfo {...props} />)
