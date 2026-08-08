@@ -21,8 +21,9 @@ beforeEach(() => {
 
 describe('apiGetTerminalCommands', () => {
   it('delegates to getTerminalCommands', async () => {
-    mocked.getTerminalCommands.mockResolvedValue(['git status'])
-    expect(await api.apiGetTerminalCommands()).toEqual(['git status'])
+    const sources = [{ source: '.zsh_history', commands: ['git status'] }]
+    mocked.getTerminalCommands.mockResolvedValue(sources)
+    expect(await api.apiGetTerminalCommands()).toEqual(sources)
   })
 })
 

@@ -1,5 +1,75 @@
 import { describe, it, expect } from 'vitest'
-import { appendedCommands, sameCommands } from './terminalHistory'
+import {
+  appendedCommands,
+  diffHistorySources,
+  sameCommands,
+  sameSnapshot,
+} from './terminalHistory'
+
+describe('diffHistorySources', () => {
+  it('baselines every file on the first read, crediting nothing', () => {
+    const result = diffHistorySources({}, [
+      { source: '.zsh_history', commands: ['git diff'] },
+      { source: '.bash_history', commands: ['git log'] },
+    ])
+    expect(result.appended).toEqual([])
+    expect(result.snapshot).toEqual({
+      '.zsh_history': ['git diff'],
+      '.bash_history': ['git log'],
+    })
+  })
+
+  // The whole reason the snapshot is per file: merged into one list, a command appended to the live
+  // zsh history lands *before* the bash block, which reads as a rewritten history and credits nobody.
+  it('credits a command appended to one file while another file is unchanged', () => {
+    const previous = { '.zsh_history': ['git diff'], '.bash_history': ['git log'] }
+    const result = diffHistorySources(previous, [
+      { source: '.zsh_history', commands: ['git diff', 'git status'] },
+      { source: '.bash_history', commands: ['git log'] },
+    ])
+    expect(result.appended).toEqual(['git status'])
+  })
+
+  it('baselines a file it has never seen rather than crediting its contents', () => {
+    const result = diffHistorySources({ '.zsh_history': ['git diff'] }, [
+      { source: '.zsh_history', commands: ['git diff'] },
+      { source: '.bash_history', commands: ['git log', 'git bisect start'] },
+    ])
+    expect(result.appended).toEqual([])
+    expect(result.snapshot['.bash_history']).toEqual(['git log', 'git bisect start'])
+  })
+
+  it('keeps the snapshot of a file missing from this read', () => {
+    // Absent means "empty or unreadable", which is indistinguishable from a failed read — forgetting
+    // it would make its next read look entirely new.
+    const previous = { '.zsh_history': ['git diff'], '.bash_history': ['git log'] }
+    const result = diffHistorySources(previous, [
+      { source: '.zsh_history', commands: ['git diff'] },
+    ])
+    expect(result.appended).toEqual([])
+    expect(result.snapshot).toEqual(previous)
+  })
+
+  it('never mutates the snapshot it was given', () => {
+    const previous = { '.zsh_history': ['git diff'] }
+    diffHistorySources(previous, [{ source: '.zsh_history', commands: ['git diff', 'git log'] }])
+    expect(previous).toEqual({ '.zsh_history': ['git diff'] })
+  })
+})
+
+describe('sameSnapshot', () => {
+  it('is true for two snapshots holding the same files and commands', () => {
+    expect(sameSnapshot({ a: ['git log'] }, { a: ['git log'] })).toBe(true)
+  })
+
+  it('is false when a file gained a command', () => {
+    expect(sameSnapshot({ a: ['git log'] }, { a: ['git log', 'git diff'] })).toBe(false)
+  })
+
+  it('is false when a file appeared', () => {
+    expect(sameSnapshot({ a: ['git log'] }, { a: ['git log'], b: ['git diff'] })).toBe(false)
+  })
+})
 
 describe('sameCommands', () => {
   it('is true for two equal reads', () => {

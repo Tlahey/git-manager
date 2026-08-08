@@ -52,7 +52,7 @@ stores/repoUI.store.ts (setActiveTab)        │  checkTerminalHistory() (pollin
 | `ruleRegistry.ts`              | `RuleKind → RewardRule` lookup. The only place that imports every concrete rule class.                                                                                                                           |
 | `rewardEngine.ts`              | `processEvent()` (pure) and `unlockAchievementById()` (pure, the single place prerequisite-checking lives).                                                                                                      |
 | `effects.ts`                   | Selectors (`isEffectUnlocked`, `findEffectGate`, `getUnlockedEffects`) over `Achievement.effects`, used by UI code (theme picker, ...) that needs to know what an achievement unlocks without hardcoding its id. |
-| `terminalHistory.ts`           | `appendedCommands()` — which lines of the shell history the user ran _since the app last looked_, so a `terminal_command` event stands for a command they typed rather than for the file's contents.              |
+| `terminalHistory.ts`           | `diffHistorySources()` / `appendedCommands()` — which lines of the shell history the user ran _since the app last looked_, per history file, so a `terminal_command` event stands for a command they typed rather than for the file's contents. |
 
 ## Adding a new achievement
 
@@ -95,7 +95,12 @@ triggers used to break that and are worth knowing about, because both are easy t
   command the history held, so opening the Rewards tab unlocked `git diff`, `git log`, `git bisect`
   and friends on the spot — for commands typed weeks earlier, in another project. It now baselines
   on its first read and only reports what got appended since ([terminalHistory.ts](terminalHistory.ts)).
-  Same reason `resetGameProgress()` sets the snapshot to `null` and not `[]`.
+  Same reason `resetGameProgress()` sets the snapshot to `null` and not `{}`, and that a read which
+  came back empty is treated as no read at all.
+  The corollary is that the backend reports **one entry per history file** and each is diffed on its
+  own: appending to a merged `.zsh_history` + `.bash_history` list inserts in the *middle*, which
+  reads as a rewritten history and credits nobody. Merging them back would silently make every
+  terminal achievement unreachable for anyone with git commands in both files.
 - **A mount is not a gesture.** `open_launchpad` used to fire from `App.tsx`'s mount effect (as
   `open_app`), so launching the app — or a dev hot-reload — earned "Open the app's Launchpad". It is
   raised from `repoUI.store`'s `setActiveTab` now, which every way into the Launchpad goes through.

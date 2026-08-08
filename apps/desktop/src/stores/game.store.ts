@@ -7,7 +7,11 @@ import {
   unlockAchievementById,
   type RewardEngineState,
 } from '../lib/rewards/rewardEngine'
-import { appendedCommands, sameCommands } from '../lib/rewards/terminalHistory'
+import {
+  diffHistorySources,
+  sameSnapshot,
+  type TerminalHistorySnapshot,
+} from '../lib/rewards/terminalHistory'
 import type { AchievementDefinition, Achievement } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
@@ -25,13 +29,16 @@ export interface GameState {
   points: number
   recentUnlock: Achievement | null
   /**
-   * The last shell-history window read from the backend, or `null` while the app has never read one.
+   * The last shell-history window read from the backend, per history file, or `null` while the app
+   * has never read one.
    *
    * `null` is the "not watching yet" state and the reason a freshly installed app hands out no
    * trophies for a history full of git commands: the first read only records this snapshot, and
-   * subsequent reads reward what got appended to it. See `lib/rewards/terminalHistory.ts`.
+   * subsequent reads reward what got appended to it. Keyed per file because positional diffing needs
+   * an append-only stream and two concatenated histories are not one. See
+   * `lib/rewards/terminalHistory.ts`.
    */
-  terminalHistorySnapshot: string[] | null
+  terminalHistorySnapshot: TerminalHistorySnapshot | null
   pairTracking: Map<string, Set<string>> // Per-achievement session tracking, see PairEventRule
 
   rewardsEnabled: boolean
@@ -56,6 +63,16 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = (
   unlocked: false,
   unlockedAt: undefined,
 }))
+
+/** Whether a persisted value is a per-file history snapshot (and not the flat `string[]` an earlier
+ *  build wrote, nor anything else a hand-edited localStorage could hold). */
+function isHistorySnapshot(value: unknown): value is TerminalHistorySnapshot | null {
+  if (value === null) return true
+  if (typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.values(value).every(
+    (commands) => Array.isArray(commands) && commands.every((c) => typeof c === 'string')
+  )
+}
 
 // ─── Level Math ───────────────────────────────────────────────────────────────
 
@@ -200,31 +217,30 @@ export const useGameStore = create<GameState>()(
       checkTerminalHistory: async () => {
         if (!get().rewardsEnabled) return
         try {
-          // Fetch zsh/bash history from Tauri backend
-          const commands = (await apiGetTerminalCommands()) ?? []
+          // Fetch zsh/bash history from Tauri backend, one entry per history file
+          const sources = (await apiGetTerminalCommands()) ?? []
 
-          // A read that came back empty is not a fact about the history: the backend swallows its
-          // own read errors, and zsh truncates the file while rewriting it. Recording `[]` as the
-          // snapshot would make the next successful read look like a hundred fresh commands — the
-          // very replay this whole mechanism exists to prevent. So an empty read is *no read*.
-          if (commands.length === 0) return
+          // Nothing came back at all: that is not a fact about the history. The backend reports a
+          // file it could not read as absent, and zsh truncates its history while rewriting it — so
+          // recording this would make the next successful read look like a hundred fresh commands,
+          // the very replay this mechanism exists to prevent. An empty read is *no read*.
+          if (sources.length === 0) return
 
-          const snapshot = get().terminalHistorySnapshot
+          const previous = get().terminalHistorySnapshot
 
-          // First read: record what the shell already knew, reward none of it.
-          if (snapshot === null) {
-            set({ terminalHistorySnapshot: commands })
-            return
-          }
+          // A `null` snapshot means no file has been baselined yet, and `diffHistorySources` treats
+          // an unknown file exactly that way — so the first read needs no special case here: it
+          // records what the shell already knew and credits none of it.
+          const { appended, snapshot } = diffHistorySources(previous ?? {}, sources)
 
           // Nothing moved: return without a `set`. The poll runs every 4s while the Rewards tab is
           // open, and this store persists on every write — a snapshot rewritten to an equal value
           // would be a localStorage write and a re-render of every subscriber, four times a minute.
-          if (sameCommands(snapshot, commands)) return
+          if (previous !== null && sameSnapshot(previous, snapshot)) return
 
           // Snapshot first: a slow listener must not make the next poll re-report the same commands.
-          set({ terminalHistorySnapshot: commands })
-          appendedCommands(snapshot, commands).forEach((cmd) => {
+          set({ terminalHistorySnapshot: snapshot })
+          appended.forEach((cmd) => {
             appEventBus.notify('terminal_command', { command: cmd })
           })
         } catch (e) {
@@ -268,8 +284,8 @@ export const useGameStore = create<GameState>()(
         points: state.points,
         // Persisted so a restart resumes watching where it left off instead of re-baselining (which
         // would silently drop the commands run since the last read) — and, more importantly, so it
-        // is never `[]` at startup, which would replay the whole history as if the user had just
-        // typed it. Old profiles have no key here and simply re-baseline on their next read.
+        // is never empty at startup, which would replay the whole history as if the user had just
+        // typed it. Profiles predating it hold no key here and simply re-baseline on their next read.
         terminalHistorySnapshot: state.terminalHistorySnapshot,
         rewardsEnabled: state.rewardsEnabled,
         commitCount: state.commitCount,
@@ -279,6 +295,12 @@ export const useGameStore = create<GameState>()(
       merge: (persistedState: unknown, currentState: GameState): GameState => {
         const persisted = (persistedState ?? {}) as Partial<GameState>
         const merged: GameState = { ...currentState, ...persisted }
+        // The snapshot was a flat `string[]` before it became one list per history file. A persisted
+        // value of the wrong shape is dropped rather than fed to `diffHistorySources`, whose keys
+        // would then be array indices — matching nothing, and re-baselining on every single poll.
+        if (!isHistorySnapshot(merged.terminalHistorySnapshot)) {
+          merged.terminalHistorySnapshot = null
+        }
         if (persisted.achievements) {
           merged.achievements = INITIAL_ACHIEVEMENTS.map((staticAch) => {
             const saved = persisted.achievements?.find((a) => a.id === staticAch.id)
