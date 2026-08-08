@@ -19,7 +19,7 @@ function resetStore() {
     })),
     points: 0,
     recentUnlock: null,
-    historyChecked: [],
+    terminalHistorySnapshot: null,
     pairTracking: new Map(),
     rewardsEnabled: true,
     commitCount: 0,
@@ -106,7 +106,7 @@ describe('useGameStore.processAppEvent', () => {
       ),
     }))
 
-    useGameStore.getState().processAppEvent('open_app') // re-fires open_launchpad's event; already unlocked, but re-triggers a pass
+    useGameStore.getState().processAppEvent('open_launchpad') // already unlocked, but re-triggers a pass
 
     expect(
       useGameStore.getState().achievements.find((a) => a.id === 'platinum_trophy')?.unlocked
@@ -131,16 +131,38 @@ describe('useGameStore — appEventBus interoperability', () => {
 })
 
 describe('useGameStore.checkTerminalHistory', () => {
-  it('dispatches a terminal_command event for each newly seen command and records it as checked', async () => {
-    apiGetTerminalCommands.mockResolvedValue(['git status', 'git status'])
+  // The regression this suite exists for: reading the shell history is not a user action. Opening
+  // the Rewards tab used to replay every git command the file held — `git diff`, `git bisect`,
+  // `git log` — and unlock their trophies on the spot. See `lib/rewards/terminalHistory.ts`.
+  it('unlocks nothing on the first read, whatever the shell history already holds', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git diff', 'git status', 'git bisect start'])
     await useGameStore.getState().checkTerminalHistory()
 
     const state = useGameStore.getState()
-    expect(state.historyChecked).toEqual(['git status', 'git status'])
-    expect(state.achievements.find((a) => a.id === 'terminal_status')?.unlocked).toBe(true)
+    expect(state.achievements.filter((a) => a.unlocked)).toEqual([])
+    expect(state.points).toBe(0)
+    expect(state.terminalCommandCount).toBe(0)
+    // ...but it is now watching, from exactly what it saw.
+    expect(state.terminalHistorySnapshot).toEqual(['git diff', 'git status', 'git bisect start'])
   })
 
-  it('does not re-dispatch a command already in historyChecked', async () => {
+  it('dispatches a terminal_command event for a command run after the baseline', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git diff'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    apiGetTerminalCommands.mockResolvedValue(['git diff', 'git status'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    const state = useGameStore.getState()
+    expect(state.achievements.find((a) => a.id === 'terminal_status')?.unlocked).toBe(true)
+    // The baselined 'git diff' stays locked — the user never ran it while the app was watching.
+    expect(state.achievements.find((a) => a.id === 'terminal_diff')?.unlocked).toBe(false)
+    expect(state.terminalCommandCount).toBe(1)
+  })
+
+  it('does not re-dispatch a command already seen in the previous read', async () => {
+    apiGetTerminalCommands.mockResolvedValue([])
+    await useGameStore.getState().checkTerminalHistory()
     apiGetTerminalCommands.mockResolvedValue(['git status'])
     await useGameStore.getState().checkTerminalHistory()
     await useGameStore.getState().checkTerminalHistory()
@@ -154,10 +176,37 @@ describe('useGameStore.checkTerminalHistory', () => {
     expect(apiGetTerminalCommands).not.toHaveBeenCalled()
   })
 
-  it('does nothing when there is no history yet', async () => {
+  it('baselines an empty history so the next command counts', async () => {
     apiGetTerminalCommands.mockResolvedValue([])
     await useGameStore.getState().checkTerminalHistory()
-    expect(useGameStore.getState().historyChecked).toEqual([])
+    expect(useGameStore.getState().terminalHistorySnapshot).toEqual([])
+  })
+
+  it('re-baselines instead of unlocking when the history it was watching disappeared', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git status'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    // No overlap with the snapshot: cleared history, a rewritten file, or a burst longer than the
+    // backend's window. Unexplained, so nothing is rewarded.
+    apiGetTerminalCommands.mockResolvedValue(['git diff', 'git bisect start'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    const state = useGameStore.getState()
+    expect(state.terminalCommandCount).toBe(0)
+    expect(state.terminalHistorySnapshot).toEqual(['git diff', 'git bisect start'])
+  })
+
+  it('drops the snapshot when rewards are switched off, so re-enabling grants no backlog', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git status'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    useGameStore.getState().setRewardsEnabled(false)
+    expect(useGameStore.getState().terminalHistorySnapshot).toBeNull()
+
+    useGameStore.getState().setRewardsEnabled(true)
+    apiGetTerminalCommands.mockResolvedValue(['git status', 'git diff', 'git bisect start'])
+    await useGameStore.getState().checkTerminalHistory()
+    expect(useGameStore.getState().terminalCommandCount).toBe(0)
   })
 
   it('warns and does not throw when the backend call fails', async () => {
@@ -186,6 +235,18 @@ describe('useGameStore — misc actions', () => {
     expect(state.commitCount).toBe(0)
     expect(state.achievements.every((a) => !a.unlocked)).toBe(true)
     expect(state.recentUnlock).toBeNull()
+  })
+
+  it('resetGameProgress re-baselines the shell history rather than replaying it', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git diff', 'git bisect start'])
+    await useGameStore.getState().checkTerminalHistory()
+    useGameStore.getState().resetGameProgress()
+    expect(useGameStore.getState().terminalHistorySnapshot).toBeNull()
+
+    // A reset used to empty the "already seen" list, which made the very next poll unlock every
+    // terminal achievement the history contained all over again.
+    await useGameStore.getState().checkTerminalHistory()
+    expect(useGameStore.getState().achievements.filter((a) => a.unlocked)).toEqual([])
   })
 })
 

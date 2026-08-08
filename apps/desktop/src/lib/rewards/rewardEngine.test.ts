@@ -212,8 +212,8 @@ describe('processEvent — points and immutability across the whole engine', () 
   })
 
   it('leaves counters for unrelated events untouched', () => {
-    const a = achievement({ id: 'a', kind: 'action', event: 'open_app' })
-    const result = processEvent(state([a]), 'open_app', undefined)
+    const a = achievement({ id: 'a', kind: 'action', event: 'open_launchpad' })
+    const result = processEvent(state([a]), 'open_launchpad', undefined)
     expect(result.nextState.commitCount).toBe(0)
     expect(result.nextState.prMergedCount).toBe(0)
     expect(result.nextState.terminalCommandCount).toBe(0)

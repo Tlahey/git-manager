@@ -5,7 +5,7 @@
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "action",
-    "event": "open_app"
+    "event": "open_launchpad"
   },
   {
     "id": "commit_1",

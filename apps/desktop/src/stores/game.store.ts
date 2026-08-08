@@ -7,6 +7,7 @@ import {
   unlockAchievementById,
   type RewardEngineState,
 } from '../lib/rewards/rewardEngine'
+import { appendedCommands } from '../lib/rewards/terminalHistory'
 import type { AchievementDefinition, Achievement } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
@@ -23,7 +24,14 @@ export interface GameState {
   achievements: Achievement[]
   points: number
   recentUnlock: Achievement | null
-  historyChecked: string[] // List of terminal commands already processed
+  /**
+   * The last shell-history window read from the backend, or `null` while the app has never read one.
+   *
+   * `null` is the "not watching yet" state and the reason a freshly installed app hands out no
+   * trophies for a history full of git commands: the first read only records this snapshot, and
+   * subsequent reads reward what got appended to it. See `lib/rewards/terminalHistory.ts`.
+   */
+  terminalHistorySnapshot: string[] | null
   pairTracking: Map<string, Set<string>> // Per-achievement session tracking, see PairEventRule
 
   rewardsEnabled: boolean
@@ -120,7 +128,7 @@ export const useGameStore = create<GameState>()(
       achievements: INITIAL_ACHIEVEMENTS,
       points: 0,
       recentUnlock: null,
-      historyChecked: [],
+      terminalHistorySnapshot: null,
       pairTracking: new Map(),
       rewardsEnabled: true,
 
@@ -180,32 +188,45 @@ export const useGameStore = create<GameState>()(
         })
       },
 
+      /**
+       * Reads the shell history and raises a `terminal_command` event for each command the user ran
+       * **since the last read** — never for the history that was already there.
+       *
+       * The snapshot comparison, not this polling loop, is what makes a terminal achievement an
+       * earned one: the loop runs on a timer while the Rewards tab is open, so anything derived from
+       * the file's mere contents would unlock trophies for opening a tab. See
+       * `lib/rewards/terminalHistory.ts`.
+       */
       checkTerminalHistory: async () => {
         if (!get().rewardsEnabled) return
         try {
           // Fetch zsh/bash history from Tauri backend
-          const commands = await apiGetTerminalCommands()
-          if (!commands || commands.length === 0) return
+          const commands = (await apiGetTerminalCommands()) ?? []
+          const snapshot = get().terminalHistorySnapshot
 
-          const checked = get().historyChecked
-          const newCommands = commands.filter((c) => !checked.includes(c))
-
-          if (newCommands.length > 0) {
-            // Update checking registry first to prevent concurrency loops
-            set({ historyChecked: [...checked, ...newCommands] })
-
-            // Dispatch each new command event to the engine
-            newCommands.forEach((cmd) => {
-              appEventBus.notify('terminal_command', { command: cmd })
-            })
+          // First read: record what the shell already knew, reward none of it.
+          if (snapshot === null) {
+            set({ terminalHistorySnapshot: commands })
+            return
           }
+
+          // Snapshot first: a slow listener must not make the next poll re-report the same commands.
+          set({ terminalHistorySnapshot: commands })
+          appendedCommands(snapshot, commands).forEach((cmd) => {
+            appEventBus.notify('terminal_command', { command: cmd })
+          })
         } catch (e) {
           console.warn('Failed to retrieve terminal history from backend:', e)
         }
       },
 
       setRewardsEnabled: (enabled: boolean) => {
-        set({ rewardsEnabled: enabled })
+        set({
+          rewardsEnabled: enabled,
+          // Turning rewards off stops the polling, so the snapshot goes stale; dropping it makes the
+          // next read a fresh baseline instead of a backlog of trophies for the time they were off.
+          ...(enabled ? {} : { terminalHistorySnapshot: null }),
+        })
       },
 
       resetGameProgress: () => {
@@ -217,7 +238,9 @@ export const useGameStore = create<GameState>()(
           })),
           points: 0,
           recentUnlock: null,
-          historyChecked: [],
+          // `null`, not `[]`: a reset re-baselines the shell history on the next read. Emptying it
+          // would replay the whole file and re-unlock every terminal achievement within seconds.
+          terminalHistorySnapshot: null,
           pairTracking: new Map(),
           commitCount: 0,
           prMergedCount: 0,
@@ -231,7 +254,11 @@ export const useGameStore = create<GameState>()(
       partialize: (state: GameState) => ({
         achievements: state.achievements,
         points: state.points,
-        historyChecked: state.historyChecked,
+        // Persisted so a restart resumes watching where it left off instead of re-baselining (which
+        // would silently drop the commands run since the last read) — and, more importantly, so it
+        // is never `[]` at startup, which would replay the whole history as if the user had just
+        // typed it. Old profiles have no key here and simply re-baseline on their next read.
+        terminalHistorySnapshot: state.terminalHistorySnapshot,
         rewardsEnabled: state.rewardsEnabled,
         commitCount: state.commitCount,
         prMergedCount: state.prMergedCount,
