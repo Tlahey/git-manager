@@ -67,6 +67,10 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   "NSColor",
   "NSGraphics",
   "NSVisualEffectView",
+  # NSWindow.setAppearance: — the PER-WINDOW appearance pin. Tauri's own `set_theme` is
+  # app-wide on macOS (see pin_window_appearance in commands/window.rs), which is why this
+  # has to go through AppKit directly.
+  "NSAppearance",
   # NSScreen.safeAreaInsets / auxiliaryTopLeft(Right)Area — the real per-machine notch/camera
   # housing geometry, read once at startup instead of guessed at with a hard-coded 32pt/100pt.
   # See get_notch_metrics in commands/window.rs.
