@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { WorktreeSnapshot } from './tauri'
 import { collectActionOids, executeUndo, executeRedo, type UndoAction } from './undoActions'
+import { appEventBus } from './appEventBus'
 
 vi.mock('./tauri', () => ({
   resetToCommit: vi.fn(),
@@ -418,5 +419,44 @@ describe('deleteTag', () => {
   it('redo deletes the tag again', async () => {
     await executeRedo(REPO, action)
     expect(tauri.deleteTag).toHaveBeenCalledWith(REPO, 'v1.0')
+  })
+})
+
+describe('rewards — undo and redo announce nothing', () => {
+  // An undo is a correction, not an accomplishment. These executors reach `lib/tauri` directly, so
+  // nothing they run reaches `appEventBus` — and this suite is what keeps it that way: routing them
+  // through `api/*.api.ts` (which looks like a layering fix) would make redoing a discard unlock the
+  // discard trophy, undoing one record a `stage` against the pair rule, and a commit/undo/redo loop
+  // re-count commits. See the module comment on `undoActions.ts` and the one on `appEventBus.ts`.
+  const rewardRelevant: UndoAction[] = [
+    { ...base, type: 'commit', previousOid: 'prev', newOid: 'new' },
+    { ...base, type: 'discard', filePath: 'a.ts', blobOid: 'blob', wasStaged: true },
+    { ...base, type: 'fixup', previousOid: 'prev', newOid: 'new' },
+    { ...base, type: 'autosquash', previousOid: 'prev', newOid: 'new' },
+  ]
+
+  it.each(rewardRelevant.map((action) => [action.type, action] as const))(
+    'raises no app event when undoing or redoing a %s',
+    async (_type, action) => {
+      const notify = vi.spyOn(appEventBus, 'notify')
+      await executeUndo(REPO, action)
+      await executeRedo(REPO, action)
+      expect(notify).not.toHaveBeenCalled()
+      notify.mockRestore()
+    }
+  )
+
+  it('restores a discarded file through lib/tauri, not through the announcing api wrapper', async () => {
+    // The undo of a discard re-stages the file when it was staged; going through `apiStageFile` would
+    // track it against the `stage_unstage` pair, so the next real unstage would unlock a trophy for a
+    // pair the user never made.
+    await executeUndo(REPO, {
+      ...base,
+      type: 'discard',
+      filePath: 'a.ts',
+      blobOid: 'blob',
+      wasStaged: true,
+    })
+    expect(tauri.stageFile).toHaveBeenCalledWith(REPO, 'a.ts')
   })
 })

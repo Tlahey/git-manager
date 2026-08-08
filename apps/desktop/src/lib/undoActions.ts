@@ -1,3 +1,21 @@
+/**
+ * What ⌘Z and ⇧⌘Z actually run: one git operation per kind of entry in the undo history.
+ *
+ * **These import `lib/tauri` directly, and must keep doing so.** It looks like the layering violation
+ * the repo forbids (everything goes through `api/*.api.ts`) and is the opposite: those wrappers exist
+ * to *record* a user's action — they push an undo entry and announce the action on `lib/appEventBus`.
+ * Both are wrong here, and the second one silently so:
+ *
+ * - pushing an entry while replaying the history would grow the stack it is walking;
+ * - announcing on the bus would credit the reward engine with an action the user did not perform.
+ *   Redoing a discard would unlock the "discard a file" trophy, undoing one would record a `stage`
+ *   against the pair rule, and a commit/undo/redo loop would count commits that already counted. An
+ *   undo is a correction, not an accomplishment — see the invariant in `lib/appEventBus.ts`.
+ *
+ * The flip side is deliberate too: undoing something never *revokes* a reward. Achievements record
+ * that the user did a thing, and a trophy that vanishes on ⌘Z (with its notch card already
+ * celebrated) reads as a bug rather than as bookkeeping. Counters are monotonic for the same reason.
+ */
 import {
   resetToCommit,
   discardFileChanges,
