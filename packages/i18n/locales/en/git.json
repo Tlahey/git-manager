@@ -285,6 +285,8 @@
   "checkout.conflict.dialogConfirm": "Stash and switch branch",
   "checkout.conflict.dialogCancel": "Cancel",
   "checkout.conflict.successStashAndCheckout": "Changes stashed and switched to {{branch}}",
+  "checkout.remote.trackingBranchCreated": "Created local branch {{branch}} tracking {{upstream}}",
+  "checkout.remote.invalidRef": "{{ref}} is not a remote branch that can be checked out",
   "gitTree.renameBranch.title": "Rename branch",
   "gitTree.renameBranch.description": "New name for {{branch}}",
   "gitTree.renameBranch.confirm": "Rename",

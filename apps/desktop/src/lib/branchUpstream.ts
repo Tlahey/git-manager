@@ -1,7 +1,18 @@
 import type { GitBranch } from '@git-manager/git-types'
 
-/** A branch's remote-qualified name without the remote prefix (`origin/main` → `main`). */
-function logicalName(remoteQualifiedName: string): string {
+/**
+ * A branch's remote-qualified name without the remote prefix (`origin/main` → `main`) — both the
+ * logical name two branches share, and the local branch a remote-tracking one is checked out as
+ * (the name `git switch main` would create from it). Empty when there is nothing after the remote
+ * prefix, which a caller creating a branch must treat as "not checkoutable" rather than naming one
+ * after the remote itself.
+ *
+ * Splits on the FIRST slash only, like every other remote-name split in the app (the backend's own
+ * `list_branches` derives `shortName` the same way, and `remoteBranchTarget` splits a `GitRef` the
+ * same way): a remote whose name itself contains a slash is not supported anywhere, and guessing
+ * differently here would only make this one path disagree with the rest.
+ */
+export function localBranchNameForRemote(remoteQualifiedName: string): string {
   return remoteQualifiedName.split('/').slice(1).join('/')
 }
 
@@ -23,7 +34,7 @@ export function remoteTrackingBranches(branches: GitBranch[]): GitBranch[] {
  */
 export function resolveDefaultUpstream(branchName: string, branches: GitBranch[]): string | null {
   const candidates = remoteTrackingBranches(branches).filter(
-    (b) => logicalName(b.name) === branchName
+    (b) => localBranchNameForRemote(b.name) === branchName
   )
   return candidates.length === 1 ? candidates[0].name : null
 }

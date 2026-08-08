@@ -133,22 +133,22 @@ export function RepositorySidebar({
   } | null>(null)
 
   // A branch row's two gestures: one click brings its tip into view in the graph, a double click
-  // switches to it. A remote branch has no local ref to check out, so it lands on its tip commit
-  // (detached), which is what the menu's own Checkout does.
+  // switches to it. A remote row switches onto its local counterpart, creating it if it doesn't
+  // exist yet (see `checkoutRemoteBranchAsLocal`) — the same thing the menu's own Checkout does.
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
-  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
   const focusBranch = useCallback(
     (branch: GitBranch) => setPendingGraphSelection(branch.commitOid),
     [setPendingGraphSelection]
   )
   const checkoutBranch = useCallback(
     (branch: GitBranch) => {
-      void checkoutBranchWithStashPrompt(
-        repoPath,
-        branch.isRemote ? branch.commitOid : branch.shortName
-      )
+      // `name`, not `shortName`: the backend strips the remote prefix from a remote branch's
+      // `shortName`, and the remote-qualified name is what identifies the ref to track.
+      if (branch.isRemote) void checkoutRemoteBranchAsLocal(repoPath, branch.name)
+      else void checkoutBranchWithStashPrompt(repoPath, branch.shortName)
     },
-    [checkoutBranchWithStashPrompt, repoPath]
+    [checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal, repoPath]
   )
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)

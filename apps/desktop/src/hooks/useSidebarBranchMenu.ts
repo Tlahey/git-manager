@@ -74,7 +74,7 @@ export function useSidebarBranchMenu(repoPath: string) {
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
-  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   // Shared state, not `useState`: the confirmation must survive `GitGraph` unmounting when the file
@@ -212,9 +212,17 @@ export function useSidebarBranchMenu(repoPath: string) {
           () => apiRebaseOntoCommit(repoPath, r.commitOid),
           t('gitTree.branchMenu.rebased', rel(r))
         ),
+      // A remote row switches onto its LOCAL branch, creating it if needed — see
+      // `checkoutRemoteBranchAsLocal`. Anything else (a tag row's tip) still detaches on its commit.
       onCheckoutBranch: (r) => {
-        const target = r.type === 'branch' ? r.shortName : r.commitOid
-        void checkoutBranchWithStashPrompt(repoPath, target)
+        if (r.type === 'remote') {
+          void checkoutRemoteBranchAsLocal(repoPath, r.shortName)
+          return
+        }
+        void checkoutBranchWithStashPrompt(
+          repoPath,
+          r.type === 'branch' ? r.shortName : r.commitOid
+        )
       },
       onOpenWorktreeFrom: (r) => void createWorktreeFrom(r.commitOid),
       onStartPr: (r) => {

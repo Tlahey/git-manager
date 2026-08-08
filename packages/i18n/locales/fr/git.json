@@ -285,6 +285,8 @@
   "checkout.conflict.dialogConfirm": "Remiser et changer de branche",
   "checkout.conflict.dialogCancel": "Annuler",
   "checkout.conflict.successStashAndCheckout": "Modifications remisées et basculement réussi sur {{branch}}",
+  "checkout.remote.trackingBranchCreated": "Branche locale {{branch}} créée, elle suit {{upstream}}",
+  "checkout.remote.invalidRef": "{{ref}} n'est pas une branche distante que l'on peut récupérer",
   "gitTree.renameBranch.title": "Renommer la branche",
   "gitTree.renameBranch.description": "Nouveau nom pour {{branch}}",
   "gitTree.renameBranch.confirm": "Renommer",

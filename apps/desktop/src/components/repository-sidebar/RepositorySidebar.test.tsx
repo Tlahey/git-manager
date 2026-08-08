@@ -24,9 +24,15 @@ vi.mock('../../api/git.api', () => ({
   apiStashPop: vi.fn(),
   apiStashDrop: vi.fn(),
   apiCheckoutBranch: vi.fn().mockResolvedValue(undefined),
+  apiCreateBranch: vi.fn().mockResolvedValue(undefined),
+  apiGetBranches: vi.fn().mockResolvedValue([]),
+  apiSetBranchUpstream: vi.fn().mockResolvedValue(undefined),
   apiStashPush: vi.fn(),
 }))
-vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn().mockRejectedValue(new Error('n/a')) }))
+vi.mock('../../api/repo.api', () => ({
+  apiOpenRepo: vi.fn().mockRejectedValue(new Error('n/a')),
+  apiGetRepoSummary: vi.fn().mockResolvedValue({ head: 'main', isDetached: false }),
+}))
 // The default export is needed too: the sidebar mounts CreateIssueDialog, whose useRepoGitHub
 // resolves `owner/repo` through useSWR. Returning an empty result keeps it in its "no GitHub
 // remote" state, which is all these tests care about.
@@ -154,7 +160,14 @@ vi.mock('../git-graph/CreateBranchHereDialog', () => ({
   ),
 }))
 
-import { apiStashApply, apiStashPop, apiStashDrop, apiCheckoutBranch } from '../../api/git.api'
+import {
+  apiStashApply,
+  apiStashPop,
+  apiStashDrop,
+  apiCheckoutBranch,
+  apiCreateBranch,
+  apiSetBranchUpstream,
+} from '../../api/git.api'
 import { RepositorySidebar } from './RepositorySidebar'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -165,6 +178,8 @@ const mockedStashApply = apiStashApply as unknown as ReturnType<typeof vi.fn>
 const mockedStashPop = apiStashPop as unknown as ReturnType<typeof vi.fn>
 const mockedStashDrop = apiStashDrop as unknown as ReturnType<typeof vi.fn>
 const mockedCheckoutBranch = apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>
+const mockedCreateBranch = apiCreateBranch as unknown as ReturnType<typeof vi.fn>
+const mockedSetBranchUpstream = apiSetBranchUpstream as unknown as ReturnType<typeof vi.fn>
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
@@ -612,9 +627,9 @@ describe('RepositorySidebar — sections', () => {
     )
   })
 
-  // A remote branch has no local ref of that name — checking out `origin/main` by name would
-  // resolve the *local* `main`, so a remote row lands on its tip commit (detached) instead.
-  it('checks out a local branch by name and a remote one by its tip commit', async () => {
+  // A remote row switches onto the LOCAL branch of the same name, creating it (tracking the remote)
+  // when it doesn't exist yet — never onto the remote tip's commit, which would detach HEAD.
+  it('checks out a local branch by name, and a remote one through a local tracking branch', async () => {
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     const checkout = lastRowViewCalls.current[0].onCheckoutBranch as (b: GitBranch) => void
@@ -637,7 +652,12 @@ describe('RepositorySidebar — sections', () => {
         commitOid: 'def456',
       } as GitBranch)
     )
-    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'def456', undefined)
+    expect(mockedCreateBranch).toHaveBeenCalledWith('/repo', 'main', 'origin/main')
+    expect(mockedSetBranchUpstream).toHaveBeenCalledWith('/repo', 'main', 'origin/main')
+    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'main', {
+      fromRef: 'main',
+      fromDetached: false,
+    })
   })
 
   it('brings a branch tip into view in the graph on a single click', () => {
