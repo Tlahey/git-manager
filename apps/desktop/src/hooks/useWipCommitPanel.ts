@@ -6,7 +6,9 @@ import { toast } from '@git-manager/ui'
 import {
   apiUnstageAll,
   apiStageFile,
-  apiUnstageFile,
+  apiStageFileQuietly,
+  apiUnstageFileQuietly,
+  apiUnstageAllQuietly,
   apiCreateCommit,
   apiGetPendingOperation,
   apiStashPush,
@@ -85,7 +87,14 @@ export function useWipCommitPanel(
     return batches
   }, [allWipChanges])
 
-  // Temporarily stage files of a batch, generate message via LLM, then restore index
+  /**
+   * Temporarily stage files of a batch, generate message via LLM, then restore index.
+   *
+   * Every index write here goes through the `*Quietly` wrappers: the index is a scratchpad this
+   * function puts back before returning, and the user asked for a commit message, not for a staging
+   * change. Announcing these on `appEventBus` credited the reward engine with a stage-then-unstage
+   * the user never performed — see the "Scratch index" section of `api/git/git-commit.api.ts`.
+   */
   async function generateMessageForBatch(groupName: string, files: typeof allWipChanges) {
     if (batchGenerating[groupName]) return
 
@@ -100,15 +109,15 @@ export function useWipCommitPanel(
       const originallyStaged = (gitStatus?.staged ?? []).map((x: GitStatusEntry) => x.path)
 
       // 2. Unstage everything
-      await apiUnstageAll(repoPath)
+      await apiUnstageAllQuietly(repoPath)
 
       // 3. Stage only files of this batch
       for (const file of files) {
         if (file.status !== 'deleted') {
-          await apiStageFile(repoPath, file.path)
+          await apiStageFileQuietly(repoPath, file.path)
         } else {
           // deleted files must be unstaged/removed from index
-          await apiUnstageFile(repoPath, file.path)
+          await apiUnstageFileQuietly(repoPath, file.path)
         }
       }
 
@@ -118,7 +127,7 @@ export function useWipCommitPanel(
       })
 
       // 5. Restore original staging state
-      await apiUnstageAll(repoPath)
+      await apiUnstageAllQuietly(repoPath)
       const freshStatus = await queryClient.fetchQuery<GitStatus>({
         queryKey: ['git-status', repoPath],
       })
@@ -128,7 +137,7 @@ export function useWipCommitPanel(
       ])
       for (const path of originallyStaged) {
         if (activeChanges.has(path)) {
-          await apiStageFile(repoPath, path)
+          await apiStageFileQuietly(repoPath, path)
         }
       }
       onRefresh?.()

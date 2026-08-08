@@ -14,7 +14,9 @@ vi.mock('swr', () => ({ mutate: vi.fn() }))
 vi.mock('../api/git.api', () => ({
   apiUnstageAll: vi.fn(),
   apiStageFile: vi.fn(),
-  apiUnstageFile: vi.fn(),
+  apiStageFileQuietly: vi.fn(),
+  apiUnstageFileQuietly: vi.fn(),
+  apiUnstageAllQuietly: vi.fn(),
   apiCreateCommit: vi.fn(),
   apiGetPendingOperation: vi.fn(),
   apiStashPush: vi.fn(),
@@ -45,7 +47,9 @@ vi.mock('./useAiGeneration', () => ({
 import {
   apiUnstageAll,
   apiStageFile,
-  apiUnstageFile,
+  apiStageFileQuietly,
+  apiUnstageFileQuietly,
+  apiUnstageAllQuietly,
   apiCreateCommit,
   apiGetPendingOperation,
   apiStashPush,
@@ -55,7 +59,9 @@ import { useWipCommitPanel } from './useWipCommitPanel'
 const mocked = {
   apiUnstageAll: apiUnstageAll as unknown as ReturnType<typeof vi.fn>,
   apiStageFile: apiStageFile as unknown as ReturnType<typeof vi.fn>,
-  apiUnstageFile: apiUnstageFile as unknown as ReturnType<typeof vi.fn>,
+  apiStageFileQuietly: apiStageFileQuietly as unknown as ReturnType<typeof vi.fn>,
+  apiUnstageFileQuietly: apiUnstageFileQuietly as unknown as ReturnType<typeof vi.fn>,
+  apiUnstageAllQuietly: apiUnstageAllQuietly as unknown as ReturnType<typeof vi.fn>,
   apiCreateCommit: apiCreateCommit as unknown as ReturnType<typeof vi.fn>,
   apiGetPendingOperation: apiGetPendingOperation as unknown as ReturnType<typeof vi.fn>,
   apiStashPush: apiStashPush as unknown as ReturnType<typeof vi.fn>,
@@ -251,7 +257,7 @@ describe('useWipCommitPanel — classic commit', () => {
 
 describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
   it('is a no-op when already generating for that group', async () => {
-    mocked.apiUnstageAll.mockResolvedValue(undefined)
+    mocked.apiUnstageAllQuietly.mockResolvedValue(undefined)
     const files = [file('src/a.ts')]
     const { result, rerender } = renderHook(({ gs }) => useWipCommitPanel('/repo', gs, files, t), {
       initialProps: { gs: status() },
@@ -263,18 +269,20 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
       result.current.generateMessageForBatch('src', files)
     })
     rerender({ gs: status() })
-    mocked.apiUnstageAll.mockClear()
+    mocked.apiUnstageAllQuietly.mockClear()
     act(() => {
       result.current.generateMessageForBatch('src', files)
     })
     // Second call should bail before touching staging again.
-    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
+    expect(mocked.apiUnstageAllQuietly).not.toHaveBeenCalled()
   })
 
+  // Through the `*Quietly` wrappers throughout: this index is a scratchpad, and the user asked for
+  // a commit message rather than for a staging change (see `api/git/git-commit.api.ts`).
   it('stages non-deleted files and unstages deleted ones, then generates via the LLM', async () => {
-    mocked.apiUnstageAll.mockResolvedValue(undefined)
-    mocked.apiStageFile.mockResolvedValue(undefined)
-    mocked.apiUnstageFile.mockResolvedValue(undefined)
+    mocked.apiUnstageAllQuietly.mockResolvedValue(undefined)
+    mocked.apiStageFileQuietly.mockResolvedValue(undefined)
+    mocked.apiUnstageFileQuietly.mockResolvedValue(undefined)
     runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
       onMessage('generated message')
     })
@@ -290,15 +298,19 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
 
     await act(async () => result.current.generateMessageForBatch('src', files))
 
-    expect(mocked.apiStageFile).toHaveBeenCalledWith('/repo', 'src/a.ts')
-    expect(mocked.apiUnstageFile).toHaveBeenCalledWith('/repo', 'src/b.ts')
+    expect(mocked.apiStageFileQuietly).toHaveBeenCalledWith('/repo', 'src/a.ts')
+    expect(mocked.apiUnstageFileQuietly).toHaveBeenCalledWith('/repo', 'src/b.ts')
+    // ...and never through the announcing versions, which would credit the reward engine with a
+    // stage/unstage the user never performed.
+    expect(mocked.apiStageFile).not.toHaveBeenCalled()
+    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
     expect(result.current.batchMessages.src).toBe('generated message')
     expect(result.current.batchGenerating.src).toBe(false)
   })
 
   it('restores originally-staged files still present after generation', async () => {
-    mocked.apiUnstageAll.mockResolvedValue(undefined)
-    mocked.apiStageFile.mockResolvedValue(undefined)
+    mocked.apiUnstageAllQuietly.mockResolvedValue(undefined)
+    mocked.apiStageFileQuietly.mockResolvedValue(undefined)
     runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => onMessage('msg'))
     fetchQuery.mockResolvedValue(
       status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] })
@@ -310,12 +322,12 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
 
     await act(async () => result.current.generateMessageForBatch('src', files))
 
-    expect(mocked.apiStageFile).toHaveBeenCalledWith('/repo', 'other.ts')
+    expect(mocked.apiStageFileQuietly).toHaveBeenCalledWith('/repo', 'other.ts')
   })
 
   it('records an error message and clears the generating flag on failure', async () => {
-    mocked.apiUnstageAll.mockResolvedValue(undefined)
-    mocked.apiStageFile.mockResolvedValue(undefined)
+    mocked.apiUnstageAllQuietly.mockResolvedValue(undefined)
+    mocked.apiStageFileQuietly.mockResolvedValue(undefined)
     runLlmGenerate.mockRejectedValue(new Error('ai provider down'))
 
     const files = [file('src/a.ts')]

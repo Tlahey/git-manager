@@ -44,7 +44,6 @@ import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { LoadingOverlay } from './components/layout/LoadingOverlay'
 import { E2ePathPickerDialog } from './components/E2ePathPickerDialog'
 import { useAppReadySplash } from './hooks/useAppReadySplash'
-import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
 import { useAppUpdaterStore } from './stores/appUpdater.store'
@@ -82,11 +81,6 @@ export default function App() {
     onCloseSettings: () => setShowSettings(false),
     showSettings,
   })
-
-  // Firing open_app event on launch
-  useEffect(() => {
-    appEventBus.notify('open_app')
-  }, [])
 
   // Load the running version and silently check for updates on launch. A found update flips the
   // updater footer's button (pinned in Settings) to its highlighted "available" state.

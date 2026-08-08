@@ -34,6 +34,32 @@ export async function apiUnstageAll(path: string) {
   return callCommand('unstage', () => unstageAll(path), { filePath: 'all' })
 }
 
+// ─── Scratch index ──────────────────────────────────────────────────────────
+//
+// The same index writes as above, minus the `stage`/`unstage` announcement on `appEventBus`.
+//
+// For code that rewrites the index to *read* something and then puts it back — today the AI batch
+// message generation, which isolates one group's files so the model sees that group's diff alone
+// (`hooks/useWipCommitPanel.ts`). The user asked for a commit message, not for a staging change, so
+// these writes must not reach the reward engine: an event on that bus is taken to mean the user did
+// something (see `lib/appEventBus.ts`), and `stage_unstage` — "stage a file, then unstage that same
+// file" — would unlock for clicking Generate.
+//
+// Nothing else changes: `lib/tauri.ts` still records every call in the activity log, because the IPC
+// really happened. Anything the user actually asked for goes through the announcing versions above.
+
+export async function apiStageFileQuietly(path: string, filePath: string) {
+  return stageFile(path, filePath)
+}
+
+export async function apiUnstageFileQuietly(path: string, filePath: string) {
+  return unstageFile(path, filePath)
+}
+
+export async function apiUnstageAllQuietly(path: string) {
+  return unstageAll(path)
+}
+
 export async function apiCreateCommit(
   path: string,
   message: string,

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { ProjectCommand } from '@git-manager/git-types'
+import type { ProjectCommand, TerminalHistorySource } from '@git-manager/git-types'
 import { getProjectCommands, getTerminalCommands, runTaskInTerminal } from '../lib/tauri'
 
 export async function apiOpenUrl(url: string): Promise<void> {
@@ -20,7 +20,8 @@ export async function apiOpenTerminal(path: string, command: string): Promise<vo
   }
 }
 
-export async function apiGetTerminalCommands(): Promise<string[]> {
+/** The `git …` lines of each shell history file, one entry per file — see `TerminalHistorySource`. */
+export async function apiGetTerminalCommands(): Promise<TerminalHistorySource[]> {
   return getTerminalCommands()
 }
 

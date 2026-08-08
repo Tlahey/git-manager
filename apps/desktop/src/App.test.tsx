@@ -214,10 +214,13 @@ describe('App — keyboard shortcuts wiring', () => {
 })
 
 describe('App — lifecycle event', () => {
-  it('notifies "open_app" once on mount', () => {
+  // Mounting is not an accomplishment: the app used to notify `open_app` here, which unlocked the
+  // "Open the app's Launchpad" trophy on every launch (and every dev hot-reload) without the user
+  // going anywhere near the Launchpad. That event is now raised by the tab switch itself — see
+  // `repoUI.store`'s `setActiveTab` and the invariant in `lib/appEventBus.ts`.
+  it('raises no reward event on mount', () => {
     render(<App />)
-    expect(notify).toHaveBeenCalledWith('open_app')
-    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).not.toHaveBeenCalled()
   })
 })
 

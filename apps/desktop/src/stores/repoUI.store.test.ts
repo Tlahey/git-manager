@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useRepoUIStore, isNewTab, DASHBOARD_TAB } from './repoUI.store'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { appEventBus } from '../lib/appEventBus'
+import { useRepoUIStore, isNewTab, DASHBOARD_TAB, PULL_REQUESTS_TAB } from './repoUI.store'
 
 const INITIAL = {
   openTabs: [] as string[],
@@ -114,6 +115,21 @@ describe('useRepoUIStore — active repo/tab selection', () => {
     const state = useRepoUIStore.getState()
     expect(state.activeTab).toBe('pull-requests')
     expect(state.activeRepo).toBeNull()
+  })
+
+  // The Launchpad achievement is earned by going there, and this setter is the only way in (tab
+  // strip, command palette, ⌘-shortcut, clicked notification) — which is why the event lives here
+  // rather than in `PullRequestsPage`, whose mount also happens on relaunch. See `lib/appEventBus.ts`.
+  it('setActiveTab announces open_launchpad only for the Launchpad tab', () => {
+    const notify = vi.spyOn(appEventBus, 'notify')
+
+    useRepoUIStore.getState().setActiveTab(DASHBOARD_TAB)
+    expect(notify).not.toHaveBeenCalled()
+
+    useRepoUIStore.getState().setActiveTab(PULL_REQUESTS_TAB)
+    expect(notify).toHaveBeenCalledWith('open_launchpad')
+
+    notify.mockRestore()
   })
 
   it('setActiveRepo and setActiveTab clear the selected commit, stash index, and pending graph action', () => {

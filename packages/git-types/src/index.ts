@@ -923,6 +923,20 @@ export interface ProjectCommand {
 }
 
 /**
+ * One shell history file's `git …` command lines. Mirrors the Rust `TerminalHistorySource`.
+ *
+ * One entry per file rather than one merged list, because the reward engine spots the commands the
+ * user just ran by diffing a read against the previous one, and that only holds on an append-only
+ * stream — see `apps/desktop/src/lib/rewards/terminalHistory.ts`.
+ */
+export interface TerminalHistorySource {
+  /** The file's name, e.g. `.zsh_history` — the key a snapshot is tracked under. */
+  source: string
+  /** Its `git …` lines, oldest first. */
+  commands: string[]
+}
+
+/**
  * The subset of settings that can be overridden per repository, stored locally keyed by repo path
  * in `AppSettings.repoOverrides`. Every field is optional: `undefined` means "inherit the global
  * value". Resolution is always `repoOverride ?? global` (see `useEffectiveRepoSettings`).

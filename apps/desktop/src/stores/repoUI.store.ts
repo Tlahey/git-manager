@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MockIssue } from '../app/pull-requests/types'
 import type { PendingDeleteRemoteBranch } from '../lib/graphContextMenus'
+import { appEventBus } from '../lib/appEventBus'
 import { closeRepoScopedPanels } from './repoScopedPanels'
 
 /** Ids of the pinned special tabs (always present, not closeable). */
@@ -531,6 +532,11 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setActiveTab: (id) => {
         closeRepoScopedPanels()
+        // Raised here rather than from `PullRequestsPage`'s mount, which also happens on relaunch
+        // when the Launchpad was the tab left open — and a reward has to answer for something the
+        // user did (see `lib/appEventBus.ts`). Every way in goes through this one setter: the tab
+        // strip, the command palette, the ⌘-shortcut and a clicked notification.
+        if (id === PULL_REQUESTS_TAB) appEventBus.notify('open_launchpad')
         set((state) => ({
           activeTab: id,
           // An empty "New Tab" is in `openTabs` but is not a repo — it must not become `activeRepo`.

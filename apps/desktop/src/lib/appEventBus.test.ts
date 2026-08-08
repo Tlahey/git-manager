@@ -18,8 +18,8 @@ describe('appEventBus', () => {
   it('notifies an event with no payload as undefined', () => {
     const listener = vi.fn()
     appEventBus.subscribe(listener)
-    appEventBus.notify('open_app')
-    expect(listener).toHaveBeenCalledWith('open_app', undefined)
+    appEventBus.notify('open_launchpad')
+    expect(listener).toHaveBeenCalledWith('open_launchpad', undefined)
   })
 
   it('notifies every subscribed listener', () => {
