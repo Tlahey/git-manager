@@ -31,7 +31,7 @@ const COMPACT_LABEL_ICON = { date: Calendar, sha: Hash } as const
 export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
   const { t } = useTranslation('git')
   const setWidth = useGitGraphColumnsStore((s) => s.setWidth)
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
   const rowRef = useRef<HTMLDivElement>(null)

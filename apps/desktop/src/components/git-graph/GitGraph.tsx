@@ -100,7 +100,7 @@ export function GitGraph({
   const { t } = useTranslation('git')
   const terminalOpen = useTerminalStore((s) => s.open)
   const { protectedBranches } = useEffectiveRepoSettings(repoPath)
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
   const headBranchName = useRepoDataStore((s) => s.repoCache[repoPath]?.head)

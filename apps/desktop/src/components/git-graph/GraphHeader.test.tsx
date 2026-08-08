@@ -243,7 +243,7 @@ describe('GraphHeader — compact graph label', () => {
     expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
   })
 
-  it('falls back to the standard row height when the setting is absent', () => {
+  it('falls back to the small default row height when the setting is absent', () => {
     useSettingsStore.setState((s) => ({
       ...s,
       settings: {
@@ -251,13 +251,13 @@ describe('GraphHeader — compact graph label', () => {
         appearance: { ...s.settings.appearance, rowHeight: undefined },
       },
     }))
-    // Standard threshold applies: 64 < 70 → icon
+    // Small threshold applies: 64 ≥ 62 → the label survives where the standard one would not.
     render(
       <GraphHeader
         columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]}
       />
     )
-    expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
+    expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
   })
 })
 

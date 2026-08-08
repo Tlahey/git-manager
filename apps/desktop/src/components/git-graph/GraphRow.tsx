@@ -346,7 +346,7 @@ export const GraphRow = memo(function GraphRow({
   onCancelTag,
 }: GraphRowProps) {
   const { t } = useTranslation('git')
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
   const refsColumn = columns.find((c) => c.key === 'refs')

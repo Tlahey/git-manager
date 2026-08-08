@@ -26,8 +26,16 @@ function edge(overrides: Partial<GitGraphEdge> = {}): GitGraphEdge {
   return { fromColumn: 0, toColumn: 0, color: '#ff0000', ...overrides }
 }
 
+// Every coordinate below is the standard-row-height geometry, so pin that setting rather than
+// inherit the app default (which is the small row height).
 beforeEach(() => {
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useSettingsStore.setState({
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'standard' },
+    },
+  })
 })
 
 function renderSvg(

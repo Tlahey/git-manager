@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import type { ViewSwitcherPosition } from '@git-manager/git-types'
-import { Input, Textarea, NativeSelect } from '@git-manager/ui'
+import { Input, Textarea, NativeSelect, ToggleGroup, type ToggleGroupOption } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
 import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
 import { RunTasksSetting } from './RunTasksSetting'
@@ -102,9 +102,17 @@ export function RepositorySection({ category }: RepositorySectionProps) {
   const effective = useEffectiveRepoSettings(activeRepo)
   const { data: userThemes } = useUserThemes()
 
-  const viewSwitcherPositions: { value: ViewSwitcherPosition; label: string }[] = [
-    { value: 'toolbar', label: t('settings.appearance.viewSwitcherPosition.toolbar') },
-    { value: 'tabs', label: t('settings.appearance.viewSwitcherPosition.tabs') },
+  const viewSwitcherPositions: ToggleGroupOption<ViewSwitcherPosition>[] = [
+    {
+      value: 'toolbar',
+      label: t('settings.appearance.viewSwitcherPosition.toolbar'),
+      testId: 'repo-view-switcher-position-radio-toolbar',
+    },
+    {
+      value: 'tabs',
+      label: t('settings.appearance.viewSwitcherPosition.tabs'),
+      testId: 'repo-view-switcher-position-radio-tabs',
+    },
   ]
 
   if (!activeRepo) {
@@ -252,32 +260,15 @@ export function RepositorySection({ category }: RepositorySectionProps) {
             }
             testId="repo-override-viewSwitcherPosition"
           >
-            <div className="flex gap-2">
-              {viewSwitcherPositions.map((vs) => (
-                <label
-                  key={vs.value}
-                  data-testid={`repo-view-switcher-position-radio-${vs.value}`}
-                  className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-                    !viewSwitcherOverridden ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-                  } ${
-                    effective.viewSwitcherPosition === vs.value
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : `border-border text-muted-foreground ${viewSwitcherOverridden ? 'hover:bg-accent' : ''}`
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="repoViewSwitcherPosition"
-                    value={vs.value}
-                    disabled={!viewSwitcherOverridden}
-                    checked={effective.viewSwitcherPosition === vs.value}
-                    onChange={() => setRepoSetting(activeRepo, 'viewSwitcherPosition', vs.value)}
-                    className="sr-only"
-                  />
-                  {vs.label}
-                </label>
-              ))}
-            </div>
+            <ToggleGroup
+              name="repoViewSwitcherPosition"
+              value={effective.viewSwitcherPosition}
+              onValueChange={(position) =>
+                setRepoSetting(activeRepo, 'viewSwitcherPosition', position)
+              }
+              options={viewSwitcherPositions}
+              disabled={!viewSwitcherOverridden}
+            />
           </OverrideField>
         </FilterableSetting>
       )}

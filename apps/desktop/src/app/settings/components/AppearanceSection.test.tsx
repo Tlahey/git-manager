@@ -68,7 +68,7 @@ describe('AppearanceSection — theme picker', () => {
   })
 })
 
-describe('AppearanceSection — font size / density / row height', () => {
+describe('AppearanceSection — font size / row height', () => {
   it('binds the font size selector', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
@@ -77,18 +77,41 @@ describe('AppearanceSection — font size / density / row height', () => {
     expect(useSettingsStore.getState().settings.appearance.fontSize).toBe(16)
   })
 
-  it('switches density', async () => {
-    const user = userEvent.setup()
+  it('offers no density picker, since nothing in the app reads that setting', () => {
     render(<AppearanceSection />)
-    await user.click(screen.getByRole('radio', { name: 'Compact' }))
-    expect(useSettingsStore.getState().settings.appearance.density).toBe('compact')
+    expect(screen.queryByRole('radio', { name: 'Compact' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Comfortable' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('setting-density')).not.toBeInTheDocument()
   })
 
-  it('switches row height', async () => {
+  it('switches row height, starting from the small default', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
+    expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('small')
+    await user.click(screen.getByTestId('row-height-radio-standard').querySelector('input')!)
+    expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('standard')
     await user.click(screen.getByTestId('row-height-radio-small').querySelector('input')!)
     expect(useSettingsStore.getState().settings.appearance.rowHeight).toBe('small')
+  })
+
+  it('explains what the row height changes, and what it leaves alone', async () => {
+    const user = userEvent.setup()
+    render(<AppearanceSection />)
+    await user.hover(screen.getByTestId('setting-info-row-height'))
+    expect(await screen.findByText(/Height of every commit row in the graph/)).toBeVisible()
+    expect(screen.getByText(/Affects the commit graph only/)).toBeVisible()
+  })
+
+  it('lists the row heights smallest-first, without pixel values in their labels', () => {
+    render(<AppearanceSection />)
+    const labels = [
+      screen.getByTestId('row-height-radio-small'),
+      screen.getByTestId('row-height-radio-standard'),
+    ]
+    expect(labels[0].compareDocumentPosition(labels[1])).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(labels[0]).toHaveTextContent('Small')
+    expect(labels[1]).toHaveTextContent('Standard')
+    labels.forEach((label) => expect(label.textContent).not.toMatch(/px/))
   })
 
   it('switches the view switcher position', async () => {
@@ -179,7 +202,7 @@ describe('AppearanceSection — in-page search filtering', () => {
     // The unrelated settings are hidden.
     expect(screen.queryByTestId('setting-theme')).not.toBeInTheDocument()
     expect(screen.queryByTestId('setting-font-size')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('setting-density')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('setting-row-height')).not.toBeInTheDocument()
     // The matched word is highlighted in the visible label.
     expect(terminal.querySelector('mark')).toHaveTextContent(/terminal/i)
   })

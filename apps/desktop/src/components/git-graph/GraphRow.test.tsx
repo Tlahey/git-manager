@@ -109,6 +109,14 @@ beforeEach(() => {
   vi.clearAllMocks()
   lastRefLabelGroupProps.current = null
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  // Lane/band geometry below is the standard-row-height one (32px avatar), so pin that setting
+  // rather than inherit the app default, which is the small row height.
+  useSettingsStore.setState({
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'standard' },
+    },
+  })
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useGitStashes.mockReturnValue({ data: [] })
@@ -1007,7 +1015,7 @@ describe('GraphRow — remaining branch coverage', () => {
     expect(container.querySelector('.h-\\[24px\\]')).toBeTruthy()
   })
 
-  it('falls back to the standard row height when the setting is absent', () => {
+  it('falls back to the small default row height when the setting is absent', () => {
     useSettingsStore.setState((s) => ({
       ...s,
       settings: {
@@ -1016,7 +1024,7 @@ describe('GraphRow — remaining branch coverage', () => {
       },
     }))
     const { container } = renderRow({ columns: [col('graph')] })
-    expect(container.querySelector('.h-\\[32px\\]')).toBeTruthy()
+    expect(container.querySelector('.h-\\[24px\\]')).toBeTruthy()
   })
 })
 

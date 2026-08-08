@@ -28,8 +28,16 @@ function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
   }
 }
 
+// The positioning assertions below are written for the 32px (standard row height) avatar, so pin
+// that setting rather than inherit the app default, which is the small row height.
 beforeEach(() => {
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useSettingsStore.setState({
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'standard' },
+    },
+  })
 })
 
 describe('getAuthorInitials', () => {
