@@ -11,6 +11,7 @@ import { Monitor, Check, Lock } from 'lucide-react'
 import type { ViewSwitcherPosition } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
+import { SettingInfo } from './SettingInfo'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '../../../lib/themes'
@@ -133,11 +134,10 @@ export function AppearanceSection() {
     updateSettings({ appearance: { ...appearance, ...partial } })
   }
 
-  const densities: ToggleGroupOption<'compact' | 'normal' | 'comfortable'>[] = [
-    { value: 'compact', label: t('settings.appearance.density.compact') },
-    { value: 'normal', label: t('settings.appearance.density.normal') },
-    { value: 'comfortable', label: t('settings.appearance.density.comfortable') },
-  ]
+  // No density picker here on purpose: `appearance.density` had no consumer anywhere in the app,
+  // so the control changed a stored value and nothing on screen. The key is kept in the store and
+  // in `AppSettings` so a persisted value needs no migration — wiring it later means adding
+  // readers plus a picker back, not resurrecting one that lies.
 
   // Smallest first, so the row reads as an ascending scale — and leads with the default.
   const rowHeights: ToggleGroupOption<'small' | 'standard'>[] = [
@@ -349,32 +349,23 @@ export function AppearanceSection() {
         </NativeSelect>
       </FilterableSetting>
 
-      {/* Density */}
-      <FilterableSetting
-        className="space-y-2"
-        testId="setting-density"
-        match={`${t('settings.appearance.density')} density densité`}
-      >
-        <p className="text-xs font-medium text-foreground">
-          <Highlight text={t('settings.appearance.density')} />
-        </p>
-        <ToggleGroup
-          name="density"
-          value={appearance.density}
-          onValueChange={(density) => updateAppearance({ density })}
-          options={densities}
-        />
-      </FilterableSetting>
-
       {/* Row height */}
       <FilterableSetting
         className="space-y-2"
         testId="setting-row-height"
         match={`${t('settings.appearance.rowHeight')} row height hauteur ligne`}
       >
-        <p className="text-xs font-medium text-foreground">
-          <Highlight text={t('settings.appearance.rowHeight')} />
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium text-foreground">
+            <Highlight text={t('settings.appearance.rowHeight')} />
+          </p>
+          <SettingInfo
+            testId="setting-info-row-height"
+            label={t('settings.info.aria', { label: t('settings.appearance.rowHeight') })}
+            summary={t('settings.appearance.rowHeight.info')}
+            scope={t('settings.appearance.rowHeight.info.scope')}
+          />
+        </div>
         <ToggleGroup
           name="rowHeight"
           value={appearance.rowHeight ?? 'small'}
