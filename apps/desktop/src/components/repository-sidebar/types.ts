@@ -144,7 +144,7 @@ export const MIN_SECTION_BODY_HEIGHT = 120
  * flex container whose `overflow` is `visible` (the case here, unlike its `overflow-y-auto` body)
  * can otherwise refuse to shrink below the full height of its untruncated content, which produced
  * two distinct bugs (unbounded growth, then the following sections overlapping) before the floor was
- * pinned down here. With an explicit floor, the `flex-shrink` computation is unambiguous: if the sum
+ * pinned down here. With an explicit floor, the `shrink` computation is unambiguous: if the sum
  * of the open sections' floors exceeds the panel height, the whole section list becomes scrollable
  * (a single global scrollbar) instead of shrinking a section past legibility or letting sections
  * overlap.

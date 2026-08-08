@@ -91,7 +91,7 @@ export function ChangelogSection() {
           <Card
             key={entry.version}
             data-testid={`changelog-entry-${entry.version}`}
-            className="space-y-3 bg-card/25 p-4 shadow-sm"
+            className="space-y-3 bg-card/25 p-4 shadow-xs"
           >
             <div className="flex items-center gap-2">
               <h4 className="font-mono text-xs font-semibold text-foreground">

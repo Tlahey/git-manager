@@ -114,7 +114,7 @@ export function RepoSectionHeader({
           aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? t('dashboard.section.expand') : t('dashboard.section.collapse')}
           onClick={onToggleCollapse}
-          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {isCollapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />

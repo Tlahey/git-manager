@@ -29,7 +29,7 @@ export function useAiNotchRun(graceMs: number = AI_RUN_NOTCH_GRACE_MS): AiRun | 
   // The timer is only ever *pending* between two calls, so it must be cancellable from the effect
   // that starts the next one rather than merely re-created — otherwise a run that resumed inside the
   // grace period would still be retired by the first timer's expiry.
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     // The newest wins when several overlap: it is the one the user just triggered, the same rule the

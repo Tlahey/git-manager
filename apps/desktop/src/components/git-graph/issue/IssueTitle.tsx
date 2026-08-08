@@ -88,7 +88,7 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
       onClick={canEdit ? () => setEditing(true) : undefined}
       data-testid="issue-title"
       title={canEdit ? t('pr.title.editHint') : undefined}
-      className={`text-sm font-semibold [overflow-wrap:anywhere] ${canEdit ? 'cursor-text hover:opacity-80' : ''}`}
+      className={`text-sm font-semibold wrap-anywhere ${canEdit ? 'cursor-text hover:opacity-80' : ''}`}
     >
       <span className="text-foreground">{title}</span>{' '}
       <span className="whitespace-nowrap font-mono text-xs font-normal text-muted-foreground/60">

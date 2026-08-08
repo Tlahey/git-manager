@@ -55,7 +55,7 @@ export function NewTabPage() {
       data-testid="new-tab-page"
       className="flex h-full w-full flex-col overflow-hidden bg-background"
     >
-      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-sm">
+      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-xs">
         <GitMerge className="h-4 w-4 text-primary" />
         <h1 className="text-sm font-semibold tracking-wide text-foreground">{t('newTab.title')}</h1>
       </header>
@@ -117,7 +117,7 @@ export function NewTabPage() {
                 {t('newTab.noRecent')}
               </p>
             ) : (
-              <Card className="bg-card/30 shadow-sm">
+              <Card className="bg-card/30 shadow-xs">
                 {recentRepos.map((repo) => (
                   <RecentRepoRow
                     key={repo.path}

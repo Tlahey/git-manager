@@ -106,7 +106,7 @@ export function MacBookScreen({
           <div
             data-testid="macbook-menu-bar"
             aria-hidden="true"
-            className="absolute inset-x-0 top-0 flex items-center bg-black/45 text-white backdrop-blur-sm"
+            className="absolute inset-x-0 top-0 flex items-center bg-black/45 text-white backdrop-blur-xs"
             style={{ height: preset.menuBarHeight }}
           >
             <div className="flex min-w-0 flex-1 items-center gap-4 pl-4 text-[13px]">
@@ -154,7 +154,7 @@ export function MacBookScreen({
           <div
             aria-hidden="true"
             data-testid="macbook-crop-fade"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-transparent to-neutral-900"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-transparent to-neutral-900"
           />
         )}
       </div>

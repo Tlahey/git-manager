@@ -401,7 +401,7 @@ describe('SidebarSectionHeader', () => {
         onToggle={vi.fn()}
       />
     )
-    expect(container.querySelector('.lucide-filter')).toBeFalsy()
+    expect(container.querySelector('.lucide-funnel')).toBeFalsy()
 
     rerender(
       <SidebarSectionHeader
@@ -413,6 +413,6 @@ describe('SidebarSectionHeader', () => {
         isFiltered
       />
     )
-    expect(container.querySelector('.lucide-filter')).toBeTruthy()
+    expect(container.querySelector('.lucide-funnel')).toBeTruthy()
   })
 })

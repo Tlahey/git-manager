@@ -48,7 +48,7 @@ function TreeNode({
         aria-expanded={node.isDir ? expanded : undefined}
         className={cn(
           'flex w-full cursor-pointer items-center py-1 pr-2 text-left text-xs transition-colors',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring',
           isSelected
             ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
             : 'text-sidebar-foreground hover:bg-sidebar-accent/50'

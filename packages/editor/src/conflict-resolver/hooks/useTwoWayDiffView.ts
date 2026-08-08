@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { Monaco } from '@monaco-editor/react'
+import type * as monaco from 'monaco-editor'
 import { type InternalMergeView, buildDynamicMergeView } from '../twoWayView'
+
+// Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
+// type — see the comment in `useMergeScrollSync.ts` for why.
+type Monaco = typeof monaco
 
 /** A settled 2-panel diff, carried together with the exact texts it describes.
  *

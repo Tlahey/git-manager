@@ -9,8 +9,8 @@ import {
   Fragment,
   type ReactNode,
 } from 'react'
-import type { Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import type * as monaco from 'monaco-editor'
 import type { MergeBlock } from './types'
 import {
   ConflictResolverHeader,
@@ -40,6 +40,10 @@ import { useMergeHistory } from './conflict-resolver/hooks/useMergeHistory'
 import { useMergeActions } from './conflict-resolver/hooks/useMergeActions'
 import { useConflictNavigation } from './conflict-resolver/hooks/useConflictNavigation'
 import { useMergeDecorations } from './conflict-resolver/hooks/useMergeDecorations'
+
+// Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
+// type — see the comment in `useMergeScrollSync.ts` for why.
+type Monaco = typeof monaco
 
 /** One entry per pane, in visual order. 2 panels = side-by-side diff (original | modified),
  * read-only, block geometry computed live by Monaco's own diff engine. 3 panels = full merge

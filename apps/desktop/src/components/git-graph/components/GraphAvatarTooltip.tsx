@@ -63,7 +63,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
         {isStash ? (
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
+              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md',
               avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{
@@ -81,7 +81,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
           /* Merge commit: flat circle filled with the target branch's lane color, no avatar —
            * half the avatar's diameter so it reads as a plain graph node, not a person. */
           <div
-            className="cursor-pointer select-none rounded-full border border-background shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md"
+            className="cursor-pointer select-none rounded-full border border-background shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md"
             style={{
               width: avatarSize / 2,
               height: avatarSize / 2,
@@ -92,7 +92,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
           /* Avatar Circle */
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
+              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md',
               avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{

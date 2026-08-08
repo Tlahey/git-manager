@@ -116,7 +116,7 @@ export function WipCommitInput({
         onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
         placeholder="// WIP"
-        className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none"
+        className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-hidden"
       />
       {refInfo && <WipRefTag refInfo={refInfo} />}
       <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">

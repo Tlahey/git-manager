@@ -2,7 +2,13 @@ import { useCallback, useRef, type MutableRefObject } from 'react'
 import type { editor } from 'monaco-editor'
 import type { MergeBlock } from './types'
 import type { BlockPlacement } from './mergeBlockLayout'
-import type { Monaco } from '@monaco-editor/react'
+import type * as monaco from 'monaco-editor'
+
+// Typed against the module's own root export rather than `@monaco-editor/react`'s `Monaco` type:
+// that type resolves through a deep `monaco-editor/esm/vs/editor/editor.api` subpath that
+// typescript-go (oxlint's type-aware checker) can't follow through monaco-editor's package.json
+// `exports` map, silently widening it to `any` even though `tsc` resolves it fine.
+type Monaco = typeof monaco
 
 type Editor = editor.IStandaloneCodeEditor
 export type PaneIndex = 0 | 1 | 2

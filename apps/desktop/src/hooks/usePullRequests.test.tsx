@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
@@ -9,10 +9,11 @@ vi.mock('../api/github.api', async (importActual) => {
 })
 
 import { fetchRepoPRs } from '../api/github.api'
+import type { GhRawPR } from '../api/github/github-pulls.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { usePullRequests } from './usePullRequests'
 
-const mockedFetch = fetchRepoPRs as unknown as ReturnType<typeof vi.fn>
+const mockedFetch = fetchRepoPRs as unknown as Mock<typeof fetchRepoPRs>
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -21,9 +22,7 @@ function wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function rawPR(
-  overrides: Partial<Parameters<typeof mockedFetch>[0]> & Record<string, unknown> = {}
-) {
+function rawPR(overrides: Partial<GhRawPR> & Record<string, unknown> = {}) {
   return {
     number: 1,
     title: 'Add feature',

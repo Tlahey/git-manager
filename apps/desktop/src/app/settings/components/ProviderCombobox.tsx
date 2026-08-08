@@ -49,7 +49,7 @@ export function ProviderCombobox({
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width,280px)] p-0" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width,280px) p-0" align="start">
         <Command>
           <CommandInput data-testid="ai-provider-search" placeholder={searchPlaceholder} />
           <CommandList>

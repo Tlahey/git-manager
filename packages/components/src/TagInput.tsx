@@ -54,7 +54,7 @@ export function TagInput({ tags, onChange, placeholder, testId }: TagInputProps)
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ''}
-        className="placeholder:text-muted-foreground min-w-[80px] flex-1 bg-transparent text-xs outline-none"
+        className="placeholder:text-muted-foreground min-w-[80px] flex-1 bg-transparent text-xs outline-hidden"
       />
     </div>
   )

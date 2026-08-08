@@ -1,6 +1,10 @@
 import { Suspense, lazy, type ComponentType, type ReactNode } from 'react'
-import type { Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import type * as monaco from 'monaco-editor'
+
+// Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
+// type — see the comment in `useMergeScrollSync.ts` for why.
+type Monaco = typeof monaco
 
 /** The subset of `@monaco-editor/react`'s Editor props the pane relies on — hosts can inject
  * their own (pre-configured, shared-lazy) editor component as long as it honors these. */

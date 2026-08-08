@@ -53,7 +53,7 @@ export function NotificationDropdown() {
       <PopoverContent
         align="end"
         data-testid="notification-dropdown"
-        className="z-notification flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm"
+        className="z-notification flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-xs"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
@@ -122,7 +122,7 @@ export function NotificationDropdown() {
                           {formatRelativeTimestamp(notif.createdAt, t)}
                         </span>
                       </div>
-                      <p className="mt-0.5 line-clamp-2 break-words font-sans text-[10px] leading-snug text-muted-foreground">
+                      <p className="mt-0.5 line-clamp-2 wrap-break-word font-sans text-[10px] leading-snug text-muted-foreground">
                         {message}
                       </p>
                     </div>

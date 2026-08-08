@@ -425,7 +425,7 @@ describe('GitGraph — graph overflow zone', () => {
     expect(lastGraphRowCalls.current.at(-1)).toMatchObject({ graphScrollX: 43 })
     // 43 of the 60px hidden width consumed → 17 left of the 24px range, so the zone is mostly
     // withdrawn: refs 160 + 8px margin + overlayStart 83.67 (inner 112 - 40 × 17/24).
-    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '251.67000000000002px' })
+    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '251.67px' })
   })
 
   it('leaves a wheel outside the graph column to the commit list', () => {

@@ -48,7 +48,7 @@ export function MultiSelectDropdown({
         onClick={() => setOpen((v) => !v)}
         className={`flex h-7 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-all duration-150 ${
           activeCount > 0
-            ? 'border-primary/30 bg-primary/10 text-primary shadow-primary/5 shadow-sm'
+            ? 'border-primary/30 bg-primary/10 text-primary shadow-primary/5 shadow-xs'
             : open
               ? 'border-border/80 bg-accent/60 text-foreground'
               : 'border-border text-muted-foreground hover:border-border/80 hover:bg-accent/30 hover:text-foreground'

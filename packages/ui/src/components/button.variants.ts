@@ -15,7 +15,7 @@ export const buttonVariants = cva(
   // pointer-events-none disables hit-testing, which silently defeats disabled:cursor-not-allowed
   // (the cursor property never applies without hit-testing, so the "not-allowed" cursor would
   // never actually paint).
-  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-[var(--control-radius)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-(--control-radius) text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -25,15 +25,15 @@ export const buttonVariants = cva(
         // outline/ghost have no solid fill (page surface + accent hover). link has no
         // fill either but its text rides --link (defaults to --primary) so a
         // light-content theme can darken it for AA without touching --primary.
-        default: 'bg-button text-button-foreground shadow hover:enabled:bg-button/90',
+        default: 'bg-button text-button-foreground shadow-xs hover:enabled:bg-button/90',
         destructive:
-          'bg-button-destructive text-button-destructive-foreground shadow-sm hover:enabled:bg-button-destructive/90',
+          'bg-button-destructive text-button-destructive-foreground shadow-xs hover:enabled:bg-button-destructive/90',
         success:
-          'bg-button-success text-button-success-foreground shadow-sm hover:enabled:bg-button-success/90',
+          'bg-button-success text-button-success-foreground shadow-xs hover:enabled:bg-button-success/90',
         outline:
-          'border border-input bg-background shadow-sm hover:enabled:bg-accent hover:enabled:text-accent-foreground',
+          'border border-input bg-background shadow-xs hover:enabled:bg-accent hover:enabled:text-accent-foreground',
         secondary:
-          'bg-button-secondary text-button-secondary-foreground shadow-sm hover:enabled:bg-button-secondary/80',
+          'bg-button-secondary text-button-secondary-foreground shadow-xs hover:enabled:bg-button-secondary/80',
         ghost: 'hover:enabled:bg-accent hover:enabled:text-accent-foreground',
         link: 'text-link underline-offset-4 hover:enabled:underline',
       },

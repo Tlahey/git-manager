@@ -1,6 +1,10 @@
 import { useRef, type MutableRefObject } from 'react'
-import type { Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import type * as monaco from 'monaco-editor'
+
+// Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
+// type — see the comment in `useMergeScrollSync.ts` for why.
+type Monaco = typeof monaco
 
 /** All the per-pane imperative Monaco handles the resolver juggles, bundled in one stable
  * object so the extracted hooks can share them without ten separate ref parameters each.

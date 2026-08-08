@@ -146,7 +146,7 @@ export function TimelineScrubber({
                 onPreviewChange(index + 1)
               }
             }}
-            className="focus-visible:ring-ring focus-visible:ring-offset-card relative h-6 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="focus-visible:ring-ring focus-visible:ring-offset-card relative h-6 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2"
           >
             <div className="bg-muted absolute inset-x-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full" />
             <div

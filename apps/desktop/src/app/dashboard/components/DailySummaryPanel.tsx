@@ -93,7 +93,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {t('dashboard.summary.error')}
             </div>
-            <p className="break-words font-mono text-[11px] opacity-80">{error}</p>
+            <p className="wrap-break-word font-mono text-[11px] opacity-80">{error}</p>
             <Button
               variant="outline"
               size="sm"

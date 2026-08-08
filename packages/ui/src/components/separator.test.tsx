@@ -7,7 +7,7 @@ describe('Separator', () => {
     const { container } = render(<Separator data-testid="sep" />)
     const sep = container.querySelector('[data-testid="sep"]')!
     expect(sep).toHaveAttribute('data-orientation', 'horizontal')
-    expect(sep.className).toContain('h-[1px]')
+    expect(sep.className).toContain('h-px')
     expect(sep.className).toContain('w-full')
     // Decorative separators are hidden from the accessibility tree per the ARIA spec.
     expect(sep).toHaveAttribute('role', 'none')
@@ -18,7 +18,7 @@ describe('Separator', () => {
     const sep = container.querySelector('[data-testid="sep"]')!
     expect(sep).toHaveAttribute('data-orientation', 'vertical')
     expect(sep.className).toContain('h-full')
-    expect(sep.className).toContain('w-[1px]')
+    expect(sep.className).toContain('w-px')
   })
 
   it('exposes a "separator" role when explicitly non-decorative', () => {

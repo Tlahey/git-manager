@@ -36,6 +36,6 @@ describe('ScrollArea', () => {
     // The override has to target the wrapper Radix inserts, not our own child.
     const wrapper = viewport!.firstElementChild as HTMLElement
     expect(wrapper.style.display).toBe('table')
-    expect(viewport!.className).toContain('[&>div]:!block')
+    expect(viewport!.className).toContain('[&>div]:block!')
   })
 })

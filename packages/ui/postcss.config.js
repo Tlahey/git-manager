@@ -4,6 +4,6 @@
 // no-op there.
 export default {
   plugins: {
-    tailwindcss: {},
+    '@tailwindcss/postcss': {},
   },
 }

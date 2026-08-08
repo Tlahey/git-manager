@@ -198,7 +198,7 @@ export function PullRequestsPage() {
         <div className="relative flex h-full overflow-hidden bg-background">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Page Header */}
-            <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
+            <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-xs">
               <div className="flex items-center gap-2">
                 <Rocket className="h-4 w-4 text-primary" />
                 <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
@@ -252,7 +252,7 @@ export function PullRequestsPage() {
               data-testid="refresh-progress-bar"
             >
               {isValidating && (
-                <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent" />
+                <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-primary to-transparent" />
               )}
             </div>
 

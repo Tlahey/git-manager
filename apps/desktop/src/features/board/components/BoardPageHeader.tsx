@@ -65,7 +65,7 @@ export function BoardPageHeader({
   const isClosed = Boolean(activeBoard?.closedAt)
 
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
+    <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-xs">
       <div className="flex items-center gap-2">
         <Kanban className="h-4 w-4 text-primary" />
         <h1 className="text-sm font-bold tracking-wide text-foreground">{t('tabLabel')}</h1>

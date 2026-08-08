@@ -179,7 +179,7 @@ export function FollowedPRsTab({
                     e.stopPropagation()
                     onRemoveFollowed(pr.id)
                   }}
-                  className="absolute right-10 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 hover:border-destructive/20 hover:text-destructive group-hover/followed:opacity-100"
+                  className="absolute right-10 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-xs backdrop-blur-xs transition-all duration-150 hover:border-destructive/20 hover:text-destructive group-hover/followed:opacity-100"
                   title={t('followed.unfollow')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

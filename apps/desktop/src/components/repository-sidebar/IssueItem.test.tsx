@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MockIssue } from '../../app/pull-requests/types'
 import { IssueItem } from './IssueItem'
@@ -161,7 +161,7 @@ describe('IssueItem — hover preview', () => {
       expect(screen.queryByTestId('issue-hover-card-12')).not.toBeInTheDocument()
 
       fireEvent.mouseEnter(screen.getByTestId('issue-item-12'))
-      await vi.advanceTimersByTimeAsync(500)
+      await act(() => vi.advanceTimersByTimeAsync(500))
 
       expect(screen.getByTestId('issue-hover-card-12')).toBeInTheDocument()
       expect(screen.getByText('bug')).toBeInTheDocument()

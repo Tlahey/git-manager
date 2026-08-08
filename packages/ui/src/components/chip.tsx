@@ -28,7 +28,7 @@ const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       className={cn(
         'cursor-pointer rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
         active
-          ? 'border-button bg-button font-bold text-button-foreground shadow-sm'
+          ? 'border-button bg-button font-bold text-button-foreground shadow-xs'
           : 'border-border bg-card/30 text-inherit hover:bg-card/60',
         className
       )}

@@ -109,7 +109,7 @@ export function RepoSection({
         (repos.length === 0 ? (
           <p className="py-1 pl-8 text-[11px] italic text-muted-foreground/60">{emptyLabel}</p>
         ) : (
-          <Card className="relative divide-y divide-border/20 bg-card/30 shadow-sm">
+          <Card className="relative divide-y divide-border/20 bg-card/30 shadow-xs">
             {repos.map((repo) => {
               const saved = savedByPath.get(repo.path)
               return (

@@ -260,7 +260,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             if (!open) setShortcutQuery('')
           }}
         >
-          <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur">
+          <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur-xs">
             <DialogHeader className="border-b border-border pb-3">
               <DialogTitle className="flex items-center gap-2 text-sm font-semibold tracking-wide">
                 <Keyboard className="h-4 w-4 text-primary" />
@@ -337,7 +337,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                 activeTab === REWARDS_TAB
                   ? // Light-violet pill + near-black label (button component tokens): the old
                     // text-primary violet sat at ~4.4:1 on the dark chrome footer (below AA).
-                    'border-button bg-button font-bold text-button-foreground shadow-sm'
+                    'border-button bg-button font-bold text-button-foreground shadow-xs'
                   : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
               }`}
               title={t('footer.rewardsTooltip')}
@@ -392,7 +392,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             onClick={() => onOpenSettings('changelog')}
             title={t('footer.viewChangelog')}
             data-testid="footer-version-button"
-            className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm transition-colors hover:border-primary/50 hover:text-primary"
+            className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-xs transition-colors hover:border-primary/50 hover:text-primary"
           >
             <span>{t('footer.version', { version: appVersion })}</span>
           </button>

@@ -291,7 +291,7 @@ function PrSimulator() {
           onChange={(e) => setPrId(e.target.value)}
           aria-label="Pull request"
           data-testid="debug-sim-pr"
-          className="h-7 flex-1 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-7 flex-1 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
         >
           {mockPRs.map((pr) => (
             <option key={pr.id} value={pr.id}>
@@ -305,7 +305,7 @@ function PrSimulator() {
           onChange={(e) => setAction(e.target.value as SimulatedChange)}
           aria-label="Simulated change"
           data-testid="debug-sim-action"
-          className="h-7 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-7 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
         >
           <option value="merge">{t('notifications.sim.prMerged')}</option>
           <option value="close">{t('notifications.sim.prClosed')}</option>

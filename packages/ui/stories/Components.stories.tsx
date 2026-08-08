@@ -282,7 +282,7 @@ export const Overview: Story = {
             A themed surface panel — border, fill and text ride the card tokens.
           </p>
         </Card>
-        <Card className="w-64 bg-card/30 p-4 shadow-sm">
+        <Card className="w-64 bg-card/30 p-4 shadow-xs">
           <p className="mb-1 text-sm font-semibold text-foreground">Translucent</p>
           <p className="text-xs text-muted-foreground">bg-card/30 over the surface.</p>
         </Card>

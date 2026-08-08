@@ -127,7 +127,7 @@ export function TimelineBar({ repoPath }: TimelineBarProps) {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-overlay">
-      <div className="pointer-events-auto absolute bottom-3 right-3 top-3 flex w-60 flex-col rounded-2xl border border-border bg-card/95 p-3 shadow-[0_20px_52px_-10px_rgba(0,0,0,0.55)] backdrop-blur">
+      <div className="pointer-events-auto absolute bottom-3 right-3 top-3 flex w-60 flex-col rounded-2xl border border-border bg-card/95 p-3 shadow-[0_20px_52px_-10px_rgba(0,0,0,0.55)] backdrop-blur-xs">
         <TimelineStepsPanel
           steps={model.steps}
           previewIndex={clampedPreview}

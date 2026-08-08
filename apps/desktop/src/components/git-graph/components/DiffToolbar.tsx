@@ -83,13 +83,13 @@ export function DiffToolbar({
   return (
     // `diff-toolbar` declares the container the labels' folding is queried against — see
     // diffToolbar.css. The browser owns that decision entirely; nothing here re-renders for it.
-    <div className="diff-toolbar flex shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border bg-card px-4 py-3 shadow-sm">
+    <div className="diff-toolbar flex shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border bg-card px-4 py-3 shadow-xs">
       {/* Left Side: Back button + File info */}
       {/* `overflow-hidden` is what makes an overlap impossible rather than unlikely: this column is
           the only one allowed to shrink, and without it its badges and path keep their intrinsic
           width and paint straight over the tabs once the pane gets tight. Clipping is the graceful
           failure; the folding in diffToolbar.css is what keeps it from being reached at all. */}
-      <div className="flex min-w-[11rem] flex-1 items-center gap-3 overflow-hidden">
+      <div className="flex min-w-44 flex-1 items-center gap-3 overflow-hidden">
         <Tooltip content={t('actions.backToGraph')}>
           <Button
             variant="ghost"
@@ -280,7 +280,7 @@ function ViewTab({
         className={cn(
           'diff-toolbar-tab flex cursor-pointer items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
           isActive
-            ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+            ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-xs'
             : 'text-muted-foreground hover:text-foreground'
         )}
       >

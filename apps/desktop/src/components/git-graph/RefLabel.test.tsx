@@ -78,11 +78,11 @@ describe('RefLabel — local branches', () => {
   it('darkens the tinted background while hovered', () => {
     render(<RefLabel gitRef={ref({ shortName: 'feature-x' })} color="#ff0000" />)
     const badge = screen.getByTestId('ref-label-branch-feature-x')
-    expect(badge.style.backgroundImage).toContain('#ff000025')
+    expect(badge.style.backgroundImage).toContain('rgba(255, 0, 0, 0.145)')
     fireEvent.mouseEnter(badge)
-    expect(badge.style.backgroundImage).toContain('#ff000045')
+    expect(badge.style.backgroundImage).toContain('rgba(255, 0, 0, 0.27)')
     fireEvent.mouseLeave(badge)
-    expect(badge.style.backgroundImage).toContain('#ff000025')
+    expect(badge.style.backgroundImage).toContain('rgba(255, 0, 0, 0.145)')
   })
 })
 

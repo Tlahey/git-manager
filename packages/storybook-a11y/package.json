@@ -20,13 +20,13 @@
   "dependencies": {
     "@git-manager/theme": "workspace:*",
     "apca-check": "^0.1.1",
-    "axe-core": "^4.10.2"
+    "axe-core": "catalog:"
   },
   "peerDependencies": {
     "@storybook/react-vite": "*",
     "@testing-library/react": "*",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
     "vitest": "*"
   },
   "devDependencies": {

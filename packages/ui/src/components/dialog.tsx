@@ -9,7 +9,7 @@ const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
 
 const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
@@ -85,7 +85,7 @@ const DialogDragStrip = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
 DialogDragStrip.displayName = 'DialogDragStrip'
 
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, position = 'center', size = 'md', ...props }, ref) => (
   <DialogPortal>
@@ -110,13 +110,26 @@ const DialogContent = React.forwardRef<
       symmetry: `animate-in` itself sets `animation-duration`, and Tailwind emits variant rules
       after plain ones, so an unprefixed duration here would be overwritten back to the plugin's
       150ms default. Verified against the compiled CSS.
+
+      Centering uses `transform-[translate(-50%,-50%)]`, not Tailwind v4's `translate-x-[-50%]
+      translate-y-[-50%]` utilities — those write to the modern CSS `translate` property, a
+      *separate* property from `transform`. `tw-animate-css`'s enter/exit keyframes still animate
+      the legacy `transform` property (`translate3d(...)`), so with the v4 utilities the slide-in
+      offset (`slide-in-from-left-1/2`/`slide-in-from-top-[48%]`, itself a `transform`) ADDED to
+      the static `-50%/-50%` centering instead of replacing it — the dialog visibly flew in from
+      well past its slide-in offset, past top-left, instead of the intended subtle settle into
+      place. Setting the static center via `transform` directly means the keyframe's `transform`
+      (which owns the *whole* property during the animation, per how CSS animations composite)
+      overrides it for the animation's duration and hands back control once
+      `--tw-animation-fill-mode: none` lets the specified value reapply — one combined offset
+      again, matching the pre-v4 behavior this was tuned for.
     */}
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         'fixed z-popover border border-border bg-background shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:animate-duration-200 data-[state=open]:animate-duration-200',
         position === 'center'
-          ? 'left-[50%] top-[50%] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg p-6 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]'
+          ? 'left-[50%] top-[50%] grid w-full transform-[translate(-50%,-50%)] gap-4 rounded-lg p-6 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]'
           : 'inset-y-0 right-0 flex max-w-none flex-col border-y-0 border-r-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
         // Between the position block and `className` so a caller's own `max-w-*` still wins —
         // `BoardCardDialog` sets an exact pixel width and must keep it.
@@ -126,7 +139,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <DialogPrimitive.Close className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -156,7 +169,7 @@ function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogFooter.displayName = 'DialogFooter'
 
 const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
@@ -168,7 +181,7 @@ const DialogTitle = React.forwardRef<
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description

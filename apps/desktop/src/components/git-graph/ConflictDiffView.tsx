@@ -87,7 +87,7 @@ export function ConflictDiffView({
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 animate-duration-100">
       {/* TOOLBAR — mirrors DiffToolbar's back-button + path-split layout */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-xs">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"

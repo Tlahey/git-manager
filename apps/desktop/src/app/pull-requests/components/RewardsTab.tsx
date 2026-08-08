@@ -87,7 +87,7 @@ export function RewardsTab() {
             Twilight it opts into the dark nav-chrome palette instead of the light --card,
             keeping the "Rang Git Actuel" subtitle and progress track legible. */}
         <div
-          className={`chrome-surface flex flex-col gap-3 rounded-xl border bg-sidebar p-4 shadow-md backdrop-blur-sm ${rankGlow}`}
+          className={`chrome-surface flex flex-col gap-3 rounded-xl border bg-sidebar p-4 shadow-md backdrop-blur-xs ${rankGlow}`}
         >
           <div className="flex items-center gap-3">
             <div
@@ -113,7 +113,7 @@ export function RewardsTab() {
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-black/30">
               <div
-                className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                className="h-full bg-linear-to-r from-primary to-accent transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -121,7 +121,7 @@ export function RewardsTab() {
         </div>
 
         {/* Trophy Cabinet stats */}
-        <Card className="col-span-1 flex flex-col justify-between rounded-xl bg-card/40 p-4 shadow-md backdrop-blur-sm md:col-span-2">
+        <Card className="col-span-1 flex flex-col justify-between rounded-xl bg-card/40 p-4 shadow-md backdrop-blur-xs md:col-span-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t('rewards.trophyCabinet')}
@@ -277,7 +277,7 @@ export function RewardsTab() {
                       data-testid={`achievement-card-${item.id}`}
                       className={`flex items-start gap-3 rounded-lg border p-3 transition-all ${
                         item.unlocked
-                          ? 'border-border/80 bg-card/30 shadow-sm'
+                          ? 'border-border/80 bg-card/30 shadow-xs'
                           : 'border-border/30 bg-card/10 opacity-70'
                       } ${isPrereqLocked ? 'bg-black/5 opacity-40' : ''}`}
                     >

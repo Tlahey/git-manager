@@ -190,21 +190,21 @@ export function ConflictResolverHeader({
               </span>
               <button
                 onClick={onApplyLeft}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-left-btn"
               >
                 {applyLeftLabel}
               </button>
               <button
                 onClick={onApplyAll}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-all-btn"
               >
                 {applyAllLabel}
               </button>
               <button
                 onClick={onApplyRight}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-right-btn"
               >
                 {applyRightLabel}

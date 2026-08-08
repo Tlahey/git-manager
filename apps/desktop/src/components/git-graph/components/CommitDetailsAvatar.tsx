@@ -33,7 +33,7 @@ export function CommitDetailsAvatar({ name, email }: CommitDetailsAvatarProps) {
   if (isMe && frameClass) {
     return (
       <div
-        className={`flex shrink-0 items-center justify-center rounded-full p-[1px] ${frameClass}`}
+        className={`flex shrink-0 items-center justify-center rounded-full p-px ${frameClass}`}
       >
         {avatarEl}
       </div>

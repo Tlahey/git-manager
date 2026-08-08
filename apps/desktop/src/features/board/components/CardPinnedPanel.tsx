@@ -123,7 +123,7 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
           aria-label={t('card.meta.clearDueDate')}
           onClick={() => void onPatch({ dueDate: null })}
           data-testid="card-due-date-clear"
-          className="ml-[5.5rem] flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="ml-22 flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <X className="h-3 w-3" />
           {t('card.meta.clearDueDate')}

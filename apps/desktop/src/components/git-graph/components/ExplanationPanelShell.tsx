@@ -202,10 +202,10 @@ export function ExplanationPanelShell({
       <ScrollArea className="w-full min-w-0 flex-1">
         <div className="w-full min-w-0 px-4 py-4">
           {status === 'error' ? (
-            // `break-words`: an undecoded error is a raw provider payload — a JSON blob or a URL
+            // `wrap-break-word`: an undecoded error is a raw provider payload — a JSON blob or a URL
             // with no space in it, which would otherwise run off the panel's right edge. The
             // markdown body below sets this for itself; this paragraph is outside it.
-            <p data-testid="explanation-error" className="break-words text-xs text-tone-danger">
+            <p data-testid="explanation-error" className="wrap-break-word text-xs text-tone-danger">
               {aiErrorMessage(error ?? '', tErrors)}
             </p>
           ) : text ? (

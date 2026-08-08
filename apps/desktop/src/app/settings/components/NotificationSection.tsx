@@ -167,7 +167,7 @@ export function NotificationSection() {
                         })
                       }
                       aria-label={t('notifications.settings.displayStyle')}
-                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-hidden transition-colors hover:border-accent-foreground/30 focus:border-primary"
                     >
                       {DISPLAY_STYLE_OPTIONS.map(({ value, labelKey }) => (
                         <option key={value} value={value}>
@@ -202,7 +202,7 @@ export function NotificationSection() {
                         updateNotifications({ displayDurationMs: Number(e.target.value) })
                       }
                       aria-label={t('notifications.settings.displayDuration')}
-                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-hidden transition-colors hover:border-accent-foreground/30 focus:border-primary"
                     >
                       {DISPLAY_DURATION_OPTIONS_MS.map((ms) => (
                         <option key={ms} value={ms}>
@@ -295,7 +295,7 @@ export function NotificationSection() {
                     aria-label={t('notifications.settings.soundType')}
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
-                    className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                    className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-hidden transition-colors hover:border-accent-foreground/30 focus:border-primary"
                   >
                     <option value="default">Default</option>
                     <option value="Glass">Glass</option>

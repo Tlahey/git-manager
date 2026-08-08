@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 
 vi.mock('../lib/tauri', async () => {
   const actual = await vi.importActual<typeof import('../lib/tauri')>('../lib/tauri')
@@ -46,7 +46,7 @@ vi.mock('../lib/tauri', async () => {
 
 import * as tauri from '../lib/tauri'
 import * as api from './git.api'
-import { appEventBus } from '../lib/appEventBus'
+import { appEventBus, type AppEventListener } from '../lib/appEventBus'
 import { remoteOperationKey, useRemoteProgressStore } from '../stores/remoteProgress.store'
 
 /** An `Error` shaped like `toReadableError` produces for an `AppError::HookFailed` payload. */
@@ -79,11 +79,11 @@ describe('apiCopyCommitSha', () => {
 })
 
 describe('stage/unstage — appEventBus interoperability', () => {
-  let listener: ReturnType<typeof vi.fn>
+  let listener: Mock<AppEventListener>
   let unsubscribe: () => void
 
   beforeEach(() => {
-    listener = vi.fn()
+    listener = vi.fn<AppEventListener>()
     unsubscribe = appEventBus.subscribe(listener)
     mocked.stageFile.mockResolvedValue(undefined)
     mocked.unstageFile.mockResolvedValue(undefined)

@@ -159,7 +159,7 @@ export function GithubSection() {
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="github-device-verification-link"
-                    className="hover:bg-primary-hover inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors"
+                    className="hover:bg-primary-hover inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs transition-colors"
                   >
                     <span>{t('settings.github.openActivationPage')}</span>
                     <ExternalLink className="h-3 w-3" />

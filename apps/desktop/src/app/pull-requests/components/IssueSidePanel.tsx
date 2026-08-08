@@ -27,7 +27,7 @@ export function IssueSidePanel({ issue, onClose, onChanged }: IssueSidePanelProp
       data-testid="launchpad-issue-panel-overlay"
     >
       <div
-        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/70 backdrop-blur-xs"
         onClick={onClose}
         data-testid="launchpad-issue-panel-backdrop"
       />

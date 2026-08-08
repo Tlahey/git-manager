@@ -21,7 +21,7 @@ export function SupportSection() {
 
       <div className="h-px bg-border" />
 
-      <Card className="space-y-3 bg-card/25 p-4 shadow-sm">
+      <Card className="space-y-3 bg-card/25 p-4 shadow-xs">
         <p className="text-xs text-muted-foreground">{t('settings.support.hint')}</p>
         <Button
           size="sm"

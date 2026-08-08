@@ -108,7 +108,7 @@ export function RepoRow({
               e.stopPropagation()
               togglePin(path)
             }}
-            className={`shrink-0 cursor-pointer rounded transition-opacity duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`shrink-0 cursor-pointer rounded transition-opacity duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
               isPinned
                 ? 'text-amber-500'
                 : 'text-muted-foreground/40 opacity-0 hover:text-amber-500 focus-visible:opacity-100 group-hover/row:opacity-100'
@@ -131,7 +131,7 @@ export function RepoRow({
               e.stopPropagation()
               handleActivate()
             }}
-            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/row:text-primary"
+            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring group-hover/row:text-primary"
           >
             {name}
           </button>

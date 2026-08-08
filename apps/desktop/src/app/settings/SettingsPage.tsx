@@ -372,7 +372,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('settings.search.placeholder')}
               data-testid="settings-search"
-              className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
             />
           </div>
 
