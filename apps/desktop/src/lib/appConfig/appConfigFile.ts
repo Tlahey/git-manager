@@ -98,9 +98,13 @@ function parseDocument(contents: string | null): {
     const versions = (raw.versions ?? {}) as Partial<Record<ConfigSection, number>>
     return { sections: raw, versions }
   } catch (e) {
-    // Reported, not repaired: the next write rebuilds the file (see `services/app_config.rs`), and
-    // the user gets their defaults rather than a dead app.
-    console.error('The configuration file could not be parsed; starting from defaults:', e)
+    // Reported, not repaired here: the next write rebuilds the file, having first moved the
+    // unreadable one to `settings.json.corrupt` (see `services/app_config.rs`) — so the user gets
+    // their defaults rather than a dead app, and what they had is still recoverable by hand.
+    console.error(
+      'The configuration file could not be parsed; starting from defaults. The previous one is kept as ~/.git-manager/settings.json.corrupt:',
+      e
+    )
     return { sections: {}, versions: {} }
   }
 }

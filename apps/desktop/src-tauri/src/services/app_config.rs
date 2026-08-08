@@ -108,11 +108,15 @@ pub(crate) fn write_section_in(
     let mut document = match read_from(dir)? {
         // A file that no longer parses is rebuilt rather than treated as fatal: refusing to write
         // would leave the user unable to change a single setting until they deleted it by hand, and
-        // the frontend has already reported the parse failure it saw on the way in.
-        Some(contents) => serde_json::from_str::<Value>(&contents)
-            .ok()
-            .and_then(|v| v.as_object().cloned())
-            .unwrap_or_default(),
+        // the frontend has already reported the parse failure it saw on the way in. Its contents are
+        // set aside first — see `preserve_unparseable`.
+        Some(contents) => match serde_json::from_str::<Value>(&contents) {
+            Ok(Value::Object(document)) => document,
+            _ => {
+                preserve_unparseable(dir);
+                Map::new()
+            }
+        },
         None => Map::new(),
     };
 
@@ -134,6 +138,35 @@ pub(crate) fn write_section_in(
     }
 
     write_document(dir, &Value::Object(document))
+}
+
+/// Where a configuration that no longer parses is put before it is rebuilt.
+const CORRUPT_FILE_NAME: &str = "settings.json.corrupt";
+
+/// Moves an unparseable configuration aside instead of overwriting it.
+///
+/// The file is meant to be opened and hand-edited, so "I broke it editing it" is a normal way to
+/// arrive here — and the very next write would otherwise replace the only copy of what the user had
+/// with a document rebuilt from nothing. Renaming keeps their settings recoverable by hand, which
+/// matters most for what cannot be re-derived: the AI provider's configuration, the per-repository
+/// overrides, the trophies.
+///
+/// Best effort on purpose: every failure here is swallowed, because refusing to save the user's
+/// current change to protect a copy of a broken file gets the priority backwards. Only the most
+/// recent breakage is kept — a second one replaces the first, which is the same choice `.orig` files
+/// and editor backups make.
+fn preserve_unparseable(dir: &Path) {
+    let corrupt = dir.join(CORRUPT_FILE_NAME);
+    if fs::rename(dir.join(FILE_NAME), &corrupt).is_err() {
+        return;
+    }
+    // The salvaged copy carries the same secrets as the original (see FILE_MODE), and `rename`
+    // preserves whatever mode the file already had — which is `0644` for one an older build wrote.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&corrupt, fs::Permissions::from_mode(FILE_MODE));
+    }
 }
 
 /// Owner-only (`rw-------`).
@@ -254,6 +287,53 @@ mod tests {
 
         write_section_in(&dir, "settings", 1, json!({ "language": "fr" })).unwrap();
         assert_eq!(document(&dir)["settings"]["language"], json!("fr"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn keeps_an_unparseable_file_aside_rather_than_overwriting_it() {
+        // The file is meant to be hand-edited, so breaking it is a normal way to get here — and the
+        // next write is what would otherwise destroy the only copy of the user's settings.
+        let dir = temp_dir("corrupt-backup");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(FILE_NAME), "{ \"settings\": { oops").unwrap();
+
+        write_section_in(&dir, "settings", 1, json!({ "language": "fr" })).unwrap();
+
+        let salvaged = fs::read_to_string(dir.join(CORRUPT_FILE_NAME)).unwrap();
+        assert_eq!(salvaged, "{ \"settings\": { oops");
+        assert_eq!(document(&dir)["settings"]["language"], json!("fr"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_salvaged_copy_is_owner_only_too() {
+        // It carries the same tokens as the original, and `rename` would otherwise keep the `0644`
+        // an older build left on it.
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp_dir("corrupt-mode");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(FILE_NAME), "{ not json").unwrap();
+        fs::set_permissions(dir.join(FILE_NAME), fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_section_in(&dir, "settings", 1, json!({})).unwrap();
+
+        let mode = fs::metadata(dir.join(CORRUPT_FILE_NAME))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, FILE_MODE);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_valid_file_is_never_moved_aside() {
+        let dir = temp_dir("corrupt-none");
+        write_section_in(&dir, "settings", 1, json!({ "language": "fr" })).unwrap();
+        write_section_in(&dir, "settings", 1, json!({ "language": "en" })).unwrap();
+
+        assert!(!dir.join(CORRUPT_FILE_NAME).exists());
         let _ = fs::remove_dir_all(&dir);
     }
 

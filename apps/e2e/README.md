@@ -205,10 +205,38 @@ the native picker" step is skipped.
 > configuration — settings, open tabs, known repositories, dashboard, graph columns, rewards — into
 > that file (`apps/desktop/src/lib/appConfig/`). The suite runs with `GIT_MANAGER_NO_CONFIG=1`
 > (`onPrepare` → `disableAppConfigFile`), which switches the file off entirely: the app under test
-> reads and writes *nothing* there, and every one of those stores falls back to the `localStorage`
+> reads and writes _nothing_ there, and every one of those stores falls back to the `localStorage`
 > key it used before the file existed. So the seeds here are still the right ones, and no run can
 > reach a developer's real configuration whatever `$HOME` resolves to.
+>
+> The configuration path itself is covered by `check-config-file.ts` — see below.
 
+## The configuration file, checked outside the suite
+
+```bash
+pnpm build:e2e && pnpm fixture:build          # once
+pnpm --filter @git-manager/e2e check:config
+```
+
+Because every scenario above runs with the configuration file **off**, nothing in the cucumber suite
+ever exercises the path that actually ships. `check-config-file.ts` closes that hole from its own
+process: scratch `$HOME`, configuration **on**, a real launch of the real binary, and no WebDriver
+at all — a scenario could not do it, since the app is spawned once for the whole run, long before
+any scenario decides anything.
+
+It seeds a `settings.json` naming a fixture repository in `workspace.openTabs`, launches the app,
+and asserts from the **activity log** (`~/.git-manager/activity-logs/*.jsonl`, which records every
+IPC round-trip with its repository path) that the app opened exactly that repository — which only
+happens if Rust read the file, zod validated it and `repoUI.store` rehydrated from it. Then that the
+app wrote back into the same file, that the sections it didn't touch survived, and that the file is
+still `0600`.
+
+Verified to fail for the right reason: run it with `GIT_MANAGER_NO_CONFIG=1` forced and three of the
+six checks go red — no repository opened, no write reaching the disk, and the file left at the mode
+the seed gave it.
+
+Don't run it at the same time as a wdio run: two app instances competing for the CPU is exactly what
+poisons a suite (see COVERAGE.md).
 
 ## Visual snapshots
 
