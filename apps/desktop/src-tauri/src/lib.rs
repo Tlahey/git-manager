@@ -36,7 +36,7 @@ use commands::commit::{
     create_commit, discard_file_changes, get_commit_file_vs_workdir, get_file_diff,
     get_file_raw_contents, get_staged_diff, stage_all, stage_file, unstage_all, unstage_file,
 };
-use commands::config::{read_app_config, write_app_config_section};
+use commands::config::{get_app_config_path, read_app_config, write_app_config_section};
 use commands::conflict::{
     auto_merge_conflict_view, get_merge_view, list_conflicted_files, resolve_conflict,
     resolve_conflict_binary,
@@ -345,6 +345,7 @@ pub fn run() {
             // Configuration file (~/.git-manager/settings.json)
             read_app_config,
             write_app_config_section,
+            get_app_config_path,
             // Themes
             get_user_themes,
             set_window_vibrancy,

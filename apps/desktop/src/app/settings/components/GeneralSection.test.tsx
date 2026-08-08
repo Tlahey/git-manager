@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-  i18next: { changeLanguage: vi.fn() },
-}))
-const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
-vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
-
 import { i18next } from '@git-manager/i18n'
 import { GeneralSection } from './GeneralSection'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -18,8 +11,10 @@ const INITIAL_SETTINGS = useSettingsStore.getState()
 beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  // Spied rather than mocked: the suite renders real English copy (vitest.setup.ts initialises
+  // i18n), so switching the live language here would leak into every later test in the run.
+  vi.spyOn(i18next, 'changeLanguage').mockResolvedValue(((key: string) => key) as never)
 })
-
 
 describe('GeneralSection — language', () => {
   it('switches language via the dropdown: updates the store and i18next', async () => {
@@ -135,13 +130,5 @@ describe('GeneralSection — scan settings', () => {
     await user.clear(input)
     await user.type(input, '7')
     expect(useSettingsStore.getState().settings.advanced.maxScanDepth).toBe(7)
-  })
-
-  it('opens the data folder via the shell plugin', async () => {
-    pluginOpen.mockResolvedValue(undefined)
-    const user = userEvent.setup()
-    render(<GeneralSection />)
-    await user.click(screen.getByText('settings.advanced.openDataFolder'))
-    expect(pluginOpen).toHaveBeenCalledWith('~/.config/git-manager/')
   })
 })

@@ -557,6 +557,10 @@ export const readAppConfig = () => invoke<AppConfigLoad>('read_app_config')
 export const writeAppConfigSection = (section: string, version: number, value: unknown) =>
   invoke<void>('write_app_config_section', { section, version, value })
 
+/** Absolute path of the configuration file, for Settings to show and reveal. `null` when there is
+ * none to point at — the configuration is switched off, or the home directory is unresolvable. */
+export const getAppConfigPath = () => invoke<string | null>('get_app_config_path')
+
 // ─── Themes ───────────────────────────────────────────────────────────────────
 
 export const getUserThemes = () => invoke<UserTheme[]>('get_user_themes')

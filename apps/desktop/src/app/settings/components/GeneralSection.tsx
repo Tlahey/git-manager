@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
+import { Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
+import { ConfigFileSetting } from './ConfigFileSetting'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 
@@ -38,11 +39,6 @@ export function GeneralSection() {
     updateSettings({ advanced: { ...advanced, ...partial } })
   }
 
-  async function handleOpenDataFolder() {
-    const { open } = await import('@tauri-apps/plugin-shell')
-    await open('~/.config/git-manager/').catch(() => {})
-  }
-
   const languages: { value: 'en' | 'fr'; label: string; flag: string }[] = [
     { value: 'en', label: t('settings.language.en'), flag: '🇬🇧' },
     { value: 'fr', label: t('settings.language.fr'), flag: '🇫🇷' },
@@ -56,7 +52,7 @@ export function GeneralSection() {
         testId="setting-language"
         match={`${t('settings.language.title')} language langue english français anglais francais`}
       >
-        <p className="text-xs font-medium text-foreground">
+        <p className="text-foreground text-xs font-medium">
           <Highlight text={t('settings.language.title')} />
         </p>
         <NativeSelect
@@ -80,12 +76,12 @@ export function GeneralSection() {
         match={`${t('settings.git.defaultName')} ${t('settings.git.defaultEmail')} git identity author name email identité auteur nom courriel adresse`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-xs font-semibold text-foreground">
+        <h4 className="text-foreground text-xs font-semibold">
           <Highlight text={t('settings.git.identityTitle')} />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.git.defaultName')}
           </label>
           <Input
@@ -96,7 +92,7 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.git.defaultEmail')}
           </label>
           <Input
@@ -115,7 +111,7 @@ export function GeneralSection() {
         match={`${t('settings.git.fetchTitle')} ${t('settings.git.autoPrune')} ${t('settings.git.autoFetchInterval')} fetch prune récupération élaguer intervalle`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-xs font-semibold text-foreground">
+        <h4 className="text-foreground text-xs font-semibold">
           <Highlight text={t('settings.git.fetchTitle')} />
         </h4>
 
@@ -125,11 +121,11 @@ export function GeneralSection() {
             checked={git.autoPrune ?? true}
             onChange={(e) => updateGit({ autoPrune: e.target.checked })}
           />
-          <span className="text-xs text-foreground">{t('settings.git.autoPrune')}</span>
+          <span className="text-foreground text-xs">{t('settings.git.autoPrune')}</span>
         </label>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.git.autoFetchInterval')}
           </label>
           <Input
@@ -145,7 +141,7 @@ export function GeneralSection() {
             }}
             className="h-8 w-24 text-xs"
           />
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
             {t('settings.git.autoFetchIntervalHint')}
           </p>
         </div>
@@ -158,12 +154,12 @@ export function GeneralSection() {
         match={`${t('settings.git.graphTitle')} ${t('settings.git.initialGraphCommits')} ${t('settings.git.lazyLoadGraphCommits')} graph graphe commits lazy chargement`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-xs font-semibold text-foreground">
+        <h4 className="text-foreground text-xs font-semibold">
           <Highlight text={t('settings.git.graphTitle')} />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.git.initialGraphCommits')}
           </label>
           <Input
@@ -187,7 +183,7 @@ export function GeneralSection() {
             }}
             className="h-8 w-28 text-xs"
           />
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
             {t('settings.git.initialGraphCommitsHint')}
           </p>
         </div>
@@ -198,7 +194,7 @@ export function GeneralSection() {
             checked={git.lazyLoadGraphCommits ?? true}
             onChange={(e) => updateGit({ lazyLoadGraphCommits: e.target.checked })}
           />
-          <span className="text-xs text-foreground">{t('settings.git.lazyLoadGraphCommits')}</span>
+          <span className="text-foreground text-xs">{t('settings.git.lazyLoadGraphCommits')}</span>
         </label>
       </FilterableSetting>
 
@@ -206,15 +202,15 @@ export function GeneralSection() {
       <FilterableSetting
         className="space-y-4"
         testId="setting-advanced-scan"
-        match={`${t('settings.advanced.exclusions')} ${t('settings.advanced.scanDepth')} ${t('settings.advanced.openDataFolder')} index scan exclusions depth indexation recherche profondeur dossier données`}
+        match={`${t('settings.advanced.exclusions')} ${t('settings.advanced.scanDepth')} index scan exclusions depth indexation recherche profondeur`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-xs font-semibold text-foreground">
+        <h4 className="text-foreground text-xs font-semibold">
           <Highlight text="Indexation & Recherche" />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.advanced.exclusions')}
           </label>
           <TagInput
@@ -225,7 +221,7 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
+          <label className="text-foreground text-xs font-medium">
             {t('settings.advanced.scanDepth')}
           </label>
           <Input
@@ -237,11 +233,9 @@ export function GeneralSection() {
             className="h-8 w-24 text-xs"
           />
         </div>
-
-        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleOpenDataFolder}>
-          {t('settings.advanced.openDataFolder')}
-        </Button>
       </FilterableSetting>
+
+      <ConfigFileSetting />
     </div>
   )
 }

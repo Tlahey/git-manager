@@ -29,6 +29,21 @@ pub async fn read_app_config() -> Result<AppConfigLoad, String> {
     })
 }
 
+/// Absolute path of the configuration file, so Settings can show the user where their configuration
+/// lives and reveal it in the Finder.
+///
+/// `None` when there is no such file to point at — the configuration is switched off
+/// (`GIT_MANAGER_NO_CONFIG`), or the home directory can't be resolved. The caller says so rather
+/// than offering to open nothing, which is what the button did when it was pointed at a hardcoded
+/// path that never existed.
+#[tauri::command]
+pub async fn get_app_config_path() -> Result<Option<String>, String> {
+    if app_config::is_disabled() {
+        return Ok(None);
+    }
+    Ok(app_config::file_path().map(|path| path.to_string_lossy().to_string()))
+}
+
 /// Replaces one section of the configuration; a `null` value removes it. Writing per section rather
 /// than per file is what keeps a stale second window from rolling back another window's changes —
 /// see the module doc of `services/app_config.rs`.

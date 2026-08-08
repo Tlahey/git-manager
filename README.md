@@ -346,10 +346,36 @@ Everything project-state and design related lives in [docs/](docs/):
 
 ---
 
+## Configuration
+
+Everything the app remembers lives in **`~/.git-manager/settings.json`** — your settings, the
+repositories it knows about, the tabs that were open, the dashboard layout, the graph columns and
+your rewards progression. One readable JSON file, one section per concern, written owner-only
+(`0600`).
+
+It sits outside the application bundle, so it survives every update and reinstall, and it is the
+same file whether you run a packaged build or `pnpm dev`. **Settings → General** shows its exact
+path and reveals it in the Finder.
+
+Editing it by hand is fine. If a section no longer matches what the app expects, only that section
+falls back to its defaults — the rest is kept — and if the whole file stops parsing, it is moved to
+`settings.json.corrupt` before a fresh one is written, so nothing is lost silently.
+
+Not in the file, and staying in the webview's local storage on purpose: the rebuildable caches —
+AI answers, notifications, undo history. A configuration file is not a log.
+
+**`GIT_MANAGER_NO_CONFIG=1`** switches the file off entirely: the app reads and writes nothing there
+and starts from its defaults, keeping state for that session only. Useful to reproduce a
+first-launch experience, or to run the app on a machine where nothing should be written to `$HOME`.
+It is also how the end-to-end suite runs, so a test run can never touch your real configuration.
+
+---
+
 ## Security
 
 - **No telemetry** — zero analytics. The only outbound traffic is what you ask for: your git remotes, the AI provider you configured (localhost by default), GitHub when you connect an account, and the update check against this repository's releases
-- **Git credentials stay in Rust** — fetch / pull / push authenticate through the system SSH agent inside the Rust layer; no key material is passed to JavaScript. (Provider _API_ tokens — the GitHub OAuth token, GitLab/Bitbucket personal access tokens — are held in the frontend settings store, since they're only used for those providers' HTTP APIs.)
+- **Git credentials stay in Rust** — fetch / pull / push authenticate through the system SSH agent inside the Rust layer; no key material is passed to JavaScript
+- **Provider API tokens are not yet in the keychain** — the GitHub OAuth token, the GitLab/Bitbucket personal access tokens and the AI provider's API key are held by the frontend, because it calls those HTTP APIs itself, and are therefore stored in `~/.git-manager/settings.json`. The file is written owner-only (`0600`), but the tokens are in clear text: don't commit it or attach it to a bug report. Moving them into the macOS keychain is tracked in [#331](https://github.com/Tlahey/git-manager/issues/331)
 - **Tauri ACL** — strict capability permissions via Tauri v2's permission system
 - **Protected branches** — configurable list of branches that block destructive operations
 - **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in

@@ -61,6 +61,12 @@ fn resolved_dir() -> Result<PathBuf, AppError> {
     app_data_dir().ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))
 }
 
+/// Where the configuration lives, for the UI to show and reveal. `None` if there is no home to
+/// resolve it against.
+pub fn file_path() -> Option<PathBuf> {
+    app_data_dir().map(|dir| dir.join(FILE_NAME))
+}
+
 /// The whole configuration file, or `None` when it doesn't exist yet.
 ///
 /// A missing file is the normal state of a fresh install, not an error — the frontend falls back to
@@ -220,6 +226,17 @@ mod tests {
 
     fn document(dir: &Path) -> Value {
         serde_json::from_str(&read_from(dir).unwrap().unwrap()).unwrap()
+    }
+
+    #[test]
+    fn the_path_it_reports_is_the_file_it_writes() {
+        // Settings shows this to the user and reveals it in the Finder. The affordance it replaced
+        // was pointed at a hardcoded `~/.config/git-manager/` the app has never used, so it opened
+        // nothing for as long as it shipped — deriving both from `app_data_dir` is what stops the
+        // displayed path and the real one from ever being two different things.
+        let path = file_path().expect("a home directory to resolve");
+        assert_eq!(path.file_name().unwrap(), FILE_NAME);
+        assert_eq!(path.parent().unwrap(), app_data_dir().unwrap());
     }
 
     #[test]
