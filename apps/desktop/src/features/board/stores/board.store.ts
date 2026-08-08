@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../../../lib/appConfig/configStorage'
 
 interface BoardState {
   /** Last active board id per repo path, so returning to a repo's Board tab restores where the user
@@ -63,6 +64,9 @@ export const useBoardStore = create<BoardState>()(
     }),
     {
       name: 'git-manager-board',
+      // The `board` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('board'),
+      skipHydration: true,
       partialize: (state) => ({
         activeBoardIdByRepo: state.activeBoardIdByRepo,
         collapsedColumns: state.collapsedColumns,

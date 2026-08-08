@@ -949,11 +949,7 @@ fn repo_root(repo: &Repository) -> String {
 }
 
 fn backups_root() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
-        #[allow(deprecated)]
-        std::env::home_dir()
-    })?;
-    Some(home.join(".git-manager").join("boards"))
+    crate::utils::app_data_dir().map(|dir| dir.join("boards"))
 }
 
 fn backup_dir(repo: &Repository) -> Option<PathBuf> {

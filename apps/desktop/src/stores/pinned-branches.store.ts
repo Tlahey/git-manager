@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 
 interface PinnedBranchesState {
   /**
@@ -27,6 +28,9 @@ export const usePinnedBranchesStore = create<PinnedBranchesState>()(
     }),
     {
       name: 'git-manager-pinned-branches',
+      // The `pinnedBranches` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('pinnedBranches'),
+      skipHydration: true,
     }
   )
 )

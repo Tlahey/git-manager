@@ -7,6 +7,7 @@ import {
   DEFAULT_DISPLAY_DURATION_MS,
   DEFAULT_DISPLAY_STYLE,
 } from '../lib/notifications/notificationDisplay'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 
 const DEFAULT_SETTINGS: AppSettings = {
   ai: {
@@ -275,11 +276,20 @@ export const useSettingsStore = create<SettingsState>()(
       name: 'git-manager-settings',
       version: SETTINGS_VERSION,
       migrate: migrateSettings,
+      // The `settings` section of `~/.git-manager/settings.json`, not localStorage — see
+      // `lib/appConfig/` for why, and for what it costs: hydration is deferred to one file read
+      // (hence `skipHydration`, with `main.tsx` awaiting it before the first render) and writes are
+      // debounced. The `name` above stays the localStorage key the store falls back to when the
+      // configuration file is switched off.
+      storage: createConfigStorage('settings'),
+      skipHydration: true,
+      // The settings *are* the section — not `{ settings: … }` inside it. The rest of this store's
+      // state is its own actions, and the file is one a user opens: a `settings.settings.language`
+      // path in it would be an implementation detail of zustand leaking onto their disk.
+      partialize: (state) => state.settings,
       merge: (persisted, current) => ({
         ...current,
-        settings: mergeSettingsWithDefaults(
-          (persisted as { settings?: Partial<AppSettings> } | undefined)?.settings
-        ),
+        settings: mergeSettingsWithDefaults(persisted as Partial<AppSettings> | undefined),
       }),
     }
   )

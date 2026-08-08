@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 import type { InnerTab } from '../app/pull-requests/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -141,6 +142,9 @@ export const useLaunchpadStore = create<LaunchpadState>()(
     }),
     {
       name: 'git-manager-launchpad',
+      // The `launchpad` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('launchpad'),
+      skipHydration: true,
       // Everything except `pendingOpenPrId`, which is a one-shot request from a click that has
       // already happened — restoring it would pop a PR panel open on the next launch.
       partialize: (state) => ({

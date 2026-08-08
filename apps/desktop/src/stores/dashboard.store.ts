@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 
 /** The dashboard's four repository sections, in display order. */
 export const DASHBOARD_SECTION_IDS = ['open', 'favorites', 'recent', 'all'] as const
@@ -91,6 +92,11 @@ export const useDashboardStore = create<DashboardState>()(
           return { sectionColors: next }
         }),
     }),
-    { name: 'git-manager-dashboard' }
+    {
+      name: 'git-manager-dashboard',
+      // The `dashboard` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('dashboard'),
+      skipHydration: true,
+    }
   )
 )

@@ -9,6 +9,7 @@ pub mod ai_model_info;
 pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;
+pub mod app_config;
 pub mod daily_summary_archive;
 pub mod dependency_patch;
 pub mod git_bisect;

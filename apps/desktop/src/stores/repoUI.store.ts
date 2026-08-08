@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createConfigStorage } from '../lib/appConfig/configStorage'
 import type { MockIssue } from '../app/pull-requests/types'
 import type { PendingDeleteRemoteBranch } from '../lib/graphContextMenus'
 import { appEventBus } from '../lib/appEventBus'
@@ -666,6 +667,9 @@ export const useRepoUIStore = create<RepoUIState>()(
     }),
     {
       name: 'git-manager-repos-ui',
+      // The `workspace` section of ~/.git-manager/settings.json — see lib/appConfig/.
+      storage: createConfigStorage('workspace'),
+      skipHydration: true,
       // Empty "New Tab" placeholders are session-scoped: restoring one on relaunch would just be
       // noise, so they're stripped here (and the active tab falls back to the dashboard if it was one).
       partialize: (state) => ({

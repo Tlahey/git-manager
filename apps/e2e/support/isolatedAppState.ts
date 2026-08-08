@@ -25,6 +25,24 @@ export function useIsolatedHome(): string {
 }
 
 /**
+ * Turns the app's configuration file off for the run: with `GIT_MANAGER_NO_CONFIG` set, nothing
+ * reads or writes `~/.git-manager/settings.json` and every persisted store falls back to the
+ * webview's `localStorage` (see `lib/appConfig/`).
+ *
+ * Belt to {@link useIsolatedHome}'s braces, and not redundant with it. The scratch `$HOME` says
+ * *where* the config would be; this says the app under test has no configuration file at all — so a
+ * scenario cannot leave one behind, a change to how `$HOME` is resolved cannot quietly point a run
+ * at the developer's real config, and the suite's own state stays where it has always been. Every
+ * seed in `support/settings.ts` and `support/scenarioBaseline.ts` writes `localStorage` for exactly
+ * that reason; flipping this variable off would strand all of them.
+ *
+ * Inherited by the app because it is spawned as a child of this process — same mechanism as `HOME`.
+ */
+export function disableAppConfigFile(): void {
+  process.env.GIT_MANAGER_NO_CONFIG = '1'
+}
+
+/**
  * Runs the suite against a copy of the built binary under a different name, and returns its path.
  *
  * This is what isolates **localStorage** — every persisted zustand slice: the theme, saved

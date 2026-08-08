@@ -49,11 +49,7 @@ impl LogKind {
 }
 
 fn logs_dir(kind: LogKind) -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
-        #[allow(deprecated)]
-        std::env::home_dir()
-    })?;
-    Some(home.join(".git-manager").join(kind.dir_name()))
+    crate::utils::app_data_dir().map(|dir| dir.join(kind.dir_name()))
 }
 
 /// Appends a batch of activity entries to today's log file, then prunes files past the retention

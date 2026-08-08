@@ -3,7 +3,22 @@ use crate::models::{GitCommit, GitSignature};
 use git2::{Repository, Signature};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// The app's own directory in the user's home: `~/.git-manager`.
+///
+/// Everything the app keeps outside a repository lives under it — the settings file, the user
+/// themes, the activity and AI logs, the archived daily summaries, the local boards. `HOME` is read
+/// before `home_dir()` on purpose: the e2e suite points `HOME` at a scratch directory to isolate a
+/// run from the developer's real state (`apps/e2e/support/isolatedAppState.ts`), and that only works
+/// if every consumer resolves the home directory the same way.
+pub fn app_data_dir() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
+        #[allow(deprecated)]
+        std::env::home_dir()
+    })?;
+    Some(home.join(".git-manager"))
+}
 
 /// Shortens a full SHA-1 to 7 characters (or fewer if the SHA is shorter).
 pub fn short_oid(sha: &str) -> String {

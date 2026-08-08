@@ -201,6 +201,15 @@ mount effect calls the real `open_repo`, `PendingFixupsBanner` fires a real `get
 "click Browse, use
 the native picker" step is skipped.
 
+> **Why `localStorage` and not `~/.git-manager/settings.json`.** The app normally persists its
+> configuration — settings, open tabs, known repositories, dashboard, graph columns, rewards — into
+> that file (`apps/desktop/src/lib/appConfig/`). The suite runs with `GIT_MANAGER_NO_CONFIG=1`
+> (`onPrepare` → `disableAppConfigFile`), which switches the file off entirely: the app under test
+> reads and writes *nothing* there, and every one of those stores falls back to the `localStorage`
+> key it used before the file existed. So the seeds here are still the right ones, and no run can
+> reach a developer's real configuration whatever `$HOME` resolves to.
+
+
 ## Visual snapshots
 
 `@wdio/visual-service` compares a screenshot of an element (or the full page) against a

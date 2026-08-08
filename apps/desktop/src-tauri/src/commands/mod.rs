@@ -8,6 +8,7 @@ pub mod board;
 pub mod branch;
 pub mod cherry_pick;
 pub mod commit;
+pub mod config;
 pub mod conflict;
 pub mod daily_summary;
 pub mod fixup;
