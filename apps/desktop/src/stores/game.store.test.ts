@@ -161,9 +161,9 @@ describe('useGameStore.checkTerminalHistory', () => {
   })
 
   it('does not re-dispatch a command already seen in the previous read', async () => {
-    apiGetTerminalCommands.mockResolvedValue([])
+    apiGetTerminalCommands.mockResolvedValue(['git diff'])
     await useGameStore.getState().checkTerminalHistory()
-    apiGetTerminalCommands.mockResolvedValue(['git status'])
+    apiGetTerminalCommands.mockResolvedValue(['git diff', 'git status'])
     await useGameStore.getState().checkTerminalHistory()
     await useGameStore.getState().checkTerminalHistory()
     expect(useGameStore.getState().terminalCommandCount).toBe(1)
@@ -176,10 +176,41 @@ describe('useGameStore.checkTerminalHistory', () => {
     expect(apiGetTerminalCommands).not.toHaveBeenCalled()
   })
 
-  it('baselines an empty history so the next command counts', async () => {
+  it('treats an empty read as no read at all', async () => {
     apiGetTerminalCommands.mockResolvedValue([])
     await useGameStore.getState().checkTerminalHistory()
-    expect(useGameStore.getState().terminalHistorySnapshot).toEqual([])
+    // Not `[]`: the backend swallows its own read errors and zsh truncates the file while rewriting
+    // it, so an empty result may simply be a failed read.
+    expect(useGameStore.getState().terminalHistorySnapshot).toBeNull()
+  })
+
+  it('does not replay the history after a read that came back empty', async () => {
+    apiGetTerminalCommands.mockResolvedValue(['git status', 'git diff'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    // A transient empty read (file being rewritten) must not become the snapshot — snapshotting `[]`
+    // would make the next successful read look like a history full of brand-new commands.
+    apiGetTerminalCommands.mockResolvedValue([])
+    await useGameStore.getState().checkTerminalHistory()
+    apiGetTerminalCommands.mockResolvedValue(['git status', 'git diff'])
+    await useGameStore.getState().checkTerminalHistory()
+
+    const state = useGameStore.getState()
+    expect(state.terminalCommandCount).toBe(0)
+    expect(state.achievements.filter((a) => a.unlocked)).toEqual([])
+  })
+
+  it('writes nothing when the history has not moved', async () => {
+    // A fresh array per call, so identity below proves a `set` was skipped rather than that the
+    // mock handed back the same instance twice.
+    apiGetTerminalCommands.mockImplementation(async () => ['git status'])
+    await useGameStore.getState().checkTerminalHistory()
+    const snapshot = useGameStore.getState().terminalHistorySnapshot
+
+    // The poll fires every 4s while the Rewards tab is open, and this store persists on write: an
+    // unchanged read must not touch state at all.
+    await useGameStore.getState().checkTerminalHistory()
+    expect(useGameStore.getState().terminalHistorySnapshot).toBe(snapshot)
   })
 
   it('re-baselines instead of unlocking when the history it was watching disappeared', async () => {

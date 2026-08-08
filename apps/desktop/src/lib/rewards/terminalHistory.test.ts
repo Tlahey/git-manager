@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { appendedCommands } from './terminalHistory'
+import { appendedCommands, sameCommands } from './terminalHistory'
+
+describe('sameCommands', () => {
+  it('is true for two equal reads', () => {
+    expect(sameCommands(['git status', 'git log'], ['git status', 'git log'])).toBe(true)
+  })
+
+  it('is false when a command was appended', () => {
+    expect(sameCommands(['git status'], ['git status', 'git log'])).toBe(false)
+  })
+
+  it('is false when the same commands are in a different order', () => {
+    expect(sameCommands(['git status', 'git log'], ['git log', 'git status'])).toBe(false)
+  })
+})
 
 describe('appendedCommands', () => {
   it('reports nothing when the history has not changed', () => {

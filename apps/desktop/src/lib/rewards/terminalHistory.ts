@@ -27,6 +27,13 @@
  * command lines. Positional diffing works the same either way.
  */
 
+/** Whether two reads of the history are the same list — the store's cue to do nothing at all rather
+ * than rewrite an equal snapshot, which its `persist` middleware would turn into a localStorage
+ * write and a notification to every subscriber on each poll. */
+export function sameCommands(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((command, i) => command === b[i])
+}
+
 /**
  * The commands appended to the shell history since `previous` was observed.
  *
@@ -34,6 +41,10 @@
  * `previous` is empty (nothing was being watched yet, so every line arrived after the baseline),
  * and `[]` when the two windows share no overlap (see the module comment: unexplained means
  * silent).
+ *
+ * The store never passes an empty `previous`: it refuses to snapshot an empty read, since a read
+ * that came back empty is indistinguishable from one that failed, and taking it at face value would
+ * make the next read look entirely new.
  */
 export function appendedCommands(previous: string[], current: string[]): string[] {
   if (previous.length === 0) return current

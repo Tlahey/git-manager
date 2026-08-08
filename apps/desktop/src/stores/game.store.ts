@@ -7,7 +7,7 @@ import {
   unlockAchievementById,
   type RewardEngineState,
 } from '../lib/rewards/rewardEngine'
-import { appendedCommands } from '../lib/rewards/terminalHistory'
+import { appendedCommands, sameCommands } from '../lib/rewards/terminalHistory'
 import type { AchievementDefinition, Achievement } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
@@ -202,6 +202,13 @@ export const useGameStore = create<GameState>()(
         try {
           // Fetch zsh/bash history from Tauri backend
           const commands = (await apiGetTerminalCommands()) ?? []
+
+          // A read that came back empty is not a fact about the history: the backend swallows its
+          // own read errors, and zsh truncates the file while rewriting it. Recording `[]` as the
+          // snapshot would make the next successful read look like a hundred fresh commands — the
+          // very replay this whole mechanism exists to prevent. So an empty read is *no read*.
+          if (commands.length === 0) return
+
           const snapshot = get().terminalHistorySnapshot
 
           // First read: record what the shell already knew, reward none of it.
@@ -209,6 +216,11 @@ export const useGameStore = create<GameState>()(
             set({ terminalHistorySnapshot: commands })
             return
           }
+
+          // Nothing moved: return without a `set`. The poll runs every 4s while the Rewards tab is
+          // open, and this store persists on every write — a snapshot rewritten to an equal value
+          // would be a localStorage write and a re-render of every subscriber, four times a minute.
+          if (sameCommands(snapshot, commands)) return
 
           // Snapshot first: a slow listener must not make the next poll re-report the same commands.
           set({ terminalHistorySnapshot: commands })
