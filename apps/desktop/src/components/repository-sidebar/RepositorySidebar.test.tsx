@@ -470,6 +470,41 @@ describe('RepositorySidebar — sections', () => {
     expect(lastHeaderCalls.current[0].onCreatePr).toBeUndefined()
   })
 
+  // Signed out, the section's body is a "connect your account" row — a saved filter added beside
+  // it could not be resolved, and neither a pull request nor an issue can be opened anonymously,
+  // so the whole GitHub-backed action set goes rather than offering four dead-ends.
+  it('omits every GitHub-backed header action while signed out', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({ key: 'prs', title: 'Pull Requests' }),
+        section({ key: 'issues', title: 'Issues' }),
+      ],
+    })
+    renderSidebar()
+    const prs = lastHeaderCalls.current.find((p) => p.sectionKey === 'prs')!
+    const issues = lastHeaderCalls.current.find((p) => p.sectionKey === 'issues')!
+    expect(prs.onAddPrFilter).toBeUndefined()
+    expect(prs.onCreatePr).toBeUndefined()
+    expect(issues.onAddIssueFilter).toBeUndefined()
+    expect(issues.onCreateIssue).toBeUndefined()
+  })
+
+  it('restores those actions once an account is connected', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({ key: 'prs', title: 'Pull Requests' }),
+        section({ key: 'issues', title: 'Issues' }),
+      ],
+    })
+    renderSidebar({ githubToken: 'token' })
+    const prs = lastHeaderCalls.current.find((p) => p.sectionKey === 'prs')!
+    const issues = lastHeaderCalls.current.find((p) => p.sectionKey === 'issues')!
+    expect(prs.onAddPrFilter).toBeInstanceOf(Function)
+    expect(prs.onCreatePr).toBeInstanceOf(Function)
+    expect(issues.onAddIssueFilter).toBeInstanceOf(Function)
+    expect(issues.onCreateIssue).toBeInstanceOf(Function)
+  })
+
   it('toggles a section open state via its header, feeding it back into useSidebarRows', () => {
     useSidebarRows.mockReturnValue({ sections: [section({ key: 'local', isOpen: true })] })
     renderSidebar()

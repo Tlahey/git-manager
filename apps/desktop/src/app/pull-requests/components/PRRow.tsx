@@ -13,6 +13,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { MockPR } from '../types'
 import { CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
+import { CommitAvatar } from '../../../components/git-graph/components/CommitAvatar'
 import { PrQuickActions } from './PrQuickActions'
 import { SnoozeControl } from './SnoozeControl'
 import { openUrl, timeAgo } from '../utils'
@@ -174,12 +175,11 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
 
       {/* Author */}
       <div className="flex w-[90px] shrink-0 items-center gap-1.5">
-        <img
-          src={pr.authorAvatar}
-          alt={pr.author}
-          className="rounded-full border border-border bg-muted object-cover"
-          style={{ width: 18, height: 18 }}
-        />
+        {/* A raw <img> used to sit here, so an author GitHub reports without a picture — a deleted
+            account, or a pull request followed by URL, whose `authorAvatar` is '' — rendered as a
+            broken-image glyph. The graph's avatar falls back to the author's own coloured
+            initials instead, which is the same answer everywhere in the app. */}
+        <CommitAvatar avatarUrl={pr.authorAvatar} name={pr.author} size={18} />
         <span className="truncate text-[10px] text-muted-foreground">{pr.author}</span>
       </div>
 

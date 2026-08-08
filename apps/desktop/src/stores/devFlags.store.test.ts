@@ -26,10 +26,12 @@ describe('envFlag', () => {
 })
 
 describe('useDevFlagsStore', () => {
-  it('defaults mock GitHub data to on while developing', () => {
-    // Vitest runs with DEV true, and the fixtures are what make the Launchpad workable without a
-    // token — that part of the old behaviour is worth keeping.
-    expect(DEV_FLAG_DEFAULTS.mockGitHub).toBe(true)
+  // Vitest runs with DEV true and no VITE_MOCK_GITHUB, which is exactly a developer's `pnpm dev`.
+  // The fixtures used to default on there, so anyone running the app without a GitHub account got
+  // a Launchpad full of invented pull requests under a single "showing demo data" line. Arming
+  // them is now an explicit act — the env variable, or the footer's debug toggle.
+  it('defaults mock GitHub data to off, even while developing', () => {
+    expect(DEV_FLAG_DEFAULTS.mockGitHub).toBe(false)
   })
 
   it('flips for the rest of the session', () => {

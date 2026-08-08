@@ -64,6 +64,23 @@ describe('NotchBody — event', () => {
     expect(screen.queryByText('JA')).not.toBeInTheDocument()
   })
 
+  // The producer knows whose name it is, so it picks the disc; this package only has to put it on.
+  it("wears the producer's tint behind the initials, keeping the ring", () => {
+    const tinted: NotchEventModel = {
+      ...event,
+      avatar: { ...event.avatar!, fallbackClassName: 'bg-linear-to-tr from-red-600 to-rose-700' },
+    }
+    render(<NotchBody model={tinted} />)
+    const avatar = screen.getByText('JA')
+    expect(avatar).toHaveClass('from-red-600', 'to-rose-700', 'ring-white/15')
+    expect(avatar).not.toHaveClass('bg-white/10')
+  })
+
+  it('falls back to a neutral disc when the producer names no tint', () => {
+    render(<NotchBody model={event} />)
+    expect(screen.getByText('JA')).toHaveClass('bg-white/10')
+  })
+
   it('sizes itself to the geometry', () => {
     render(<NotchBody model={event} />)
     expect(screen.getByTestId('notch-event-body')).toHaveStyle({

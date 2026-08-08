@@ -193,7 +193,7 @@ export default function App() {
               {activeTab === DASHBOARD_TAB ? (
                 <DashboardPage />
               ) : activeTab === PULL_REQUESTS_TAB ? (
-                <PullRequestsPage />
+                <PullRequestsPage onOpenSettings={() => handleOpenSettings('integrations')} />
               ) : activeTab === REWARDS_TAB ? (
                 <RewardsTab />
               ) : isNewTab(activeTab) ? (

@@ -28,17 +28,22 @@ function envFlag(value: unknown): boolean | undefined {
 /**
  * Show the built-in mock pull requests instead of a real GitHub account's.
  *
- * Default: on while developing, off everywhere else. That is a deliberate change of behaviour —
- * the fixtures used to appear for *anyone without a GitHub token*, so a user who simply had not
- * connected their account yet was shown ten invented pull requests, with invented authors and
- * titles, rendered exactly like real ones. The only hint was a small "no account" line in the
- * header. Fiction presented as fact is a worse first impression than an empty list, and the empty
- * list already reads well ("No pull requests" plus the same header line).
+ * **Off unless something explicitly asks for it**, in every build including a development one.
+ * The fixtures used to appear for *anyone without a GitHub token*, so a user who had simply not
+ * connected their account was shown ten invented pull requests, with invented authors and titles,
+ * rendered exactly like real ones; that was narrowed to development builds, where it still meant a
+ * developer running `pnpm dev` without an account got a Launchpad full of fiction labelled with a
+ * single "showing demo data" line — the same defect one audience smaller. Fiction presented as
+ * fact is a worse first impression than an empty page, and the signed-out page now says plainly
+ * what is missing and how to fix it (`ConnectGithubBanner`).
  *
- * `VITE_MOCK_GITHUB=true|false` overrides it, which is how e2e pins the Launchpad to a known set.
+ * Two ways to arm them, both deliberate acts: `VITE_MOCK_GITHUB=true|false` at build time, which
+ * is how e2e and the documentation capture pin the Launchpad to a known set (see
+ * `apps/desktop/.env.e2e`), and the footer's debug menu at runtime, which is why a development
+ * build still *carries* them (see `DEV_FIXTURES_AVAILABLE` in `lib/devFixtures.ts` — what a build
+ * can load and what it shows by default are two different questions).
  */
-const DEFAULT_MOCK_GITHUB =
-  envFlag(import.meta.env.VITE_MOCK_GITHUB) ?? Boolean(import.meta.env.DEV)
+const DEFAULT_MOCK_GITHUB = envFlag(import.meta.env.VITE_MOCK_GITHUB) ?? false
 
 interface DevFlagsState {
   mockGitHub: boolean

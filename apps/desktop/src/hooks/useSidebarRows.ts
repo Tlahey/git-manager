@@ -133,6 +133,10 @@ export function useSidebarRows({
   const {
     allPrs,
     isGithub,
+    // Whether a GitHub *account* is connected, as opposed to `isGithub`'s "this repo has a GitHub
+    // remote". Both sections need the distinction: a repo can be on GitHub while the app is signed
+    // out, and that is the case the two used to conflate into a network error.
+    isConnected,
     isLoading: prsLoading,
   } = usePullRequests({
     remoteUrls,
@@ -159,6 +163,7 @@ export function useSidebarRows({
     // Its own GitHub-reachability flag, not the pull request hook's: the two resolve the same
     // remote today, but the Issues section must not be at the mercy of whether the PR fetch works.
     isGithub: issuesIsGithub,
+    isConnected: issuesIsConnected,
     isLoading: issuesLoading,
     refresh: refreshIssues,
   } = useRepoIssues({ remoteUrls, githubToken, filters: issueFilters })
@@ -454,18 +459,28 @@ export function useSidebarRows({
       const open = sectionOpen('prs')
       const prRows: SidebarRow[] = []
       if (open) {
-        if (prsLoading || prFiltersLoading) {
+        if (!isGithub) {
+          prRows.push({
+            kind: 'message',
+            id: 'pr:nogithub',
+            text: t('sidebar.prs.noGithub'),
+          })
+        } else if (!isConnected) {
+          // Signed out: say so, and say where to fix it. Checked before everything below because
+          // nothing below can happen — no request is made without a token (see `usePullRequests`),
+          // so the saved views would otherwise sit here empty, or, back when the request *was*
+          // attempted, each report GitHub's transport error as if its own query were at fault.
+          prRows.push({
+            kind: 'message',
+            id: 'pr:noaccount',
+            text: t('sidebar.prs.noAccount'),
+          })
+        } else if (prsLoading || prFiltersLoading) {
           prRows.push({
             kind: 'message',
             id: 'pr:loading',
             text: t('sidebar.prs.loading'),
             loading: true,
-          })
-        } else if (!isGithub) {
-          prRows.push({
-            kind: 'message',
-            id: 'pr:nogithub',
-            text: t('sidebar.prs.noGithub'),
           })
         } else if (filteredPrGroups.length === 0) {
           prRows.push({ kind: 'message', id: 'pr:nofilters', text: t('sidebar.prFilters.none') })
@@ -518,7 +533,7 @@ export function useSidebarRows({
         }
       }
       const hideForFilter =
-        q && isGithub && !prsLoading && !prFiltersLoading && filteredPrCount === 0
+        q && isGithub && isConnected && !prsLoading && !prFiltersLoading && filteredPrCount === 0
       if (!hideForFilter) {
         list.push({
           key: 'prs',
@@ -543,18 +558,26 @@ export function useSidebarRows({
       const open = sectionOpen('issues')
       const issueRows: SidebarRow[] = []
       if (open) {
-        if (issuesLoading) {
+        if (!issuesIsGithub) {
+          issueRows.push({
+            kind: 'message',
+            id: 'issue:nogithub',
+            text: t('sidebar.issues.noGithub'),
+          })
+        } else if (!issuesIsConnected) {
+          // Same order and same reason as the PR section above: signed out is checked first,
+          // because with no token nothing is fetched and every state below would be a lie.
+          issueRows.push({
+            kind: 'message',
+            id: 'issue:noaccount',
+            text: t('sidebar.issues.noAccount'),
+          })
+        } else if (issuesLoading) {
           issueRows.push({
             kind: 'message',
             id: 'issue:loading',
             text: t('sidebar.issues.loading'),
             loading: true,
-          })
-        } else if (!issuesIsGithub) {
-          issueRows.push({
-            kind: 'message',
-            id: 'issue:nogithub',
-            text: t('sidebar.issues.noGithub'),
           })
         } else if (filteredIssueGroups.length === 0) {
           issueRows.push({
@@ -605,7 +628,8 @@ export function useSidebarRows({
           })
         }
       }
-      const hideForFilter = q && issuesIsGithub && !issuesLoading && filteredIssueCount === 0
+      const hideForFilter =
+        q && issuesIsGithub && issuesIsConnected && !issuesLoading && filteredIssueCount === 0
       if (!hideForFilter) {
         list.push({
           key: 'issues',
@@ -728,11 +752,13 @@ export function useSidebarRows({
     filteredPrGroups,
     filteredPrCount,
     isGithub,
+    isConnected,
     prsLoading,
     prFiltersLoading,
     filteredIssueGroups,
     filteredIssueCount,
     issuesIsGithub,
+    issuesIsConnected,
     issuesLoading,
     filteredTags,
     filteredStashes,

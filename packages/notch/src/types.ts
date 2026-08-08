@@ -90,8 +90,16 @@ export interface NotchEventModel extends NotchModelBase {
   kind: 'event'
   title: string
   subtitle?: string
-  /** A face for the body row; falls back to `fallback` initials when `src` is absent or broken. */
-  avatar?: { src?: string; alt: string; fallback: string }
+  /**
+   * A face for the body row; falls back to `fallback` initials when `src` is absent or broken.
+   *
+   * `src` is genuinely optional, and a producer with no picture must leave it out rather than
+   * invent one — a stand-in URL puts a stranger's face on someone else's pull request, which is
+   * worse than no face at all. `fallbackClassName` is the disc the initials sit on, supplied by
+   * the producer (which knows whose name it is) so this package needs no opinion about it; the
+   * app derives it from the author's name, exactly as the commit graph colours its own avatars.
+   */
+  avatar?: { src?: string; alt: string; fallback: string; fallbackClassName?: string }
 }
 
 /** Something is running. */

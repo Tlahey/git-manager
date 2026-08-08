@@ -39,6 +39,21 @@ interface LaunchpadState {
    * a pending open that outlived a restart would ambush the user on next launch.
    */
   pendingOpenPrId: string | null
+  /**
+   * Whether the "connect your GitHub account" strip has been closed.
+   *
+   * Persisted, unlike most one-shot UI state: the banner is about a condition that lasts until the
+   * user does something about it, so re-raising it on every visit to the Launchpad would be
+   * nagging rather than informing. Closing it loses nothing — the header still says no account is
+   * connected, and the GitHub tabs are visibly absent.
+   *
+   * `armConnectBanner` un-dismisses it, and the page calls that whenever an account *is* connected
+   * (see `usePullRequestsPage`). So a dismissal silences the current signed-out spell and not the
+   * next one: sign in, sign out again later, and the guidance comes back.
+   */
+  connectBannerDismissed: boolean
+  dismissConnectBanner: () => void
+  armConnectBanner: () => void
   requestOpenPr: (prId: string) => void
   clearPendingOpenPr: () => void
   setActiveTab: (tab: InnerTab) => void
@@ -76,7 +91,14 @@ export const useLaunchpadStore = create<LaunchpadState>()(
       activeTab: 'prs',
       snoozed: {},
       pendingOpenPrId: null,
+      connectBannerDismissed: false,
       setActiveTab: (activeTab) => set({ activeTab }),
+
+      dismissConnectBanner: () => set({ connectBannerDismissed: true }),
+
+      // Idempotent and cheap: the page calls it on every render where an account is connected.
+      armConnectBanner: () =>
+        set((state) => (state.connectBannerDismissed ? { connectBannerDismissed: false } : state)),
 
       requestOpenPr: (prId) => set({ pendingOpenPrId: prId }),
 
@@ -125,6 +147,7 @@ export const useLaunchpadStore = create<LaunchpadState>()(
         savedFilters: state.savedFilters,
         activeTab: state.activeTab,
         snoozed: state.snoozed,
+        connectBannerDismissed: state.connectBannerDismissed,
       }),
     }
   )

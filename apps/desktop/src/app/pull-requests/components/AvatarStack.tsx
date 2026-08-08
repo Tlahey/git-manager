@@ -1,3 +1,4 @@
+import { CommitAvatar } from '../../../components/git-graph/components/CommitAvatar'
 import type { Collaborator } from '../types'
 
 interface AvatarStackProps {
@@ -12,13 +13,15 @@ export function AvatarStack({ users, max = 3 }: AvatarStackProps) {
   return (
     <div className="flex items-center -space-x-1.5">
       {shown.map((u) => (
-        <img
+        // Coloured initials for a collaborator GitHub gives no picture for, rather than the
+        // broken-image glyph a bare <img src=""> renders. Same fallback as the graph's avatars.
+        <CommitAvatar
           key={u.login}
-          src={u.avatar}
-          alt={u.login}
+          avatarUrl={u.avatar}
+          name={u.login}
           title={u.login}
-          className="rounded-full border border-border bg-muted object-cover"
-          style={{ width: 18, height: 18 }}
+          size={18}
+          className="border border-border"
         />
       ))}
       {extra > 0 && (

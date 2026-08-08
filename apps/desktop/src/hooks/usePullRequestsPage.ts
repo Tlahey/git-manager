@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useGitHubData } from './useGitHubData'
 import { useGitHubRepoIssues } from './useGitHubRepoIssues'
 import { useLocalWipRepos } from './useLocalWipRepos'
 import { useLaunchpadStore } from '../stores/launchpad.store'
+import { useDevFlagsStore } from '../stores/devFlags.store'
 import { isSnoozed, isMyIssue } from '../app/pull-requests/utils'
 import type { InnerTab as InnerTabType, MockPR } from '../app/pull-requests/types'
 
@@ -12,7 +13,15 @@ import type { InnerTab as InnerTabType, MockPR } from '../app/pull-requests/type
  * same shape as `useActionToolbar`/`useWipCommitPanel` elsewhere in the app.
  */
 export function usePullRequestsPage() {
-  const { activeTab, setActiveTab, savedFilters, snoozed } = useLaunchpadStore()
+  const {
+    activeTab,
+    setActiveTab,
+    savedFilters,
+    snoozed,
+    connectBannerDismissed,
+    dismissConnectBanner,
+    armConnectBanner,
+  } = useLaunchpadStore()
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [followedPRs, setFollowedPRs] = useState<MockPR[]>([])
   const { entries: wipEntries } = useLocalWipRepos()
@@ -33,6 +42,22 @@ export function usePullRequestsPage() {
   // Issues come from the added repos themselves (not the user's assignee list), so open issues
   // others filed on those repos show up too. Fetched separately since it's keyed on the repo list.
   const { issues, loading: issuesLoading, refresh: refreshIssues } = useGitHubRepoIssues()
+
+  // Whether the page's GitHub half has anything behind it. The dev fixture flag counts: it exists
+  // precisely so a build with no account (a dev run, an e2e run, a documentation capture) still
+  // renders the populated page, and hiding the tabs from it would empty the screenshots too.
+  const mockGitHub = useDevFlagsStore((s) => s.mockGitHub)
+  const githubConnected = hasToken || mockGitHub
+
+  // A dismissal silences the current signed-out spell, not every future one: connecting re-arms
+  // the banner, so signing out again months later still explains itself. Same shape as
+  // `AiStatusBanner`, whose dismissal only silences the outage it was raised for.
+  useEffect(() => {
+    if (githubConnected) armConnectBanner()
+  }, [githubConnected, armConnectBanner])
+
+  // Shown only while it has something to say *and* has not been closed.
+  const showConnectBanner = !githubConnected && !connectBannerDismissed
 
   const togglePin = useCallback((id: string) => {
     setPinnedIds((prev) => {
@@ -100,6 +125,10 @@ export function usePullRequestsPage() {
     isValidating,
     error,
     hasToken,
+    githubConnected,
+    showConnectBanner,
+    dismissConnectBanner,
+    isMocked: mockGitHub && !hasToken,
     username,
     lastRefreshed,
     refresh,

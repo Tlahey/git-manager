@@ -18,6 +18,7 @@ import type { AppNotification } from '../../stores/notification.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { getNotificationText } from '../../components/notification/utils'
 import { getNotificationTypeDef } from './notificationRegistry'
+import { getAuthorAvatarStyle } from '../authorAvatar'
 import { formatRelativeTimestamp } from '../relativeDate'
 import { buildNotificationRoute } from './notificationRoute'
 import type { NotchRequest } from './notchDelivery'
@@ -48,6 +49,16 @@ export function authorInitials(author: string): string {
 }
 
 /**
+ * The disc those initials sit on: the same name-hashed gradient the commit graph gives an author
+ * with no picture (see `lib/authorAvatar.ts`), so one person looks the same in a notification as
+ * they do in the history. Resolved here rather than in `@git-manager/notch` because the package
+ * knows nothing about authors — it renders whatever class the producer hands it.
+ */
+export function authorAvatarClassName(author: string): string {
+  return `bg-linear-to-tr ${getAuthorAvatarStyle(author)}`
+}
+
+/**
  * The card for one notification.
  *
  * `getNotificationText`'s `message` is deliberately unused: it is a sentence templating the
@@ -68,9 +79,12 @@ export function notchModelFromNotification(notif: AppNotification, t: TFunction)
     title: notif.prTitle,
     subtitle: `@${notif.author}`,
     avatar: {
+      // No picture means no picture: the card shows the author's initials on their own colour
+      // rather than a stand-in URL, which would put a stranger's face on their pull request.
       ...(notif.authorAvatar ? { src: notif.authorAvatar } : {}),
       alt: notif.author,
       fallback: authorInitials(notif.author),
+      fallbackClassName: authorAvatarClassName(notif.author),
     },
     badge: `#${notif.prNumber}`,
     actions: [

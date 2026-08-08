@@ -34,4 +34,12 @@ describe('AvatarStack', () => {
     render(<AvatarStack users={[{ login: 'octocat', avatar: 'a.png' }]} />)
     expect(screen.getByAltText('octocat')).toBeInTheDocument()
   })
+
+  // A bare <img src=""> renders the browser's broken-image glyph; the graph's avatar shows the
+  // login's own coloured initials instead, which is the app-wide answer for "no picture".
+  it("falls back to the login's initials rather than a broken image", () => {
+    render(<AvatarStack users={[{ login: 'octocat', avatar: '' }]} />)
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.getByText('OC')).toBeInTheDocument()
+  })
 })

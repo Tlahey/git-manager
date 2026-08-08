@@ -38,6 +38,7 @@ import { useAiActivityStore } from '../../stores/aiActivity.store'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useNotchQueueStore } from '../../stores/notchQueue.store'
 import { useRemoteProgressStore } from '../../stores/remoteProgress.store'
+import { useSettingsStore } from '../../stores/settings.store'
 
 export type DebugActionGroup =
   | 'Notifications'
@@ -125,6 +126,23 @@ function card(model: NotchModel, importance: NotchRequest['importance'] = 'ambie
   return { model, importance }
 }
 
+/**
+ * The one real picture these fixtures are entitled to: the signed-in user's own.
+ *
+ * The `review` fixture used to hardcode `avatars.githubusercontent.com/u/1`, which is not a
+ * placeholder at all — it is an actual GitHub account, so the card put a stranger's face on an
+ * invented pull request. No account connected means no picture, and the card falls back to the
+ * author's initials like every other faceless notification.
+ */
+function selfAvatar(): string | undefined {
+  const github = useSettingsStore.getState().settings.github
+  const account = github?.accounts?.find((a) => a.id === github.activeAccountId)
+  return account?.user?.avatarUrl || undefined
+}
+
+// Only `review` carries a picture, and only when there is a real one to carry (see `selfAvatar`).
+// The others deliberately have none — a bot author is the realistic faceless case — so between
+// them the two paths of the card's avatar slot are both exercised.
 const PR_FIXTURES = {
   review: {
     type: 'review_requested',
@@ -134,7 +152,6 @@ const PR_FIXTURES = {
     prTitle: 'feat: Add support for dev-mode test notifications',
     prId: 'debug-pr-review',
     author: 'antoine',
-    authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
     url: 'https://github.com/Tlahey/git-manager/pull/247',
     targetTab: 'waiting',
   },
@@ -146,12 +163,9 @@ const PR_FIXTURES = {
     prTitle: 'fix: Memory leak in GraphRow',
     prId: 'debug-pr-merge',
     author: 'marie',
-    authorAvatar: 'https://avatars.githubusercontent.com/u/2?v=4',
     url: 'https://github.com/Tlahey/git-manager/pull/244',
     targetTab: 'prs',
   },
-  // The two CI fixtures deliberately carry no `authorAvatar`: a bot author is the realistic case
-  // with no face to show, so these also exercise the card's initials fallback.
   ciGreen: {
     type: 'ci_success',
     repo: 'git-manager',
@@ -184,8 +198,14 @@ export const DEBUG_ACTIONS: DebugAction[] = [
     nativeCapable: true,
     group: 'Notifications',
     label: 'Review requested',
-    hint: 'Lavender halo, avatar from GitHub.',
-    build: (t) => notificationRequest(PR_FIXTURES.review, t),
+    hint: 'Lavender halo, and your own avatar when an account is connected.',
+    build: (t) => {
+      const src = selfAvatar()
+      return notificationRequest(
+        { ...PR_FIXTURES.review, ...(src ? { authorAvatar: src } : {}) },
+        t
+      )
+    },
   },
   {
     id: 'notify-merged',

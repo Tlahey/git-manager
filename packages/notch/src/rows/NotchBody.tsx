@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Sparkles } from 'lucide-react'
-import { Avatar, Progress } from '@git-manager/ui'
+import { Avatar, Progress, cn } from '@git-manager/ui'
 import { NOTCH_ROW, NOTCH_ROW_PADDING_X, statusOutputHeight } from '../notchGeometry'
 import { NOTCH_TONE_RGB, toneColor } from '../notchTones'
 import { tierColor } from '../notchRewardTiers'
@@ -37,7 +37,10 @@ export function NotchEventBody({ model }: { model: NotchEventModel }) {
           alt={model.avatar.alt}
           size={32}
           fallback={model.avatar.fallback}
-          className="bg-white/10 ring-1 ring-white/15"
+          // The producer's tint when it has one (the app hashes the author's name into the same
+          // gradient the commit graph uses), otherwise a neutral disc. Either way the initials are
+          // the fallback — a card with no picture must not borrow someone else's.
+          className={cn(model.avatar.fallbackClassName ?? 'bg-white/10', 'ring-1 ring-white/15')}
         />
       )}
       <div className="min-w-0 flex-1">
