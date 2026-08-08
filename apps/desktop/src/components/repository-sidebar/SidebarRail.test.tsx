@@ -41,7 +41,13 @@ function renderRail(props: Partial<React.ComponentProps<typeof SidebarRail>> = {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <SidebarRail repoPath="/repo" remoteUrls={[]} onExpand={vi.fn()} {...props} />
+      <SidebarRail
+        repoPath="/repo"
+        remoteUrls={[]}
+        onExpand={vi.fn()}
+        onOpenSection={vi.fn()}
+        {...props}
+      />
     </QueryClientProvider>
   )
 }
@@ -116,12 +122,37 @@ describe('SidebarRail — conditional sections', () => {
 })
 
 describe('SidebarRail — expand', () => {
-  it('the top expand button and every rail icon call onExpand', async () => {
+  it('the top button expands without singling out a section', async () => {
     const onExpand = vi.fn()
+    const onOpenSection = vi.fn()
     const user = userEvent.setup()
-    renderRail({ onExpand })
+    renderRail({ onExpand, onOpenSection })
     await user.click(screen.getByLabelText('Expand sidebar'))
-    await user.click(screen.getByLabelText('Local'))
-    expect(onExpand).toHaveBeenCalledTimes(2)
+    expect(onExpand).toHaveBeenCalledOnce()
+    expect(onOpenSection).not.toHaveBeenCalled()
+  })
+
+  // Each icon stands for one section: clicking it must say which, or expanding lands the user back
+  // on whatever was open before rather than on the thing they clicked.
+  it('every section icon reports its own section key', async () => {
+    useGitStashes.mockReturnValue({ data: [{}] })
+    mockedListSubmodules.mockResolvedValue([{ path: 'a', url: 'u', headOid: '' }])
+    const onOpenSection = vi.fn()
+    const user = userEvent.setup()
+    renderRail({ onOpenSection })
+    await screen.findByLabelText('Submodules')
+
+    for (const [label, key] of [
+      ['Local', 'local'],
+      ['Remotes', 'remotes'],
+      ['Pull Requests', 'prs'],
+      ['Tags', 'tags'],
+      ['Stashes', 'stashes'],
+      ['Submodules', 'submodules'],
+    ]) {
+      onOpenSection.mockClear()
+      await user.click(screen.getByLabelText(label))
+      expect(onOpenSection).toHaveBeenCalledWith(key)
+    }
   })
 })

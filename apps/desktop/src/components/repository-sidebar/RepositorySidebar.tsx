@@ -13,7 +13,12 @@ import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
 import { SidebarSectionHeader } from './SidebarSectionHeader'
-import { MIN_SECTION_BODY_HEIGHT, MIN_SECTION_HEIGHT, DEFAULT_PINNED } from './types'
+import {
+  MIN_SECTION_BODY_HEIGHT,
+  MIN_SECTION_HEIGHT,
+  DEFAULT_PINNED,
+  type SectionKey,
+} from './types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
@@ -238,6 +243,30 @@ export function RepositorySidebar({
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))
 
+  // ── Expanding from the rail onto one section ───────────────────────────────
+  // A rail icon stands for a section, so clicking it reopens the sidebar *and* opens that section,
+  // rather than dropping the user back on whatever was open before. Sections default to closed, so
+  // without this the click answered "here is the sidebar again" and not "here are your tags".
+  // The key is also parked in `sectionToReveal` because opening a section isn't enough to see it:
+  // other sections may already be open and push it below the fold, hence the scroll below.
+  const [sectionToReveal, setSectionToReveal] = useState<SectionKey | null>(null)
+
+  const openSectionFromRail = useCallback(
+    (key: SectionKey) => {
+      expand()
+      setOpenState((prev) => ({ ...prev, [`section:${key}`]: true }))
+      setSectionToReveal(key)
+    },
+    [expand]
+  )
+
+  // Ref attached to the section being revealed only, so it fires on the very render that opens it.
+  const revealSectionRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    node.scrollIntoView({ block: 'nearest' })
+    setSectionToReveal(null)
+  }, [])
+
   // Every section header action this component can wire, regardless of which section is currently
   // rendering — `resolveSectionHeaderActions` (below, in the JSX) narrows this down to the ones
   // the section actually owns. The GitHub-backed ones stay gated on `githubConnected` here: that's
@@ -350,6 +379,7 @@ export function RepositorySidebar({
           currentUser={currentUser}
           githubToken={githubToken}
           onExpand={expand}
+          onOpenSection={openSectionFromRail}
         />
       </div>
     )
@@ -467,6 +497,7 @@ export function RepositorySidebar({
         {sections.map((section) => (
           <div
             key={section.key}
+            ref={section.key === sectionToReveal ? revealSectionRef : undefined}
             className={`flex flex-col border-b border-sidebar-border last:border-b-0 ${
               section.isOpen ? 'flex-1' : 'flex-none'
             }`}
