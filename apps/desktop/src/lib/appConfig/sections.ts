@@ -20,6 +20,15 @@ import { appSettingsSchema } from './settingsSchema'
  * shape. A schema stricter than the store would turn a harmless unknown field into deleted user
  * data, so where a value is an open set (a theme name, an achievement definition) it is accepted as
  * given and left to the store's own merge.
+ *
+ * ⚠️ **The `settings` section still holds secrets in clear text** — `github.accounts[].token`,
+ * `integrations.*Accounts[].token` and `ai.apiKey`. The frontend signs its own GitHub requests
+ * (`api/github/*.api.ts` calls `fetch` directly), so it needs the token in hand, and that is why it
+ * is persisted at all. It predates this file — the same tokens were in `localStorage` — but a
+ * readable JSON in `$HOME` is much easier to leak by accident, so the file is written owner-only
+ * (`0600`, see `services/app_config.rs`). That is a floor, not the fix: the tokens belong in the OS
+ * keychain with the network calls moved behind Rust, so the frontend never sees them. Until then,
+ * treat this file as secret — do not commit it, and do not paste it into an issue.
  */
 
 const columnStateSchema = z.object({ visible: z.boolean(), width: z.number() })

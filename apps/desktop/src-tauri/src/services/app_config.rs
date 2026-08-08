@@ -136,10 +136,21 @@ pub(crate) fn write_section_in(
     write_document(dir, &Value::Object(document))
 }
 
+/// Owner-only (`rw-------`).
+///
+/// The `settings` section still carries secrets in clear text — the GitHub/GitLab/Bitbucket account
+/// tokens and the AI provider's API key, which the frontend holds because it signs its own HTTP
+/// requests. That predates this file (they were in `localStorage`), but a readable JSON in the home
+/// directory is a far easier thing to read, back up or copy by accident, so it must at least not be
+/// world-readable. This is a floor, not the fix: the tokens belong in the OS keychain, with the
+/// frontend never seeing them — tracked separately.
+#[cfg(unix)]
+const FILE_MODE: u32 = 0o600;
+
 fn write_document(dir: &Path, document: &Value) -> Result<(), AppError> {
     fs::create_dir_all(dir)?;
-    // Pretty-printed: this file is meant to be readable, and a one-key-per-line layout is what makes
-    // it worth keeping in a dotfiles repository.
+    // Pretty-printed: this file is meant to be read and hand-edited, and one key per line is what
+    // makes a change to it reviewable.
     let contents = serde_json::to_string_pretty(document)
         .map_err(|e| AppError::Unknown(format!("could not serialize the configuration: {e}")))?;
     // Write-then-rename, not a truncating write in place. The file is rewritten on every change, so
@@ -149,6 +160,14 @@ fn write_document(dir: &Path, document: &Value) -> Result<(), AppError> {
     // version or the new one.
     let tmp = dir.join(format!("{FILE_NAME}.tmp"));
     fs::write(&tmp, contents)?;
+    // Tightened on the temp file, before it is published: the permissions travel through `rename`,
+    // so the configuration is never briefly world-readable the way a chmod after the fact would
+    // leave it. Re-applied on every write, which also repairs a file created by an older build.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&tmp, fs::Permissions::from_mode(FILE_MODE))?;
+    }
     fs::rename(&tmp, dir.join(FILE_NAME))?;
     Ok(())
 }
@@ -277,6 +296,41 @@ mod tests {
             assert_eq!(doc[*section], json!({ "n": index }), "{section} was lost");
             assert_eq!(doc["versions"][*section], json!(index));
         }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_file_is_owner_only() {
+        // It holds the GitHub token and the AI API key in clear text until those move to the
+        // keychain; `0644` would hand them to every account on the machine.
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp_dir("mode");
+        write_section_in(&dir, "settings", 1, json!({ "language": "fr" })).unwrap();
+
+        let mode = fs::metadata(dir.join(FILE_NAME))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, FILE_MODE);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_left_world_readable_by_an_older_build_is_repaired_on_the_next_write() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp_dir("mode-repair");
+        write_section_in(&dir, "settings", 1, json!({})).unwrap();
+        fs::set_permissions(dir.join(FILE_NAME), fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_section_in(&dir, "settings", 1, json!({ "language": "fr" })).unwrap();
+
+        let mode = fs::metadata(dir.join(FILE_NAME))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, FILE_MODE);
         let _ = fs::remove_dir_all(&dir);
     }
 

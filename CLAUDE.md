@@ -153,6 +153,7 @@ Everything about it lives in [lib/appConfig/](apps/desktop/src/lib/appConfig/) (
 - **Validation repairs, never rejects.** An invalid section falls back to its defaults and its neighbours survive; `settings` is repaired one level finer, per group. The validated value is discarded and the *raw* one kept, so a field a newer version added isn't deleted by an older one reading the file.
 - **`GIT_MANAGER_NO_CONFIG` switches the file off**, and the stores fall back to `localStorage` under the same keys. That is how the e2e suite runs (`apps/e2e/support/isolatedAppState.ts`), which is why its seeds still write `localStorage`. The same fallback covers "the file hasn't been read yet", which is what lets every store's unit test go on asserting against `localStorage`.
 - **Legacy snapshots are adopted once**, on the first launch that finds no section, so an existing install keeps its settings, tabs and trophies.
+- **The file is written owner-only (`0600`) because it still contains secrets in clear text** — the GitHub/GitLab/Bitbucket tokens and the AI API key, which live in `settings` because the frontend signs its own GitHub requests (`api/github/*.api.ts` uses `fetch` directly). Same tokens as the `localStorage` era, but a readable JSON in `$HOME` leaks far more easily. The permissions are a floor, not the fix: the tokens belong in the OS keychain with the network calls moved behind Rust. Until that lands, treat `settings.json` as a secret — never commit it or attach it to an issue.
 
 ### Security-relevant conventions
 
