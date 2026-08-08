@@ -75,6 +75,12 @@ pub fn set_window_vibrancy(
     // before the vibrancy is ever applied, and since the caller swallows the error
     // the only symptom is the glass silently going away. That regression already
     // happened once.
+    //
+    // This one is app-wide (tao implements `set_theme` as `NSApp.setAppearance:`), and the
+    // frontend is built around that: `windowAppearanceForTheme` answers "system" for every theme
+    // without a material precisely so the pin never outlives the glass theme that needed it. A
+    // window that wants a pin *only for itself* must use `pin_window_appearance_dark` instead —
+    // that distinction is what the notification flicker came down to.
     let theme = match appearance.as_str() {
         "light" => Some(Theme::Light),
         "dark" => Some(Theme::Dark),
@@ -217,11 +223,60 @@ pub fn clear_window_backdrop(window: WebviewWindow) {
     // `underPageBackgroundColor` from the window appearance and repaints it on every change, so
     // leaving it on "system" means a Mac in light mode repaints an opaque *white* backdrop
     // straight back over the one just cleared below.
-    if let Err(e) = window.set_theme(Some(Theme::Dark)) {
-        eprintln!("[transparent-window] could not pin window appearance to dark: {e}");
-    }
+    //
+    // Deliberately NOT `window.set_theme(...)` — see `pin_window_appearance_dark`: that call is
+    // app-wide on macOS, and this window is a notification that must not repaint the app it is
+    // notifying about.
     #[cfg(target_os = "macos")]
-    clear_webview_backdrop(&window);
+    {
+        pin_window_appearance_dark(&window);
+        clear_webview_backdrop(&window);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+    }
+}
+
+/// Pins **one window's** appearance to dark, leaving every other window alone.
+///
+/// Deliberately not `WebviewWindow::set_theme`, despite its per-window receiver: on macOS tao
+/// implements it as `NSApp.setAppearance:` (`platform_impl::macos::window::set_ns_theme`), which is
+/// process-wide. So the notch card pinning *itself* dark repainted the main window too — WebKit
+/// derives `underPageBackgroundColor` from the appearance, so an opaque light theme flashed dark
+/// for as long as a notification was on screen, and `prefers-color-scheme` flipped with it, which
+/// drags a `system` theme all the way to dark and leaves it there (nothing pins the appearance back
+/// when the card closes). That was the "the theme flickers dark while a notification is up" bug.
+///
+/// `NSWindow.setAppearance:` is the per-window equivalent, and the window's views — the WKWebView
+/// included, which is the whole point — inherit it. Nothing has to undo it either: the pin dies
+/// with the window, where an app-wide one outlives the card that set it.
+///
+/// Best-effort, like every other native refinement in this file: a card that is slightly the wrong
+/// shade is better than one that fails to show.
+#[cfg(target_os = "macos")]
+fn pin_window_appearance_dark(window: &WebviewWindow) {
+    use objc2_app_kit::{
+        NSAppearance, NSAppearanceCustomization, NSAppearanceNameDarkAqua, NSWindow,
+    };
+
+    let Ok(ptr) = window.ns_window() else {
+        eprintln!("[transparent-window] no ns_window handle; appearance left as-is");
+        return;
+    };
+
+    // SAFETY: same contract as `clear_webview_backdrop` — `ns_window()` hands back the live
+    // NSWindow, and the calling command is synchronous, which is what puts us on the main thread.
+    unsafe {
+        let ns_window: &NSWindow = &*(ptr as *mut NSWindow);
+        let Some(dark) = NSAppearance::appearanceNamed(NSAppearanceNameDarkAqua) else {
+            eprintln!(
+                "[transparent-window] NSAppearanceNameDarkAqua unavailable; appearance left as-is"
+            );
+            return;
+        };
+        ns_window.setAppearance(Some(&dark));
+    }
 }
 
 /// The tag `window-vibrancy` gives the `NSVisualEffectView` it installs
