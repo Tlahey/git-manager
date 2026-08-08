@@ -2,8 +2,17 @@ import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import { toast } from '@git-manager/ui'
-import { apiCheckoutBranch, apiStashPush, type CheckoutOpts } from '../api/git.api'
-import { apiOpenRepo } from '../api/repo.api'
+import {
+  apiCheckoutBranch,
+  apiCreateBranch,
+  apiGetBranches,
+  apiSetBranchUpstream,
+  apiStashPush,
+  type CheckoutOpts,
+} from '../api/git.api'
+import { apiGetRepoSummary, apiOpenRepo } from '../api/repo.api'
+import { runActivity } from '../lib/activityCorrelation'
+import { localBranchNameForRemote } from '../lib/branchUpstream'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useStashDialogStore } from '../stores/stashDialog.store'
 
@@ -69,6 +78,73 @@ export function useBranchCheckout() {
     [refresh, openStashDialog]
   )
 
+  /**
+   * Switches to a remote-tracking branch (`origin/feat`) the way `git switch feat` does: onto the
+   * LOCAL branch of that name, creating it — tracking the remote — when it doesn't exist yet.
+   *
+   * Checking out `refs/remotes/origin/feat` itself is what git calls a detached HEAD: the app used
+   * to do exactly that (it checked out the remote branch's commit OID), so the ref badge read
+   * "HEAD", committing on top left the work on no branch at all, and pushing had nothing to push
+   * to. There is no gesture in the app for which that is the intent — a user clicking a remote
+   * branch wants to work on it — so the detached form is not offered here at all; a commit-scoped
+   * "Checkout commit" is still how one deliberately detaches.
+   *
+   * An existing local branch of that name is checked out as it stands, never moved onto the remote
+   * tip: it may hold unpushed work, and `git switch` doesn't move it either. Its ahead/behind
+   * counters then say what pulling would do.
+   *
+   * The whole gesture is one correlated action, which is what makes ⌘Z take back the checkout *and*
+   * the branch it just created — see `apiCreateAndCheckoutBranch`'s doc comment for what happens
+   * when those two are recorded apart (git refuses to delete the branch HEAD points at).
+   */
+  const checkoutRemoteBranchAsLocal = useCallback(
+    async (repoPath: string, remoteRef: string): Promise<boolean> => {
+      const localName = localBranchNameForRemote(remoteRef)
+      if (!localName) {
+        toast.error(t('checkout.remote.invalidRef', { ref: remoteRef }))
+        return false
+      }
+
+      return runActivity('git.checkout', async () => {
+        let created = false
+        let opts: CheckoutOpts
+        setPending(true)
+        try {
+          // Where HEAD is, read *before* anything is created and by this hook rather than by each
+          // caller — without it `apiCheckoutBranch` records no undo entry, so the branch creation
+          // below would be the only half of the gesture ⌘Z can reach, and undoing it alone means
+          // asking git to delete the branch that is now HEAD, which it refuses.
+          const summary = await apiGetRepoSummary(repoPath)
+          opts = { fromRef: summary.head, fromDetached: summary.isDetached }
+
+          const locals = await apiGetBranches(repoPath, false)
+          created = !locals.some((b) => b.name === localName)
+          if (created) {
+            await apiCreateBranch(repoPath, localName, remoteRef)
+            await apiSetBranchUpstream(repoPath, localName, remoteRef)
+          }
+        } catch (err) {
+          toast.error(String(err))
+          return false
+        } finally {
+          setPending(false)
+        }
+
+        const ok = await checkoutBranchWithStashPrompt(repoPath, localName, opts)
+        if (ok && created) {
+          toast.success(
+            t('checkout.remote.trackingBranchCreated', {
+              branch: localName,
+              upstream: remoteRef,
+            })
+          )
+        }
+        return ok
+      })
+    },
+    [checkoutBranchWithStashPrompt, t]
+  )
+
   /** Stashes everything (untracked included) then retries the checkout — the stash dialog's
    * confirm action. */
   const stashAndCheckout = useCallback(
@@ -94,6 +170,7 @@ export function useBranchCheckout() {
   return {
     pending,
     checkoutBranchWithStashPrompt,
+    checkoutRemoteBranchAsLocal,
     stashAndCheckout,
   }
 }

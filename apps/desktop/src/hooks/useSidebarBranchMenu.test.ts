@@ -48,9 +48,11 @@ const aiEnabledMock = vi.fn()
 vi.mock('./useAiEnabled', () => ({ useAiEnabled: () => aiEnabledMock() }))
 
 const checkoutBranchWithStashPrompt = vi.fn()
+const checkoutRemoteBranchAsLocal = vi.fn()
 vi.mock('./useBranchCheckout', () => ({
   useBranchCheckout: () => ({
     checkoutBranchWithStashPrompt: (...a: unknown[]) => checkoutBranchWithStashPrompt(...a),
+    checkoutRemoteBranchAsLocal: (...a: unknown[]) => checkoutRemoteBranchAsLocal(...a),
   }),
 }))
 
@@ -410,12 +412,14 @@ describe('useSidebarBranchMenu — checkout', () => {
     expect(checkoutBranchWithStashPrompt).toHaveBeenCalledWith(REPO, 'feat')
   })
 
-  // Documents a real quirk of the current implementation: only a `type: 'branch'` ref checks out
-  // by name — a remote ref checks out its tip commit oid instead (see `onCheckoutBranch`).
-  it('checks out a remote branch by its tip commit oid, not its ref name', async () => {
+  // A remote ref goes through the local-branch flow, never through the plain checkout: handing
+  // `origin/feat` to the latter would resolve the *local* `feat`, and its tip commit oid — what
+  // this used to do — detaches HEAD.
+  it('checks out a remote branch through its local counterpart, not its tip commit oid', async () => {
     const { spec } = openMenu(remoteBranch('feat'))
     await act(async () => getItem(spec, 'Checkout origin/feat').action!())
-    expect(checkoutBranchWithStashPrompt).toHaveBeenCalledWith(REPO, 'oid-feat')
+    expect(checkoutRemoteBranchAsLocal).toHaveBeenCalledWith(REPO, 'origin/feat')
+    expect(checkoutBranchWithStashPrompt).not.toHaveBeenCalled()
   })
 
   it('never offers to checkout the currently checked-out branch', () => {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { GitBranch } from '@git-manager/git-types'
-import { remoteTrackingBranches, resolveDefaultUpstream } from './branchUpstream'
+import {
+  localBranchNameForRemote,
+  remoteTrackingBranches,
+  resolveDefaultUpstream,
+} from './branchUpstream'
 
 /** A `GitBranch` as `get_branches` really returns it: `name` keeps the remote prefix, `shortName`
  * has it stripped. */
@@ -22,6 +26,20 @@ describe('remoteTrackingBranches', () => {
   it('keeps only the remote entries', () => {
     const branches = [branch('main', false), branch('origin/main', true), branch('feat', false)]
     expect(remoteTrackingBranches(branches).map((b) => b.name)).toEqual(['origin/main'])
+  })
+})
+
+describe('localBranchNameForRemote', () => {
+  it('drops the remote prefix', () => {
+    expect(localBranchNameForRemote('origin/main')).toBe('main')
+  })
+
+  it('keeps the slashes inside the branch name itself', () => {
+    expect(localBranchNameForRemote('upstream/feature/nested/name')).toBe('feature/nested/name')
+  })
+
+  it('is empty for a ref with nothing after the remote — never the remote name itself', () => {
+    expect(localBranchNameForRemote('origin')).toBe('')
   })
 })
 

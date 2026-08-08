@@ -1145,6 +1145,25 @@ describe('buildCommitMenuSpec', () => {
     expect(item(spec, 'Delete origin/main')?.enabled).not.toBe(false)
   })
 
+  // Its counterpart in the multi-branch submenus. Without it, the only checkout on a remote-only
+  // tip was the commit-scoped one, which detaches HEAD.
+  it('flat layout on a single remote branch offers a branch checkout beside the commit one', () => {
+    const spec = build(
+      ctx({
+        refs: [ref({ shortName: 'origin/main', type: 'remote' })],
+        currentBranch: 'feat',
+      })
+    )
+    expect(texts(spec)).toContain('Checkout origin/main')
+    // The deliberate detach is still there, on the commit rather than on the branch.
+    expect(texts(spec)).toContain('Checkout this commit')
+  })
+
+  it('flat layout on a LOCAL branch offers no branch checkout — it is already a local ref', () => {
+    const spec = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
+    expect(texts(spec)).not.toContain('Checkout feat')
+  })
+
   it('flattens a pushed branch tip (local + its remote tracking) with the local branch', () => {
     // A pushed branch tip carries BOTH `main` and `origin/main`; they share a logical name, so the
     // menu must flatten (no submenus) using the local ref — not treat it as a two-branch commit.

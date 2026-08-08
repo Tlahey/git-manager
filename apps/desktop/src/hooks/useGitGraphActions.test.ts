@@ -54,6 +54,8 @@ vi.mock('../api/git.api', () => ({
   apiUnstageAll: vi.fn(),
   apiCopyCommitSha: vi.fn(),
   apiCheckoutBranch: vi.fn(),
+  apiCreateBranch: vi.fn(),
+  apiGetBranches: vi.fn(),
   apiCherryPickCommit: vi.fn(),
   apiRebaseOntoCommit: vi.fn(),
   apiGetCommitWebUrl: vi.fn(),
@@ -72,7 +74,10 @@ vi.mock('../api/git.api', () => ({
   apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
-vi.mock('../api/repo.api', () => ({ apiRevealPathInFinder: vi.fn() }))
+vi.mock('../api/repo.api', () => ({
+  apiRevealPathInFinder: vi.fn(),
+  apiGetRepoSummary: vi.fn(),
+}))
 
 const webviewGetByLabel = vi.fn()
 const WebviewWindowCtor = vi.fn()
@@ -87,7 +92,7 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
 
 import * as gitApi from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
-import { apiRevealPathInFinder } from '../api/repo.api'
+import { apiGetRepoSummary, apiRevealPathInFinder } from '../api/repo.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useGitGraphActions } from './useGitGraphActions'
@@ -95,6 +100,7 @@ import { useGitGraphActions } from './useGitGraphActions'
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 const mockedAddWorktree = apiAddWorktree as unknown as ReturnType<typeof vi.fn>
 const mockedRevealPathInFinder = apiRevealPathInFinder as unknown as ReturnType<typeof vi.fn>
+const mockedGetRepoSummary = apiGetRepoSummary as unknown as ReturnType<typeof vi.fn>
 
 const t = (key: string, opts?: Record<string, unknown>) =>
   opts ? `${key}:${JSON.stringify(opts)}` : key
@@ -202,7 +208,6 @@ beforeEach(() => {
   // to be re-armed every test rather than configured once at module scope.
   showNativeMenu.mockResolvedValue(undefined)
 })
-
 
 describe('useGitGraphActions — simple commit actions', () => {
   it('the copy-sha item copies the clicked commit sha and toasts', async () => {
@@ -825,6 +830,27 @@ describe('useGitGraphActions — per-branch submenus', () => {
     await act(async () => getItem('gitTree.branchMenu.copyBranchLink').action!())
     expect(mocked.apiGetBranchWebUrl).toHaveBeenCalledWith(REPO, 'main')
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://github.com/o/r/tree/main')
+  })
+
+  // Checking out `origin/main` used to check out its tip commit — a detached HEAD, which is what
+  // made the graph label the branch "HEAD" afterwards. It now lands on a local `main` tracking it.
+  it('onCheckoutBranch on a remote ref creates the local tracking branch and switches onto it', async () => {
+    mocked.apiGetBranches.mockResolvedValue([])
+    mocked.apiCreateBranch.mockResolvedValue(undefined)
+    mocked.apiSetBranchUpstream.mockResolvedValue(undefined)
+    mocked.apiCheckoutBranch.mockResolvedValue(undefined)
+    mockedGetRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
+
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withRemote] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    await act(async () => getItem('gitTree.branchMenu.checkout').action!())
+
+    expect(mocked.apiCreateBranch).toHaveBeenCalledWith(REPO, 'main', 'origin/main')
+    expect(mocked.apiSetBranchUpstream).toHaveBeenCalledWith(REPO, 'main', 'origin/main')
+    expect(mocked.apiCheckoutBranch).toHaveBeenCalledWith(REPO, 'main', {
+      fromRef: 'main',
+      fromDetached: false,
+    })
   })
 
   it('onDeleteBranch on a remote ref opens the confirm dialog instead of deleting outright', async () => {

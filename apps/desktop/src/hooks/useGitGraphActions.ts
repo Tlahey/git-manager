@@ -149,7 +149,7 @@ export function useGitGraphActions({
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
-  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
   // Branch-explanation inputs: the master AI switch gates the menu item, and the repo's merge
   // targets + known refs decide which branch the explanation is diffed against.
   const aiEnabled = useAiEnabled()
@@ -603,10 +603,18 @@ export function useGitGraphActions({
           () => apiRebaseOntoCommit(repoPath, ref.commitOid),
           t('gitTree.branchMenu.rebased', relParams(ref))
         ),
-      // A remote ref checks out its commit (detached) — exactly what `git checkout origin/x` does.
+      // A remote ref switches onto its LOCAL branch, creating it (tracking that remote) if it
+      // doesn't exist — `git switch x`, not the detached `git checkout origin/x`. See
+      // `checkoutRemoteBranchAsLocal`.
       onCheckoutBranch: (ref) => {
-        const target = ref.type === 'branch' ? ref.shortName : ref.commitOid
-        void checkoutBranchWithStashPrompt(repoPath, target)
+        if (ref.type === 'remote') {
+          void checkoutRemoteBranchAsLocal(repoPath, ref.shortName)
+          return
+        }
+        void checkoutBranchWithStashPrompt(
+          repoPath,
+          ref.type === 'branch' ? ref.shortName : ref.commitOid
+        )
       },
       onOpenWorktreeFrom: (ref) => void handleCreateWorktree(ref.commitOid),
       // PR-create flow prefilled with head = current branch, base = the remote branch (without

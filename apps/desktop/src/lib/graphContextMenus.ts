@@ -1186,6 +1186,16 @@ function buildFlatSingleBranchMenuSpec(
       text: t('gitTree.branchMenu.openWorktree', b.params),
       action: () => branchActions.onOpenWorktreeFrom(b.ref),
     }),
+    // "Checkout origin/x", as in the multi-branch submenu. Only for a remote-only tip: this layout
+    // is chosen when the commit carries ONE logical branch, and `soleLogicalBranch` prefers the
+    // local ref, so `isRemote` here means the branch exists on the remote alone. Without it the
+    // only checkout offered was the commit-scoped one below, which detaches HEAD — the very thing
+    // `checkoutRemoteBranchAsLocal` exists to stop this gesture from doing.
+    b.isRemote &&
+      menuItem({
+        text: t('gitTree.branchMenu.checkout', b.params),
+        action: () => branchActions.onCheckoutBranch(b.ref),
+      }),
     menuItem({ text: t('gitTree.contextMenu.checkout'), action: actions.onCheckout }),
     menuSeparator(),
     menuItem({
