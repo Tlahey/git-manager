@@ -15,13 +15,20 @@ import { useBranches } from '../../hooks/useBranches'
 import { usePullRequests } from '../../hooks/usePullRequests'
 import { useGitStashes } from '../../hooks/useGitStashes'
 import { apiGetTags, apiListSubmodules } from '../../api/git.api'
+import type { SectionKey } from './types'
 
 interface SidebarRailProps {
   repoPath: string
   remoteUrls: string[]
   currentUser?: string
   githubToken?: string
+  /** Reopens the sidebar without singling out a section — the rail's own expand button. */
   onExpand: () => void
+  /**
+   * Reopens the sidebar *on* a section: an icon stands for one section, so clicking it should land
+   * on that section's content rather than on whatever the sidebar happened to be showing.
+   */
+  onOpenSection: (key: SectionKey) => void
 }
 
 interface RailIconProps {
@@ -54,6 +61,7 @@ export function SidebarRail({
   currentUser,
   githubToken,
   onExpand,
+  onOpenSection,
 }: SidebarRailProps) {
   const { data: branches = [] } = useBranches(repoPath)
   const localCount = branches.filter((b) => !b.isRemote).length
@@ -96,32 +104,32 @@ export function SidebarRail({
           icon={<HardDrive className="h-4 w-4" />}
           label="Local"
           count={localCount}
-          onClick={onExpand}
+          onClick={() => onOpenSection('local')}
         />
         <RailIcon
           icon={<Globe className="h-4 w-4" />}
           label="Remotes"
           count={remoteCount}
-          onClick={onExpand}
+          onClick={() => onOpenSection('remotes')}
         />
         <RailIcon
           icon={<GitPullRequest className="h-4 w-4" />}
           label="Pull Requests"
           count={allPrs.length}
-          onClick={onExpand}
+          onClick={() => onOpenSection('prs')}
         />
         <RailIcon
           icon={<TagIcon className="h-4 w-4" />}
           label="Tags"
           count={tags.length}
-          onClick={onExpand}
+          onClick={() => onOpenSection('tags')}
         />
         {stashes.length > 0 && (
           <RailIcon
             icon={<ArchiveIcon className="h-4 w-4 text-violet-400" />}
             label="Stashes"
             count={stashes.length}
-            onClick={onExpand}
+            onClick={() => onOpenSection('stashes')}
           />
         )}
         {submodules.length > 0 && (
@@ -129,7 +137,7 @@ export function SidebarRail({
             icon={<GitFork className="h-4 w-4" />}
             label="Submodules"
             count={submodules.length}
-            onClick={onExpand}
+            onClick={() => onOpenSection('submodules')}
           />
         )}
       </div>

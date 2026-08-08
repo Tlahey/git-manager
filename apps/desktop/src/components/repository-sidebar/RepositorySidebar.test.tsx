@@ -57,8 +57,11 @@ vi.mock('./SidebarSectionHeader', () => ({
 }))
 
 vi.mock('./SidebarRail', () => ({
-  SidebarRail: (props: { onExpand: () => void }) => (
-    <button data-testid="sidebar-rail" onClick={props.onExpand} />
+  SidebarRail: (props: { onExpand: () => void; onOpenSection: (key: string) => void }) => (
+    <>
+      <button data-testid="sidebar-rail" onClick={props.onExpand} />
+      <button data-testid="sidebar-rail-tags" onClick={() => props.onOpenSection('tags')} />
+    </>
   ),
 }))
 vi.mock('./BlameHistoryPanel', () => ({
@@ -232,6 +235,43 @@ describe('RepositorySidebar — mode routing', () => {
     renderSidebar()
     await user.click(screen.getByTestId('sidebar-rail'))
     expect(expand).toHaveBeenCalledOnce()
+  })
+
+  // Sections default to closed, so expanding alone would answer "here is the sidebar again"
+  // instead of "here are your tags" — the clicked icon has to open its own section.
+  it('a rail section icon expands and opens that section', async () => {
+    const expand = vi.fn()
+    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true, expand }))
+    const user = userEvent.setup()
+    renderSidebar()
+    await user.click(screen.getByTestId('sidebar-rail-tags'))
+    expect(expand).toHaveBeenCalledOnce()
+    expect(useSidebarRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ openState: { 'section:tags': true } })
+    )
+  })
+
+  // Reopening on a section only helps if it is on screen: with other sections already open it can
+  // sit below the fold, so the render that opens it also scrolls it into view.
+  it('scrolls the section it reopens on into view', async () => {
+    const scrollIntoView = vi.fn()
+    vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(scrollIntoView)
+    // Collapsed on the click, expanded on the re-render — the rail hands over to the section list.
+    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true }))
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local' }), section({ key: 'tags', title: 'Tags' })],
+    })
+    const user = userEvent.setup()
+    const { rerender } = renderSidebar()
+    await user.click(screen.getByTestId('sidebar-rail-tags'))
+    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: false }))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    rerender(
+      <QueryClientProvider client={client}>
+        <RepositorySidebar repoPath="/repo" selectedBranch={null} onSelectBranch={vi.fn()} />
+      </QueryClientProvider>
+    )
+    expect(scrollIntoView).toHaveBeenCalledOnce()
   })
 
   it('shows the BlameHistoryPanel when the left panel is in blame/history mode', () => {
