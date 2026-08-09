@@ -11,7 +11,7 @@ export function SidebarResizeHandle({
 }: SidebarResizeHandleProps) {
   return (
     <div
-      className="group/handle absolute right-0 top-0 z-resize-handle flex h-full w-[5px] cursor-col-resize touch-none select-none items-center justify-center"
+      className="group/handle absolute top-0 right-0 z-resize-handle flex h-full w-[5px] cursor-col-resize touch-none items-center justify-center select-none"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

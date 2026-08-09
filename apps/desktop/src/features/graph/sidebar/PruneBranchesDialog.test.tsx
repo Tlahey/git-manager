@@ -60,7 +60,6 @@ beforeEach(() => {
   mockedGone.mockResolvedValue([])
 })
 
-
 describe('PruneBranchesDialog — prunable selection', () => {
   it('lists only gone-upstream branches, excluding HEAD, main/master, and worktree-checked-out ones', async () => {
     mockedGone.mockResolvedValue(['feature/gone', 'main', 'feature/head', 'feature/wt'])

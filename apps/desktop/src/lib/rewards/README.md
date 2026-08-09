@@ -40,18 +40,18 @@ stores/repoUI.store.ts (setActiveTab)        │  checkTerminalHistory() (pollin
 
 ## Files
 
-| File                           | Role                                                                                                                                                                                                             |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `types.ts`                     | `Achievement`, `AchievementDefinition`, `RuleKind`, `RewardEffect`, `RuleContext` — no logic, just shapes.                                                                                                       |
-| `rules/RewardRule.ts`          | The `RewardRule` Strategy interface (`matches`, optional `track`).                                                                                                                                               |
-| `rules/ActionRule.ts`          | Unlocks on a specific one-shot `AppEvent` (`discard`, `fixup`, `autosquash`, `open_launchpad`).                                                                                                                  |
-| `rules/MilestoneRule.ts`       | Unlocks once a counter (commits, PRs merged) crosses a threshold.                                                                                                                                                |
-| `rules/TerminalKeywordRule.ts` | Unlocks the first time a terminal command containing a keyword is observed.                                                                                                                                      |
-| `rules/PairEventRule.ts`       | Unlocks when an `endEvent` (e.g. `unstage`) fires for the same file a prior `startEvent` (e.g. `stage`) recorded. Stateful — the only rule using `track()`.                                                      |
-| `rules/CompositeRule.ts`       | Meta-achievement: unlocks once every other achievement is unlocked (the platinum trophy).                                                                                                                        |
-| `ruleRegistry.ts`              | `RuleKind → RewardRule` lookup. The only place that imports every concrete rule class.                                                                                                                           |
-| `rewardEngine.ts`              | `processEvent()` (pure) and `unlockAchievementById()` (pure, the single place prerequisite-checking lives).                                                                                                      |
-| `effects.ts`                   | Selectors (`isEffectUnlocked`, `findEffectGate`, `getUnlockedEffects`) over `Achievement.effects`, used by UI code (theme picker, ...) that needs to know what an achievement unlocks without hardcoding its id. |
+| File                           | Role                                                                                                                                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`                     | `Achievement`, `AchievementDefinition`, `RuleKind`, `RewardEffect`, `RuleContext` — no logic, just shapes.                                                                                                                                      |
+| `rules/RewardRule.ts`          | The `RewardRule` Strategy interface (`matches`, optional `track`).                                                                                                                                                                              |
+| `rules/ActionRule.ts`          | Unlocks on a specific one-shot `AppEvent` (`discard`, `fixup`, `autosquash`, `open_launchpad`).                                                                                                                                                 |
+| `rules/MilestoneRule.ts`       | Unlocks once a counter (commits, PRs merged) crosses a threshold.                                                                                                                                                                               |
+| `rules/TerminalKeywordRule.ts` | Unlocks the first time a terminal command containing a keyword is observed.                                                                                                                                                                     |
+| `rules/PairEventRule.ts`       | Unlocks when an `endEvent` (e.g. `unstage`) fires for the same file a prior `startEvent` (e.g. `stage`) recorded. Stateful — the only rule using `track()`.                                                                                     |
+| `rules/CompositeRule.ts`       | Meta-achievement: unlocks once every other achievement is unlocked (the platinum trophy).                                                                                                                                                       |
+| `ruleRegistry.ts`              | `RuleKind → RewardRule` lookup. The only place that imports every concrete rule class.                                                                                                                                                          |
+| `rewardEngine.ts`              | `processEvent()` (pure) and `unlockAchievementById()` (pure, the single place prerequisite-checking lives).                                                                                                                                     |
+| `effects.ts`                   | Selectors (`isEffectUnlocked`, `findEffectGate`, `getUnlockedEffects`) over `Achievement.effects`, used by UI code (theme picker, ...) that needs to know what an achievement unlocks without hardcoding its id.                                |
 | `terminalHistory.ts`           | `diffHistorySources()` / `appendedCommands()` — which lines of the shell history the user ran _since the app last looked_, per history file, so a `terminal_command` event stands for a command they typed rather than for the file's contents. |
 
 ## Adding a new achievement
@@ -88,7 +88,7 @@ needed; effects are a separate, orthogonal concept from triggers.
 ## Every event must be something the user did
 
 An achievement is a claim about the user's behaviour, so the engine can only be as honest as the
-events it is fed — `ActionRule` in particular treats the event *as* the whole condition. Two
+events it is fed — `ActionRule` in particular treats the event _as_ the whole condition. Two
 triggers used to break that and are worth knowing about, because both are easy to re-introduce:
 
 - **The shell history is a file, not an action.** `checkTerminalHistory()` used to replay every
@@ -98,7 +98,7 @@ triggers used to break that and are worth knowing about, because both are easy t
   Same reason `resetGameProgress()` sets the snapshot to `null` and not `{}`, and that a read which
   came back empty is treated as no read at all.
   The corollary is that the backend reports **one entry per history file** and each is diffed on its
-  own: appending to a merged `.zsh_history` + `.bash_history` list inserts in the *middle*, which
+  own: appending to a merged `.zsh_history` + `.bash_history` list inserts in the _middle_, which
   reads as a rewritten history and credits nobody. Merging them back would silently make every
   terminal achievement unreachable for anyone with git commands in both files.
 - **A mount is not a gesture.** `open_launchpad` used to fire from `App.tsx`'s mount effect (as

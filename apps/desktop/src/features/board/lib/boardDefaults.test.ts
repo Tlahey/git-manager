@@ -37,7 +37,11 @@ describe('branchNameForCard', () => {
 
 describe('defaultColumns — the column that counts as done', () => {
   it('marks the last column, so a new board can already report a sprint', () => {
-    expect(defaultColumns().filter((c) => c.isDone).map((c) => c.id)).toEqual(['done'])
+    expect(
+      defaultColumns()
+        .filter((c) => c.isDone)
+        .map((c) => c.id)
+    ).toEqual(['done'])
   })
 })
 

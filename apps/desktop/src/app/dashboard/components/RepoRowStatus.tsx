@@ -28,7 +28,7 @@ function CountBadge({
     <Tooltip content={`${count} ${label}`}>
       <span
         data-testid={testId}
-        className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none ${className}`}
+        className={`rounded px-1.5 py-0.5 font-mono text-[10px] leading-none font-medium ${className}`}
       >
         {prefix}
         {count}

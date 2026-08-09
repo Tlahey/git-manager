@@ -6,11 +6,7 @@
  * field names: `theirs*` describes the LEFT pane (incoming side in a merge, "original" in a
  * 2-panel diff) and `ours*` the RIGHT pane (current side in a merge, "modified" in a diff). */
 export type MergeBlockKind =
-  | 'unchanged'
-  | 'ours-only'
-  | 'theirs-only'
-  | 'both-same'
-  | 'both-different'
+  'unchanged' | 'ours-only' | 'theirs-only' | 'both-same' | 'both-different'
 
 export interface MergeBlock {
   blockId: number

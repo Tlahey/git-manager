@@ -16,10 +16,10 @@ It was extracted from `components/git-graph/` (2026-08) for exactly that reason:
 had become three things sharing a directory, and this was the piece two other areas were reaching
 into it for.
 
-## What it does *not* own
+## What it does _not_ own
 
 - **Where the file came from.** Callers pass a `path` plus how to read it (staged, unmodified, which
   tab to open on); resolving that is the caller's business.
-- **The blame/history *panel*** (`components/repository-sidebar/BlameHistoryPanel`). The toggle for
+- **The blame/history _panel_** (`components/repository-sidebar/BlameHistoryPanel`). The toggle for
   it is in this toolbar, but the panel itself lands in the repo tab's left slot, which
   `RepoWorkspace` owns — see its doc comment for why blame takes that slot on two different views.

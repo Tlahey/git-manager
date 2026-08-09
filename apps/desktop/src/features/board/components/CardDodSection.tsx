@@ -53,7 +53,7 @@ export function CardDodSection({ dod, onSave, readOnly }: CardDodSectionProps) {
       )}
 
       {progress.total === 0 && (
-        <p className="mb-2 text-xs italic text-muted-foreground" data-testid="card-dod-empty">
+        <p className="mb-2 text-xs text-muted-foreground italic" data-testid="card-dod-empty">
           {t('card.dod.empty')}
         </p>
       )}

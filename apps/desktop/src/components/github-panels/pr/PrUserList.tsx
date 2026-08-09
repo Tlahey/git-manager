@@ -13,7 +13,7 @@ export function PrUserList({ users, emptyLabel }: PrUserListProps) {
   const { t } = useTranslation('git')
 
   if (users.length === 0) {
-    return <p className="text-xs italic text-muted-foreground">{t(emptyLabel)}</p>
+    return <p className="text-xs text-muted-foreground italic">{t(emptyLabel)}</p>
   }
 
   return (

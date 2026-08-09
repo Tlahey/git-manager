@@ -1,7 +1,10 @@
 import useSWR from 'swr'
 import type { GitBranch } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { fetchClosedPullRequests, fetchCommitMergedPullRequestForBranch } from '../../../api/github.api'
+import {
+  fetchClosedPullRequests,
+  fetchCommitMergedPullRequestForBranch,
+} from '../../../api/github.api'
 import { apiGoneUpstreamBranches } from '../../../api/worktree.api'
 import { firstGitHubOwnerRepo } from '../../../lib/githubRemote'
 import { DEFAULT_PINNED } from '../sidebar/types'

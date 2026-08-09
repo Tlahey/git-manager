@@ -72,7 +72,6 @@ beforeEach(() => {
   useMergedWorktreesMock.mockReturnValue(hookResult([mergedCheck(worktree())]))
 })
 
-
 describe('RemoveMergedWorktreesDialog — body states', () => {
   it('shows a no-GitHub-remote message and disables confirm', () => {
     useMergedWorktreesMock.mockReturnValue(hookResult([], { isGithub: false }))

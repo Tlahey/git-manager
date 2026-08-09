@@ -40,7 +40,6 @@ beforeEach(() => {
   useGameStore.setState({ rewardsEnabled: true })
 })
 
-
 describe('TabBar — pinned tabs', () => {
   // Dashboard/Rewards use hideLabel=true: their text only exists in a non-interactive hover
   // tooltip <div> that's a *sibling* of the real <button>, not a descendant — so

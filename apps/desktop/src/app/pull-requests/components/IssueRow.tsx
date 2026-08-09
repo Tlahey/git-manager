@@ -50,7 +50,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
           className={`shrink-0 cursor-pointer transition-all ${
             pinned
               ? 'text-amber-400'
-              : 'text-muted-foreground/30 opacity-0 hover:text-amber-400 group-hover/pr:opacity-100'
+              : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
           }`}
         >
           <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
@@ -71,7 +71,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
       {/* Item: title #id + tags */}
       <div className="min-w-0 flex-1">
         <div className="leading-snug">
-          <span className="text-xs font-medium text-foreground transition-colors wrap-anywhere group-hover/pr:text-primary">
+          <span className="text-xs font-medium wrap-anywhere text-foreground transition-colors group-hover/pr:text-primary">
             {issue.title}
           </span>{' '}
           <button
@@ -81,7 +81,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             }}
             title={t('row.openOnGitHub')}
             data-testid={`issue-number-link-${issue.id}`}
-            className="cursor-pointer whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >
             #{issue.number}
           </button>
@@ -177,7 +177,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             title={t('row.openInApp')}
             aria-label={t('row.openInApp')}
             data-testid={`issue-open-in-app-${issue.id}`}
-            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
           >
             <PanelRight className="h-3.5 w-3.5" />
           </button>

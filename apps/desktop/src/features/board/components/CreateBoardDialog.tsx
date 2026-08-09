@@ -44,7 +44,12 @@ interface CreateBoardDialogProps {
  * the alternative, a board mid-sprint being reclassified as one that never ends, has no sensible
  * meaning for the report and the successor it would have produced.
  */
-export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }: CreateBoardDialogProps) {
+export function CreateBoardDialog({
+  open,
+  onOpenChange,
+  canUseRemote,
+  onSubmit,
+}: CreateBoardDialogProps) {
   const { t } = useTranslation('board')
   const [name, setName] = useState('')
   const [source, setSource] = useState<BoardSource>('local')
@@ -146,12 +151,20 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
 
           <div className="space-y-1.5">
             <Label>{t('createBoard.backendLabel')}</Label>
-            <RadioGroup value={source} onValueChange={(v) => setSource(v as BoardSource)} disabled={pending}>
+            <RadioGroup
+              value={source}
+              onValueChange={(v) => setSource(v as BoardSource)}
+              disabled={pending}
+            >
               <label className="flex cursor-pointer items-start gap-2 text-xs">
                 <RadioGroupItem value="local" className="mt-0.5" />
                 <span>
-                  <span className="block font-medium text-foreground">{t('createBoard.localLabel')}</span>
-                  <span className="block text-muted-foreground">{t('createBoard.localDescription')}</span>
+                  <span className="block font-medium text-foreground">
+                    {t('createBoard.localLabel')}
+                  </span>
+                  <span className="block text-muted-foreground">
+                    {t('createBoard.localDescription')}
+                  </span>
                 </span>
               </label>
               <label
@@ -159,7 +172,9 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
               >
                 <RadioGroupItem value="remote" disabled={!canUseRemote} className="mt-0.5" />
                 <span>
-                  <span className="block font-medium text-foreground">{t('createBoard.remoteLabel')}</span>
+                  <span className="block font-medium text-foreground">
+                    {t('createBoard.remoteLabel')}
+                  </span>
                   <span className="block text-muted-foreground">
                     {canUseRemote
                       ? t('createBoard.remoteDescription')
@@ -187,7 +202,12 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => handleOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => handleOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button

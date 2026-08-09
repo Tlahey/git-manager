@@ -119,7 +119,7 @@ export function WipCommitInput({
         className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-hidden"
       />
       {refInfo && <WipRefTag refInfo={refInfo} />}
-      <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
+      <div className="flex shrink-0 items-center gap-1 text-[9px] font-bold select-none">
         {wipStats.added > 0 && (
           <Tag tone="success" className="px-1 py-0.5 text-[9px]">
             +{wipStats.added}
@@ -174,7 +174,7 @@ export function WorktreeWipRow({
       {agentActivity && <AgentStatusTag activity={agentActivity} />}
       <span className="shrink-0 text-[11px] text-muted-foreground/70">// WIP</span>
       {refInfo && <WipRefTag refInfo={refInfo} />}
-      <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
+      <div className="flex shrink-0 items-center gap-1 text-[9px] font-bold select-none">
         {wipStats.added > 0 && (
           <Tag tone="success" className="px-1 py-0.5 text-[9px]">
             +{wipStats.added}

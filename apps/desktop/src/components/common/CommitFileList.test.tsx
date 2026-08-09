@@ -46,7 +46,6 @@ beforeEach(() => {
   mockedDiscard.mockResolvedValue(undefined)
 })
 
-
 describe('CommitFileList — stats summary', () => {
   it('counts added/untracked, modified, deleted, and renamed files separately', () => {
     renderList({

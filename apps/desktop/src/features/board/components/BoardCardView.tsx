@@ -5,7 +5,13 @@ import type { BoardCard, BoardTag } from '@git-manager/git-types'
 import { Card, Tooltip } from '@git-manager/ui'
 import { AlertTriangle, CalendarClock, CheckCircle2, CircleDot, ListChecks } from 'lucide-react'
 import { CommitAvatar } from '../../../components/common/CommitAvatar'
-import { cardIdentifier, dodProgress, isOverdue, readableTextOn, resolveCardTags } from '../lib/cardMeta'
+import {
+  cardIdentifier,
+  dodProgress,
+  isOverdue,
+  readableTextOn,
+  resolveCardTags,
+} from '../lib/cardMeta'
 import { CardPriorityIcon } from './CardPriorityIcon'
 import { CardKindIcon } from './CardKindIcon'
 import { cardKindStyle } from './cardKind.config'
@@ -114,7 +120,7 @@ export function BoardCardView({
               />
             </Tooltip>
           )}
-          <p className="line-clamp-2 flex-1 text-[13px] font-medium leading-snug text-foreground">
+          <p className="line-clamp-2 flex-1 text-[13px] leading-snug font-medium text-foreground">
             {card.title}
           </p>
           {actions && <CardActionsMenu {...actions} compact testId="board-card-actions-menu" />}
@@ -135,7 +141,7 @@ export function BoardCardView({
                 // Filled, not tinted: at this size a 13%-alpha chip reads as grey on grey, and the
                 // tag's whole job here is to be recognisable before the title is read. The ink is
                 // measured against the fill rather than fixed — see `readableTextOn`.
-                className="rounded-[3px] px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide"
+                className="rounded-[3px] px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-wide uppercase"
                 style={{ backgroundColor: tag.color, color: readableTextOn(tag.color) }}
               >
                 {tag.name}
@@ -171,11 +177,7 @@ export function BoardCardView({
               </Tooltip>
             )}
 
-            <CardArchivedBadge
-              archivedAt={card.archivedAt}
-              compact
-              testId="board-card-archived"
-            />
+            <CardArchivedBadge archivedAt={card.archivedAt} compact testId="board-card-archived" />
           </div>
         )}
 

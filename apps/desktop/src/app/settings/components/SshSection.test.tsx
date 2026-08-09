@@ -26,7 +26,6 @@ beforeEach(() => {
   useSshPublicKey.mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
 })
 
-
 describe('SshSection — key paths', () => {
   it('binds the private/public key path inputs', async () => {
     const user = userEvent.setup()

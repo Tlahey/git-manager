@@ -61,7 +61,7 @@ export function CardActionsMenu({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           className={`shrink-0 cursor-pointer rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-            compact ? 'p-0.5 opacity-0 focus:opacity-100 group-hover:opacity-100' : 'p-1'
+            compact ? 'p-0.5 opacity-0 group-hover:opacity-100 focus:opacity-100' : 'p-1'
           }`}
         >
           <MoreHorizontal className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
@@ -117,9 +117,7 @@ export function CardActionsMenu({
         )}
         {onDelete && (
           <>
-            {(onDuplicate || onArchive || onUnarchive || onMove) && (
-              <DropdownMenuSeparator />
-            )}
+            {(onDuplicate || onArchive || onUnarchive || onMove) && <DropdownMenuSeparator />}
             <DropdownMenuItem
               className="gap-2 text-xs text-destructive focus:text-destructive"
               onSelect={onDelete}

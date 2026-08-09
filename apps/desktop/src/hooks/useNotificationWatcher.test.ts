@@ -75,7 +75,6 @@ beforeEach(() => {
   mockGitHubData([])
 })
 
-
 describe('useNotificationWatcher — click listener setup', () => {
   it('subscribes to notification clicks and unsubscribes on unmount', async () => {
     const { unmount } = renderHook(() => useNotificationWatcher())

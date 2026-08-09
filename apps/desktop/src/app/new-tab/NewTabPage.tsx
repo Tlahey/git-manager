@@ -105,7 +105,7 @@ export function NewTabPage() {
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 border-b border-border/40 pb-1.5">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              <h2 className="text-xs font-semibold tracking-wider text-foreground uppercase">
                 {t('newTab.recent')}
               </h2>
               <span className="rounded-full bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground">
@@ -113,7 +113,7 @@ export function NewTabPage() {
               </span>
             </div>
             {recentRepos.length === 0 ? (
-              <p className="py-1 pl-5 text-[11px] italic text-muted-foreground/60">
+              <p className="py-1 pl-5 text-[11px] text-muted-foreground/60 italic">
                 {t('newTab.noRecent')}
               </p>
             ) : (

@@ -100,7 +100,6 @@ beforeEach(() => {
   }))
 })
 
-
 describe('icon loading', () => {
   it('resolves and loads every declared icon resource on first use', async () => {
     const api = await freshApi()

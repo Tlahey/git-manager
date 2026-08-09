@@ -22,16 +22,16 @@ production barrel.
 
 ## Layout
 
-| Folder        | What lives there                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| `index.ts`      | The public surface, and the reason this folder is a boundary rather than a naming habit.         |
-| `BoardPage.tsx` | The central area: columns, read-only banners, the dialogs. Owns no dialog state and no wiring. |
-| `api/`        | The IPC/HTTP boundary — the `BoardBackend` contract and its two implementations, plus the card ⇄ issue mapping. The **only** place in the feature allowed to reach `lib/tauri` or a GitHub endpoint. |
-| `components/` | Every view, from the card face to the fourteen dialogs, plus the two chrome slots (`BoardToolbar`, `BoardSidebar`). Presentational; they receive handlers or write a store. |
-| `hooks/`      | Data and UI state. `useBoardData` composes the six write-scoped hooks beside it.                 |
-| `lib/`        | Pure logic, no React: identifier derivation, badge ink, link inverse-resolution, move targets (per card *and* per column), sprint statistics, iteration naming, checklist parsing, attachment markdown, cross-board ticket ranking. |
-| `stores/`     | Three Zustand stores — persisted selection and fold state, the search box and list filters, and which dialog is open. |
-| `test/`       | `makeBoard`/`makeCard`/`makeBoardData` factories, shared by every suite in the feature.            |
+| Folder          | What lives there                                                                                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`      | The public surface, and the reason this folder is a boundary rather than a naming habit.                                                                                                                                            |
+| `BoardPage.tsx` | The central area: columns, read-only banners, the dialogs. Owns no dialog state and no wiring.                                                                                                                                      |
+| `api/`          | The IPC/HTTP boundary — the `BoardBackend` contract and its two implementations, plus the card ⇄ issue mapping. The **only** place in the feature allowed to reach `lib/tauri` or a GitHub endpoint.                                |
+| `components/`   | Every view, from the card face to the fourteen dialogs, plus the two chrome slots (`BoardToolbar`, `BoardSidebar`). Presentational; they receive handlers or write a store.                                                         |
+| `hooks/`        | Data and UI state. `useBoardData` composes the six write-scoped hooks beside it.                                                                                                                                                    |
+| `lib/`          | Pure logic, no React: identifier derivation, badge ink, link inverse-resolution, move targets (per card _and_ per column), sprint statistics, iteration naming, checklist parsing, attachment markdown, cross-board ticket ranking. |
+| `stores/`       | Three Zustand stores — persisted selection and fold state, the search box and list filters, and which dialog is open.                                                                                                               |
+| `test/`         | `makeBoard`/`makeCard`/`makeBoardData` factories, shared by every suite in the feature.                                                                                                                                             |
 
 ## Two searches, and why
 
@@ -44,14 +44,14 @@ production barrel.
   and by ⌘F) is over every **ticket** of every board. It answers "where is GM-7", which has no
   reason to begin by asking which board GM-7 is on. It reads every board once (`useAllBoardCards`,
   gated on the dialog being open, since that is one board-detail fetch per board), ranks with
-  `lib/searchCards.ts`, and on select switches to the card's board *before* opening the card dialog
+  `lib/searchCards.ts`, and on select switches to the card's board _before_ opening the card dialog
   — that dialog resolves its id out of the open board's live card list, so the order is load-bearing.
 
 The board page therefore carries no card query at all: its columns hold what has not been archived.
 An archived ticket is still found by the toolbar's search, which matches archived cards on purpose,
 and put back by the archive dialog.
 
-## What is deliberately *not* here
+## What is deliberately _not_ here
 
 - **The Rust half.** `src-tauri/src/services/git_board.rs` and `commands/board.rs` own the local
   backend's storage — a hidden ref per board, one commit per mutation. Read that module's doc comment

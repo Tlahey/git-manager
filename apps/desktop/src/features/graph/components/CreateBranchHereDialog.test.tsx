@@ -36,7 +36,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('CreateBranchHereDialog — rendering', () => {
   it('shows the title, "from <sha>" description, and a pre-checked checkout box', () => {
     renderDialog()

@@ -185,7 +185,7 @@ export function DailySummariesPanel({ repoPath, onClose }: DailySummariesPanelPr
         progressLabel={isGenerating ? generateLabel : null}
       />
 
-      <div className="flex-1 select-text overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-3 select-text">
         {skipped && !isGenerating && (
           <Alert className="mb-3 rounded-lg text-[11px]" data-testid="summaries-skipped">
             {t('dashboard.summary.noChanges')}

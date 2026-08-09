@@ -107,7 +107,7 @@ export function ApplyPatchPanel({ repoPath }: { repoPath: string }) {
         {checkError && (
           <Alert variant="destructive" data-testid="patch-check-error">
             <p className="text-xs font-medium">{t('patch.apply.checkFailed')}</p>
-            <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px]">{checkError}</pre>
+            <pre className="mt-1 font-mono text-[11px] whitespace-pre-wrap">{checkError}</pre>
           </Alert>
         )}
         <Button

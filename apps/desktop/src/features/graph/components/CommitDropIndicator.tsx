@@ -18,7 +18,7 @@ export function CommitDropIndicator({
       <span
         aria-hidden
         data-testid="commit-drop-combine"
-        className="pointer-events-none absolute inset-0 z-graph-row-hover rounded-sm ring-2 ring-inset ring-primary"
+        className="pointer-events-none absolute inset-0 z-graph-row-hover rounded-sm ring-2 ring-primary ring-inset"
       />
     )
   }

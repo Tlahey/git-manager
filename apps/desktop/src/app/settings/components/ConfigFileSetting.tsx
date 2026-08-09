@@ -41,18 +41,18 @@ export function ConfigFileSetting() {
       testId="setting-config-file"
       match={`${t('settings.advanced.configFile')} ${t('settings.advanced.revealConfigFile')} settings.json configuration fichier config path chemin`}
     >
-      <label className="text-foreground text-xs font-medium">
+      <label className="text-xs font-medium text-foreground">
         <Highlight text={t('settings.advanced.configFile')} />
       </label>
 
       {path === null ? (
-        <p className="text-muted-foreground text-xs" data-testid="config-file-disabled">
+        <p className="text-xs text-muted-foreground" data-testid="config-file-disabled">
           {t('settings.advanced.configFileDisabled')}
         </p>
       ) : (
         <>
           <p
-            className="text-muted-foreground font-mono text-xs break-all"
+            className="font-mono text-xs break-all text-muted-foreground"
             data-testid="config-file-path"
           >
             {path}

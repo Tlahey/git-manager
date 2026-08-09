@@ -25,7 +25,7 @@ export function CommitSearchMatchList({ matches, onOpenCommit }: CommitSearchMat
 
   return (
     <div className="flex flex-col gap-1.5" data-testid="commit-search-matches">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <h4 className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
         {t('gitTree.commitSearch.matchesTitle', { count: matches.length })}
       </h4>
 
@@ -53,7 +53,7 @@ export function CommitSearchMatchList({ matches, onOpenCommit }: CommitSearchMat
               {match.files.map((file) => (
                 <span
                   key={file}
-                  className="flex min-w-0 max-w-full items-center gap-0.5 rounded bg-muted px-1 py-0.5 font-mono text-[9px] text-muted-foreground"
+                  className="flex max-w-full min-w-0 items-center gap-0.5 rounded bg-muted px-1 py-0.5 font-mono text-[9px] text-muted-foreground"
                 >
                   <FileText className="h-2.5 w-2.5 shrink-0" />
                   <span className="truncate">{file}</span>

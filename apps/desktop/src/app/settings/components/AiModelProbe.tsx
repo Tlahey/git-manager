@@ -128,7 +128,7 @@ function ProbeResult({
       </p>
       <p
         data-testid={`${prefix}-detail`}
-        className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground"
+        className="mt-0.5 font-mono text-[10px] break-all text-muted-foreground"
       >
         {result.ok
           ? `${reply}${truncated ? '…' : ''}`

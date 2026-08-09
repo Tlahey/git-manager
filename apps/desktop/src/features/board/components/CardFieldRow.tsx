@@ -65,7 +65,7 @@ export function CardFieldRow({
   const value = filled ? (
     children
   ) : (
-    <span className="text-[11px] italic text-muted-foreground">{addLabel}</span>
+    <span className="text-[11px] text-muted-foreground italic">{addLabel}</span>
   )
 
   return (

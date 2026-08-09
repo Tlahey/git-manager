@@ -101,7 +101,7 @@ export function HoverExpandLabel({
           // text (the portal doesn't inherit the CSS → otherwise it would take the body's, far too
           // large). The height matches the whole row (the selected element).
           <span
-            className="pointer-events-none fixed z-overlay flex items-center whitespace-nowrap bg-sidebar text-sidebar-foreground"
+            className="pointer-events-none fixed z-overlay flex items-center bg-sidebar whitespace-nowrap text-sidebar-foreground"
             style={{
               top: overlay.top,
               height: overlay.height,
@@ -114,7 +114,7 @@ export function HoverExpandLabel({
               lineHeight: overlay.lineHeight,
             }}
           >
-            <span className="flex h-full items-center whitespace-nowrap bg-sidebar-accent/60 pr-2">
+            <span className="flex h-full items-center bg-sidebar-accent/60 pr-2 whitespace-nowrap">
               {children}
             </span>
           </span>,

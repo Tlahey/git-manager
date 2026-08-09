@@ -70,7 +70,7 @@ export function PrViewPanel({ pr, onClose }: PrViewPanelProps) {
           <>
             <div
               {...resizeProps}
-              className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+              className="group relative w-2 shrink-0 cursor-col-resize transition-colors select-none hover:bg-primary/40"
               data-testid="launchpad-pr-files-resize"
             >
               <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />

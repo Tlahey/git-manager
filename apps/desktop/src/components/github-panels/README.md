@@ -12,7 +12,7 @@ graph is not "where pull requests live", and Launchpad is not what the sidebar o
 
 Extracted from `components/git-graph/` (2026-08), where they had accumulated because the graph was
 the first screen to show a PR. Leaving them there would have meant `app/pull-requests/` importing
-out of the graph's folder — and, once the graph became `features/graph/`, importing *into* a feature
+out of the graph's folder — and, once the graph became `features/graph/`, importing _into_ a feature
 from outside it, which the barrel rule exists to prevent.
 
 ## Boundaries

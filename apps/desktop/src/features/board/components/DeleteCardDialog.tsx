@@ -56,9 +56,7 @@ export function DeleteCardDialog({
       <DialogContent data-testid="delete-card-dialog">
         <DialogHeader>
           <DialogTitle>{t('deleteCard.title')}</DialogTitle>
-          <DialogDescription>
-            {t('deleteCard.description', { title: cardTitle })}
-          </DialogDescription>
+          <DialogDescription>{t('deleteCard.description', { title: cardTitle })}</DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="items-center justify-between sm:justify-between">

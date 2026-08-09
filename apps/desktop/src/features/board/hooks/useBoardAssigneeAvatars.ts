@@ -12,7 +12,9 @@ import { useAssignableUsers } from '../../../hooks/usePrEditCandidates'
  * Resolved once here rather than per card: the lookup is a single request for the repo's
  * collaborators, and a fifty-card board must not turn that into a hook instance per tile.
  */
-export function useBoardAssigneeAvatars(repoPath: string): (assignee: string) => string | undefined {
+export function useBoardAssigneeAvatars(
+  repoPath: string
+): (assignee: string) => string | undefined {
   const { users } = useAssignableUsers(repoPath, true)
 
   const byLogin = useMemo(() => {

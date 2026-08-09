@@ -9,13 +9,7 @@ import {
 } from '../api/updater.api'
 
 export type UpdaterStatus =
-  | 'idle'
-  | 'checking'
-  | 'up-to-date'
-  | 'available'
-  | 'downloading'
-  | 'ready'
-  | 'error'
+  'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error'
 
 /**
  * Global updater state on top of `tauri-plugin-updater`. It lives in a store (not a component hook)

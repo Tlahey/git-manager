@@ -41,12 +41,7 @@ function renderRail(props: Partial<React.ComponentProps<typeof SidebarRail>> = {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <SidebarRail
-        repoPath="/repo"
-        remoteUrls={[]}
-        onOpenSection={vi.fn()}
-        {...props}
-      />
+      <SidebarRail repoPath="/repo" remoteUrls={[]} onOpenSection={vi.fn()} {...props} />
     </QueryClientProvider>
   )
 }
@@ -59,7 +54,6 @@ beforeEach(() => {
   mockedGetTags.mockResolvedValue([])
   mockedListSubmodules.mockResolvedValue([])
 })
-
 
 describe('SidebarRail — counts', () => {
   it('splits local vs remote branch counts', () => {

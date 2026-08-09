@@ -72,17 +72,17 @@ export function WorktreeItem({
       className="max-w-none px-3 py-2"
       content={
         <div className="max-w-xs whitespace-normal" data-testid={`worktree-hover-card-${wt.path}`}>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-[10px] tracking-wide text-muted-foreground uppercase">
             {t('sidebar.worktree.workingDirectory')}
           </div>
-          <div className="mt-0.5 break-all font-mono text-[11px] text-foreground">{wt.path}</div>
+          <div className="mt-0.5 font-mono text-[11px] break-all text-foreground">{wt.path}</div>
         </div>
       }
     >
       <div
         data-testid={`worktree-item-${wt.path}`}
         onDoubleClick={() => onOpenWorktree?.(wt)}
-        className="group/wt relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+        className="group/wt relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
       >
         <Layers className="h-3 w-3 shrink-0 opacity-30" />
         <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
@@ -127,7 +127,7 @@ export function WorktreeItem({
           <DropdownMenuTrigger asChild>
             <button
               onClick={(e) => e.stopPropagation()}
-              className="absolute right-1 top-1/2 shrink-0 -translate-y-1/2 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
+              className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/wt:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground data-[state=open]:opacity-100"
               aria-label={t('sidebar.worktreeActions')}
               title={t('sidebar.worktreeActions')}
               data-testid={`worktree-actions-button-${wt.path}`}

@@ -114,7 +114,6 @@ beforeEach(() => {
   ])
 })
 
-
 describe('AddWorktreeDialog — branch picker', () => {
   it('lists every local branch, including ones already checked out', async () => {
     renderDialog()

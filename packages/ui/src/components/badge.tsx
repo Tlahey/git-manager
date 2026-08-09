@@ -57,7 +57,7 @@ function NumberBadge({ count, hideZero = true, max = 99, className, ...props }: 
   return (
     <span
       className={cn(
-        'inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-badge px-1 text-[10px] font-bold tabular-nums leading-none text-badge-foreground',
+        'inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-badge px-1 text-[10px] leading-none font-bold text-badge-foreground tabular-nums',
         className
       )}
       {...props}

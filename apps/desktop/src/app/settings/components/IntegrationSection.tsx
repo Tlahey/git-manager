@@ -69,7 +69,7 @@ export function IntegrationSection() {
           className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-muted/10 p-2"
           data-testid="integration-providers"
         >
-          <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
             {t('settings.integrations.providers')}
           </p>
           {navProviders.map((prov) => {

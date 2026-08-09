@@ -116,7 +116,6 @@ describe('BoardCardView — metadata badges', () => {
     renderCard(card({ blockedReason: 'Waiting on the API' }))
     expect(screen.getByTestId('board-card-blocked')).toBeInTheDocument()
   })
-
 })
 
 describe('BoardCardView — tag badges', () => {
@@ -145,7 +144,9 @@ describe('BoardCardView — tag badges', () => {
 
   it('lists every assigned tag as a chip, in board order', () => {
     renderCard(card({ tagIds: ['t-doc', 't-bug'] }))
-    const chips = screen.getByTestId('board-card-tags').querySelectorAll('[data-testid^="board-card-tag-t-"]')
+    const chips = screen
+      .getByTestId('board-card-tags')
+      .querySelectorAll('[data-testid^="board-card-tag-t-"]')
     expect([...chips].map((c) => c.textContent)).toEqual(['bug', 'doc'])
   })
 

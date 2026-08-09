@@ -85,7 +85,7 @@ export function ConflictDiffView({
   }
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 animate-duration-100">
+    <div className="flex h-full w-full animate-in flex-col overflow-hidden bg-background select-none zoom-in-95 animate-duration-100 fade-in">
       {/* TOOLBAR — mirrors DiffToolbar's back-button + path-split layout */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-xs">
         <div className="flex min-w-0 items-center gap-3">
@@ -101,11 +101,11 @@ export function ConflictDiffView({
 
           <div className="flex min-w-0 flex-col">
             {parsedPath.dir && (
-              <span className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground/60">
+              <span className="mb-0.5 truncate font-mono text-[10px] leading-none text-muted-foreground/60 select-none">
                 {parsedPath.dir}
               </span>
             )}
-            <span className="select-all truncate font-mono text-xs leading-tight text-foreground">
+            <span className="truncate font-mono text-xs leading-tight text-foreground select-all">
               {parsedPath.name}
             </span>
           </div>
@@ -147,7 +147,7 @@ export function ConflictDiffView({
       </div>
 
       {/* CONTENT AREA — mirrors DiffViewCenter's bg-card/45 wrapper + bordered diff container */}
-      <div className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs">
+      <div className="flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text">
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center text-muted-foreground">
             <Spinner className="mr-2 h-5 w-5" />

@@ -64,7 +64,7 @@ export function EditCardDialog({
       >
         {/* `pr-12` keeps the actions menu clear of the close button `DialogContent` pins at
             `right-4 top-4` — the two were landing on top of each other. */}
-        <DialogHeader className="shrink-0 space-y-0 border-b border-border py-2.5 pl-4 pr-12">
+        <DialogHeader className="shrink-0 space-y-0 border-b border-border py-2.5 pr-12 pl-4">
           <CardBreadcrumb
             card={card}
             boardName={boardName}

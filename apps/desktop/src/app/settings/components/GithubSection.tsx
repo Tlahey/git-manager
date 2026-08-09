@@ -116,7 +116,7 @@ export function GithubSection() {
                 className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4"
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     GitHub Authorization
                   </h4>
                   <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -255,7 +255,7 @@ export function GithubSection() {
                     className="space-y-3"
                   >
                     <div className="space-y-1">
-                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                         {t('settings.github.patLabel')}
                       </label>
                       <Input
@@ -336,7 +336,7 @@ export function GithubSection() {
             {/* Accounts List */}
             {github.accounts.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   {t('settings.github.accountsTitle')}
                 </h4>
 
@@ -465,7 +465,7 @@ export function GithubSection() {
                           {repo.name}
                         </span>
                         <span
-                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium leading-none ${
+                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] leading-none font-medium ${
                             repo.private
                               ? 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20'
                               : 'bg-green-500/10 text-green-500 ring-1 ring-green-500/20'

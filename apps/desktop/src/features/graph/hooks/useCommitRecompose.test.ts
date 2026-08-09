@@ -13,7 +13,11 @@ vi.mock('../../../api/git.api', () => ({
 }))
 
 import { apiGetAiContext, commitRecomposeService } from '../../../api/ai.api'
-import { apiGetCommitDiff, apiListRebaseCommits, apiRunInteractiveRebase } from '../../../api/git.api'
+import {
+  apiGetCommitDiff,
+  apiListRebaseCommits,
+  apiRunInteractiveRebase,
+} from '../../../api/git.api'
 import { useCommitRecompose } from './useCommitRecompose'
 
 const mocked = {

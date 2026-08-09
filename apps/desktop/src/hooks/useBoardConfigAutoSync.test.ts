@@ -3,15 +3,14 @@ import { renderHook } from '@testing-library/react'
 import { useBoardConfigAutoSync } from './useBoardConfigAutoSync'
 import { useSettingsStore } from '../stores/settings.store'
 
-const { apiGetRepoStatus, apiStageFile, apiCreateCommit, apiPushBranch, apiGetBranches } = vi.hoisted(
-  () => ({
+const { apiGetRepoStatus, apiStageFile, apiCreateCommit, apiPushBranch, apiGetBranches } =
+  vi.hoisted(() => ({
     apiGetRepoStatus: vi.fn(),
     apiStageFile: vi.fn(),
     apiCreateCommit: vi.fn(),
     apiPushBranch: vi.fn(),
     apiGetBranches: vi.fn(),
-  })
-)
+  }))
 
 vi.mock('../api/git.api', () => ({
   apiGetRepoStatus,

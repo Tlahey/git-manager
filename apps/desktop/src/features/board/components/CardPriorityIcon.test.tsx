@@ -36,7 +36,9 @@ describe('CardPriorityIcon', () => {
   it('draws high as a real red and low as a real blue, in every theme', () => {
     const glyph = (priority: 'high' | 'normal' | 'low') => {
       const { unmount } = render(<CardPriorityIcon priority={priority} />)
-      const className = screen.getByTestId(`card-priority-${priority}`).querySelector('svg')!
+      const className = screen
+        .getByTestId(`card-priority-${priority}`)
+        .querySelector('svg')!
         .getAttribute('class')
       unmount()
       return className ?? ''

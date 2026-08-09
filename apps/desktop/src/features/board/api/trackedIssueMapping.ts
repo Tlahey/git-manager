@@ -36,7 +36,11 @@ export interface RawTrackedIssue extends RawIssueForCard {
  * caller simply keeps the card as-is, so an unreachable GitHub shows stale content rather than a
  * blank card — which is why every field the issue owns is also persisted locally.
  */
-export function mergeTrackedIssue(board: Board, card: BoardCard, issue: RawTrackedIssue): BoardCard {
+export function mergeTrackedIssue(
+  board: Board,
+  card: BoardCard,
+  issue: RawTrackedIssue
+): BoardCard {
   const { description, dod, meta } = parseCardBody(issue.body)
 
   return {
@@ -145,9 +149,7 @@ export function reconcileTrackedLabels(
 ): { toAdd: string[]; toRemove: string[] } {
   return {
     toAdd: desired.filter((l) => !currentLabels.includes(l)),
-    toRemove: currentLabels.filter(
-      (l) => isTrackedManagedLabel(board, l) && !desired.includes(l)
-    ),
+    toRemove: currentLabels.filter((l) => isTrackedManagedLabel(board, l) && !desired.includes(l)),
   }
 }
 

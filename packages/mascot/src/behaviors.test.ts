@@ -17,7 +17,7 @@ function makeSvg(pupilCount = 2): SVGSVGElement {
     bottom: 100,
     x: 0,
     y: 0,
-    toJSON() { },
+    toJSON() {},
   })
 
   for (let i = 0; i < pupilCount; i++) {

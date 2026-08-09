@@ -105,7 +105,7 @@ export function AiContextWindowCheck() {
 
       {state.kind === 'failed' && (
         <p
-          className="wrap-break-word text-[10px] text-tone-danger"
+          className="text-[10px] wrap-break-word text-tone-danger"
           data-testid="ai-context-check-result"
         >
           {state.message}

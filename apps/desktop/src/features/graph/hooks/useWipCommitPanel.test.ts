@@ -90,7 +90,6 @@ beforeEach(() => {
   mocked.apiGetPendingOperation.mockResolvedValue(null)
 })
 
-
 describe('useWipCommitPanel — wipBatches grouping', () => {
   it('groups files by their top-level folder', () => {
     const files = [file('src/a.ts'), file('src/b.ts'), file('lib/c.ts')]

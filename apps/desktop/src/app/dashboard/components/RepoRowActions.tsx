@@ -94,7 +94,7 @@ export function RepoRowActions({
           >
             <LlmIcon className="h-3.5 w-3.5" />
             {hasFreshSummary && !isSummaryActive && (
-              <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-card" />
+              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-card" />
             )}
           </button>
         </Tooltip>

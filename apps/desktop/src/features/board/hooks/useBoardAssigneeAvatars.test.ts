@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 const { useAssignableUsers } = vi.hoisted(() => ({
-  useAssignableUsers: vi.fn(() => ({ users: [] as { login: string; avatar_url: string }[], isLoading: false })),
+  useAssignableUsers: vi.fn(() => ({
+    users: [] as { login: string; avatar_url: string }[],
+    isLoading: false,
+  })),
 }))
 vi.mock('../../../hooks/usePrEditCandidates', () => ({ useAssignableUsers }))
 

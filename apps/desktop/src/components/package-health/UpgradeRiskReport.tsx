@@ -105,7 +105,7 @@ export function UpgradeRiskReport({
       {error != null && (
         <Alert variant="destructive" data-testid="upgrade-risk-error">
           <span className="text-[11px]">{t('health.risk.error')}</span>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px]">{error}</pre>
+          <pre className="mt-1 font-mono text-[10px] whitespace-pre-wrap">{error}</pre>
         </Alert>
       )}
 

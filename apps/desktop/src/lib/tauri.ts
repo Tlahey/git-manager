@@ -1128,8 +1128,7 @@ export const revealPathInFinder = (path: string) => invoke<void>('reveal_path_in
 
 export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 
-export const getTerminalCommands = () =>
-  invoke<TerminalHistorySource[]>('get_terminal_commands')
+export const getTerminalCommands = () => invoke<TerminalHistorySource[]>('get_terminal_commands')
 
 /** Runs a project task's `command` in the configured external terminal (`terminalCommand`, empty →
  * system default), with `path` (the repo) as the working directory. */

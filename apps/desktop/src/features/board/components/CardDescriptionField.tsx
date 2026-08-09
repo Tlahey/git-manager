@@ -121,7 +121,10 @@ export function CardDescriptionField({
           {description.trim() ? (
             <Markdown content={description} repoPath={repoPath} authored />
           ) : (
-            <p className="text-xs italic text-muted-foreground" data-testid="card-description-empty">
+            <p
+              className="text-xs text-muted-foreground italic"
+              data-testid="card-description-empty"
+            >
               {t('card.description.empty')}
             </p>
           )}

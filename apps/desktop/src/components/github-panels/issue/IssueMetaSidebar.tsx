@@ -111,7 +111,7 @@ export function IssueMetaSidebar({
       <PrSidebarSection title={t('issue.side.status')} testId="issue-status">
         <div className="flex items-center justify-between gap-2">
           <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
               isOpen
                 ? 'border-success/30 bg-success/15 text-tone-success'
                 : 'border-destructive/30 bg-destructive/15 text-tone-danger'
@@ -224,7 +224,7 @@ export function IssueMetaSidebar({
             ))}
           </ul>
         ) : (
-          <p className="text-xs italic text-muted-foreground">{t('pr.side.noLabels')}</p>
+          <p className="text-xs text-muted-foreground italic">{t('pr.side.noLabels')}</p>
         )}
         {editing === 'labels' && (
           <PrEditPopover
@@ -266,7 +266,7 @@ export function IssueMetaSidebar({
             {t('issue.side.createBranch')}
           </button>
         ) : (
-          <p className="text-xs italic text-muted-foreground">{t('issue.side.noLocalRepo')}</p>
+          <p className="text-xs text-muted-foreground italic">{t('issue.side.noLocalRepo')}</p>
         )}
       </PrSidebarSection>
     </div>

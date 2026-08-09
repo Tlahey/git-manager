@@ -97,7 +97,7 @@ export function DiffToolbar({
           {parsedPath.dir && (
             <span
               data-testid="diff-header-path"
-              className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground"
+              className="mb-0.5 truncate font-mono text-[10px] leading-none text-muted-foreground select-none"
             >
               {parsedPath.dir}
             </span>
@@ -105,7 +105,7 @@ export function DiffToolbar({
           <div className="flex items-center gap-2">
             <span
               data-testid="diff-header-name"
-              className="select-all truncate font-mono text-xs leading-tight text-foreground"
+              className="truncate font-mono text-xs leading-tight text-foreground select-all"
             >
               {parsedPath.name}
             </span>
@@ -133,7 +133,7 @@ export function DiffToolbar({
             <div className="mt-0.5 flex items-center gap-1.5 overflow-hidden">
               <Badge
                 variant={STATUS_VARIANTS[diffData.status] ?? 'secondary'}
-                className="shrink-0 select-none px-1 py-0 text-[9px]"
+                className="shrink-0 px-1 py-0 text-[9px] select-none"
               >
                 {diffData.status in STATUS_LABEL_KEYS
                   ? t(STATUS_LABEL_KEYS[diffData.status])
@@ -154,7 +154,7 @@ export function DiffToolbar({
               {isWip && (
                 <Badge
                   variant={file.staged ? 'success' : 'secondary'}
-                  className="shrink-0 select-none px-1 py-0 text-[9px]"
+                  className="shrink-0 px-1 py-0 text-[9px] select-none"
                 >
                   {file.staged ? t('diffToolbar.staged') : t('diffToolbar.unstaged')}
                 </Badge>

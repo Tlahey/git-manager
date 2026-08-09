@@ -38,7 +38,7 @@ function ToastCard({ item }: { item: ToastItem }) {
     >
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', icon_)} />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium leading-snug text-popover-foreground">{item.message}</p>
+        <p className="text-xs leading-snug font-medium text-popover-foreground">{item.message}</p>
         {item.description && (
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
             {item.description}
@@ -67,7 +67,7 @@ export function Toaster() {
   if (items.length === 0) return null
 
   return createPortal(
-    <div className="pointer-events-none fixed bottom-4 right-4 z-overlay flex flex-col gap-2">
+    <div className="pointer-events-none fixed right-4 bottom-4 z-overlay flex flex-col gap-2">
       {items.map((item) => (
         <ToastCard key={item.id} item={item} />
       ))}

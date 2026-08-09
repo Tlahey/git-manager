@@ -59,17 +59,20 @@ export function FilesPage() {
   }, [selectedFilePath, gitStatus])
 
   const tree = useMemo(() => buildFileTree(files ?? []), [files])
-  const currentNodes = useMemo(() => findDirectoryNodes(tree, currentDirPath), [tree, currentDirPath])
+  const currentNodes = useMemo(
+    () => findDirectoryNodes(tree, currentDirPath),
+    [tree, currentDirPath]
+  )
 
   const breadcrumbs = currentDirPath ? currentDirPath.split('/') : []
   const repoName = effectiveRepoPath?.split('/').pop() ?? ''
 
   return (
     <div
-      className="bg-background flex h-full flex-1 flex-col overflow-hidden"
+      className="flex h-full flex-1 flex-col overflow-hidden bg-background"
       data-testid="project-files-view"
     >
-      <div className="border-border flex h-12 shrink-0 items-center gap-0.5 border-b px-4 text-sm">
+      <div className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border px-4 text-sm">
         <Button
           variant="link"
           className="h-auto p-0 text-sm font-medium"
@@ -143,7 +146,7 @@ export function FilesPage() {
                     <td className="p-0">
                       <button
                         type="button"
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden"
                         onClick={() =>
                           node.isDir ? setCurrentDirPath(node.path) : setSelectedFilePath(node.path)
                         }

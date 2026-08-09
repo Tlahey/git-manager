@@ -125,14 +125,14 @@ gh release view vX.Y.Z
 
 - Does the changelog body look right? (Empty/just a compare link means no PRs were merged since
   the last tag — see Step 1's note. Rewrite it by hand with `gh release edit vX.Y.Z --notes-file
-  <file>` if the release has real changes worth describing, and update the matching section in
+<file>` if the release has real changes worth describing, and update the matching section in
   `CHANGELOG.md` too so the in-app Settings → Changelog view matches — note that a fix to
-  `CHANGELOG.md` after the fact won't be reflected in an *already-built* bundle's own embedded
-  copy of the file, only in the GitHub release page and in whatever the *next* release ships.)
+  `CHANGELOG.md` after the fact won't be reflected in an _already-built_ bundle's own embedded
+  copy of the file, only in the GitHub release page and in whatever the _next_ release ships.)
 - Are the expected assets attached — a `_universal.dmg`, `.app.tar.gz` + `.sig`, and `latest.json`?
 - Draft asset URLs show a `releases/tag/untagged-<hash>` host, not the real tag — that's normal
   GitHub behavior for unpublished drafts and resolves to `releases/tag/vX.Y.Z` on publish; the
-  asset URLs *inside* `latest.json` are already the real, final ones either way.
+  asset URLs _inside_ `latest.json` are already the real, final ones either way.
 
 If something's off (wrong changelog, missing assets, bad signature), fix the underlying issue and
 either delete the draft (`gh release delete vX.Y.Z`) and re-run `cut-release.sh --local-build`
@@ -168,7 +168,7 @@ A `302`/`200` means it's live.
   `release.yml`'s CI build likely already started. Either let that CI build finish and review its
   draft normally, or fix the issue and run `cut-release.sh --local-build` — `gh release create`
   will attach to the existing tag rather than erroring, so this doesn't require re-bumping the
-  version. Don't re-run `cut-release.sh` without `--tag=<the same version>` pointed at a *new*
+  version. Don't re-run `cut-release.sh` without `--tag=<the same version>` pointed at a _new_
   version — it'll refuse with "Tag already exists on origin" for the one that's already pushed.
 - **A draft release has assets missing or a botched changelog body** — safe to delete
   (`gh release delete vX.Y.Z`) and rebuild, since nothing was published yet.

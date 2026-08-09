@@ -44,7 +44,6 @@ beforeEach(() => {
   useBranches.mockReturnValue({ data: [branch('feat', false), branch('origin/feat', true)] })
 })
 
-
 describe('SetUpstreamDialog — rendering', () => {
   it('shows the title/description and preselects origin/<branch> when it exists', () => {
     renderDialog()

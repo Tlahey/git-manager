@@ -5,7 +5,6 @@ beforeEach(() => {
   clearNotchActions()
 })
 
-
 describe('runNotchAction', () => {
   it('calls the handler with the card the button was on', () => {
     const handler = vi.fn()

@@ -136,7 +136,7 @@ export function ConflictResolverHeader({
   const showStats = actions.stats !== false
 
   return (
-    <div className="flex w-full select-none flex-col border-b border-border bg-card font-sans text-foreground">
+    <div className="flex w-full flex-col border-b border-border bg-card font-sans text-foreground select-none">
       {/* 1. TOP TOOLBAR */}
       <div className="flex h-9 min-w-0 items-center justify-between border-b border-border/60 px-3">
         {/* Left container: navigation, apply-changes module, smart-resolve, and the
@@ -190,21 +190,21 @@ export function ConflictResolverHeader({
               </span>
               <button
                 onClick={onApplyLeft}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-left-btn"
               >
                 {applyLeftLabel}
               </button>
               <button
                 onClick={onApplyAll}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-all-btn"
               >
                 {applyAllLabel}
               </button>
               <button
                 onClick={onApplyRight}
-                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
+                className="rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-secondary-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-right-btn"
               >
                 {applyRightLabel}
@@ -303,7 +303,7 @@ export function ConflictResolverHeader({
         {/* D. Right edge: conflict state, glued to the right side of the toolbar */}
         {showStats && (
           <div
-            className="hidden shrink-0 select-none whitespace-nowrap pl-4 text-[11px] font-medium text-muted-foreground/85 md:block"
+            className="hidden shrink-0 pl-4 text-[11px] font-medium whitespace-nowrap text-muted-foreground/85 select-none md:block"
             data-testid="merge-stats"
           >
             {changesLabel(changesCount)}. {conflictsLabel(conflictsCount)}.
@@ -316,7 +316,7 @@ export function ConflictResolverHeader({
           case for `ThreeWayMergeEditor`'s 2-way callers that pass no `originalLabel`/
           `modifiedLabel`, e.g. `DiffViewCenter`'s plain file-diff view). */}
       {statuses.some(Boolean) && (
-        <div className="flex h-7 w-full select-none items-center border-b border-border/60 bg-muted/40 px-0 py-0.5 text-[11px] text-muted-foreground/80">
+        <div className="flex h-7 w-full items-center border-b border-border/60 bg-muted/40 px-0 py-0.5 text-[11px] text-muted-foreground/80 select-none">
           {/* A. Above the LEFT editor */}
           <div
             style={{ flex: `${panelWidths[0]} 1 0%` }}

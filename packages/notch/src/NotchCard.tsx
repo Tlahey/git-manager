@@ -178,7 +178,7 @@ export function NotchCard({
           <div
             data-testid="notch-band"
             style={{ height: withRule(bandHeight) }}
-            className="flex shrink-0 items-center justify-between border-b border-white/5 pl-3 pr-2"
+            className="flex shrink-0 items-center justify-between border-b border-white/5 pr-2 pl-3"
           >
             <div style={slotStyle} className="min-w-0 truncate">
               {bandStart}

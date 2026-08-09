@@ -87,7 +87,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
               aria-label={t('terminal.closeTab')}
               title={t('terminal.closeTab')}
               data-testid={`terminal-close-tab-${tab.id}`}
-              className="cursor-pointer rounded p-0.5 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
+              className="cursor-pointer rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-background"
             >
               <X className="h-3 w-3" />
             </button>

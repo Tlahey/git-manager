@@ -119,7 +119,7 @@ export function CreateCardDialog({
               condition the template had proposed. Tickless, like the template it comes from: nothing
               is done on a card that does not exist yet. */}
           <div className="space-y-1" data-testid="board-card-dod">
-            <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+            <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               {t('card.dod.label')}
             </span>
             <DodChecklistEditor value={dod} onChange={setDod} hideChecks disabled={pending} />

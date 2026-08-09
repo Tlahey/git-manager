@@ -6,15 +6,15 @@ before you open the PR.
 > Shared plumbing — transport, events, cancellation, errors, settings — lives in the
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 
-|                   |                                                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Descriptor**    | [`codeReviewFeature`](../../packages/ai/src/features/codeReview.ts)                                                                                                       |
-| **Kind**          | streaming markdown                                                                                                                                                        |
-| **Temperature**   | **0.1** — the lowest of any feature, see below                                                                                                                            |
-| **Context scope** | `working` (worktree vs HEAD) or `range` (`merge-base(base, branch)..branch`), per target                                                                                  |
-| **Diff budget**   | derived from the model's context window, [budgeted per file](#reading-the-right-7)                                                                                        |
+|                   |                                                                                                                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Descriptor**    | [`codeReviewFeature`](../../packages/ai/src/features/codeReview.ts)                                                                                                                           |
+| **Kind**          | streaming markdown                                                                                                                                                                            |
+| **Temperature**   | **0.1** — the lowest of any feature, see below                                                                                                                                                |
+| **Context scope** | `working` (worktree vs HEAD) or `range` (`merge-base(base, branch)..branch`), per target                                                                                                      |
+| **Diff budget**   | derived from the model's context window, [budgeted per file](#reading-the-right-7)                                                                                                            |
 | **UI**            | [`CodeReviewPanel`](../../apps/desktop/src/features/graph/components/CodeReviewPanel.tsx) — right panel — via [`useCodeReview`](../../apps/desktop/src/features/graph/hooks/useCodeReview.ts) |
-| **Memory**        | branch target: yes (`branch-review`) · working target: **none**                                                                                                           |
+| **Memory**        | branch target: yes (`branch-review`) · working target: **none**                                                                                                                               |
 
 ---
 
@@ -243,13 +243,13 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 ## Tests
 
-| Test                                                                                                        | Covers                                                                                                                                                   |
-| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`codeReview.test.ts`](../../packages/ai/src/features/codeReview.test.ts)                                   | both prompt shapes, commit list, file statuses, budgeting, language, and the instruction's guarantees                                                    |
-| [`diffBudget.test.ts`](../../packages/ai/src/features/diffBudget.test.ts)                                   | path classification, the backend's origin-prefixed headers, tier priority, whole-file preference, and the never-return-an-empty-diff floor               |
-| [`diffCoverage.test.ts`](../../packages/ai/src/features/diffCoverage.test.ts)                               | the shared sizing: budget vs window, budget vs instruction length, the capped `NOT INCLUDED` list, and that the suggested window really reads everything |
-| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/common/CoverageNotice.test.tsx) | the shared notice: silent when complete, informational styling, the window-too-small warning                                                             |
-| [`useCodeReview.test.ts`](../../apps/desktop/src/features/graph/hooks/useCodeReview.test.ts)                               | scope routing, both refusals, streaming, branch memory, and that the working scope persists nothing                                                      |
-| [`CodeReviewPanel.test.tsx`](../../apps/desktop/src/features/graph/components/CodeReviewPanel.test.tsx)          | both targets' headers, auto-start, stale-base warning, error decoding, and the three prompt-size states                                                  |
-| [`promptSize.test.ts`](../../packages/ai/src/promptSize.test.ts)                                            | the estimate, the three risk bands, and that the assumed window is reported rather than left implicit                                                    |
-| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                         | both menu items, their placement next to the explanations, and every reason they disable                                                                 |
+| Test                                                                                                    | Covers                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`codeReview.test.ts`](../../packages/ai/src/features/codeReview.test.ts)                               | both prompt shapes, commit list, file statuses, budgeting, language, and the instruction's guarantees                                                    |
+| [`diffBudget.test.ts`](../../packages/ai/src/features/diffBudget.test.ts)                               | path classification, the backend's origin-prefixed headers, tier priority, whole-file preference, and the never-return-an-empty-diff floor               |
+| [`diffCoverage.test.ts`](../../packages/ai/src/features/diffCoverage.test.ts)                           | the shared sizing: budget vs window, budget vs instruction length, the capped `NOT INCLUDED` list, and that the suggested window really reads everything |
+| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/common/CoverageNotice.test.tsx)           | the shared notice: silent when complete, informational styling, the window-too-small warning                                                             |
+| [`useCodeReview.test.ts`](../../apps/desktop/src/features/graph/hooks/useCodeReview.test.ts)            | scope routing, both refusals, streaming, branch memory, and that the working scope persists nothing                                                      |
+| [`CodeReviewPanel.test.tsx`](../../apps/desktop/src/features/graph/components/CodeReviewPanel.test.tsx) | both targets' headers, auto-start, stale-base warning, error decoding, and the three prompt-size states                                                  |
+| [`promptSize.test.ts`](../../packages/ai/src/promptSize.test.ts)                                        | the estimate, the three risk bands, and that the assumed window is reported rather than left implicit                                                    |
+| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                     | both menu items, their placement next to the explanations, and every reason they disable                                                                 |

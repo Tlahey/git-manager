@@ -51,7 +51,7 @@ export function PrDescription({ repoPath, prNumber, body, prUrl }: PrDescription
   return (
     <section data-testid="pr-description" className="border-t border-border px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {t('pr.view.description')}
         </span>
         {!editing && (
@@ -111,7 +111,7 @@ export function PrDescription({ repoPath, prNumber, body, prUrl }: PrDescription
           taskTogglePending={togglePending}
         />
       ) : (
-        <p className="text-xs italic text-muted-foreground">{t('pr.view.noDescription')}</p>
+        <p className="text-xs text-muted-foreground italic">{t('pr.view.noDescription')}</p>
       )}
     </section>
   )

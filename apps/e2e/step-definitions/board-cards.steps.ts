@@ -90,7 +90,8 @@ async function currentStoredBoard(): Promise<StoredBoard> {
   if (refs.length === 1) return storedBoard(refs[0])
   const shown = await activeBoardName()
   const hit = refs.map(storedBoard).find((board) => shown.includes(board.name))
-  if (!hit) throw new Error(`the board sidebar reads "${shown}", which is none of the stored boards`)
+  if (!hit)
+    throw new Error(`the board sidebar reads "${shown}", which is none of the stored boards`)
   return hit
 }
 

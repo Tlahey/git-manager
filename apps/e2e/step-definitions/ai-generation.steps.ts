@@ -106,16 +106,14 @@ Then(/^the commit message becomes "([^"]*)"$/, async (expected: string) => {
 // the webview) — its recorded request body is read directly, no browser.execute round-trip needed.
 Then(/^the sent prompt's system message contains "([^"]*)"$/, (text: string) => {
   const body = server?.lastRequestBody as
-    | { messages?: { role: string; content: string }[] }
-    | undefined
+    { messages?: { role: string; content: string }[] } | undefined
   const systemMessage = body?.messages?.find((m) => m.role === 'system')
   expect(systemMessage?.content).toContain(text)
 })
 
 Then(/^the sent prompt's user message contains "([^"]*)"$/, (text: string) => {
   const body = server?.lastRequestBody as
-    | { messages?: { role: string; content: string }[] }
-    | undefined
+    { messages?: { role: string; content: string }[] } | undefined
   const userMessage = body?.messages?.find((m) => m.role === 'user')
   expect(userMessage?.content).toContain(text)
 })

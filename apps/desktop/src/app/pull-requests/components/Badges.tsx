@@ -41,7 +41,7 @@ export function StatusBadge({ status }: { status: PRStatus }) {
   const cfg = STATUS_CONFIG[status]
   return (
     <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.className}`}
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase ${cfg.className}`}
     >
       {t(cfg.labelKey)}
     </span>
@@ -108,7 +108,7 @@ export function CiBadge({
       }}
       title={t('ci.viewAction')}
       aria-label={t('ci.viewAction')}
-      className={`${baseClass} cursor-pointer rounded px-0.5 hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
+      className={`${baseClass} cursor-pointer rounded px-0.5 hover:underline focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden`}
     >
       {inner}
       <ExternalLink className="h-2.5 w-2.5 opacity-50" />
@@ -145,7 +145,7 @@ export function CiBadge({
                 )}
                 <span className="truncate font-medium text-foreground/90">{d.name}</span>
               </div>
-              <span className="shrink-0 text-[9px] font-semibold uppercase text-muted-foreground/60">
+              <span className="shrink-0 text-[9px] font-semibold text-muted-foreground/60 uppercase">
                 {d.status}
               </span>
             </div>

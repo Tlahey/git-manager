@@ -35,7 +35,7 @@ export function NotchHeaderRow({ tone, eyebrow, context, meta, icon }: NotchHead
       <div className="min-w-0 flex-1">
         <p
           data-testid="notch-eyebrow"
-          className="truncate text-[9px] font-bold uppercase tracking-[0.16em]"
+          className="truncate text-[9px] font-bold tracking-[0.16em] uppercase"
           style={{ color: toneColor(tone) }}
         >
           {eyebrow}
@@ -47,7 +47,7 @@ export function NotchHeaderRow({ tone, eyebrow, context, meta, icon }: NotchHead
         )}
       </div>
       {meta !== undefined && (
-        <span data-testid="notch-meta" className="shrink-0 text-[10px] tabular-nums text-white/35">
+        <span data-testid="notch-meta" className="shrink-0 text-[10px] text-white/35 tabular-nums">
           {meta}
         </span>
       )}

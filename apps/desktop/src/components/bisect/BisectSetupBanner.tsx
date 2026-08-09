@@ -41,7 +41,7 @@ function SlotButton({ kind, oid, active, label, placeholder, onClick }: SlotButt
     >
       <Icon className={`h-4 w-4 shrink-0 ${isBad ? 'text-red-500' : 'text-green-500'}`} />
       <span className="min-w-0">
-        <span className="block text-[10px] font-medium uppercase leading-none tracking-wide opacity-70">
+        <span className="block text-[10px] leading-none font-medium tracking-wide uppercase opacity-70">
           {label}
         </span>
         <span className="block truncate font-mono text-xs leading-tight">

@@ -47,7 +47,6 @@ beforeEach(() => {
   )
 })
 
-
 describe('useTheme — applying the theme attribute', () => {
   it('applies a concrete theme id directly to <html data-theme>', () => {
     setThemeSetting('dracula')
@@ -87,7 +86,6 @@ describe('useTheme — applying the theme attribute', () => {
     mockedResolveSystemTheme.mockReturnValue('light')
     listeners[0]()
     expect(document.documentElement.dataset.theme).toBe('light')
-
   })
 
   it('removes the media-query listener when switching away from "system"', () => {

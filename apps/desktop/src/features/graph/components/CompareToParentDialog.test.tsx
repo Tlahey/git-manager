@@ -36,7 +36,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('CompareToParentDialog', () => {
   it('names the parent it is comparing against', () => {
     mockedDiff.mockReturnValue(new Promise(() => {}))

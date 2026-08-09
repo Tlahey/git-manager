@@ -590,7 +590,7 @@ export function GitGraph({
     <RefDropProvider repoPath={repoPath}>
       <TagMenuProvider handler={openTagMenu}>
         <CommitDragProvider value={dragContext}>
-          <div className="flex h-full select-none overflow-hidden">
+          <div className="flex h-full overflow-hidden select-none">
             {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
             <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
               {patchMode ? (
@@ -706,7 +706,7 @@ export function GitGraph({
                       <div
                         ref={parentRef}
                         data-testid="commit-graph"
-                        className="flex-1 overflow-y-auto overflow-x-hidden"
+                        className="flex-1 overflow-x-hidden overflow-y-auto"
                       >
                         <div
                           style={{

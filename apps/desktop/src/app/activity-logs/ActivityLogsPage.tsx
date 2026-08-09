@@ -136,7 +136,7 @@ export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
           <option value="error">{t('activityLogs.level.errors')}</option>
         </NativeSelect>
         <div className="relative min-w-[180px] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -207,7 +207,7 @@ export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
           ) : (
             <div className="font-mono text-[11px] leading-relaxed">
               {/* Sticky column header so the columns stay labelled while scrolling */}
-              <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase">
                 <span className="w-48 shrink-0">{t('activityLogs.col.time')}</span>
                 <span className="min-w-0 flex-1">{t('activityLogs.col.message')}</span>
                 <span className="w-5 shrink-0" aria-hidden="true" />

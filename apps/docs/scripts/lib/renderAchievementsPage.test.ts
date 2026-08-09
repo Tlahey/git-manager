@@ -36,7 +36,9 @@ describe('renderAchievementsPage', () => {
     expect(page).toContain(
       '| **First Steps** | Make your first commit from the app. | Bronze avatar frame | 10 |'
     )
-    expect(page).toContain('| **Completionist** | Unlock every other achievement. | Platinum trophy | 200 |')
+    expect(page).toContain(
+      '| **Completionist** | Unlock every other achievement. | Platinum trophy | 200 |'
+    )
   })
 
   it('escapes pipe characters so free-text copy cannot break the table', () => {

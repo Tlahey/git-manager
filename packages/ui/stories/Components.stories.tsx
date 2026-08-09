@@ -74,7 +74,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
         // Story-scaffolding label, not a component under test: keep it de-muted
         // (text-foreground) and 14px so it clears APCA and the a11y matrix reflects
         // real component contrast, not demo-chrome section headers.
-        className="text-foreground text-sm font-bold tracking-widest uppercase"
+        className="text-sm font-bold tracking-widest text-foreground uppercase"
         style={{ marginBottom: 10 }}
       >
         {title}
@@ -111,22 +111,22 @@ function FormControlsDemo() {
             checked={checks.prune}
             onChange={(e) => setChecks((c) => ({ ...c, prune: e.target.checked }))}
           />
-          <span className="text-foreground text-xs">Auto-prune on fetch</span>
+          <span className="text-xs text-foreground">Auto-prune on fetch</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
           <Checkbox
             checked={checks.lazy}
             onChange={(e) => setChecks((c) => ({ ...c, lazy: e.target.checked }))}
           />
-          <span className="text-foreground text-xs">Lazy-load graph</span>
+          <span className="text-xs text-foreground">Lazy-load graph</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
           <Checkbox indeterminate aria-label="Some selected" />
-          <span className="text-foreground text-xs">Indeterminate</span>
+          <span className="text-xs text-foreground">Indeterminate</span>
         </label>
         <label className="flex cursor-not-allowed items-center gap-2 opacity-70">
           <Checkbox disabled aria-label="Disabled checkbox" />
-          <span className="text-foreground text-xs">Disabled</span>
+          <span className="text-xs text-foreground">Disabled</span>
         </label>
       </div>
 
@@ -139,7 +139,7 @@ function FormControlsDemo() {
             onChange={(e) => setNotifications(e.target.checked)}
             aria-label="Enable notifications"
           />
-          <span className="text-foreground text-xs">Notifications</span>
+          <span className="text-xs text-foreground">Notifications</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
           <Switch
@@ -147,11 +147,11 @@ function FormControlsDemo() {
             onChange={(e) => setSound(e.target.checked)}
             aria-label="Enable sound"
           />
-          <span className="text-foreground text-xs">Sound (off)</span>
+          <span className="text-xs text-foreground">Sound (off)</span>
         </label>
         <label className="flex cursor-not-allowed items-center gap-2">
           <Switch disabled aria-label="Disabled switch" />
-          <span className="text-foreground text-xs">Disabled</span>
+          <span className="text-xs text-foreground">Disabled</span>
         </label>
       </div>
 
@@ -167,7 +167,7 @@ function FormControlsDemo() {
           {['compact', 'comfortable', 'spacious'].map((d) => (
             <label key={d} className="flex cursor-pointer items-center gap-2">
               <RadioGroupItem value={d} aria-label={d} />
-              <span className="text-foreground text-xs capitalize">{d}</span>
+              <span className="text-xs text-foreground capitalize">{d}</span>
             </label>
           ))}
         </RadioGroup>
@@ -261,7 +261,7 @@ export const Overview: Story = {
         <div style={{ width: 220 }}>
           <Input variant="ghost" aria-label="Ghost input" placeholder="Ghost input" />
         </div>
-        <div className="bg-sidebar rounded-md p-2" style={{ width: 236 }}>
+        <div className="rounded-md bg-sidebar p-2" style={{ width: 236 }}>
           <Input
             variant="chrome"
             aria-label="Chrome input"
@@ -320,14 +320,14 @@ export const Overview: Story = {
 
       <Section title="Card — surface container">
         <Card className="w-64 p-4">
-          <p className="text-foreground mb-1 text-sm font-semibold">Repository</p>
-          <p className="text-muted-foreground text-xs">
+          <p className="mb-1 text-sm font-semibold text-foreground">Repository</p>
+          <p className="text-xs text-muted-foreground">
             A themed surface panel — border, fill and text ride the card tokens.
           </p>
         </Card>
-        <Card className="bg-card/30 w-64 p-4 shadow-xs">
-          <p className="text-foreground mb-1 text-sm font-semibold">Translucent</p>
-          <p className="text-muted-foreground text-xs">bg-card/30 over the surface.</p>
+        <Card className="w-64 bg-card/30 p-4 shadow-xs">
+          <p className="mb-1 text-sm font-semibold text-foreground">Translucent</p>
+          <p className="text-xs text-muted-foreground">bg-card/30 over the surface.</p>
         </Card>
       </Section>
 
@@ -401,7 +401,7 @@ export const Overview: Story = {
         <Badge variant="destructive">destructive</Badge>
         <Badge variant="outline">outline</Badge>
         <span className="relative inline-flex">
-          <span className="bg-muted rounded px-2 py-1 text-xs">Inbox</span>
+          <span className="rounded bg-muted px-2 py-1 text-xs">Inbox</span>
           <NumberBadge count={7} className="absolute -top-2 -right-2" />
         </span>
       </Section>
@@ -453,7 +453,7 @@ export const Overview: Story = {
 
         <ContextMenu>
           <ContextMenuTrigger>
-            <div className="border-border text-foreground rounded-md border px-3 py-2 text-sm">
+            <div className="rounded-md border border-border px-3 py-2 text-sm text-foreground">
               Right-click me
             </div>
           </ContextMenuTrigger>
@@ -485,7 +485,7 @@ export const Overview: Story = {
       </Section>
 
       <Section title="Feedback — Spinner, Toast, Separator">
-        <Spinner className="text-primary h-5 w-5" />
+        <Spinner className="h-5 w-5 text-primary" />
         <Button
           variant="outline"
           onClick={() => toast.success('Saved', { description: 'Your changes were saved.' })}
@@ -498,9 +498,9 @@ export const Overview: Story = {
         <div className="w-40">
           {/* Demo-chrome captions for the Separator — de-muted so they don't add
               size-driven noise to the a11y matrix. */}
-          <span className="text-foreground text-xs">above</span>
+          <span className="text-xs text-foreground">above</span>
           <Separator className="my-2" />
-          <span className="text-foreground text-xs">below</span>
+          <span className="text-xs text-foreground">below</span>
         </div>
       </Section>
     </main>

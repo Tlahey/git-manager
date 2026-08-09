@@ -104,7 +104,7 @@ export function PackageHealthCenter({ repoPath }: { repoPath: string }) {
           ) : error != null ? (
             <Alert variant="destructive" data-testid="package-health-center-error">
               <span className="text-xs">{t('health.error')}</span>
-              <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px]">{String(error)}</pre>
+              <pre className="mt-1 font-mono text-[11px] whitespace-pre-wrap">{String(error)}</pre>
             </Alert>
           ) : report == null ? null : selection.kind === 'updates' ? (
             // Keyed on the repo so a switch remounts rather than carrying this

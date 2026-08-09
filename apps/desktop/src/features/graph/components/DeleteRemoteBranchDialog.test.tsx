@@ -37,7 +37,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('DeleteRemoteBranchDialog', () => {
   it('names the branch and remote in the confirmation copy', () => {
     renderDialog()

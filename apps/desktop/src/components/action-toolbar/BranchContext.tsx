@@ -68,9 +68,12 @@ export function BranchContext() {
   // A branch already checked out in one of the listed worktrees is shown as its worktree only.
   const workspaceBranchNames = new Set(workspaceEntries.map((wt) => wt.branch))
   const entries: ContextEntry[] = [
-    ...workspaceEntries.map(
-      (wt): ContextEntry => ({ kind: 'workspace', key: wt.path, label: wt.branch, path: wt.path })
-    ),
+    ...workspaceEntries.map((wt): ContextEntry => ({
+      kind: 'workspace',
+      key: wt.path,
+      label: wt.branch,
+      path: wt.path,
+    })),
     ...locals
       .filter(
         (b) =>
@@ -78,14 +81,12 @@ export function BranchContext() {
           matchesQuery(b.shortName) &&
           !workspaceBranchNames.has(b.shortName)
       )
-      .map(
-        (b): ContextEntry => ({
-          kind: 'branch',
-          key: b.name,
-          label: b.shortName,
-          name: b.shortName,
-        })
-      ),
+      .map((b): ContextEntry => ({
+        kind: 'branch',
+        key: b.name,
+        label: b.shortName,
+        name: b.shortName,
+      })),
   ]
   const showCurrentRow = matchesQuery(currentLabel)
 
@@ -131,7 +132,7 @@ export function BranchContext() {
         </button>
       )}
       <div className="flex min-w-0 flex-col justify-center">
-        <span className="select-none px-1 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">
+        <span className="px-1 text-[9px] font-medium tracking-wider text-muted-foreground/60 uppercase select-none">
           {activeWorkspacePath ? t('toolbar.workspaceLabel') : t('toolbar.branchLabel')}
         </span>
         <Popover open={open} onOpenChange={setOpen}>
@@ -139,7 +140,7 @@ export function BranchContext() {
             <button
               type="button"
               data-testid="branch-context-trigger"
-              className="flex h-5 min-w-0 max-w-[200px] cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
+              className="flex h-5 max-w-[200px] min-w-0 cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
             >
               <span data-testid="branch-context-label" className="min-w-0 flex-1 text-left">
                 <TruncatedLabel label={currentLabel} placement="bottom" />

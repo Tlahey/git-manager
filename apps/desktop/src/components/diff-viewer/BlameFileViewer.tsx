@@ -200,7 +200,7 @@ export function BlameFileViewer({
               <div
                 key={`blame-text-${block.commitOid}-${block.startLine}`}
                 data-testid={`blame-annotation-${block.shortOid}`}
-                className="pointer-events-none absolute flex items-center gap-2 overflow-hidden whitespace-nowrap pl-5 font-mono text-[11px] text-muted-foreground"
+                className="pointer-events-none absolute flex items-center gap-2 overflow-hidden pl-5 font-mono text-[11px] whitespace-nowrap text-muted-foreground"
                 style={{
                   top,
                   height: lineHeight,
@@ -223,7 +223,7 @@ export function BlameFileViewer({
       {hovered && (
         <div
           data-testid="blame-popover"
-          className="pointer-events-none absolute z-raised max-w-xs rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg animate-in fade-in animate-duration-100"
+          className="pointer-events-none absolute z-raised max-w-xs animate-in rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg animate-duration-100 fade-in"
           style={{ top: Math.max(4, hovered.top), left: lineHeight + 8 }}
         >
           <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -239,7 +239,7 @@ export function BlameFileViewer({
             {hovered.block.summary || '(no message)'}
           </div>
           {hovered.block.body && (
-            <div className="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-muted-foreground">
+            <div className="mt-1 text-[11px] leading-snug whitespace-pre-wrap text-muted-foreground">
               {hovered.block.body}
             </div>
           )}

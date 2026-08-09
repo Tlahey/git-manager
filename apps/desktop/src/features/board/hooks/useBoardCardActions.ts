@@ -61,12 +61,17 @@ export function useBoardCardActions({
     kind: BoardCardKind = 'task'
   ): Promise<BoardCard | undefined> {
     if (!activeBoard) return undefined
-    const card = await backendFor(activeBoard.source).createCard(repoPath, activeBoard.id, columnId, {
-      title,
-      description,
-      prefix,
-      kind,
-    })
+    const card = await backendFor(activeBoard.source).createCard(
+      repoPath,
+      activeBoard.id,
+      columnId,
+      {
+        title,
+        description,
+        prefix,
+        kind,
+      }
+    )
     // The board itself moves on a create — the identifier counter advances, and a prefix used for
     // the first time joins the board's list — so the *list* is stale too, not just the cards. That
     // list is where the next create dialog reads its prefixes from.
@@ -91,12 +96,23 @@ export function useBoardCardActions({
     if (ref) {
       const { issuePatch } = splitPatch(patch)
       if (Object.keys(issuePatch).length > 0) {
-        await pushCardToIssue(boardDetail?.board ?? activeBoard, applyCardPatch(card, patch), ref, token!)
+        await pushCardToIssue(
+          boardDetail?.board ?? activeBoard,
+          applyCardPatch(card, patch),
+          ref,
+          token!
+        )
       }
     }
 
     const result = await withConflictToast(() =>
-      backendFor(activeBoard.source).updateCard(repoPath, activeBoard.id, card.id, patch, card.revision)
+      backendFor(activeBoard.source).updateCard(
+        repoPath,
+        activeBoard.id,
+        card.id,
+        patch,
+        card.revision
+      )
     )
     if (result) void mutateDetail()
     return result

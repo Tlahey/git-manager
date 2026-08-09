@@ -42,7 +42,6 @@ beforeEach(() => {
   useRepoUIStore.setState({ openTabs: [], activeRepo: null })
 })
 
-
 describe('CloneRepoDialog', () => {
   it('derives the destination folder name from a .git URL', async () => {
     const user = userEvent.setup()

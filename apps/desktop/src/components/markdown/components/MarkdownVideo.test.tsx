@@ -5,7 +5,8 @@ const { toAssetUrl } = vi.hoisted(() => ({
   toAssetUrl: vi.fn((path: string) => `asset://localhost${path}`),
 }))
 vi.mock('../../../lib/assetUrl', async () => {
-  const actual = await vi.importActual<typeof import('../../../lib/assetUrl')>('../../../lib/assetUrl')
+  const actual =
+    await vi.importActual<typeof import('../../../lib/assetUrl')>('../../../lib/assetUrl')
   return { ...actual, toAssetUrl }
 })
 

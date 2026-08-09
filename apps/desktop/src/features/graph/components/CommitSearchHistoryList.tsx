@@ -33,7 +33,7 @@ export function CommitSearchHistoryList({
   return (
     <div className="flex flex-col gap-1.5" data-testid="commit-search-history">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <h4 className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
           <History className="h-3 w-3" />
           {t('gitTree.commitSearch.historyTitle')}
         </h4>

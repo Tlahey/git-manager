@@ -99,13 +99,13 @@ export function WipStagingPanel({
   return (
     <div
       data-testid="wip-staging-panel"
-      className="space-y-3 border-t border-border/55 px-4 pb-4 pt-2"
+      className="space-y-3 border-t border-border/55 px-4 pt-2 pb-4"
     >
       <div className="flex items-center justify-between">
         <button
           data-testid="batch-mode-toggle"
           onClick={() => setBatchMode((b) => !b)}
-          className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-bold text-primary hover:opacity-85"
+          className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-primary select-none hover:opacity-85"
         >
           <Layers className="h-3.5 w-3.5 text-primary" />
           <span>
@@ -116,8 +116,8 @@ export function WipStagingPanel({
 
       {batchMode ? (
         /* Smart Batch Mode */
-        <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-1 animate-duration-150">
-          <p className="border-b border-border/20 pb-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
+        <div className="animate-in space-y-4 pt-1 animate-duration-150 fade-in slide-in-from-top-1">
+          <p className="border-b border-border/20 pb-1 text-[10px] leading-relaxed font-medium text-muted-foreground">
             {t('commitDetails.batchCommit.subtitle')}
           </p>
 
@@ -202,7 +202,7 @@ export function WipStagingPanel({
                         <span
                           className={cn(
                             statusIcons[file.status],
-                            'min-w-[12px] shrink-0 select-none text-center'
+                            'min-w-[12px] shrink-0 text-center select-none'
                           )}
                         >
                           {statusLetters[file.status]}
@@ -212,13 +212,13 @@ export function WipStagingPanel({
                           if (lastSlash === -1) return null
                           const dir = file.path.substring(0, lastSlash + 1)
                           return (
-                            <span className="min-w-0 shrink select-text truncate pr-0.5 text-[9px] leading-tight text-muted-foreground/45">
+                            <span className="min-w-0 shrink truncate pr-0.5 text-[9px] leading-tight text-muted-foreground/45 select-text">
                               {dir}
                             </span>
                           )
                         })()}
                       </div>
-                      <span className="min-w-0 shrink-0 select-all truncate text-[9px] font-semibold leading-tight text-foreground">
+                      <span className="min-w-0 shrink-0 truncate text-[9px] leading-tight font-semibold text-foreground select-all">
                         {(() => {
                           const lastSlash = file.path.lastIndexOf('/')
                           return lastSlash === -1 ? file.path : file.path.substring(lastSlash + 1)
@@ -294,7 +294,7 @@ export function WipStagingPanel({
                 className={cn(
                   'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'commit'
-                    ? 'shadow-xs border border-b-0 border-border/60 bg-card text-foreground'
+                    ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 )}
               >
@@ -313,7 +313,7 @@ export function WipStagingPanel({
                 className={cn(
                   'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'stash'
-                    ? 'shadow-xs border border-b-0 border-border/60 bg-card text-foreground'
+                    ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 )}
               >
@@ -326,7 +326,7 @@ export function WipStagingPanel({
           </div>
 
           {/* ── CONTAINER (Textarea, checkbox, actions) ── */}
-          <div className="space-y-3 rounded-b-lg rounded-tr-lg border border-border/40 bg-card p-3 shadow-xs">
+          <div className="space-y-3 rounded-tr-lg rounded-b-lg border border-border/40 bg-card p-3 shadow-xs">
             {activeTab === 'commit' ? (
               /* COMMIT FORM */
               <div className="space-y-3">
@@ -382,7 +382,7 @@ export function WipStagingPanel({
                 {/* Checkbox placement: BELOW the text area */}
                 <label
                   data-testid="commit-amend-checkbox-label"
-                  className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none hover:text-foreground"
                 >
                   <Checkbox
                     data-testid="commit-amend-checkbox"
@@ -489,7 +489,7 @@ export function WipStagingPanel({
                 {/* Checkbox placement: BELOW the text area */}
                 <label
                   data-testid="stash-untracked-checkbox-label"
-                  className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none hover:text-foreground"
                 >
                   <Checkbox
                     data-testid="stash-untracked-checkbox"

@@ -34,7 +34,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('CompareToWorkdirDialog', () => {
   it('names the commit it is comparing while the diff loads', () => {
     mockedCompare.mockReturnValue(new Promise(() => {}))

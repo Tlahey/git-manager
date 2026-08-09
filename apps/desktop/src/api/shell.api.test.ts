@@ -18,7 +18,6 @@ beforeEach(() => {
   vi.resetModules()
 })
 
-
 describe('apiGetTerminalCommands', () => {
   it('delegates to getTerminalCommands', async () => {
     const sources = [{ source: '.zsh_history', commands: ['git status'] }]

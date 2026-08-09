@@ -33,7 +33,7 @@ export function PrSidePanel({ pr, onClose }: PrSidePanelProps) {
       />
       <div
         {...resizeProps}
-        className="group relative z-10 w-1.5 shrink-0 cursor-col-resize select-none bg-border/40 transition-colors hover:bg-primary/40"
+        className="group relative z-10 w-1.5 shrink-0 cursor-col-resize bg-border/40 transition-colors select-none hover:bg-primary/40"
         data-testid="launchpad-pr-panel-resize"
       />
       <div

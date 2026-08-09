@@ -5,15 +5,15 @@ Summarizes everything currently uncommitted — "what am I in the middle of?".
 > Shared plumbing — transport, events, cancellation, errors, settings — lives in the
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 
-|                   |                                                                                                                                                                                                           |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Descriptor**    | [`summaryExplanationFeature`](../../packages/ai/src/features/summaryExplanation.ts) (`scope: 'working'`), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts)                     |
-| **Kind**          | streaming markdown                                                                                                                                                                                        |
-| **Temperature**   | 0.2                                                                                                                                                                                                       |
-| **Context scope** | `working` — worktree vs HEAD, untracked included                                                                                                                                                          |
-| **Diff budget**   | none at this level: every file is read whole, in its own prompt, by the map phase                                                                                                                         |
+|                   |                                                                                                                                                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Descriptor**    | [`summaryExplanationFeature`](../../packages/ai/src/features/summaryExplanation.ts) (`scope: 'working'`), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts)                                         |
+| **Kind**          | streaming markdown                                                                                                                                                                                                            |
+| **Temperature**   | 0.2                                                                                                                                                                                                                           |
+| **Context scope** | `working` — worktree vs HEAD, untracked included                                                                                                                                                                              |
+| **Diff budget**   | none at this level: every file is read whole, in its own prompt, by the map phase                                                                                                                                             |
 | **UI**            | [`WorkingExplanationPanel`](../../apps/desktop/src/features/graph/components/WorkingExplanationPanel.tsx) — right panel — via [`useWorkingExplanation`](../../apps/desktop/src/features/graph/hooks/useWorkingExplanation.ts) |
-| **Memory**        | **none** — see below                                                                                                                                                                                      |
+| **Memory**        | **none** — see below                                                                                                                                                                                                          |
 
 ---
 
@@ -96,12 +96,12 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 ## Tests
 
-| Test                                                                                                               | Covers                                                                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`workingExplanation.test.ts`](../../packages/ai/src/features/workingExplanation.test.ts)                          | prompt shape, file statuses, language, window-sized budget (fits every window, the file list survives the smallest window because the count comes from it, code before noise), coverage, and the instruction's coverage ban |
-| [`useWorkingExplanation.test.ts`](../../apps/desktop/src/features/graph/hooks/useWorkingExplanation.test.ts)                      | working scope, streaming, clean-tree refusal, and that nothing is persisted                                                                                                                                                 |
+| Test                                                                                                                    | Covers                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`workingExplanation.test.ts`](../../packages/ai/src/features/workingExplanation.test.ts)                               | prompt shape, file statuses, language, window-sized budget (fits every window, the file list survives the smallest window because the count comes from it, code before noise), coverage, and the instruction's coverage ban |
+| [`useWorkingExplanation.test.ts`](../../apps/desktop/src/features/graph/hooks/useWorkingExplanation.test.ts)            | working scope, streaming, clean-tree refusal, and that nothing is persisted                                                                                                                                                 |
 | [`WorkingExplanationPanel.test.tsx`](../../apps/desktop/src/features/graph/components/WorkingExplanationPanel.test.tsx) | auto-start, no age line, error decoding                                                                                                                                                                                     |
-| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                                | the WIP menu item's action, and both reasons it disables                                                                                                                                                                    |
+| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                                     | the WIP menu item's action, and both reasons it disables                                                                                                                                                                    |
 
 ---
 

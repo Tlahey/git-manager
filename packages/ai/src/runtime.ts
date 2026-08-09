@@ -91,8 +91,7 @@ export interface CompletionFeature<Input, Output> extends BaseFeature<Input> {
 }
 
 export type AiFeature<Input, Output = string> =
-  | StreamingFeature<Input>
-  | CompletionFeature<Input, Output>
+  StreamingFeature<Input> | CompletionFeature<Input, Output>
 
 /** The low-level operations a feature service needs from its host. The app provides a Tauri-backed
  * implementation (from `api/ai.api.ts`), keeping this package free of any `@tauri-apps/api`

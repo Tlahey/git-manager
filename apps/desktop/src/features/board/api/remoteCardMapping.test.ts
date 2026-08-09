@@ -170,9 +170,11 @@ describe('archiving on a GitHub board', () => {
   it('claims the label as one this board manages', () => {
     expect(isManagedLabel(board, ARCHIVED_LABEL)).toBe(true)
     expect(
-      reconcileLabels(board, [boardColumnLabel('b1', 'todo'), ARCHIVED_LABEL], [
-        boardColumnLabel('b1', 'todo'),
-      ]).toRemove
+      reconcileLabels(
+        board,
+        [boardColumnLabel('b1', 'todo'), ARCHIVED_LABEL],
+        [boardColumnLabel('b1', 'todo')]
+      ).toRemove
     ).toEqual([ARCHIVED_LABEL])
   })
 

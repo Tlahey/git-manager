@@ -46,7 +46,7 @@ export function NotificationDropdown() {
           <NumberBadge
             count={unreadCount}
             data-testid="notification-unread-badge"
-            className="absolute -right-1 -top-1 ring-2 ring-sidebar"
+            className="absolute -top-1 -right-1 ring-2 ring-sidebar"
           />
         </button>
       </PopoverTrigger>
@@ -122,12 +122,12 @@ export function NotificationDropdown() {
                           {formatRelativeTimestamp(notif.createdAt, t)}
                         </span>
                       </div>
-                      <p className="mt-0.5 line-clamp-2 wrap-break-word font-sans text-[10px] leading-snug text-muted-foreground">
+                      <p className="mt-0.5 line-clamp-2 font-sans text-[10px] leading-snug wrap-break-word text-muted-foreground">
                         {message}
                       </p>
                     </div>
                     {!notif.read && (
-                      <div className="ml-1 mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <div className="mt-1.5 ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                     )}
                   </button>
                 )

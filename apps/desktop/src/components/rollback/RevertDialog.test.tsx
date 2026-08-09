@@ -42,7 +42,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('RevertDialog — ordinary commit', () => {
   it('shows the commit subject in the title', () => {
     renderDialog()

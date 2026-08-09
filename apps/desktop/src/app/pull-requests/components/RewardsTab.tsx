@@ -96,7 +96,7 @@ export function RewardsTab() {
               <Trophy className="h-7 w-7" />
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 {t('rewards.currentRank')}
               </span>
               <h2 className="max-w-[180px] truncate text-sm font-extrabold tracking-wide">
@@ -123,7 +123,7 @@ export function RewardsTab() {
         {/* Trophy Cabinet stats */}
         <Card className="col-span-1 flex flex-col justify-between rounded-xl bg-card/40 p-4 shadow-md backdrop-blur-xs md:col-span-2">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               {t('rewards.trophyCabinet')}
             </span>
             <div className="mt-3 flex flex-wrap items-center gap-4 sm:gap-6">
@@ -131,7 +131,7 @@ export function RewardsTab() {
                 <Trophy className="h-5.5 w-5.5 text-[#cd7f32] drop-shadow-[0_2px_4px_rgba(205,127,50,0.3)]" />
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{bronzeCount}</div>
-                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                  <div className="text-[8px] font-semibold text-muted-foreground uppercase">
                     {t('rewards.bronze')}
                   </div>
                 </div>
@@ -140,7 +140,7 @@ export function RewardsTab() {
                 <Trophy className="h-5.5 w-5.5 text-[#e2e8f0] drop-shadow-[0_2px_4px_rgba(192,192,192,0.3)]" />
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{silverCount}</div>
-                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                  <div className="text-[8px] font-semibold text-muted-foreground uppercase">
                     {t('rewards.silver')}
                   </div>
                 </div>
@@ -149,7 +149,7 @@ export function RewardsTab() {
                 <Trophy className="h-5.5 w-5.5 text-[#ffd700] drop-shadow-[0_2px_4px_rgba(255,215,0,0.3)]" />
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{goldCount}</div>
-                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                  <div className="text-[8px] font-semibold text-muted-foreground uppercase">
                     {t('rewards.gold')}
                   </div>
                 </div>
@@ -158,7 +158,7 @@ export function RewardsTab() {
                 <Trophy className="h-5.5 w-5.5 text-[#00ffff] drop-shadow-[0_2px_4px_rgba(0,255,255,0.3)]" />
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{platinumCount}</div>
-                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                  <div className="text-[8px] font-semibold text-muted-foreground uppercase">
                     {t('rewards.platinum')}
                   </div>
                 </div>
@@ -169,7 +169,7 @@ export function RewardsTab() {
                   {unlocked.length}{' '}
                   <span className="text-[10px] text-muted-foreground">/ {totalCount}</span>
                 </div>
-                <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                <div className="text-[8px] font-semibold text-muted-foreground uppercase">
                   {t('rewards.achievementsCompleted')}
                 </div>
               </div>
@@ -184,7 +184,7 @@ export function RewardsTab() {
 
       {/* Filter toolbar */}
       <div className="flex shrink-0 items-center justify-between border-b border-border pb-3">
-        <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <h3 className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
           <Trophy className="h-3.5 w-3.5 text-primary" /> {t('rewards.challengeList')}
         </h3>
         <div className="flex gap-1.5">
@@ -320,7 +320,7 @@ export function RewardsTab() {
                             return (
                               <div className="mt-2 space-y-1">
                                 <div className="flex justify-between text-[9px] font-semibold text-muted-foreground">
-                                  <span className="rounded bg-primary/10 px-1 text-[8px] uppercase tracking-wider text-primary">
+                                  <span className="rounded bg-primary/10 px-1 text-[8px] tracking-wider text-primary uppercase">
                                     {t('rewards.filRouge')}
                                   </span>
                                   <span>

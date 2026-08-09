@@ -39,7 +39,9 @@ describe('ArchiveColumnDialog', () => {
   /** Nothing is lost here — the copy has to say so, or this reads like the purge. */
   it('says the cards are restorable rather than destroyed', () => {
     renderDialog()
-    expect(screen.getByTestId('archive-column-dialog')).toHaveTextContent(/restore them at any time/)
+    expect(screen.getByTestId('archive-column-dialog')).toHaveTextContent(
+      /restore them at any time/
+    )
   })
 
   it('archives and closes on confirm', async () => {

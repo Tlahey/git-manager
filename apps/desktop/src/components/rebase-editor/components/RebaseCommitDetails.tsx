@@ -125,9 +125,9 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
       {/* Commit metadata */}
       <ScrollArea className="h-28 shrink-0 border-t border-border">
         <div className="space-y-1.5 p-3 text-xs">
-          <div className="font-semibold leading-snug text-foreground">{commit.subject}</div>
+          <div className="leading-snug font-semibold text-foreground">{commit.subject}</div>
           {commit.body && (
-            <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-[11px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
               {commit.body}
             </p>
           )}

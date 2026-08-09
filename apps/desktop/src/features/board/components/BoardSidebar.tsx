@@ -61,7 +61,9 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
       // The filter applies to the open board as well — it is the one thing that can take it off the
       // list, because a filter that always kept one row would be lying about what matched.
       if (needle && !b.name.toLowerCase().includes(needle)) return false
-      return b.id === activeBoard?.id || ((showClosed || !b.closedAt) && (showDeleted || !b.deletedAt))
+      return (
+        b.id === activeBoard?.id || ((showClosed || !b.closedAt) && (showDeleted || !b.deletedAt))
+      )
     })
     return [...shown].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [boards, activeBoard?.id, boardFilter, showClosed, showDeleted])
@@ -72,7 +74,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
       className="flex h-full w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
     >
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
-        <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
+        <span className="text-[10px] font-bold tracking-widest text-sidebar-muted-foreground/60 uppercase select-none">
           {t('sidebar.title')}
         </span>
         <Button
@@ -91,7 +93,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
       {/* Filters the list below it, and only that: boards by name. Finding a *ticket* is the
           toolbar's search (⌘F), which looks across every board — so neither control narrows
           something it doesn't sit next to. */}
-      <div className="border-sidebar-border shrink-0 border-b px-2 py-1.5">
+      <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
         <Input
           ref={searchInputRef}
           variant="chrome"
@@ -107,7 +109,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
               <button
                 onClick={() => setBoardFilter('')}
                 aria-label={t('git:sidebar.clearFilter')}
-                className="text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-4 w-4 cursor-pointer items-center justify-center rounded"
+                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -117,7 +119,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto py-1">
         {/* Nothing at all while the list is still loading: "No boards yet" is an answer, and it would
             be the wrong one for the second it takes to find out. */}
         {boardsLoading ? null : visibleBoards.length === 0 ? (

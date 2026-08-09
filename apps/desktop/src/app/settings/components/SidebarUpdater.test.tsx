@@ -10,7 +10,6 @@ beforeEach(() => {
   useAppUpdaterStore.setState(INITIAL, true)
 })
 
-
 describe('SidebarUpdater', () => {
   it('shows the current version and a check button when idle', () => {
     useAppUpdaterStore.setState({ currentVersion: '1.2.3' })

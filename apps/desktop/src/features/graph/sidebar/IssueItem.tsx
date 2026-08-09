@@ -39,7 +39,7 @@ export function IssueItem({ issue, filterQuery = '', onContextMenu, onOpen }: Is
       className="max-w-none overflow-hidden px-0 py-0"
     >
       <div
-        className="group/issue relative flex cursor-pointer items-start gap-1.5 py-1 pl-6 pr-2 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+        className="group/issue relative flex cursor-pointer items-start gap-1.5 py-1 pr-2 pl-6 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('[data-toggle]')) return
           open()
@@ -90,7 +90,7 @@ export function IssueItem({ issue, filterQuery = '', onContextMenu, onOpen }: Is
             e.stopPropagation()
             onContextMenu?.(e, issue)
           }}
-          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/issue:opacity-100"
+          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/issue:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
           aria-label={t('sidebar.issueActions')}
           title={t('sidebar.issueActions')}
           data-testid={`issue-actions-button-${issue.number}`}

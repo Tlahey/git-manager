@@ -1,5 +1,9 @@
 import type { Board, BoardCard, BoardCardSourceIssue } from '@git-manager/git-types'
-import { type GhRawIssue, fetchIssueDetail, updateIssue } from '../../../api/github/github-issues.api'
+import {
+  type GhRawIssue,
+  fetchIssueDetail,
+  updateIssue,
+} from '../../../api/github/github-issues.api'
 import {
   addAssignees,
   addLabels,

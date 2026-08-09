@@ -21,7 +21,6 @@ beforeEach(() => {
   useRepoUIStore.setState({ activeRepo: null })
 })
 
-
 describe('RepositorySection — no repo', () => {
   it('shows a hint and no controls when no repo is active', () => {
     render(<RepositorySection category="gitflow" />)
@@ -110,9 +109,6 @@ describe('RepositorySection — appearance page', () => {
       useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalForeground
     ).toBeUndefined()
   })
-
-
-
 
   it('filters to only the terminal-colours setting when searching "terminal"', () => {
     render(

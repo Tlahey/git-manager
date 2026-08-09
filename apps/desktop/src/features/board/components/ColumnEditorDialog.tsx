@@ -38,7 +38,12 @@ function withOrder(columns: BoardColumn[]): BoardColumn[] {
 
 /** Add/rename/reorder/delete a board's columns — draft-then-save, so a half-finished edit never
  * writes a mutation (there is no autosave here, unlike the card fields). */
-export function ColumnEditorDialog({ open, onOpenChange, columns, onSave }: ColumnEditorDialogProps) {
+export function ColumnEditorDialog({
+  open,
+  onOpenChange,
+  columns,
+  onSave,
+}: ColumnEditorDialogProps) {
   const { t } = useTranslation('board')
   const [draft, setDraft] = useState<BoardColumn[]>(columns)
   const [newName, setNewName] = useState('')
@@ -99,7 +104,11 @@ export function ColumnEditorDialog({ open, onOpenChange, columns, onSave }: Colu
 
         <div className="space-y-2">
           {draft.map((column, index) => (
-            <div key={column.id} className="flex items-center gap-1.5" data-testid={`column-editor-row-${column.id}`}>
+            <div
+              key={column.id}
+              className="flex items-center gap-1.5"
+              data-testid={`column-editor-row-${column.id}`}
+            >
               <div className="flex flex-col">
                 <Button
                   variant="ghost"
@@ -126,7 +135,7 @@ export function ColumnEditorDialog({ open, onOpenChange, columns, onSave }: Colu
                 className="h-8 text-xs"
               />
               <label
-                className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[10px] text-muted-foreground"
+                className="flex shrink-0 cursor-pointer items-center gap-1 text-[10px] whitespace-nowrap text-muted-foreground"
                 title={t('columnEditor.isDoneHint')}
               >
                 <Checkbox
@@ -173,7 +182,12 @@ export function ColumnEditorDialog({ open, onOpenChange, columns, onSave }: Colu
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button

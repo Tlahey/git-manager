@@ -84,7 +84,7 @@ export function ConflictResolutionPanel({
       {/* PANEL HEADER — matches CommitHeaderInfo's header bar */}
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <AlertTriangle className="h-3.5 w-3.5 text-orange-400" />
             {t('conflictEditor.resolvePanelTitle')}
           </h3>
@@ -153,14 +153,14 @@ export function ConflictResolutionPanel({
       {/* Commit message + amend previous commit */}
       <div className="shrink-0 space-y-1.5 border-t border-border/55 px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
             {t('commit.title')}
           </span>
           <button
             type="button"
             onClick={() => setAmend((v) => !v)}
             data-testid="conflict-amend-toggle"
-            className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] font-medium text-muted-foreground"
+            className="flex cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground select-none"
           >
             <span
               className={cn(

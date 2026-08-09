@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { GitCommit, GitRef, GitStash } from '@git-manager/git-types'
 
-vi.mock('../../../api/git.api', () => ({ apiCreateCommit: vi.fn(), apiUpdateStashMessage: vi.fn() }))
+vi.mock('../../../api/git.api', () => ({
+  apiCreateCommit: vi.fn(),
+  apiUpdateStashMessage: vi.fn(),
+}))
 
 import { apiCreateCommit, apiUpdateStashMessage } from '../../../api/git.api'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
@@ -31,7 +34,6 @@ beforeEach(() => {
   useRepoUIStore.setState({ editingOid: null })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
-
 
 describe('useCommitMessageEdit — initial subject/body derivation', () => {
   it('derives subject/body from the commit when not a stash', () => {

@@ -25,7 +25,6 @@ beforeEach(() => {
   useAppUpdaterStore.setState(INITIAL, true)
 })
 
-
 describe('appUpdater.store — loadVersion', () => {
   it('stores the bundled version', async () => {
     apiGetAppVersion.mockResolvedValue('1.2.3')

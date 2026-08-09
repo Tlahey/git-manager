@@ -190,7 +190,12 @@ export function AddIssueDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button
@@ -248,7 +253,7 @@ function IssueRow({
           its own max width. */}
       <span className="min-w-0 flex-1 truncate">{title}</span>
       {taken && (
-        <span className="shrink-0 rounded bg-muted px-1 py-px text-[9px] uppercase tracking-wide text-muted-foreground">
+        <span className="shrink-0 rounded bg-muted px-1 py-px text-[9px] tracking-wide text-muted-foreground uppercase">
           {t('addIssue.onBoardBadge')}
         </span>
       )}

@@ -6,7 +6,10 @@ import { makeCard } from '../test/boardFactories'
 import { CardMetaSidebar } from './CardMetaSidebar'
 
 const { useAssignableUsers } = vi.hoisted(() => ({
-  useAssignableUsers: vi.fn(() => ({ users: [] as { login: string; avatar_url: string }[], isLoading: false })),
+  useAssignableUsers: vi.fn(() => ({
+    users: [] as { login: string; avatar_url: string }[],
+    isLoading: false,
+  })),
 }))
 vi.mock('../../../hooks/usePrEditCandidates', () => ({ useAssignableUsers }))
 
@@ -18,13 +21,7 @@ const TAGS: BoardTag[] = [
 function renderSidebar(props: Partial<React.ComponentProps<typeof CardMetaSidebar>> = {}) {
   const onPatch = vi.fn().mockResolvedValue(undefined)
   render(
-    <CardMetaSidebar
-      card={makeCard()}
-      tags={TAGS}
-      repoPath="/repo"
-      onPatch={onPatch}
-      {...props}
-    />
+    <CardMetaSidebar card={makeCard()} tags={TAGS} repoPath="/repo" onPatch={onPatch} {...props} />
   )
   return onPatch
 }
@@ -188,7 +185,9 @@ describe('CardMetaSidebar — priority and tags', () => {
    * on a revision the write just invalidated — a guaranteed conflict.
    */
   it('hands the whole create-and-assign to its caller, in one call', async () => {
-    const onCreateTag = vi.fn().mockResolvedValue({ id: 'frontend', name: 'frontend', color: '#3b82f6' })
+    const onCreateTag = vi
+      .fn()
+      .mockResolvedValue({ id: 'frontend', name: 'frontend', color: '#3b82f6' })
     const onPatch = renderSidebar({ onCreateTag })
 
     await userEvent.click(screen.getByTestId('card-meta-tags-edit'))

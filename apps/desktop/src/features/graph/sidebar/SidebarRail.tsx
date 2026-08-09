@@ -45,7 +45,7 @@ function RailIcon({ icon, label, count, onClick }: RailIconProps) {
       {icon}
       <NumberBadge
         count={count ?? 0}
-        className="absolute right-1 top-1 h-3.5 min-h-0 min-w-[14px] px-0.5 text-[8px]"
+        className="absolute top-1 right-1 h-3.5 min-h-0 min-w-[14px] px-0.5 text-[8px]"
       />
     </button>
   )

@@ -80,7 +80,7 @@ export function NotchProgressBody({ model }: { model: NotchProgressModel }) {
         {!indeterminate && (
           <span
             data-testid="notch-progress-percent"
-            className="shrink-0 text-[10px] tabular-nums text-white/45"
+            className="shrink-0 text-[10px] text-white/45 tabular-nums"
           >
             {percent}%
           </span>
@@ -129,7 +129,7 @@ export function NotchStatusBody({ model }: { model: NotchStatusModel }) {
           }}
           // `py-1.5` is `statusOutputHeight`'s padding term: border-box takes it out of the height,
           // leaving exactly `lines × statusOutputLine` for the text itself.
-          className="mx-3 overflow-hidden whitespace-pre py-1.5 font-mono text-[10px] text-white/40"
+          className="mx-3 overflow-hidden py-1.5 font-mono text-[10px] whitespace-pre text-white/40"
         >
           {lines.join('\n')}
         </pre>
@@ -170,7 +170,7 @@ export function NotchRewardBody({ model }: { model: NotchRewardModel }) {
         {model.reward !== undefined && (
           <p
             data-testid="notch-reward-gain"
-            className="flex items-center gap-1 text-[10px] font-semibold leading-normal"
+            className="flex items-center gap-1 text-[10px] leading-normal font-semibold"
             // The tier's colour, not the tone's: what the reward *is* belongs to the medal beside it,
             // and the tone is already spoken for by the eyebrow above.
             style={{ color: tierColor(model.tier) }}

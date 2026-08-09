@@ -68,26 +68,20 @@ Then(
 // The step's name says what the *reader* does — "compare the selected commit against parent 2" —
 // not how it gets there. It used to start "I dispatch comparing…", and the `@doc` scenario
 // rendered that verbatim as an instruction on the published page.
-When(
-  /^I compare the selected commit against parent "(\d+)"$/,
-  async (parentNumber: string) => {
-    await browser.execute((parent: number) => {
-      const store = (
-        window as unknown as {
-          __e2eRepoUIStore?: {
-            getState: () => {
-              setPendingGraphAction: (action: {
-                kind: 'compareParent'
-                parentNumber: number
-              }) => void
-            }
+When(/^I compare the selected commit against parent "(\d+)"$/, async (parentNumber: string) => {
+  await browser.execute((parent: number) => {
+    const store = (
+      window as unknown as {
+        __e2eRepoUIStore?: {
+          getState: () => {
+            setPendingGraphAction: (action: { kind: 'compareParent'; parentNumber: number }) => void
           }
         }
-      ).__e2eRepoUIStore
-      store?.getState().setPendingGraphAction({ kind: 'compareParent', parentNumber: parent })
-    }, Number(parentNumber))
-  }
-)
+      }
+    ).__e2eRepoUIStore
+    store?.getState().setPendingGraphAction({ kind: 'compareParent', parentNumber: parent })
+  }, Number(parentNumber))
+})
 
 Then(/^the compare-parent dialog is shown$/, async () => {
   await expect($('[data-testid="compare-parent-dialog"]')).toBeDisplayed()

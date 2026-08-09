@@ -9,7 +9,9 @@ vi.mock('../hooks/useWipCommitPanel', () => ({ useWipCommitPanel }))
 
 // The publish-PR button has its own flow (query client, SWR, GitHub) and its own test — stub it here
 // so this panel test stays focused on the commit form.
-vi.mock('../../../components/github-panels/pr/PrPublishButton', () => ({ PrPublishButton: () => null }))
+vi.mock('../../../components/github-panels/pr/PrPublishButton', () => ({
+  PrPublishButton: () => null,
+}))
 
 import { WipStagingPanel } from './WipStagingPanel'
 import { useSettingsStore } from '../../../stores/settings.store'

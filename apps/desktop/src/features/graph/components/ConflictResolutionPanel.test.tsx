@@ -81,7 +81,6 @@ beforeEach(() => {
   mockedGetRebaseState.mockResolvedValue({ currentOid: null, currentMessage: null })
 })
 
-
 describe('ConflictResolutionPanel — header', () => {
   it('shows the step-progress badge only once currentStep/totalSteps are known', async () => {
     mockedGetRebaseState.mockResolvedValue({ currentStep: 2, totalSteps: 5 })

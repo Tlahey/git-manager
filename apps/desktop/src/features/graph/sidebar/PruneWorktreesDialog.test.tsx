@@ -51,7 +51,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('PruneWorktreesDialog — rendering', () => {
   it('lists each prunable worktree by branch and path', () => {
     renderDialog({

@@ -77,7 +77,9 @@ describe('BoardToolbar', () => {
 
   it('offers no editing action on a closed sprint, and none on a deleted board', () => {
     const closed = makeBoard({ closedAt: '2026-08-04T10:00:00.000Z' })
-    useBoardData.mockReturnValue(makeBoardData({ boards: [closed], activeBoard: closed, cards: [] }))
+    useBoardData.mockReturnValue(
+      makeBoardData({ boards: [closed], activeBoard: closed, cards: [] })
+    )
     const { rerender } = render(<BoardToolbar repoPath="/repo" />)
     expect(screen.queryByTestId('board-edit-columns-button')).not.toBeInTheDocument()
     expect(screen.queryByTestId('board-settings-button')).not.toBeInTheDocument()

@@ -91,7 +91,7 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
       className={`text-sm font-semibold wrap-anywhere ${canEdit ? 'cursor-text hover:opacity-80' : ''}`}
     >
       <span className="text-foreground">{title}</span>{' '}
-      <span className="whitespace-nowrap font-mono text-xs font-normal text-muted-foreground/60">
+      <span className="font-mono text-xs font-normal whitespace-nowrap text-muted-foreground/60">
         #{issueNumber}
       </span>
     </h2>

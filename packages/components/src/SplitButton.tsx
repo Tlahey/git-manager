@@ -84,7 +84,7 @@ export function SplitButton({
               size={size}
               data-testid={testIdPrefix ? `${testIdPrefix}-menu-btn` : undefined}
               disabled={disabled || busy}
-              className={`border-primary-foreground/20 rounded-l-none border-l ${caretPadding}`}
+              className={`rounded-l-none border-l border-primary-foreground/20 ${caretPadding}`}
               aria-label={menuLabel}
             >
               <ChevronDown className="h-3.5 w-3.5" />

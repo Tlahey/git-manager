@@ -36,8 +36,6 @@ describe('getBuiltinTheme', () => {
 })
 
 describe('resolveSystemTheme', () => {
-  
-
   it('returns "dark" when the OS prefers dark', () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
     expect(resolveSystemTheme()).toBe('dark')

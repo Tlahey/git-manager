@@ -136,7 +136,7 @@ export function BranchItem({
           menu spec rather than a second, forkable definition of it. */}
       <button
         data-toggle="branch-actions"
-        className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/branch:opacity-100"
+        className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/branch:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
         onClick={(e) => {
           e.stopPropagation()
           onContextMenu?.(e, branch)

@@ -34,13 +34,10 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
   const extraLabels = issue.labels.length - MAX_LABELS
 
   return (
-    <div
-      className="flex w-120 whitespace-normal"
-      data-testid={`issue-hover-card-${issue.number}`}
-    >
+    <div className="flex w-120 whitespace-normal" data-testid={`issue-hover-card-${issue.number}`}>
       {/* Left: what the issue is about. */}
       <div className="flex min-w-0 flex-1 flex-col px-1 py-0.5">
-        <div className="text-xs font-semibold leading-snug text-foreground">
+        <div className="text-xs leading-snug font-semibold text-foreground">
           <span className="font-mono text-muted-foreground">#{issue.number}</span> {issue.title}
         </div>
 
@@ -51,7 +48,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
         </div>
 
         <div className="mt-2 flex-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             {t('pr.view.description')}
           </span>
           {excerpt ? (
@@ -62,7 +59,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
               {excerpt}
             </p>
           ) : (
-            <p className="mt-1 text-[11px] italic text-muted-foreground">
+            <p className="mt-1 text-[11px] text-muted-foreground italic">
               {t('issue.view.noDescription')}
             </p>
           )}
@@ -86,7 +83,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
       <div className="w-40 shrink-0 border-l border-border" data-testid="issue-hover-card-meta">
         <PrSidebarSection title={t('issue.side.status')} testId="issue-hover-status">
           <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
               isOpen
                 ? 'border-success/30 bg-success/15 text-tone-success'
                 : 'border-destructive/30 bg-destructive/15 text-tone-danger'
@@ -131,7 +128,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
               )}
             </ul>
           ) : (
-            <p className="text-xs italic text-muted-foreground">{t('pr.side.noLabels')}</p>
+            <p className="text-xs text-muted-foreground italic">{t('pr.side.noLabels')}</p>
           )}
         </PrSidebarSection>
       </div>

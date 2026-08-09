@@ -64,7 +64,7 @@ export function SidePanelOverlay({
             panel's own layout. `DialogContent` is `fixed`, so it is the containing block. */}
         <div
           {...resizeProps}
-          className="group bg-border/40 hover:bg-primary/40 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize transition-colors select-none"
+          className="group absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize bg-border/40 transition-colors select-none hover:bg-primary/40"
           data-testid={`${testIdPrefix}-resize`}
         />
         {children}

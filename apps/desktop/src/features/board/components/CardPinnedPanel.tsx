@@ -53,95 +53,95 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
         }
 
   return (
-  <CardSidebarPanel
-    title={t('card.panel.pinned')}
-    sectionKey="card-pinned"
-    testId="card-panel-pinned"
-  >
-    <CardFieldRow
-      label={t('card.meta.assignee')}
-      testId="card-meta-assignee"
-      editTitle={t('card.meta.editAssignee')}
-      addLabel={t('card.meta.addAssignee')}
-      filled={Boolean(card.assignee)}
-      {...editorFor(
-        'assignee',
-        <CardAssigneeField
-          assignee={card.assignee}
-          repoPath={repoPath}
-          onChange={(next) => onPatch({ assignee: next })}
-          onClose={() => setEditing(null)}
-        />
-      )}
+    <CardSidebarPanel
+      title={t('card.panel.pinned')}
+      sectionKey="card-pinned"
+      testId="card-panel-pinned"
     >
-      <span className="flex items-center gap-1.5 text-[11px] text-foreground">
-        {githubUser ? (
-          <img src={githubUser.avatar_url} alt="" className="h-4 w-4 shrink-0 rounded-full" />
-        ) : (
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-semibold uppercase text-muted-foreground">
-            {card.assignee?.slice(0, 1)}
-          </span>
+      <CardFieldRow
+        label={t('card.meta.assignee')}
+        testId="card-meta-assignee"
+        editTitle={t('card.meta.editAssignee')}
+        addLabel={t('card.meta.addAssignee')}
+        filled={Boolean(card.assignee)}
+        {...editorFor(
+          'assignee',
+          <CardAssigneeField
+            assignee={card.assignee}
+            repoPath={repoPath}
+            onChange={(next) => onPatch({ assignee: next })}
+            onClose={() => setEditing(null)}
+          />
         )}
-        <span className="min-w-0 truncate">{card.assignee}</span>
-      </span>
-    </CardFieldRow>
+      >
+        <span className="flex items-center gap-1.5 text-[11px] text-foreground">
+          {githubUser ? (
+            <img src={githubUser.avatar_url} alt="" className="h-4 w-4 shrink-0 rounded-full" />
+          ) : (
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-semibold text-muted-foreground uppercase">
+              {card.assignee?.slice(0, 1)}
+            </span>
+          )}
+          <span className="min-w-0 truncate">{card.assignee}</span>
+        </span>
+      </CardFieldRow>
 
-    {/* Clearing lives in the picker with the dates, rather than beside the row: a native date input
+      {/* Clearing lives in the picker with the dates, rather than beside the row: a native date input
         doesn't reliably fire a change when it is emptied, so "no deadline" has to be a row one can
         pick like any other — it just isn't a row the input can produce. */}
-    <CardFieldRow
-      label={t('card.meta.dueDate')}
-      testId="card-meta-due-date"
-      editTitle={t('card.meta.editDueDate')}
-      addLabel={t('card.meta.addDueDate')}
-      filled={Boolean(card.dueDate)}
-      {...editorFor(
-        'dueDate',
-        <CardDueDatePicker
-          dueDate={card.dueDate}
-          onSelect={(next) => {
-            void onPatch({ dueDate: next })
-            setEditing(null)
-          }}
-        />
-      )}
-    >
-      <span
-        data-testid={overdue ? 'card-due-overdue' : 'card-due'}
-        className={`flex items-center gap-1 text-[11px] ${
-          overdue ? 'font-medium text-destructive' : 'text-foreground'
-        }`}
+      <CardFieldRow
+        label={t('card.meta.dueDate')}
+        testId="card-meta-due-date"
+        editTitle={t('card.meta.editDueDate')}
+        addLabel={t('card.meta.addDueDate')}
+        filled={Boolean(card.dueDate)}
+        {...editorFor(
+          'dueDate',
+          <CardDueDatePicker
+            dueDate={card.dueDate}
+            onSelect={(next) => {
+              void onPatch({ dueDate: next })
+              setEditing(null)
+            }}
+          />
+        )}
       >
-        <CalendarClock className="h-3 w-3 shrink-0" />
-        {card.dueDate}
-        {overdue && <span>({t('card.meta.overdue')})</span>}
-      </span>
-    </CardFieldRow>
+        <span
+          data-testid={overdue ? 'card-due-overdue' : 'card-due'}
+          className={`flex items-center gap-1 text-[11px] ${
+            overdue ? 'font-medium text-destructive' : 'text-foreground'
+          }`}
+        >
+          <CalendarClock className="h-3 w-3 shrink-0" />
+          {card.dueDate}
+          {overdue && <span>({t('card.meta.overdue')})</span>}
+        </span>
+      </CardFieldRow>
 
-    <CardFieldRow
-      label={t('card.meta.priority')}
-      testId="card-meta-priority"
-      editTitle={t('card.meta.editPriority')}
-      {...editorFor(
-        'priority',
-        <CardChoiceList
-          ariaLabel={t('card.meta.priority')}
-          value={card.priority}
-          options={PRIORITIES.map((value) => ({
-            value,
-            label: t(`card.priority.${value}`),
-            icon: <CardPriorityIcon priority={value} />,
-          }))}
-          onSelect={(next) => {
-            void onPatch({ priority: next })
-            setEditing(null)
-          }}
-          testIdPrefix="card-priority-option"
-        />
-      )}
-    >
-      <CardPriorityIcon priority={card.priority} withLabel />
-    </CardFieldRow>
-  </CardSidebarPanel>
+      <CardFieldRow
+        label={t('card.meta.priority')}
+        testId="card-meta-priority"
+        editTitle={t('card.meta.editPriority')}
+        {...editorFor(
+          'priority',
+          <CardChoiceList
+            ariaLabel={t('card.meta.priority')}
+            value={card.priority}
+            options={PRIORITIES.map((value) => ({
+              value,
+              label: t(`card.priority.${value}`),
+              icon: <CardPriorityIcon priority={value} />,
+            }))}
+            onSelect={(next) => {
+              void onPatch({ priority: next })
+              setEditing(null)
+            }}
+            testIdPrefix="card-priority-option"
+          />
+        )}
+      >
+        <CardPriorityIcon priority={card.priority} withLabel />
+      </CardFieldRow>
+    </CardSidebarPanel>
   )
 }

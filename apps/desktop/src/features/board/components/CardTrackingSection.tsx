@@ -46,7 +46,11 @@ export function CardTrackingSection({ card, onUntrack, readOnly }: CardTrackingS
 
         {card.issueState === undefined ? (
           <Tooltip content={t('card.tracking.unreachable')}>
-            <Badge variant="outline" className="gap-1 text-[10px]" data-testid="card-tracking-unreachable">
+            <Badge
+              variant="outline"
+              className="gap-1 text-[10px]"
+              data-testid="card-tracking-unreachable"
+            >
               <WifiOff className="h-3 w-3" />
             </Badge>
           </Tooltip>
@@ -66,7 +70,7 @@ export function CardTrackingSection({ card, onUntrack, readOnly }: CardTrackingS
         )}
       </div>
 
-      <p className="text-[10px] italic text-muted-foreground">{t('card.tracking.syncNote')}</p>
+      <p className="text-[10px] text-muted-foreground italic">{t('card.tracking.syncNote')}</p>
 
       {!readOnly && (
         <Tooltip content={t('card.tracking.untrackHint')}>

@@ -98,18 +98,18 @@ function CustomViewResults({
       {/* Search */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
         <div className="relative max-w-xs flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('views.searchPlaceholder')}
-            className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
+            className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+              className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -128,7 +128,7 @@ function CustomViewResults({
                 {filter.type === 'both' && (
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                       {t('filterEditor.typePrs')}
                     </span>
                   </div>
@@ -143,12 +143,12 @@ function CustomViewResults({
                 {filter.type === 'both' && (
                   <div className="mt-4 flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                       {t('filterEditor.typeIssues')}
                     </span>
                   </div>
                 )}
-                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
                   <div className="w-4 shrink-0" />
                   <div className="min-w-0 flex-1">{t('table.item')}</div>
                   <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
@@ -175,10 +175,10 @@ function CustomViewResults({
                 {filter.type === 'both' && (
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                       {t('filterEditor.typePrs')}
                     </span>
-                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
+                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] leading-none font-bold text-muted-foreground">
                       {matchedPRs.length}
                     </span>
                   </div>
@@ -205,15 +205,15 @@ function CustomViewResults({
                 {filter.type === 'both' && (
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                       {t('filterEditor.typeIssues')}
                     </span>
-                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
+                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] leading-none font-bold text-muted-foreground">
                       {matchedIssues.length}
                     </span>
                   </div>
                 )}
-                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
                   <div className="w-4 shrink-0" />
                   <div className="min-w-0 flex-1">{t('table.item')}</div>
                   <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
@@ -296,7 +296,7 @@ export function CustomViewsTab({
       {/* Left sidebar — filter list */}
       <div className="flex w-52 shrink-0 flex-col border-r border-border bg-muted/5">
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
             {t('views.savedFilters')}
           </span>
           <button
@@ -340,7 +340,7 @@ export function CustomViewsTab({
                 <span className="shrink-0 text-sm">{f.emoji}</span>
                 <span className="flex-1 truncate text-xs font-medium">{f.name}</span>
                 <span
-                  className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-bold leading-none ${
+                  className={`shrink-0 rounded-full px-1.5 py-px text-[9px] leading-none font-bold ${
                     isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -389,7 +389,7 @@ export function CustomViewsTab({
         {/* Filter description */}
         {activeFilter && (
           <div className="space-y-1.5 border-t border-border px-3 py-3">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <p className="text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
               {t('views.criteria')}
             </p>
             {activeFilter.titleContains && (
@@ -432,7 +432,7 @@ export function CustomViewsTab({
               !activeFilter.labelContains &&
               !activeFilter.statuses?.length &&
               activeFilter.needsMyReview === undefined && (
-                <p className="text-[10px] italic text-muted-foreground/40">
+                <p className="text-[10px] text-muted-foreground/40 italic">
                   {t('views.noCriteria')}
                 </p>
               )}
@@ -447,7 +447,7 @@ export function CustomViewsTab({
             <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/30 px-4 py-2.5">
               <span className="text-base">{activeFilter.emoji}</span>
               <span className="text-sm font-semibold text-foreground">{activeFilter.name}</span>
-              <span className="text-[10px] capitalize text-muted-foreground/60">
+              <span className="text-[10px] text-muted-foreground/60 capitalize">
                 —{' '}
                 {activeFilter.type === 'both'
                   ? t('views.typeBoth')

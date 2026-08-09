@@ -138,10 +138,10 @@ export function MacBookScreen({
             <div
               data-testid="macbook-notch"
               aria-hidden="true"
-              className="absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-[10px] bg-black"
+              className="absolute top-0 left-1/2 z-10 -translate-x-1/2 rounded-b-[10px] bg-black"
               style={{ width: preset.housingWidth, height: preset.safeAreaTop }}
             >
-              <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neutral-800" />
+              <span className="absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neutral-800" />
             </div>
           )}
 

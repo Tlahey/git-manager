@@ -73,11 +73,9 @@ describe('AttachmentTextarea', () => {
   it('saves a dropped file too', async () => {
     renderTextarea()
     fireEvent.drop(screen.getByTestId('field'), { dataTransfer: transferWith([file('shot.png')]) })
-    await waitFor(() => expect(saveBoardAttachment).toHaveBeenCalledWith(
-      '/repo',
-      'shot.png',
-      expect.any(Array)
-    ))
+    await waitFor(() =>
+      expect(saveBoardAttachment).toHaveBeenCalledWith('/repo', 'shot.png', expect.any(Array))
+    )
   })
 
   it('embeds a dropped video as a video element, not an image', async () => {

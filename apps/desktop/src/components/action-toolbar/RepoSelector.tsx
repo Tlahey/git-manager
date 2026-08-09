@@ -37,7 +37,7 @@ export function RepoSelector() {
 
   return (
     <div className="relative flex min-w-0 flex-col justify-center">
-      <span className="select-none px-1 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">
+      <span className="px-1 text-[9px] font-medium tracking-wider text-muted-foreground/60 uppercase select-none">
         {t('toolbar.repoLabel')}
       </span>
       <Popover open={open} onOpenChange={setOpen}>
@@ -45,7 +45,7 @@ export function RepoSelector() {
           <button
             type="button"
             title={activeRepo ?? t('toolbar.selectRepo')}
-            className="flex h-5 min-w-0 max-w-[200px] cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
+            className="flex h-5 max-w-[200px] min-w-0 cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
           >
             <span className="min-w-0 flex-1 truncate text-left">{activeName}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

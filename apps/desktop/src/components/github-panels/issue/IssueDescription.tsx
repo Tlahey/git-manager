@@ -50,7 +50,7 @@ export function IssueDescription({ repoPath, issueNumber, body, issueUrl }: Issu
   return (
     <section data-testid="issue-description" className="border-b border-border px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {t('pr.view.description')}
         </span>
         {canEdit && !editing && (
@@ -110,7 +110,7 @@ export function IssueDescription({ repoPath, issueNumber, body, issueUrl }: Issu
           taskTogglePending={togglePending}
         />
       ) : (
-        <p className="text-xs italic text-muted-foreground">{t('issue.view.noDescription')}</p>
+        <p className="text-xs text-muted-foreground italic">{t('issue.view.noDescription')}</p>
       )}
     </section>
   )

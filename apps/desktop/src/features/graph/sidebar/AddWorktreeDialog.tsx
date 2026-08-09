@@ -284,7 +284,7 @@ export function AddWorktreeDialog({
             </div>
 
             {/* Right: default files panel */}
-            <div className="space-y-2 border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+            <div className="space-y-2 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-foreground">
                   {t('worktree.defaultFiles.title')}

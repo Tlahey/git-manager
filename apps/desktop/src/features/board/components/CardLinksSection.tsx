@@ -90,14 +90,14 @@ export function CardLinksSection({
       }
     >
       {links.length === 0 && !drafting ? (
-        <p className="text-xs italic text-muted-foreground" data-testid="card-links-empty">
+        <p className="text-xs text-muted-foreground italic" data-testid="card-links-empty">
           {t('card.links.empty')}
         </p>
       ) : (
         <div className="space-y-2">
           {LINK_KIND_ORDER.filter((kind) => links.some((l) => l.kind === kind)).map((kind) => (
             <div key={kind} data-testid={`card-links-group-${kind}`}>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
                 {t(`card.links.group.${kind}`)}
               </p>
               <ul className="mt-0.5">
@@ -194,7 +194,7 @@ function LinkRow({
             onClick={() => onOpenCard?.(target.id)}
             title={target.title}
             data-testid={`card-link-open-${link.targetCardId}`}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           >
             {name}
           </button>
@@ -212,7 +212,7 @@ function LinkRow({
         <>
           <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span
-            className="min-w-0 flex-1 truncate italic text-muted-foreground"
+            className="min-w-0 flex-1 truncate text-muted-foreground italic"
             data-testid={
               onThisBoard
                 ? `card-link-missing-${link.targetCardId}`

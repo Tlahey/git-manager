@@ -93,7 +93,6 @@ beforeEach(() => {
   useBranchesMock.mockReturnValue({ data: undefined })
 })
 
-
 describe('useActionToolbar — derived state', () => {
   it('hasChanges is false with no git status data', () => {
     const { result } = renderHook(() => useActionToolbar(t))

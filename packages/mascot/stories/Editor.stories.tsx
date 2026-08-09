@@ -149,7 +149,9 @@ function Editor() {
   const STAGE_W = 560
 
   const uriFor = (partId: string): string | null =>
-    slices[partId]?.uri ?? (SPRITES as Record<string, { uri: string } | undefined>)[partId]?.uri ?? null
+    slices[partId]?.uri ??
+    (SPRITES as Record<string, { uri: string } | undefined>)[partId]?.uri ??
+    null
   const widthFor = (partId: string): number =>
     slices[partId]?.w ?? (SPRITES as Record<string, { w: number } | undefined>)[partId]?.w ?? 300
 
@@ -158,7 +160,10 @@ function Editor() {
     const img = new Image()
     img.onload = () => {
       setSlices((s) => ({ ...s, [id]: trimImage(img) }))
-      setDoc((d) => ({ ...d, parts: d.parts.map((p) => (p.id === id ? { ...p, file: file.name } : p)) }))
+      setDoc((d) => ({
+        ...d,
+        parts: d.parts.map((p) => (p.id === id ? { ...p, file: file.name } : p)),
+      }))
     }
     img.src = url
   }
@@ -306,8 +311,7 @@ function Editor() {
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div>
-                  <code>{part.id}</code>{' '}
-                  <span style={{ color: '#7d95b5' }}>{part.role}</span>
+                  <code>{part.id}</code> <span style={{ color: '#7d95b5' }}>{part.role}</span>
                 </div>
                 <label style={{ display: 'block' }}>
                   <input
@@ -596,7 +600,9 @@ function Editor() {
             </button>
           </div>
         ) : (
-          <p style={{ color: '#7d95b5' }}>click a part on the stage (or “add” from the parts list)</p>
+          <p style={{ color: '#7d95b5' }}>
+            click a part on the stage (or “add” from the parts list)
+          </p>
         )}
 
         <hr style={{ border: 0, borderTop: '1px solid #24406a', margin: '12px 0' }} />

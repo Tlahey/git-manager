@@ -10,7 +10,10 @@ vi.mock('../../../api/github.api', () => ({
 }))
 vi.mock('../../../api/worktree.api', () => ({ apiGoneUpstreamBranches: vi.fn() }))
 
-import { fetchClosedPullRequests, fetchCommitMergedPullRequestForBranch } from '../../../api/github.api'
+import {
+  fetchClosedPullRequests,
+  fetchCommitMergedPullRequestForBranch,
+} from '../../../api/github.api'
 import { apiGoneUpstreamBranches } from '../../../api/worktree.api'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useMergedWorktrees } from './useMergedWorktrees'

@@ -2,14 +2,14 @@
 
 Rewriting the message of a commit that already exists, from what it actually changed.
 
-|                    |                                                                                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Descriptor**     | [`commitRecomposeFeature`](../../packages/ai/src/features/commitRecompose.ts)                                                                                                  |
-| **Kind**           | completion → the message string                                                                                                                                                |
-| **Temperature**    | 0.3 — same as the commit message it mirrors                                                                                                                                    |
-| **Context scope**  | none: the commit's own patch, via `get_commit_diff`                                                                                                                            |
-| **Diff budget**    | derived from the model's context window, spent per file — see the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts)                                      |
-| **Output reserve** | default (600) — a commit message is prose                                                                                                                                      |
+|                    |                                                                                                                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Descriptor**     | [`commitRecomposeFeature`](../../packages/ai/src/features/commitRecompose.ts)                                                                                                           |
+| **Kind**           | completion → the message string                                                                                                                                                         |
+| **Temperature**    | 0.3 — same as the commit message it mirrors                                                                                                                                             |
+| **Context scope**  | none: the commit's own patch, via `get_commit_diff`                                                                                                                                     |
+| **Diff budget**    | derived from the model's context window, spent per file — see the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts)                                               |
+| **Output reserve** | default (600) — a commit message is prose                                                                                                                                               |
 | **UI**             | [`RecomposeDialog`](../../apps/desktop/src/features/graph/components/RecomposeDialog.tsx) via [`useCommitRecompose`](../../apps/desktop/src/features/graph/hooks/useCommitRecompose.ts) |
 
 ---
@@ -89,10 +89,10 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 ## Tests
 
-| Test                                                                                                          | Covers                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`commitRecompose.test.ts`](../../packages/ai/src/features/commitRecompose.test.ts)                           | prompt assembly, the old message never reaching the model, merge framing, window-sized budget, coverage, fence/quote stripping, and the instruction's "never narrate the rewrite" rule     |
-| [`useCommitRecompose.test.ts`](../../apps/desktop/src/features/graph/hooks/useCommitRecompose.test.ts)                       | one call per commit, convention fetched once, empty answers declined, the rebase starting at the oldest accepted commit, picks for the rest, live edits carried through, failures surfaced |
-| [`RecomposeDialog.test.tsx`](../../apps/desktop/src/features/graph/components/RecomposeDialog.test.tsx) | the history warning, oldest-first target order, the carried-along count, keep-as-is, progress, and no-apply-while-writing                                                                  |
-| [`descendantsOnCurrentBranch.test.ts`](../../apps/desktop/src/features/graph/hooks/descendantsOnCurrentBranch.test.ts)       | the count behind the menu entry: first-parent only, zero on a tip, zero off the loaded page                                                                                                |
-| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                           | both entries, and every gate (protected branch, detached, AI off, multi-selection)                                                                                                         |
+| Test                                                                                                                   | Covers                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`commitRecompose.test.ts`](../../packages/ai/src/features/commitRecompose.test.ts)                                    | prompt assembly, the old message never reaching the model, merge framing, window-sized budget, coverage, fence/quote stripping, and the instruction's "never narrate the rewrite" rule     |
+| [`useCommitRecompose.test.ts`](../../apps/desktop/src/features/graph/hooks/useCommitRecompose.test.ts)                 | one call per commit, convention fetched once, empty answers declined, the rebase starting at the oldest accepted commit, picks for the rest, live edits carried through, failures surfaced |
+| [`RecomposeDialog.test.tsx`](../../apps/desktop/src/features/graph/components/RecomposeDialog.test.tsx)                | the history warning, oldest-first target order, the carried-along count, keep-as-is, progress, and no-apply-while-writing                                                                  |
+| [`descendantsOnCurrentBranch.test.ts`](../../apps/desktop/src/features/graph/hooks/descendantsOnCurrentBranch.test.ts) | the count behind the menu entry: first-parent only, zero on a tip, zero off the loaded page                                                                                                |
+| [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                                    | both entries, and every gate (protected branch, detached, AI off, multi-selection)                                                                                                         |

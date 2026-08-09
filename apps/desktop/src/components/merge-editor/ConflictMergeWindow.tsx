@@ -92,10 +92,10 @@ export function ConflictMergeWindowContent({
   return (
     <div
       data-testid="merge-editor-window"
-      className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background"
+      className="animate-fadeIn flex h-full w-full flex-col overflow-hidden bg-background select-none"
     >
       {/* CONTENT AREA */}
-      <div className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs">
+      <div className="flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text">
         {isLoading && (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
             <Spinner className="mr-2 h-5 w-5" />
@@ -140,7 +140,7 @@ export function ConflictMergeWindowContent({
         )}
 
         {!isLoading && view && view.renderable && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-border/80 bg-background animate-in fade-in zoom-in-95 animate-duration-100">
+          <div className="flex min-h-0 flex-1 animate-in flex-col overflow-hidden border border-border/80 bg-background zoom-in-95 animate-duration-100 fade-in">
             <ThreeWayMergeEditor
               ref={mergeEditorRef}
               repoPath={repoPath}
@@ -163,7 +163,7 @@ export function ConflictMergeWindowContent({
       )}
 
       {/* FOOTER */}
-      <div className="flex shrink-0 select-none items-center justify-between border-t border-border bg-card px-4 py-3 shadow-md">
+      <div className="flex shrink-0 items-center justify-between border-t border-border bg-card px-4 py-3 shadow-md select-none">
         {/* Bottom Left: Accept Left + Accept Right */}
         <div className="flex items-center gap-2">
           {view?.renderable && (

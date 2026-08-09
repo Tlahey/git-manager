@@ -63,7 +63,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
         {isStash ? (
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md',
+              'flex cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-xs transition-all duration-150 select-none hover:scale-110 hover:shadow-md',
               avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{
@@ -81,7 +81,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
           /* Merge commit: flat circle filled with the target branch's lane color, no avatar —
            * half the avatar's diameter so it reads as a plain graph node, not a person. */
           <div
-            className="cursor-pointer select-none rounded-full border border-background shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md"
+            className="cursor-pointer rounded-full border border-background shadow-xs transition-all duration-150 select-none hover:scale-110 hover:shadow-md"
             style={{
               width: avatarSize / 2,
               height: avatarSize / 2,
@@ -92,7 +92,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
           /* Avatar Circle */
           <div
             className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-xs transition-all duration-150 hover:scale-110 hover:shadow-md',
+              'flex cursor-pointer items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-xs transition-all duration-150 select-none hover:scale-110 hover:shadow-md',
               avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{
@@ -124,14 +124,14 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
               left: pos.left,
               transform: 'translate(-50%, -100%)',
             }}
-            className="pointer-events-none z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 animate-duration-100"
+            className="pointer-events-none z-overlay flex animate-in flex-col gap-0.5 rounded-md border border-border bg-popover/95 px-2.5 py-1.5 whitespace-nowrap text-popover-foreground shadow-xl backdrop-blur-md fade-in-0 zoom-in-95 animate-duration-100"
           >
-            <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
+            <span className="text-[10px] leading-none font-semibold">{commit.author.name}</span>
             <span className="mt-0.5 text-[9px] leading-none text-muted-foreground/90">
               {commit.author.email}
             </span>
             {/* Small pointer triangle at the bottom */}
-            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
           </div>,
           document.body
         )}

@@ -12,16 +12,7 @@ export interface CopyToClipboardProps extends React.ButtonHTMLAttributes<HTMLBut
 
 export const CopyToClipboard = React.forwardRef<HTMLButtonElement, CopyToClipboardProps>(
   (
-    {
-      textToCopy,
-      copiedLabel,
-      durationMs = 2000,
-      onCopy,
-      className,
-      children,
-      onClick,
-      ...props
-    },
+    { textToCopy, copiedLabel, durationMs = 2000, onCopy, className, children, onClick, ...props },
     ref
   ) => {
     const [copied, setCopied] = useState(false)
@@ -51,7 +42,7 @@ export const CopyToClipboard = React.forwardRef<HTMLButtonElement, CopyToClipboa
       >
         {children}
         {copied ? (
-          <Tag tone="success" className="animate-fade-in shrink-0 font-normal font-sans">
+          <Tag tone="success" className="animate-fade-in shrink-0 font-sans font-normal">
             <ClipboardCheck className="h-2.5 w-2.5" />
             {copiedLabel}
           </Tag>

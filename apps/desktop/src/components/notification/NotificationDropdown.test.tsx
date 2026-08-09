@@ -42,7 +42,6 @@ beforeEach(() => {
   vi.stubEnv('DEV', false)
 })
 
-
 describe('NotificationDropdown — bell badge', () => {
   it('shows no unread badge when there are no notifications', () => {
     render(<NotificationDropdown />)

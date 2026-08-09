@@ -78,7 +78,7 @@ export function UserProfile({ onOpenSettings }: UserProfileProps) {
         {otherAccounts.length > 0 && (
           <>
             <div className="my-1 border-t border-border" />
-            <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-2 py-1 text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
               {t('settings.github.switchAccount')}
             </div>
             <div className="max-h-[160px] overflow-y-auto">

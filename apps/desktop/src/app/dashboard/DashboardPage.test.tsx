@@ -64,7 +64,6 @@ beforeEach(() => {
   useDashboardStore.setState({ collapsedSections: {} })
 })
 
-
 describe('DashboardPage — empty state', () => {
   it('shows the mascot and an empty-state message when there are no known repos', () => {
     render(<DashboardPage />)

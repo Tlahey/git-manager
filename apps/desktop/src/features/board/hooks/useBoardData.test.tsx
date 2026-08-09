@@ -26,7 +26,11 @@ const { localBackend, remoteBackendFactory, remoteBackend } = vi.hoisted(() => {
     deleteCard: vi.fn(),
   })
   const remote = makeBackend()
-  return { localBackend: makeBackend(), remoteBackend: remote, remoteBackendFactory: vi.fn(() => remote) }
+  return {
+    localBackend: makeBackend(),
+    remoteBackend: remote,
+    remoteBackendFactory: vi.fn(() => remote),
+  }
 })
 
 const {
@@ -68,7 +72,11 @@ const mockedUseRepoGitHub = useRepoGitHub as unknown as ReturnType<typeof vi.fn>
 const path = '/repo'
 
 function board(overrides: Partial<Board> = {}): Board {
-  return makeBoard({ name: 'Board', columns: [{ id: 'todo', name: 'Todo', order: 0 }], ...overrides })
+  return makeBoard({
+    name: 'Board',
+    columns: [{ id: 'todo', name: 'Todo', order: 0 }],
+    ...overrides,
+  })
 }
 
 function card(overrides: Partial<BoardCard> = {}): BoardCard {
@@ -76,7 +84,9 @@ function card(overrides: Partial<BoardCard> = {}): BoardCard {
 }
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  return (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  )
 }
 
 beforeEach(() => {
@@ -98,7 +108,10 @@ describe('useBoardData', () => {
   })
 
   it('merges local and remote boards when a GitHub account is connected', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     localBackend.listBoards.mockResolvedValue([board({ id: 'local-1', source: 'local' })])
     remoteBackend.listBoards.mockResolvedValue([board({ id: 'remote-1', source: 'remote' })])
 
@@ -172,7 +185,11 @@ describe('useBoardData', () => {
     await waitFor(() => expect(result.current.boardsLoading).toBe(false))
 
     await act(async () => {
-      await result.current.createBoard('New board', [{ id: 'todo', name: 'Todo', order: 0 }], 'local')
+      await result.current.createBoard(
+        'New board',
+        [{ id: 'todo', name: 'Todo', order: 0 }],
+        'local'
+      )
     })
 
     expect(useBoardStore.getState().activeBoardIdByRepo[path]).toBe('new-board')
@@ -181,7 +198,10 @@ describe('useBoardData', () => {
   /** Local → GitHub has no card to relabel, so the issue is *created* and the local card removed —
    * what "convert to issue" used to be its own action for. */
   it('moving a local card onto a GitHub board creates the issue, then removes the local card', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     const remote = board({ id: 'remote-board', source: 'remote' })
     localBackend.listBoards.mockResolvedValue([board()])
     remoteBackend.listBoards.mockResolvedValue([remote])
@@ -247,7 +267,10 @@ describe('useBoardData', () => {
   /** The card is *tracked*, not copied: it carries the link back to the issue, which is what makes
    * the issue — not this card — the source of truth for its content from here on. */
   it('adding an issue to a local board creates a card tracking it', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     const withPrefix = board({ cardPrefixes: ['GM'] })
     localBackend.listBoards.mockResolvedValue([withPrefix])
     remoteBackend.listBoards.mockResolvedValue([])
@@ -285,7 +308,10 @@ describe('useBoardData', () => {
   /** A board that offers no sequence falls back to the one derived from its name, rather than
    * importing a card that can never be referred to by an identifier — see `offeredCardPrefixes`. */
   it('imports under the board’s default prefix when it offers none', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     localBackend.listBoards.mockResolvedValue([board()])
     remoteBackend.listBoards.mockResolvedValue([])
     localBackend.getBoard.mockResolvedValue({ board: board(), cards: [] })
@@ -316,7 +342,10 @@ describe('useBoardData', () => {
   })
 
   it('adding an issue to a remote board just labels the existing issue', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     const remote = board({ id: 'r1', source: 'remote' })
     localBackend.listBoards.mockResolvedValue([])
     remoteBackend.listBoards.mockResolvedValue([remote])
@@ -643,7 +672,10 @@ describe('useBoardData — comments', () => {
   })
 
   it('fetches a remote card’s comments from GitHub', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
+    mockedUseRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'acme', repo: 'widgets' },
+      token: 'tok',
+    })
     const remote = board({ id: 'r1', source: 'remote' })
     const card = makeCard({ id: '42', boardId: 'r1' })
     localBackend.listBoards.mockResolvedValue([])

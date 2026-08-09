@@ -481,7 +481,11 @@ When(/^I pick the task command suggestion "([^"]*)"$/, async (name: string) => {
         }, name)
         return filled()
       },
-      { timeout: 15000, interval: 1000, timeoutMsg: 'the suggestion never filled the command field' }
+      {
+        timeout: 15000,
+        interval: 1000,
+        timeoutMsg: 'the suggestion never filled the command field',
+      }
     )
   } catch (err) {
     throw new Error(`${(err as Error).message}\n[probe] ${await taskRowProbe()}`)

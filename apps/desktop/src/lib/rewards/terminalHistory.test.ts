@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  appendedCommands,
-  diffHistorySources,
-  sameCommands,
-  sameSnapshot,
-} from './terminalHistory'
+import { appendedCommands, diffHistorySources, sameCommands, sameSnapshot } from './terminalHistory'
 
 describe('diffHistorySources', () => {
   it('baselines every file on the first read, crediting nothing', () => {

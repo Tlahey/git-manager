@@ -25,14 +25,22 @@ describe('moveTargetsFor', () => {
   it('leaves out closed sprints', () => {
     const open = board({ id: 'b2' })
     const closed = board({ id: 'b3', closedAt: '2026-01-01T00:00:00Z' })
-    const targets = moveTargetsFor([board({ id: 'b1' }), open, closed], makeCard({ boardId: 'b1' }), 'local')
+    const targets = moveTargetsFor(
+      [board({ id: 'b1' }), open, closed],
+      makeCard({ boardId: 'b1' }),
+      'local'
+    )
     expect(targets.map((b) => b.id)).toEqual(['b2'])
   })
 
   it('offers a local card both a local and a GitHub board', () => {
     const local = board({ id: 'b2', source: 'local' })
     const remote = board({ id: 'b3', source: 'remote' })
-    const targets = moveTargetsFor([board({ id: 'b1' }), local, remote], makeCard({ boardId: 'b1' }), 'local')
+    const targets = moveTargetsFor(
+      [board({ id: 'b1' }), local, remote],
+      makeCard({ boardId: 'b1' }),
+      'local'
+    )
     expect(targets.map((b) => b.id)).toEqual(['b2', 'b3'])
   })
 

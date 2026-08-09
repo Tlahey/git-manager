@@ -79,7 +79,7 @@ export function IssueDetailCenter({
               <IssueTitle repoPath={repoPath} issueNumber={issueNumber} title={detail.title} />
               <div className="mt-2 flex items-center gap-2">
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
                     isOpen
                       ? 'border-success/30 bg-success/15 text-tone-success'
                       : 'border-destructive/30 bg-destructive/15 text-tone-danger'

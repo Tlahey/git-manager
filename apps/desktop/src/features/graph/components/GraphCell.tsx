@@ -90,7 +90,7 @@ export function GraphCell({
       )}
 
       {/* Plain, direct clip container for the avatars */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 right-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-y-0 right-0 left-0 overflow-hidden">
         {isWipLike ? (
           <div
             className="pointer-events-none absolute flex h-full items-center justify-center"
@@ -109,7 +109,7 @@ export function GraphCell({
               // teaches `duration-*` both) and would otherwise cut the pulse down to 150ms, which
               // reads as a flicker rather than a breath.
               className={cn(
-                'flex select-none items-center justify-center rounded-full border border-dashed shadow-xs transition-all duration-150',
+                'flex items-center justify-center rounded-full border border-dashed shadow-xs transition-all duration-150 select-none',
                 agent?.state === 'working' && 'animate-pulse animate-duration-1000'
               )}
               style={{

@@ -62,7 +62,7 @@ export function PackageHealthPanel({ repoPath }: { repoPath: string }) {
 
         {error != null && (
           <Alert variant="destructive" data-testid="package-health-error">
-            <pre className="whitespace-pre-wrap font-mono text-[11px]">{String(error)}</pre>
+            <pre className="font-mono text-[11px] whitespace-pre-wrap">{String(error)}</pre>
           </Alert>
         )}
       </div>

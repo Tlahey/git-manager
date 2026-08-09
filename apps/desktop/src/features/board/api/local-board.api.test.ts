@@ -21,7 +21,12 @@ vi.mock('../../../lib/tauri', async () => {
 })
 
 import * as tauri from '../../../lib/tauri'
-import { localBoardBackend, apiGetBoardHistory, apiListRecoverableBoards, apiRestoreBoardBackup } from './local-board.api'
+import {
+  localBoardBackend,
+  apiGetBoardHistory,
+  apiListRecoverableBoards,
+  apiRestoreBoardBackup,
+} from './local-board.api'
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 const path = '/repo'
@@ -48,14 +53,21 @@ describe('localBoardBackend', () => {
     mocked.deleteBoard.mockResolvedValue(undefined)
 
     const columns = [{ id: 'todo', name: 'Todo', order: 0 }]
-    await expect(localBoardBackend.createBoard(path, 'My board', columns, '- [ ] Done', 'GM', true)).resolves.toBe(
-      'created'
-    )
-    expect(mocked.createBoard).toHaveBeenCalledWith(path, 'My board', columns, '- [ ] Done', 'GM', true)
-
     await expect(
-      localBoardBackend.updateBoardColumns(path, 'b1', columns, 'rev-1')
-    ).resolves.toBe('updated')
+      localBoardBackend.createBoard(path, 'My board', columns, '- [ ] Done', 'GM', true)
+    ).resolves.toBe('created')
+    expect(mocked.createBoard).toHaveBeenCalledWith(
+      path,
+      'My board',
+      columns,
+      '- [ ] Done',
+      'GM',
+      true
+    )
+
+    await expect(localBoardBackend.updateBoardColumns(path, 'b1', columns, 'rev-1')).resolves.toBe(
+      'updated'
+    )
     expect(mocked.updateBoardColumns).toHaveBeenCalledWith(path, 'b1', columns, 'rev-1')
 
     await localBoardBackend.deleteBoard(path, 'b1', true)
@@ -88,14 +100,14 @@ describe('localBoardBackend', () => {
     expect(mocked.createBoardCard).toHaveBeenLastCalledWith(path, 'b1', 'todo', card)
 
     const patch = { title: 'New title' }
-    await expect(
-      localBoardBackend.updateCard(path, 'b1', 'c1', patch, 'rev-1')
-    ).resolves.toBe('updated-card')
+    await expect(localBoardBackend.updateCard(path, 'b1', 'c1', patch, 'rev-1')).resolves.toBe(
+      'updated-card'
+    )
     expect(mocked.updateBoardCard).toHaveBeenCalledWith(path, 'b1', 'c1', patch, 'rev-1')
 
-    await expect(
-      localBoardBackend.moveCard(path, 'b1', 'c1', 'done', 2, 'rev-1')
-    ).resolves.toBe('moved-card')
+    await expect(localBoardBackend.moveCard(path, 'b1', 'c1', 'done', 2, 'rev-1')).resolves.toBe(
+      'moved-card'
+    )
     expect(mocked.moveBoardCard).toHaveBeenCalledWith(path, 'b1', 'c1', 'done', 2, 'rev-1')
 
     await localBoardBackend.deleteCard(path, 'b1', 'c1')

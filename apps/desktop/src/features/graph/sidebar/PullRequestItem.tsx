@@ -17,7 +17,11 @@ import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import { usePrReviewSummary } from '../hooks/usePrReviewSummary'
 import { PrHoverCard } from './PrHoverCard'
-import { derivePrTagStatus, PR_STATE_LABEL_KEY, type PrTagStatus } from '../../../components/common/prTagStatus'
+import {
+  derivePrTagStatus,
+  PR_STATE_LABEL_KEY,
+  type PrTagStatus,
+} from '../../../components/common/prTagStatus'
 
 interface PullRequestItemProps {
   pr: PullRequest
@@ -148,7 +152,7 @@ export function PullRequestItem({
             e.stopPropagation()
             onContextMenu?.(e, pr)
           }}
-          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/pr:opacity-100"
+          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
           aria-label={t('sidebar.prActions')}
           title={t('sidebar.prActions')}
           data-testid={`pr-actions-button-${pr.number}`}

@@ -42,7 +42,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('RemoveWorktreeDialog — rendering', () => {
   it('renders nothing when worktree is null', () => {
     const { container } = renderDialog({ worktree: null })

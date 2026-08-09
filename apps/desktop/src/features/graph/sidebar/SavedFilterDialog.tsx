@@ -9,11 +9,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import {
-  savedFilterLabel,
-  type SavedFilter,
-  type SavedFiltersState,
-} from '../stores/savedFilters'
+import { savedFilterLabel, type SavedFilter, type SavedFiltersState } from '../stores/savedFilters'
 
 /** Which list the dialog is editing — picks the wording, nothing else. */
 export type SavedFilterKind = 'issues' | 'prs'

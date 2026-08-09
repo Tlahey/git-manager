@@ -50,7 +50,9 @@ export function useBoardDetail(
     // `Boolean(token)` is part of the key so the board refetches when a GitHub account is connected
     // or disconnected: without a token the tracked cards below can't be merged, and the difference
     // is visible on screen.
-    activeBoard ? ['board-detail', activeBoard.source, repoPath, activeBoard.id, Boolean(token)] : null,
+    activeBoard
+      ? ['board-detail', activeBoard.source, repoPath, activeBoard.id, Boolean(token)]
+      : null,
     async () => {
       const detail = await backendFor(activeBoard!.source).getBoard(repoPath, activeBoard!.id)
       // Only a local board can hold tracked cards — a remote card already *is* an issue.

@@ -52,7 +52,7 @@ export function GeneralSection() {
         testId="setting-language"
         match={`${t('settings.language.title')} language langue english français anglais francais`}
       >
-        <p className="text-foreground text-xs font-medium">
+        <p className="text-xs font-medium text-foreground">
           <Highlight text={t('settings.language.title')} />
         </p>
         <NativeSelect
@@ -76,12 +76,12 @@ export function GeneralSection() {
         match={`${t('settings.git.defaultName')} ${t('settings.git.defaultEmail')} git identity author name email identité auteur nom courriel adresse`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-foreground text-xs font-semibold">
+        <h4 className="text-xs font-semibold text-foreground">
           <Highlight text={t('settings.git.identityTitle')} />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.git.defaultName')}
           </label>
           <Input
@@ -92,7 +92,7 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.git.defaultEmail')}
           </label>
           <Input
@@ -111,7 +111,7 @@ export function GeneralSection() {
         match={`${t('settings.git.fetchTitle')} ${t('settings.git.autoPrune')} ${t('settings.git.autoFetchInterval')} fetch prune récupération élaguer intervalle`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-foreground text-xs font-semibold">
+        <h4 className="text-xs font-semibold text-foreground">
           <Highlight text={t('settings.git.fetchTitle')} />
         </h4>
 
@@ -121,11 +121,11 @@ export function GeneralSection() {
             checked={git.autoPrune ?? true}
             onChange={(e) => updateGit({ autoPrune: e.target.checked })}
           />
-          <span className="text-foreground text-xs">{t('settings.git.autoPrune')}</span>
+          <span className="text-xs text-foreground">{t('settings.git.autoPrune')}</span>
         </label>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.git.autoFetchInterval')}
           </label>
           <Input
@@ -141,7 +141,7 @@ export function GeneralSection() {
             }}
             className="h-8 w-24 text-xs"
           />
-          <p className="text-muted-foreground text-[11px] leading-relaxed">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
             {t('settings.git.autoFetchIntervalHint')}
           </p>
         </div>
@@ -154,12 +154,12 @@ export function GeneralSection() {
         match={`${t('settings.git.graphTitle')} ${t('settings.git.initialGraphCommits')} ${t('settings.git.lazyLoadGraphCommits')} graph graphe commits lazy chargement`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-foreground text-xs font-semibold">
+        <h4 className="text-xs font-semibold text-foreground">
           <Highlight text={t('settings.git.graphTitle')} />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.git.initialGraphCommits')}
           </label>
           <Input
@@ -183,7 +183,7 @@ export function GeneralSection() {
             }}
             className="h-8 w-28 text-xs"
           />
-          <p className="text-muted-foreground text-[11px] leading-relaxed">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
             {t('settings.git.initialGraphCommitsHint')}
           </p>
         </div>
@@ -194,7 +194,7 @@ export function GeneralSection() {
             checked={git.lazyLoadGraphCommits ?? true}
             onChange={(e) => updateGit({ lazyLoadGraphCommits: e.target.checked })}
           />
-          <span className="text-foreground text-xs">{t('settings.git.lazyLoadGraphCommits')}</span>
+          <span className="text-xs text-foreground">{t('settings.git.lazyLoadGraphCommits')}</span>
         </label>
       </FilterableSetting>
 
@@ -205,12 +205,12 @@ export function GeneralSection() {
         match={`${t('settings.advanced.exclusions')} ${t('settings.advanced.scanDepth')} index scan exclusions depth indexation recherche profondeur`}
       >
         <Separator className="mb-4" />
-        <h4 className="text-foreground text-xs font-semibold">
+        <h4 className="text-xs font-semibold text-foreground">
           <Highlight text="Indexation & Recherche" />
         </h4>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.advanced.exclusions')}
           </label>
           <TagInput
@@ -221,7 +221,7 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-foreground text-xs font-medium">
+          <label className="text-xs font-medium text-foreground">
             {t('settings.advanced.scanDepth')}
           </label>
           <Input

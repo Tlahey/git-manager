@@ -85,7 +85,7 @@ export function ToggleGroup<T extends string = string>({
         // A recessed track (`muted`) holding raised segments, so the selected one reads as a
         // filled button rather than a marked-up label. The inner padding is what leaves its
         // fill room to sit inside the group instead of butting against the border.
-        'border-border/55 bg-muted inline-flex items-center gap-0.5 rounded-md border p-0.5',
+        'inline-flex items-center gap-0.5 rounded-md border border-border/55 bg-muted p-0.5',
         disabled && 'opacity-60',
         className
       )}
@@ -131,7 +131,7 @@ export function ToggleGroup<T extends string = string>({
               //
               // Re-check either change with `pnpm --filter @git-manager/ui test:apca`.
               checked
-                ? 'bg-control-active text-control-active-foreground font-medium shadow-xs'
+                ? 'bg-control-active font-medium text-control-active-foreground shadow-xs'
                 : cn(
                     // The unselected segments alone are hoverable, and they take `ToolbarButton`'s
                     // own `hover:bg-accent` so a group standing among those buttons answers the

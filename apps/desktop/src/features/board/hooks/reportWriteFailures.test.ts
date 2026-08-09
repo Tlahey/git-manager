@@ -37,7 +37,9 @@ describe('reportWriteFailures', () => {
     )
 
     await expect(actions.save()).rejects.toThrow('disk full')
-    expect(toastError).toHaveBeenCalledWith(MESSAGE, { description: expect.stringContaining('disk full') })
+    expect(toastError).toHaveBeenCalledWith(MESSAGE, {
+      description: expect.stringContaining('disk full'),
+    })
   })
 
   /**

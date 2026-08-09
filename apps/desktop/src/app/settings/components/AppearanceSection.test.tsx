@@ -113,7 +113,6 @@ describe('AppearanceSection — font size / row height', () => {
     expect(labels[1]).toHaveTextContent('Standard')
     labels.forEach((label) => expect(label.textContent).not.toMatch(/px/))
   })
-
 })
 
 describe('AppearanceSection — notification location and checkboxes', () => {

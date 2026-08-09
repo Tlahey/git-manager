@@ -112,21 +112,21 @@ export function BoardPage({ repoPath }: BoardPageProps) {
 
   if (boardsLoading) {
     return (
-      <div className="bg-background flex h-full items-center justify-center">
+      <div className="flex h-full items-center justify-center bg-background">
         <Spinner className="h-5 w-5" />
       </div>
     )
   }
 
   return (
-    <div className="bg-background flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* `overflow-hidden`, not `overflow-auto`: the columns are what scroll, each inside its own
           track, so a long column never drags the whole board's scrollbar with it. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
         {!activeBoard ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <Kanban className="text-muted-foreground/50 h-10 w-10" />
-            <p className="text-muted-foreground text-sm">{t('page.emptyState')}</p>
+            <Kanban className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">{t('page.emptyState')}</p>
             <Button size="sm" onClick={() => dialogs.open('createBoard')}>
               {t('page.newBoard')}
             </Button>
@@ -142,13 +142,13 @@ export function BoardPage({ repoPath }: BoardPageProps) {
                 is. Only reachable at all through the sidebar's "show deleted" toggle. */}
             {activeBoard.deletedAt && (
               <div
-                className="border-destructive/30 bg-destructive/5 flex shrink-0 flex-wrap items-center gap-3 rounded border px-3 py-2"
+                className="flex shrink-0 flex-wrap items-center gap-3 rounded border border-destructive/30 bg-destructive/5 px-3 py-2"
                 data-testid="board-deleted-banner"
               >
-                <p className="text-foreground text-xs font-medium">
+                <p className="text-xs font-medium text-foreground">
                   {t('deleteBoard.deletedNotice')}
                 </p>
-                <p className="text-muted-foreground text-[11px]">
+                <p className="text-[11px] text-muted-foreground">
                   {t('deleteBoard.deletedOn', {
                     date: new Date(activeBoard.deletedAt).toLocaleDateString(),
                   })}
@@ -158,12 +158,12 @@ export function BoardPage({ repoPath }: BoardPageProps) {
 
             {isClosed && !activeBoard.deletedAt && (
               <div
-                className="border-border bg-card/50 flex shrink-0 flex-wrap items-center gap-3 rounded border px-3 py-2"
+                className="flex shrink-0 flex-wrap items-center gap-3 rounded border border-border bg-card/50 px-3 py-2"
                 data-testid="board-closed-banner"
               >
-                <p className="text-foreground text-xs font-medium">{t('sprint.readOnly')}</p>
+                <p className="text-xs font-medium text-foreground">{t('sprint.readOnly')}</p>
                 {activeBoard.closedAt && (
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-[11px] text-muted-foreground">
                     {t('sprint.closedOn', {
                       date: new Date(activeBoard.closedAt).toLocaleDateString(),
                     })}
@@ -173,8 +173,8 @@ export function BoardPage({ repoPath }: BoardPageProps) {
             )}
 
             {isClosed && activeBoard.summary && (
-              <div className="border-border bg-card/30 max-h-64 max-w-md shrink-0 overflow-y-auto rounded border p-3">
-                <h2 className="text-foreground mb-2 text-xs font-semibold">
+              <div className="max-h-64 max-w-md shrink-0 overflow-y-auto rounded border border-border bg-card/30 p-3">
+                <h2 className="mb-2 text-xs font-semibold text-foreground">
                   {t('sprint.summaryTitle')}
                 </h2>
                 <SprintSummaryView summary={activeBoard.summary} />

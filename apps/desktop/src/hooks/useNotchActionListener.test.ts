@@ -32,7 +32,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('useNotchActionListener', () => {
   it('hands an action to the handler that registered for it', async () => {
     const received: NotchActionContext[] = []

@@ -115,7 +115,7 @@ export function ChangelogSection() {
             {entry.sections.map((section, idx) => (
               <div key={idx} className="space-y-1">
                 {section.heading && (
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                     {section.heading}
                   </p>
                 )}

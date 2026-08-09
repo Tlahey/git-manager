@@ -12,7 +12,6 @@ beforeEach(() => {
   useGameStore.setState(INITIAL_GAME, true)
 })
 
-
 describe('RewardsSection — toggle', () => {
   it('reflects the current rewardsEnabled state', () => {
     useGameStore.setState({ rewardsEnabled: true })

@@ -3,7 +3,11 @@ import type { GitGraphNode, RebaseTodoStep } from '@git-manager/git-types'
 import type { CommitConvention, CommitValidation } from '@git-manager/ai'
 import { validateCommitSubject } from '@git-manager/ai'
 import { apiGetAiContext, commitRecomposeService } from '../../../api/ai.api'
-import { apiGetCommitDiff, apiListRebaseCommits, apiRunInteractiveRebase } from '../../../api/git.api'
+import {
+  apiGetCommitDiff,
+  apiListRebaseCommits,
+  apiRunInteractiveRebase,
+} from '../../../api/git.api'
 import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'

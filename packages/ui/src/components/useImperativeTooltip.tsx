@@ -24,7 +24,7 @@ export function useImperativeTooltip() {
     ? createPortal(
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-tooltip whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-foreground shadow-xl"
+          className="pointer-events-none fixed z-tooltip rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug whitespace-nowrap text-foreground shadow-xl"
           style={{
             position: 'fixed',
             top: state.rect.top - 32,

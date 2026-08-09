@@ -67,4 +67,5 @@ export const apiGetBoardHistory = (path: string, boardId: string) => getBoardHis
  * itself was deleted and re-cloned (see `git_board.rs`'s module doc comment). Local-only. */
 export const apiListRecoverableBoards = (path: string) => listRecoverableBoards(path)
 
-export const apiRestoreBoardBackup = (path: string, boardId: string) => restoreBoardBackup(path, boardId)
+export const apiRestoreBoardBackup = (path: string, boardId: string) =>
+  restoreBoardBackup(path, boardId)

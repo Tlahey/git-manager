@@ -98,7 +98,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {startIcon && (
           <span
             className={cn(
-              'pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 items-center',
+              'pointer-events-none absolute top-1/2 left-2 flex -translate-y-1/2 items-center',
               ICON_CLASSES[variant]
             )}
           >
@@ -109,7 +109,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {endIcon && (
           <span
             className={cn(
-              'absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center',
+              'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center',
               ICON_CLASSES[variant]
             )}
           >

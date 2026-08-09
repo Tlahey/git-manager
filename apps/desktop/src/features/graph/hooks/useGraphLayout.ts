@@ -7,11 +7,7 @@ import {
   type ColumnKey,
   type ResolvedColumn,
 } from '../lib/columns.config'
-import {
-  getGraphColumnLayout,
-  getGraphMaxWidth,
-  laneCenterX,
-} from '../lib/graphColumnSizing'
+import { getGraphColumnLayout, getGraphMaxWidth, laneCenterX } from '../lib/graphColumnSizing'
 import { computeLaneBranchByOid, collectRefDropHighlight } from '../lib/laneBranch'
 import { useGraphColumnScroll } from './useGraphColumnScroll'
 

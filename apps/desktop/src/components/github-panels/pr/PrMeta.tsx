@@ -19,7 +19,7 @@ export function PrMeta({ pr }: PrMetaProps) {
   const chip = 'rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground'
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 pb-3 pt-2">
+    <div className="flex flex-wrap items-center gap-2 px-4 pt-2 pb-3">
       <span
         data-testid="pr-state-badge"
         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${visual.badgeClassName}`}

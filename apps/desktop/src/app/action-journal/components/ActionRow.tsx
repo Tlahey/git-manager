@@ -57,7 +57,7 @@ export function ActionRow({ action, selected, explained, onSelect }: ActionRowPr
           )}
           {explained && (
             <span
-              className="shrink-0 text-[9px] uppercase tracking-wide text-primary/70"
+              className="shrink-0 text-[9px] tracking-wide text-primary/70 uppercase"
               data-testid="action-row-explained"
             >
               {t('actionJournal.explained')}

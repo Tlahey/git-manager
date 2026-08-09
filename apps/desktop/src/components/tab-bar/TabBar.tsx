@@ -51,7 +51,7 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
         {!hideLabel && <span className="font-medium">{label}</span>}
       </button>
       {hideLabel && (
-        <div className="pointer-events-none absolute left-1/2 top-[34px] z-popover hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground shadow-md group-hover/tab:block">
+        <div className="pointer-events-none absolute top-[34px] left-1/2 z-popover hidden -translate-x-1/2 rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] whitespace-nowrap text-popover-foreground shadow-md group-hover/tab:block">
           {label}
         </div>
       )}
@@ -154,13 +154,13 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                   setOverIndex(null)
                 }}
                 onClick={() => setActiveTab(path)}
-                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-md px-3 text-xs transition-colors ${
+                className={`group relative flex h-7 max-w-[200px] min-w-[120px] shrink-0 cursor-pointer items-center gap-2 rounded-md px-3 text-xs transition-colors ${
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
                     : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
                 } ${dragIndex === index ? 'opacity-40' : ''} ${
                   isDragOver
-                    ? 'before:absolute before:bottom-0 before:left-0 before:top-0 before:w-0.5 before:bg-primary'
+                    ? 'before:absolute before:top-0 before:bottom-0 before:left-0 before:w-0.5 before:bg-primary'
                     : ''
                 }`}
               >
@@ -195,7 +195,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 key={fixture.path}
                 title={fixture.description}
                 onClick={() => setActiveRepo(fixture.path)}
-                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
+                className={`group relative flex h-7 max-w-[200px] min-w-[120px] shrink-0 cursor-pointer items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
                     : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
