@@ -75,6 +75,19 @@ describe('CardBreadcrumb — the path always ends on the current card', () => {
     renderCrumb()
     expect(screen.queryByTestId('card-breadcrumb-title')).not.toBeInTheDocument()
   })
+
+  /** The kind is what the whole card is read against, and the sidebar that spells it out scrolls
+   * away — so the path carries it, the way it already carries the parent's. */
+  it('carries this card’s kind, not only the parent’s', () => {
+    renderCrumb({ card: card('c1', { kind: 'bug', prefix: 'GM', number: 7 }) })
+    expect(screen.getByTestId('card-kind-bug')).toHaveAttribute('aria-label', 'Bug')
+  })
+
+  it('carries it on a card with nothing but a title, too', () => {
+    const plain = card('c1', { kind: 'epic', prefix: '', number: 0, title: 'Fix the header' })
+    renderCrumb({ card: plain, cards: [plain] })
+    expect(screen.getByTestId('card-kind-epic')).toBeInTheDocument()
+  })
 })
 
 describe('CardBreadcrumb — the parent segment', () => {

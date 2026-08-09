@@ -486,6 +486,54 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
      * is already stale for any issue touched since. Cards already in the requested state are skipped,
      * which is also what keeps this from rewriting a whole column to change nothing.
      */
+    /**
+     * The number is GitHub's here, so this only has to write the missing half: the card's prefix,
+     * which lives in the issue body's metadata marker (the issue number is the *issue's* identity,
+     * not the ticket's — see `createCard`). A card that already carries a prefix is left alone.
+     *
+     * Sequential, and one `updateIssue` per card, for the same secondary-rate-limit reason as
+     * `deleteCards`. The body is recomposed whole — every body-borne field goes back in, or writing
+     * the prefix would delete the due date next to it.
+     */
+    assignCardIdentifiers: async (path, boardId, prefix) => {
+      const normalized = prefix.trim().toUpperCase()
+      if (!normalized) return 0
+      const { cards } = await backend.getBoard(path, boardId)
+      const missing = cards.filter((card) => !card.prefix)
+      if (missing.length === 0) return 0
+
+      const board = await loadBoard(path, boardId)
+      if (!board.cardPrefixes.includes(normalized)) {
+        await patchBoardInConfig(path, boardId, board.revision, (b) => ({
+          ...b,
+          cardPrefixes: [...b.cardPrefixes, normalized],
+        }))
+      }
+
+      for (const card of missing) {
+        await updateIssue(
+          owner,
+          repo,
+          Number(card.id),
+          {
+            body: composeCardBody({
+              description: card.description,
+              dod: card.dod,
+              meta: {
+                dueDate: card.dueDate,
+                blockedReason: card.blockedReason,
+                linkedBranch: card.linkedBranch,
+                prefix: normalized,
+                links: card.links,
+              },
+            }),
+          },
+          token
+        )
+      }
+      return missing.length
+    },
+
     setCardsArchived: async (path, boardId, cardIds, archived) => {
       const { cards } = await backend.getBoard(path, boardId)
       const wanted = cards.filter(

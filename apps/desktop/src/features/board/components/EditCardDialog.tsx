@@ -116,6 +116,7 @@ export function EditCardDialog({
                 boards={boards}
                 onAdd={onAddLink}
                 onRemove={onRemoveLink}
+                onOpenCard={onOpenCard}
                 readOnly={readOnly}
               />
             )}

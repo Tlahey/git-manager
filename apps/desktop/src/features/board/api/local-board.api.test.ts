@@ -13,6 +13,7 @@ vi.mock('../../../lib/tauri', async () => {
     updateBoardCard: vi.fn(),
     moveBoardCard: vi.fn(),
     deleteBoardCard: vi.fn(),
+    assignBoardCardIdentifiers: vi.fn(),
     getBoardHistory: vi.fn(),
     listRecoverableBoards: vi.fn(),
     restoreBoardBackup: vi.fn(),
@@ -99,6 +100,15 @@ describe('localBoardBackend', () => {
 
     await localBoardBackend.deleteCard(path, 'b1', 'c1')
     expect(mocked.deleteBoardCard).toHaveBeenCalledWith(path, 'b1', 'c1')
+  })
+
+  /** The retrofit for a board created before it offered a prefix — one command, one board commit,
+   * resolving with how many cards were numbered. */
+  it('forwards the identifier assignment and returns the count', async () => {
+    mocked.assignBoardCardIdentifiers.mockResolvedValue(3)
+
+    await expect(localBoardBackend.assignCardIdentifiers(path, 'b1', 'GM')).resolves.toBe(3)
+    expect(mocked.assignBoardCardIdentifiers).toHaveBeenCalledWith(path, 'b1', 'GM')
   })
 
   it('propagates a rejection (e.g. a BOARD_CONFLICT error) without swallowing it', async () => {

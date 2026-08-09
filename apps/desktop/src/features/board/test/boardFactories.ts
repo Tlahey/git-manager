@@ -78,6 +78,7 @@ export function makeBoardData(overrides: Partial<BoardData> = {}): BoardData {
     createBoard: vi.fn().mockResolvedValue(makeBoard()),
     updateBoardColumns: vi.fn().mockResolvedValue(undefined),
     updateBoardMeta: vi.fn().mockResolvedValue(undefined),
+    assignCardIdentifiers: vi.fn().mockResolvedValue(0),
     deleteBoard: vi.fn().mockResolvedValue(undefined),
     closeSprint: vi.fn().mockResolvedValue(null),
     createCard: vi.fn().mockResolvedValue(makeCard()),

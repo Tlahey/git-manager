@@ -282,6 +282,55 @@ describe('card mutations', () => {
     expect(body).toContain('"targetCardId":"9"')
   })
 
+  /**
+   * The number is GitHub's here, so the retrofit only writes the missing half — the card's prefix,
+   * which lives in the body's metadata marker. A card that already has one is not rewritten.
+   */
+  it('gives the cards with no prefix one, and registers it on the board', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(
+      configJson([{ id: 'b1', name: 'Board', source: 'remote', columns: [], revision: 'r1' }])
+    )
+    tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+    issuesMocked.fetchRepoIssues.mockResolvedValue([
+      mockIssue({ number: 1, labels: ['board:b1:status:todo'], body: 'No identifier' }),
+      mockIssue({
+        number: 2,
+        labels: ['board:b1:status:todo'],
+        body: 'Already numbered\n\n<!-- git-manager:meta {"prefix":"GM"} -->',
+      }),
+    ])
+    issuesMocked.updateIssue.mockResolvedValue(undefined)
+
+    await expect(backend.assignCardIdentifiers(path, 'b1', 'ops')).resolves.toBe(1)
+
+    expect(issuesMocked.updateIssue).toHaveBeenCalledTimes(1)
+    const [, , issueNumber, patch] = issuesMocked.updateIssue.mock.calls[0]
+    expect(issueNumber).toBe(1)
+    expect(patch.body).toContain('"prefix":"OPS"')
+    // The description survives the rewrite — the marker is recomposed, not the body replaced.
+    expect(patch.body).toContain('No identifier')
+
+    const written = JSON.parse(tauriMocked.writeBoardConfig.mock.calls.at(-1)![1] as string)
+    expect(written.boards[0].cardPrefixes).toEqual(['OPS'])
+  })
+
+  it('writes nothing when every card already has an identifier', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(
+      configJson([{ id: 'b1', name: 'Board', source: 'remote', columns: [], revision: 'r1' }])
+    )
+    issuesMocked.fetchRepoIssues.mockResolvedValue([
+      mockIssue({
+        number: 1,
+        labels: ['board:b1:status:todo'],
+        body: 'Numbered\n\n<!-- git-manager:meta {"prefix":"GM"} -->',
+      }),
+    ])
+
+    await expect(backend.assignCardIdentifiers(path, 'b1', 'GM')).resolves.toBe(0)
+    expect(issuesMocked.updateIssue).not.toHaveBeenCalled()
+    expect(tauriMocked.writeBoardConfig).not.toHaveBeenCalled()
+  })
+
   it('rejects updating a card with a stale revision', async () => {
     issuesMocked.fetchIssueDetail.mockResolvedValue(rawIssue({ updated_at: 'current-rev' }))
 

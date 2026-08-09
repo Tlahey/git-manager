@@ -239,6 +239,19 @@ pub async fn set_board_cards_archived(
     git_board::set_cards_archived(&repo, &board_id, &card_ids, archived)
 }
 
+/// Gives every card that has no identifier one, from `prefix`'s sequence — the retrofit for a board
+/// created before it offered a prefix. One commit for the set; see
+/// `git_board::assign_card_identifiers`. Returns how many cards were numbered.
+#[tauri::command]
+pub async fn assign_board_card_identifiers(
+    path: String,
+    board_id: String,
+    prefix: String,
+) -> Result<usize, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_board::assign_card_identifiers(&repo, &board_id, &prefix)
+}
+
 #[tauri::command]
 pub async fn get_board_history(path: String, board_id: String) -> Result<Vec<GitCommit>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;

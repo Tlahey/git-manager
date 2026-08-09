@@ -140,4 +140,14 @@ export interface BoardBackend {
     cardIds: string[],
     archived: boolean
   ): Promise<number>
+  /**
+   * Hands an identifier to every card on the board that has none, drawn from `prefix`'s sequence.
+   *
+   * The retrofit for a board created before it offered a prefix: a card's number is allocated once,
+   * at creation, so cards made on such a board carry an empty prefix and number `0` — not "no
+   * identifier yet" but no identifier at all, with no ordinary edit that grants one. Resolves with
+   * how many were numbered; a card that already has a number is never renumbered, whatever its
+   * prefix, because a ticket that has been quoted somewhere must stay what it was quoted as.
+   */
+  assignCardIdentifiers(path: string, boardId: string, prefix: string): Promise<number>
 }

@@ -7,6 +7,7 @@ import { localBoardBackend } from '../api/local-board.api'
 import { fetchRemoteCardComments, addExistingIssueToColumn } from '../api/remote-board.api'
 import { fetchIssueForTracking } from '../api/trackedIssue.api'
 import { parseCardBody } from '../api/cardBodyMarkdown'
+import { offeredCardPrefixes } from '../lib/boardDefaults'
 
 interface CardIssueTrackingDeps {
   repoPath: string
@@ -99,7 +100,7 @@ export function useCardIssueTracking({
         // numbers on purpose — `GM-8` is where the work sits on this board, `#42` is what the issue
         // is called on GitHub — and they are not interchangeable. Leaving the prefix out is what
         // made every card added from an issue arrive numberless.
-        prefix: activeBoard.cardPrefixes[0] ?? '',
+        prefix: offeredCardPrefixes(activeBoard)[0],
         sourceIssue: ref,
       })
     } else {

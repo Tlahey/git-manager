@@ -1086,6 +1086,89 @@ pub fn set_cards_archived(
     Ok(changed)
 }
 
+/// Hands an identifier to every card that has none, drawing them from `prefix`'s sequence.
+///
+/// The retrofit for a board created without a prefix: its cards were written with an empty prefix and
+/// number `0`, which is not "no identifier yet" but "no identifier at all" — nothing on the card can
+/// be rendered as `GM-7`, and no later edit gives it one, since a card's number is only ever
+/// allocated at creation. This is that allocation, run once, for the cards that missed it.
+///
+/// Numbers go out in the board's own reading order — column order, then the card's order within it —
+/// so a board read top-left to bottom-right numbers the way it is read. Any other order (blob name,
+/// last-updated) would look shuffled for no reason a user could see.
+///
+/// A card that already carries a number is never touched, whatever its prefix: renumbering a ticket
+/// that has been quoted somewhere is worse than leaving one unnumbered. One commit for the whole set,
+/// like `set_cards_archived`, and the advanced counter travels in it — same invariant as
+/// `create_card`: no number exists on a card the board doesn't know it gave out.
+pub fn assign_card_identifiers(
+    repo: &Repository,
+    board_id: &str,
+    prefix: &str,
+) -> Result<usize, String> {
+    let prefix = prefix.trim().to_uppercase();
+    if prefix.is_empty() {
+        return Ok(0);
+    }
+
+    let tip = read_state(repo, board_id)?
+        .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
+    let tree = tip.tree().map_err(AppError::Git)?;
+    let mut board = read_board_json(repo, &tree)?;
+
+    let mut cards = read_cards(repo, &tree)?;
+    cards.sort_by_key(|card| {
+        let column = board
+            .columns
+            .iter()
+            .find(|c| c.id == card.column_id)
+            // A card whose column no longer exists sorts last rather than first: it is off the board
+            // as far as the eye is concerned, so it should not take the low numbers.
+            .map_or(u32::MAX, |c| c.order);
+        (column, card.order)
+    });
+
+    let now = now_iso();
+    let mut tree_oid = tree.id();
+    let mut assigned = 0usize;
+    for mut card in cards {
+        if !card.prefix.is_empty() || card.number != 0 {
+            continue;
+        }
+        let counter = board.next_card_numbers.entry(prefix.clone()).or_insert(1);
+        card.number = *counter;
+        *counter += 1;
+        card.prefix = prefix.clone();
+        card.updated_at = now.clone();
+        let base = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        tree_oid = write_card_blob(repo, &base, &card)?;
+        assigned += 1;
+    }
+
+    if assigned == 0 {
+        return Ok(0);
+    }
+
+    if !board.card_prefixes.contains(&prefix) {
+        board.card_prefixes.push(prefix);
+    }
+    board.updated_at = now;
+    let base = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+    let new_tree_oid = write_board_json(repo, &base, &board)?;
+
+    commit_state_cas(
+        repo,
+        board_id,
+        &tip,
+        tip.id(),
+        new_tree_oid,
+        "git-manager: assign board card identifiers",
+    )?;
+
+    sync_backup(repo, board_id);
+    Ok(assigned)
+}
+
 /// The board's full commit history, newest first — every card/column change is a commit, so this is
 /// literally `git log` over the board's own hidden ref.
 pub fn board_history(repo: &Repository, board_id: &str) -> Result<Vec<GitCommit>, String> {
@@ -1657,6 +1740,108 @@ mod tests {
         assert!(list_boards(&repo).unwrap().is_empty());
         let err = get_board(&repo, &board.id).unwrap_err();
         assert!(err.contains("BOARD_NOT_FOUND"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The retrofit for a board created without a prefix: its cards carry no identifier at all, and
+    /// numbering them is the only way one ever appears on them.
+    #[test]
+    fn assign_card_identifiers_numbers_the_cards_that_have_none() {
+        let (dir, repo) = init_repo("assign-identifiers");
+        let board = board_with(&repo, "Board", vec![column("todo", 0), column("doing", 1)]);
+        let make = |column_id: &str, title: &str| {
+            create_card(
+                &repo,
+                &board.id,
+                column_id,
+                NewBoardCard {
+                    title: title.to_string(),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        // Created out of reading order on purpose — the numbers must follow the board, not the
+        // order the cards happened to be written in.
+        let second_column = make("doing", "In flight");
+        let first = make("todo", "One");
+        let second = make("todo", "Two");
+
+        let before = board_history(&repo, &board.id).unwrap().len();
+        assert_eq!(assign_card_identifiers(&repo, &board.id, "gm").unwrap(), 3);
+        // One gesture, one commit, like archiving a column.
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before + 1);
+
+        let (updated, cards) = get_board(&repo, &board.id).unwrap();
+        let identifier = |id: &str| {
+            let card = cards.iter().find(|c| c.id == id).unwrap();
+            format!("{}-{}", card.prefix, card.number)
+        };
+        // Lowercase in, normalized out — the same rule the create dialog and board settings apply.
+        assert_eq!(identifier(&first.id), "GM-1");
+        assert_eq!(identifier(&second.id), "GM-2");
+        assert_eq!(identifier(&second_column.id), "GM-3");
+        // The board now offers the prefix and knows what it handed out, so the next card created
+        // continues the sequence instead of restarting it.
+        assert_eq!(updated.card_prefixes, vec!["GM".to_string()]);
+        let next = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Four".to_string(),
+                prefix: "GM".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(next.number, 4);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A ticket that already has a number has been quoted somewhere. Re-running the retrofit — or
+    /// running it on a board where only some cards were created before it had a prefix — must leave
+    /// those alone, and must not spend a commit when there is nothing to do.
+    #[test]
+    fn assign_card_identifiers_never_renumbers_a_card_that_has_one() {
+        let (dir, repo) = init_repo("assign-identifiers-idempotent");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let numbered = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Already GM-1".to_string(),
+                prefix: "GM".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let unnumbered = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "No identifier".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(assign_card_identifiers(&repo, &board.id, "GM").unwrap(), 1);
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        let card = |id: &str| cards.iter().find(|c| c.id == id).unwrap().clone();
+        assert_eq!(card(&numbered.id).number, 1);
+        assert_eq!(card(&unnumbered.id).number, 2);
+
+        // Nothing left to number: no commit, and an empty prefix is a no-op rather than a board-wide
+        // rewrite under a blank sequence.
+        let before = board_history(&repo, &board.id).unwrap().len();
+        assert_eq!(assign_card_identifiers(&repo, &board.id, "GM").unwrap(), 0);
+        assert_eq!(assign_card_identifiers(&repo, &board.id, "  ").unwrap(), 0);
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before);
 
         std::fs::remove_dir_all(&dir).ok();
     }

@@ -1293,6 +1293,11 @@ export const setBoardCardsArchived = (
   archived: boolean
 ) => invoke<number>('set_board_cards_archived', { path, boardId, cardIds, archived })
 
+/** Numbers every card that has no identifier, from `prefix`'s sequence, in one board commit.
+ * Resolves with how many cards were numbered — cards that already carry one are left alone. */
+export const assignBoardCardIdentifiers = (path: string, boardId: string, prefix: string) =>
+  invoke<number>('assign_board_card_identifiers', { path, boardId, prefix })
+
 export const getBoardHistory = (path: string, boardId: string) =>
   invoke<GitCommit[]>('get_board_history', { path, boardId })
 

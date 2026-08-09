@@ -21,6 +21,7 @@ const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastE
       deleteCard: vi.fn(),
       deleteCards: vi.fn(),
       setCardsArchived: vi.fn(),
+      assignCardIdentifiers: vi.fn(),
     })
     return {
       localBackend: make(),
