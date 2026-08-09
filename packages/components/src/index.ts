@@ -20,6 +20,9 @@ export type { InnerTabProps } from './InnerTab'
 export { TagInput } from './TagInput'
 export type { TagInputProps } from './TagInput'
 
+export { Combobox } from './Combobox'
+export type { ComboboxProps } from './Combobox'
+
 export { ToolbarButton } from './ToolbarButton'
 export type { ToolbarButtonProps } from './ToolbarButton'
 
