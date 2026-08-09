@@ -13,7 +13,6 @@ function card(id: string, title: string): BoardCard {
 }
 
 function renderColumn(props: Partial<ComponentProps<typeof BoardColumnView>> = {}) {
-  const onToggleCollapsed = vi.fn()
   const onAddCard = vi.fn()
   const onCardClick = vi.fn()
   render(
@@ -21,8 +20,6 @@ function renderColumn(props: Partial<ComponentProps<typeof BoardColumnView>> = {
       <BoardColumnView
         column={column}
         cards={[card('c1', 'First task'), card('c2', 'Second task')]}
-        collapsed={false}
-        onToggleCollapsed={onToggleCollapsed}
         onAddCard={onAddCard}
         onCardClick={onCardClick}
         addCardLabel="Add card"
@@ -30,7 +27,7 @@ function renderColumn(props: Partial<ComponentProps<typeof BoardColumnView>> = {
       />
     </DndContext>
   )
-  return { onToggleCollapsed, onAddCard, onCardClick }
+  return { onAddCard, onCardClick }
 }
 
 describe('BoardColumnView', () => {
@@ -42,8 +39,8 @@ describe('BoardColumnView', () => {
     expect(screen.getByText('Second task')).toBeInTheDocument()
   })
 
-  /** The count is a fact about the column, not a notification — plain muted text rather than the
-   * accent pill `NumberBadge` draws. */
+  /** The count is a fact about the column, not a notification — an outlined badge rather than the
+   * accent pill `NumberBadge` draws, and it stays on screen when there is nothing to count. */
   it('counts an empty column as zero rather than hiding the count', () => {
     renderColumn({ cards: [] })
     expect(screen.getByTestId('board-column-todo-count')).toHaveTextContent('0')
@@ -61,15 +58,12 @@ describe('BoardColumnView', () => {
     expect(screen.queryByTestId('board-column-todo-done')).not.toBeInTheDocument()
   })
 
-  it('hides its cards when collapsed', () => {
-    renderColumn({ collapsed: true })
-    expect(screen.queryByText('First task')).not.toBeInTheDocument()
-  })
-
-  it('calls onToggleCollapsed when the chevron is clicked', () => {
-    const { onToggleCollapsed } = renderColumn()
-    fireEvent.click(screen.getByTestId('board-column-todo-toggle'))
-    expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
+  /** A column is always open. Folding one used to hide its cards without narrowing the 340px track,
+   * so it freed no room on a horizontal board and made the column undroppable while folded. */
+  it('offers no way to fold the column away', () => {
+    renderColumn()
+    expect(screen.queryByTestId('board-column-todo-toggle')).not.toBeInTheDocument()
+    expect(screen.getByText('First task')).toBeInTheDocument()
   })
 
   it('calls onAddCard when the add button is clicked', () => {

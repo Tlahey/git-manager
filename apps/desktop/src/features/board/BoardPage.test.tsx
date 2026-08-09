@@ -43,7 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useBoardControlsStore.getState().reset()
   useBoardDialogsStore.getState().reset()
-  useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedColumns: {} })
+  useBoardStore.setState({ activeBoardIdByRepo: {} })
 })
 
 describe('BoardPage', () => {
@@ -129,7 +129,8 @@ describe('BoardPage', () => {
     renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-column-done-add-card'))
-    await userEvent.click(screen.getByTestId('card-kind-option-bug'))
+    await userEvent.click(screen.getByTestId('card-kind-select'))
+    await userEvent.click(screen.getByTestId('card-kind-bug-option'))
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Crash on open')
     await userEvent.click(screen.getByTestId('board-card-save'))
 

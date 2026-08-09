@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input, Spinner } from '@git-manager/ui'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Input,
+  Spinner,
+} from '@git-manager/ui'
 import type { BoardCardKind } from '@git-manager/git-types'
 import { AttachmentTextarea } from './AttachmentTextarea'
 import { CardKindPicker } from './CardKindPicker'
@@ -14,6 +23,17 @@ import type { CreateProps } from './BoardCardDialog'
  * save *to*, and there isn't one yet. It collects only what has to be decided before the card
  * exists (its kind, its identifier sequence, its title) plus the two fields that are awkward to fill
  * in afterwards; the new card then opens in the full editor, which is where the rest happens.
+ *
+ * **One decision per row, in the order they are made.** The kind takes the first row on its own
+ * because it changes how the title should be written; the prefix and the title share the next,
+ * because together they are the one line that names the card — `GM` `Fix the drag handle` reads as
+ * the `GM-42` it is about to become. The title keeps the width, being the field that holds a
+ * sentence.
+ *
+ * **A card cannot be created without an identifier.** The prefix is required here rather than
+ * defaulted-then-forgotten: `offeredCardPrefixes` guarantees the board proposes one, and clearing
+ * the field blocks Create instead of quietly making an unnumbered card. Unnumbered cards remain
+ * readable — they predate board sequences — but this form no longer produces them.
  */
 export function CreateCardDialog({
   open,
@@ -28,14 +48,15 @@ export function CreateCardDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [dod, setDod] = useState(dodTemplate)
-  // The board's first prefix, which is the one it was created with — a board that offers none starts
-  // the card with no identifier rather than inventing a sequence for it.
+  // The board's first prefix, which is the one it was created with. `offeredCardPrefixes` derives one
+  // from the board's name when it lists none, so this is empty only if the caller bypassed it.
   const [prefix, setPrefix] = useState(cardPrefixes[0] ?? '')
   const [kind, setKind] = useState<BoardCardKind>('task')
   const [pending, setPending] = useState(false)
+  const complete = Boolean(title.trim() && prefix.trim())
 
   async function submit() {
-    if (!title.trim()) return
+    if (!complete) return
     setPending(true)
     try {
       await onCreate({ title: title.trim(), description, dod, prefix, kind })
@@ -56,10 +77,12 @@ export function CreateCardDialog({
 
         <div className="space-y-3">
           {/* Kind first: it is the one choice that changes how the title should be written. */}
-          <CardKindPicker value={kind} onChange={setKind} disabled={pending} />
+          <div className="w-[180px]">
+            <CardKindPicker value={kind} onChange={setKind} disabled={pending} />
+          </div>
 
-          <div className="flex gap-2">
-            <div className="w-[170px] shrink-0">
+          <div className="flex items-start gap-2">
+            <div className="w-[124px] shrink-0">
               <CardPrefixPicker
                 prefixes={cardPrefixes}
                 value={prefix}
@@ -73,7 +96,8 @@ export function CreateCardDialog({
               placeholder={t('card.dialog.titlePlaceholder')}
               disabled={pending}
               autoFocus
-              className="min-w-0 flex-1"
+              inputSize="sm"
+              className="h-8 min-w-0 flex-1"
               data-testid="board-card-title-input"
             />
           </div>
@@ -89,7 +113,7 @@ export function CreateCardDialog({
             data-testid="board-card-description-input"
           />
           <div className="space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
               {t('card.dod.label')}
             </span>
             <AttachmentTextarea
@@ -106,13 +130,18 @@ export function CreateCardDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button
             size="sm"
             className="gap-1.5"
-            disabled={pending || !title.trim()}
+            disabled={pending || !complete}
             onClick={() => void submit()}
             data-testid="board-card-save"
           >

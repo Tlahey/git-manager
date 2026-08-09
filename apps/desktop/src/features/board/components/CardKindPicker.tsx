@@ -1,4 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@git-manager/ui'
 import type { BoardCardKind } from '@git-manager/git-types'
 import { CardKindIcon } from './CardKindIcon'
 
@@ -11,42 +12,54 @@ interface CardKindPickerProps {
 const KINDS: BoardCardKind[] = ['task', 'bug', 'epic']
 
 /**
- * Task / Bug / Epic, as a segmented row.
+ * Task / Bug / Epic, as a dropdown.
  *
- * Three options, always all three visible: which one a card is changes how everything else on it
- * reads, and hiding that behind a dropdown would make the common case (a task) look like the only
- * case. The buttons wrap real `name`-grouped radios rather than styling divs, which is the pattern
- * `packages/ui`'s `radio-group.tsx` points segmented controls at — the browser then supplies
- * grouping, arrow-key roving focus and the announced role for free.
+ * A dropdown rather than the segmented row this used to be: the new-card form is a stack of one
+ * decision per row, and three side-by-side targets spent a whole row stating two alternatives to a
+ * default that is almost always right. The closed field says which kind the card will be, which is
+ * the only thing that has to be visible for the common case; the other two are one click away.
+ *
+ * **The kind's colour survives the collapse**, which is what rules out a native `<select>` here. Its
+ * closed row is drawn by the OS from the option's *text*, so a tile placed behind it is overdrawn —
+ * the app's only kind with no colour on it. The Radix `Select` renders its own trigger, so the mark
+ * a card is recognised by on the board is the mark chosen here, in the field and in the list.
  */
 export function CardKindPicker({ value, onChange, disabled }: CardKindPickerProps) {
   const { t } = useTranslation('board')
 
   return (
-    <div className="flex gap-2" data-testid="card-kind-picker">
-      {KINDS.map((kind) => (
-        <label
-          key={kind}
-          data-testid={`card-kind-option-${kind}`}
-          className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-            value === kind
-              ? 'border-primary bg-primary/10 text-foreground'
-              : 'border-border text-muted-foreground hover:bg-accent'
-          } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          <input
-            type="radio"
-            name="board-card-kind"
+    <Select
+      value={value}
+      disabled={disabled}
+      onValueChange={(next) => onChange(next as BoardCardKind)}
+    >
+      <SelectTrigger
+        aria-label={t('card.meta.kind')}
+        className="h-8 text-xs"
+        data-testid="card-kind-select"
+      >
+        {/* Our own row rather than `SelectValue`, which renders the picked item's text alone — the
+            tile has to travel into the trigger with it. */}
+        <span className="flex min-w-0 items-center gap-2">
+          <CardKindIcon kind={value} />
+          <span className="truncate">{t(`card.kind.${value}`)}</span>
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {KINDS.map((kind) => (
+          <SelectItem
+            key={kind}
             value={kind}
-            checked={value === kind}
-            disabled={disabled}
-            onChange={() => onChange(kind)}
-            className="sr-only"
-          />
-          <CardKindIcon kind={kind} />
-          {t(`card.kind.${kind}`)}
-        </label>
-      ))}
-    </div>
+            className="text-xs"
+            data-testid={`card-kind-${kind}-option`}
+          >
+            <span className="flex items-center gap-2">
+              <CardKindIcon kind={kind} />
+              {t(`card.kind.${kind}`)}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

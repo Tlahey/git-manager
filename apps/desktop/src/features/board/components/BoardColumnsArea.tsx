@@ -11,7 +11,6 @@ import {
 } from '@dnd-kit/core'
 import { useTranslation } from '@git-manager/i18n'
 import type { Board, BoardCard } from '@git-manager/git-types'
-import { useBoardStore } from '../stores/board.store'
 import { BoardColumnView } from './BoardColumnView'
 import { BoardCardView, type CardActions } from './BoardCardView'
 import type { ColumnActions } from './ColumnActionsMenu'
@@ -53,8 +52,6 @@ export function BoardColumnsArea({
   avatarUrlFor,
 }: BoardColumnsAreaProps) {
   const { t } = useTranslation('board')
-  const isColumnCollapsed = useBoardStore((s) => s.isColumnCollapsed)
-  const toggleColumnCollapsed = useBoardStore((s) => s.toggleColumnCollapsed)
   const [activeDragCard, setActiveDragCard] = useState<BoardCard | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -111,8 +108,6 @@ export function BoardColumnsArea({
           key={column.id}
           column={column}
           cards={cardsByColumn.get(column.id) ?? []}
-          collapsed={isColumnCollapsed(board.id, column.id)}
-          onToggleCollapsed={() => toggleColumnCollapsed(board.id, column.id)}
           onAddCard={readOnly ? undefined : () => onAddCard(column.id)}
           onCardClick={onCardClick}
           addCardLabel={t('page.addCard')}

@@ -82,7 +82,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockedUseRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
-  useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedColumns: {} })
+  useBoardStore.setState({ activeBoardIdByRepo: {} })
   localBackend.listBoards.mockResolvedValue([])
 })
 

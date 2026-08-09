@@ -27,7 +27,8 @@ export interface NewCardDraft {
   title: string
   description: string
   dod: string
-  /** Which identifier sequence the card draws its number from; `''` means no identifier. */
+  /** Which identifier sequence the card draws its number from. Never empty: the form requires one —
+   * `''` remains representable only because cards predating board sequences carry it. */
   prefix: string
   kind: BoardCardKind
 }
