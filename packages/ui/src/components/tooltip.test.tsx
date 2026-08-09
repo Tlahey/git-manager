@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
-import { createRef } from 'react'
+import { createRef, type ButtonHTMLAttributes, type Ref } from 'react'
 import { Tooltip } from './tooltip'
 import { useImperativeTooltip } from './useImperativeTooltip'
 
@@ -328,7 +328,45 @@ describe('Tooltip — ref forwarding', () => {
     )
     expect(fnRef).toHaveBeenCalledWith(expect.any(HTMLButtonElement))
   })
+
+  /**
+   * Reads the child's ref from `props`, never from the element. React 19's `element.ref` is a
+   * deprecated getter that logs on access, and this component read it from inside the ref callback —
+   * so every consumer saw the warning at `commitAttachRef`, over a stack of React internals that
+   * named no component of ours.
+   *
+   * The trigger is a component of its own rather than a `<button>` on purpose: React dedupes that
+   * warning by the element type's name, and the plain buttons above would have spent 'button''s one
+   * warning before this test ever ran.
+   */
+  it('reads the child’s ref without touching React 19’s deprecated element.ref', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const externalRef = createRef<HTMLButtonElement>()
+
+    render(
+      <Tooltip content="Hello">
+        <RefProbeTrigger ref={externalRef} />
+      </Tooltip>
+    )
+
+    expect(externalRef.current).toBeInstanceOf(HTMLButtonElement)
+    expect(
+      consoleError.mock.calls.some((args) => String(args[0]).includes('Accessing element.ref'))
+    ).toBe(false)
+    consoleError.mockRestore()
+  })
 })
+
+function RefProbeTrigger({
+  ref,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> }) {
+  return (
+    <button ref={ref} {...props}>
+      Trigger
+    </button>
+  )
+}
 
 describe('Tooltip — positioning', () => {
   it('places the bubble below the trigger and flips away from an edge that does not fit', () => {

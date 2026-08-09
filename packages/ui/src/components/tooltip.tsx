@@ -242,13 +242,20 @@ export function Tooltip({
   // Clone the child and attach mouse handlers + ref
   const child = React.Children.only(children)
   const childProps = child.props
+  // The child's own ref comes off `props`, never off the element. React 19 made `ref` an ordinary
+  // prop and left `element.ref` behind as a deprecated getter that logs "Accessing element.ref was
+  // removed in React 19" on the first read — and this component read it from *inside* the ref
+  // callback, so the warning surfaced during `commitAttachRef` with a stack pointing at React's own
+  // internals rather than at the tooltip. The value is identical: the getter's whole body is
+  // `this.props.ref ?? null`.
+  const childRef = (childProps as { ref?: React.Ref<HTMLElement> }).ref
   const cloned = React.cloneElement(child, {
     ref: (node: HTMLElement | null) => {
       triggerRef.current = node
-      // Forward ref if the child already has one
-      const { ref } = child as { ref?: React.Ref<HTMLElement> }
-      if (typeof ref === 'function') ref(node)
-      else if (ref && typeof ref === 'object') ref.current = node
+      // Forward to the ref the child already carried, so wrapping an element in a Tooltip never
+      // costs its owner the handle on it.
+      if (typeof childRef === 'function') childRef(node)
+      else if (childRef && typeof childRef === 'object') childRef.current = node
     },
     // Point assistive tech at the bubble only while it is visible.
     'aria-describedby': show ? tooltipId : childProps['aria-describedby'],
