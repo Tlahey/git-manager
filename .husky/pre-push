@@ -1,0 +1,13 @@
+# Formatting is checked here rather than left to review because the repo has no CI gate on it:
+# whatever is pushed is what lands on main. The check is the whole repo, not the pushed range —
+# prettier reads every file anyway, and a partial check would let a rebase quietly reintroduce
+# unformatted code that nobody's diff touched. ~8s cold.
+#
+# Run `pnpm format` (before the tests, so the tests see the code that will be pushed), or
+# `git push --no-verify` if you genuinely need to push an unformatted work-in-progress branch.
+
+if ! pnpm format:check; then
+  echo
+  echo "✖ Unformatted files — run 'pnpm format', re-run the tests, then push again."
+  exit 1
+fi

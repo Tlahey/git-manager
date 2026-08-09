@@ -12,3 +12,30 @@ target
 # carefully-wrapped comments/alignment don't churn on an unrelated format pass.
 packages/theme/src/themes.css
 packages/theme/src/themes/*.css
+
+# Everything below is written by a generator, not by hand. `pnpm format:check` is a gate on
+# what we push, so anything a build or a script rewrites has to stay out of it — otherwise the
+# next `tauri build` / `pnpm generate` / e2e run silently turns the tree unformatted again and
+# the gate fails on a file nobody edited.
+
+# Rewritten by every `tauri build`/`tauri dev` from the plugin ACLs (tracked, but not ours).
+apps/desktop/src-tauri/gen/schemas
+
+# packages/mascot/scripts/generate.mjs writes these from assets/parts/*.png; it doesn't pipe
+# its output through prettier, so formatting them here would churn on the next `generate`.
+packages/mascot/src/generated
+
+# apps/docs/scripts/generate.ts renders these from apps/e2e/features/*.feature on every docs
+# dev/build run. Gitignored as well — the .feature files are the committed source.
+apps/docs/docs/features
+apps/docs/.vitepress/sidebar.json
+apps/docs/.vitepress/landing-css.json
+
+# Rewritten by wdio's `onComplete` at the end of every e2e run, and committed as a reference
+# snapshot (see the file's own header).
+apps/e2e/REPORT.md
+
+# The release scripts splice GitHub's release-notes API output into this file verbatim, and
+# that API writes `* ` bullets where prettier wants `- `. Formatting it would mean every
+# `pnpm release` pushes an unformatted CHANGELOG through its own pre-push gate.
+CHANGELOG.md
