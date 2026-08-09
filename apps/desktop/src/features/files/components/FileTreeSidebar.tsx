@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Tooltip, cn } from '@git-manager/ui'
+import { highlightMatch } from '@git-manager/components'
 import { useFileExplorerStore } from '../stores/fileExplorer.store'
 import { useRepoFiles } from '../hooks/useRepoFiles'
 import { buildFileTree, filterFileTree, type FileNode } from '../lib/fileTree'
@@ -21,12 +22,23 @@ function TreeNode({
   onSelect,
   /** Directories render expanded while a search is running, so matches aren't hidden behind folds. */
   forceOpen,
+  /**
+   * The live search, highlighted inside each name so a row says why it survived the filter.
+   *
+   * It won't always land on the row you clicked from: the filter matches the **full path**, so
+   * `src/Button.tsx` survives a query of `src` with nothing to mark in `Button.tsx`. That is not a
+   * gap — the folder above it is the match, it is on screen (the tree renders expanded while
+   * searching), and it carries the mark. A query spanning a separator (`components/But`) marks
+   * nothing anywhere, which is the honest answer: no single name contains it.
+   */
+  query,
   level = 0,
 }: {
   node: FileNode
   selectedPath: string | null
   onSelect: (path: string) => void
   forceOpen: boolean
+  query: string
   level?: number
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -77,7 +89,7 @@ function TreeNode({
             <FileIcon size={14} />
           )}
         </span>
-        <span className="truncate whitespace-nowrap">{node.name}</span>
+        <span className="truncate whitespace-nowrap">{highlightMatch(node.name, query)}</span>
       </button>
 
       {node.isDir && expanded && node.children && (
@@ -89,6 +101,7 @@ function TreeNode({
               selectedPath={selectedPath}
               onSelect={onSelect}
               forceOpen={forceOpen}
+              query={query}
               level={level + 1}
             />
           ))}
@@ -156,6 +169,7 @@ export function FileTreeSidebar() {
               selectedPath={selectedFilePath}
               onSelect={setSelectedFilePath}
               forceOpen={isSearching}
+              query={treeSearchQuery}
             />
           ))}
           {tree.length === 0 && (

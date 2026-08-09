@@ -62,6 +62,28 @@ describe('FileTreeSidebar', () => {
     expect(screen.queryByTestId('file-tree-node-README.md')).not.toBeInTheDocument()
   })
 
+  it('marks what matched inside the name, so a row says why it survived the filter', () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('utto')
+    const { container } = render(<FileTreeSidebar />)
+
+    const marks = Array.from(container.querySelectorAll('mark'))
+    expect(marks.map((m) => m.textContent)).toEqual(['utto'])
+  })
+
+  /**
+   * The filter matches the **full path**, so a query naming a folder keeps files whose own name
+   * contains nothing of it. Marking only the folder is the honest answer — it *is* the match, and
+   * the tree renders expanded while searching, so it is on screen right above the file.
+   */
+  it('marks the folder, not the file, when the query matched the path above it', () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('components')
+    const { container } = render(<FileTreeSidebar />)
+
+    expect(screen.getByTestId('file-tree-node-src/components/Button.tsx')).toBeInTheDocument()
+    const marks = Array.from(container.querySelectorAll('mark'))
+    expect(marks.map((m) => m.textContent)).toEqual(['components'])
+  })
+
   it('tells the user when a search matches nothing', () => {
     useFileExplorerStore.getState().actions.setTreeSearchQuery('zzz')
     render(<FileTreeSidebar />)

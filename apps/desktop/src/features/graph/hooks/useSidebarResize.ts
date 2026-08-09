@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const WIDTH_STORAGE_KEY = 'sidebar-width'
-const COLLAPSED_STORAGE_KEY = 'sidebar-collapsed'
 const DEFAULT_WIDTH = 240
 const MIN_WIDTH = 160
 const MAX_WIDTH = 480
 
-/** Rail width (collapsed mode, showing the icons only). */
-export const RAIL_WIDTH = 48
-
+/**
+ * Width of the graph's sidebar, dragged by its right edge and remembered across sessions.
+ *
+ * It used to own a *collapsed* state as well — the sidebar shrank to a 48px column of section
+ * icons. That mode went with the button that was its only entrance: whether the panel is on screen
+ * at all is `repoView.store`'s `isPanelOpen` now (⌘S, or the toolbar's own button), one flag for
+ * the slot all three views take turns filling. Two neighbouring controls for "give me that width
+ * back", each meaning something slightly different, is one more than the question deserves.
+ */
 export function useSidebarResize() {
   const [width, setWidth] = useState<number>(() => {
     try {
@@ -21,14 +26,6 @@ export function useSidebarResize() {
       // ignore
     }
     return DEFAULT_WIDTH
-  })
-
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1'
-    } catch {
-      return false
-    }
   })
 
   const isDragging = useRef(false)
@@ -64,11 +61,7 @@ export function useSidebarResize() {
     }
   }, [])
 
-  const collapse = useCallback(() => setIsCollapsed(true), [])
-  const expand = useCallback(() => setIsCollapsed(false), [])
-  const toggle = useCallback(() => setIsCollapsed((c) => !c), [])
-
-  // Persistance largeur
+  // Width persistence
   useEffect(() => {
     try {
       localStorage.setItem(WIDTH_STORAGE_KEY, String(width))
@@ -76,15 +69,6 @@ export function useSidebarResize() {
       // ignore
     }
   }, [width])
-
-  // Persist the collapsed state
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0')
-    } catch {
-      // ignore
-    }
-  }, [isCollapsed])
 
   const resizeHandleProps = {
     onPointerDown,
@@ -94,10 +78,6 @@ export function useSidebarResize() {
 
   return {
     width,
-    isCollapsed,
-    collapse,
-    expand,
-    toggle,
     resizeHandleProps,
   }
 }

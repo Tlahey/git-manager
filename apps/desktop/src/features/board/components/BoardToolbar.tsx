@@ -47,19 +47,6 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
 
   return (
     <>
-      {/* A button rather than a field standing open on the bar, the same shape the graph's commit
-          search has: the field appears over the board it filters (`BoardSearchPanel`), so "search"
-          is one gesture across the three views instead of three different-looking controls. */}
-      <ToolbarButton
-        icon={<Search className="text-muted-foreground h-4 w-4" />}
-        label={t('git:toolbar.searchLabel')}
-        title={`${t('page.searchPlaceholder')} (⌘F)`}
-        onClick={toggleSearch}
-        data-testid="board-search-button"
-      />
-
-      <div className="bg-border mx-1 h-6 w-px shrink-0" />
-
       <ToolbarButton
         icon={<Plus className="h-4 w-4 text-primary" />}
         label={t('page.newCard')}
@@ -129,6 +116,20 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
           data-testid="board-delete-button"
         />
       )}
+
+      <div className="bg-border mx-1 h-6 w-px shrink-0" />
+
+      {/* Last, as on every view — and a button rather than a field standing open on the bar: the
+          field appears over the board it filters (`BoardSearchPanel`). Search is the one action all
+          three views share, so it sits in the same place on each; a control whose position depends
+          on the view is one you have to look for every time you switch. */}
+      <ToolbarButton
+        icon={<Search className="text-muted-foreground h-4 w-4" />}
+        label={t('git:toolbar.searchLabel')}
+        title={`${t('page.searchPlaceholder')} (⌘F)`}
+        onClick={toggleSearch}
+        data-testid="board-search-button"
+      />
     </>
   )
 }

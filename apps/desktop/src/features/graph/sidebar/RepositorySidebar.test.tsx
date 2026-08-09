@@ -62,14 +62,6 @@ vi.mock('./SidebarSectionHeader', () => ({
   },
 }))
 
-vi.mock('./SidebarRail', () => ({
-  SidebarRail: (props: { onExpand: () => void; onOpenSection: (key: string) => void }) => (
-    <>
-      <button data-testid="sidebar-rail" onClick={props.onExpand} />
-      <button data-testid="sidebar-rail-tags" onClick={() => props.onOpenSection('tags')} />
-    </>
-  ),
-}))
 vi.mock('../../../components/diff-viewer/BlameHistoryPanel', () => ({
   BlameHistoryPanel: (props: { file: unknown; onClose: () => void }) => (
     <div data-testid="blame-history-panel" onClick={props.onClose} />
@@ -188,9 +180,6 @@ const INITIAL_PINNED = usePinnedBranchesStore.getState()
 function resizeState(overrides: Partial<ReturnType<typeof useSidebarResize>> = {}) {
   return {
     width: 280,
-    isCollapsed: false,
-    collapse: vi.fn(),
-    expand: vi.fn(),
     resizeHandleProps: {},
     ...overrides,
   }
@@ -236,57 +225,16 @@ beforeEach(() => {
 })
 
 describe('RepositorySidebar — mode routing', () => {
-  it('shows the collapsed rail when isCollapsed', () => {
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true }))
+  /**
+   * The header used to carry a button that shrank the sidebar to a 48px column of section icons.
+   * It is gone, and the mode with it: whether the panel is on screen at all is the shell's business
+   * now (⌘S, or the toolbar's own button), and two neighbouring controls for "give me that width
+   * back" — one hiding it, one merely narrowing it — is one more than the question deserves.
+   */
+  it('offers no collapse of its own, leaving the panel to the toolbar shell', () => {
     renderSidebar()
-    expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Filter branches')).not.toBeInTheDocument()
-  })
-
-  it('expands from the rail via onExpand', async () => {
-    const expand = vi.fn()
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true, expand }))
-    const user = userEvent.setup()
-    renderSidebar()
-    await user.click(screen.getByTestId('sidebar-rail'))
-    expect(expand).toHaveBeenCalledOnce()
-  })
-
-  // Sections default to closed, so expanding alone would answer "here is the sidebar again"
-  // instead of "here are your tags" — the clicked icon has to open its own section.
-  it('a rail section icon expands and opens that section', async () => {
-    const expand = vi.fn()
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true, expand }))
-    const user = userEvent.setup()
-    renderSidebar()
-    await user.click(screen.getByTestId('sidebar-rail-tags'))
-    expect(expand).toHaveBeenCalledOnce()
-    expect(useSidebarRows).toHaveBeenLastCalledWith(
-      expect.objectContaining({ openState: { 'section:tags': true } })
-    )
-  })
-
-  // Reopening on a section only helps if it is on screen: with other sections already open it can
-  // sit below the fold, so the render that opens it also scrolls it into view.
-  it('scrolls the section it reopens on into view', async () => {
-    const scrollIntoView = vi.fn()
-    vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(scrollIntoView)
-    // Collapsed on the click, expanded on the re-render — the rail hands over to the section list.
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true }))
-    useSidebarRows.mockReturnValue({
-      sections: [section({ key: 'local' }), section({ key: 'tags', title: 'Tags' })],
-    })
-    const user = userEvent.setup()
-    const { rerender } = renderSidebar()
-    await user.click(screen.getByTestId('sidebar-rail-tags'))
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: false }))
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    rerender(
-      <QueryClientProvider client={client}>
-        <RepositorySidebar repoPath="/repo" selectedBranch={null} onSelectBranch={vi.fn()} />
-      </QueryClientProvider>
-    )
-    expect(scrollIntoView).toHaveBeenCalledOnce()
+    expect(screen.queryByLabelText('Collapse sidebar')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Filter branches')).toBeInTheDocument()
   })
 
   it('shows the BlameHistoryPanel when the left panel is in blame/history mode', () => {
@@ -310,14 +258,6 @@ describe('RepositorySidebar — mode routing', () => {
     expect(screen.getByLabelText('Filter branches')).toBeInTheDocument()
   })
 
-  it('collapses the sidebar from the header button', async () => {
-    const collapse = vi.fn()
-    useSidebarResize.mockReturnValue(resizeState({ collapse }))
-    const user = userEvent.setup()
-    renderSidebar()
-    await user.click(screen.getByLabelText('Collapse sidebar'))
-    expect(collapse).toHaveBeenCalledOnce()
-  })
 })
 
 describe('RepositorySidebar — search filter', () => {
@@ -380,14 +320,6 @@ describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
     const focusSpy = vi.spyOn(input, 'focus')
     act(() => useSidebarSearchStore.getState().requestFocus())
     expect(focusSpy).toHaveBeenCalled()
-  })
-
-  it('expands the sidebar first when collapsed, then focuses the input', () => {
-    const expand = vi.fn()
-    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true, expand }))
-    renderSidebar()
-    act(() => useSidebarSearchStore.getState().requestFocus())
-    expect(expand).toHaveBeenCalledOnce()
   })
 
   it('exits blame/history mode first when active, then focuses the input', () => {

@@ -1,5 +1,4 @@
 export { RepositorySidebar } from './RepositorySidebar'
-export { SidebarRail } from './SidebarRail'
 export { SidebarResizeHandle } from './SidebarResizeHandle'
 export { SidebarRowView } from './SidebarRowView'
 export { SectionHeader } from './SectionHeader'

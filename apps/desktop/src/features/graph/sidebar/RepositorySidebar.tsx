@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Focus, PanelLeftClose, Search, X } from 'lucide-react'
+import { Focus, Search, X } from 'lucide-react'
 import { Input, toast } from '@git-manager/ui'
 import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
-import { useSidebarResize, RAIL_WIDTH } from '../hooks/useSidebarResize'
+import { useSidebarResize } from '../hooks/useSidebarResize'
 import { useSidebarRows } from '../hooks/useSidebarRows'
 import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
@@ -10,7 +10,6 @@ import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
-import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
 import { SidebarSectionHeader } from './SidebarSectionHeader'
 import {
@@ -81,7 +80,7 @@ export function RepositorySidebar({
   // account itself so a caller that doesn't pass one still gets the signed-in behaviour.
   const { isConnected } = useGithubAccount()
   const githubConnected = !!githubToken || isConnected
-  const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
+  const { width, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
   const isFilterActive = branchQuery.trim().length > 0
 
@@ -243,22 +242,9 @@ export function RepositorySidebar({
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))
 
-  // ── Expanding from the rail onto one section ───────────────────────────────
-  // A rail icon stands for a section, so clicking it reopens the sidebar *and* opens that section,
-  // rather than dropping the user back on whatever was open before. Sections default to closed, so
-  // without this the click answered "here is the sidebar again" and not "here are your tags".
-  // The key is also parked in `sectionToReveal` because opening a section isn't enough to see it:
-  // other sections may already be open and push it below the fold, hence the scroll below.
+  // Which section to scroll into view once it opens — opening one isn't enough to see it, since
+  // other open sections can push it below the fold.
   const [sectionToReveal, setSectionToReveal] = useState<SectionKey | null>(null)
-
-  const openSectionFromRail = useCallback(
-    (key: SectionKey) => {
-      expand()
-      setOpenState((prev) => ({ ...prev, [`section:${key}`]: true }))
-      setSectionToReveal(key)
-    },
-    [expand]
-  )
 
   // Ref attached to the section being revealed only, so it fires on the very render that opens it.
   const revealSectionRef = useCallback((node: HTMLDivElement | null) => {
@@ -332,19 +318,17 @@ export function RepositorySidebar({
 
   useEffect(() => {
     if (focusToken === 0) return
-    // Reveal the filter input first if it's hidden behind the rail or the blame/history panel —
-    // this effect re-runs once that state change lands, then falls through to focus() below.
-    if (isCollapsed) {
-      expand()
-      return
-    }
+    // Reveal the filter input first if the blame/history panel has taken the slot — this effect
+    // re-runs once that state change lands, then falls through to focus() below. (The panel being
+    // hidden altogether is handled a level up, in the ⌥⌘F binding itself: the sidebar can't put
+    // itself back on screen from here, since it isn't mounted.)
     if (isBlameOrHistoryActive) {
       setActiveLeftPanel('sidebar')
       return
     }
     searchInputRef.current?.focus()
     searchInputRef.current?.select()
-  }, [focusToken, isCollapsed, isBlameOrHistoryActive, expand, setActiveLeftPanel])
+  }, [focusToken, isBlameOrHistoryActive, setActiveLeftPanel])
 
   // ── Blame / History panel overlay ──────────────────────────────────
   if (isBlameOrHistoryActive) {
@@ -352,7 +336,7 @@ export function RepositorySidebar({
       <div
         data-testid="repository-sidebar"
         className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
-        style={{ width: isCollapsed ? 350 : width }}
+        style={{ width }}
       >
         <BlameHistoryPanel
           file={activeDiffFile}
@@ -365,34 +349,13 @@ export function RepositorySidebar({
     )
   }
 
-  // ── Rail mode (collapsed): icons only ──────────────────────────────
-  if (isCollapsed) {
-    return (
-      <div
-        data-testid="repository-sidebar"
-        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
-        style={{ width: RAIL_WIDTH }}
-      >
-        <SidebarRail
-          repoPath={repoPath}
-          remoteUrls={remoteUrls}
-          currentUser={currentUser}
-          githubToken={githubToken}
-          onExpand={expand}
-          onOpenSection={openSectionFromRail}
-        />
-      </div>
-    )
-  }
-
-  // ── Expanded mode: full sidebar ────────────────────────────────────
   return (
     <div
       data-testid="repository-sidebar"
       className="relative flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
       style={{ width }}
     >
-      {/* Sidebar header with the collapse button */}
+      {/* Sidebar header */}
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
         <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
           Repository
@@ -411,14 +374,6 @@ export function RepositorySidebar({
             }`}
           >
             <Focus className="h-4 w-4" />
-          </button>
-          <button
-            onClick={collapse}
-            title={t('sidebar.collapse')}
-            aria-label={t('sidebar.collapse')}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          >
-            <PanelLeftClose className="h-4 w-4" />
           </button>
         </div>
       </div>

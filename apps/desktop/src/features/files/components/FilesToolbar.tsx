@@ -24,14 +24,6 @@ export function FilesToolbar() {
 
   return (
     <>
-      <ToolbarButton
-        icon={<SearchIcon className="text-muted-foreground h-4 w-4" />}
-        label={t('toolbar.searchLabel')}
-        title={`${t('fileExplorer.searchPlaceholder')} (⌘F)`}
-        onClick={toggleSearch}
-        data-testid="file-search-button"
-      />
-
       {/* Closing the file goes back to the directory listing — the view itself is left by switching
           tab, so this is the only "close" the files view still needs. */}
       {selectedFilePath && (
@@ -42,6 +34,17 @@ export function FilesToolbar() {
           data-testid="file-explorer-close-file"
         />
       )}
+
+      {/* Last, as on every view: search is the one action all three share, so it sits in the same
+          place on each — and a control whose position depends on the view is one you have to look
+          for every time you switch. */}
+      <ToolbarButton
+        icon={<SearchIcon className="text-muted-foreground h-4 w-4" />}
+        label={t('toolbar.searchLabel')}
+        title={`${t('fileExplorer.searchPlaceholder')} (⌘F)`}
+        onClick={toggleSearch}
+        data-testid="file-search-button"
+      />
     </>
   )
 }

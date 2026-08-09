@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type React from 'react'
-import { useSidebarResize, RAIL_WIDTH } from './useSidebarResize'
+import { useSidebarResize } from './useSidebarResize'
 
 function pointerEvent(clientX: number, button = 0): React.PointerEvent<HTMLDivElement> {
   return {
@@ -41,19 +41,17 @@ describe('useSidebarResize — initial state', () => {
     expect(result.current.width).toBe(240)
   })
 
-  it('restores collapsed state from storage', () => {
+  /**
+   * The hook used to own a collapsed (48px icon rail) state alongside the width. It went with the
+   * button that was its only entrance — whether the panel is on screen at all is `repoView.store`'s
+   * `isPanelOpen` now. A stale `sidebar-collapsed` key left in a user's storage must therefore do
+   * nothing rather than resurrect a mode nothing can leave.
+   */
+  it('ignores a persisted collapsed flag from the version that had one', () => {
     localStorage.setItem('sidebar-collapsed', '1')
     const { result } = renderHook(() => useSidebarResize())
-    expect(result.current.isCollapsed).toBe(true)
-  })
-
-  it('defaults to expanded when nothing is stored', () => {
-    const { result } = renderHook(() => useSidebarResize())
-    expect(result.current.isCollapsed).toBe(false)
-  })
-
-  it('exports the fixed RAIL_WIDTH constant', () => {
-    expect(RAIL_WIDTH).toBe(48)
+    expect(result.current).not.toHaveProperty('isCollapsed')
+    expect(result.current.width).toBe(240)
   })
 })
 
@@ -95,42 +93,11 @@ describe('useSidebarResize — dragging', () => {
   })
 })
 
-describe('useSidebarResize — collapse/expand/toggle', () => {
-  it('collapse sets isCollapsed to true', () => {
-    const { result } = renderHook(() => useSidebarResize())
-    act(() => result.current.collapse())
-    expect(result.current.isCollapsed).toBe(true)
-  })
-
-  it('expand sets isCollapsed to false', () => {
-    localStorage.setItem('sidebar-collapsed', '1')
-    const { result } = renderHook(() => useSidebarResize())
-    act(() => result.current.expand())
-    expect(result.current.isCollapsed).toBe(false)
-  })
-
-  it('toggle flips the current state', () => {
-    const { result } = renderHook(() => useSidebarResize())
-    act(() => result.current.toggle())
-    expect(result.current.isCollapsed).toBe(true)
-    act(() => result.current.toggle())
-    expect(result.current.isCollapsed).toBe(false)
-  })
-})
-
 describe('useSidebarResize — persistence side effects', () => {
   it('persists width changes to localStorage', () => {
     const { result } = renderHook(() => useSidebarResize())
     act(() => result.current.resizeHandleProps.onPointerDown(pointerEvent(100)))
     act(() => result.current.resizeHandleProps.onPointerMove(pointerEvent(150)))
     expect(localStorage.getItem('sidebar-width')).toBe('290')
-  })
-
-  it('persists collapsed state to localStorage', () => {
-    const { result } = renderHook(() => useSidebarResize())
-    act(() => result.current.collapse())
-    expect(localStorage.getItem('sidebar-collapsed')).toBe('1')
-    act(() => result.current.expand())
-    expect(localStorage.getItem('sidebar-collapsed')).toBe('0')
   })
 })
