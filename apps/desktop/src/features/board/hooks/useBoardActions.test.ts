@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import type { Board } from '@git-manager/git-types'
-import { makeBoard } from '../test/boardFactories'
+import { makeBoard, makeCard } from '../test/boardFactories'
 import { useBoardActions } from './useBoardActions'
 
 function makeBackend() {
@@ -19,6 +19,8 @@ function makeBackend() {
     moveCard: vi.fn(),
     moveCardsToBoard: vi.fn(),
     deleteCard: vi.fn(),
+    deleteCards: vi.fn(),
+    setCardsArchived: vi.fn(),
   }
 }
 
@@ -212,5 +214,88 @@ describe('useBoardActions — closeSprint', () => {
 
     await result.current.closeSprint(summary, { name: 'Sprint 13', carryOverCardIds: [] })
     expect(backend.moveCardsToBoard).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Three orderings matter around archiving at close, and none of them is arbitrary: after the
+ * carry-over (which takes the unfinished cards away), before the close (a closed board is read-only),
+ * and after the summary was computed (in the dialog, so the report counts the finished work rather
+ * than an emptied column).
+ */
+describe('useBoardActions — closeSprint archives the finished column', () => {
+  const summary = {
+    closedAt: '2026-08-05T00:00:00.000Z',
+    totalCards: 2,
+    doneCards: 1,
+    unfinishedCards: 1,
+    completionRate: 50,
+    blockedCards: 0,
+    overdueCards: 0,
+    byColumn: [],
+    byPriority: [],
+    byAssignee: [],
+  }
+
+  it('archives the named column between the carry-over and the close', async () => {
+    const order: string[] = []
+    backend.createBoard.mockImplementation(() => {
+      order.push('create')
+      return Promise.resolve(makeBoard({ id: 'next' }))
+    })
+    backend.moveCardsToBoard.mockImplementation(() => {
+      order.push('carry')
+      return Promise.resolve(undefined)
+    })
+    backend.getBoard.mockResolvedValue({
+      board: makeBoard(),
+      cards: [
+        makeCard({ id: 'done-1', columnId: 'done' }),
+        makeCard({ id: 'done-2', columnId: 'done', archivedAt: '2026-01-01T00:00:00.000Z' }),
+        makeCard({ id: 'other', columnId: 'todo' }),
+      ],
+    })
+    backend.setCardsArchived.mockImplementation(() => {
+      order.push('archive')
+      return Promise.resolve(1)
+    })
+    backend.closeBoard.mockImplementation(() => {
+      order.push('close')
+      return Promise.resolve(makeBoard({ closedAt: summary.closedAt }))
+    })
+    const { result } = renderActions()
+
+    await result.current.closeSprint(
+      summary,
+      { name: 'Sprint 13', carryOverCardIds: ['other'] },
+      'done'
+    )
+
+    expect(order).toEqual(['create', 'carry', 'archive', 'close'])
+    // Only what is in that column and still on the board — not the already-archived one.
+    expect(backend.setCardsArchived).toHaveBeenCalledWith(path, 'b1', ['done-1'], true)
+  })
+
+  it('archives nothing when the box was unticked', async () => {
+    backend.closeBoard.mockResolvedValue(makeBoard())
+    const { result } = renderActions()
+
+    await result.current.closeSprint(summary, null, null)
+
+    expect(backend.setCardsArchived).not.toHaveBeenCalled()
+    expect(backend.closeBoard).toHaveBeenCalled()
+  })
+
+  it('spends no write on a column that has nothing left on the board', async () => {
+    backend.getBoard.mockResolvedValue({
+      board: makeBoard(),
+      cards: [makeCard({ id: 'other', columnId: 'todo' })],
+    })
+    backend.closeBoard.mockResolvedValue(makeBoard())
+    const { result } = renderActions()
+
+    await result.current.closeSprint(summary, null, 'done')
+
+    expect(backend.setCardsArchived).not.toHaveBeenCalled()
   })
 })

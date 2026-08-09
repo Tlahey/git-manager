@@ -9,7 +9,8 @@ import { BoardPageHeader } from './components/BoardPageHeader'
 import { BoardColumnsArea } from './components/BoardColumnsArea'
 import { BoardDialogsManager } from './components/BoardDialogsManager'
 import { SprintSummaryView } from './components/SprintSummaryView'
-import { moveTargetsFor } from './lib/cardMoveTargets'
+import { columnMoveTargetsFor, moveTargetsFor } from './lib/cardMoveTargets'
+import { isIterationBoard } from './lib/boardIteration'
 import { useBoardDialogs } from './hooks/useBoardDialogs'
 import { useBoardAssigneeAvatars } from './hooks/useBoardAssigneeAvatars'
 
@@ -48,15 +49,28 @@ export function BoardPage({ repoPath }: BoardPageProps) {
   const dialogs = useBoardDialogs()
   // Once for the board, not once per card — see the hook.
   const avatarUrlFor = useBoardAssigneeAvatars(repoPath)
-  // Not a dialog: a filter on the board picker, which stays with the page's own view state.
+  // Not dialogs: filters on the board picker, which stay with the page's own view state.
   const [showClosed, setShowClosed] = useState(false)
+  const [showDeleted, setShowDeleted] = useState(false)
 
-  const isClosed = Boolean(activeBoard?.closedAt)
-  // Closed sprints stay listed but out of the way. The one currently open is always shown, so a
-  // sprint doesn't vanish from under the user the moment they close it.
+  /**
+   * Both states make the board read-only, for different reasons that land in the same place: a
+   * closed sprint's report is frozen, and a deleted board only still exists so that the tickets
+   * archived on it have something to be attached to. Neither is somewhere work happens.
+   */
+  const isClosed = Boolean(activeBoard?.closedAt) || Boolean(activeBoard?.deletedAt)
+
+  // Closed sprints and deleted boards stay listed but out of the way, each behind its own toggle.
+  // The one currently open is always shown, so a board doesn't vanish from under the user the
+  // moment they close or delete it.
   const visibleBoards = useMemo(
-    () => boards.filter((b) => showClosed || !b.closedAt || b.id === activeBoard?.id),
-    [boards, showClosed, activeBoard?.id]
+    () =>
+      boards.filter(
+        (b) =>
+          b.id === activeBoard?.id ||
+          ((showClosed || !b.closedAt) && (showDeleted || !b.deletedAt))
+      ),
+    [boards, showClosed, showDeleted, activeBoard?.id]
   )
 
   /**
@@ -73,6 +87,23 @@ export function BoardPage({ repoPath }: BoardPageProps) {
       (c) => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
     )
   }, [cards, search])
+
+  /**
+   * The column-wide actions, reachable from the column header's own `⋯` menu.
+   *
+   * Moving is offered only when there is somewhere to move to — `columnMoveTargetsFor` refuses a
+   * closed sprint and the other backend — so the menu never opens onto a picker with no options.
+   */
+  const columnActionsFor = (columnId: string) =>
+    isClosed || !activeBoard
+      ? undefined
+      : {
+          onArchiveAll: () => dialogs.setColumnAction({ kind: 'archive', columnId }),
+          onMoveAll:
+            columnMoveTargetsFor(boards, activeBoard).length > 0
+              ? () => dialogs.setColumnAction({ kind: 'move', columnId })
+              : undefined,
+        }
 
   /** The whole-card actions reachable from the card's own `⋯` menu, without opening it. */
   const cardActionsFor = (card: BoardCard) =>
@@ -113,14 +144,27 @@ export function BoardPage({ repoPath }: BoardPageProps) {
         onSearchChange={setSearch}
         showClosed={showClosed}
         onShowClosedChange={setShowClosed}
+        showDeleted={showDeleted}
+        onShowDeletedChange={setShowDeleted}
+        readOnly={isClosed}
         canUseRemote={canUseRemote}
         onAddIssue={() => dialogs.open('addIssue')}
         archivedCount={cards.filter((c) => c.archivedAt).length}
         onOpenArchived={() => dialogs.open('archived')}
         onEditColumns={() => dialogs.open('columnEditor')}
         onOpenSettings={() => dialogs.open('boardSettings')}
-        onCloseSprint={() => dialogs.open('closeSprint')}
-        onDeleteBoard={() => dialogs.open('deleteBoard')}
+        // Only an iteration ends. A standing board — a backlog a ticket passes through on its way to
+        // a sprint — has no period to close, so it is offered no way to.
+        onCloseSprint={
+          activeBoard && isIterationBoard(activeBoard)
+            ? () => dialogs.open('closeSprint')
+            : undefined
+        }
+        // A board already deleted has nothing left to delete: its cards are archived on it, and
+        // erasing it now would destroy exactly what the previous deletion chose to keep.
+        onDeleteBoard={
+          activeBoard?.deletedAt ? undefined : () => dialogs.open('deleteBoard')
+        }
         onCreateBoard={() => dialogs.open('createBoard')}
       />
 
@@ -141,7 +185,24 @@ export function BoardPage({ repoPath }: BoardPageProps) {
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            {isClosed && (
+            {/* A deleted board says so in its own words: "read only" is true of it, but it is not
+                what the reader needs to know — that its tickets were archived rather than destroyed
+                is. Only reachable at all through the picker's "show deleted" toggle. */}
+            {activeBoard.deletedAt && (
+              <div
+                className="flex shrink-0 flex-wrap items-center gap-3 rounded border border-destructive/30 bg-destructive/5 px-3 py-2"
+                data-testid="board-deleted-banner"
+              >
+                <p className="text-xs font-medium text-foreground">{t('deleteBoard.deletedNotice')}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t('deleteBoard.deletedOn', {
+                    date: new Date(activeBoard.deletedAt).toLocaleDateString(),
+                  })}
+                </p>
+              </div>
+            )}
+
+            {isClosed && !activeBoard.deletedAt && (
               <div
                 className="flex shrink-0 flex-wrap items-center gap-3 rounded border border-border bg-card/50 px-3 py-2"
                 data-testid="board-closed-banner"
@@ -174,6 +235,7 @@ export function BoardPage({ repoPath }: BoardPageProps) {
               onCardClick={(card) => dialogs.setCardDialog({ mode: 'edit', cardId: card.id })}
               onMoveCard={(card, columnId, order) => void moveCard(card, columnId, order)}
               cardActionsFor={cardActionsFor}
+              columnActionsFor={columnActionsFor}
               avatarUrlFor={avatarUrlFor}
             />
           </div>

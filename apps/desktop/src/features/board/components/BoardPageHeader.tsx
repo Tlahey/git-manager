@@ -21,6 +21,15 @@ interface BoardPageHeaderProps {
   onSearchChange: (search: string) => void
   showClosed: boolean
   onShowClosedChange: (showClosed: boolean) => void
+  /** Reveals boards deleted with their tickets archived — see `Board.deletedAt`. */
+  showDeleted: boolean
+  onShowDeletedChange: (showDeleted: boolean) => void
+  /**
+   * Whether the active board accepts no edits — a closed sprint or a deleted one. Passed in rather
+   * than re-derived here: the page already owns the rule, and a second copy of it is how the header
+   * came to hide a deleted board's editing actions everywhere except in its own toolbar.
+   */
+  readOnly: boolean
   canUseRemote: boolean
   onAddIssue: () => void
   /** How many cards this board has archived — the button only appears once there is one. */
@@ -28,8 +37,10 @@ interface BoardPageHeaderProps {
   onOpenArchived: () => void
   onEditColumns: () => void
   onOpenSettings: () => void
-  onCloseSprint: () => void
-  onDeleteBoard: () => void
+  /** Omitted on a board that is not an iteration — there is no period to close. */
+  onCloseSprint?: () => void
+  /** Omitted on a board that is already deleted — there is nothing left to delete. */
+  onDeleteBoard?: () => void
   onCreateBoard: () => void
 }
 
@@ -40,8 +51,9 @@ interface BoardPageHeaderProps {
  * owns the board's data wiring and its dialogs, and this owns the chrome. Purely presentational: it
  * holds no state and calls back for everything.
  *
- * A **closed** sprint keeps only the actions that still mean something — you can still delete it or
- * start a new board, but not edit its columns, settings, or close it twice.
+ * A **read-only** board — a closed sprint, or one deleted with its tickets archived — keeps only the
+ * actions that still mean something: you can still start a new board, and read its archive, but not
+ * edit its columns, its settings, or close it twice.
  */
 export function BoardPageHeader({
   boards,
@@ -51,6 +63,9 @@ export function BoardPageHeader({
   onSearchChange,
   showClosed,
   onShowClosedChange,
+  showDeleted,
+  onShowDeletedChange,
+  readOnly,
   canUseRemote,
   onAddIssue,
   archivedCount,
@@ -62,7 +77,6 @@ export function BoardPageHeader({
   onCreateBoard,
 }: BoardPageHeaderProps) {
   const { t } = useTranslation('board')
-  const isClosed = Boolean(activeBoard?.closedAt)
 
   return (
     <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-xs">
@@ -87,6 +101,15 @@ export function BoardPageHeader({
         {t('sprint.showClosed')}
       </label>
 
+      <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+        <Checkbox
+          checked={showDeleted}
+          onChange={(e) => onShowDeletedChange(e.target.checked)}
+          data-testid="board-show-deleted"
+        />
+        {t('deleteBoard.showDeleted')}
+      </label>
+
       <div className="ml-auto flex items-center gap-2">
         <Input
           value={search}
@@ -97,7 +120,7 @@ export function BoardPageHeader({
         />
         {activeBoard && (
           <>
-            {canUseRemote && !isClosed && (
+            {canUseRemote && !readOnly && (
               <Button
                 variant="outline"
                 size="sm"
@@ -121,7 +144,7 @@ export function BoardPageHeader({
                 <Archive className="h-3.5 w-3.5" /> {t('page.archived', { count: archivedCount })}
               </Button>
             )}
-            {!isClosed && (
+            {!readOnly && (
               <>
                 <Button
                   variant="outline"
@@ -141,26 +164,30 @@ export function BoardPageHeader({
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" /> {t('boardSettings.title')}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={onCloseSprint}
-                  data-testid="board-close-sprint-button"
-                >
-                  <FlagOff className="h-3.5 w-3.5" /> {t('sprint.close')}
-                </Button>
+                {onCloseSprint && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={onCloseSprint}
+                    data-testid="board-close-sprint-button"
+                  >
+                    <FlagOff className="h-3.5 w-3.5" /> {t('sprint.close')}
+                  </Button>
+                )}
               </>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={onDeleteBoard}
-              data-testid="board-delete-button"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {onDeleteBoard && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={onDeleteBoard}
+                data-testid="board-delete-button"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </>
         )}
         <Button

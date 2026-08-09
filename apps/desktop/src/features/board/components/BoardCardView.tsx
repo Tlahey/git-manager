@@ -9,6 +9,7 @@ import { cardIdentifier, dodProgress, isOverdue, readableTextOn, resolveCardTags
 import { CardPriorityIcon } from './CardPriorityIcon'
 import { CardKindIcon } from './CardKindIcon'
 import { CardActionsMenu } from './CardActionsMenu'
+import { CardArchivedBadge } from './CardArchivedBadge'
 
 interface BoardCardViewProps {
   card: BoardCard
@@ -152,14 +153,11 @@ export function BoardCardView({
               </Tooltip>
             )}
 
-            {card.archivedAt && (
-              <span
-                data-testid="board-card-archived"
-                className="rounded-[3px] bg-muted px-1.5 py-0.5 text-[10px] uppercase leading-tight tracking-wide text-muted-foreground"
-              >
-                {t('card.archivedBadge')}
-              </span>
-            )}
+            <CardArchivedBadge
+              archivedAt={card.archivedAt}
+              compact
+              testId="board-card-archived"
+            />
           </div>
         )}
 

@@ -145,7 +145,7 @@ describe('BoardPage', () => {
     await userEvent.click(screen.getByTestId('board-delete-button'))
     await userEvent.click(screen.getByTestId('delete-board-confirm'))
 
-    expect(deleteBoard).toHaveBeenCalledWith(board())
+    expect(deleteBoard).toHaveBeenCalledWith(board(), true)
   })
 
   it('creates and checks out a branch for a card, then links it', async () => {
@@ -751,5 +751,149 @@ describe('BoardPage — moving a card to another board', () => {
 
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
     await waitFor(() => expect(screen.getByTestId('board-card-dialog')).toBeInTheDocument())
+  })
+})
+
+/**
+ * Only an iteration ends. A standing board — a backlog a ticket passes through on its way to a
+ * sprint — has no period to close, so it is offered no way to.
+ */
+describe('BoardPage — iteration vs standing board', () => {
+  function renderWith(iteration: boolean | undefined) {
+    const b = board({ iteration })
+    useBoardData.mockReturnValue(baseHookState({ boards: [b], activeBoard: b, cards: [] }))
+    render(<BoardPage repoPath="/repo" />)
+  }
+
+  it('offers to close an iteration', () => {
+    renderWith(true)
+    expect(screen.getByTestId('board-close-sprint-button')).toBeInTheDocument()
+  })
+
+  it('offers no closing on a standing board, keeping its other actions', () => {
+    renderWith(false)
+    expect(screen.queryByTestId('board-close-sprint-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('board-edit-columns-button')).toBeInTheDocument()
+    expect(screen.getByTestId('board-settings-button')).toBeInTheDocument()
+  })
+
+  /** Boards written before the flag existed were created when closing was the only behaviour. */
+  it('treats a board with no flag as an iteration', () => {
+    renderWith(undefined)
+    expect(screen.getByTestId('board-close-sprint-button')).toBeInTheDocument()
+  })
+})
+
+/** The column header carries the actions that act on its cards as a set. */
+describe('BoardPage — column actions', () => {
+  const withColumns = (extra = {}) =>
+    board({
+      columns: [
+        { id: 'todo', name: 'To do', order: 0 },
+        { id: 'done', name: 'Done', order: 1, isDone: true },
+      ],
+      ...extra,
+    })
+
+  it('opens the archive confirmation from the column menu', async () => {
+    const b = withColumns()
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
+    )
+    render(<BoardPage repoPath="/repo" />)
+
+    await userEvent.click(screen.getByTestId('board-column-todo-menu'))
+    await userEvent.click(screen.getByTestId('column-action-archive-all'))
+
+    expect(screen.getByTestId('archive-column-dialog')).toBeInTheDocument()
+  })
+
+  /** No other board to empty into: the entry would open a picker with nothing in it. */
+  it('offers no move when this is the only board', async () => {
+    const b = withColumns()
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
+    )
+    render(<BoardPage repoPath="/repo" />)
+
+    await userEvent.click(screen.getByTestId('board-column-todo-menu'))
+
+    expect(screen.getByTestId('column-action-archive-all')).toBeInTheDocument()
+    expect(screen.queryByTestId('column-action-move-all')).not.toBeInTheDocument()
+  })
+
+  it('has no menu on an empty column', () => {
+    const b = withColumns()
+    useBoardData.mockReturnValue(baseHookState({ boards: [b], activeBoard: b, cards: [] }))
+    render(<BoardPage repoPath="/repo" />)
+
+    expect(screen.queryByTestId('board-column-todo-menu')).not.toBeInTheDocument()
+  })
+
+  /** A closed sprint is a record: nothing on it moves, including a whole column of it. */
+  it('has no menu on a closed sprint', () => {
+    const b = withColumns({ closedAt: '2026-08-05T00:00:00.000Z' })
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
+    )
+    render(<BoardPage repoPath="/repo" />)
+
+    expect(screen.queryByTestId('board-column-todo-menu')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * A board deleted with its tickets archived is not gone — it cannot be, since a card belongs to a
+ * board and the archived ones still name this one. It is hidden, read-only, and reachable again
+ * through its own toggle, which is what stops the kept tickets from being kept somewhere unreadable.
+ */
+describe('BoardPage — a deleted board is tombstoned, not gone', () => {
+  const deleted = () => board({ id: 'gone', name: 'Old sprint', deletedAt: '2026-08-06T00:00:00.000Z' })
+  const live = () => board({ id: 'live', name: 'Sprint 13' })
+
+  function renderWith(activeBoard = deleted()) {
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [live(), deleted()], activeBoard, cards: [] })
+    )
+    render(<BoardPage repoPath="/repo" />)
+  }
+
+  it('says why it is still here, rather than calling itself read-only', () => {
+    renderWith()
+    const banner = screen.getByTestId('board-deleted-banner')
+    expect(banner).toHaveTextContent('This board was deleted')
+    expect(banner).toHaveTextContent(/archived rather than destroyed/)
+    // The closed-sprint banner is a different statement and must not double up.
+    expect(screen.queryByTestId('board-closed-banner')).not.toBeInTheDocument()
+  })
+
+  it('is read-only, like a closed sprint', () => {
+    renderWith()
+    expect(screen.queryByTestId('board-edit-columns-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-settings-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-close-sprint-button')).not.toBeInTheDocument()
+  })
+
+  /** Deleting it again would destroy exactly what the first deletion chose to keep. */
+  it('cannot be deleted a second time', () => {
+    renderWith()
+    expect(screen.queryByTestId('board-delete-button')).not.toBeInTheDocument()
+  })
+
+  it('still offers deletion on a board that is merely live', () => {
+    renderWith(live())
+    expect(screen.getByTestId('board-delete-button')).toBeInTheDocument()
+  })
+
+  it('is hidden from the picker until asked for, and the toggle brings it back', async () => {
+    renderWith(live())
+
+    await userEvent.click(screen.getByTestId('board-switcher'))
+    expect(screen.queryByTestId('board-switcher-option-gone')).not.toBeInTheDocument()
+
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByTestId('board-show-deleted'))
+    await userEvent.click(screen.getByTestId('board-switcher'))
+    expect(screen.getByTestId('board-switcher-option-gone')).toBeInTheDocument()
   })
 })

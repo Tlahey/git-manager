@@ -447,6 +447,12 @@ pub struct SprintSummaryAssignee {
     pub done: u32,
 }
 
+/// See `Board::iteration` — `true` so a board written before the field existed keeps the closing
+/// behaviour it was created with.
+fn default_iteration() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Board {
@@ -484,9 +490,33 @@ pub struct Board {
     /// Markdown task list copied into every new card's `dod`. Empty when the board doesn't want one.
     #[serde(default)]
     pub dod_template: String,
+    /// Whether this board is one **iteration** of a repeating cycle — a sprint — rather than a
+    /// standing board.
+    ///
+    /// Only an iteration can be closed: closing freezes a report, carries the leftovers into a
+    /// successor and turns the board read-only, all of which describe a period that ended. A board
+    /// holding the backlog a ticket passes through *before* it reaches a sprint has no such period,
+    /// and offering to close it is offering to end something that does not end.
+    ///
+    /// Defaults to **true**, which is a migration default rather than a product one: every board
+    /// written before this field existed was created when closing was the only behaviour there was,
+    /// and reading one back as a standing board would silently take that action away from it. New
+    /// boards always carry an explicit value, chosen in the create dialog.
+    #[serde(default = "default_iteration")]
+    pub iteration: bool,
     /// Set when the sprint was closed; a closed board is read-only in the UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<String>,
+    /// Set when the board was deleted **but its tickets were archived rather than destroyed**.
+    ///
+    /// The board is gone as far as the user is concerned — out of the picker, read-only, no longer
+    /// somewhere work happens — yet its ref survives, because that is the only thing an archived
+    /// ticket can stay attached to. A card whose board had been erased would be an orphan naming a
+    /// board that no longer exists, which is not "archived", it is lost with extra steps.
+    ///
+    /// The other branch of the same choice erases everything and sets nothing: see `delete_board`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
     /// Statistics frozen at closing time. Stored rather than recomputed because closing a sprint
     /// *moves* its unfinished cards to the successor board — recomputing later would report a sprint
     /// that went better than it actually did.

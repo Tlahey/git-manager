@@ -28,6 +28,25 @@ export function moveTargetsFor(boards: Board[], card: BoardCard, source: Board['
 }
 
 /**
+ * The boards a whole **column** may be emptied into.
+ *
+ * Stricter than {@link moveTargetsFor} by one rule: the target must be on the same backend. Moving a
+ * single card from a local board to a GitHub one is supported because it can *create* the issue —
+ * one card, one issue, one follow-up patch carrying the rest of it. A column is a set, and doing that
+ * per card is not one operation: a failure at card seven leaves seven new issues, seven deleted local
+ * cards, and no way to say which. `moveCardsToBoard`, which this drives, is the only genuinely bulk
+ * move either backend has, and it is same-backend by construction.
+ *
+ * Someone who wants a whole column on GitHub can still move the cards one at a time, where each
+ * arrival is its own visible step.
+ */
+export function columnMoveTargetsFor(boards: Board[], from: Board): Board[] {
+  return boards.filter(
+    (board) => board.id !== from.id && !board.closedAt && board.source === from.source
+  )
+}
+
+/**
  * Which column the card lands in on `target`, by default.
  *
  * A board that has a column by the same id gets the card in *that* one — "in progress" stays "in

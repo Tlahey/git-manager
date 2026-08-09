@@ -760,9 +760,30 @@ export interface Board {
   /** Markdown task list copied into every new card's {@link BoardCard.dod}. Empty for a board that
    * doesn't want one. */
   dodTemplate: string
+  /**
+   * Whether this board is one **iteration** of a repeating cycle — a sprint — rather than a standing
+   * board such as a backlog a ticket passes through before it reaches one.
+   *
+   * Only an iteration can be closed, because closing freezes a report, carries the leftovers into a
+   * successor and turns the board read-only — all descriptions of a period that ended.
+   *
+   * Optional on the wire, and **absent means `true`**: boards written before this field existed were
+   * created when closing was the only behaviour there was. Read it through `isIterationBoard` rather
+   * than testing it directly, so that default lives in one place across both backends.
+   */
+  iteration?: boolean
   /** Set when the sprint was closed. A closed board is read-only and hidden from the default board
    * list — see {@link Board.summary}. */
   closedAt?: string
+  /**
+   * Set when the board was deleted **but its tickets were archived rather than destroyed**.
+   *
+   * The board is gone as far as the user is concerned — out of the picker, read-only — yet it still
+   * exists, because an archived ticket has to stay attached to something. A card whose board had
+   * been erased would name a board that no longer exists, which is not "archived". Revealed by the
+   * board picker's "show deleted" toggle, where its archive stays readable.
+   */
+  deletedAt?: string
   /** Statistics frozen at closing time. Stored rather than recomputed because closing a sprint
    * *moves* its unfinished cards to the successor board: recomputing later would report a sprint
    * that went better than it did. */

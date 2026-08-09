@@ -14,6 +14,7 @@ import type { Board, BoardCard } from '@git-manager/git-types'
 import { useBoardStore } from '../stores/board.store'
 import { BoardColumnView } from './BoardColumnView'
 import { BoardCardView, type CardActions } from './BoardCardView'
+import type { ColumnActions } from './ColumnActionsMenu'
 
 interface BoardColumnsAreaProps {
   board: Board
@@ -23,6 +24,8 @@ interface BoardColumnsAreaProps {
   onMoveCard: (card: BoardCard, columnId: string, order: number) => void
   /** Per-card whole-card actions, shown in each card's own `⋯` menu. */
   cardActionsFor?: (card: BoardCard) => CardActions | undefined
+  /** The column-wide actions, shown in each column header's `⋯` menu. */
+  columnActionsFor?: (columnId: string) => ColumnActions | undefined
   /** A closed sprint is readable but not editable. */
   readOnly?: boolean
   /** Resolves an assignee's picture — see `useBoardAssigneeAvatars`. */
@@ -45,6 +48,7 @@ export function BoardColumnsArea({
   onCardClick,
   onMoveCard,
   cardActionsFor,
+  columnActionsFor,
   readOnly,
   avatarUrlFor,
 }: BoardColumnsAreaProps) {
@@ -115,6 +119,7 @@ export function BoardColumnsArea({
           tags={board.tags}
           cardActionsFor={cardActionsFor}
           avatarUrlFor={avatarUrlFor}
+          columnActions={readOnly ? undefined : columnActionsFor?.(column.id)}
         />
       ))}
     </div>

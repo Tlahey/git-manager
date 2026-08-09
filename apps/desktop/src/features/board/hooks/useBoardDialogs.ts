@@ -25,6 +25,7 @@ export type BoardDialogName =
   | 'closeSprint'
   | 'addIssue'
   | 'archived'
+  | 'purgeArchived'
 
 /**
  * Where closing a dialog should put you back.
@@ -43,6 +44,17 @@ export type BoardDialogName =
  */
 export type DialogOrigin = { kind: 'archived' } | { kind: 'card'; cardId: string }
 
+/**
+ * A column-wide action awaiting its confirmation.
+ *
+ * One slot holding *which* action on *which* column, rather than a column id per action, for the same
+ * reason `BoardDialogName` is one slot: both dialogs are modal over the same board, so two could
+ * never be up at once, and two independent slots could represent that impossible state. The column is
+ * held by **id**, not by object, so a column renamed or reordered underneath resolves to whatever it
+ * is now rather than to a stale copy.
+ */
+export type ColumnAction = { kind: 'archive' | 'move'; columnId: string }
+
 export interface BoardDialogs {
   /** The board-level dialog on screen, or `null` — see {@link BoardDialogName}. */
   openDialog: BoardDialogName | null
@@ -59,6 +71,9 @@ export interface BoardDialogs {
   /** The card whose delete confirmation is up, or `null`. */
   deletingCard: BoardCard | null
   setDeletingCard: (card: BoardCard | null) => void
+  /** The column a column-wide action is being confirmed for, or `null` — see {@link ColumnAction}. */
+  columnAction: ColumnAction | null
+  setColumnAction: (action: ColumnAction | null) => void
 
   /** Opens `next` from the dialog currently on screen, remembering where to come back to. */
   openFrom: (origin: DialogOrigin, next: () => void) => void
@@ -72,7 +87,7 @@ export interface BoardDialogs {
  * from another.
  *
  * Pure state: no data, no effects, no knowledge of what any dialog *does* — which is what makes the
- * return-path rule above testable on its own rather than only through a page that mounts eleven
+ * return-path rule above testable on its own rather than only through a page that mounts fourteen
  * dialogs. `BoardPage` owns the board data, `BoardDialogsManager` renders the dialogs, and this owns
  * the question of which one you are looking at.
  */
@@ -81,6 +96,7 @@ export function useBoardDialogs(): BoardDialogs {
   const [cardDialog, setCardDialog] = useState<CardDialogState | null>(null)
   const [movingCard, setMovingCard] = useState<BoardCard | null>(null)
   const [deletingCard, setDeletingCard] = useState<BoardCard | null>(null)
+  const [columnAction, setColumnAction] = useState<ColumnAction | null>(null)
   const [originTrail, setOriginTrail] = useState<DialogOrigin[]>([])
 
   function openFrom(origin: DialogOrigin, next: () => void) {
@@ -113,6 +129,8 @@ export function useBoardDialogs(): BoardDialogs {
     setMovingCard,
     deletingCard,
     setDeletingCard,
+    columnAction,
+    setColumnAction,
     openFrom,
     returnToOrigin,
   }

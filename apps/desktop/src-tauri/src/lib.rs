@@ -21,10 +21,10 @@ use commands::bitbucket::bitbucket_get_user;
 use commands::blame::{get_file_history, git_blame_file};
 use commands::board::{
     add_board_card_comment, close_board, create_board, create_board_card, delete_board,
-    delete_board_card, get_board, get_board_history, list_boards, list_recoverable_boards,
-    move_board_card, move_board_cards, read_board_config, restore_board_backup,
-    save_board_attachment, update_board_card, update_board_columns, update_board_meta,
-    write_board_config,
+    delete_board_card, delete_board_cards, get_board, get_board_history, list_boards,
+    list_recoverable_boards, move_board_card, move_board_cards, read_board_config,
+    restore_board_backup, save_board_attachment, set_board_cards_archived, update_board_card,
+    update_board_columns, update_board_meta, write_board_config,
 };
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
@@ -394,6 +394,8 @@ pub fn run() {
             move_board_card,
             move_board_cards,
             delete_board_card,
+            delete_board_cards,
+            set_board_cards_archived,
             get_board_history,
             list_recoverable_boards,
             restore_board_backup,

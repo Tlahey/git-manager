@@ -9,6 +9,7 @@ import { CardKindIcon } from './CardKindIcon'
 import { CardLinksSection } from './CardLinksSection'
 import { CardStatusPicker } from './CardStatusPicker'
 import { CardBreadcrumb } from './CardBreadcrumb'
+import { CardArchivedBadge } from './CardArchivedBadge'
 import type { EditProps } from './BoardCardDialog'
 
 /**
@@ -80,6 +81,10 @@ export function EditCardDialog({
               readOnly={readOnly}
               onSave={(title) => onPatch({ title })}
             />
+            {/* Before the actions menu, not after: archiving is performed *from* that menu, and the
+                confirmation of what just happened belongs next to the title rather than tucked
+                behind the control that caused it. */}
+            <CardArchivedBadge archivedAt={card.archivedAt} testId="card-dialog-archived" />
             <CardActionsMenu
               testId="card-dialog-actions-menu"
               onDuplicate={readOnly || !onDuplicate ? undefined : () => void onDuplicate()}

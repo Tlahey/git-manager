@@ -157,3 +157,122 @@ describe('BoardDialogsManager — creating a card', () => {
     )
   })
 })
+
+/**
+ * The archive purge is raised from the archive list and comes back to it — the same origin-trail
+ * contract the per-card delete already follows, and the reason `useBoardDialogs` keeps a stack.
+ */
+describe('BoardDialogsManager — purging the archive', () => {
+  const archived = makeCard({ id: 'a1', archivedAt: '2026-08-04T00:00:00.000Z' })
+
+  function openArchive(data: Partial<BoardData> = {}) {
+    return renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [archived, makeCard({ id: 'live' })],
+        ...data,
+      },
+      (d) => d.open('archived')
+    )
+  }
+
+  it('replaces the archive list with the confirmation, counting only archived cards', async () => {
+    openArchive()
+
+    await userEvent.click(screen.getByTestId('archived-delete-all'))
+
+    expect(screen.getByTestId('delete-archived-cards-dialog')).toBeInTheDocument()
+    expect(screen.queryByTestId('archived-cards-dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Delete 1 archived card?')).toBeInTheDocument()
+  })
+
+  it('purges on confirm and drops you back on the archive list', async () => {
+    const data = openArchive()
+
+    await userEvent.click(screen.getByTestId('archived-delete-all'))
+    await userEvent.click(screen.getByTestId('delete-archived-cards-confirm'))
+
+    expect(data.deleteArchivedCards).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.getByTestId('archived-cards-dialog')).toBeInTheDocument())
+  })
+
+  it('reopens the archive list after cancelling', async () => {
+    const data = openArchive()
+
+    await userEvent.click(screen.getByTestId('archived-delete-all'))
+    await userEvent.keyboard('{Escape}')
+
+    expect(data.deleteArchivedCards).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByTestId('archived-cards-dialog')).toBeInTheDocument())
+  })
+
+  /** A closed sprint is a record of what happened, not a drawer to empty. */
+  it('offers no purge on a closed sprint', () => {
+    openArchive({ activeBoard: makeBoard({ closedAt: '2026-08-05T00:00:00.000Z' }) })
+
+    expect(screen.getByTestId('archived-card-a1')).toBeInTheDocument()
+    expect(screen.queryByTestId('archived-danger-zone')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * The column-wide actions are raised from a column header and confirmed here. The column travels by
+ * **id**, so what each dialog names and counts is resolved from the board as it stands, not from a
+ * snapshot taken when the menu was opened.
+ */
+describe('BoardDialogsManager — column-wide actions', () => {
+  const board = makeBoard({
+    id: 'b1',
+    source: 'local',
+    columns: [
+      { id: 'todo', name: 'To do', order: 0 },
+      { id: 'done', name: 'Done', order: 1, isDone: true },
+    ],
+  })
+  const cards = [
+    makeCard({ id: 'c1', columnId: 'todo' }),
+    makeCard({ id: 'c2', columnId: 'todo' }),
+    makeCard({ id: 'away', columnId: 'todo', archivedAt: '2026-08-04T00:00:00.000Z' }),
+    makeCard({ id: 'c3', columnId: 'done' }),
+  ]
+
+  function openColumnAction(kind: 'archive' | 'move', extra: Partial<BoardData> = {}) {
+    return renderManager({ boards: [board], activeBoard: board, cards, ...extra }, (d) =>
+      d.setColumnAction({ kind, columnId: 'todo' })
+    )
+  }
+
+  it('names the column and counts only the cards still on the board', () => {
+    openColumnAction('archive')
+
+    expect(screen.getByText('Archive everything in "To do"?')).toBeInTheDocument()
+    // Two live cards in `todo`; the archived one is already away and the `done` one is elsewhere.
+    expect(screen.getByTestId('archive-column-confirm')).toHaveTextContent('Archive 2 cards')
+  })
+
+  it('archives the column on confirm', async () => {
+    const data = openColumnAction('archive')
+
+    await userEvent.click(screen.getByTestId('archive-column-confirm'))
+
+    expect(data.archiveColumn).toHaveBeenCalledWith('todo')
+  })
+
+  it('moves the column on submit, to the board and column picked', async () => {
+    const other = makeBoard({ id: 'b2', source: 'local', name: 'Sprint 13' })
+    const data = openColumnAction('move', { boards: [board, other] })
+
+    await userEvent.click(screen.getByTestId('move-column-submit'))
+
+    await waitFor(() =>
+      expect(data.moveColumnCards).toHaveBeenCalledWith('todo', 'b2', 'todo')
+    )
+  })
+
+  it('raises neither dialog until a column action is set', () => {
+    renderManager({ boards: [board], activeBoard: board, cards })
+    expect(screen.queryByTestId('archive-column-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('move-column-dialog')).not.toBeInTheDocument()
+  })
+})

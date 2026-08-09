@@ -11,8 +11,11 @@ import { DeleteCardDialog } from './DeleteCardDialog'
 import { MoveCardDialog } from './MoveCardDialog'
 import { AddIssueDialog } from './AddIssueDialog'
 import { ArchivedCardsDialog } from './ArchivedCardsDialog'
+import { DeleteArchivedCardsDialog } from './DeleteArchivedCardsDialog'
+import { ArchiveColumnDialog } from './ArchiveColumnDialog'
+import { MoveColumnDialog } from './MoveColumnDialog'
 import { defaultColumns, branchNameForCard } from '../lib/boardDefaults'
-import { moveTargetsFor } from '../lib/cardMoveTargets'
+import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
 import type { BoardDialogs } from '../hooks/useBoardDialogs'
@@ -26,7 +29,7 @@ interface BoardDialogsManagerProps {
 }
 
 /**
- * Renders the eleven dialogs the board page can raise, and wires each one to the mutation it
+ * Renders the fourteen dialogs the board page can raise, and wires each one to the mutation it
  * performs.
  *
  * The split is three-way, following the pattern {@link SidebarDialogsManager} and
@@ -51,6 +54,9 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     createCard,
     updateCard,
     deleteCard,
+    deleteArchivedCards,
+    archiveColumn,
+    moveColumnCards,
     duplicateCard,
     addComment,
     loadComments,
@@ -62,7 +68,15 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     untrackCard,
     trackedIssueNumbers,
   } = data
-  const { cardDialog, setCardDialog, movingCard, deletingCard, setDeletingCard } = dialogs
+  const { cardDialog, setCardDialog, movingCard, deletingCard, setDeletingCard, columnAction } =
+    dialogs
+
+  /** A column is held by id, so its name is resolved from the board as it stands now. */
+  const columnName = (columnId: string) =>
+    activeBoard?.columns.find((c) => c.id === columnId)?.name ?? columnId
+  /** What a column-wide action would touch — archived cards are already off the board. */
+  const liveColumnCards = (columnId: string) =>
+    cards.filter((c) => c.columnId === columnId && !c.archivedAt)
 
   // Resolved from the live list on every render, so a field saved a moment ago is reflected here —
   // including the card's fresh `revision`, which the next save needs to be accepted.
@@ -91,8 +105,8 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
         open={dialogs.isOpen('createBoard')}
         onOpenChange={(open) => dialogs.setOpen('createBoard', open)}
         canUseRemote={canUseRemote}
-        onSubmit={(name, source, dodTemplate, cardPrefix) =>
-          createBoard(name, defaultColumns(), source, dodTemplate, cardPrefix)
+        onSubmit={(name, source, dodTemplate, cardPrefix, iteration) =>
+          createBoard(name, defaultColumns(), source, dodTemplate, cardPrefix, iteration)
         }
       />
 
@@ -132,7 +146,37 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           open={dialogs.isOpen('deleteBoard')}
           onOpenChange={(open) => dialogs.setOpen('deleteBoard', open)}
           boardName={activeBoard.name}
-          onConfirm={() => deleteBoard(activeBoard)}
+          source={activeBoard.source}
+          cardCount={cards.length}
+          onConfirm={(deleteCards) => deleteBoard(activeBoard, deleteCards)}
+        />
+      )}
+
+      {activeBoard && columnAction?.kind === 'archive' && (
+        <ArchiveColumnDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) dialogs.setColumnAction(null)
+          }}
+          columnName={columnName(columnAction.columnId)}
+          count={liveColumnCards(columnAction.columnId).length}
+          onConfirm={() => archiveColumn(columnAction.columnId)}
+        />
+      )}
+
+      {activeBoard && columnAction?.kind === 'move' && (
+        <MoveColumnDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) dialogs.setColumnAction(null)
+          }}
+          targets={columnMoveTargetsFor(boards, activeBoard)}
+          columnName={columnName(columnAction.columnId)}
+          columnId={columnAction.columnId}
+          count={liveColumnCards(columnAction.columnId).length}
+          onSubmit={(targetBoardId, targetColumnId) =>
+            moveColumnCards(columnAction.columnId, targetBoardId, targetColumnId)
+          }
         />
       )}
 
@@ -265,8 +309,28 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           }
           onUnarchive={(card) => updateCard(card, { archivedAt: null })}
           onDelete={(card) => dialogs.openFrom({ kind: 'archived' }, () => setDeletingCard(card))}
+          // A closed sprint is inert: its archive is part of the record, not a drawer to empty.
+          onDeleteAll={
+            activeBoard.closedAt
+              ? undefined
+              : () => dialogs.openFrom({ kind: 'archived' }, () => dialogs.open('purgeArchived'))
+          }
         />
       )}
+
+      <DeleteArchivedCardsDialog
+        open={dialogs.isOpen('purgeArchived')}
+        onOpenChange={(open) => {
+          if (!open) {
+            dialogs.setOpen('purgeArchived', false)
+            // Cancelling puts the archive list back, which is where it was raised from — and so does
+            // confirming, onto a list that is now empty and says so.
+            dialogs.returnToOrigin()
+          }
+        }}
+        count={cards.filter((c) => c.archivedAt).length}
+        onConfirm={deleteArchivedCards}
+      />
 
       <DeleteCardDialog
         open={deletingCard !== null}

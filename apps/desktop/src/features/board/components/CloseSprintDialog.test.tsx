@@ -61,7 +61,9 @@ describe('CloseSprintDialog', () => {
 
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({ totalCards: 3, doneCards: 1, unfinishedCards: 2, blockedCards: 1 }),
-      { name: 'Sprint 13', carryOverCardIds: ['b', 'c'] }
+      { name: 'Sprint 13', carryOverCardIds: ['b', 'c'] },
+      // The done column, pre-picked — see the archiving describe below.
+      'done'
     )
   })
 
@@ -70,7 +72,7 @@ describe('CloseSprintDialog', () => {
     await userEvent.click(screen.getByTestId('close-sprint-carry-over'))
     await userEvent.click(screen.getByTestId('close-sprint-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ totalCards: 3 }), null)
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ totalCards: 3 }), null, 'done')
   })
 
   it('will not create a successor with no name', async () => {
@@ -91,5 +93,60 @@ describe('CloseSprintDialog', () => {
     expect(summary.totalCards).toBe(3)
     expect(summary.completionRate).toBe(33)
     expect(summary.closedAt).toEqual(expect.any(String))
+  })
+})
+
+/**
+ * Carry-over takes the unfinished work forward; this puts what stayed behind away, so a closed sprint
+ * isn't left holding every ticket it ever completed. Which column counts as finished is the board's
+ * own statement — the `isDone` flag — with the picker there for a board whose author never set it.
+ */
+describe('CloseSprintDialog — archiving the finished cards', () => {
+  it('is offered pre-ticked, on the column the board flagged done', () => {
+    renderDialog()
+    expect(screen.getByTestId('close-sprint-archive-done')).toBeChecked()
+    expect(screen.getByTestId('close-sprint-archive-column')).toHaveValue('done')
+  })
+
+  it('counts only what that column would actually give up', () => {
+    renderDialog()
+    // One card in `done`; the two in `todo` are the carry-over's business, not this one's.
+    expect(screen.getByTestId('close-sprint-archive-hint')).toHaveTextContent('1 card in the column')
+
+    // Naming another column re-counts against it.
+    expect(screen.getByTestId('close-sprint-archive-hint')).not.toHaveTextContent('2 cards')
+  })
+
+  it('sends the chosen column through with the close', async () => {
+    const onConfirm = renderDialog()
+
+    await userEvent.selectOptions(screen.getByTestId('close-sprint-archive-column'), 'todo')
+    await userEvent.click(screen.getByTestId('close-sprint-confirm'))
+
+    expect(onConfirm).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'todo')
+  })
+
+  it('sends no column when the box is unticked, and hides the picker', async () => {
+    const onConfirm = renderDialog()
+
+    await userEvent.click(screen.getByTestId('close-sprint-archive-done'))
+    expect(screen.queryByTestId('close-sprint-archive-column')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('close-sprint-confirm'))
+    expect(onConfirm).toHaveBeenCalledWith(expect.anything(), expect.anything(), null)
+  })
+
+  /** No flag set: the rightmost column is the guess, and it is a visible one the user can change. */
+  it('falls back to the last column when no column is flagged done', () => {
+    renderDialog({
+      board: makeBoard({
+        name: 'Sprint 12',
+        columns: [
+          { id: 'todo', name: 'To do', order: 0 },
+          { id: 'shipped', name: 'Shipped', order: 1 },
+        ],
+      }),
+    })
+    expect(screen.getByTestId('close-sprint-archive-column')).toHaveValue('shipped')
   })
 })

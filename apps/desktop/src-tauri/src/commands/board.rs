@@ -49,9 +49,17 @@ pub async fn create_board(
     columns: Vec<BoardColumn>,
     dod_template: String,
     card_prefix: String,
+    iteration: bool,
 ) -> Result<Board, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_board::create_board(&repo, &name, columns, &dod_template, &card_prefix)
+    git_board::create_board(
+        &repo,
+        &name,
+        columns,
+        &dod_template,
+        &card_prefix,
+        iteration,
+    )
 }
 
 /// Board-level settings: name, tag palette, Definition-of-Done template. Separate from
@@ -123,10 +131,16 @@ pub async fn update_board_columns(
     git_board::update_board_columns(&repo, &board_id, columns, &expected_revision)
 }
 
+/// `delete_cards` erases the board and its tickets; otherwise the board is tombstoned and its cards
+/// archived, keeping them attached to it — see `git_board::delete_board`.
 #[tauri::command]
-pub async fn delete_board(path: String, board_id: String) -> Result<(), String> {
+pub async fn delete_board(
+    path: String,
+    board_id: String,
+    delete_cards: bool,
+) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_board::delete_board(&repo, &board_id)
+    git_board::delete_board(&repo, &board_id, delete_cards)
 }
 
 #[tauri::command]
@@ -196,6 +210,33 @@ pub async fn delete_board_card(
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_board::delete_card(&repo, &board_id, &card_id)
+}
+
+/// Deletes a whole set of cards at once — the archived-card purge. One commit for the set rather
+/// than one per card, and all-or-nothing; see `git_board::delete_cards` for both reasons. Returns how
+/// many were actually removed, which can be fewer than asked if one had already gone.
+#[tauri::command]
+pub async fn delete_board_cards(
+    path: String,
+    board_id: String,
+    card_ids: Vec<String>,
+) -> Result<usize, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_board::delete_cards(&repo, &board_id, &card_ids)
+}
+
+/// Archives (or un-archives) a whole set of cards at once — "archive this column", and the sprint
+/// close's offer to put the finished work away. One commit for the set; see
+/// `git_board::set_cards_archived`. Returns how many actually changed state.
+#[tauri::command]
+pub async fn set_board_cards_archived(
+    path: String,
+    board_id: String,
+    card_ids: Vec<String>,
+    archived: bool,
+) -> Result<usize, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_board::set_cards_archived(&repo, &board_id, &card_ids, archived)
 }
 
 #[tauri::command]

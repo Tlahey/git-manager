@@ -80,7 +80,7 @@ describe('board config (list/create/update/delete)', () => {
     tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
 
     const columns = [{ id: 'todo', name: 'Todo', order: 0 }]
-    const board = await backend.createBoard(path, 'My board', columns, '', '')
+    const board = await backend.createBoard(path, 'My board', columns, '', '', true)
 
     expect(board.name).toBe('My board')
     expect(board.source).toBe('remote')
@@ -118,6 +118,7 @@ describe('board config (list/create/update/delete)', () => {
     expect(updated.revision).not.toBe('rev-1')
   })
 
+  /** Erasing the board is the branch that removes its config entry — the tickets go with it. */
   it('deletes a board by removing it from the config file', async () => {
     tauriMocked.readBoardConfig.mockResolvedValue(
       configJson([
@@ -126,11 +127,35 @@ describe('board config (list/create/update/delete)', () => {
       ])
     )
     tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+    issuesMocked.fetchRepoIssues.mockResolvedValue([])
 
-    await backend.deleteBoard(path, 'b1')
+    await backend.deleteBoard(path, 'b1', true)
 
-    const [, contents] = tauriMocked.writeBoardConfig.mock.calls[0]
+    const [, contents] = tauriMocked.writeBoardConfig.mock.calls.at(-1)!
     expect(JSON.parse(contents).boards.map((b: { id: string }) => b.id)).toEqual(['b2'])
+  })
+
+  /**
+   * Keeping the tickets means keeping the board: its config entry is what defines the
+   * `board:<id>:status:<column>` labels those issues still carry, so removing it would strand them
+   * on a board id that resolves to nothing.
+   */
+  it('tombstones a board whose tickets are archived, leaving it in the config', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(
+      configJson([
+        { id: 'b1', name: 'A', source: 'remote', columns: [], revision: 'r1' },
+        { id: 'b2', name: 'B', source: 'remote', columns: [], revision: 'r2' },
+      ])
+    )
+    tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+    issuesMocked.fetchRepoIssues.mockResolvedValue([])
+
+    await backend.deleteBoard(path, 'b1', false)
+
+    const [, contents] = tauriMocked.writeBoardConfig.mock.calls.at(-1)!
+    const boards = JSON.parse(contents).boards as { id: string; deletedAt?: string }[]
+    expect(boards.map((b) => b.id)).toEqual(['b1', 'b2'])
+    expect(boards.find((b) => b.id === 'b1')?.deletedAt).toBeTruthy()
   })
 })
 

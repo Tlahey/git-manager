@@ -207,6 +207,11 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
         patch.blockedReason === undefined
           ? current.blockedReason
           : patch.blockedReason?.trim() || undefined,
+      // Carried into `next` so `managedLabelsFor` below sees it — that reconciliation is the only
+      // thing that writes the `archived` label, and leaving the field out here is precisely how this
+      // backend used to accept an archive and hand the card back unarchived.
+      archivedAt:
+        patch.archivedAt === undefined ? current.archivedAt : (patch.archivedAt ?? undefined),
     }
 
     // **Every** body-borne field is recomposed, not just the ones this patch touched: the marker is
@@ -246,7 +251,9 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
     return readCard(board, issueNumber)
   }
 
-  return {
+  // Named rather than returned inline so `deleteCards` can reach `deleteCard` — one issue closed one
+  // way, whether it was asked for on its own or as part of a purge.
+  const backend: BoardBackend = {
     listBoards: async (path) => (await readConfigFile(path)).boards,
 
     getBoard: async (path, boardId) => {
@@ -268,7 +275,7 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
       return { board, cards }
     },
 
-    createBoard: async (path, name, columns, dodTemplate, cardPrefix) => {
+    createBoard: async (path, name, columns, dodTemplate, cardPrefix, iteration) => {
       const config = await readConfigFile(path)
       const now = new Date().toISOString()
       const board: Board = {
@@ -284,6 +291,7 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
         // card's own and independent of the issue's number.
         nextCardNumbers: {},
         dodTemplate,
+        iteration,
         schemaVersion: 2,
         createdAt: now,
         updatedAt: now,
@@ -330,9 +338,43 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
         summary,
       })),
 
-    deleteBoard: async (path, boardId) => {
-      const config = await readConfigFile(path)
-      await writeConfigFile(path, { boards: config.boards.filter((b) => b.id !== boardId) })
+    /**
+     * Two outcomes, mirroring the local backend's — see `BoardBackend.deleteBoard`.
+     *
+     * `deleteCards` closes every issue on the board and then drops the board from the config. The
+     * closing happens **first**, deliberately: the config is how the cards are *found*, so a failure
+     * after it was rewritten would leave issues open with nothing left pointing at them.
+     *
+     * Otherwise the board is tombstoned: the cards are archived — which here means gaining the
+     * `archived` label — and the board **stays in the config** with `deletedAt` set. Keeping it is
+     * the whole point: the board's entry is what defines the `board:<id>:status:<column>` labels
+     * those issues still carry, so removing it would strand them on a board id that resolves to
+     * nothing.
+     */
+    deleteBoard: async (path, boardId, deleteCards) => {
+      const { board, cards } = await backend.getBoard(path, boardId)
+
+      if (deleteCards) {
+        await backend.deleteCards(
+          path,
+          boardId,
+          cards.map((c) => c.id)
+        )
+        const config = await readConfigFile(path)
+        await writeConfigFile(path, { boards: config.boards.filter((b) => b.id !== boardId) })
+        return
+      }
+
+      await backend.setCardsArchived(
+        path,
+        boardId,
+        cards.map((c) => c.id),
+        true
+      )
+      await patchBoardInConfig(path, boardId, board.revision, (b) => ({
+        ...b,
+        deletedAt: new Date().toISOString(),
+      }))
     },
 
     createCard: async (path, boardId, columnId, card) => {
@@ -417,7 +459,52 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
     deleteCard: async (_path, _boardId, cardId) => {
       await setIssueState(owner, repo, Number(cardId), 'closed', token)
     },
+
+    /**
+     * There is no bulk endpoint on GitHub's side, so this is the loop the local backend gets to
+     * avoid — sequential rather than concurrent, to stay within the secondary rate limit that
+     * mutating calls in parallel is the documented way to trip.
+     *
+     * In practice this never runs: a remote card is an issue and carries no `archivedAt`, so the
+     * archive list a purge is started from is always empty on a GitHub board. It is implemented
+     * anyway because the contract is what stops the UI from having to know that.
+     */
+    deleteCards: async (path, boardId, cardIds) => {
+      for (const cardId of cardIds) {
+        await backend.deleteCard(path, boardId, cardId)
+      }
+      return cardIds.length
+    },
+
+    /**
+     * Archiving is a label here — see `ARCHIVED_LABEL` — so this is a patch per card and, again, the
+     * loop the local backend gets to avoid. Sequential for the same rate-limit reason as
+     * `deleteCards`.
+     *
+     * Each card's own `revision` has to be read fresh rather than carried in from the caller: the
+     * remote revision is the issue's `updated_at`, and one that came back with the board a moment ago
+     * is already stale for any issue touched since. Cards already in the requested state are skipped,
+     * which is also what keeps this from rewriting a whole column to change nothing.
+     */
+    setCardsArchived: async (path, boardId, cardIds, archived) => {
+      const { cards } = await backend.getBoard(path, boardId)
+      const wanted = cards.filter(
+        (c) => cardIds.includes(c.id) && Boolean(c.archivedAt) !== archived
+      )
+      for (const card of wanted) {
+        await backend.updateCard(
+          path,
+          boardId,
+          card.id,
+          { archivedAt: archived ? new Date().toISOString() : null },
+          card.revision
+        )
+      }
+      return wanted.length
+    },
   }
+
+  return backend
 }
 
 /** A card's discussion — fetched on demand, not with the board (see `fetchIssueComments`). */

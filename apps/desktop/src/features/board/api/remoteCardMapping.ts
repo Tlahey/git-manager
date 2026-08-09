@@ -20,6 +20,21 @@ import { parseCardBody } from './cardBodyMarkdown'
 export const BLOCKED_LABEL = 'blocked'
 export const BLOCKED_LABEL_COLOR = 'b60205'
 
+/**
+ * Archiving, on a GitHub board.
+ *
+ * A card's `archivedAt` had no home here at all: the patch was accepted, no label or body field
+ * carried it, and the card came back from the next read unarchived — the exact failure the backend
+ * contract warns about ("a field one backend quietly dropped would look saved and come back empty").
+ *
+ * A label rather than a body marker, because archiving is a *state* the board filters on, like the
+ * column and the blocked flag, and because it stays visible and reversible on github.com. The cost is
+ * that a label carries no timestamp: the archive date is approximated by the issue's `updated_at`,
+ * which is the moment the label was applied for as long as nothing else has touched the issue since.
+ * Good enough for a list sorted "most recently archived first"; not a date to report on.
+ */
+export const ARCHIVED_LABEL = 'archived'
+
 /** `normal` is deliberately absent: it is the *absence* of a priority label, so the common case adds
  * no label noise to the repository. */
 export const PRIORITY_LABELS: Record<'high' | 'low', { name: string; color: string }> = {
@@ -67,6 +82,7 @@ export function managedLabelsFor(board: Board, card: BoardCard): string[] {
   }
   if (card.blockedReason) labels.push(BLOCKED_LABEL)
   if (card.kind === 'bug' || card.kind === 'epic') labels.push(KIND_LABELS[card.kind].name)
+  if (card.archivedAt) labels.push(ARCHIVED_LABEL)
   return labels
 }
 
@@ -75,6 +91,7 @@ export function isManagedLabel(board: Board, labelName: string): boolean {
   return (
     labelName.startsWith(boardLabelPrefix(board.id)) ||
     labelName === BLOCKED_LABEL ||
+    labelName === ARCHIVED_LABEL ||
     labelName === PRIORITY_LABELS.high.name ||
     labelName === PRIORITY_LABELS.low.name ||
     labelName === KIND_LABELS.bug.name ||
@@ -143,6 +160,9 @@ export function cardFromIssue(board: Board, raw: RawIssueForCard): BoardCard | n
     dueDate: meta.dueDate,
     tagIds: board.tags.filter((t) => raw.labels.includes(t.name)).map((t) => t.id),
     blockedReason: meta.blockedReason,
+    // The label is the flag; `updated_at` stands in for the moment it was applied — see
+    // {@link ARCHIVED_LABEL} for why an approximate date is the honest price of using one.
+    archivedAt: raw.labels.includes(ARCHIVED_LABEL) ? raw.updatedAt : undefined,
     dod,
     comments: [],
     schemaVersion: 2,

@@ -12,6 +12,8 @@ import {
   moveBoardCard,
   moveBoardCards,
   deleteBoardCard,
+  deleteBoardCards,
+  setBoardCardsArchived,
   getBoardHistory,
   listRecoverableBoards,
   restoreBoardBackup,
@@ -29,15 +31,15 @@ import type { BoardBackend } from './boardBackend'
 export const localBoardBackend: BoardBackend = {
   listBoards: (path) => listBoards(path),
   getBoard: (path, boardId) => getBoard(path, boardId),
-  createBoard: (path, name, columns, dodTemplate, cardPrefix) =>
-    createBoard(path, name, columns, dodTemplate, cardPrefix),
+  createBoard: (path, name, columns, dodTemplate, cardPrefix, iteration) =>
+    createBoard(path, name, columns, dodTemplate, cardPrefix, iteration),
   updateBoardColumns: (path, boardId, columns, expectedRevision) =>
     updateBoardColumns(path, boardId, columns, expectedRevision),
   updateBoardMeta: (path, boardId, name, tags, dodTemplate, cardPrefixes, expectedRevision) =>
     updateBoardMeta(path, boardId, name, tags, dodTemplate, cardPrefixes, expectedRevision),
   closeBoard: (path, boardId, summary, expectedRevision) =>
     closeBoard(path, boardId, summary, expectedRevision),
-  deleteBoard: (path, boardId) => deleteBoard(path, boardId),
+  deleteBoard: (path, boardId, deleteCards) => deleteBoard(path, boardId, deleteCards),
   createCard: (path, boardId, columnId, card) => createBoardCard(path, boardId, columnId, card),
   updateCard: (path, boardId, cardId, patch, expectedRevision) =>
     updateBoardCard(path, boardId, cardId, patch, expectedRevision),
@@ -48,6 +50,9 @@ export const localBoardBackend: BoardBackend = {
   moveCardsToBoard: (path, fromBoardId, toBoardId, cardIds, toColumnId) =>
     moveBoardCards(path, fromBoardId, toBoardId, cardIds, toColumnId),
   deleteCard: (path, boardId, cardId) => deleteBoardCard(path, boardId, cardId),
+  deleteCards: (path, boardId, cardIds) => deleteBoardCards(path, boardId, cardIds),
+  setCardsArchived: (path, boardId, cardIds, archived) =>
+    setBoardCardsArchived(path, boardId, cardIds, archived),
 }
 
 /** The board's full commit history — every card/column change is a commit (see `git_board.rs`'s
