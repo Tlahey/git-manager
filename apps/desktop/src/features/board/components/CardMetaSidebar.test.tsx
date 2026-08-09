@@ -98,17 +98,29 @@ describe('CardMetaSidebar — due date', () => {
     expect(screen.getByTestId('card-due-overdue')).toHaveTextContent('2000-01-01')
   })
 
-  /** The clear button sits beside the displayed date, not inside the editor: a native date input
-   * doesn't reliably fire a change when emptied, so the editor-only button mostly didn't work. */
-  it('clears the date with null, without opening the editor first', async () => {
+  /** The date it lands on is what the click is for — the offer, not the typing. */
+  it('sets the deadline from one of the offered dates', async () => {
+    const onPatch = renderSidebar()
+    await userEvent.click(screen.getByTestId('card-meta-due-date-edit'))
+    const tomorrow = screen.getByTestId('card-due-date-option-tomorrow')
+    const shown = tomorrow.textContent?.match(/\d{4}-\d{2}-\d{2}/)?.[0]
+    await userEvent.click(tomorrow)
+    expect(onPatch).toHaveBeenCalledWith({ dueDate: shown })
+  })
+
+  /** A native date input doesn't reliably fire a change when it is emptied, so "no deadline" is a
+   * row of the picker rather than something the input can produce. */
+  it('clears the date with null', async () => {
     const onPatch = renderSidebar({ card: makeCard({ dueDate: '2030-01-01' }) })
+    await userEvent.click(screen.getByTestId('card-meta-due-date-edit'))
     await userEvent.click(screen.getByTestId('card-due-date-clear'))
     expect(onPatch).toHaveBeenCalledWith({ dueDate: null })
   })
 
-  it('offers no clear button on a closed sprint', () => {
+  it('offers nothing to change on a closed sprint', () => {
     renderSidebar({ card: makeCard({ dueDate: '2030-01-01' }), readOnly: true })
-    expect(screen.queryByTestId('card-due-date-clear')).not.toBeInTheDocument()
+    expect(screen.getByTestId('card-meta-due-date')).toHaveTextContent('2030-01-01')
+    expect(screen.queryByTestId('card-meta-due-date-edit')).not.toBeInTheDocument()
   })
 })
 
@@ -123,7 +135,7 @@ describe('CardMetaSidebar — kind', () => {
   it('saves a changed kind immediately', async () => {
     const onPatch = renderSidebar()
     await userEvent.click(screen.getByTestId('card-meta-kind-edit'))
-    await userEvent.selectOptions(screen.getByTestId('card-kind-select'), 'bug')
+    await userEvent.click(screen.getByTestId('card-kind-option-bug'))
     expect(onPatch).toHaveBeenCalledWith({ kind: 'bug' })
   })
 })
@@ -134,10 +146,12 @@ describe('CardMetaSidebar — priority and tags', () => {
     expect(screen.getByTestId('card-priority-high')).toHaveTextContent('High')
   })
 
+  /** One click on the value, one on the value it should be — the same gesture the column picker
+   * answers, rather than a select to operate first. */
   it('saves a changed priority immediately', async () => {
     const onPatch = renderSidebar()
     await userEvent.click(screen.getByTestId('card-meta-priority-edit'))
-    await userEvent.selectOptions(screen.getByTestId('card-priority-select'), 'low')
+    await userEvent.click(screen.getByTestId('card-priority-option-low'))
     expect(onPatch).toHaveBeenCalledWith({ priority: 'low' })
   })
 

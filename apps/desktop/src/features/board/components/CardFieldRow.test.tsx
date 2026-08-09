@@ -26,17 +26,23 @@ describe('CardFieldRow', () => {
   })
 
   it('makes the whole value cell the way in, rather than a separate pencil', async () => {
-    const onEdit = vi.fn()
+    const onOpenChange = vi.fn()
     render(
-      <CardFieldRow label="Priority" testId="row" onEdit={onEdit}>
+      <CardFieldRow
+        label="Priority"
+        testId="row"
+        editor={<input data-testid="editor" />}
+        open={false}
+        onOpenChange={onOpenChange}
+      >
         <span>High</span>
       </CardFieldRow>
     )
     await userEvent.click(screen.getByTestId('row-edit'))
-    expect(onEdit).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledWith(true)
   })
 
-  it('renders a read-only field as plain text, with nothing to click', () => {
+  it('renders a field with no editor as plain text, with nothing to click', () => {
     render(
       <CardFieldRow label="Priority" testId="row">
         <span>High</span>
@@ -45,12 +51,22 @@ describe('CardFieldRow', () => {
     expect(screen.queryByTestId('row-edit')).not.toBeInTheDocument()
   })
 
-  it('puts the field’s own editor under the row', () => {
-    render(
-      <CardFieldRow label="Priority" testId="row" editor={<input data-testid="editor" />}>
+  /** The choices are shown *over* the value rather than under the row: the rows either side of the
+   * one being edited stay where the eye left them. */
+  it('keeps the editor out of the row until it is opened', () => {
+    const { rerender } = render(
+      <CardFieldRow label="Priority" testId="row" editor={<input data-testid="editor" />} open={false}>
+        <span>High</span>
+      </CardFieldRow>
+    )
+    expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+
+    rerender(
+      <CardFieldRow label="Priority" testId="row" editor={<input data-testid="editor" />} open>
         <span>High</span>
       </CardFieldRow>
     )
     expect(screen.getByTestId('editor')).toBeInTheDocument()
+    expect(screen.getByTestId('row')).not.toContainElement(screen.getByTestId('editor'))
   })
 })

@@ -157,7 +157,7 @@ function rowContains(rowTestId: string, selector: string): Promise<boolean> {
 }
 
 /**
- * Opens one side-panel field's editor, performs the edit, and waits for the **row** to render the
+ * Opens one side-panel field's choices, performs the edit, and waits for the **row** to render the
  * value it was given.
  *
  * The row is the signal rather than the disk, and that is the point: it renders straight off the
@@ -165,15 +165,19 @@ function rowContains(rowTestId: string, selector: string): Promise<boolean> {
  * the precondition the *next* edit needs, for the revision reason in this file's header. Waiting on
  * the write alone would leave the following edit presenting a revision one write behind.
  *
- * `settled` is per field rather than "the text changed": `CardFieldRow` renders the open editor
- * *inside* the row, so simply opening it already changes the row's text.
+ * `settled` is per field rather than "the text changed", since a field can be given the value it
+ * already showed.
+ *
+ * Opened through `openMenuViaJs`: the value cell is a Radix `PopoverTrigger`, which opens on
+ * `pointerdown` — a driver `.click()` leaves it shut and the step then times out on choices that
+ * were never going to render (same reason as the card's `⋯` menu).
  */
 async function editField(
   rowTestId: string,
   edit: () => Promise<void>,
   settled: () => Promise<boolean>
 ): Promise<void> {
-  await $(`[data-testid="${rowTestId}-edit"]`).click()
+  await openMenuViaJs(`${rowTestId}-edit`)
   await edit()
   try {
     await browser.waitUntil(settled, { timeout: 15000 })
@@ -439,7 +443,8 @@ When(/^I set the card priority to "([^"]*)"$/, async (label: string) => {
   const value = label.toLowerCase()
   await editField(
     'card-meta-priority',
-    () => setNativeSelectValue('card-priority-select', value),
+    () => clickViaJs(`card-priority-option-${value}`),
+    // The choices are portalled out of the row, so the row's own glyph is an unambiguous signal.
     () => rowContains('card-meta-priority', `[data-testid="card-priority-${value}"]`)
   )
 })

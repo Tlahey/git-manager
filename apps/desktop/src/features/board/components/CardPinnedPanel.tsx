@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, NativeSelect } from '@git-manager/ui'
-import { CalendarClock, X } from 'lucide-react'
+import { CalendarClock } from 'lucide-react'
 import type { BoardCard, BoardCardPatch, BoardCardPriority } from '@git-manager/git-types'
 import { useAssignableUsers } from '../../../hooks/usePrEditCandidates'
 import { isOverdue } from '../lib/cardMeta'
 import { CardAssigneeField } from './CardAssigneeField'
+import { CardChoiceList } from './CardChoiceList'
+import { CardDueDatePicker } from './CardDueDatePicker'
 import { CardPriorityIcon } from './CardPriorityIcon'
 import { CardSidebarPanel } from './CardSidebarPanel'
 import { CardFieldRow } from './CardFieldRow'
@@ -26,6 +27,9 @@ const PRIORITIES: BoardCardPriority[] = ['high', 'normal', 'low']
  *
  * Their own panel, above everything else, so that as the card model grows the new fields land in
  * `CardDetailsPanel` and these three stay exactly where the hand already goes.
+ *
+ * All three answer a click the same way: the values themselves, listed against the row, one more
+ * click away from being set — see `CardFieldRow`.
  */
 export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinnedPanelProps) {
   const { t } = useTranslation('board')
@@ -37,8 +41,16 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
   // The stored value is just a string; it renders as a GitHub user only when one goes by that name.
   const githubUser = users.find((u) => u.login === card.assignee)
 
-  const openEditor = (target: Exclude<EditTarget, null>) =>
-    readOnly ? undefined : () => setEditing((c) => (c === target ? null : target))
+  /** Wires one field's choices to the panel's single open slot — one field open at a time. On a
+   * closed sprint it hands back no editor at all, which is what leaves the row as plain text. */
+  const editorFor = (target: Exclude<EditTarget, null>, editor: ReactNode) =>
+    readOnly
+      ? {}
+      : {
+          editor,
+          open: editing === target,
+          onOpenChange: (next: boolean) => setEditing(next ? target : null),
+        }
 
   return (
   <CardSidebarPanel
@@ -49,20 +61,18 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
     <CardFieldRow
       label={t('card.meta.assignee')}
       testId="card-meta-assignee"
-      onEdit={openEditor('assignee')}
       editTitle={t('card.meta.editAssignee')}
       addLabel={t('card.meta.addAssignee')}
       filled={Boolean(card.assignee)}
-      editor={
-        editing === 'assignee' && (
-          <CardAssigneeField
-            assignee={card.assignee}
-            repoPath={repoPath}
-            onChange={(next) => onPatch({ assignee: next })}
-            onClose={() => setEditing(null)}
-          />
-        )
-      }
+      {...editorFor(
+        'assignee',
+        <CardAssigneeField
+          assignee={card.assignee}
+          repoPath={repoPath}
+          onChange={(next) => onPatch({ assignee: next })}
+          onClose={() => setEditing(null)}
+        />
+      )}
     >
       <span className="flex items-center gap-1.5 text-[11px] text-foreground">
         {githubUser ? (
@@ -76,28 +86,25 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
       </span>
     </CardFieldRow>
 
+    {/* Clearing lives in the picker with the dates, rather than beside the row: a native date input
+        doesn't reliably fire a change when it is emptied, so "no deadline" has to be a row one can
+        pick like any other — it just isn't a row the input can produce. */}
     <CardFieldRow
       label={t('card.meta.dueDate')}
       testId="card-meta-due-date"
-      onEdit={openEditor('dueDate')}
       editTitle={t('card.meta.editDueDate')}
       addLabel={t('card.meta.addDueDate')}
       filled={Boolean(card.dueDate)}
-      editor={
-        editing === 'dueDate' && (
-          <Input
-            type="date"
-            autoFocus
-            defaultValue={card.dueDate ?? ''}
-            onChange={(e) => {
-              void onPatch({ dueDate: e.target.value || null })
-              setEditing(null)
-            }}
-            className="mt-1 h-7 text-xs"
-            data-testid="card-due-date-input"
-          />
-        )
-      }
+      {...editorFor(
+        'dueDate',
+        <CardDueDatePicker
+          dueDate={card.dueDate}
+          onSelect={(next) => {
+            void onPatch({ dueDate: next })
+            setEditing(null)
+          }}
+        />
+      )}
     >
       <span
         data-testid={overdue ? 'card-due-overdue' : 'card-due'}
@@ -111,51 +118,27 @@ export function CardPinnedPanel({ card, repoPath, onPatch, readOnly }: CardPinne
       </span>
     </CardFieldRow>
 
-    {/* Clearing lives beside the date rather than inside the editor: a native date input doesn't
-        reliably fire a change when it is emptied, so a clear button that only existed while
-        editing was a clear button that mostly didn't work. Outside `CardFieldRow`'s own button,
-        since a button cannot nest inside another. */}
-    {card.dueDate && !readOnly && (
-      <div className="px-3">
-        <button
-          type="button"
-          title={t('card.meta.clearDueDate')}
-          aria-label={t('card.meta.clearDueDate')}
-          onClick={() => void onPatch({ dueDate: null })}
-          data-testid="card-due-date-clear"
-          className="ml-22 flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <X className="h-3 w-3" />
-          {t('card.meta.clearDueDate')}
-        </button>
-      </div>
-    )}
-
     <CardFieldRow
       label={t('card.meta.priority')}
       testId="card-meta-priority"
-      onEdit={openEditor('priority')}
       editTitle={t('card.meta.editPriority')}
-      editor={
-        editing === 'priority' && (
-          <NativeSelect
-            value={card.priority}
-            autoFocus
-            onChange={(e) => {
-              void onPatch({ priority: e.target.value as BoardCardPriority })
-              setEditing(null)
-            }}
-            className="mt-1 h-7 text-xs"
-            data-testid="card-priority-select"
-          >
-            {PRIORITIES.map((value) => (
-              <option key={value} value={value}>
-                {t(`card.priority.${value}`)}
-              </option>
-            ))}
-          </NativeSelect>
-        )
-      }
+      {...editorFor(
+        'priority',
+        <CardChoiceList
+          ariaLabel={t('card.meta.priority')}
+          value={card.priority}
+          options={PRIORITIES.map((value) => ({
+            value,
+            label: t(`card.priority.${value}`),
+            icon: <CardPriorityIcon priority={value} />,
+          }))}
+          onSelect={(next) => {
+            void onPatch({ priority: next })
+            setEditing(null)
+          }}
+          testIdPrefix="card-priority-option"
+        />
+      )}
     >
       <CardPriorityIcon priority={card.priority} withLabel />
     </CardFieldRow>

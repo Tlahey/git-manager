@@ -3,12 +3,14 @@ import type { BoardTag } from '@git-manager/git-types'
 import {
   cardIdentifier,
   dodProgress,
+  dueDateShortcuts,
   hexToRgb,
   issueReference,
   isOverdue,
   priorityRank,
   readableTextOn,
   resolveCardTags,
+  toDateKey,
 } from './cardMeta'
 
 const RED = '#ff0000'
@@ -75,6 +77,45 @@ describe('isOverdue', () => {
   it('pads single-digit months and days rather than comparing 2026-8-4', () => {
     // A naive string build would produce "2026-8-4", which sorts after "2026-08-10".
     expect(isOverdue('2026-08-10', new Date(2026, 7, 4))).toBe(false)
+  })
+})
+
+describe('toDateKey', () => {
+  it('pads single-digit months and days', () => {
+    expect(toDateKey(new Date(2026, 7, 4))).toBe('2026-08-04')
+  })
+
+  /** `toISOString()` converts to UTC first, which hands back yesterday for anyone west of
+   * Greenwich for part of every day. */
+  it('reads the local calendar rather than UTC', () => {
+    expect(toDateKey(new Date(2026, 0, 1, 0, 30))).toBe('2026-01-01')
+    expect(toDateKey(new Date(2026, 0, 1, 23, 30))).toBe('2026-01-01')
+  })
+})
+
+describe('dueDateShortcuts', () => {
+  it('offers today, tomorrow and the same day next week', () => {
+    expect(dueDateShortcuts(new Date(2026, 7, 4))).toEqual([
+      { key: 'today', date: '2026-08-04' },
+      { key: 'tomorrow', date: '2026-08-05' },
+      { key: 'nextWeek', date: '2026-08-11' },
+    ])
+  })
+
+  it('rolls over a month end', () => {
+    expect(dueDateShortcuts(new Date(2026, 7, 31)).map((s) => s.date)).toEqual([
+      '2026-08-31',
+      '2026-09-01',
+      '2026-09-07',
+    ])
+  })
+
+  it('counts through a leap day', () => {
+    expect(dueDateShortcuts(new Date(2028, 1, 28)).map((s) => s.date)).toEqual([
+      '2028-02-28',
+      '2028-02-29',
+      '2028-03-06',
+    ])
   })
 })
 

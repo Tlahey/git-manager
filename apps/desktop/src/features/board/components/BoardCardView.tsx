@@ -8,6 +8,7 @@ import { CommitAvatar } from '../../../components/common/CommitAvatar'
 import { cardIdentifier, dodProgress, isOverdue, readableTextOn, resolveCardTags } from '../lib/cardMeta'
 import { CardPriorityIcon } from './CardPriorityIcon'
 import { CardKindIcon } from './CardKindIcon'
+import { cardKindStyle } from './cardKind.config'
 import { CardActionsMenu } from './CardActionsMenu'
 import { CardArchivedBadge } from './CardArchivedBadge'
 
@@ -86,13 +87,22 @@ export function BoardCardView({
         **The border stays regardless.** The separation must never rest on the fill alone — a theme
         is free to close the gap again, and a card is a drop target whose edge has to stay visible
         mid-drag. Border plus shadow delineate it; the fill is the third cue, not the only one.
+
+        **The left edge is the kind's colour** (`cardKind.config.ts`), thickened to 4px. It is the
+        one mark on a card that reads without the card being read: down a column of a dozen, the
+        bugs are findable before a single title is. It stays the kind's rather than the priority's or
+        the tag's — a card has exactly one kind, where it can have no tag or five, and the edge can
+        only ever say one thing.
+
+        Its class comes *after* the all-round border colour on purpose: `Card` merges with
+        tailwind-merge, which drops a per-side colour when a whole-border colour follows it.
       */}
       <Card
         onClick={onClick}
         data-testid={`board-card-${card.id}`}
-        className={`group cursor-pointer space-y-2 bg-background p-3 text-xs shadow-xs transition-shadow hover:shadow-md ${
+        className={`group cursor-pointer space-y-2 border-l-4 bg-background p-3 text-xs shadow-xs transition-shadow hover:shadow-md ${
           card.blockedReason ? 'border-destructive/50' : 'border-border'
-        } ${card.archivedAt ? 'opacity-60' : ''}`}
+        } ${cardKindStyle(card.kind).edge} ${card.archivedAt ? 'opacity-60' : ''}`}
       >
         <div className="flex items-start gap-1.5">
           {card.blockedReason && (

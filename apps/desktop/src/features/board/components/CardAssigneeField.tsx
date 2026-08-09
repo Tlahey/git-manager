@@ -63,10 +63,8 @@ export function CardAssigneeField({
   }
 
   return (
-    <div
-      className="mt-1.5 rounded border border-border bg-popover p-1.5 shadow-md"
-      data-testid="card-assignee-field"
-    >
+    // No surface of its own: it is rendered inside the field's popover, which already draws one.
+    <div data-testid="card-assignee-field">
       <Input
         ref={inputRef}
         value={query}

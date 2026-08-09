@@ -1,10 +1,19 @@
 import type { ReactNode } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@git-manager/ui'
 
 interface CardFieldRowProps {
   label: string
   testId: string
-  /** Opens this field's editor. Omitted on a closed sprint, or on a field that edits in place. */
-  onEdit?: () => void
+  /**
+   * The choices this field offers, shown against the value the moment it is clicked.
+   *
+   * Omitted on a closed sprint, and on a field that edits in place — a row with no editor renders as
+   * plain text and never lights up.
+   */
+  editor?: ReactNode
+  /** Whether the editor is showing. Controlled by the panel, which closes it once a choice lands. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   editTitle?: string
   /**
    * What to offer when the field holds nothing — "Add a due date" rather than "No due date".
@@ -17,8 +26,8 @@ interface CardFieldRowProps {
   /** Whether the field currently holds a value; drives `addLabel` vs `children`. */
   filled?: boolean
   children?: ReactNode
-  /** The field's own editor, rendered under the row across the full width. */
-  editor?: ReactNode
+  /** How wide the choices are, when a list of names needs more room than a list of words. */
+  editorClassName?: string
 }
 
 /**
@@ -32,17 +41,26 @@ interface CardFieldRowProps {
  * The whole value cell is the target when the field is editable, rather than a pencil beside it: a
  * small button that only appears on hover is a control the user has to discover, whereas "click the
  * thing you want to change" needs no teaching. The cell's hover fill is what says it is editable at
- * all — a field with no `onEdit` renders as plain text and never lights up.
+ * all.
+ *
+ * **Clicking it shows the choices themselves, over the value, the way `CardStatusPicker` does.** The
+ * editor used to open *under* the row, which made every edit two gestures against a moving panel:
+ * the row grew, everything below it slid down, and the control that appeared — a native select, a
+ * bare date input — was a second thing to operate before the value changed. Anchored here, the list
+ * of possible values *is* the click's answer, one more click sets it, and the rows either side of
+ * the one being edited stay where the eye left them.
  */
 export function CardFieldRow({
   label,
   testId,
-  onEdit,
+  editor,
+  open,
+  onOpenChange,
   editTitle,
   addLabel,
   filled = true,
   children,
-  editor,
+  editorClassName = 'w-60',
 }: CardFieldRowProps) {
   const value = filled ? (
     children
@@ -54,21 +72,30 @@ export function CardFieldRow({
     <div data-testid={testId} className="px-3 py-1.5">
       <div className="flex min-h-6 items-start gap-2">
         <span className="w-20 shrink-0 pt-0.5 text-[11px] text-muted-foreground">{label}</span>
-        {onEdit ? (
-          <button
-            type="button"
-            onClick={onEdit}
-            title={editTitle}
-            data-testid={`${testId}-edit`}
-            className="-mx-1 min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left hover:bg-accent"
-          >
-            {value}
-          </button>
+        {editor ? (
+          <Popover open={open} onOpenChange={onOpenChange}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title={editTitle}
+                data-testid={`${testId}-edit`}
+                className="-mx-1 min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left hover:bg-accent"
+              >
+                {value}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className={`p-1 ${editorClassName}`}
+              data-testid={`${testId}-editor`}
+            >
+              {editor}
+            </PopoverContent>
+          </Popover>
         ) : (
           <div className="min-w-0 flex-1">{value}</div>
         )}
       </div>
-      {editor}
     </div>
   )
 }

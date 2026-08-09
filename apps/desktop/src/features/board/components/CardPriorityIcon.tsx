@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
-import { ChevronDown, ChevronUp, Equal } from 'lucide-react'
 import type { BoardCardPriority } from '@git-manager/git-types'
+import { cardPriorityStyle } from './cardPriority.config'
 
 interface CardPriorityIconProps {
   priority: BoardCardPriority
@@ -12,31 +12,31 @@ interface CardPriorityIconProps {
 /**
  * A card's priority as a glyph: chevron up for high, an equals sign for normal, chevron down for low.
  *
- * Colour carries the same meaning as the direction — red up, blue down — so the two reinforce each
- * other rather than the colour being the only signal, which would leave the distinction invisible to
- * a red/blue colour-blind reader. The `title`/`aria-label` spells it out either way.
+ * The glyph and its ink both come from {@link CARD_PRIORITY_STYLES}, which is where the rule that
+ * colour only *reinforces* the direction is recorded — the same way {@link CardKindIcon}'s tile does
+ * — and where each colour is justified, including the two theme-token answers that were tried first
+ * and left high priority a near-black maroon, then a pale pink.
+ *
+ * With a label, the gap is the one `CardChoiceList` puts between a row's mark and its name: this is
+ * the *same* value the list underneath offers, and drawing them apart makes the picker read as a
+ * different control from the field it belongs to. Unlabelled it rides a card face among other small
+ * marks, where that gap would be dead space.
  */
 export function CardPriorityIcon({ priority, withLabel, className = '' }: CardPriorityIconProps) {
   const { t } = useTranslation('board')
   const label = t(`card.priority.${priority}`)
-
-  const glyph =
-    priority === 'high' ? (
-      <ChevronUp className="h-3.5 w-3.5 shrink-0 text-destructive" />
-    ) : priority === 'low' ? (
-      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-tone-info" />
-    ) : (
-      <Equal className="h-3 w-3 shrink-0 text-muted-foreground" />
-    )
+  const { Icon, glyph } = cardPriorityStyle(priority)
 
   return (
     <span
       title={label}
       aria-label={label}
       data-testid={`card-priority-${priority}`}
-      className={`inline-flex items-center gap-0.5 ${className}`}
+      className={`inline-flex items-center ${withLabel ? 'gap-2' : 'gap-0.5'} ${className}`}
     >
-      {glyph}
+      {/* `strokeWidth` up from the stock 2: this is the one mark on the footer with no fill behind
+          it, and at 14px the default weight leaves it a hairline. */}
+      <Icon className={`shrink-0 ${glyph}`} strokeWidth={2.5} />
       {withLabel && <span className="text-[11px] text-foreground">{label}</span>}
     </span>
   )

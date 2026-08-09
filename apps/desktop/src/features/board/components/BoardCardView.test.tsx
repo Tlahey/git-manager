@@ -216,4 +216,24 @@ describe('BoardCardView — kind', () => {
     renderCard(card())
     expect(screen.getByTestId('card-kind-task')).toBeInTheDocument()
   })
+
+  /**
+   * The left edge is the one mark that reads without the card being read — down a column of a
+   * dozen, the bugs are findable before a single title is. It carries the same hue as the footer
+   * tile, and it must survive `Card`'s tailwind-merge, which drops a per-side colour whenever a
+   * whole-border colour follows it.
+   */
+  it('paints its left edge in the kind’s colour', () => {
+    renderCard(card({ kind: 'bug' }))
+    const face = screen.getByTestId('board-card-c1')
+    expect(face.className).toContain('border-l-4')
+    expect(face.className).toContain('border-l-red-500')
+  })
+
+  it('keeps the kind’s edge on a blocked card, whose border turns destructive', () => {
+    renderCard(card({ kind: 'epic', blockedReason: 'Waiting on the API' }))
+    const face = screen.getByTestId('board-card-c1')
+    expect(face.className).toContain('border-destructive/50')
+    expect(face.className).toContain('border-l-violet-500')
+  })
 })
