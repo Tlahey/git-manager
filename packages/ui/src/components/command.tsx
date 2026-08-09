@@ -26,13 +26,23 @@ Command.displayName = CommandPrimitive.displayName
 function CommandDialog({
   children,
   title = 'Command Palette',
+  shouldFilter,
   ...props
-}: React.ComponentProps<typeof Dialog> & { children: React.ReactNode; title?: string }) {
+}: React.ComponentProps<typeof Dialog> & {
+  children: React.ReactNode
+  title?: string
+  /**
+   * Forwarded to cmdk. Pass `false` when the caller has already ranked its own items: cmdk's filter
+   * both hides rows and *reorders* them by its own score, so a caller that sorted deliberately —
+   * identifier before title before assignee, say — would see that order quietly replaced.
+   */
+  shouldFilter?: boolean
+}) {
   return (
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0 shadow-lg">
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <Command className="**:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 **:[[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:px-2 **:[[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+        <Command shouldFilter={shouldFilter} className="**:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 **:[[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:px-2 **:[[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           {children}
         </Command>
       </DialogContent>

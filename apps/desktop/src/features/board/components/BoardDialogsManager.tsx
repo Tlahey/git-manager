@@ -3,6 +3,7 @@ import type { BoardData } from '../hooks/useBoardData'
 import { apiCreateAndCheckoutBranch, apiCheckoutBranch } from '../../../api/git.api'
 import { CloseSprintDialog } from './CloseSprintDialog'
 import { BoardCardDialog } from './BoardCardDialog'
+import { BoardSearchDialog } from './BoardSearchDialog'
 import { CreateBoardDialog } from './CreateBoardDialog'
 import { ColumnEditorDialog } from './ColumnEditorDialog'
 import { BoardSettingsDialog } from './BoardSettingsDialog'
@@ -103,6 +104,10 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
 
   return (
     <>
+      {/* Reads every board rather than the open one, so it is mounted here with the rest and gated
+          on being open — see `useAllBoardCards`. */}
+      <BoardSearchDialog repoPath={repoPath} />
+
       <CreateBoardDialog
         open={dialogs.isOpen('createBoard')}
         onOpenChange={(open) => dialogs.setOpen('createBoard', open)}

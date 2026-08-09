@@ -11,7 +11,6 @@ import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { useRepoViewStore } from '../stores/repoView.store'
-import { useBoardControlsStore } from '../features/board'
 import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
@@ -97,17 +96,14 @@ export function useKeyboardShortcuts({
           // tree, the board filters the cards. Each view has exactly one search, which is what lets
           // one chord serve all three without a disambiguating modifier.
           const view = useRepoViewStore.getState().view
-          if (view === 'files') {
+          if (view === 'files' || view === 'board') {
             e.preventDefault()
-            // The files search is the panel's own field, so this is the same request ⌥⌘F makes —
-            // and it has to put the panel back first, or it asks an unmounted input for focus.
+            // On both of these the search is the left panel's own field, so this is the very
+            // request ⌥⌘F makes — and it has to put the panel back first, or it asks an unmounted
+            // input for focus. The graph is the exception below: there ⌘F is the commit search,
+            // which is a *different* search from the branch filter ⌥⌘F raises.
             if (!useRepoViewStore.getState().isPanelOpen) useRepoViewStore.getState().togglePanel()
             useSidebarSearchStore.getState().requestFocus()
-            return
-          }
-          if (view === 'board') {
-            e.preventDefault()
-            useBoardControlsStore.getState().toggleSearch()
             return
           }
           // The graph's panel only exists while the plain commit list is on screen — not over a

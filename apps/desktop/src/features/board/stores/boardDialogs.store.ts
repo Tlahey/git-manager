@@ -26,6 +26,8 @@ export type BoardDialogName =
   | 'addIssue'
   | 'archived'
   | 'purgeArchived'
+  /** Every ticket of every board — the toolbar's search, as opposed to the panel's board filter. */
+  | 'globalSearch'
 
 /**
  * Where closing a dialog should put you back.

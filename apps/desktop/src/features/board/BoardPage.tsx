@@ -7,7 +7,6 @@ import { useBoardData } from './hooks/useBoardData'
 import { useBoardControlsStore } from './stores/boardControls.store'
 import { useBoardDialogsStore } from './stores/boardDialogs.store'
 import { BoardColumnsArea } from './components/BoardColumnsArea'
-import { BoardSearchPanel } from './components/BoardSearchPanel'
 import { BoardDialogsManager } from './components/BoardDialogsManager'
 import { SprintSummaryView } from './components/SprintSummaryView'
 import { columnMoveTargetsFor, moveTargetsFor } from './lib/cardMoveTargets'
@@ -126,10 +125,7 @@ export function BoardPage({ repoPath }: BoardPageProps) {
   }
 
   return (
-    // `relative` so the floating search anchors to the board rather than to the window.
-    <div className="bg-background relative flex h-full flex-col overflow-hidden">
-      <BoardSearchPanel />
-
+    <div className="bg-background flex h-full flex-col overflow-hidden">
       {/* `overflow-hidden`, not `overflow-auto`: the columns are what scroll, each inside its own
           track, so a long column never drags the whole board's scrollbar with it. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">

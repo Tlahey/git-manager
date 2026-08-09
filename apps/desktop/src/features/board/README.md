@@ -8,8 +8,9 @@ Mounted from `app/repo/components/RepoWorkspace.tsx`, as one of the repo tab's t
 
 **The board view is three slots of the repo tab, not one.** Since the tab's chrome became scoped to
 the active view, this feature supplies the central area (`BoardPage`), the left panel
-(`BoardSidebar`, the repo's boards) and the toolbar's middle section (`BoardToolbar`, everything that
-acts on the board). They are mounted in three different places by `RepoWorkspace` and `ActionToolbar`
+(`BoardSidebar`, the repo's boards and the field that filters the open one) and the toolbar's
+middle section (`BoardToolbar`, everything that acts on the board, plus the global ticket search).
+They are mounted in three different places by `RepoWorkspace` and `ActionToolbar`
 and are joined by `stores/boardDialogs.store.ts`: a button in the toolbar opens a dialog rendered
 inside the page by writing that store, rather than by fifteen callbacks threaded up through the app.
 
@@ -28,9 +29,22 @@ production barrel.
 | `api/`        | The IPC/HTTP boundary — the `BoardBackend` contract and its two implementations, plus the card ⇄ issue mapping. The **only** place in the feature allowed to reach `lib/tauri` or a GitHub endpoint. |
 | `components/` | Every view, from the card face to the fourteen dialogs, plus the two chrome slots (`BoardToolbar`, `BoardSidebar`). Presentational; they receive handlers or write a store. |
 | `hooks/`      | Data and UI state. `useBoardData` composes the six write-scoped hooks beside it.                 |
-| `lib/`        | Pure logic, no React: identifier derivation, badge ink, link inverse-resolution, move targets (per card *and* per column), sprint statistics, iteration naming, checklist parsing, attachment markdown. |
+| `lib/`        | Pure logic, no React: identifier derivation, badge ink, link inverse-resolution, move targets (per card *and* per column), sprint statistics, iteration naming, checklist parsing, attachment markdown, cross-board ticket ranking. |
 | `stores/`     | Three Zustand stores — persisted selection and fold state, the search box and list filters, and which dialog is open. |
 | `test/`       | `makeBoard`/`makeCard`/`makeBoardData` factories, shared by every suite in the feature.            |
+
+## Two searches, and why
+
+- **The board-scoped filter** — a field at the top of `BoardSidebar`, writing `boardControls.search`,
+  applied by `BoardPage`. It narrows the board on screen, archived cards included, and answers
+  "which of these am I looking for". ⌘F focuses it, as it focuses the left panel's filter on every
+  view.
+- **The global search** — `BoardSearchDialog`, raised from the toolbar's search button through
+  `boardDialogs.store`. It answers "where is GM-7", which has no reason to begin by asking which
+  board GM-7 is on. It reads every board once (`useAllBoardCards`, gated on the dialog being open,
+  since that is one board detail fetch per board), ranks with `lib/searchCards.ts`, and on select
+  switches to the card's board *before* opening the card dialog — that dialog resolves its id out of
+  the open board's live card list, so the order is load-bearing.
 
 ## What is deliberately *not* here
 

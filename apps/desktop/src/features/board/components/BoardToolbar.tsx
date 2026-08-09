@@ -2,7 +2,6 @@ import { useTranslation } from '@git-manager/i18n'
 import { ToolbarButton } from '@git-manager/components'
 import { Archive, FlagOff, ListPlus, Plus, Search, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useBoardData } from '../hooks/useBoardData'
-import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
 import { isIterationBoard } from '../lib/boardIteration'
 
@@ -30,7 +29,6 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
   const { t } = useTranslation('board')
   const { activeBoard, cards, canUseRemote } = useBoardData(repoPath)
 
-  const toggleSearch = useBoardControlsStore((s) => s.toggleSearch)
   const openDialog = useBoardDialogsStore((s) => s.open)
   const setCardDialog = useBoardDialogsStore((s) => s.setCardDialog)
 
@@ -119,15 +117,15 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
 
       <div className="bg-border mx-1 h-6 w-px shrink-0" />
 
-      {/* Last, as on every view — and a button rather than a field standing open on the bar: the
-          field appears over the board it filters (`BoardSearchPanel`). Search is the one action all
-          three views share, so it sits in the same place on each; a control whose position depends
-          on the view is one you have to look for every time you switch. */}
+      {/* Last, as on every view. This is the *global* search — every ticket of every board — where
+          the field in the left panel filters the board on screen. Two searches because they answer
+          two questions: "where is that ticket" has no reason to start by asking which board it is
+          on, and "narrow what I am looking at" has no reason to leave it. */}
       <ToolbarButton
         icon={<Search className="text-muted-foreground h-4 w-4" />}
         label={t('git:toolbar.searchLabel')}
-        title={`${t('page.searchPlaceholder')} (⌘F)`}
-        onClick={toggleSearch}
+        title={t('search.title')}
+        onClick={() => openDialog('globalSearch')}
         data-testid="board-search-button"
       />
     </>

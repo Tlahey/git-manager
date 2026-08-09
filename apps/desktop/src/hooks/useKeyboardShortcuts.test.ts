@@ -46,7 +46,7 @@ beforeEach(() => {
   // ⌘F dispatches on the active view, so every test below states which one it is looking at.
   useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   useFileExplorerStore.setState({ treeSearchQuery: '' })
-  useBoardControlsStore.setState({ isSearchOpen: false, search: '' })
+  useBoardControlsStore.setState({ search: '' })
   plainEl = document.createElement('div')
   inputEl = document.createElement('input')
   document.body.append(plainEl, inputEl)
@@ -527,10 +527,11 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
 })
 
 /**
- * ⌘F means "search what I am looking at". Each of the three views has exactly one search, which is
- * what lets one chord serve all of them without a disambiguating modifier — and what makes the
- * *wrong* view answering it a real bug rather than a nuisance: the graph's panel over a board would
- * search commits nobody asked about while the cards stayed unfiltered.
+ * ⌘F means "search what I am looking at". On the files and board views that is the left panel's own
+ * filter field; on the graph it is the commit search, which is a different search from the branch
+ * filter ⌥⌘F raises. What makes the wrong view answering it a real bug rather than a nuisance: the
+ * graph's panel over a board would search commits nobody asked about while the cards stayed
+ * unfiltered.
  */
 describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
   function press() {
@@ -544,52 +545,39 @@ describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
   }
 
-  /** On this view the search is the left panel's own field, so ⌘F raises it the way ⌥⌘F does —
-   * a focus request rather than a panel of its own. */
-  it('asks the files panel for its filter, and opens nobody else’s search', () => {
+  it.each(['files', 'board'] as const)('asks the %s panel for its filter', (view) => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'files' })
+    useRepoViewStore.setState({ view })
     press()
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
     expect(useCommitSearchStore.getState().open).toBe(false)
-    expect(useBoardControlsStore.getState().isSearchOpen).toBe(false)
   })
 
-  it('brings the files panel back before asking its filter for focus', () => {
+  it('brings the panel back before asking its filter for focus', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'files', isPanelOpen: false })
+    useRepoViewStore.setState({ view: 'board', isPanelOpen: false })
     press()
     expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 
-  it('opens the card search on the board, and nobody else’s', () => {
+  it('opens the commit search on the graph, and nobody else’s', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'board' })
     press()
-    expect(useBoardControlsStore.getState().isSearchOpen).toBe(true)
-    expect(useCommitSearchStore.getState().open).toBe(false)
+    expect(useCommitSearchStore.getState().open).toBe(true)
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
-  })
-
-  it('toggles the board’s search back closed', () => {
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'board' })
-    useBoardControlsStore.setState({ isSearchOpen: true })
-    press()
-    expect(useBoardControlsStore.getState().isSearchOpen).toBe(false)
   })
 
   /**
    * `isCommitsView` gates the graph alone: its panel only exists over the plain commit list. The
-   * other two views draw their own panel unconditionally, so a PR open in the centre slot — which
+   * other two views draw their filter unconditionally, so a PR open in the centre slot — which
    * belongs to the graph — must not stop the board from answering ⌘F.
    */
   it('still answers on the board while a pull request occupies the graph’s centre slot', () => {
     useRepoUIStore.setState({ activeRepo: '/repo', activePrNumber: 42 })
     useRepoViewStore.setState({ view: 'board' })
     press()
-    expect(useBoardControlsStore.getState().isSearchOpen).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 })
 

@@ -81,7 +81,7 @@ describe('BoardPage', () => {
     expect(screen.getByText('Second task')).toBeInTheDocument()
   })
 
-  it('filters cards by the search the toolbar opens', async () => {
+  it('filters cards by the panel’s own search field', async () => {
     useBoardData.mockReturnValue(
       baseHookState({
         boards: [board()],
@@ -91,8 +91,7 @@ describe('BoardPage', () => {
     )
     renderBoardView()
 
-    await userEvent.click(screen.getByTestId('board-search-button'))
-    await userEvent.type(screen.getByTestId('board-search-panel-input'), 'Second')
+    await userEvent.type(screen.getByTestId('board-search-input'), 'Second')
 
     expect(screen.getByText('Second task')).toBeInTheDocument()
     expect(screen.queryByText('Fix the header')).not.toBeInTheDocument()
@@ -535,8 +534,7 @@ describe('BoardPage — archived cards', () => {
     renderBoardView()
     expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByTestId('board-search-button'))
-    await userEvent.type(screen.getByTestId('board-search-panel-input'), 'Buried')
+    await userEvent.type(screen.getByTestId('board-search-input'), 'Buried')
     expect(screen.getByTestId('board-card-c2')).toBeInTheDocument()
     expect(screen.getByTestId('board-card-archived')).toBeInTheDocument()
   })

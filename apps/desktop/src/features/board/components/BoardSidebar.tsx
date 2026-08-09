@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Checkbox } from '@git-manager/ui'
-import { Kanban, Plus } from 'lucide-react'
+import { Button, Checkbox, Input } from '@git-manager/ui'
+import { Kanban, Plus, Search, X } from 'lucide-react'
 import type { Board } from '@git-manager/git-types'
 import { useBoardData } from '../hooks/useBoardData'
 import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
+import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 
 interface BoardSidebarProps {
   repoPath: string
@@ -27,11 +28,23 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
   const { t } = useTranslation('board')
   const { boards, boardsLoading, activeBoard, setActiveBoard } = useBoardData(repoPath)
 
+  const search = useBoardControlsStore((s) => s.search)
+  const setSearch = useBoardControlsStore((s) => s.setSearch)
   const showClosed = useBoardControlsStore((s) => s.showClosed)
   const setShowClosed = useBoardControlsStore((s) => s.setShowClosed)
   const showDeleted = useBoardControlsStore((s) => s.showDeleted)
   const setShowDeleted = useBoardControlsStore((s) => s.setShowDeleted)
   const openDialog = useBoardDialogsStore((s) => s.open)
+
+  // ⌘F on this view, and ⌥⌘F everywhere: both raise the *left panel's* filter. On the graph that is
+  // the branch list's field, on the files view the tree's, and here this one.
+  const focusToken = useSidebarSearchStore((s) => s.focusToken)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focusToken === 0) return
+    searchInputRef.current?.focus()
+    searchInputRef.current?.select()
+  }, [focusToken])
 
   /**
    * Closed sprints and deleted boards stay listed but out of the way, each behind its own toggle.
@@ -69,6 +82,36 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
         >
           <Plus className="h-4 w-4" />
         </Button>
+      </div>
+
+      {/* Filters the *board on screen*, not the list below it — this is the "find a ticket in what
+          I am looking at" search, and the toolbar's button is the one that looks everywhere. It sits
+          here because that is where every view's filter sits now, and because the board it narrows
+          is named right above it. */}
+      <div className="border-sidebar-border shrink-0 border-b px-2 py-1.5">
+        <Input
+          ref={searchInputRef}
+          variant="chrome"
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('page.searchPlaceholder')}
+          aria-label={t('page.searchPlaceholder')}
+          className="h-7 text-xs shadow-none"
+          startIcon={<Search className="h-3.5 w-3.5" />}
+          endIcon={
+            search ? (
+              <button
+                onClick={() => setSearch('')}
+                aria-label={t('git:sidebar.clearFilter')}
+                className="text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-4 w-4 cursor-pointer items-center justify-center rounded"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            ) : undefined
+          }
+          data-testid="board-search-input"
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-1">
