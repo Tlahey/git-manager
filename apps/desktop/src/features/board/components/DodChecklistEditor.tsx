@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Checkbox, Input } from '@git-manager/ui'
 import { Plus, Trash2 } from 'lucide-react'
@@ -16,9 +16,13 @@ interface DodChecklistEditorProps {
 /**
  * Edits a Definition of Done as the list of items it is, rather than as the markdown it is stored as.
  *
- * Shared by a card's checklist and a board's template so the two are edited the same way — the
- * template used to be a raw markdown box, which asked the user to know the `- [ ]` syntax to fill in
- * a list of sentences.
+ * Shared by a card's checklist, a board's template and the new-card form so the three are edited the
+ * same way — each of them used to be a raw markdown box, which asked the user to know the `- [ ]`
+ * syntax to fill in a list of sentences.
+ *
+ * The last row is a live draft field rather than a button that spawns an empty item: an item with no
+ * text is not a state the stored markdown can hold, so a row is only added once there is something
+ * to add — by Enter, by leaving the field, or by the `+` beside it.
  *
  * Items are addressed by line number, so anything in the document that isn't a checkbox survives
  * untouched — see `dodChecklist.ts`.
@@ -31,12 +35,23 @@ export function DodChecklistEditor({
 }: DodChecklistEditorProps) {
   const { t } = useTranslation('board')
   const [draftItem, setDraftItem] = useState('')
+  const draftRef = useRef<HTMLInputElement>(null)
   const items = parseDodItems(value)
 
   function submitDraft() {
     if (!draftItem.trim()) return
     onChange(addItem(value, draftItem))
     setDraftItem('')
+  }
+
+  /**
+   * The `+` commits what is typed and hands the caret straight back, so a template is filled in one
+   * pass rather than one click per item; on an empty draft it is simply the way into the field, which
+   * is what makes the affordance discoverable to someone who never tried typing in the row below it.
+   */
+  function addFromButton() {
+    submitDraft()
+    draftRef.current?.focus()
   }
 
   return (
@@ -103,8 +118,21 @@ export function DodChecklistEditor({
 
       {!disabled && (
         <div className="flex items-center gap-2 pt-0.5">
-          <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
+          {/* `onMouseDown` is prevented so the draft field keeps focus: the blur handler would
+              otherwise commit the item first and leave this click with nothing to add. */}
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={addFromButton}
+            title={t('card.dod.addItemAction')}
+            aria-label={t('card.dod.addItemAction')}
+            data-testid="card-dod-add-button"
+            className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
           <Input
+            ref={draftRef}
             variant="ghost"
             inputSize="sm"
             value={draftItem}

@@ -73,6 +73,7 @@
   "card.dod.progress": "{{done}}/{{total}}",
   "card.dod.empty": "No checklist on this card.",
   "card.dod.addItem": "Add an item…",
+  "card.dod.addItemAction": "Add this item",
   "card.dod.removeItem": "Remove this item",
   "card.blocked.label": "Blocked",
   "card.blocked.reasonPlaceholder": "What is this waiting on?",

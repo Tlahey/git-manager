@@ -76,9 +76,10 @@ describe('BoardCardDialog — create', () => {
     expect(screen.getByTestId('board-card-save')).toBeDisabled()
   })
 
-  it('seeds the checklist from the board template and passes on what was typed', async () => {
+  it('seeds the checklist from the board template and passes it on', async () => {
     const onCreate = renderCreate({ dodTemplate: '- [ ] Tests pass' })
-    expect(screen.getByTestId('board-card-dod-input')).toHaveValue('- [ ] Tests pass')
+    // A list of the template's items, not the markdown they are stored as.
+    expect(screen.getByTestId('card-dod-text-0')).toHaveValue('Tests pass')
 
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
     await userEvent.click(screen.getByTestId('board-card-save'))
@@ -89,6 +90,39 @@ describe('BoardCardDialog — create', () => {
       prefix: 'GM',
       kind: 'task',
     })
+  })
+
+  /** The point of the list: an item the project proposes by default can be dropped for this card
+   * without editing markdown, which is what the textarea asked for. */
+  it('drops an item the template proposed', async () => {
+    const onCreate = renderCreate({ dodTemplate: '- [ ] Tests pass\n- [ ] Reviewed' })
+
+    await userEvent.click(screen.getByTestId('card-dod-remove-0'))
+    await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
+    await userEvent.click(screen.getByTestId('board-card-save'))
+
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ dod: '- [ ] Reviewed' }))
+  })
+
+  it('adds an item of its own from the + beside the draft row', async () => {
+    const onCreate = renderCreate({ dodTemplate: '- [ ] Tests pass' })
+
+    await userEvent.type(screen.getByTestId('card-dod-add-input'), 'Changelog updated')
+    await userEvent.click(screen.getByTestId('card-dod-add-button'))
+
+    await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
+    await userEvent.click(screen.getByTestId('board-card-save'))
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ dod: '- [ ] Tests pass\n- [ ] Changelog updated' })
+    )
+  })
+
+  /** Nothing is done on a card that does not exist yet, so the template's items are listed without
+   * tick boxes — the same reading `BoardSettingsDialog` gives the template it comes from. */
+  it('offers no tick boxes on a card that has not been created', () => {
+    renderCreate({ dodTemplate: '- [ ] Tests pass' })
+    expect(screen.queryByTestId('card-dod-check-0')).not.toBeInTheDocument()
   })
 
   it('shows no metadata sidebar — there is no card to attach it to yet', () => {
