@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useBoardStore } from './board.store'
 
 beforeEach(() => {
-  useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedColumns: {}, collapsedCardSections: {} })
+  useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedCardSections: {} })
   localStorage.clear()
 })
 
@@ -17,23 +17,6 @@ describe('board.store', () => {
     })
   })
 
-  it('toggles a column collapsed and back', () => {
-    const { toggleColumnCollapsed, isColumnCollapsed } = useBoardStore.getState()
-    expect(isColumnCollapsed('board-1', 'todo')).toBe(false)
-
-    toggleColumnCollapsed('board-1', 'todo')
-    expect(useBoardStore.getState().isColumnCollapsed('board-1', 'todo')).toBe(true)
-
-    useBoardStore.getState().toggleColumnCollapsed('board-1', 'todo')
-    expect(useBoardStore.getState().isColumnCollapsed('board-1', 'todo')).toBe(false)
-  })
-
-  it('keeps collapsed state independent per board even for the same column id', () => {
-    useBoardStore.getState().toggleColumnCollapsed('board-1', 'todo')
-    expect(useBoardStore.getState().isColumnCollapsed('board-1', 'todo')).toBe(true)
-    expect(useBoardStore.getState().isColumnCollapsed('board-2', 'todo')).toBe(false)
-  })
-
   /** Per section, not per card: folding the checklist again on every card opened would make the
    * preference worthless. */
   it('folds a card-dialog section for every card at once', () => {
@@ -43,11 +26,5 @@ describe('board.store', () => {
 
     useBoardStore.getState().toggleCardSectionCollapsed('card-dod')
     expect(useBoardStore.getState().isCardSectionCollapsed('card-dod')).toBe(false)
-  })
-
-  /** A column and a section could otherwise collide on a shared key space. */
-  it('keeps card sections and collapsed columns apart', () => {
-    useBoardStore.getState().toggleCardSectionCollapsed('board-1:todo')
-    expect(useBoardStore.getState().isColumnCollapsed('board-1', 'todo')).toBe(false)
   })
 })

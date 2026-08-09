@@ -22,7 +22,8 @@ function renderCreate(props: Partial<React.ComponentProps<typeof BoardCardDialog
       repoPath="/repo"
       tags={TAGS}
       dodTemplate=""
-      cardPrefixes={[]}
+      // A board always offers at least one prefix (`offeredCardPrefixes`), and the form requires one.
+      cardPrefixes={['GM']}
       onCreate={onCreate}
       {...(props as object)}
     />
@@ -65,7 +66,7 @@ describe('BoardCardDialog — create', () => {
       title: 'Fix the header',
       description: 'It overlaps',
       dod: '',
-      prefix: '',
+      prefix: 'GM',
       kind: 'task',
     })
   })
@@ -85,7 +86,7 @@ describe('BoardCardDialog — create', () => {
       title: 'Task',
       description: '',
       dod: '- [ ] Tests pass',
-      prefix: '',
+      prefix: 'GM',
       kind: 'task',
     })
   })
@@ -121,41 +122,54 @@ describe('BoardCardDialog — create', () => {
 describe('BoardCardDialog — create, prefix and kind', () => {
   it('starts on the board’s first prefix, which is the one it was created with', async () => {
     const onCreate = renderCreate({ cardPrefixes: ['GM', 'BUG'] })
-    expect(screen.getByTestId('card-prefix-select')).toHaveValue('GM')
+    expect(screen.getByTestId('card-prefix-input')).toHaveValue('GM')
 
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
     await userEvent.click(screen.getByTestId('board-card-save'))
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'GM' }))
   })
 
-  it('lets the card opt out of an identifier on a board that has sequences', async () => {
-    const onCreate = renderCreate({ cardPrefixes: ['GM'] })
-    await userEvent.selectOptions(screen.getByTestId('card-prefix-select'), '')
+  it('takes another of the board’s sequences from the list', async () => {
+    const onCreate = renderCreate({ cardPrefixes: ['GM', 'BUG'] })
+
+    await userEvent.click(screen.getByTestId('card-prefix-input'))
+    await userEvent.click(screen.getByTestId('card-prefix-option-BUG'))
 
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
     await userEvent.click(screen.getByTestId('board-card-save'))
-    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ prefix: '' }))
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'BUG' }))
   })
 
-  /** The new prefix reaches the card straight away; the *board* picks it up from the same write that
-   * allocates the number, so no separate board save happens here. */
-  it('starts a new sequence from the dialog, uppercased', async () => {
+  /** The typed prefix reaches the card straight away; the *board* picks it up from the same write
+   * that allocates the number, so no separate board save happens here. */
+  it('starts a new sequence by typing it, uppercased', async () => {
     const onCreate = renderCreate({ cardPrefixes: ['GM'] })
 
-    await userEvent.click(screen.getByTestId('card-prefix-add'))
-    await userEvent.type(screen.getByTestId('card-prefix-new-input'), 'ops')
-    await userEvent.click(screen.getByTestId('card-prefix-new-confirm'))
-    expect(screen.getByTestId('card-prefix-select')).toHaveValue('OPS')
+    await userEvent.clear(screen.getByTestId('card-prefix-input'))
+    await userEvent.type(screen.getByTestId('card-prefix-input'), 'ops')
+    expect(screen.getByTestId('card-prefix-input')).toHaveValue('OPS')
 
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
     await userEvent.click(screen.getByTestId('board-card-save'))
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'OPS' }))
   })
 
+  /** Every ticket gets an identifier, so an emptied prefix is an unfinished form, not a choice. */
+  it('will not create a card with no prefix', async () => {
+    renderCreate({ cardPrefixes: ['GM'] })
+
+    await userEvent.type(screen.getByTestId('board-card-title-input'), 'Task')
+    expect(screen.getByTestId('board-card-save')).toBeEnabled()
+
+    await userEvent.clear(screen.getByTestId('card-prefix-input'))
+    expect(screen.getByTestId('board-card-save')).toBeDisabled()
+  })
+
   it('creates a task unless another kind is picked', async () => {
     const onCreate = renderCreate()
 
-    await userEvent.click(screen.getByTestId('card-kind-option-bug'))
+    await userEvent.click(screen.getByTestId('card-kind-select'))
+    await userEvent.click(screen.getByTestId('card-kind-bug-option'))
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'Crash on open')
     await userEvent.click(screen.getByTestId('board-card-save'))
 

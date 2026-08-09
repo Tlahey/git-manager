@@ -98,7 +98,6 @@ export const SECTION_SCHEMAS = {
 
   board: z.object({
     activeBoardIdByRepo: z.record(z.string(), z.string()),
-    collapsedColumns: z.record(z.string(), z.boolean()),
     collapsedCardSections: z.record(z.string(), z.boolean()),
   }),
 

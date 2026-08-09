@@ -1,33 +1,51 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CardKindPicker } from './CardKindPicker'
 
 describe('CardKindPicker', () => {
-  it('shows all three kinds at once, named', () => {
-    render(<CardKindPicker value="task" onChange={vi.fn()} />)
-    expect(screen.getByRole('radio', { name: /Task/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Bug/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Epic/ })).toBeInTheDocument()
+  it('shows the current kind with its colour, closed', () => {
+    render(<CardKindPicker value="epic" onChange={vi.fn()} />)
+    const trigger = screen.getByTestId('card-kind-select')
+    expect(trigger).toHaveTextContent('Epic')
+    // The tile the board recognises an epic by, in the field itself — what a native select overdrew.
+    expect(within(trigger).getByTestId('card-kind-epic')).toBeInTheDocument()
   })
 
-  it('marks the current kind as the selected radio', () => {
-    render(<CardKindPicker value="epic" onChange={vi.fn()} />)
-    expect(screen.getByRole('radio', { name: /Epic/ })).toBeChecked()
-    expect(screen.getByRole('radio', { name: /Task/ })).not.toBeChecked()
+  it('offers all three kinds, named and coloured', async () => {
+    render(<CardKindPicker value="task" onChange={vi.fn()} />)
+
+    await userEvent.click(screen.getByTestId('card-kind-select'))
+
+    for (const [kind, label] of [
+      ['task', 'Task'],
+      ['bug', 'Bug'],
+      ['epic', 'Epic'],
+    ] as const) {
+      const option = screen.getByTestId(`card-kind-${kind}-option`)
+      expect(option).toHaveTextContent(label)
+      expect(within(option).getByTestId(`card-kind-${kind}`)).toBeInTheDocument()
+    }
   })
 
   it('reports the picked kind', async () => {
     const onChange = vi.fn()
     render(<CardKindPicker value="task" onChange={onChange} />)
-    await userEvent.click(screen.getByTestId('card-kind-option-bug'))
+
+    await userEvent.click(screen.getByTestId('card-kind-select'))
+    await userEvent.click(screen.getByTestId('card-kind-bug-option'))
+
     expect(onChange).toHaveBeenCalledWith('bug')
   })
 
-  it('picks nothing while disabled', async () => {
+  it('opens nothing while disabled', async () => {
     const onChange = vi.fn()
     render(<CardKindPicker value="task" onChange={onChange} disabled />)
-    await userEvent.click(screen.getByTestId('card-kind-option-bug'))
+
+    expect(screen.getByTestId('card-kind-select')).toBeDisabled()
+    await userEvent.click(screen.getByTestId('card-kind-select'))
+
+    expect(screen.queryByTestId('card-kind-bug-option')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

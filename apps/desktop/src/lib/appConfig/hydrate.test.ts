@@ -68,7 +68,6 @@ const SECTIONS: Record<(typeof CONFIG_SECTIONS)[number], { state: unknown; check
     board: {
       state: {
         activeBoardIdByRepo: { '/repo': 'board-1' },
-        collapsedColumns: {},
         collapsedCardSections: {},
       },
       check: () => useBoardStore.getState().activeBoardIdByRepo,

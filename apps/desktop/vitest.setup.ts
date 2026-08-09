@@ -25,9 +25,9 @@ afterEach(() => {
 // recompute connector geometry on resize. Tests don't need real resize behavior, just a stub
 // that doesn't throw.
 class ResizeObserverStub {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 globalThis.ResizeObserver ??= ResizeObserverStub
 
@@ -69,7 +69,14 @@ globalThis.IntersectionObserver ??=
 // jsdom doesn't implement scrollIntoView — cmdk (the Command list backing the command palette and
 // settings' provider combobox) calls it unconditionally on mount/selection to keep the highlighted
 // item in view, with no optional chaining we can rely on since it's third-party code.
-Element.prototype.scrollIntoView ??= () => { }
+Element.prototype.scrollIntoView ??= () => {}
+
+// jsdom implements no pointer capture at all — Radix's Select trigger (the board's card-kind picker)
+// calls `hasPointerCapture` on every pointerdown and throws without it, so the menu could not be
+// opened from a test. Capture is a no-op here: nothing in jsdom re-targets pointer events anyway.
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.setPointerCapture ??= () => {}
+Element.prototype.releasePointerCapture ??= () => {}
 
 // jsdom doesn't schedule real frames — fall back to a macrotask so `scheduleRecompute`'s
 // rAF-coalesced connector redraw still resolves deterministically in tests.
