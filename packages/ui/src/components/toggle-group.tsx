@@ -94,7 +94,7 @@ export function ToggleGroup<T extends string = string>({
           <label
             data-testid={option.testId}
             className={cn(
-              'flex items-center justify-center rounded-[5px] transition-colors',
+              'relative flex items-center justify-center rounded-[5px] transition-colors',
               disabled ? 'cursor-not-allowed' : 'cursor-pointer',
               // The only thing a shape changes: how much room the segment needs. `stacked`
               // borrows `ToolbarButton`'s metrics — 16px icon over a 10px label — so a group of
@@ -150,6 +150,27 @@ export function ToggleGroup<T extends string = string>({
                   {option.icon}
                 </span>
                 <span className="text-[10px] leading-none">{option.label}</span>
+                {/* An accent underline, on top of the fill — because on a `.chrome-surface`
+                    (the app toolbar, which is the only place this variant is used) the fill is
+                    not there. That block remaps `--muted` to the bar's own background, so the
+                    recessed track vanishes on every theme, and `--button-bg` to
+                    `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the
+                    bar — on solarized-light the two are the *same colour*. Accents are the one
+                    family `.chrome-surface` deliberately leaves alone, so `--primary` is the only
+                    thing here guaranteed to differ from the surface on every theme.
+
+                    Both markers ride together rather than one replacing the other: on a content
+                    surface the fill is `--primary` and swallows this bar, on the chrome the bar
+                    is all there is. Each covers the other's blind spot, and it is a bare graphic
+                    — no text on it, so nothing to grade. It is also the idiom the app already
+                    uses for "this one is active" in its tab strips. */}
+                {checked && (
+                  <span
+                    aria-hidden="true"
+                    data-testid="toggle-group-indicator"
+                    className="bg-primary absolute inset-x-1.5 bottom-0.5 h-0.5 rounded-full"
+                  />
+                )}
               </>
             ) : option.icon ? (
               <>

@@ -267,6 +267,49 @@ describe('ToggleGroup — stacked segments', () => {
     expect(unselected.className).not.toContain('text-muted-foreground')
   })
 
+  /**
+   * The fill alone cannot carry selection here. `.chrome-surface` — the app toolbar, the only place
+   * this variant is used — remaps `--muted` to the bar's own background (so the track vanishes on
+   * every theme) and `--button-bg` to `--sidebar-accent`, which 9 of the 14 shipped themes set
+   * within 10 L% of the bar; on solarized-light they are the same colour. The accent is the one
+   * family that block leaves alone.
+   */
+  it('marks the selected segment with an accent indicator, not the fill alone', () => {
+    const { rerender } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const indicator = () => screen.queryAllByTestId('toggle-group-indicator')
+    expect(indicator()).toHaveLength(1)
+    expect(indicator()[0].className).toContain('bg-primary')
+    expect(indicator()[0]).toHaveAttribute('aria-hidden', 'true')
+
+    rerender(
+      <ToggleGroup
+        variant="stacked"
+        value="files"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    // It follows the selection rather than accumulating one per segment ever selected.
+    expect(indicator()).toHaveLength(1)
+    expect(indicator()[0].closest('label')).toHaveTextContent('Files')
+  })
+
+  /** The other two shapes sit on content surfaces, where the fill is `--primary` and reads on its
+   * own — they keep the treatment they were graded with. */
+  it('leaves the icon-only and text shapes without an indicator', () => {
+    const { container } = render(
+      <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />
+    )
+    expect(container.querySelector('[data-testid="toggle-group-indicator"]')).toBeNull()
+  })
+
   it('wears the same selected treatment as the other shapes', () => {
     const { container } = render(
       <ToggleGroup
