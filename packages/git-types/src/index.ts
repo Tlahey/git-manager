@@ -982,8 +982,6 @@ export interface RepoScopedSettings {
   terminalBackground?: string
   /** Overrides `appearance.terminalForeground` (integrated terminal text colour) for this repo. */
   terminalForeground?: string
-  /** Overrides `appearance.viewSwitcherPosition` for this repo. */
-  viewSwitcherPosition?: ViewSwitcherPosition
   /** Glob patterns for gitignored local files (`.env`, local config, …) to copy from this repo
    * into every newly created worktree. Per-repo only — there is no global fallback, so an absent
    * value means "no default files". See `WorktreeAddResult` for the copy outcome. */
@@ -1134,11 +1132,6 @@ export interface GitSettings {
   autoFetchIntervalMinutes?: number
 }
 
-/** Where the repo tab's Graph/Files/Board switcher lives: `'toolbar'` is today's pair of toggle
- * buttons in `ActionToolbar`; `'tabs'` replaces them with a horizontal tab strip below the toolbar —
- * Graph, Files, and one tab per board — via `RepoViewTabBar`. Per-repo overridable. */
-export type ViewSwitcherPosition = 'toolbar' | 'tabs'
-
 export interface AppearanceSettings {
   theme: string
   fontSize: number
@@ -1161,9 +1154,6 @@ export interface AppearanceSettings {
    * native material already lightens it, so a fixed default is either invisible on
    * one desktop or unreadable on another. */
   glassTransparency?: number
-  /** See {@link ViewSwitcherPosition}. Defaults to `'toolbar'` — today's behavior. Per-repo
-   * overridable via `RepoScopedSettings.viewSwitcherPosition`. */
-  viewSwitcherPosition: ViewSwitcherPosition
 }
 
 export interface UserTheme {

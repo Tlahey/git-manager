@@ -114,6 +114,6 @@ Beyond the [shared ones](./README.md#known-limitations):
 | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | [`summarySearch.test.ts`](../../packages/ai/src/features/summarySearch.test.ts)                            | prompt shape, tail-dropping under budget, match validation, parse tolerance     |
 | [`searchDailySummaries.test.ts`](../../apps/desktop/src/lib/searchDailySummaries.test.ts)                  | AND semantics, weighting, whole-word bonus, tie-breaks, regex safety            |
-| [`useSummarySearch.test.ts`](../../apps/desktop/src/hooks/useSummarySearch.test.ts)                        | question-vs-filter ranking, the candidate cap, the empty-match fallback, errors |
+| [`useSummarySearch.test.ts`](../../apps/desktop/src/features/graph/hooks/useSummarySearch.test.ts)                        | question-vs-filter ranking, the candidate cap, the empty-match fallback, errors |
 | [`SummaryAskPanel.test.tsx`](../../apps/desktop/src/components/daily-summaries/SummaryAskPanel.test.tsx)   | submit gating, the disabled state, answer and citation rendering                |
-| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.test.tsx) | that the model's shortlist never leaves the open repository                     |
+| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/features/graph/components/DailySummariesPanel.test.tsx) | that the model's shortlist never leaves the open repository                     |

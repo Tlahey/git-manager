@@ -75,7 +75,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 
 **A feature large enough to span several layers lives in one folder, not scattered across the app's layer folders.** `apps/desktop/src/features/<name>/` holds everything that feature is — its page, its components, its hooks, its API wrappers, its stores, its pure logic and its test factories — so that finding it, reviewing it, and knowing what a change touches are all one lookup instead of five.
 
-[features/board/](apps/desktop/src/features/board/) is the reference implementation and carries a `README.md` describing its own layout; copy that shape:
+The three views of a repo tab are the worked examples, each with its own `README.md`: [features/graph/](apps/desktop/src/features/graph/) (the largest), [features/board/](apps/desktop/src/features/board/) (the reference implementation) and [features/files/](apps/desktop/src/features/files/) (the smallest). Copy that shape:
 
 ```
 features/<name>/
@@ -90,7 +90,7 @@ features/<name>/
   test/              factories shared by the feature's suites
 ```
 
-- **`index.ts` is the boundary, and it is the thing that makes the folder one.** Outside code imports `from '../../features/<name>'`, never from a path inside it, so "the app depends on this" is one `grep` away instead of a reading of forty files. Keep the surface narrow — `features/board/index.ts` exports four names, and widening it is a decision about coupling that should be visible in a diff. Test factories are the one sanctioned exception: a suite may reach `features/<name>/test/…` directly, since shipping builders through the production barrel would put them in the bundle.
+- **`index.ts` is the boundary, and it is the thing that makes the folder one.** Outside code imports `from '../../features/<name>'`, never from a path inside it, so "the app depends on this" is one `grep` away instead of a reading of forty files. Keep the surface narrow — `features/files/index.ts` exports four names, and widening it is a decision about coupling that should be visible in a diff. Test factories are the one sanctioned exception: a suite may reach `features/<name>/test/…` directly, since shipping builders through the production barrel would put them in the bundle.
 
 - **The layering rules above still apply inside a feature.** `features/<name>/api/` is an `api/*.api.ts` layer, subject to the same hard invariant: components, hooks and stores go through it, never through `lib/tauri.ts`. Moving a feature into its own folder is a change of *address*, never of architecture.
 - **What stays outside**: the DTOs (`packages/git-types`, because Rust mirrors them), the copy (`packages/i18n`), the Rust half (`src-tauri/`), and anything genuinely shared with another feature — which belongs in `src/components/`, `src/hooks/` or a package, not in a second feature's folder.
@@ -98,13 +98,15 @@ features/<name>/
 - **Not a package.** A feature folder is not a step towards `packages/<name>`: a feature reaches the app's IPC layer, its stores and its shared components, so extracting it would either drag the app in behind it or turn fifteen imports into injected dependencies. `packages/*` stays horizontal (primitives, DTOs, i18n, theme, AI runtime); `features/*` is vertical and stays in the app. `features/board/README.md` states this at length.
 - Pages that aren't features stay under `app/`. `app/` and `features/` coexist; migrating an existing page is worth it only when it is already spread across `app/`, `hooks/`, `api/` and `stores/`.
 
+**A repo tab's chrome is scoped to the view on screen.** Which of the three views a repo tab shows — the commit graph, the project files, the Kanban board — is [stores/repoView.store.ts](apps/desktop/src/stores/repoView.store.ts)'s single `view` slot, and the toolbar, the left panel and the branch context all follow it. `ActionToolbar` keeps two things whatever you are looking at — the repo selector and the panel toggle on the left, the view switcher and ⌘K on the right — and hands its middle to the active view (`GraphToolbarActions`, `BoardToolbar`; the files view supplies none, which is the split working rather than a gap in it). `RepoWorkspace` gives the panel slot to that view's own navigation: branch sidebar, working tree, board list. The branch context obeys the same rule as the commands — it is on the bar for the two views that read the checked-out branch and off it on the board, which never touches it. Two exceptions, each stated where it is enforced: blame/history belongs to a *file* rather than a view, so it takes the panel slot on both views that can open a diff; and `isPanelOpen` is one flag whose *meaning* each panel answers for itself — the graph's sidebar reduces to its icon rail, the other two leave the slot. Each view's search sits next to what it narrows: the panel's filter for the panel's own list, ⌘F for the view's subject (commits on the graph, the tree on files, every ticket of every board on the board).
+
 ### Frontend organization rules (from `.agents/AGENTS.md`)
 
 - **1 feature = 1 component**: don't nest large sub-components (rows, cards, sections) inside a parent page file.
 - Split logical child components into a local `components/` folder next to the page (e.g. `app/dashboard/components/`), or into the feature's own `components/` when it has one — see "Feature folders" above.
 - All Tauri IPC / HTTP calls go through `src/api/*.api.ts` files named by domain — never invoke `invoke()` or `fetch()` directly inside a component.
 - Add `data-testid` attributes to interactive/structural elements (buttons, rows, panels) to ease debugging — no test framework currently consumes these, but the convention is followed throughout the codebase.
-- When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [components/git-graph/columns.config.ts](apps/desktop/src/components/git-graph/columns.config.ts) for the existing shape to follow.
+- When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [features/graph/lib/columns.config.ts](apps/desktop/src/features/graph/lib/columns.config.ts) for the existing shape to follow.
 - Do not attempt to browser-test this app (see note above) — it's Tauri-only.
 
 ### UI components: consume-first (do not re-invent primitives)

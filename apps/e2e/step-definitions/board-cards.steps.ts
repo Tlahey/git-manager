@@ -7,6 +7,7 @@ import {
   setNativeSelectValue,
 } from '../support/interactions'
 import {
+  activeBoardName,
   boardRefNamed,
   boardRefs,
   cardTestIdOrThrow,
@@ -82,13 +83,14 @@ async function waitForStoredCard(
   }
 }
 
-/** The stored board on screen. Resolved by the picker's label when a scenario has more than one. */
+/** The stored board on screen. Resolved by the sidebar's current row when a scenario has more than
+ * one board. */
 async function currentStoredBoard(): Promise<StoredBoard> {
   const refs = boardRefs()
   if (refs.length === 1) return storedBoard(refs[0])
-  const shown = await $('[data-testid="board-switcher"]').getText()
+  const shown = await activeBoardName()
   const hit = refs.map(storedBoard).find((board) => shown.includes(board.name))
-  if (!hit) throw new Error(`the board picker reads "${shown}", which is none of the stored boards`)
+  if (!hit) throw new Error(`the board sidebar reads "${shown}", which is none of the stored boards`)
   return hit
 }
 

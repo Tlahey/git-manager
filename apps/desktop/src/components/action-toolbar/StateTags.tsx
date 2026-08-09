@@ -1,6 +1,6 @@
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useActiveBranchPr } from '../../hooks/useActiveBranchPr'
-import { PrStatusTag } from '../repository-sidebar/PrStatusTag'
+import { PrStatusTag } from '../common/PrStatusTag'
 
 /**
  * Status tag for the active repo/workspace: the linked pull request (GitHub mark + status +

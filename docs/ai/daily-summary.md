@@ -15,7 +15,7 @@ each morning — and the only one whose output is **archived on disk** for two m
 | **Kind**         | completion + JSON schema → `DailySummary`                                                                                                                                                                                                                                                                     |
 | **Temperature**  | 0.3 (reduce), 0.1 (map)                                                                                                                                                                                                                                                                                       |
 | **Context**      | `get_ai_activity` (the window) **plus** `get_ai_context` at `range` scope (the window's diff)                                                                                                                                                                                                                 |
-| **UI**           | ✨ per project on the dashboard → [`DailySummaryPanel`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.tsx), the morning auto-run, and the archive panel → _AI ▸ Daily summaries_ in a repo ([`DailySummariesPanel`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.tsx)) |
+| **UI**           | ✨ per project on the dashboard → [`DailySummaryPanel`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.tsx), the morning auto-run, and the archive panel → _AI ▸ Daily summaries_ in a repo ([`DailySummariesPanel`](../../apps/desktop/src/features/graph/components/DailySummariesPanel.tsx)) |
 
 ---
 
@@ -261,5 +261,5 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`dailySummary.store.test.ts`](../../apps/desktop/src/stores/dailySummary.store.test.ts)                   | hydration from disk, per-day indexing, deletion                    |
 | [`useMorningSummaries.test.ts`](../../apps/desktop/src/hooks/useMorningSummaries.test.ts)                  | sequential run, once-per-session, failure isolation                |
 | [`DailySummaryPanel.test.tsx`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.test.tsx) | rendering, progress, the skip state, the regenerate action         |
-| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/components/git-graph/DailySummariesPanel.test.tsx) | repo scoping (list _and_ model shortlist), filters, actions        |
+| [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/features/graph/components/DailySummariesPanel.test.tsx) | repo scoping (list _and_ model shortlist), filters, actions        |
 | `ai_activity.rs` / `daily_summary_archive.rs` tests                                                        | branch resolution, window boundary, retention, the exclude entry   |

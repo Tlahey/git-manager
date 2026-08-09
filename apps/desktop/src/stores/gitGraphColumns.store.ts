@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createConfigStorage } from '../lib/appConfig/configStorage'
-import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../components/git-graph/columns.config'
+// Reached at its own path rather than through `features/graph`'s barrel, which is the one exception
+// to that rule and has to stay one. This store's initial state calls `buildDefaults()` at *module
+// evaluation* time, and the barrel pulls the whole view in behind the constants — including the
+// graph, which reads this store. Through the barrel that is a cycle whose evaluation order lands on
+// `Cannot access 'COLUMN_ORDER' before initialization`; `lib/columns.config` on its own depends only
+// on `lib/graphLayout`, so there is no cycle to order.
+import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../features/graph/lib/columns.config'
 
 interface ColumnState {
   visible: boolean

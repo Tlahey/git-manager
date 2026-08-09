@@ -14,7 +14,7 @@ vi.mock('./components/merge-editor/ConflictMergeWindow', () => ({
     />
   ),
 }))
-vi.mock('./components/git-graph/fixup/FixupCommitWindow', () => ({
+vi.mock('./components/fixup/FixupCommitWindow', () => ({
   FixupCommitWindow: (props: {
     repoPath: string
     targetOid: string

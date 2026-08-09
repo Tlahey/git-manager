@@ -9,7 +9,7 @@ import { getActiveRepoPath } from './activeRepo'
  *
  * **Nothing on a board has a stable id.** Board and card ids are generated per write
  * (`git_board.rs`'s `generate_id`, seeded on a nanosecond timestamp), so `board-card-<id>` and
- * `board-switcher-option-<id>` cannot be written into a `.feature` file. Every step therefore names
+ * `board-sidebar-item-<id>` cannot be written into a `.feature` file. Every step therefore names
  * things the way a reader would — by title, by column name, by sprint name — and resolves the testid
  * in the page. The **columns** are the exception (`todo`/`in-progress`/`done` are literal defaults,
  * see `boardDefaults.ts`), but they are resolved by name too, so a scenario keeps reading as English
@@ -141,6 +141,22 @@ export function storedCardTitledOrThrow(title: string): StoredCard {
     )
   }
   return card
+}
+
+/**
+ * The name of the board currently on screen, read off the sidebar row marked as the current one.
+ *
+ * The board list is a standing panel now rather than a popover picker (`BoardSidebar`), so "which
+ * board am I looking at" is answered without opening anything — `aria-current` is what the row sets,
+ * and it is the same fact the page renders from.
+ */
+export async function activeBoardName(): Promise<string> {
+  return (
+    (await browser.execute(() => {
+      const row = document.querySelector('[data-testid^="board-sidebar-item-"][aria-current]')
+      return row?.textContent ?? ''
+    })) ?? ''
+  )
 }
 
 /**

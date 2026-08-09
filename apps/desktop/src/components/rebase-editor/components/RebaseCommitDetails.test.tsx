@@ -12,7 +12,7 @@ const { lastFileListProps, lastMergeEditorProps } = vi.hoisted(() => ({
   lastFileListProps: { current: null as Record<string, unknown> | null },
   lastMergeEditorProps: { current: null as Record<string, unknown> | null },
 }))
-vi.mock('../../git-graph/components/CommitFileList', () => ({
+vi.mock('../../common/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     lastFileListProps.current = props
     return <div data-testid="commit-file-list" />

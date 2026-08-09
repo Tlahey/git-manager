@@ -7,7 +7,7 @@ import { useGitStatus } from '../../hooks/useGitStatus'
 import { apiCreateWorkingPatch, apiStageAll, apiUnstageAll } from '../../api/git.api'
 import { pickSaveDestination } from '../../lib/pickSaveDestination'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
-import { CommitFileList, type ProcessedFileItem } from '../git-graph/components/CommitFileList'
+import { CommitFileList, type ProcessedFileItem } from '../common/CommitFileList'
 
 /**
  * Right-panel for creating a patch from the working tree. Reuses the two-zone

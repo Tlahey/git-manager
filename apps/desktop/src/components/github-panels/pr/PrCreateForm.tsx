@@ -1,0 +1,271 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '@git-manager/i18n'
+import { Button, Checkbox, Input, Spinner, Textarea, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { ArrowRight } from 'lucide-react'
+import { useBranches } from '../../../hooks/useBranches'
+import { usePrTemplate } from '../../../hooks/usePrTemplate'
+import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
+import { SummaryProgressNotice } from '../../common/SummaryProgressNotice'
+import { useAiEnabled } from '../../../hooks/useAiEnabled'
+import { aiErrorMessage } from '../../../lib/aiErrorMessage'
+import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
+import type { CreatePrArgs } from '../../../hooks/usePrCreateFlow'
+import { useConfirm } from '@git-manager/components'
+
+interface PrCreateFormProps {
+  repoPath: string
+  /** Current branch — the default head (source). */
+  currentBranch: string | null
+  /** GitHub default branch — the default base (target). Resolves async. */
+  defaultBase: string | null
+  isSubmitting: boolean
+  /** Error from the last create attempt (checkout/push/create PR), shown inline. */
+  error?: string | null
+  onCreate: (input: CreatePrArgs) => void
+  onCancel: () => void
+}
+
+/** Standalone create-PR form opened from the sidebar: pick head + base branch, write a title and a
+ * (template-/AI-fillable) description, optionally open as draft, then create the GitHub PR. Modeled
+ * on {@link PrComposerExpander}, adding the head-branch selector the composer doesn't need. */
+export function PrCreateForm({
+  repoPath,
+  currentBranch,
+  defaultBase,
+  isSubmitting,
+  error,
+  onCreate,
+  onCancel,
+}: PrCreateFormProps) {
+  const { t } = useTranslation('git')
+  const { t: tErrors } = useTranslation('errors')
+  const { confirm, confirmDialog } = useConfirm()
+  const aiEnabled = useAiEnabled()
+  const { data: branches = [] } = useBranches(repoPath)
+  const { template } = usePrTemplate(repoPath)
+  // `aiError` is distinct from the `error` prop: that one is the create-PR failure, this one is the
+  // generation failing. Left unread, a stopped provider just cleared the body and said nothing.
+  const { generate, status, error: aiError, progress } = usePrDescriptionGeneration(repoPath)
+  // No GitHub URL exists yet — the head branch isn't pushed until submit — so a drop only explains
+  // why it can't attach the file, rather than opening a browser tab that would 404.
+  const mediaDrop = useGithubMediaDropHandler(null)
+
+  const localBranches = useMemo(() => branches.filter((b) => !b.isRemote), [branches])
+
+  const [head, setHead] = useState(currentBranch ?? '')
+  const [base, setBase] = useState(defaultBase ?? '')
+  const [title, setTitle] = useState(currentBranch ?? '')
+  const [body, setBody] = useState('')
+  const [draft, setDraft] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [titleTouched, setTitleTouched] = useState(false)
+  const [bodyTouched, setBodyTouched] = useState(false)
+
+  // Keep head/base in sync once their async defaults resolve (only while still unset).
+  useEffect(() => {
+    if (currentBranch && !head) setHead(currentBranch)
+  }, [currentBranch, head])
+  useEffect(() => {
+    if (defaultBase && !base) setBase(defaultBase)
+  }, [defaultBase, base])
+
+  // Default title to the selected head branch name until manually edited by the user.
+  useEffect(() => {
+    if (!titleTouched && head) {
+      setTitle(head)
+    }
+  }, [head, titleTouched])
+
+  const templateContent = useMemo<string | null>(() => {
+    if (!template) return null
+    if (template.kind === 'single') return template.content
+    if (template.kind === 'multiple') {
+      const chosen =
+        template.options.find((o) => o.name === selectedTemplate) ?? template.options[0]
+      return chosen?.content ?? null
+    }
+    return null
+  }, [template, selectedTemplate])
+
+  // Pre-fill the (untouched) body from the template once it's known.
+  useEffect(() => {
+    if (!bodyTouched && templateContent) setBody(templateContent)
+  }, [templateContent, bodyTouched])
+
+  const isGenerating = status === 'connecting' || status === 'streaming'
+
+  async function aiFill() {
+    if (!base) return
+    if (body.trim()) {
+      const ok = await confirm({
+        title: t('pr.publish.aiOverwriteTitle'),
+        description: t('pr.publish.aiOverwriteConfirm'),
+        confirmLabel: t('pr.publish.aiOverwriteAction'),
+        cancelLabel: t('common:actions.cancel'),
+        testId: 'ai-overwrite-confirm-dialog',
+      })
+      if (!ok) return
+    }
+    setBody('')
+    setBodyTouched(true)
+    await generate(
+      base,
+      templateContent,
+      (token) => setBody((b) => b + token),
+      (full) => setBody(full)
+    )
+  }
+
+  const canSubmit = Boolean(title.trim()) && Boolean(head) && Boolean(base) && !isSubmitting
+
+  return (
+    <div data-testid="pr-create" className="space-y-4">
+      {/* Branch selection: head → base */}
+      <div className="flex items-end gap-2">
+        <label className="block flex-1 space-y-1 text-[11px] text-muted-foreground">
+          {t('pr.create.headLabel')}
+          <NativeSelect
+            value={head}
+            onChange={(e) => setHead(e.target.value)}
+            data-testid="pr-create-head"
+            className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+          >
+            {localBranches.map((b) => (
+              <option key={b.name} value={b.shortName}>
+                {b.shortName}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+        <ArrowRight className="mb-2 h-4 w-4 shrink-0 text-muted-foreground" />
+        <label className="block flex-1 space-y-1 text-[11px] text-muted-foreground">
+          {t('pr.create.baseLabel')}
+          <NativeSelect
+            value={base}
+            onChange={(e) => setBase(e.target.value)}
+            data-testid="pr-create-base"
+            className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+          >
+            {localBranches.map((b) => (
+              <option key={b.name} value={b.shortName}>
+                {b.shortName}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+      </div>
+
+      <label className="block space-y-1 text-[11px] text-muted-foreground">
+        {t('pr.publish.titleLabel')}
+        <Input
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            setTitleTouched(true)
+          }}
+          placeholder={t('pr.publish.titlePlaceholder')}
+          className="h-8 text-xs"
+          data-testid="pr-create-title"
+        />
+      </label>
+
+      {template?.kind === 'multiple' && (
+        <label className="block space-y-1 text-[11px] text-muted-foreground">
+          {t('pr.publish.templateLabel')}
+          <NativeSelect
+            value={selectedTemplate ?? template.options[0]?.name}
+            onChange={(e) => {
+              setSelectedTemplate(e.target.value)
+              setBodyTouched(false)
+            }}
+            data-testid="pr-create-template-select"
+            className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+          >
+            {template.options.map((o) => (
+              <option key={o.name} value={o.name}>
+                {o.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+      )}
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>{t('pr.publish.descriptionLabel')}</span>
+          {aiEnabled && (
+            <button
+              onClick={aiFill}
+              disabled={isGenerating || !base}
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="pr-create-ai"
+            >
+              {isGenerating ? <Spinner className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}
+              {isGenerating ? t('pr.publish.aiFilling') : t('pr.create.aiGenerate')}
+            </button>
+          )}
+        </div>
+        <Textarea
+          value={body}
+          onChange={(e) => {
+            setBody(e.target.value)
+            setBodyTouched(true)
+          }}
+          onDragOver={mediaDrop.onDragOver}
+          onDrop={mediaDrop.onDrop}
+          placeholder={t('pr.publish.descriptionPlaceholder')}
+          rows={8}
+          className="text-xs"
+          data-testid="pr-create-body"
+        />
+        {status === 'error' && aiError && (
+          <p data-testid="pr-create-ai-error" className="text-[11px] text-destructive">
+            {aiErrorMessage(aiError, tErrors)}
+          </p>
+        )}
+        {/* Every file is read on its own before a word is written, so the wait before the first
+            token is the whole map phase — and this draft is about to be published. */}
+        <SummaryProgressNotice progress={progress} testIdPrefix="pr-create-ai" />
+      </div>
+
+      <label className="flex items-center gap-2 text-xs text-foreground">
+        <Checkbox
+          checked={draft}
+          onChange={(e) => setDraft(e.target.checked)}
+          data-testid="pr-create-draft"
+        />
+        {t('pr.create.draftLabel')}
+      </label>
+
+      {error && (
+        <p data-testid="pr-create-error" className="text-[11px] text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onCancel}
+          disabled={isSubmitting}
+          data-testid="pr-create-cancel"
+        >
+          {t('pr.publish.cancel')}
+        </Button>
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 text-xs"
+          disabled={!canSubmit}
+          onClick={() => onCreate({ head, base, title: title.trim(), body, draft })}
+          data-testid="pr-create-submit"
+        >
+          {isSubmitting && <Spinner className="h-3 w-3" />}
+          {isSubmitting ? t('pr.publish.creating') : t('pr.create.submit')}
+        </Button>
+      </div>
+      {confirmDialog}
+    </div>
+  )
+}

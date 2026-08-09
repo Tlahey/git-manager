@@ -93,19 +93,37 @@ describe('ToggleGroup — labelled segments', () => {
     expect(onValueChange).toHaveBeenCalledWith('standard')
   })
 
-  it('fills the whole selected segment from the per-theme-corrected button tokens', () => {
+  it('fills the whole selected segment from the per-theme-corrected control tokens', () => {
     const { container } = render(
       <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />
     )
     const [selected, unselected] = Array.from(container.querySelectorAll('label'))
-    expect(selected.className).toContain('bg-button')
-    expect(selected.className).toContain('text-button-foreground')
+    expect(selected.className).toContain('bg-control-active')
+    expect(selected.className).toContain('text-control-active-foreground')
     // Never the raw semantic pair, nor shadcn's `accent`: under 12px text they measure ~37Lc
-    // and 46.9Lc against an APCA bronze bar of 75. Only the `--button-*` tokens are corrected
-    // per theme for a filled control.
+    // and 46.9Lc against an APCA bronze bar of 75. `--control-active-*` aliases the `--button-*`
+    // tokens, the only ones corrected per theme for a filled control.
     expect(selected.className).not.toMatch(/bg-(primary|accent)\b/)
     expect(selected.className).not.toContain('text-primary-foreground')
-    expect(unselected.className).not.toMatch(/\bbg-/)
+    // No fill at rest on an unselected segment — the hover one below is a pointer affordance, and
+    // is the only `bg-` it is allowed.
+    expect(unselected.className).not.toMatch(/(^|\s)bg-/)
+  })
+
+  /**
+   * And *not* `bg-button`, which would be the obvious reading of "the same fill as Settings".
+   * Inside `.chrome-surface` — the toolbar — `--button-*` is re-pointed at `--sidebar-accent`, a
+   * row-highlight tint measuring 1.09:1 against the chrome on github-light, whose
+   * `--sidebar-accent-foreground` is a copy of `--sidebar-foreground` so the label doesn't move
+   * either. A selected segment would then differ from its siblings by nothing a user can see.
+   */
+  it('reads the alias that survives the chrome surface, not the button token it aliases', () => {
+    const { container } = render(
+      <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />
+    )
+    const [selected] = Array.from(container.querySelectorAll('label'))
+    expect(selected.className).not.toMatch(/\bbg-button\b/)
+    expect(selected.className).not.toMatch(/\btext-button-foreground\b/)
   })
 
   it('styles selection identically whether the segments carry icons or text', () => {
@@ -180,5 +198,161 @@ describe('ToggleGroup — disabled', () => {
     const [, unselected] = Array.from(container.querySelectorAll('label'))
     expect(unselected.className).toContain('cursor-pointer')
     expect(unselected.className).toContain('hover:text-foreground')
+  })
+})
+
+/**
+ * `hover:bg-accent` is `ToolbarButton`'s own hover, so a group standing among those buttons answers
+ * the pointer the way they do — and only the segments that can act on a click take it.
+ */
+describe('ToggleGroup — hover', () => {
+  it.each([
+    ['text', textOptions, 'small'],
+    ['icon-only', options, 'tree'],
+  ])('highlights the unselected segments of a %s group, never the selected one', (_, opts, value) => {
+    const { container } = render(
+      <ToggleGroup value={value} onValueChange={() => {}} options={opts as typeof options} />
+    )
+    const [selected, unselected] = Array.from(container.querySelectorAll('label'))
+    expect(unselected.className).toContain('hover:bg-accent')
+    // A second fill landing on the one segment that is already filled would read as a state change
+    // on the segment that cannot change.
+    expect(selected.className).not.toContain('hover:bg-accent')
+  })
+
+  it('offers no hover fill at all while the group is disabled', () => {
+    const { container } = render(
+      <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} disabled />
+    )
+    Array.from(container.querySelectorAll('label')).forEach((label) =>
+      expect(label.className).not.toContain('hover:bg-accent')
+    )
+  })
+})
+
+const stackedOptions: ToggleGroupOption<'graph' | 'files'>[] = [
+  { value: 'graph', icon: <svg data-testid="icon-graph" />, label: 'Graph', testId: 'view-graph' },
+  { value: 'files', icon: <svg data-testid="icon-files" />, label: 'Files' },
+]
+
+describe('ToggleGroup — stacked segments', () => {
+  it('shows the label under the icon rather than hiding it in a tooltip', () => {
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(screen.getByText('Graph')).toBeVisible()
+    expect(screen.getByTestId('icon-graph')).toBeInTheDocument()
+  })
+
+  /** The label is the accessible name either way — visible here, sr-only in the icon-only shape —
+   * so the same query finds the radio whichever variant a caller picked. */
+  it('still names each radio by its label', () => {
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(screen.getByRole('radio', { name: 'Graph' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Files' })).not.toBeChecked()
+  })
+
+  it('selects on click, like every other shape', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={onValueChange}
+        options={stackedOptions}
+      />
+    )
+    await user.click(screen.getByText('Files'))
+    expect(onValueChange).toHaveBeenCalledWith('files')
+  })
+
+  /** A tooltip repeating text that is already on screen is noise, and it would cover the segment
+   * below it in a 52px toolbar. */
+  it('drops the tooltip the icon-only shape needs', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(container.querySelector('[data-slot="tooltip-trigger"]')).toBeNull()
+    expect(container.querySelector('.sr-only:not(input)')).toBeNull()
+  })
+
+  /**
+   * The APCA matrix caught this one: a 10px `muted-foreground` label measures 48Lc on the track
+   * against a Bronze bar of 75. The exemption that covers muted text elsewhere is for *decorative*
+   * nodes — an inactive Chip, a neutral Tag — and its own wording is "actions are never muted". A
+   * segment you click to change view is an action.
+   */
+  it('never mutes an unselected segment, which is a control and not decoration', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const [, unselected] = Array.from(container.querySelectorAll('label'))
+    expect(unselected.className).toContain('text-foreground')
+    expect(unselected.className).not.toContain('text-muted-foreground')
+  })
+
+  /**
+   * The same fill as every other shape — this is the shape that lives on the chrome, so it is the
+   * one that would suffer if the fill were read as `bg-button` there. See the alias test above.
+   */
+  it('wears the same selected fill as the other shapes', () => {
+    const stacked = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const [selected] = Array.from(stacked.container.querySelectorAll('label'))
+    expect(selected.className).toContain('bg-control-active')
+    expect(selected.className).toContain('text-control-active-foreground')
+    stacked.unmount()
+
+    const text = render(<ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />)
+    const [textSelected] = Array.from(text.container.querySelectorAll('label'))
+    expect(textSelected.className).toContain('bg-control-active')
+  })
+
+  /**
+   * The icon and the label both ride the segment's own `color`, so one class flips both — which is
+   * what makes selection legible on the 8 themes whose chrome accent brings no foreground change
+   * of its own. A coloured icon here would keep its colour on the fill and lose contrast.
+   */
+  it('repaints the icon with the label, rather than tinting it separately', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const [selected] = Array.from(container.querySelectorAll('label'))
+    const iconWrapper = selected.querySelector('[aria-hidden="true"]') as HTMLElement
+    expect(iconWrapper.className).not.toMatch(/\btext-/)
   })
 })

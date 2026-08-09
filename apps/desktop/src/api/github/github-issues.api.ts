@@ -90,7 +90,7 @@ export async function fetchRepoIssues(
 
 /**
  * Issues of one repository matching a **raw GitHub issue-search query** — the sidebar's saved issue
- * filters (see `stores/issueFilters.store.ts`).
+ * filters (see `features/graph/stores/issueFilters.store.ts`).
  *
  * The query is whatever the user typed in their filter (`is:open assignee:@me`, `label:bug`, …) and
  * is passed to GitHub untouched, so every qualifier GitHub's own search box accepts works here,

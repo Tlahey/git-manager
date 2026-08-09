@@ -5,10 +5,10 @@ Feature: Browse the repository's files
   I want to browse its files without leaving the app
   So that I can look something up without switching to an editor or a terminal
 
-  The toolbar's Files button swaps the commit graph for a file browser on the same repository: a
-  tree on the left, the current directory's contents in the middle. It is a view of the working
-  tree as it is on disk right now, not of a commit, and closing it puts the graph back exactly
-  where it was.
+  The Files tab swaps the commit graph for a file browser on the same repository: the working tree
+  in the panel on the left, the current directory's contents in the middle, and a file search in
+  the toolbar. It is a view of the working tree as it is on disk right now, not of a commit, and
+  the Graph tab puts the graph back exactly where it was.
 
   Background:
     Given the app language is English
@@ -16,10 +16,13 @@ Feature: Browse the repository's files
 
   @doc @screenshots
   Scenario: Opening the file explorer lists the working tree
-    The Files button swaps the commit graph for a browser over the same
-    repository: a filterable tree on the left, the current folder's contents
-    in the middle. It shows the working tree as it is on disk right now — not
-    a commit — and closing it puts the graph back exactly where it was.
+    The Files tab swaps the commit graph for a browser over the same
+    repository: the working tree in the left panel, where the branches sit on
+    the graph, and the current folder's contents in the middle. The toolbar
+    changes with it — a file search replaces the git actions, which have
+    nothing to act on here. It shows the working tree as it is on disk right
+    now, not a commit, and the Graph tab puts the graph back exactly where it
+    was.
     When I open the file explorer
     Then the file explorer is shown
     And the file tree sidebar is shown
@@ -27,7 +30,7 @@ Feature: Browse the repository's files
     And the interface has settled
     And a full-window screenshot is saved as "doc-file-explorer"
 
-  Scenario: Closing the file explorer puts the graph back
+  Scenario: Going back to the Graph tab puts the graph back
     When I open the file explorer
     And I close the file explorer
     Then the file explorer is no longer shown

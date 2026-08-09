@@ -130,24 +130,25 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
 
 ## File explorer ✅
 
-The toolbar's Files button (`toolbar-files-button`) swapping the graph for `ProjectFilesView` — a
-`FileTreeSidebar` on the left, the current directory in the middle.
+The toolbar's view switcher (`repo-view-files`) swapping the graph for `FilesPage` — the working
+tree (`FileTreeSidebar`) in the left panel slot, the current directory in the middle, and a file
+search in the toolbar.
 
 - Setup: **`fixture:feature-branches`**. On `main` its working tree holds exactly one file
   (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
   it" distinguishable from "it was never there".
-- Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), closing
-  puts the graph back, the tree filter (`file-tree-search-input`) narrows the tree, and hiding the
-  sidebar leaves `file-explorer-show-sidebar` behind — asserted explicitly, since a hide with no way
-  back would make the sidebar unreachable for the rest of the session.
+- Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), the Graph
+  segment puts the graph back, the tree filter (`file-tree-search-input`, at the top of the panel) narrows the
+  tree, and hiding the panel leaves `toolbar-toggle-panel` behind — asserted explicitly,
+  since a hide with no way back would make the tree unreachable for the rest of the session.
 - No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
 
 ---
 
 ## Kanban board ✅ 📷
 
-The third thing the central area can be (`features/board/`), reached from the same toolbar as the
-file explorer (`toolbar-board-button`). **Local backend only** — the GitHub-backed board needs a
+The third thing the central area can be (`features/board/`), reached from the same toolbar switcher
+as the file explorer (`repo-view-board`). **Local backend only** — the GitHub-backed board needs a
 connected account and real issues; see the blocked row above for why that one stays out of reach.
 
 - Setup: **`fixture:feature-branches`**, which has nothing to do with boards and does not need to:

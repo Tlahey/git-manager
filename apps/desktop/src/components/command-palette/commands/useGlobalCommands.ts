@@ -23,7 +23,7 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../../stores/repoUI.store'
-import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 import { useActionToolbar } from '../../../hooks/useActionToolbar'
 import { useOpenRepository } from '../../../hooks/useOpenRepository'
 import { openActionJournalWindow } from '../../../lib/actionJournalWindow'
@@ -61,7 +61,6 @@ export function useGlobalCommands({
   const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
   const openRepository = useOpenRepository()
   const toolbar = useActionToolbar(tGit)
-  const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
 
   const commands: PaletteCommand[] = [
     {
@@ -189,7 +188,7 @@ export function useGlobalCommands({
       icon: createElement(FolderOpen),
       run: () => {
         setActiveTab(toolbar.activeRepo!)
-        toggleFileExplorer()
+        useRepoViewStore.getState().setView('files')
       },
     })
   }

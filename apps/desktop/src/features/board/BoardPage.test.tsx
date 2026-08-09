@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { makeBoard as board, makeCard as card, makeBoardData } from './test/boardFactories'
 import { useBoardStore } from './stores/board.store'
 import { useBoardControlsStore } from './stores/boardControls.store'
+import { useBoardDialogsStore } from './stores/boardDialogs.store'
 import { BoardPage } from './BoardPage'
+import { BoardToolbar } from './components/BoardToolbar'
+import { BoardSidebar } from './components/BoardSidebar'
 
 const { useBoardData, apiCreateAndCheckoutBranch, apiCheckoutBranch } = vi.hoisted(() => ({
   useBoardData: vi.fn(),
@@ -18,22 +21,41 @@ function baseHookState(overrides: Partial<ReturnType<typeof useBoardData>> = {})
   return makeBoardData(overrides)
 }
 
+/**
+ * The board **view**, not just the page: its toolbar and its board list moved into the repo tab's
+ * own chrome when that chrome became view-scoped, so the search box, the archive, the sprint actions
+ * and the board picker are drawn beside the page rather than inside it. All three read the same
+ * mocked `useBoardData` and write the same dialog store, which is what still makes this one test.
+ */
+const boardView = (repoPath = '/repo') => (
+  <>
+    <BoardToolbar repoPath={repoPath} />
+    <BoardSidebar repoPath={repoPath} />
+    <BoardPage repoPath={repoPath} />
+  </>
+)
+
+function renderBoardView(repoPath = '/repo') {
+  return render(boardView(repoPath))
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
-  useBoardControlsStore.setState({ search: '' })
+  useBoardControlsStore.getState().reset()
+  useBoardDialogsStore.getState().reset()
   useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedColumns: {} })
 })
 
 describe('BoardPage', () => {
   it('shows a loading spinner while the board list is loading', () => {
     useBoardData.mockReturnValue(baseHookState({ boardsLoading: true }))
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
     expect(screen.queryByText('No boards yet')).not.toBeInTheDocument()
   })
 
   it('shows the empty state when there are no boards, and opens the create dialog', async () => {
     useBoardData.mockReturnValue(baseHookState())
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     expect(
       screen.getByText('Create a board to start tracking cards for this repository.')
@@ -51,7 +73,7 @@ describe('BoardPage', () => {
         cards: [card(), card({ id: 'c2', title: 'Second task', columnId: 'done' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     expect(screen.getByTestId('board-column-todo')).toBeInTheDocument()
     expect(screen.getByTestId('board-column-done')).toBeInTheDocument()
@@ -59,7 +81,12 @@ describe('BoardPage', () => {
     expect(screen.getByText('Second task')).toBeInTheDocument()
   })
 
-  it('filters cards by the search box', async () => {
+  /**
+   * The panel's field narrows the *board list*, not the cards. Looking for a ticket is the toolbar's
+   * search (⌘F), across every board — so typing a card's title here must leave the columns alone
+   * rather than half-answer the question.
+   */
+  it('leaves the columns alone when the panel’s board filter is typed in', async () => {
     useBoardData.mockReturnValue(
       baseHookState({
         boards: [board()],
@@ -67,12 +94,12 @@ describe('BoardPage', () => {
         cards: [card(), card({ id: 'c2', title: 'Second task' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
-    await userEvent.type(screen.getByTestId('board-search-input'), 'Second')
+    await userEvent.type(screen.getByTestId('board-filter-input'), 'Second')
 
     expect(screen.getByText('Second task')).toBeInTheDocument()
-    expect(screen.queryByText('Fix the header')).not.toBeInTheDocument()
+    expect(screen.getByText('Fix the header')).toBeInTheDocument()
   })
 
   it('creates a card in the column whose add button was clicked', async () => {
@@ -80,7 +107,7 @@ describe('BoardPage', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [], createCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-column-done-add-card'))
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'New task')
@@ -99,7 +126,7 @@ describe('BoardPage', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [withPrefix], activeBoard: withPrefix, cards: [], createCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-column-done-add-card'))
     await userEvent.click(screen.getByTestId('card-kind-option-bug'))
@@ -119,7 +146,7 @@ describe('BoardPage', () => {
         updateCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     // The card opens as a record, not a form: the title reads back before it can be edited.
@@ -142,7 +169,7 @@ describe('BoardPage', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [], deleteBoard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-delete-button'))
     await userEvent.click(screen.getByTestId('delete-board-confirm'))
@@ -156,16 +183,15 @@ describe('BoardPage', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()], updateCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('board-card-create-branch'))
 
     expect(apiCreateAndCheckoutBranch).toHaveBeenCalledWith('/repo', 'card/fix-the-header', 'HEAD')
-    expect(updateCard).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'c1' }),
-      { linkedBranch: 'card/fix-the-header' }
-    )
+    expect(updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), {
+      linkedBranch: 'card/fix-the-header',
+    })
   })
 
   it('checks out an already-linked branch without recreating it', async () => {
@@ -177,7 +203,7 @@ describe('BoardPage', () => {
         cards: [card({ linkedBranch: 'feature/header' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('board-card-checkout-branch'))
@@ -196,15 +222,14 @@ describe('BoardPage', () => {
         updateCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('board-card-unlink-branch'))
 
-    expect(updateCard).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'c1' }),
-      { linkedBranch: null }
-    )
+    expect(updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), {
+      linkedBranch: null,
+    })
   })
 })
 
@@ -235,7 +260,7 @@ describe('BoardPage — a closed sprint is read-only', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [closedBoard()], activeBoard: closedBoard(), cards: [card()] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
   }
 
   it('says the sprint is closed', () => {
@@ -275,23 +300,19 @@ describe('BoardPage — a closed sprint is read-only', () => {
   })
 })
 
-describe('BoardPage — closed sprints are hidden from the picker', () => {
+describe('BoardPage — closed sprints are hidden from the board list', () => {
   it('keeps a closed sprint out of the list unless asked for', async () => {
     const open = board({ id: 'b1', name: 'Sprint 13' })
     const closed = board({ id: 'b0', name: 'Sprint 12', closedAt: '2026-08-04T10:00:00.000Z' })
     useBoardData.mockReturnValue(
       baseHookState({ boards: [open, closed], activeBoard: open, cards: [] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
-    // The list lives inside the picker's popover, so it has to be opened to be inspected.
-    await userEvent.click(screen.getByTestId('board-switcher'))
-    expect(screen.queryByTestId('board-switcher-option-b0')).not.toBeInTheDocument()
-    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByTestId('board-sidebar-item-b0')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByTestId('board-show-closed'))
-    await userEvent.click(screen.getByTestId('board-switcher'))
-    expect(screen.getByTestId('board-switcher-option-b0')).toHaveTextContent('Sprint 12')
+    expect(screen.getByTestId('board-sidebar-item-b0')).toHaveTextContent('Sprint 12')
   })
 
   it('keeps the sprint that is open on screen even while it is closed', () => {
@@ -299,19 +320,23 @@ describe('BoardPage — closed sprints are hidden from the picker', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [closed], activeBoard: closed, cards: [] })
     )
-    render(<BoardPage repoPath="/repo" />)
-    expect(screen.getByTestId('board-switcher')).toHaveTextContent('Sprint 12')
+    renderBoardView()
+    expect(screen.getByTestId('board-sidebar-item-b1')).toHaveTextContent('Sprint 12')
   })
 })
 
 describe('BoardPage — a card tracking a GitHub issue', () => {
   const tracked = () =>
-    card({ prefix: 'GM', sourceIssue: { owner: 'acme', repo: 'widgets', number: 42 }, issueState: 'open' })
+    card({
+      prefix: 'GM',
+      sourceIssue: { owner: 'acme', repo: 'widgets', number: 42 },
+      issueState: 'open',
+    })
 
   function renderWith(cards: ReturnType<typeof card>[], boardOverrides = {}) {
     const b = board(boardOverrides)
     useBoardData.mockReturnValue(baseHookState({ boards: [b], activeBoard: b, cards }))
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
   }
 
   /** Both numbers are shown: the board's own identifier (`GM-1`) and the issue's (`#42`) are
@@ -337,7 +362,7 @@ describe('BoardPage — a card tracking a GitHub issue', () => {
         untrackCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     expect(screen.getByTestId('card-meta-tracking')).toBeInTheDocument()
@@ -358,7 +383,8 @@ describe('BoardPage — a card tracking a GitHub issue', () => {
  * what it replaced — otherwise following a card out of the archive list quietly loses your place.
  */
 describe('BoardPage — returning to the dialog you came from', () => {
-  const archivedCard = () => card({ id: 'c2', title: 'Buried', archivedAt: '2026-08-04T00:00:00.000Z' })
+  const archivedCard = () =>
+    card({ id: 'c2', title: 'Buried', archivedAt: '2026-08-04T00:00:00.000Z' })
 
   function renderWith(overrides = {}) {
     useBoardData.mockReturnValue(
@@ -369,7 +395,7 @@ describe('BoardPage — returning to the dialog you came from', () => {
         ...overrides,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
   }
 
   async function openArchivedCard() {
@@ -432,7 +458,9 @@ describe('BoardPage — returning to the dialog you came from', () => {
     await waitFor(() => expect(screen.getByTestId('delete-card-dialog')).toBeInTheDocument())
 
     // The card list the page renders from no longer holds it, as after a real delete.
-    useBoardData.mockReturnValue(baseHookState({ boards: [board()], activeBoard: board(), cards: [] }))
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [board()], activeBoard: board(), cards: [] })
+    )
     fireEvent.click(screen.getByTestId('delete-card-confirm'))
 
     await waitFor(() => expect(deleteCard).toHaveBeenCalled())
@@ -453,7 +481,7 @@ describe('BoardPage — archived cards', () => {
         cards: [card({ id: 'c1' }), card({ id: 'c2', archivedAt: '2026-08-04T00:00:00.000Z' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     expect(screen.getByTestId('board-card-c1')).toBeInTheDocument()
     expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
@@ -463,7 +491,7 @@ describe('BoardPage — archived cards', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()] })
     )
-    const { rerender } = render(<BoardPage repoPath="/repo" />)
+    const { rerender } = renderBoardView()
     expect(screen.queryByTestId('board-archived-button')).not.toBeInTheDocument()
 
     useBoardData.mockReturnValue(
@@ -473,7 +501,7 @@ describe('BoardPage — archived cards', () => {
         cards: [card({ id: 'c2', archivedAt: '2026-08-04T00:00:00.000Z' })],
       })
     )
-    rerender(<BoardPage repoPath="/repo" />)
+    rerender(boardView())
 
     await userEvent.click(screen.getByTestId('board-archived-button'))
     expect(screen.getByTestId('archived-cards-dialog')).toBeInTheDocument()
@@ -490,7 +518,7 @@ describe('BoardPage — archived cards', () => {
         updateCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-archived-button'))
     await userEvent.click(screen.getByTestId('archived-card-unarchive-c2'))
@@ -500,7 +528,13 @@ describe('BoardPage — archived cards', () => {
     })
   })
 
-  it('brings it back as soon as the search matches it', async () => {
+  /**
+   * The columns hold what has not been archived, full stop. A card filter used to live on this page
+   * and brought archived cards back into the columns while it was set; finding an archived ticket is
+   * the global search's job now (it matches them deliberately — see `lib/searchCards.ts`), and
+   * putting it back on the board is the archive dialog's.
+   */
+  it('keeps an archived card out of the columns whatever the panel filter says', async () => {
     useBoardData.mockReturnValue(
       baseHookState({
         boards: [board()],
@@ -508,12 +542,11 @@ describe('BoardPage — archived cards', () => {
         cards: [card({ id: 'c2', title: 'Buried task', archivedAt: '2026-08-04T00:00:00.000Z' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
     expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
 
-    await userEvent.type(screen.getByTestId('board-search-input'), 'Buried')
-    expect(screen.getByTestId('board-card-c2')).toBeInTheDocument()
-    expect(screen.getByTestId('board-card-archived')).toBeInTheDocument()
+    await userEvent.type(screen.getByTestId('board-filter-input'), 'Buried')
+    expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
   })
 
   /**
@@ -526,15 +559,14 @@ describe('BoardPage — archived cards', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()], updateCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-actions-menu'))
     await userEvent.click(screen.getByTestId('card-action-archive'))
 
-    expect(updateCard).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'c1' }),
-      { archivedAt: expect.any(String) }
-    )
+    expect(updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), {
+      archivedAt: expect.any(String),
+    })
     expect(screen.queryByTestId('board-card-dialog')).not.toBeInTheDocument()
   })
 
@@ -543,7 +575,7 @@ describe('BoardPage — archived cards', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()], duplicateCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-actions-menu'))
     await userEvent.click(screen.getByTestId('card-action-duplicate'))
@@ -557,7 +589,7 @@ describe('BoardPage — archived cards', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()], deleteCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-actions-menu'))
     await userEvent.click(screen.getByTestId('card-action-delete'))
@@ -584,7 +616,7 @@ describe('BoardPage — the way back out of a chain of dialogs', () => {
         cards: [card({ archivedAt: '2026-08-01T00:00:00.000Z' })],
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-archived-button'))
     await userEvent.click(screen.getByTestId('archived-card-open-c1'))
@@ -615,7 +647,7 @@ describe('BoardPage — relating two cards', () => {
         updateCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-links-add'))
@@ -639,7 +671,7 @@ describe('BoardPage — relating two cards', () => {
         updateCard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-links-add'))
@@ -662,7 +694,7 @@ describe('BoardPage — the card’s parent', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [child, epic], updateCard })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-breadcrumb-add-parent'))
@@ -685,7 +717,7 @@ describe('BoardPage — the card’s parent', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [child, parented] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     expect(screen.getByTestId('card-title-display')).toHaveTextContent('Fix the header')
@@ -704,7 +736,7 @@ describe('BoardPage — moving a card to another board', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board()], activeBoard: board(), cards: [card()] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-actions-menu'))
     expect(screen.queryByTestId('card-action-move')).not.toBeInTheDocument()
@@ -720,7 +752,7 @@ describe('BoardPage — moving a card to another board', () => {
         moveCardToBoard,
       })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-actions-menu'))
     await userEvent.click(screen.getByTestId('card-action-move'))
@@ -744,7 +776,7 @@ describe('BoardPage — moving a card to another board', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [board(), other], activeBoard: board(), cards: [card()] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-dialog-actions-menu'))
@@ -764,7 +796,7 @@ describe('BoardPage — iteration vs standing board', () => {
   function renderWith(iteration: boolean | undefined) {
     const b = board({ iteration })
     useBoardData.mockReturnValue(baseHookState({ boards: [b], activeBoard: b, cards: [] }))
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
   }
 
   it('offers to close an iteration', () => {
@@ -802,7 +834,7 @@ describe('BoardPage — column actions', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-column-todo-menu'))
     await userEvent.click(screen.getByTestId('column-action-archive-all'))
@@ -816,7 +848,7 @@ describe('BoardPage — column actions', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     await userEvent.click(screen.getByTestId('board-column-todo-menu'))
 
@@ -827,7 +859,7 @@ describe('BoardPage — column actions', () => {
   it('has no menu on an empty column', () => {
     const b = withColumns()
     useBoardData.mockReturnValue(baseHookState({ boards: [b], activeBoard: b, cards: [] }))
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     expect(screen.queryByTestId('board-column-todo-menu')).not.toBeInTheDocument()
   })
@@ -838,7 +870,7 @@ describe('BoardPage — column actions', () => {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [b], activeBoard: b, cards: [card({ id: 'c1', columnId: 'todo' })] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
 
     expect(screen.queryByTestId('board-column-todo-menu')).not.toBeInTheDocument()
   })
@@ -850,14 +882,15 @@ describe('BoardPage — column actions', () => {
  * through its own toggle, which is what stops the kept tickets from being kept somewhere unreadable.
  */
 describe('BoardPage — a deleted board is tombstoned, not gone', () => {
-  const deleted = () => board({ id: 'gone', name: 'Old sprint', deletedAt: '2026-08-06T00:00:00.000Z' })
+  const deleted = () =>
+    board({ id: 'gone', name: 'Old sprint', deletedAt: '2026-08-06T00:00:00.000Z' })
   const live = () => board({ id: 'live', name: 'Sprint 13' })
 
   function renderWith(activeBoard = deleted()) {
     useBoardData.mockReturnValue(
       baseHookState({ boards: [live(), deleted()], activeBoard, cards: [] })
     )
-    render(<BoardPage repoPath="/repo" />)
+    renderBoardView()
   }
 
   it('says why it is still here, rather than calling itself read-only', () => {
@@ -887,15 +920,12 @@ describe('BoardPage — a deleted board is tombstoned, not gone', () => {
     expect(screen.getByTestId('board-delete-button')).toBeInTheDocument()
   })
 
-  it('is hidden from the picker until asked for, and the toggle brings it back', async () => {
+  it('is hidden from the board list until asked for, and the toggle brings it back', async () => {
     renderWith(live())
 
-    await userEvent.click(screen.getByTestId('board-switcher'))
-    expect(screen.queryByTestId('board-switcher-option-gone')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-sidebar-item-gone')).not.toBeInTheDocument()
 
-    await userEvent.keyboard('{Escape}')
     await userEvent.click(screen.getByTestId('board-show-deleted'))
-    await userEvent.click(screen.getByTestId('board-switcher'))
-    expect(screen.getByTestId('board-switcher-option-gone')).toBeInTheDocument()
+    expect(screen.getByTestId('board-sidebar-item-gone')).toBeInTheDocument()
   })
 })

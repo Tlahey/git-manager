@@ -48,7 +48,6 @@ describe('validateSection — settings, repaired group by group', () => {
     enableAnimations: true,
     terminalBackground: '#000000',
     terminalForeground: '#ffffff',
-    viewSwitcherPosition: 'toolbar',
   }
 
   it('keeps every valid group when one of them is broken', () => {

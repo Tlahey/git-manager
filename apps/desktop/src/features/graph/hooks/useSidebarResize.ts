@@ -1,0 +1,86 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+
+const WIDTH_STORAGE_KEY = 'sidebar-width'
+const DEFAULT_WIDTH = 240
+const MIN_WIDTH = 160
+const MAX_WIDTH = 480
+
+/** Width of the reduced sidebar — the column of section icons `SidebarRail` draws. */
+export const RAIL_WIDTH = 48
+
+/**
+ * Width of the graph's sidebar, dragged by its right edge and remembered across sessions.
+ *
+ * It used to own the *reduced/full* state as well, behind a button in the sidebar's own header.
+ * That state is `repoView.store`'s `isPanelOpen` now — one flag for the panel slot all three views
+ * take turns filling, driven by ⌘S and the toolbar's button, so there is one control rather than
+ * two neighbouring ones meaning slightly different things. What is left here is the width, which is
+ * this view's alone: no other panel is draggable.
+ */
+export function useSidebarResize() {
+  const [width, setWidth] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(WIDTH_STORAGE_KEY)
+      if (stored) {
+        const parsed = parseInt(stored, 10)
+        if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) return parsed
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_WIDTH
+  })
+
+  const isDragging = useRef(false)
+  const startX = useRef(0)
+  const startWidth = useRef(0)
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return
+      isDragging.current = true
+      startX.current = e.clientX
+      startWidth.current = width
+      e.currentTarget.setPointerCapture(e.pointerId)
+      e.preventDefault()
+    },
+    [width]
+  )
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return
+    const delta = e.clientX - startX.current
+    const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta))
+    setWidth(next)
+  }, [])
+
+  const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return
+    isDragging.current = false
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Width persistence
+  useEffect(() => {
+    try {
+      localStorage.setItem(WIDTH_STORAGE_KEY, String(width))
+    } catch {
+      // ignore
+    }
+  }, [width])
+
+  const resizeHandleProps = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+  }
+
+  return {
+    width,
+    resizeHandleProps,
+  }
+}

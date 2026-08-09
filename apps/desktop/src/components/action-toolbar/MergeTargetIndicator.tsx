@@ -20,7 +20,7 @@ interface MergeTargetIndicatorProps {
  * one checked out (there is nothing to merge) or when no target branch exists in the repo.
  *
  * This is the *local, PR-less* counterpart of the PR panel's `mergeStateStatus` box
- * (`git-graph/pr/PrChecksBox.tsx`), which only knows about conflicts once GitHub has computed them
+ * (`github-panels/pr/PrChecksBox.tsx`), which only knows about conflicts once GitHub has computed them
  * for an open pull request. Here the merge is simulated locally, so the warning shows up while the
  * branch is still unpublished.
  */

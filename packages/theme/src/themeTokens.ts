@@ -137,6 +137,12 @@ export const COMPONENT_TOKEN_DEFAULTS: Record<string, string> = {
   '--button-destructive-foreground': 'var(--destructive-foreground)',
   '--button-success-bg': 'var(--success)',
   '--button-success-foreground': 'var(--success-foreground)',
+  // The SELECTED segment of a segmented control. Aliases the button pair on purpose: the alias is
+  // declared on :root, so it computes against the *content* button colours and survives
+  // `.chrome-surface`'s re-point of `--button-*` to the sidebar accent — a row-highlight tint too
+  // flat (1.09:1 on github-light) to mark one of three identical segments. See themes.css.
+  '--control-active-bg': 'var(--button-bg)',
+  '--control-active-foreground': 'var(--button-foreground)',
   '--badge-bg': 'var(--primary)',
   '--badge-foreground': 'var(--primary-foreground)',
   // The secondary/destructive Badge variants ride their own component tokens
@@ -205,6 +211,14 @@ export const COMPONENT_CONTRAST_PAIRS: TokenContrastPair[] = [
     label: 'button-success',
     fg: '--button-success-foreground',
     bg: '--button-success-bg',
+    minRatio: AA_NORMAL_TEXT,
+  },
+  // A selected segment's label is 10px on the toolbar, well under the large-text bar — and a theme
+  // that re-points this pair away from the button one gets held to the same AA rule the button is.
+  {
+    label: 'control-active',
+    fg: '--control-active-foreground',
+    bg: '--control-active-bg',
     minRatio: AA_NORMAL_TEXT,
   },
   { label: 'badge', fg: '--badge-foreground', bg: '--badge-bg', minRatio: AA_NORMAL_TEXT },

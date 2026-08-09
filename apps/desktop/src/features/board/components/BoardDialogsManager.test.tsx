@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { BoardData } from '../hooks/useBoardData'
 import { makeBoard, makeCard, makeBoardData } from '../test/boardFactories'
-import { useBoardDialogs, type BoardDialogs } from '../hooks/useBoardDialogs'
+import { useBoardDialogsStore, type BoardDialogs } from '../stores/boardDialogs.store'
 import { BoardDialogsManager } from './BoardDialogsManager'
 
 vi.mock('../../../api/git.api', () => ({
@@ -13,12 +13,11 @@ vi.mock('../../../api/git.api', () => ({
 }))
 
 /**
- * Mounts the manager with a real `useBoardDialogs`, opening one dialog on mount — the manager reads
- * that state and never sets it from nothing, so a test has to start it the way the page's header
- * would.
+ * Mounts the manager with the real dialog store, opening one dialog on mount — the manager reads
+ * that state and never sets it from nothing, so a test has to start it the way the toolbar would.
  */
 function Harness({ data, open }: { data: BoardData; open?: (dialogs: BoardDialogs) => void }) {
-  const dialogs = useBoardDialogs()
+  const dialogs = useBoardDialogsStore()
   // Through refs so the effect genuinely has no dependencies: it stands in for the header click that
   // would have opened the dialog, and re-running it would fight whatever the test does next.
   const latest = useRef({ open, dialogs })
@@ -37,6 +36,8 @@ function renderManager(data: Partial<BoardData> = {}, open?: (dialogs: BoardDial
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The dialog state is a store now, so it outlives a test unless it is put back.
+  useBoardDialogsStore.getState().reset()
 })
 
 describe('BoardDialogsManager', () => {
@@ -162,7 +163,7 @@ describe('BoardDialogsManager — creating a card', () => {
 
 /**
  * The archive purge is raised from the archive list and comes back to it — the same origin-trail
- * contract the per-card delete already follows, and the reason `useBoardDialogs` keeps a stack.
+ * contract the per-card delete already follows, and the reason `boardDialogs.store` keeps a stack.
  */
 describe('BoardDialogsManager — purging the archive', () => {
   const archived = makeCard({ id: 'a1', archivedAt: '2026-08-04T00:00:00.000Z' })

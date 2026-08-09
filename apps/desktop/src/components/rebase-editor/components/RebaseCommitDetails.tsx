@@ -8,7 +8,7 @@ import { ScrollArea, Spinner } from '@git-manager/ui'
 import type { GitCommit } from '@git-manager/git-types'
 import { apiGetCommitDiff } from '../../../api/git.api'
 import { useFileRawContents } from '../../../hooks/useFileRawContents'
-import { CommitFileList, type ProcessedFileItem } from '../../git-graph/components/CommitFileList'
+import { CommitFileList, type ProcessedFileItem } from '../../common/CommitFileList'
 import { ThreeWayMergeEditor } from '../../merge-editor/ThreeWayMergeEditor'
 
 interface RebaseCommitDetailsProps {

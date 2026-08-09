@@ -6,6 +6,9 @@ import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
+import { useRepoViewStore } from '../stores/repoView.store'
+import { useFileExplorerStore } from '../features/files'
+import { useBoardControlsStore, useBoardDialogsStore } from '../features/board'
 import { queryClient } from '../lib/queryClient'
 
 function setUserAgent(ua: string) {
@@ -40,6 +43,11 @@ beforeEach(() => {
   useCommandPaletteStore.setState({ open: false })
   useCommitSearchStore.setState({ open: false, query: '' })
   useSidebarSearchStore.setState({ focusToken: 0 })
+  // ⌘F dispatches on the active view, so every test below states which one it is looking at.
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
+  useFileExplorerStore.setState({ treeSearchQuery: '' })
+  useBoardControlsStore.setState({ boardFilter: '' })
+  useBoardDialogsStore.getState().reset()
   plainEl = document.createElement('div')
   inputEl = document.createElement('input')
   document.body.append(plainEl, inputEl)
@@ -519,7 +527,149 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
   })
 })
 
+/**
+ * ⌘F means "search what I am looking at". On the files and board views that is the left panel's own
+ * filter field; on the graph it is the commit search, which is a different search from the branch
+ * filter ⌥⌘F raises. What makes the wrong view answering it a real bug rather than a nuisance: the
+ * graph's panel over a board would search commits nobody asked about while the cards stayed
+ * unfiltered.
+ */
+describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
+  function press() {
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
+  }
+
+  it('asks the files panel for its filter', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files' })
+    press()
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+    expect(useCommitSearchStore.getState().open).toBe(false)
+  })
+
+  it('brings the files panel back before asking its filter for focus', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files', isPanelOpen: false })
+    press()
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
+  /**
+   * The board is the one view where ⌘F is *not* the panel's field: the panel filters the board list,
+   * and looking for a ticket has no reason to start by naming its board. ⌥⌘F still reaches the
+   * panel's filter here, as on the other two views.
+   */
+  it('opens the global ticket search on the board, not the panel’s board filter', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+    press()
+    expect(useBoardDialogsStore.getState().openDialog).toBe('globalSearch')
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
+  })
+
+  it('opens the commit search on the graph, and nobody else’s', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    press()
+    expect(useCommitSearchStore.getState().open).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
+  })
+
+  /**
+   * `isCommitsView` gates the graph alone: its panel only exists over the plain commit list. The
+   * other two views draw their filter unconditionally, so a PR open in the centre slot — which
+   * belongs to the graph — must not stop the board from answering ⌘F.
+   */
+  it('still answers on the board while a pull request occupies the graph’s centre slot', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo', activePrNumber: 42 })
+    useRepoViewStore.setState({ view: 'board' })
+    press()
+    expect(useBoardDialogsStore.getState().openDialog).toBe('globalSearch')
+  })
+})
+
+describe('useKeyboardShortcuts — left panel (⌘S)', () => {
+  function press(from: Element = plainEl, init: KeyboardEventInit = {}) {
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(from, { key: 's', ctrlKey: true, ...init })
+  }
+
+  it('folds the panel away and back', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    press()
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
+  })
+
+  /** Whichever view is filling the slot — one flag, one gesture. */
+  it('answers on the board as much as on the graph', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+    press()
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
+  })
+
+  it('works while a field has focus, like the other chords handled before the typing guard', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    press(inputEl)
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
+  })
+
+  /**
+   * ⌘S is muscle memory for "save" inside an editor. There is nothing to save in this app, which is
+   * what makes the key free — but swallowing it over a Monaco pane would read as the app ignoring a
+   * save rather than as a shortcut it doesn't have.
+   */
+  it('yields to Monaco', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    const monaco = document.createElement('div')
+    monaco.className = 'monaco-editor'
+    const inner = document.createElement('div')
+    monaco.append(inner)
+    document.body.append(monaco)
+
+    press(inner)
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+
+    monaco.remove()
+  })
+
+  it('does nothing without an active repo, where there is no panel to fold', () => {
+    press()
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+  })
+})
+
 describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
+  /** Filtering a panel that ⌘S folded away is asking for it back — otherwise the chord would ask an
+   * unmounted input for focus and do nothing visible at all. */
+  it('brings the panel back first when it is hidden', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ isPanelOpen: false })
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true })
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
   it('requests focus on Ctrl+Alt+F when a repo is active', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     renderHook(() =>

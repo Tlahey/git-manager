@@ -13,7 +13,7 @@ grammar-constrained JSON.
 | **Temperature**   | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary                                                                                                                                                                     |
 | **Context scope** | `staged` (index vs HEAD)                                                                                                                                                                                                                                  |
 | **Diff budget**   | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts)                                                       |
-| **UI**            | ✨ in [`WipStagingPanel`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx) via [`useWipCommitPanel`](../../apps/desktop/src/hooks/useWipCommitPanel.ts) → [`useAiGeneration`](../../apps/desktop/src/hooks/useAiGeneration.ts) |
+| **UI**            | ✨ in [`WipStagingPanel`](../../apps/desktop/src/features/graph/components/WipStagingPanel.tsx) via [`useWipCommitPanel`](../../apps/desktop/src/features/graph/hooks/useWipCommitPanel.ts) → [`useAiGeneration`](../../apps/desktop/src/hooks/useAiGeneration.ts) |
 
 ---
 
@@ -32,7 +32,7 @@ a **non-blocking warning**. You can always commit anyway: the primary guarantee 
 model well, not policing its output.
 
 Above that warning sits the shared
-[`CoverageNotice`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx), saying
+[`CoverageNotice`](../../apps/desktop/src/components/common/CoverageNotice.tsx), saying
 how much of the staged change the message was actually written from — silent on the common case where
 everything was read. It is worth showing _here_ for a reason none of the other panels have: this text
 is about to be written into the repository's history under your name, permanently, and a subject
@@ -242,5 +242,5 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts)                               | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, the instruction's committed-output rules, and `parseCommitMessage`/`formatCommitMessage` (JSON, fenced JSON, prose fallback, empty rejected) |
 | [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts)                         | commitlint parsing, conventional-history inference, validation, and the adaptive length bar (`inferHeaderMaxLength`: outlier vs habit, never tightening below the default, commitlint overriding it, and the prompt stating the same number)                                                                                             |
 | [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts)                             | the finished message handed back whole, subject+body joined by a blank line, empty-staged refusal, validation wiring, coverage (assessed before the request, cleared on a new run), and cancelling (no write-back, no error reported for a request that failed after being abandoned)                                                    |
-| [`WipStagingPanel.test.tsx`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.test.tsx) | the coverage line under the message box: shown when files were left out, silent when everything was read, absent when the box is empty                                                                                                                                                                                                   |
+| [`WipStagingPanel.test.tsx`](../../apps/desktop/src/features/graph/components/WipStagingPanel.test.tsx) | the coverage line under the message box: shown when files were left out, silent when everything was read, absent when the box is empty                                                                                                                                                                                                   |
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts)                                                 | the right instruction, temperature and **schema** reach the transport, and the parsed draft comes back                                                                                                                                                                                                                                   |

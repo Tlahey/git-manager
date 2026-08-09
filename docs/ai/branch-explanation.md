@@ -12,8 +12,8 @@ Answers "what is this branch even about?" — for a branch you didn't write, wit
 | **Temperature**   | 0.2                                                                                                                                                                                                   |
 | **Context scope** | `range` — `merge-base(base, branch)..branch`                                                                                                                                                          |
 | **Diff budget**   | none at this level: every file is read whole, in its own prompt, by the map phase                                                                                                                     |
-| **UI**            | [`BranchExplanationPanel`](../../apps/desktop/src/components/git-graph/BranchExplanationPanel.tsx) — right panel — via [`useBranchExplanation`](../../apps/desktop/src/hooks/useBranchExplanation.ts) |
-| **Memory**        | [`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), persisted per repo + branch                                                                                            |
+| **UI**            | [`BranchExplanationPanel`](../../apps/desktop/src/features/graph/components/BranchExplanationPanel.tsx) — right panel — via [`useBranchExplanation`](../../apps/desktop/src/features/graph/hooks/useBranchExplanation.ts) |
+| **Memory**        | [`aiExplanation.store`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.ts), persisted per repo + branch                                                                                            |
 
 ---
 
@@ -44,7 +44,7 @@ bisect panels, resizes with them, and stays open while you work.
 ### The memory
 
 Summaries are **remembered per branch**, persisted across restarts
-([`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), keyed
+([`aiExplanation.store`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.ts), keyed
 `<repoPath>::branch::<name>`). Reopening a branch you looked at yesterday shows what you read then,
 instantly — these cost tens of seconds of local model time to produce and nothing to keep.
 
@@ -146,9 +146,9 @@ Beyond the [shared ones](./README.md#known-limitations):
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`branchExplanation.test.ts`](../../packages/ai/src/features/branchExplanation.test.ts)                          | prompt shape, no-commits wording, missing base ref, language, window-sized budget (fits every window, long commit list paid out of the diff, code before noise, omitted files named before the diff), coverage, and the instruction's reversal — the old "say what you could not see" rule is now asserted _absent_ |
 | [`branchExplanationBase.test.ts`](../../apps/desktop/src/lib/branchExplanationBase.test.ts)                      | target-branch precedence, fallbacks, self-exclusion, no-base                                                                                                                                                                                                                                                        |
-| [`useBranchExplanation.test.ts`](../../apps/desktop/src/hooks/useBranchExplanation.test.ts)                      | explicit head ref, language, empty-range refusal, what is and isn't remembered                                                                                                                                                                                                                                      |
-| [`BranchExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/BranchExplanationPanel.test.tsx) | auto-start on open, no regeneration over a remembered summary, stale-base warning, stop/forget, error decoding                                                                                                                                                                                                      |
-| [`aiExplanation.store.test.ts`](../../apps/desktop/src/stores/aiExplanation.store.test.ts)                       | keying, overwrite, per-branch isolation, clear                                                                                                                                                                                                                                                                      |
+| [`useBranchExplanation.test.ts`](../../apps/desktop/src/features/graph/hooks/useBranchExplanation.test.ts)                      | explicit head ref, language, empty-range refusal, what is and isn't remembered                                                                                                                                                                                                                                      |
+| [`BranchExplanationPanel.test.tsx`](../../apps/desktop/src/features/graph/components/BranchExplanationPanel.test.tsx) | auto-start on open, no regeneration over a remembered summary, stale-base warning, stop/forget, error decoding                                                                                                                                                                                                      |
+| [`aiExplanation.store.test.ts`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.test.ts)                       | keying, overwrite, per-branch isolation, clear                                                                                                                                                                                                                                                                      |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                              | the menu item's action, its AI-disabled state, and that it is hidden on a commit with no branch                                                                                                                                                                                                                     |
 | `ai_context.rs` (`#[cfg(test)]`)                                                                                 | explicit head ref, self-range, unresolvable head                                                                                                                                                                                                                                                                    |
 
@@ -169,7 +169,7 @@ model from mentioning what it could not read — a rule that only existed becaus
 a fraction and would otherwise open with an apology. With complete evidence there is nothing to hide.
 
 The panel shows the per-file count while the map phase runs
-([`SummaryProgressNotice`](../../apps/desktop/src/components/git-graph/components/SummaryProgressNotice.tsx)),
+([`SummaryProgressNotice`](../../apps/desktop/src/components/common/SummaryProgressNotice.tsx)),
 which replaces the coverage line. Coverage answered "how little did it read?"; there is no budgeted
 prompt to answer that about any more, and what the reader needs is a reason for the wait before the
 first token. Cancelling stops the map at its next call boundary.

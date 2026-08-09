@@ -8,7 +8,7 @@ vi.mock('@git-manager/i18n', () => ({
 }))
 vi.mock('../../api/git.api', () => ({ apiApplyPatch: vi.fn(), apiReadPatchFile: vi.fn() }))
 vi.mock('../../lib/pickFile', () => ({ pickFile: vi.fn() }))
-vi.mock('../git-graph/components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: ({
     processedFiles,
     onSelectFileDiff,

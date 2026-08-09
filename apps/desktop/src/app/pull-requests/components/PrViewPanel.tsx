@@ -2,9 +2,9 @@ import { useEffect, useMemo } from 'react'
 import { useHorizontalResize } from '@git-manager/components'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { RepoGitHubOverrideContext } from '../../../hooks/useRepoGitHub'
-import { PrDetailCenter } from '../../../components/git-graph/pr/PrDetailCenter'
-import { PrFilesPanel } from '../../../components/git-graph/pr/PrFilesPanel'
-import { PrFileDiffCenter } from '../../../components/git-graph/pr/PrFileDiffCenter'
+import { PrDetailCenter } from '../../../components/github-panels/pr/PrDetailCenter'
+import { PrFilesPanel } from '../../../components/github-panels/pr/PrFilesPanel'
+import { PrFileDiffCenter } from '../../../components/github-panels/pr/PrFileDiffCenter'
 import type { MockPR } from '../types'
 
 interface PrViewPanelProps {

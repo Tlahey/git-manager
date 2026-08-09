@@ -3,24 +3,39 @@ import { useBoardControlsStore } from './boardControls.store'
 
 describe('boardControls.store', () => {
   beforeEach(() => {
-    useBoardControlsStore.setState({ search: '', isOpen: false })
-  })
-
-  it('updates the search text', () => {
-    useBoardControlsStore.getState().setSearch('header')
-    expect(useBoardControlsStore.getState().search).toBe('header')
-  })
-
-  it('clears the search on reset', () => {
-    useBoardControlsStore.getState().setSearch('header')
     useBoardControlsStore.getState().reset()
-    expect(useBoardControlsStore.getState().search).toBe('')
   })
 
-  it('toggles the board panel open state', () => {
-    useBoardControlsStore.getState().setOpen(true)
-    expect(useBoardControlsStore.getState().isOpen).toBe(true)
-    useBoardControlsStore.getState().setOpen(false)
-    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+  it('updates the board-list filter', () => {
+    useBoardControlsStore.getState().setBoardFilter('sprint')
+    expect(useBoardControlsStore.getState().boardFilter).toBe('sprint')
+  })
+
+  /** Finding a *ticket* is `BoardSearchDialog`'s job, across every board — this store narrows the
+   * panel's board list and nothing else. */
+  it('carries no card query', () => {
+    expect(useBoardControlsStore.getState()).not.toHaveProperty('search')
+  })
+
+  it('toggles the closed and deleted board filters', () => {
+    useBoardControlsStore.getState().setShowClosed(true)
+    useBoardControlsStore.getState().setShowDeleted(true)
+
+    expect(useBoardControlsStore.getState().showClosed).toBe(true)
+    expect(useBoardControlsStore.getState().showDeleted).toBe(true)
+  })
+
+  it('clears the filter and both toggles on reset', () => {
+    useBoardControlsStore.getState().setBoardFilter('sprint')
+    useBoardControlsStore.getState().setShowClosed(true)
+    useBoardControlsStore.getState().setShowDeleted(true)
+
+    useBoardControlsStore.getState().reset()
+
+    expect(useBoardControlsStore.getState()).toMatchObject({
+      boardFilter: '',
+      showClosed: false,
+      showDeleted: false,
+    })
   })
 })

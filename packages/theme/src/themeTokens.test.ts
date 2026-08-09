@@ -20,7 +20,7 @@ import {
   APCA_MIN_UI_TEXT,
   type ThemeTokens,
 } from './themeTokens'
-import { parseHslTriplet } from './colorContrast'
+import { contrastRatioForHslTriplets, parseHslTriplet } from './colorContrast'
 
 // vitest runs with cwd = the package root (packages/theme). Themes are one file
 // per theme under src/themes/; concatenate them all so a new theme file is picked
@@ -382,6 +382,50 @@ describe(`APCA perceptual contrast (component labels, |Lc| ≥ ${APCA_MIN_UI_TEX
     expect(
       fixed,
       `These labels now clear the APCA bar — remove from KNOWN_APCA_FAILURES:\n  ${fixed.join('\n  ')}`
+    ).toEqual([])
+  })
+})
+
+/**
+ * The chrome's active-item tint has to be *visible* on its own chrome.
+ *
+ * `--sidebar-accent` is what marks the active repo tab (`TabBar`) and, through
+ * `.chrome-surface`'s `--button-bg` re-point, the selected segment of a toolbar `ToggleGroup`. Two
+ * light themes had set it to their own `--sidebar-background` — solarized-light to the very same
+ * triplet — so on those themes nothing on the chrome could show that it was active, and the bug had
+ * been sitting in the tab bar long before a second control ran into it.
+ *
+ * The floor is deliberately not 3:1: this is a subtle surface tint, not a UI component boundary, and
+ * every shipped theme sits between 1.09 and 17. It only asks that the two be told apart at all.
+ */
+const MIN_ACTIVE_TINT_RATIO = 1.05
+
+describe('chrome active tint is distinguishable from the chrome', () => {
+  it('keeps every theme’s --sidebar-accent off its --sidebar-background', () => {
+    const tooFlat: string[] = []
+    for (const id of themeIds) {
+      const tokens = themes.get(id)!
+      const raw = (key: string) => {
+        const value = tokens.get(key)
+        // A theme missing either token could never be graded, and would slip through as a pass —
+        // which is exactly how the first version of this guard sat green over the bug it was
+        // written for.
+        expect(value, `"${id}" declares no ${key}`).toBeTypeOf('string')
+        return resolveTokenValue(tokens, value!)
+      }
+      const ratio = contrastRatioForHslTriplets(
+        raw('--sidebar-accent'),
+        raw('--sidebar-background')
+      )
+      expect(ratio, `"${id}" has an ungradable --sidebar-accent`).not.toBeNull()
+      if (ratio !== null && ratio < MIN_ACTIVE_TINT_RATIO) {
+        tooFlat.push(`${id} (${ratio.toFixed(3)}:1)`)
+      }
+    }
+    expect(
+      tooFlat,
+      `These themes cannot show an active tab or a selected toolbar segment — give them a ` +
+        `--sidebar-accent that steps away from --sidebar-background:\n  ${tooFlat.join('\n  ')}`
     ).toEqual([])
   })
 })

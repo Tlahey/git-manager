@@ -7,7 +7,7 @@ import type { Board, BoardCard, BoardCardPriority, BoardTag } from '@git-manager
  * the ink a filled tag badge needs.
  *
  * Kept out of the components so each rule is testable on its own, per the colocated-`*.config.ts`
- * convention (see `components/git-graph/columns.config.ts`).
+ * convention (see `features/graph/lib/columns.config.ts`).
  */
 
 export interface DodProgress {

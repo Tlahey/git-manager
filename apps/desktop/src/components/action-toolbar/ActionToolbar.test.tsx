@@ -12,78 +12,40 @@ vi.mock('./MergeTargetIndicator', () => ({
     <div data-testid="merge-target-indicator-stub" data-repo-path={repoPath ?? ''} />
   ),
 }))
-vi.mock('./FetchButton', () => ({ FetchButton: () => <button>Fetch</button> }))
-vi.mock('./BranchButton', () => ({ BranchButton: () => <button>Branch</button> }))
-vi.mock('./ToolsMenu', () => ({ ToolsMenu: () => <div data-testid="tools-menu" /> }))
-// TerminalButton is a self-contained split button (integrated panel + external menu) with its own
-// test — stub it here so the toolbar composition test doesn't depend on its internals.
-vi.mock('./TerminalButton', () => ({ TerminalButton: () => <div data-testid="terminal-button" /> }))
-
-const useActionToolbarMock = vi.fn()
-vi.mock('../../hooks/useActionToolbar', () => ({ useActionToolbar: () => useActionToolbarMock() }))
+// Each view's section has its own test — this file is about *which* one the shell mounts, and about
+// the two controls that are on the bar whatever the view.
+vi.mock('../../features/graph', () => ({
+  GraphToolbarActions: () => <div data-testid="graph-toolbar-actions" />,
+}))
+vi.mock('../../features/board', () => ({
+  BoardToolbar: (props: { repoPath: string }) => (
+    <div data-testid="board-toolbar">{props.repoPath}</div>
+  ),
+}))
 
 import { ActionToolbar } from './ActionToolbar'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
-import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../features/board'
-import { useSettingsStore } from '../../stores/settings.store'
+import { useRepoViewStore } from '../../stores/repoView.store'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
-const INITIAL_SETTINGS = useSettingsStore.getState()
-
-function hookState(overrides: Partial<ReturnType<typeof useActionToolbarMock>> = {}) {
-  return {
-    activeRepo: '/repo',
-    fromRef: 'main',
-    loading: {
-      fetch: false,
-      pull: false,
-      push: false,
-      stash: false,
-      pop: false,
-      undo: false,
-      redo: false,
-    },
-    hasChanges: false,
-    hasStashes: false,
-    aheadCount: 0,
-    behindCount: 0,
-    canUndo: false,
-    canRedo: false,
-    undoLabel: null,
-    redoLabel: null,
-    hasEditor: true,
-    handleOpenEditor: vi.fn(),
-    handleFetch: vi.fn(),
-    handleFetchAll: vi.fn(),
-    handlePull: vi.fn(),
-    handlePush: vi.fn(),
-    handleUndo: vi.fn(),
-    handleRedo: vi.fn(),
-    handleStash: vi.fn(),
-    handlePop: vi.fn(),
-    handleCreateBranch: vi.fn(),
-    ...overrides,
-  }
-}
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useActionToolbarMock.mockReturnValue(hookState())
   useCommandPaletteStore.setState({ open: false })
-  useCommitSearchStore.setState({ open: false, query: '' })
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
-  useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useRepoUIStore.setState({ activeRepo: '/repo' })
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
 })
 
-describe('ActionToolbar — composition', () => {
-  it('renders the repo/branch context children', () => {
+describe('ActionToolbar — the parts every view keeps', () => {
+  it('renders the repo selector whichever view is on screen', () => {
     render(<ActionToolbar />)
     expect(screen.getByTestId('repo-selector')).toBeInTheDocument()
-    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
-    expect(screen.getByTestId('state-tags')).toBeInTheDocument()
+
+    useRepoViewStore.setState({ view: 'board' })
+    render(<ActionToolbar />)
+    expect(screen.getAllByTestId('repo-selector')).toHaveLength(2)
   })
 
   it('points the merge-target indicator at the repo, or at the viewed workspace when there is one', () => {
@@ -101,111 +63,15 @@ describe('ActionToolbar — composition', () => {
     )
   })
 
-  it('disables undo/redo/pull/push/stash/pop/editor when there is no active repo', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
+  it('offers the view switcher, whichever view is on screen', () => {
+    useRepoViewStore.setState({ view: 'board' })
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Pull' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Push' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Stash' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Pop' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Editor' })).toBeDisabled()
-  })
-
-  it('enables undo/redo only when canUndo/canRedo are true', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ canUndo: true, canRedo: false }))
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
-  })
-
-  it('enables stash only when hasChanges is true', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasChanges: true }))
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Stash' })).toBeEnabled()
-  })
-
-  it('enables pop only when hasStashes is true', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasStashes: true }))
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Pop' })).toBeEnabled()
-  })
-
-  it('wires the undo/pull/push/pop/editor buttons to their handlers', async () => {
-    const user = userEvent.setup()
-    const state = hookState({ canUndo: true, hasStashes: true })
-    useActionToolbarMock.mockReturnValue(state)
-    render(<ActionToolbar />)
-
-    await user.click(screen.getByRole('button', { name: 'Undo' }))
-    expect(state.handleUndo).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'Pull' }))
-    expect(state.handlePull).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'Push' }))
-    expect(state.handlePush).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'Pop' }))
-    expect(state.handlePop).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'Editor' }))
-    expect(state.handleOpenEditor).toHaveBeenCalledOnce()
-  })
-
-  it('shows ahead/behind badges on the push/pull buttons when the branch has unpushed/unpulled commits', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ aheadCount: 3, behindCount: 2 }))
-    render(<ActionToolbar />)
-    // By test id, not by accessible name: Push now has a caret beside it whose label ("Push
-    // options") matches /Push/ too.
-    expect(screen.getByTestId('toolbar-push-button')).toHaveTextContent('3')
-    expect(screen.getByRole('button', { name: /Pull/ })).toHaveTextContent('2')
-    expect(screen.getAllByTestId('toolbar-button-badge')).toHaveLength(2)
-  })
-
-  it('shows no push/pull badges when the branch is in sync', () => {
-    render(<ActionToolbar />)
-    expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
-  })
-
-  it('always renders the terminal button (the integrated terminal needs no configured app)', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasEditor: false }))
-    render(<ActionToolbar />)
-    expect(screen.getByTestId('terminal-button')).toBeInTheDocument()
-  })
-
-  it('hides the editor button entirely when no editor app is configured', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasEditor: false }))
-    render(<ActionToolbar />)
-    expect(screen.queryByRole('button', { name: 'Editor' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('terminal-button')).toBeInTheDocument()
-  })
-
-  it('shows a loading spinner (no icon) on a button while its action is in flight', () => {
-    useActionToolbarMock.mockReturnValue(
-      hookState({ hasChanges: true, loading: { ...hookState().loading, stash: true } })
-    )
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Stash' })).toBeDisabled()
-  })
-
-  it('disables the search button when there is no active repo', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
-  })
-
-  it('disables the search button outside the commits view (e.g. a PR is open)', () => {
-    useRepoUIStore.setState({ activePrNumber: 42 })
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
-  })
-
-  it('re-enables the search button once back on the commits view', () => {
-    useRepoUIStore.setState({ activePrNumber: null })
-    render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'Search' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Board' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Graph' })).toBeInTheDocument()
   })
 
   it('never disables the actions button, even with no active repo', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
+    useRepoUIStore.setState({ activeRepo: null })
     render(<ActionToolbar />)
     expect(screen.getByRole('button', { name: 'Actions' })).toBeEnabled()
   })
@@ -216,70 +82,98 @@ describe('ActionToolbar — composition', () => {
     await user.click(screen.getByRole('button', { name: 'Actions' }))
     expect(useCommandPaletteStore.getState().open).toBe(true)
   })
+})
 
-  it('toggles the commit search panel when the search button is clicked', async () => {
-    const user = userEvent.setup()
+/**
+ * The point of the split: exactly one view's actions are on the bar at a time, so a command the
+ * current view cannot answer for is not merely disabled — it is not there to click.
+ */
+describe('ActionToolbar — one section per view', () => {
+  it('mounts the graph actions on the graph view, and nobody else’s', () => {
     render(<ActionToolbar />)
-    await user.click(screen.getByRole('button', { name: 'Search' }))
-    expect(useCommitSearchStore.getState().open).toBe(true)
+    expect(screen.getByTestId('graph-toolbar-actions')).toBeInTheDocument()
+    expect(screen.queryByTestId('files-toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-toolbar')).not.toBeInTheDocument()
+  })
+
+  /**
+   * The files view supplies no toolbar commands at all, and that is the split working rather than a
+   * gap in it: its search is the panel's own field, its panel toggle is the shell's, and the
+   * "close the open file" button duplicated the X in the diff's own header.
+   */
+  it('mounts nobody’s actions on the files view, which has none', () => {
+    useRepoViewStore.setState({ view: 'files' })
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('toolbar-view-actions-files')).toBeEmptyDOMElement()
+    expect(screen.queryByTestId('graph-toolbar-actions')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-toolbar')).not.toBeInTheDocument()
+  })
+
+  it('mounts the board actions on the board view, pointed at the viewed path', () => {
+    useRepoViewStore.setState({ view: 'board' })
+    useRepoUIStore.setState({ activeWorkspacePath: '/repo/wt' })
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('board-toolbar')).toHaveTextContent('/repo/wt')
+    expect(screen.queryByTestId('graph-toolbar-actions')).not.toBeInTheDocument()
   })
 })
 
-describe('ActionToolbar — board / file explorer toggle', () => {
-  beforeEach(() => {
-    useFileExplorerStore.setState({ isOpen: false, isSidebarOpen: true })
-    useBoardControlsStore.setState({ isOpen: false })
+/**
+ * The panel toggle is the shell's, not a view's, because the panel slot is: the branch sidebar, the
+ * file tree and the board list take turns filling one piece of chrome. It also never leaves the bar
+ * — once ⌘S has folded a panel away, this button is the only way back.
+ */
+describe('ActionToolbar — the left panel toggle', () => {
+  it.each(['graph', 'files', 'board'] as const)('is on the bar on the %s view', (view) => {
+    useRepoViewStore.setState({ view })
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('toolbar-toggle-panel')).toBeInTheDocument()
   })
 
-  it('opens the board panel when the board button is clicked', async () => {
+  it('folds the panel away and back', async () => {
     const user = userEvent.setup()
     render(<ActionToolbar />)
-    await user.click(screen.getByTestId('toolbar-board-button'))
-    expect(useBoardControlsStore.getState().isOpen).toBe(true)
+
+    await user.click(screen.getByTestId('toolbar-toggle-panel'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
+
+    await user.click(screen.getByTestId('toolbar-toggle-panel'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
   })
 
-  it('closes the file explorer when the board panel opens, since they share one central slot', async () => {
-    useFileExplorerStore.setState({ isOpen: true })
-    const user = userEvent.setup()
+  it('says which way it goes, and names the shortcut', () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
     render(<ActionToolbar />)
-    await user.click(screen.getByTestId('toolbar-board-button'))
-    expect(useBoardControlsStore.getState().isOpen).toBe(true)
-    expect(useFileExplorerStore.getState().isOpen).toBe(false)
-  })
-
-  it('closes the board panel when the file explorer opens', async () => {
-    useBoardControlsStore.setState({ isOpen: true })
-    const user = userEvent.setup()
-    render(<ActionToolbar />)
-    await user.click(screen.getByTestId('toolbar-files-button'))
-    expect(useFileExplorerStore.getState().isOpen).toBe(true)
-    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+    expect(screen.getByTitle('Expand sidebar (⌘S)')).toBeInTheDocument()
   })
 })
 
-describe('ActionToolbar — view switcher position setting', () => {
-  it('shows the Files/Board toggle buttons by default (toolbar position)', () => {
+/**
+ * The branch context follows the same rule as the sections: it is on the bar for the views that
+ * read the checked-out branch, and off it for the one that doesn't. Nothing under
+ * `features/board/` touches the current branch, so a checkout offered there answers a question the
+ * screen never asked — and it is a *destructive-adjacent* one, moving the working tree under a
+ * user who was reordering tickets.
+ */
+describe('ActionToolbar — the branch context is view-scoped too', () => {
+  it('names the branch on the graph, where the graph is drawn from it', () => {
     render(<ActionToolbar />)
-    expect(screen.getByTestId('toolbar-files-button')).toBeInTheDocument()
-    expect(screen.getByTestId('toolbar-board-button')).toBeInTheDocument()
+    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
   })
 
-  it('hides the Files/Board toggle buttons when the effective position is "tabs"', () => {
-    useSettingsStore.setState((s) => ({
-      settings: { ...s.settings, appearance: { ...s.settings.appearance, viewSwitcherPosition: 'tabs' } },
-    }))
+  it('names it on the files view too, which lists that branch’s working tree', () => {
+    useRepoViewStore.setState({ view: 'files' })
     render(<ActionToolbar />)
-    expect(screen.queryByTestId('toolbar-files-button')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('toolbar-board-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
   })
 
-  it('a per-repo override takes priority over the global setting', () => {
-    useSettingsStore.setState((s) => ({
-      settings: { ...s.settings, appearance: { ...s.settings.appearance, viewSwitcherPosition: 'tabs' } },
-    }))
-    useSettingsStore.getState().setRepoSetting('/repo', 'viewSwitcherPosition', 'toolbar')
+  it('takes the branch and everything hanging off it off the board', () => {
+    useRepoViewStore.setState({ view: 'board' })
     render(<ActionToolbar />)
-    expect(screen.getByTestId('toolbar-files-button')).toBeInTheDocument()
-    expect(screen.getByTestId('toolbar-board-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('branch-context')).not.toBeInTheDocument()
+    // The merge target and the pull-request tag are read-only statements *about that branch*, so
+    // they leave with it rather than floating next to a repo name.
+    expect(screen.queryByTestId('merge-target-indicator-stub')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('state-tags')).not.toBeInTheDocument()
   })
 })

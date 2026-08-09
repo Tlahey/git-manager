@@ -35,6 +35,13 @@ export default {
           success: 'hsl(var(--button-success-bg))',
           'success-foreground': 'hsl(var(--button-success-foreground))',
         },
+        // The selected segment of a segmented control. Aliases the button pair, but from :root —
+        // so it keeps the content fill inside .chrome-surface, where --button-* is re-pointed at
+        // the far flatter sidebar accent. See packages/theme/src/themes.css.
+        'control-active': {
+          DEFAULT: 'hsl(var(--control-active-bg))',
+          foreground: 'hsl(var(--control-active-foreground))',
+        },
         // Component token for the default Badge fill — defaults to --primary, but a
         // theme can re-point it (Twilight uses a deeper violet so the chip stays
         // visible + AA). Graded by evaluateComponentContrast.

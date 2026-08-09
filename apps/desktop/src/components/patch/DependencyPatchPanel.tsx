@@ -11,7 +11,7 @@ import {
 } from '../../api/git.api'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { parseUnifiedDiff, reconstructDiffSides } from '../../lib/parseUnifiedDiff'
-import { CommitFileList, type ProcessedFileItem } from '../git-graph/components/CommitFileList'
+import { CommitFileList, type ProcessedFileItem } from '../common/CommitFileList'
 
 const displayPath = (f: GitDiffFile) => (f.status === 'deleted' ? f.oldPath : f.newPath)
 

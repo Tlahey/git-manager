@@ -40,7 +40,7 @@ export async function apiUnstageAll(path: string) {
 //
 // For code that rewrites the index to *read* something and then puts it back — today the AI batch
 // message generation, which isolates one group's files so the model sees that group's diff alone
-// (`hooks/useWipCommitPanel.ts`). The user asked for a commit message, not for a staging change, so
+// (`features/graph/hooks/useWipCommitPanel.ts`). The user asked for a commit message, not for a staging change, so
 // these writes must not reach the reward engine: an event on that bus is taken to mean the user did
 // something (see `lib/appEventBus.ts`), and `stage_unstage` — "stage a file, then unstage that same
 // file" — would unlock for clicking Generate.

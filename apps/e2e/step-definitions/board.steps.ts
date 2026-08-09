@@ -1,7 +1,8 @@
-import { browser, expect, $ } from '@wdio/globals'
+import { browser, expect, $, $$ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 import { clickViaJs, openMenuViaJs } from '../support/interactions'
 import {
+  activeBoardName,
   BOARD_REF_GLOB,
   boardRefs,
   cardTestId,
@@ -27,13 +28,10 @@ import {
 // ─── Opening the board ─────────────────────────────────────────────────────
 
 When(/^I open the board$/, async () => {
-  // The toolbar's Kanban button, which is the Graph/Files/Board switcher in its default
-  // `appearance.viewSwitcherPosition: 'toolbar'` shape — `RepoViewTabBar` replaces it with a tab
-  // strip under the `'tabs'` setting, which no scenario here turns on.
-  const button = $('[data-testid="toolbar-board-button"]')
-  await button.waitForDisplayed({ timeout: 15000 })
-  await button.click()
-  // The header's "New board" button is on screen for every board state, including none at all.
+  // The toolbar's view switcher — the one there is. Clicked in-page because its segments are
+  // `<label>`s wrapping an `sr-only` radio; see `clickViaJs`.
+  await clickViaJs('repo-view-board')
+  // The board sidebar's "New board" button is on screen for every board state, including none at all.
   await $('[data-testid="create-board-button"]').waitForDisplayed({ timeout: 15000 })
 })
 
@@ -47,11 +45,12 @@ When(
     await $('[data-testid="create-board-submit"]').click()
     await $('[data-testid="create-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
     // The new board becomes the active one (`useBoardActions.createBoard`), so its columns are what
-    // the next step queries — waiting for the picker to name it is what proves the switch landed.
-    await browser.waitUntil(
-      async () => (await $('[data-testid="board-switcher"]').getText()).includes(name),
-      { timeout: 15000, timeoutMsg: `the board picker never showed "${name}"` }
-    )
+    // the next step queries — waiting for the sidebar to mark it current is what proves the switch
+    // landed.
+    await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+      timeout: 15000,
+      timeoutMsg: `the board sidebar never made "${name}" the current board`,
+    })
   }
 )
 
@@ -121,27 +120,35 @@ When(/^I restore the card "([^"]*)" from the archive$/, async (title: string) =>
   await closeDialog('archived-cards-dialog')
 })
 
-When(/^I search the board for "([^"]*)"$/, async (query: string) => {
-  await $('[data-testid="board-search-input"]').setValue(query)
+// The toolbar's search is the global one — every ticket of every board. The left panel's field is a
+// different control, narrowing the board *list*.
+When(/^I search every board for "([^"]*)"$/, async (query: string) => {
+  await $('[data-testid="board-search-button"]').click()
+  const input = $('[data-testid="board-search-dialog-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(query)
 })
 
-When(/^I clear the board search$/, async () => {
-  // Not `clearValue()`: the WebDriver clear command empties the DOM node without React ever seeing
-  // an `input` event, so the store keeps the old query and the board stays filtered. Writing
-  // through the native value setter and dispatching the event is what a controlled input needs.
-  await browser.execute(() => {
-    const input = document.querySelector(
-      '[data-testid="board-search-input"]'
-    ) as HTMLInputElement | null
-    if (!input) throw new Error('the board search input is not on screen')
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
-    setter.call(input, '')
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-  })
+Then(/^the ticket "([^"]*)" is offered by the search$/, async (title: string) => {
   await browser.waitUntil(
-    async () => (await $('[data-testid="board-search-input"]').getValue()) === '',
-    { timeout: 5000, timeoutMsg: 'the board search box never emptied' }
+    async () => {
+      const rows = await $$('[data-testid^="board-search-result-"]')
+      for (const row of rows) if ((await row.getText()).includes(title)) return true
+      return false
+    },
+    { timeout: 10000, timeoutMsg: `the search never offered "${title}"` }
   )
+})
+
+When(/^I close the ticket search$/, async () => {
+  await browser.keys(['Escape'])
+  await $('[data-testid="board-search-dialog"]').waitForDisplayed({ timeout: 10000, reverse: true })
+})
+
+When(/^I filter the board list by "([^"]*)"$/, async (query: string) => {
+  const input = $('[data-testid="board-filter-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(query)
 })
 
 // ─── Sprints ───────────────────────────────────────────────────────────────
@@ -165,28 +172,26 @@ When(/^I show closed sprints$/, async () => {
 })
 
 When(/^I select the "([^"]*)" sprint$/, async (name: string) => {
-  await $('[data-testid="board-switcher"]').click()
-  await $('[data-testid="board-switcher-search"]').waitForDisplayed({ timeout: 10000 })
-  const optionTestId = await browser.execute((wanted: string) => {
-    const options = Array.from(document.querySelectorAll('[data-testid^="board-switcher-option-"]'))
-    const hit = options.find((el) => (el.textContent ?? '').includes(wanted))
+  const rowTestId = await browser.execute((wanted: string) => {
+    const rows = Array.from(document.querySelectorAll('[data-testid^="board-sidebar-item-"]'))
+    const hit = rows.find((el) => (el.textContent ?? '').includes(wanted))
     return hit ? hit.getAttribute('data-testid') : null
   }, name)
-  if (!optionTestId) throw new Error(`the sprint picker offers no "${name}"`)
-  await $(`[data-testid="${optionTestId}"]`).click()
-  await browser.waitUntil(
-    async () => (await $('[data-testid="board-switcher"]').getText()).includes(name),
-    { timeout: 10000, timeoutMsg: `the board picker never switched to "${name}"` }
-  )
+  if (!rowTestId) throw new Error(`the board sidebar lists no "${name}"`)
+  await $(`[data-testid="${rowTestId}"]`).click()
+  await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+    timeout: 10000,
+    timeoutMsg: `the board sidebar never switched to "${name}"`,
+  })
 })
 
 // ─── What the user sees ────────────────────────────────────────────────────
 
 Then(/^the board "([^"]*)" is shown$/, async (name: string) => {
-  await browser.waitUntil(
-    async () => (await $('[data-testid="board-switcher"]').getText()).includes(name),
-    { timeout: 15000, timeoutMsg: `the board on screen is not "${name}"` }
-  )
+  await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+    timeout: 15000,
+    timeoutMsg: `the board on screen is not "${name}"`,
+  })
 })
 
 Then(/^the board shows the columns "([^"]*)"$/, async (expected: string) => {

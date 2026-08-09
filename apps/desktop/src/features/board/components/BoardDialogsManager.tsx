@@ -3,6 +3,7 @@ import type { BoardData } from '../hooks/useBoardData'
 import { apiCreateAndCheckoutBranch, apiCheckoutBranch } from '../../../api/git.api'
 import { CloseSprintDialog } from './CloseSprintDialog'
 import { BoardCardDialog } from './BoardCardDialog'
+import { BoardSearchDialog } from './BoardSearchDialog'
 import { CreateBoardDialog } from './CreateBoardDialog'
 import { ColumnEditorDialog } from './ColumnEditorDialog'
 import { BoardSettingsDialog } from './BoardSettingsDialog'
@@ -19,13 +20,13 @@ import { cardIdentifier } from '../lib/cardMeta'
 import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
-import type { BoardDialogs } from '../hooks/useBoardDialogs'
+import type { BoardDialogs } from '../stores/boardDialogs.store'
 
 interface BoardDialogsManagerProps {
   repoPath: string
   /** The board's data and every mutation on it — this component's whole job is wiring the two. */
   data: BoardData
-  /** Which dialog is on screen, and the way back out — see `useBoardDialogs`. */
+  /** Which dialog is on screen, and the way back out — see `boardDialogs.store`. */
   dialogs: BoardDialogs
 }
 
@@ -35,7 +36,7 @@ interface BoardDialogsManagerProps {
  *
  * The split is three-way, following the pattern {@link SidebarDialogsManager} and
  * `GitGraphOverlayManager` already use for the same problem (2026-08 retrofit, architecture-guardian
- * R3): `useBoardDialogs` owns *which* dialog is open, `BoardPage` owns the board itself and its
+ * R3): `boardDialogs.store` owns *which* dialog is open, `BoardPage` owns the board itself and its
  * layout, and this owns *what each dialog does*. That last part is the half that grows — every new
  * card capability arrives as another handler — so it is the half worth having on its own.
  *
@@ -103,6 +104,10 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
 
   return (
     <>
+      {/* Reads every board rather than the open one, so it is mounted here with the rest and gated
+          on being open — see `useAllBoardCards`. */}
+      <BoardSearchDialog repoPath={repoPath} />
+
       <CreateBoardDialog
         open={dialogs.isOpen('createBoard')}
         onOpenChange={(open) => dialogs.setOpen('createBoard', open)}
