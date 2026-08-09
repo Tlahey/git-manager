@@ -29,6 +29,7 @@ import {
   apiClearWindowBackdrop,
   apiPlaySystemSound,
   apiRaiseAboveMenuBar,
+  apiShowWithoutActivating,
 } from '../../api/notification.api'
 
 /**
@@ -64,7 +65,12 @@ export function createTauriNotchHost({
       await apiClearWindowBackdrop()
     },
     show() {
-      return getCurrentWindow().show()
+      // Deliberately NOT `getCurrentWindow().show()`. That goes through `makeKeyAndOrderFront:` on
+      // macOS, which makes the card key and brings the whole app forward — so a notification
+      // arriving while the user was typing somewhere else took their keyboard with it. A card the
+      // app raised on its own has to be readable without ever being an interruption; only clicking
+      // it may move focus (`NotchWindow.activate`).
+      return apiShowWithoutActivating()
     },
     setY(y) {
       // Written straight to the node rather than through React state: this runs once per frame for

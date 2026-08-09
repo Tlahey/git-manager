@@ -504,6 +504,51 @@ pub fn raise_above_menu_bar(window: WebviewWindow) {
     }
 }
 
+/// Reveals this window without ever taking focus away from whatever the user is actually doing.
+///
+/// A notification must never interrupt: the card slides in over the menu bar while the user keeps
+/// typing in their editor, and the app stays exactly as active (or inactive) as it was. Tauri's own
+/// `WebviewWindow::show()` cannot do that — on macOS it goes through tao's
+/// `makeKeyAndOrderFront:`, which makes the window key and pulls the whole application forward.
+/// That is right for a window the user asked for and wrong for one the app raised on its own; a
+/// notch card arriving mid-keystroke used to steal the keyboard.
+///
+/// `orderFrontRegardless` is the AppKit call that means precisely this: order the window to the
+/// front of its level *even though the application isn't active*, without making it key. Clicking
+/// the card still activates the app the normal way, which is the one moment focus should move.
+///
+/// NOT `async`, for the same reason as `raise_above_menu_bar`: AppKit window mutations must happen
+/// on the main thread, and Tauri runs async commands on a worker where the call would silently do
+/// nothing.
+#[tauri::command]
+pub fn show_without_activating(window: WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWindow;
+
+        let Ok(ptr) = window.ns_window() else {
+            // No native handle to be gentle with — better a card that shows (and takes focus) than
+            // one that never appears at all.
+            eprintln!("[notification-popover] no ns_window handle; falling back to show()");
+            let _ = window.show();
+            return;
+        };
+        // SAFETY: `ns_window()` hands back the live NSWindow for this webview window, and the
+        // command is synchronous, which is what puts us on the main thread.
+        unsafe {
+            let ns_window: &NSWindow = &*(ptr as *mut NSWindow);
+            let _: () = objc2::msg_send![ns_window, orderFrontRegardless];
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Windows and Linux have no equivalent one-liner here, but nor do they have the macOS
+        // behaviour this exists to avoid: the window was created with `focus: false`, and showing
+        // it does not activate the application.
+        let _ = window.show();
+    }
+}
+
 /// The real per-machine notch/camera-housing geometry, read from AppKit instead of guessed at.
 ///
 /// The notch card's layout (`packages/notch`) used to carry these as hard-coded constants —

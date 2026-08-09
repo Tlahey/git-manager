@@ -132,6 +132,9 @@ export async function openNotchWindow(
     // renders as a grey blurred rectangle floating in the transparent margin, with a hard edge
     // where the window ends. The card's glow is the halo, and only the halo.
     shadow: false,
+    // Never takes focus. `focus: false` only covers creation — revealing the window is the other
+    // half, and it is the one that used to steal the keyboard, so the card is shown through
+    // `show_without_activating` rather than `show()` (see `tauriNotchHost`).
     focus: false,
     visible: false,
   })
