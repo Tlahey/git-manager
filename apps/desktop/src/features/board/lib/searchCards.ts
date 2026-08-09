@@ -31,6 +31,26 @@ export const MAX_CARD_RESULTS = 50
  * cards at once.
  */
 export function scoreCard({ card, board }: CardOnBoard, query: string): number | null {
+  const byName = scoreCardName(card, query)
+  if (byName !== null) return byName
+
+  const title = card.title.toLowerCase()
+  if (card.assignee?.toLowerCase().includes(query)) return 3000 + title.length
+  if (board.name.toLowerCase().includes(query)) return 4000 + title.length
+  return null
+}
+
+/**
+ * The part of {@link scoreCard} that reads the card by the two names it is *called* — its identifier
+ * and its title — leaving out the sweeps that answer "everything of Sam's" and "everything on Sprint
+ * 12".
+ *
+ * Split out for the choosers that pick one card among a board's own: there, assignee and board name
+ * match everything or nothing at once, so scoring on them would rank by something the user did not
+ * type. One function rather than two rankings, so `GM-7` beats a title that merely contains `gm-7`
+ * everywhere in the app.
+ */
+export function scoreCardName(card: BoardCard, query: string): number | null {
   // `undefined` for a card that predates its board's identifiers — it simply has nothing to match
   // on here, rather than matching on a `-0` nobody has ever seen on screen.
   const identifier = cardIdentifier(card)?.toLowerCase()
@@ -40,9 +60,29 @@ export function scoreCard({ card, board }: CardOnBoard, query: string): number |
   if (identifier?.startsWith(query)) return 100 + title.length
   if (title.startsWith(query)) return 1000 + title.length
   if (title.includes(query)) return 2000 + title.length
-  if (card.assignee?.toLowerCase().includes(query)) return 3000 + title.length
-  if (board.name.toLowerCase().includes(query)) return 4000 + title.length
   return null
+}
+
+/**
+ * The cards a relation may point at, best first, capped at {@link MAX_CARD_RESULTS}.
+ *
+ * **A blank query returns everything**, where {@link searchCards} returns nothing — the difference is
+ * what the two are attached to. A palette opens on its own and "here are all 400 of your tickets" is
+ * not an answer anyone asked for; this list hangs under a field the user opened to choose *one card
+ * out of this board*, so showing what there is to choose from is the answer. Same reason the
+ * `Combobox` opens on its full option list.
+ */
+export function matchLinkCandidates(candidates: BoardCard[], query: string): BoardCard[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return candidates.slice(0, MAX_CARD_RESULTS)
+
+  const scored: { card: BoardCard; score: number }[] = []
+  for (const card of candidates) {
+    const score = scoreCardName(card, needle)
+    if (score !== null) scored.push({ card, score })
+  }
+  scored.sort((a, b) => a.score - b.score || a.card.title.localeCompare(b.card.title))
+  return scored.slice(0, MAX_CARD_RESULTS).map((entry) => entry.card)
 }
 
 /**

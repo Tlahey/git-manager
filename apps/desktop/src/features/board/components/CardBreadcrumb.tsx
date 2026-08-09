@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import { Popover, PopoverContent, PopoverTrigger } from '@git-manager/ui'
 import { Plus } from 'lucide-react'
 import type { Board, BoardCard } from '@git-manager/git-types'
 import { cardIdentifier, issueReference } from '../lib/cardMeta'
@@ -33,6 +34,12 @@ interface CardBreadcrumbProps {
  * stored (see `cardLinks.ts`). Changing or removing one stays in the relations section, which is
  * where relations live and already lists every one of them; this offers the gesture that was
  * missing, not a second place to manage them.
+ *
+ * **The picker is a popover anchored on the button, not a panel opened under the path**, for the
+ * reason `CardFieldRow` states about its own editors: the breadcrumb is the dialog's first line, so
+ * growing it pushed the title, the description and every field below it down the moment the button
+ * was pressed — the user then chose a parent against a layout that had just moved. Anchored, the
+ * candidates are the click's answer and nothing behind them shifts.
  */
 export function CardBreadcrumb({
   card,
@@ -74,16 +81,36 @@ export function CardBreadcrumb({
             </span>
           </button>
         ) : (
-          canAddParent && (
-            <button
-              type="button"
-              onClick={() => setPicking((open) => !open)}
-              data-testid="card-breadcrumb-add-parent"
-              className="flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-accent hover:text-foreground"
-            >
-              <Plus className="h-3 w-3" />
-              {t('card.parent.add')}
-            </button>
+          canAddParent &&
+          cards &&
+          onAddLink && (
+            <Popover open={picking} onOpenChange={setPicking}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  data-testid="card-breadcrumb-add-parent"
+                  className="flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 hover:bg-accent hover:text-foreground"
+                >
+                  <Plus className="h-3 w-3" />
+                  {t('card.parent.add')}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-72 p-1.5"
+                // The picker focuses its own search field; letting the popover focus whatever comes
+                // first would land on the list instead and swallow the typing it invites.
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                data-testid="card-parent-picker"
+              >
+                <CardLinkPicker
+                  candidates={cards.filter((c) => c.id !== card.id)}
+                  kind="partOf"
+                  onPick={onAddLink}
+                  onClose={() => setPicking(false)}
+                />
+              </PopoverContent>
+            </Popover>
           )
         )}
 
@@ -120,17 +147,6 @@ export function CardBreadcrumb({
           </span>
         )}
       </p>
-
-      {picking && cards && onAddLink && (
-        <div className="max-w-sm">
-          <CardLinkPicker
-            candidates={cards.filter((c) => c.id !== card.id)}
-            kind="partOf"
-            onPick={onAddLink}
-            onClose={() => setPicking(false)}
-          />
-        </div>
-      )}
     </div>
   )
 }

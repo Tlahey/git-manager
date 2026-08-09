@@ -84,19 +84,69 @@ describe('CardLinksSection', () => {
     expect(screen.getByTestId('card-link-elsewhere-far')).toHaveTextContent('A card on Backlog')
   })
 
-  it('links a card through the picker', async () => {
+  /** The "+" opens the line the relation is written on, in the list it is about to join. */
+  it('drafts the new relation as a row of the section', async () => {
+    const subject = card('c1')
+    renderSection(subject, [subject, card('c2', { title: 'Ship the release' })])
+
+    expect(screen.queryByTestId('card-link-draft')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('card-links-add'))
+
+    const draft = screen.getByTestId('card-link-draft')
+    expect(screen.getByTestId('card-links-section')).toContainElement(draft)
+  })
+
+  it('links a card through the draft row', async () => {
     const subject = card('c1')
     const other = card('c2', { title: 'Ship the release' })
     const { onAdd } = renderSection(subject, [subject, other])
 
     await userEvent.click(screen.getByTestId('card-links-add'))
-    await userEvent.selectOptions(screen.getByTestId('card-link-kind'), 'blocks')
+    await userEvent.click(screen.getByTestId('card-link-kind'))
+    await userEvent.click(screen.getByTestId('card-link-kind-blocks'))
     await userEvent.click(screen.getByTestId('card-link-option-c2'))
+    await userEvent.click(screen.getByTestId('card-link-draft-add'))
 
     expect(onAdd).toHaveBeenCalledWith(other, 'blocks')
   })
 
-  it('narrows the picker by title and by identifier', async () => {
+  /** A card is not the relation: until the row is confirmed nothing has been written, so a mis-hit
+   * in a list of similar titles is a keystroke to correct rather than an edit to undo. */
+  it('writes nothing until the row is confirmed', async () => {
+    const subject = card('c1')
+    const { onAdd } = renderSection(subject, [subject, card('c2', { title: 'Ship the release' })])
+
+    await userEvent.click(screen.getByTestId('card-links-add'))
+    await userEvent.click(screen.getByTestId('card-link-option-c2'))
+
+    expect(onAdd).not.toHaveBeenCalled()
+  })
+
+  it('cannot be confirmed before a card is chosen', async () => {
+    const subject = card('c1')
+    renderSection(subject, [subject, card('c2')])
+
+    await userEvent.click(screen.getByTestId('card-links-add'))
+    expect(screen.getByTestId('card-link-draft-add')).toBeDisabled()
+
+    await userEvent.click(screen.getByTestId('card-link-option-c2'))
+    expect(screen.getByTestId('card-link-draft-add')).toBeEnabled()
+  })
+
+  /** The text no longer names the card that was picked, so confirming would add a relation the row
+   * has stopped showing. */
+  it('unmakes the choice when the search is typed on', async () => {
+    const subject = card('c1')
+    renderSection(subject, [subject, card('c2', { title: 'Ship the release' })])
+
+    await userEvent.click(screen.getByTestId('card-links-add'))
+    await userEvent.click(screen.getByTestId('card-link-option-c2'))
+    await userEvent.type(screen.getByTestId('card-link-search'), 'x')
+
+    expect(screen.getByTestId('card-link-draft-add')).toBeDisabled()
+  })
+
+  it('narrows the candidates by title and by identifier', async () => {
     const subject = card('c1')
     const a = card('c2', { title: 'Ship the release', prefix: 'GM', number: 7 })
     const b = card('c3', { title: 'Unrelated' })
@@ -106,6 +156,28 @@ describe('CardLinksSection', () => {
     await userEvent.type(screen.getByTestId('card-link-search'), 'GM-7')
     expect(screen.getByTestId('card-link-option-c2')).toBeInTheDocument()
     expect(screen.queryByTestId('card-link-option-c3')).not.toBeInTheDocument()
+  })
+
+  it('lands the caret in the search field, which is what the row invites', async () => {
+    const subject = card('c1')
+    renderSection(subject, [subject, card('c2')])
+
+    await userEvent.click(screen.getByTestId('card-links-add'))
+
+    expect(screen.getByTestId('card-link-search')).toHaveFocus()
+  })
+
+  /** The row lives among the children a folded section does not render, so a "+" that left it folded
+   * would be a button visibly doing nothing. */
+  it('unfolds the section when the draft is opened on a folded one', async () => {
+    const subject = card('c1')
+    renderSection(subject, [subject, card('c2')])
+
+    await userEvent.click(screen.getByTestId('card-links-section-toggle'))
+    expect(screen.queryByTestId('card-links-empty')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('card-links-add'))
+    expect(screen.getByTestId('card-link-draft')).toBeInTheDocument()
   })
 
   it('never offers the card itself', async () => {

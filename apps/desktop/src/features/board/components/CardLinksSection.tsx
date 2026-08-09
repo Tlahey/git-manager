@@ -10,9 +10,12 @@ import {
   type DisplayedLinkKind,
   type ResolvedLink,
 } from '../lib/cardLinks'
+import { useBoardStore } from '../stores/board.store'
 import { CardKindIcon } from './CardKindIcon'
-import { CardLinkPicker } from './CardLinkPicker'
+import { CardLinkDraftRow } from './CardLinkDraftRow'
 import { CardContentSection } from './CardContentSection'
+
+const SECTION_KEY = 'card-links'
 
 interface CardLinksSectionProps {
   card: BoardCard
@@ -37,6 +40,11 @@ interface CardLinksSectionProps {
  * A row whose other end is on a board that isn't loaded names **the board**. That is not a
  * degradation to hide: the link is real, and "somewhere on Sprint 12" is the true and complete
  * answer this side can give — see `cardLinks.ts`.
+ *
+ * **Adding one is drafted as a row of this list**, not composed in a panel elsewhere: see
+ * `CardLinkDraftRow`. The "+" therefore unfolds the section when it is folded — the row it opens
+ * lives among the children a folded section does not render, so leaving it folded would be a button
+ * that visibly does nothing.
  */
 export function CardLinksSection({
   card,
@@ -48,15 +56,22 @@ export function CardLinksSection({
   readOnly,
 }: CardLinksSectionProps) {
   const { t } = useTranslation('board')
-  const [picking, setPicking] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+  const collapsed = useBoardStore((s) => s.isCardSectionCollapsed(SECTION_KEY))
+  const toggleCollapsed = useBoardStore((s) => s.toggleCardSectionCollapsed)
 
   const links = useMemo(() => resolveCardLinks(card, cards), [card, cards])
   const candidates = useMemo(() => cards.filter((c) => c.id !== card.id), [cards, card.id])
 
+  function draft() {
+    if (collapsed) toggleCollapsed(SECTION_KEY)
+    setDrafting((open) => !open)
+  }
+
   return (
     <CardContentSection
       title={t('card.links.label')}
-      sectionKey="card-links"
+      sectionKey={SECTION_KEY}
       testId="card-links-section"
       aside={
         readOnly ? undefined : (
@@ -66,7 +81,7 @@ export function CardLinksSection({
             className="h-6 w-6 shrink-0"
             aria-label={t('card.links.add')}
             title={t('card.links.add')}
-            onClick={() => setPicking((open) => !open)}
+            onClick={draft}
             data-testid="card-links-add"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -74,7 +89,7 @@ export function CardLinksSection({
         )
       }
     >
-      {links.length === 0 ? (
+      {links.length === 0 && !drafting ? (
         <p className="text-xs italic text-muted-foreground" data-testid="card-links-empty">
           {t('card.links.empty')}
         </p>
@@ -105,11 +120,11 @@ export function CardLinksSection({
         </div>
       )}
 
-      {picking && (
-        <CardLinkPicker
+      {drafting && (
+        <CardLinkDraftRow
           candidates={candidates}
-          onPick={onAdd}
-          onClose={() => setPicking(false)}
+          onAdd={onAdd}
+          onCancel={() => setDrafting(false)}
         />
       )}
     </CardContentSection>

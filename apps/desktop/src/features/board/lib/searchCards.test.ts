@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { makeBoard, makeCard } from '../test/boardFactories'
-import { scoreCard, searchCards, MAX_CARD_RESULTS } from './searchCards'
+import { matchLinkCandidates, scoreCard, searchCards, MAX_CARD_RESULTS } from './searchCards'
 
 const sprint = makeBoard({ id: 'b1', name: 'Sprint 12' })
 const backlog = makeBoard({ id: 'b2', name: 'Backlog' })
@@ -111,5 +111,51 @@ describe('searchCards', () => {
     const cards = [on(sprint, { title: 'Fix login' })]
     searchCards(cards, 'login')
     expect(cards[0].card.title).toBe('Fix login')
+  })
+})
+
+describe('matchLinkCandidates', () => {
+  const card = (id: string, overrides: Parameters<typeof makeCard>[0] = {}) =>
+    makeCard({ id, title: id, ...overrides })
+
+  /**
+   * The opposite of `searchCards`, and deliberately so: this list hangs under a field the user opened
+   * to choose one card out of this board, so showing what there is to choose from *is* the answer.
+   */
+  it('offers every candidate for a blank query', () => {
+    const all = [card('c1'), card('c2')]
+    expect(matchLinkCandidates(all, '')).toEqual(all)
+    expect(matchLinkCandidates(all, '  ')).toEqual(all)
+  })
+
+  it('narrows by title and by identifier alike', () => {
+    const byTitle = card('c1', { title: 'Ship the release' })
+    const byIdentifier = card('c2', { prefix: 'GM', number: 7, title: 'Unrelated' })
+    const candidates = [byTitle, byIdentifier]
+
+    expect(matchLinkCandidates(candidates, 'ship')).toEqual([byTitle])
+    expect(matchLinkCandidates(candidates, 'gm-7')).toEqual([byIdentifier])
+  })
+
+  /** Same ranking as the palette's, so `GM-7` means the same thing wherever it is typed. */
+  it('puts the card the query names ahead of one that merely mentions it', () => {
+    const named = card('c1', { prefix: 'GM', number: 7, title: 'Fix login' })
+    const mentioning = card('c2', { prefix: 'GM', number: 9, title: 'GM-7 broke the build' })
+
+    expect(matchLinkCandidates([mentioning, named], 'gm-7')).toEqual([named, mentioning])
+  })
+
+  /** Neither is typed here: every candidate is on one board, so both match all or none of them. */
+  it('ignores the assignee and the board, which say nothing between cards of one board', () => {
+    const assigned = card('c1', { title: 'Unrelated', assignee: 'sam' })
+    expect(matchLinkCandidates([assigned], 'sam')).toEqual([])
+  })
+
+  it('caps the list the way every other card search does', () => {
+    const many = Array.from({ length: MAX_CARD_RESULTS + 20 }, (_, i) =>
+      card(`c${i}`, { title: `login ${i}` })
+    )
+    expect(matchLinkCandidates(many, 'login')).toHaveLength(MAX_CARD_RESULTS)
+    expect(matchLinkCandidates(many, '')).toHaveLength(MAX_CARD_RESULTS)
   })
 })
