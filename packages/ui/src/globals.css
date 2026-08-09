@@ -33,9 +33,12 @@
      content       (10)   graph cells, waterlines, in-pane resize handles
      raised        (20)   small raised in-flow elements (blame hover card)
      resize-handle (30)   pane resize handles
+     graph-row-hover (35) a hovered graph row — it only ever needs to beat its
+                          SIBLING rows (its ring and its refs overflow onto them).
+                          It stays BELOW panels and popovers: a hovered row must
+                          not cover the floating commit search (⌘F) it scrolls
+                          under, nor a header popover.
      panel         (40)   floating panels inside the content (commit search)
-     graph-row-hover (45) a hovered graph row — above panels, BELOW popovers
-                          (so a header popover is never covered by a hovered row)
      popover       (50)   popovers, dropdowns, menus, selects, dialogs, tooltips
      notification  (99)   notification dropdown
      overlay      (100)   floating tooltips/labels + the toast stack
@@ -45,8 +48,8 @@
   --z-content: 10;
   --z-raised: 20;
   --z-resize-handle: 30;
+  --z-graph-row-hover: 35;
   --z-panel: 40;
-  --z-graph-row-hover: 45;
   --z-popover: 50;
   --z-notification: 99;
   --z-overlay: 100;
