@@ -9,6 +9,7 @@ vi.mock('../../../hooks/useTrackedFiles', () => ({ useTrackedFiles }))
 
 import { useFileLookupCommands, scoreFileMatch, rankFileMatches } from './useFileLookupCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const INITIAL = useRepoUIStore.getState()
 
@@ -22,6 +23,7 @@ const FILES = [
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState(INITIAL, true)
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   useTrackedFiles.mockReturnValue({ data: FILES })
   apiGetFileHistory.mockResolvedValue([{ oid: 'abc123' }])
 })
@@ -117,5 +119,32 @@ describe('useFileLookupCommands', () => {
       initialTab: 'file',
     })
     expect(state.activeLeftPanel).toBe('history')
+  })
+})
+
+// A diff has two homes — the graph's centre slot and the files view — so ⌘P only has to move the
+// user off the board, the one view that cannot draw one.
+describe('useFileLookupCommands — where the diff opens', () => {
+  it('leaves the board for the content view', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+
+    await commands('repoUI')
+      .find((c) => c.id.endsWith('repoUI.store.ts'))!
+      .run()
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  it('stays on the files view, where the diff was already going to appear', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files' })
+
+    await commands('repoUI')
+      .find((c) => c.id.endsWith('repoUI.store.ts'))!
+      .run()
+
+    expect(useRepoViewStore.getState().view).toBe('files')
+    expect(useRepoUIStore.getState().activeDiffFile?.path).toBe('src/stores/repoUI.store.ts')
   })
 })

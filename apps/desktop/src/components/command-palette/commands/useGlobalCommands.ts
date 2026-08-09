@@ -23,7 +23,7 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../../stores/repoUI.store'
-import { useRepoViewStore } from '../../../stores/repoView.store'
+import { goToRepoContent, useRepoViewStore } from '../../../stores/repoView.store'
 import { useActionToolbar } from '../../../hooks/useActionToolbar'
 import { useOpenRepository } from '../../../hooks/useOpenRepository'
 import { openActionJournalWindow } from '../../../lib/actionJournalWindow'
@@ -115,6 +115,15 @@ export function useGlobalCommands({
   ]
 
   if (toolbar.activeRepo) {
+    // The palette is the one surface that offers these from anywhere. The toolbar's own copies live
+    // on the graph (`GraphToolbarActions`), so they are already where their result shows; run from
+    // the board or the files view, every one of them would otherwise change something off screen —
+    // a fetch that moves a graph nobody is looking at, a PR composer opened behind a Kanban. Landing
+    // on the content view first is what makes the command's effect the thing you then see.
+    const onContent = (run: () => void) => () => {
+      goToRepoContent()
+      run()
+    }
     commands.push(
       {
         id: 'repo-create-pr',
@@ -122,45 +131,45 @@ export function useGlobalCommands({
         title: t('commandPalette.repo.createPr'),
         keywords: ['pr', 'pull request', 'create pr', 'new pr', 'github'],
         icon: createElement(GitPullRequest),
-        run: () => {
+        run: onContent(() => {
           setActiveTab(toolbar.activeRepo!)
           setPrCreateOpen(true)
-        },
+        }),
       },
       {
         id: 'repo-fetch',
         group: 'repo',
         title: t('commandPalette.repo.fetch'),
         icon: createElement(Download),
-        run: () => void toolbar.handleFetch(),
+        run: onContent(() => void toolbar.handleFetch()),
       },
       {
         id: 'repo-fetch-all',
         group: 'repo',
         title: t('commandPalette.repo.fetchAll'),
         icon: createElement(RefreshCw),
-        run: () => void toolbar.handleFetchAll(),
+        run: onContent(() => void toolbar.handleFetchAll()),
       },
       {
         id: 'repo-pull',
         group: 'repo',
         title: t('commandPalette.repo.pull'),
         icon: createElement(ArrowDownToLine),
-        run: () => void toolbar.handlePull(),
+        run: onContent(() => void toolbar.handlePull()),
       },
       {
         id: 'repo-push',
         group: 'repo',
         title: t('commandPalette.repo.push'),
         icon: createElement(ArrowUpFromLine),
-        run: () => void toolbar.handlePush(),
+        run: onContent(() => void toolbar.handlePush()),
       },
       {
         id: 'repo-stash',
         group: 'repo',
         title: t('commandPalette.repo.stash'),
         icon: createElement(Archive),
-        run: () => void toolbar.handleStash(),
+        run: onContent(() => void toolbar.handleStash()),
       }
     )
     if (toolbar.hasStashes) {
@@ -169,7 +178,7 @@ export function useGlobalCommands({
         group: 'repo',
         title: t('commandPalette.repo.pop'),
         icon: createElement(ArchiveRestore),
-        run: () => void toolbar.handlePop(),
+        run: onContent(() => void toolbar.handlePop()),
       })
     }
     commands.push({

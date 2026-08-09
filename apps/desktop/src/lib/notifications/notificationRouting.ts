@@ -2,6 +2,7 @@ import { useLaunchpadStore } from '../../stores/launchpad.store'
 import { useNotificationStore } from '../../stores/notification.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB, REWARDS_TAB } from '../../stores/repoUI.store'
+import { goToRepoContent } from '../../stores/repoView.store'
 import { findLocalRepoPath } from './findLocalRepo'
 import { goToAiRun } from '../aiRunPresentation'
 import type { NotificationRoute } from './notificationRoute'
@@ -46,6 +47,10 @@ export async function routeNotification(route: NotificationRoute): Promise<void>
     // Requests section opens. `openTab` focuses the tab if the repo already has one.
     useRepoDataStore.getState().markRepoOpened(repoPath)
     useRepoUIStore.getState().openTab(repoPath)
+    // The PR page is drawn by the graph view alone. Without this, a card clicked while the tab was
+    // last left on the board or the files view sets `activePrNumber` under a screen that renders
+    // neither — the app comes forward and shows the Kanban the user had already seen.
+    goToRepoContent()
     useRepoUIStore.getState().setActivePrNumber(route.prNumber)
     return
   }

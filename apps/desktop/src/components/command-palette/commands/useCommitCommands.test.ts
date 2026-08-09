@@ -55,12 +55,14 @@ vi.mock('../../../hooks/useCommitPullRequest', () => ({ useCommitPullRequest }))
 
 import { useCommitCommands } from './useCommitCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const INITIAL = useRepoUIStore.getState()
 
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState(INITIAL, true)
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   apiCopyCommitSha.mockResolvedValue(undefined)
   apiCherryPickCommit.mockResolvedValue('newoid')
   apiGetCommitWebUrl.mockResolvedValue('https://github.com/o/r/commit/deadbeefcafe')
@@ -233,5 +235,42 @@ describe('useCommitCommands', () => {
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
     })
+  })
+})
+
+// The bridge's other end is an effect inside `GitGraph`. Dispatching into it from a view that does
+// not mount the graph is worse than a no-op: the pending action survives in the store and the dialog
+// opens by itself the next time the user comes back to the graph.
+describe('useCommitCommands — the graph bridge dispatches from the graph', () => {
+  it.each([
+    ['commit-reset-soft'],
+    ['commit-reset-mixed'],
+    ['commit-reset-hard'],
+    ['commit-revert'],
+    ['commit-branch'],
+    ['commit-tag'],
+    ['commit-tag-annotated'],
+    ['commit-fixup'],
+  ])('%s brings the content view forward before setting the pending action', (id) => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+
+    commands()
+      .find((c) => c.id === id)!
+      .run()
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+    expect(useRepoUIStore.getState().pendingGraphAction).not.toBeNull()
+  })
+
+  it('still carries the action it was asked for', () => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files' })
+
+    commands()
+      .find((c) => c.id === 'commit-reset-hard')!
+      .run()
+
+    expect(useRepoUIStore.getState().pendingGraphAction).toEqual({ kind: 'reset', mode: 'hard' })
   })
 })
