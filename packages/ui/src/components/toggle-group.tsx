@@ -120,28 +120,17 @@ export function ToggleGroup<T extends string = string>({
               // one. Swapping in a raw colour re-breaks it; re-check with
               // `pnpm --filter @git-manager/ui test:apca`.
               //
-              // `stacked` gets no fill at all, and that is the conclusion of two measurements
-              // rather than a preference.
+              // The chrome is a *surface*, not a special case: `.chrome-surface` re-points the
+              // same `--button-*` pair at the sidebar accent, which is graded AA there, so the
+              // stacked shape wears exactly what Settings wears and needs no fill of its own.
               //
-              // It sits on `.chrome-surface`, which remaps `--muted` to the bar's own background —
-              // so the recessed track is invisible on every theme — and `--button-bg` to
-              // `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the bar.
-              // On solarized-light the two are the *same colour*, so the segment had no visible
-              // background. Both ways out fail on their own terms: inverting the surface pair is
-              // legible everywhere but is the *text* colour, deliberately near-neutral — a
-              // near-white block on 8 of the 14 themes rather than anything of the theme; and an
-              // accent fill carries the theme but cannot hold a 10px label, which the matrix
-              // settles at 48 of 60 cells failing (the raw `--primary` pair measures ~37Lc, which
-              // is why `--button-*` exists at all).
-              //
-              // So the accent marks the segment without ever sitting under text: a one-pixel ring,
-              // a graphic with nothing to grade, while the label stays on `text-foreground` where
-              // it already passes. `--primary` is also the one family `.chrome-surface` leaves
-              // alone, and it clears 3:1 against the bar on 13 of the 14 themes.
+              // That only holds because a theme whose `--sidebar-accent` equals its
+              // `--sidebar-background` has no visible active state anywhere — `TabBar` marks the
+              // active repo tab with the same token. Two light themes were in that state and were
+              // fixed there rather than worked around here; `themeTokens.test.ts` now keeps every
+              // theme's accent a real step away from its chrome.
               checked
-                ? stacked
-                  ? 'ring-primary font-medium ring-1'
-                  : 'bg-button text-button-foreground font-medium shadow-xs'
+                ? 'bg-button text-button-foreground font-medium shadow-xs'
                 : stacked
                   ? // Not muted, unlike the other two shapes — and that is the APCA policy talking,
                     // not taste. `muted-foreground` is exempt from the Bronze gate only where it is

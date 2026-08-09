@@ -268,13 +268,13 @@ describe('ToggleGroup — stacked segments', () => {
   })
 
   /**
-   * No fill, and that is measured. `.chrome-surface` — the toolbar, the only place this variant is
-   * used — remaps `--button-bg` to `--sidebar-accent`, which 9 of the 14 themes set within 10 L% of
-   * the bar (the same colour on solarized-light), so the fill was invisible. An accent fill would
-   * carry the theme but cannot hold a 10px label: the APCA matrix fails it on 48 of 60 cells. The
-   * accent therefore marks the segment as a ring, where no text sits on it.
+   * The same fill as every other shape, because the chrome is a surface and not a special case:
+   * `.chrome-surface` re-points `--button-bg` at the sidebar accent, which is graded there. What
+   * this once needed a bespoke marker for was a *theme* bug — two light themes set that accent to
+   * their own chrome background, so nothing on the bar could look active, `TabBar`'s tab included.
+   * `themeTokens.test.ts` guards it now.
    */
-  it('marks the selected segment with an accent ring and no fill', () => {
+  it('wears the same selected fill as the other shapes', () => {
     const { container } = render(
       <ToggleGroup
         variant="stacked"
@@ -284,8 +284,8 @@ describe('ToggleGroup — stacked segments', () => {
       />
     )
     const [selected] = Array.from(container.querySelectorAll('label'))
-    expect(selected.className).toContain('ring-primary')
-    expect(selected.className).not.toMatch(/\bbg-/)
+    expect(selected.className).toContain('bg-button')
+    expect(selected.className).toContain('text-button-foreground')
   })
 
   /** The other two shapes sit on content surfaces, where `--button-bg` is `--primary` and reads on
