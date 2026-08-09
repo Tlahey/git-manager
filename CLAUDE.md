@@ -169,7 +169,7 @@ Everything about it lives in [lib/appConfig/](apps/desktop/src/lib/appConfig/) (
 - Conventional Commits (`feat:`, `fix:`, `chore:`, ...) for commit messages.
 - TypeScript strict mode, no `any`.
 - Naming: camelCase in TS, snake_case in Rust, kebab-case filenames.
-- PRs target `dev`, not `main` (per README; note the current default branch in this checkout is `main`).
+- PRs target `main`, the repository's default and only long-lived branch. There is no `dev` branch — this line used to claim there was one, citing a README that never said it.
 
 ### Reporting problems found during analysis
 
