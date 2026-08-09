@@ -19,13 +19,10 @@ When(/^I close the file explorer$/, async () => {
   await clickViaJs('repo-view-graph')
 })
 
-// The filter is a floating panel now, raised from the toolbar (or ⌘F) rather than a field standing
-// open on the bar — so filtering is two steps: open it, then type.
+// The filter is the panel's own field, at the top of the tree it filters — no toolbar button and no
+// floating panel to open first.
 When(/^I filter the file tree by "([^"]*)"$/, async (query: string) => {
-  const button = $('[data-testid="file-search-button"]')
-  await button.waitForClickable({ timeout: 10000 })
-  await button.click()
-  const input = $('[data-testid="file-search-panel-input"]')
+  const input = $('[data-testid="file-tree-search-input"]')
   await input.waitForDisplayed({ timeout: 10000 })
   await input.setValue(query)
 })

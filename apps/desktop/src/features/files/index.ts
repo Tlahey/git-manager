@@ -17,8 +17,13 @@ export { FilesPage } from './FilesPage'
 /** The left panel while this view is on screen — the working tree. */
 export { FileTreeSidebar } from './components/FileTreeSidebar'
 
-/** The toolbar's middle section while this view is on screen — the file search and the tree toggle. */
-export { FilesToolbar } from './components/FilesToolbar'
+/**
+ * **No toolbar section, deliberately.** This view had one — a file search and a tree toggle — and
+ * both left: the search is the panel's own field (it filters that tree and nothing else), and the
+ * panel toggle belongs to the toolbar shell, which owns the slot for all three views. What remained
+ * was a "close the open file" button duplicating the breadcrumb above the file. A view supplying no
+ * toolbar commands is the split working, not a gap in it.
+ */
 
 /** Where the user had got to inside the view. Read from outside only to re-point it at another
  * repository on a tab switch — see the store's `syncRepo`. */

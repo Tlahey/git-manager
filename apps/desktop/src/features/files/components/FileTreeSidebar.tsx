@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FileIcon,
   FolderIcon,
@@ -6,15 +6,18 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   PanelLeftClose,
+  Search,
+  X,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Tooltip, cn } from '@git-manager/ui'
+import { Button, Input, Tooltip, cn } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
 import { useFileExplorerStore } from '../stores/fileExplorer.store'
 import { useRepoFiles } from '../hooks/useRepoFiles'
 import { buildFileTree, filterFileTree, type FileNode } from '../lib/fileTree'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useRepoViewStore } from '../../../stores/repoView.store'
+import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 
 function TreeNode({
   node,
@@ -112,12 +115,17 @@ function TreeNode({
 }
 
 /**
- * The files view's left panel: the repository's working tree, filtered by whatever the toolbar's
- * search box holds.
+ * The files view's left panel: the repository's working tree, and the field that filters it.
  *
  * It sits on the **left**, where the graph view's branch sidebar sits — a repo tab has one panel
  * slot and each view fills it with its own navigation, rather than the files view adding a second
  * panel on the right and leaving the branch list on the left for a view that has no use for it.
+ *
+ * **The filter is in the panel, not on the toolbar and not in a floating panel over the listing.**
+ * It filters *this* tree and nothing else, so it belongs to it — the same shape the branch sidebar
+ * has one view over. The old objection to keeping it here was that folding the panel away took the
+ * search with it; ⌘F answers that by restoring the panel and focusing this field, through the same
+ * `sidebarSearch.store` request ⌥⌘F already used for the branch filter.
  */
 export function FileTreeSidebar() {
   const { t } = useTranslation('git')
@@ -129,7 +137,18 @@ export function FileTreeSidebar() {
   const togglePanel = useRepoViewStore((s) => s.togglePanel)
   const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
   const treeSearchQuery = useFileExplorerStore((s) => s.treeSearchQuery)
+  const setTreeSearchQuery = useFileExplorerStore((s) => s.actions.setTreeSearchQuery)
   const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
+
+  // ⌘F on this view, and ⌥⌘F everywhere: both raise the *left panel's* filter, which on the graph
+  // is the branch list's and here is this one. One request, whichever panel is in the slot.
+  const focusToken = useSidebarSearchStore((s) => s.focusToken)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focusToken === 0) return
+    searchInputRef.current?.focus()
+    searchInputRef.current?.select()
+  }, [focusToken])
 
   const isSearching = treeSearchQuery.trim().length > 0
   const tree = useMemo(
@@ -158,6 +177,34 @@ export function FileTreeSidebar() {
             <PanelLeftClose size={14} />
           </Button>
         </Tooltip>
+      </div>
+
+      <div className="border-sidebar-border shrink-0 border-b px-2 py-1.5">
+        <Input
+          ref={searchInputRef}
+          variant="chrome"
+          type="text"
+          value={treeSearchQuery}
+          onChange={(e) => setTreeSearchQuery(e.target.value)}
+          placeholder={t('fileExplorer.searchPlaceholder')}
+          aria-label={t('fileExplorer.searchPlaceholder')}
+          className="h-7 text-xs shadow-none"
+          // No colour class: the icon takes the field's own graded pair (see `Input`'s
+          // ICON_CLASSES), so it always matches the text and placeholder beside it.
+          startIcon={<Search className="h-3.5 w-3.5" />}
+          endIcon={
+            treeSearchQuery ? (
+              <button
+                onClick={() => setTreeSearchQuery('')}
+                aria-label={t('sidebar.clearFilter')}
+                className="text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-4 w-4 cursor-pointer items-center justify-center rounded"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            ) : undefined
+          }
+          data-testid="file-tree-search-input"
+        />
       </div>
 
       <div className="flex-1 overflow-x-hidden overflow-y-auto">

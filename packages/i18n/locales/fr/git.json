@@ -663,8 +663,6 @@
   "fileExplorer.noFilesFound": "Aucun fichier trouvé",
   "fileExplorer.emptyDirectory": "Ce dossier est vide.",
   "fileExplorer.columnName": "Nom",
-  "fileExplorer.closeFile": "Fermer le fichier",
-  "fileExplorer.showSidebar": "Afficher l'arborescence",
   "fileExplorer.hideSidebar": "Masquer l'arborescence",
   "commitHeaderInfo.editStashMessage": "Cliquer pour éditer le message de la remise",
   "commitHeaderInfo.editCommitMessage": "Cliquer pour éditer le message du commit",

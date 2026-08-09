@@ -45,7 +45,7 @@ beforeEach(() => {
   useSidebarSearchStore.setState({ focusToken: 0 })
   // ⌘F dispatches on the active view, so every test below states which one it is looking at.
   useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
-  useFileExplorerStore.setState({ isSearchOpen: false, treeSearchQuery: '' })
+  useFileExplorerStore.setState({ treeSearchQuery: '' })
   useBoardControlsStore.setState({ isSearchOpen: false, search: '' })
   plainEl = document.createElement('div')
   inputEl = document.createElement('input')
@@ -544,13 +544,23 @@ describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
   }
 
-  it('opens the file search on the files view, and nobody else’s', () => {
+  /** On this view the search is the left panel's own field, so ⌘F raises it the way ⌥⌘F does —
+   * a focus request rather than a panel of its own. */
+  it('asks the files panel for its filter, and opens nobody else’s search', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoViewStore.setState({ view: 'files' })
     press()
-    expect(useFileExplorerStore.getState().isSearchOpen).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
     expect(useCommitSearchStore.getState().open).toBe(false)
     expect(useBoardControlsStore.getState().isSearchOpen).toBe(false)
+  })
+
+  it('brings the files panel back before asking its filter for focus', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files', isPanelOpen: false })
+    press()
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 
   it('opens the card search on the board, and nobody else’s', () => {
@@ -559,15 +569,15 @@ describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
     press()
     expect(useBoardControlsStore.getState().isSearchOpen).toBe(true)
     expect(useCommitSearchStore.getState().open).toBe(false)
-    expect(useFileExplorerStore.getState().isSearchOpen).toBe(false)
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
   })
 
-  it('toggles the same view’s search back closed', () => {
+  it('toggles the board’s search back closed', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'files' })
-    useFileExplorerStore.setState({ isSearchOpen: true })
+    useRepoViewStore.setState({ view: 'board' })
+    useBoardControlsStore.setState({ isSearchOpen: true })
     press()
-    expect(useFileExplorerStore.getState().isSearchOpen).toBe(false)
+    expect(useBoardControlsStore.getState().isSearchOpen).toBe(false)
   })
 
   /**

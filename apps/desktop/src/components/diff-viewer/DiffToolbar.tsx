@@ -1,7 +1,6 @@
 import { Button, Badge, Tag, Tooltip, cn } from '@git-manager/ui'
 import {
   X,
-  ChevronLeft,
   Copy,
   Check as CheckedIcon,
   GitCompare,
@@ -84,23 +83,15 @@ export function DiffToolbar({
     // `diff-toolbar` declares the container the labels' folding is queried against — see
     // diffToolbar.css. The browser owns that decision entirely; nothing here re-renders for it.
     <div className="diff-toolbar flex shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border bg-card px-4 py-3 shadow-xs">
-      {/* Left Side: Back button + File info */}
+      {/* Left Side: file info */}
       {/* `overflow-hidden` is what makes an overlap impossible rather than unlikely: this column is
           the only one allowed to shrink, and without it its badges and path keep their intrinsic
           width and paint straight over the tabs once the pane gets tight. Clipping is the graceful
           failure; the folding in diffToolbar.css is what keeps it from being reached at all. */}
       <div className="flex min-w-44 flex-1 items-center gap-3 overflow-hidden">
-        <Tooltip content={t('actions.backToGraph')}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 hover:bg-accent"
-            onClick={onClose}
-            aria-label={t('actions.backToGraph')}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </Tooltip>
+        {/* No back chevron here. It did exactly what the X on the right of this same bar does, and
+            said it worse: "Back to the graph" is the label whichever view opened the diff, so on the
+            files view it named a screen that wasn't behind it. One way out, correctly labelled. */}
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {parsedPath.dir && (

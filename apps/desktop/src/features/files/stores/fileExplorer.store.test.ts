@@ -54,14 +54,12 @@ describe('fileExplorer.store — syncRepo', () => {
    * `isPanelOpen`, one flag for the slot all three views take turns filling. What is left in this
    * store is per-repository, which is exactly what `syncRepo` drops.
    */
-  it('drops the open search along with the rest of the browsing state', () => {
+  it('drops the tree filter along with the rest of the browsing state', () => {
     actions().syncRepo('/repo-a')
-    actions().toggleSearch()
     actions().setTreeSearchQuery('Button')
 
     actions().syncRepo('/repo-b')
 
-    expect(useFileExplorerStore.getState().isSearchOpen).toBe(false)
     expect(useFileExplorerStore.getState().treeSearchQuery).toBe('')
   })
 

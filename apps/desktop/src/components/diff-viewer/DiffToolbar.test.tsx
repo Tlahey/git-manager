@@ -256,12 +256,22 @@ describe('DiffToolbar — WIP actions', () => {
 })
 
 describe('DiffToolbar — close', () => {
-  it('calls onClose from both the back chevron and the close (X) button', async () => {
+  it('closes from the X button', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onClose })} />)
-    await user.click(screen.getByRole('button', { name: 'Back to graph' }))
     await user.click(screen.getByRole('button', { name: 'Close' }))
-    expect(onClose).toHaveBeenCalledTimes(2)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  /**
+   * There used to be a back chevron on the left of this bar doing the same thing. It said it worse:
+   * "Back to graph" was its label whichever view had opened the diff, so on the files view it named
+   * a screen that was not behind it. One way out, correctly labelled.
+   */
+  it('offers no second way out claiming to return to the graph', () => {
+    render(<DiffToolbar {...baseProps()} />)
+    expect(screen.queryByRole('button', { name: 'Back to graph' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1)
   })
 })

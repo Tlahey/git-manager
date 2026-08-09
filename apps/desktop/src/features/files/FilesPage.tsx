@@ -3,7 +3,6 @@ import { FileIcon, FolderIcon, ChevronRightIcon } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, cn } from '@git-manager/ui'
 import { useFileExplorerStore } from './stores/fileExplorer.store'
-import { FileSearchPanel } from './components/FileSearchPanel'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoFiles } from './hooks/useRepoFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -19,8 +18,9 @@ import { useTerminalStore } from '../../stores/terminal.store'
  * selected file opens into.
  *
  * The chrome that used to sit in its own header — closing the view, revealing the tree, filtering it
- * — is gone from here: closing is switching tab now, and the other two belong to the toolbar, which
- * is scoped to this view (see `FilesToolbar`). What is left is the view itself.
+ * — is gone from here: closing is switching tab, revealing the panel is the toolbar shell's button
+ * (⌘S), and the filter is the panel's own field. What is left is the view itself, and the
+ * breadcrumb above it, which is how a file is closed: it names the directory it goes back to.
  */
 export function FilesPage() {
   const { t } = useTranslation('git')
@@ -66,12 +66,9 @@ export function FilesPage() {
 
   return (
     <div
-      // `relative` so the floating search anchors to this view rather than to the window.
-      className="bg-background relative flex h-full flex-1 flex-col overflow-hidden"
+      className="bg-background flex h-full flex-1 flex-col overflow-hidden"
       data-testid="project-files-view"
     >
-      <FileSearchPanel />
-
       <div className="border-border flex h-12 shrink-0 items-center gap-0.5 border-b px-4 text-sm">
         <Button
           variant="link"

@@ -17,9 +17,6 @@ vi.mock('./MergeTargetIndicator', () => ({
 vi.mock('../../features/graph', () => ({
   GraphToolbarActions: () => <div data-testid="graph-toolbar-actions" />,
 }))
-vi.mock('../../features/files', () => ({
-  FilesToolbar: () => <div data-testid="files-toolbar" />,
-}))
 vi.mock('../../features/board', () => ({
   BoardToolbar: (props: { repoPath: string }) => (
     <div data-testid="board-toolbar">{props.repoPath}</div>
@@ -99,11 +96,17 @@ describe('ActionToolbar — one section per view', () => {
     expect(screen.queryByTestId('board-toolbar')).not.toBeInTheDocument()
   })
 
-  it('mounts the files actions on the files view', () => {
+  /**
+   * The files view supplies no toolbar commands at all, and that is the split working rather than a
+   * gap in it: its search is the panel's own field, its panel toggle is the shell's, and the
+   * "close the open file" button duplicated the X in the diff's own header.
+   */
+  it('mounts nobody’s actions on the files view, which has none', () => {
     useRepoViewStore.setState({ view: 'files' })
     render(<ActionToolbar />)
-    expect(screen.getByTestId('files-toolbar')).toBeInTheDocument()
+    expect(screen.getByTestId('toolbar-view-actions-files')).toBeEmptyDOMElement()
     expect(screen.queryByTestId('graph-toolbar-actions')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-toolbar')).not.toBeInTheDocument()
   })
 
   it('mounts the board actions on the board view, pointed at the viewed path', () => {

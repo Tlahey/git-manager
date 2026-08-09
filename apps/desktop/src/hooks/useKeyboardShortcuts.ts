@@ -11,7 +11,6 @@ import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { useRepoViewStore } from '../stores/repoView.store'
-import { useFileExplorerStore } from '../features/files'
 import { useBoardControlsStore } from '../features/board'
 import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
@@ -100,7 +99,10 @@ export function useKeyboardShortcuts({
           const view = useRepoViewStore.getState().view
           if (view === 'files') {
             e.preventDefault()
-            useFileExplorerStore.getState().actions.toggleSearch()
+            // The files search is the panel's own field, so this is the same request ⌥⌘F makes —
+            // and it has to put the panel back first, or it asks an unmounted input for focus.
+            if (!useRepoViewStore.getState().isPanelOpen) useRepoViewStore.getState().togglePanel()
+            useSidebarSearchStore.getState().requestFocus()
             return
           }
           if (view === 'board') {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { useRepoFiles } = vi.hoisted(() => ({ useRepoFiles: vi.fn() }))
@@ -11,12 +11,14 @@ vi.mock('../../../stores/repoUI.store', () => ({
 import { FileTreeSidebar } from './FileTreeSidebar'
 import { useFileExplorerStore } from '../stores/fileExplorer.store'
 import { useRepoViewStore } from '../../../stores/repoView.store'
+import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 
 const initialExplorerState = useFileExplorerStore.getState()
 
 beforeEach(() => {
   vi.clearAllMocks()
   useFileExplorerStore.setState(initialExplorerState, true)
+  useSidebarSearchStore.setState({ focusToken: 0 })
   useRepoFiles.mockReturnValue({
     data: ['src/components/Button.tsx', 'src/index.ts', 'README.md'],
     isLoading: false,
@@ -51,8 +53,42 @@ describe('FileTreeSidebar', () => {
     expect(useFileExplorerStore.getState().selectedFilePath).toBe('README.md')
   })
 
-  // The search box itself lives in the toolbar now (`FilesToolbar`); the tree reads the query it
-  // writes, so the filtering behaviour is still this component's and is still tested here.
+  /**
+   * The filter is this panel's own field, above the tree it filters — not a toolbar button and not
+   * a floating panel over the listing. Both of those were tried; what settled it is that the query
+   * narrows *this* tree and nothing else, so the control that writes it belongs beside it.
+   */
+  it('carries its own filter field, which writes the query the tree reads', async () => {
+    const user = userEvent.setup()
+    render(<FileTreeSidebar />)
+
+    await user.type(screen.getByTestId('file-tree-search-input'), 'Button')
+
+    expect(useFileExplorerStore.getState().treeSearchQuery).toBe('Button')
+    expect(screen.getByTestId('file-tree-node-src/components/Button.tsx')).toBeInTheDocument()
+    expect(screen.queryByTestId('file-tree-node-README.md')).not.toBeInTheDocument()
+  })
+
+  it('clears the filter from the field itself', async () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('Button')
+    const user = userEvent.setup()
+    render(<FileTreeSidebar />)
+
+    await user.click(screen.getByLabelText('Clear filter'))
+
+    expect(useFileExplorerStore.getState().treeSearchQuery).toBe('')
+  })
+
+  /** ⌘F on this view, and ⌥⌘F anywhere, both raise the *left panel's* filter — one request, served
+   * by whichever panel is in the slot. On the graph that is the branch list's field; here, this. */
+  it('takes focus when the left panel’s filter is asked for', () => {
+    render(<FileTreeSidebar />)
+
+    act(() => useSidebarSearchStore.getState().requestFocus())
+
+    expect(screen.getByTestId('file-tree-search-input')).toHaveFocus()
+  })
+
   it('shows search matches expanded, instead of behind folders the user must open', () => {
     useFileExplorerStore.getState().actions.setTreeSearchQuery('Button')
     render(<FileTreeSidebar />)

@@ -5,7 +5,6 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoViewStore } from '../../stores/repoView.store'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { BoardToolbar } from '../../features/board'
-import { FilesToolbar } from '../../features/files'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
@@ -113,7 +112,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         data-testid={`toolbar-view-actions-${view}`}
       >
         {view === 'graph' && <GraphToolbarActions />}
-        {view === 'files' && <FilesToolbar />}
+        {/* No `files` branch: that view supplies no toolbar commands — see `features/files/index.ts`. */}
         {view === 'board' && effectiveRepoPath && <BoardToolbar repoPath={effectiveRepoPath} />}
       </div>
 
