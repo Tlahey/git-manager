@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useGitGraphColumnsStore } from './gitGraphColumns.store'
-import { COLUMN_DEFS, COLUMN_ORDER } from '../features/graph'
+// At its own path, not through the barrel — see the store's own import for why that cycle crashes.
+import { COLUMN_DEFS, COLUMN_ORDER } from '../features/graph/lib/columns.config'
 
 function defaultColumns() {
   return COLUMN_ORDER.reduce(

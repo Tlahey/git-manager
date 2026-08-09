@@ -12,10 +12,17 @@
  * from a tag badge survives the user switching view mid-action (see `RepoWorkspace`'s doc comment),
  * and the two menu hooks that raise them.
  *
- * Test factories and pure logic are the sanctioned exceptions: a suite may reach a `lib/` module
- * directly, and `stores/gitGraphColumns.store.ts` — which lives outside because it is a *persisted
- * configuration section*, part of the app-config contract — reads its column definitions through
- * this barrel rather than reaching into `lib/`.
+ * Pure `lib/` modules are the sanctioned exception, and there is exactly one production case:
+ * `stores/gitGraphColumns.store.ts` — which lives outside because it is a *persisted configuration
+ * section*, part of the app-config contract — imports `lib/columns.config` at its own path. It
+ * cannot come through here: that store builds its defaults at module-evaluation time, and this file
+ * pulls the whole view in behind the constants, including the graph, which reads that store. The
+ * cycle evaluates to `Cannot access 'COLUMN_ORDER' before initialization`. The reason is restated
+ * beside the import, since that is the end that would be "tidied up" back onto the barrel.
+ *
+ * The same hazard is why nothing here re-exports a *value* a store or a `lib/appConfig/` module
+ * needs at import time. Components and hooks are safe — they evaluate on render, long after the
+ * module graph has settled.
  */
 
 /** The view itself, in the repo tab's central area. */
@@ -43,5 +50,7 @@ export { TagDialogsManager } from './components/TagDialogsManager'
 export { useSidebarBranchMenu } from './hooks/useSidebarBranchMenu'
 export { useSidebarTagMenu } from './hooks/useSidebarTagMenu'
 
-/** The graph's column definitions, read by the persisted `gitGraphColumns` settings section. */
-export { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from './lib/columns.config'
+/** The graph's column keys, for the persisted `gitGraphColumns` settings section that is typed on
+ * them. Type-only: erased at compile time, so it cannot take part in the cycle described above —
+ * the *values* beside it (`COLUMN_DEFS`, `COLUMN_ORDER`) are deliberately not re-exported here. */
+export type { ColumnKey } from './lib/columns.config'
