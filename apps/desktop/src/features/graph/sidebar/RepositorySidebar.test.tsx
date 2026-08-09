@@ -62,6 +62,14 @@ vi.mock('./SidebarSectionHeader', () => ({
   },
 }))
 
+vi.mock('./SidebarRail', () => ({
+  SidebarRail: (props: { onExpand: () => void; onOpenSection: (key: string) => void }) => (
+    <>
+      <button data-testid="sidebar-rail" onClick={props.onExpand} />
+      <button data-testid="sidebar-rail-tags" onClick={() => props.onOpenSection('tags')} />
+    </>
+  ),
+}))
 vi.mock('../../../components/diff-viewer/BlameHistoryPanel', () => ({
   BlameHistoryPanel: (props: { file: unknown; onClose: () => void }) => (
     <div data-testid="blame-history-panel" onClick={props.onClose} />
@@ -165,6 +173,7 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const mockedStashApply = apiStashApply as unknown as ReturnType<typeof vi.fn>
 const mockedStashPop = apiStashPop as unknown as ReturnType<typeof vi.fn>
@@ -218,6 +227,7 @@ beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   usePinnedBranchesStore.setState(INITIAL_PINNED, true)
   useSidebarSearchStore.setState({ focusToken: 0 })
+  useRepoViewStore.setState({ isPanelOpen: true })
   useSidebarResize.mockReturnValue(resizeState())
   useSidebarRows.mockReturnValue({ sections: [], filterStats: { matched: 0, total: 0 } })
   showNativeMenu.mockResolvedValue(undefined)
@@ -235,6 +245,49 @@ describe('RepositorySidebar — mode routing', () => {
     renderSidebar()
     expect(screen.queryByLabelText('Collapse sidebar')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Filter branches')).toBeInTheDocument()
+  })
+
+  /**
+   * "Folded" is this panel's own answer to the shell's flag, and it is *not* "gone": the sidebar
+   * has a compact form the file tree and the board list don't — a column of section icons with
+   * their counts — so it gives back 200-odd pixels instead of the whole slot.
+   */
+  it('reduces to the rail when the shell folds the panel, rather than leaving the slot', () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
+    renderSidebar()
+    expect(screen.getByTestId('repository-sidebar')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Filter branches')).not.toBeInTheDocument()
+  })
+
+  it('comes back to full width from the rail', async () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
+    const user = userEvent.setup()
+    renderSidebar()
+    await user.click(screen.getByTestId('sidebar-rail'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+  })
+
+  // Sections default to closed, so coming back alone would answer "here is the sidebar again"
+  // instead of "here are your tags" — the clicked icon has to open its own section.
+  it('a rail icon comes back *on* its section', async () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
+    const user = userEvent.setup()
+    renderSidebar()
+    await user.click(screen.getByTestId('sidebar-rail-tags'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+    expect(useSidebarRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ openState: { 'section:tags': true } })
+    )
+  })
+
+  /** ⌥⌘F asks for the filter input, which the rail doesn't draw — so it restores the panel first,
+   * and the re-render focuses the field. */
+  it('comes back to full width when the sidebar filter is asked for', () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
+    renderSidebar()
+    act(() => useSidebarSearchStore.getState().requestFocus())
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
   })
 
   it('shows the BlameHistoryPanel when the left panel is in blame/history mode', () => {

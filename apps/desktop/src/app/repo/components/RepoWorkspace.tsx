@@ -88,7 +88,9 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
     <>
       {/* ── Main layout: the view's panel | the view ────────────── */}
       <div data-testid="repo-workspace" className="relative flex flex-1 overflow-hidden">
-        {isPanelOpen && view === 'graph' && (
+        {/* Not gated on `isPanelOpen` like the other two: this panel answers the flag itself, by
+            reducing to its column of section icons rather than leaving the slot empty. */}
+        {view === 'graph' && (
           <RepositorySidebar
             repoPath={repoPath}
             remoteUrls={repoCache[activeRepo]?.remotes ?? []}

@@ -61,7 +61,9 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
     >
       {/* Above the panel it folds away, and outside the view sections on purpose: the panel slot is
           the shell's, filled in turn by the branch sidebar, the file tree and the board list. It is
-          also the only way back once ⌘S has hidden one, which is why it never leaves the bar. */}
+          also the only way back once ⌘S has folded one away, which is why it never leaves the bar.
+          What "folded" looks like is each panel's own answer — the graph's sidebar reduces to its
+          column of section icons, the other two leave the slot; see `repoView.store`. */}
       <ToolbarButton
         icon={
           <PanelLeft

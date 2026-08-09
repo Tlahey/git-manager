@@ -5,14 +5,17 @@ const DEFAULT_WIDTH = 240
 const MIN_WIDTH = 160
 const MAX_WIDTH = 480
 
+/** Width of the reduced sidebar — the column of section icons `SidebarRail` draws. */
+export const RAIL_WIDTH = 48
+
 /**
  * Width of the graph's sidebar, dragged by its right edge and remembered across sessions.
  *
- * It used to own a *collapsed* state as well — the sidebar shrank to a 48px column of section
- * icons. That mode went with the button that was its only entrance: whether the panel is on screen
- * at all is `repoView.store`'s `isPanelOpen` now (⌘S, or the toolbar's own button), one flag for
- * the slot all three views take turns filling. Two neighbouring controls for "give me that width
- * back", each meaning something slightly different, is one more than the question deserves.
+ * It used to own the *reduced/full* state as well, behind a button in the sidebar's own header.
+ * That state is `repoView.store`'s `isPanelOpen` now — one flag for the panel slot all three views
+ * take turns filling, driven by ⌘S and the toolbar's button, so there is one control rather than
+ * two neighbouring ones meaning slightly different things. What is left here is the width, which is
+ * this view's alone: no other panel is draggable.
  */
 export function useSidebarResize() {
   const [width, setWidth] = useState<number>(() => {

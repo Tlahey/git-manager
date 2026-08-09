@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Focus, Search, X } from 'lucide-react'
 import { Input, toast } from '@git-manager/ui'
 import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
-import { useSidebarResize } from '../hooks/useSidebarResize'
+import { useSidebarResize, RAIL_WIDTH } from '../hooks/useSidebarResize'
 import { useSidebarRows } from '../hooks/useSidebarRows'
 import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
+import { SidebarRail } from './SidebarRail'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRowView } from './SidebarRowView'
 import { SidebarSectionHeader } from './SidebarSectionHeader'
@@ -20,6 +21,7 @@ import {
 } from './types'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 import { BlameHistoryPanel } from '../../../components/diff-viewer/BlameHistoryPanel'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
@@ -81,6 +83,14 @@ export function RepositorySidebar({
   const { isConnected } = useGithubAccount()
   const githubConnected = !!githubToken || isConnected
   const { width, resizeHandleProps } = useSidebarResize()
+  /**
+   * The shell's panel flag (⌘S, or the toolbar's button). On this view "off" is not *gone*: the
+   * sidebar has a reduced form the other two panels don't — a column of section icons carrying
+   * their counts — and that is worth more than the 48px it costs. The files and board panels have
+   * nothing equivalent to fall back to, so there the same flag hides them outright.
+   */
+  const isPanelOpen = useRepoViewStore((s) => s.isPanelOpen)
+  const togglePanel = useRepoViewStore((s) => s.togglePanel)
   const [branchQuery, setBranchQuery] = useState('')
   const isFilterActive = branchQuery.trim().length > 0
 
@@ -246,6 +256,18 @@ export function RepositorySidebar({
   // other open sections can push it below the fold.
   const [sectionToReveal, setSectionToReveal] = useState<SectionKey | null>(null)
 
+  // A rail icon stands for a section, so clicking it reopens the sidebar *and* opens that section,
+  // rather than dropping the user back on whatever was open before. Sections default to closed, so
+  // without this the click answered "here is the sidebar again" and not "here are your tags".
+  const openSectionFromRail = useCallback(
+    (key: SectionKey) => {
+      togglePanel()
+      setOpenState((prev) => ({ ...prev, [`section:${key}`]: true }))
+      setSectionToReveal(key)
+    },
+    [togglePanel]
+  )
+
   // Ref attached to the section being revealed only, so it fires on the very render that opens it.
   const revealSectionRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -318,17 +340,19 @@ export function RepositorySidebar({
 
   useEffect(() => {
     if (focusToken === 0) return
-    // Reveal the filter input first if the blame/history panel has taken the slot — this effect
-    // re-runs once that state change lands, then falls through to focus() below. (The panel being
-    // hidden altogether is handled a level up, in the ⌥⌘F binding itself: the sidebar can't put
-    // itself back on screen from here, since it isn't mounted.)
+    // Reveal the filter input first if it is behind the reduced rail or the blame/history panel —
+    // this effect re-runs once that state change lands, then falls through to focus() below.
+    if (!isPanelOpen) {
+      togglePanel()
+      return
+    }
     if (isBlameOrHistoryActive) {
       setActiveLeftPanel('sidebar')
       return
     }
     searchInputRef.current?.focus()
     searchInputRef.current?.select()
-  }, [focusToken, isBlameOrHistoryActive, setActiveLeftPanel])
+  }, [focusToken, isPanelOpen, togglePanel, isBlameOrHistoryActive, setActiveLeftPanel])
 
   // ── Blame / History panel overlay ──────────────────────────────────
   if (isBlameOrHistoryActive) {
@@ -349,6 +373,27 @@ export function RepositorySidebar({
     )
   }
 
+  // ── Reduced mode: the section icons alone ──────────────────────────
+  if (!isPanelOpen) {
+    return (
+      <div
+        data-testid="repository-sidebar"
+        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
+        style={{ width: RAIL_WIDTH }}
+      >
+        <SidebarRail
+          repoPath={repoPath}
+          remoteUrls={remoteUrls}
+          currentUser={currentUser}
+          githubToken={githubToken}
+          onExpand={togglePanel}
+          onOpenSection={openSectionFromRail}
+        />
+      </div>
+    )
+  }
+
+  // ── Full mode ──────────────────────────────────────────────────────
   return (
     <div
       data-testid="repository-sidebar"

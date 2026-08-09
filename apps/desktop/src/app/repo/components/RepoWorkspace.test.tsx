@@ -137,6 +137,24 @@ describe('RepoWorkspace', () => {
   })
 
   /**
+   * The graph's sidebar is the exception, and it is the sidebar that decides so: it has a reduced
+   * form (a column of section icons) where the file tree and the board list have none, so it stays
+   * mounted and answers the flag itself. Unmounting it here would take that form away with it.
+   */
+  it('leaves the graph sidebar mounted when the panel is folded, unlike the other two', () => {
+    useRepoViewStore.setState({ view: 'graph', isPanelOpen: false })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-sidebar')).toBeInTheDocument()
+  })
+
+  it('takes the board list off the slot when the panel is folded', () => {
+    useRepoViewStore.setState({ view: 'board', isPanelOpen: false })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-board-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-board-sidebar')).not.toBeInTheDocument()
+  })
+
+  /**
    * Blame and history are a *file's* panel, not a view's: they are opened from the diff viewer, which
    * the files view has too. Before the panel became view-scoped this came for free, because the graph's
    * sidebar was mounted on every view and swapped itself out for them.

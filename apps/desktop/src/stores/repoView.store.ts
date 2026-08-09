@@ -23,7 +23,7 @@ interface RepoViewState {
   view: RepoView
   setView: (view: RepoView) => void
   /**
-   * Whether the left panel slot is showing at all — the branch sidebar, the file tree or the board
+   * Whether the left panel slot is at full width — the branch sidebar, the file tree or the board
    * list, whichever the active view puts there.
    *
    * **One flag for the slot, not one per view**, for the same reason `view` is one slot: it is one
@@ -31,6 +31,11 @@ interface RepoViewState {
    * `fileExplorer.store` while the files view was the only one that could fold its panel away; that
    * made "hide the panel" mean something different depending on where you stood, and left the other
    * two with no way to reclaim the width at all.
+   *
+   * **What "off" looks like is the panel's own answer, not this store's.** The graph's sidebar
+   * reduces to a column of section icons carrying their counts (`SidebarRail`), because it has a
+   * useful compact form; the file tree and the board list have nothing equivalent, so they leave
+   * the slot. One flag, one gesture, and each panel gives back as much width as it can afford.
    */
   isPanelOpen: boolean
   togglePanel: () => void
