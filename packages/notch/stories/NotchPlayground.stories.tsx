@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import {
   dismissCurrentNotch,
@@ -6,6 +6,7 @@ import {
   enqueueNotch,
   MacBookScreen,
   notchQueueSize,
+  removeNotch,
   type MacBookWallpaper,
   type NotchQueueState,
 } from '../src'
@@ -16,7 +17,14 @@ import {
   StoryButton,
   StorySelect,
 } from './notchStoryHelpers'
-import { NOTCH_SAMPLES, type NotchSample } from './sampleNotchModels'
+import {
+  AI_RUN_FILE_COUNT,
+  AI_RUN_ID,
+  aiRunIcon,
+  aiRunProgress,
+  NOTCH_SAMPLES,
+  type NotchSample,
+} from './sampleNotchModels'
 
 /**
  * One screen, and buttons that send things at it.
@@ -58,6 +66,19 @@ const WALLPAPERS: { value: MacBookWallpaper; label: string }[] = [
   { value: 'light', label: 'light' },
 ]
 
+/**
+ * How long one file of the sample AI run takes.
+ *
+ * Far quicker than the real thing — a local model spends seconds per file — because the point is to
+ * watch the bar move, not to sit through it. Slow enough that each tick is legible as its own step.
+ */
+const AI_TICK_MS = 700
+
+/** The AI run as a queue entry, at whatever file it has reached. */
+function aiSample(filesRead: number): NotchSample {
+  return { label: 'AI run', model: aiRunProgress(filesRead), icon: aiRunIcon }
+}
+
 function NotchPlayground() {
   const [deviceId, setDeviceId] = useState(DEVICES[0].id)
   const [wallpaper, setWallpaper] = useState<MacBookWallpaper>('photo')
@@ -67,13 +88,15 @@ function NotchPlayground() {
   // its icon and label travel with it instead of being looked up again on every render.
   const [queue, setQueue] = useState<NotchQueueState<NotchSample>>(emptyNotchQueue)
   const [log, setLog] = useState<string[]>([])
+  /** Files the sample AI run has read, or `null` when no run is going — which is what stops it. */
+  const [filesRead, setFilesRead] = useState<number | null>(null)
   // Bumped on every arrival so re-sending a card that just left remounts the presenter (and
   // replays its entrance) instead of React reusing the previous instance.
   const [generation, setGeneration] = useState(0)
 
   const preset = DEVICES.find((d) => d.id === deviceId) ?? DEVICES[0]
   const zoom = ZOOMS[zoomId]
-  const autoDismissMs = DURATIONS[durationId].ms
+  const chosenDurationMs = DURATIONS[durationId].ms
 
   const append = useCallback((line: string) => {
     setLog((previous) => [`${new Date().toLocaleTimeString()}  ${line}`, ...previous].slice(0, 8))
@@ -85,12 +108,78 @@ function NotchPlayground() {
     append(`sent “${sample.label}”`)
   }
 
+  /** Starts the sample AI run at its first file. It advances on its own from there. */
+  const startAiRun = () => {
+    setFilesRead(0)
+    setQueue((q) => enqueueNotch(q, aiSample(0)))
+    setGeneration((n) => n + 1)
+    append(`AI run started — ${AI_RUN_FILE_COUNT} files to read`)
+  }
+
+  /**
+   * The run reading its files, one every {@link AI_TICK_MS}, with no help from the viewer.
+   *
+   * A card whose bar only moves when you click a button is not the thing being demonstrated: what
+   * the app does is tick on its own for minutes, and every question worth asking here is about what
+   * happens *while* it does. Closing it mid-run is the one that matters — the ticks below carry on,
+   * exactly as the app's producer carries on describing a card it cannot see has been dismissed,
+   * and nothing comes back until the run ends.
+   *
+   * A timeout per tick rather than one interval: the tick is a state change, so re-arming from the
+   * state it produced is what keeps the two from drifting apart.
+   */
+  useEffect(() => {
+    if (filesRead === null) return
+    const timer = setTimeout(() => {
+      const read = filesRead + 1
+      if (read > AI_RUN_FILE_COUNT) {
+        // The producer saying "this is over", which is also what lifts a suppression.
+        setQueue((q) => removeNotch(q, AI_RUN_ID))
+        setFilesRead(null)
+        append('AI run finished — its card is retired')
+        return
+      }
+      setFilesRead(read)
+      // No generation bump: a tick is an in-place update of the card already on screen, and
+      // remounting it would replay the entrance animation twelve times for one operation.
+      setQueue((q) => enqueueNotch(q, aiSample(read)))
+      append(`AI run — ${read} / ${AI_RUN_FILE_COUNT} files read`)
+    }, AI_TICK_MS)
+    return () => clearTimeout(timer)
+  }, [filesRead, append])
+
   const closeCurrent = useCallback(() => {
     setQueue(dismissCurrentNotch)
     append('card closed')
   }, [append])
 
+  /** What the app's producers call when an operation is over — and what lifts a suppression. */
+  const endOperation = (id: string, label: string) => {
+    setQueue((q) => removeNotch(q, id))
+    // Ending the AI run has to stop it reading, or the next tick would put its card straight back —
+    // which would be the truth (the operation is not over) but not what the button says.
+    if (id === AI_RUN_ID) setFilesRead(null)
+    append(`“${label}” finished — its card may come back`)
+  }
+
   const current = queue.current
+  /**
+   * The chosen delay, except for a live card, which the app never times out either.
+   *
+   * A progress card is a number that changes: one parked at 40 % that vanished after five seconds
+   * would have told the user nothing and taken away the only thing tracking the operation. Mirrored
+   * here rather than left to the select, because a card that dismissed itself mid-run would then be
+   * held out for the rest of it — a state the app cannot reach and the story shouldn't invent.
+   */
+  const autoDismissMs = current?.model.kind === 'progress' ? null : chosenDurationMs
+  // A live card the user closed. Its producer goes on describing it, correctly, for the rest of the
+  // run — so without this row its button would look dead, which is exactly the confusion the
+  // suppression is meant to *prevent* rather than cause.
+  const heldOut = queue.suppressed.map((id) => ({
+    id,
+    label:
+      NOTCH_SAMPLES.find((s) => s.model.id === id)?.label ?? (id === AI_RUN_ID ? 'AI run' : id),
+  }))
 
   return (
     <div className="flex flex-col items-start gap-4">
@@ -157,15 +246,46 @@ function NotchPlayground() {
             {sample.label}
           </StoryButton>
         ))}
-        <StoryButton tone="quiet" onClick={() => setQueue(emptyNotchQueue)}>
+        <StoryButton onClick={startAiRun}>
+          {filesRead === null ? 'AI run (12 files)' : 'AI run · start over'}
+        </StoryButton>
+        <StoryButton
+          tone="quiet"
+          onClick={() => {
+            setQueue(emptyNotchQueue)
+            setFilesRead(null)
+          }}
+        >
           clear the queue
         </StoryButton>
       </div>
+
+      {heldOut.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+          <span>closed while running — nothing can put it back until its operation ends:</span>
+          {heldOut.map((entry) => (
+            <StoryButton
+              key={entry.id}
+              tone="quiet"
+              onClick={() => endOperation(entry.id, entry.label)}
+            >
+              end “{entry.label}”
+            </StoryButton>
+          ))}
+        </div>
+      )}
 
       <p className="m-0 max-w-[70ch] text-xs leading-5 text-neutral-400">
         Hover the card to pause its countdown. Send a second one while the first is up: it waits,
         unless it is an error — “Pre-commit failed” and “Checks failed” cut straight in, and the
         card they displaced comes back next instead of being lost.
+      </p>
+      <p className="m-0 max-w-[70ch] text-xs leading-5 text-neutral-400">
+        “AI run” reads twelve files on its own, one every {AI_TICK_MS} ms: the bar fills and the
+        card updates in place rather than arriving twelve times. Close it with the ✕ while it runs —
+        the log below goes on ticking, and nothing comes back until the run ends, because a live
+        card the user closed stays closed for the whole operation. Any other kind may come straight
+        back: a second failed hook is a new event, not the first one refusing to leave.
       </p>
 
       <div className="flex w-full flex-wrap gap-6 text-xs text-neutral-400">

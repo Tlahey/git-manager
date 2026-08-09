@@ -4,7 +4,7 @@ import { getAiPreset } from '@git-manager/ai'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAiStatusStore, type AiConnectionState } from '../../stores/aiStatus.store'
 import { useAiActivityStore } from '../../stores/aiActivity.store'
-import { aiFeatureLabel, goToAiRun } from '../../lib/aiRunPresentation'
+import { aiPhaseBelongsTo, aiRunLabel, goToAiRun } from '../../lib/aiRunPresentation'
 
 interface AiStatusIndicatorProps {
   /** Opens Settings › AI, so a failing provider is one click from being fixed. */
@@ -67,12 +67,14 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
     : t('aiStatus.modelSingle', { model })
 
   if (activeRun) {
-    const label = aiFeatureLabel(activeRun.featureId, t)
+    // The action the user asked for, which for most of a two-phase run is not the small call
+    // currently open — see `aiRunLabel`. The count beside it says how far its map phase has got.
+    const label = aiRunLabel(activeRun, progress, t)
     const origin = activeRun.origin
-    // Only the feature the count belongs to, and only when there is more than one step: a streaming
+    // Only the phase the count belongs to, and only when there is more than one step: a streaming
     // feature has no steps to report, and "1/1" is noise.
     const steps =
-      progress && progress.featureId === activeRun.featureId && progress.total > 1
+      aiPhaseBelongsTo(activeRun, progress) && progress.total > 1
         ? `${progress.completed}/${progress.total}`
         : null
 

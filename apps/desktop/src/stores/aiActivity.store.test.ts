@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useAiActivityStore, withAiActivity } from './aiActivity.store'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { useAiActivityStore, trackAiProgress, withAiActivity } from './aiActivity.store'
 
 beforeEach(() => {
-  useAiActivityStore.setState({ runs: [] })
+  useAiActivityStore.setState({ runs: [], progress: null })
 })
 
 describe('aiActivity.store', () => {
@@ -69,5 +69,22 @@ describe('withAiActivity', () => {
       seen = useAiActivityStore.getState().runs[0].featureId
     })
     expect(seen).toBe('change-explanation')
+  })
+})
+
+describe('trackAiProgress', () => {
+  it('publishes the phase, what it is running for, and its count', () => {
+    // The owner is what lets the footer and the notch name the button that was pressed: the map
+    // phase itself is nobody's action, so without it a summary and a briefing look identical.
+    const local = vi.fn()
+    trackAiProgress('file-summary', 'summary-explanation', local)({ completed: 3, total: 12 })
+
+    expect(useAiActivityStore.getState().progress).toEqual({
+      featureId: 'file-summary',
+      owner: 'summary-explanation',
+      completed: 3,
+      total: 12,
+    })
+    expect(local).toHaveBeenCalledWith({ completed: 3, total: 12 })
   })
 })

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { emptyNotchQueue } from '@git-manager/notch'
 import { NotchAiRuns } from './NotchAiRuns'
+import { AI_RUN_NOTCH_GRACE_MS } from '../../hooks/useAiNotchRun'
 import { useAiActivityStore } from '../../stores/aiActivity.store'
 import { useNotchQueueStore } from '../../stores/notchQueue.store'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -59,12 +60,79 @@ describe('NotchAiRuns', () => {
     begin('file-summary')
 
     act(() => {
-      useAiActivityStore
-        .getState()
-        .setProgress({ featureId: 'file-summary', completed: 5, total: 20 })
+      useAiActivityStore.getState().setProgress({
+        featureId: 'file-summary',
+        owner: 'summary-explanation',
+        completed: 5,
+        total: 20,
+      })
     })
 
-    expect(current()?.model).toMatchObject({ ratio: 0.25, detail: '5 / 20 files' })
+    expect(current()?.model).toMatchObject({
+      ratio: 0.25,
+      detail: 'Reading the files — 5 / 20',
+    })
+  })
+
+  it('names the action the files are being read for, not the reading', () => {
+    // The map phase is nobody's button: the user asked for a summary, and forty small calls is how
+    // it gets answered. Naming the calls made every two-phase feature announce itself identically.
+    render(<NotchAiRuns />)
+    begin('file-summary')
+
+    act(() => {
+      useAiActivityStore.getState().setProgress({
+        featureId: 'file-summary',
+        owner: 'summary-explanation',
+        completed: 0,
+        total: 20,
+      })
+    })
+
+    expect(current()?.model.title).toBe('Explaining the changes…')
+  })
+
+  /**
+   * The ✕ has to mean the whole run. This component describes the card it wants on every file, and
+   * cannot see a dismissal — so without the queue holding closed live cards out, closing one lasted
+   * exactly one model call before it slid back in.
+   */
+  it('stays closed once the user closes it, however many files are left', () => {
+    render(<NotchAiRuns />)
+    begin('file-summary')
+    act(() => useNotchQueueStore.getState().dismissCurrent())
+    expect(current()).toBeNull()
+
+    act(() => {
+      useAiActivityStore.getState().setProgress({
+        featureId: 'file-summary',
+        owner: 'summary-explanation',
+        completed: 2,
+        total: 12,
+      })
+    })
+
+    expect(current()).toBeNull()
+  })
+
+  it('comes back for the next run, once this one has ended', () => {
+    vi.useFakeTimers()
+    try {
+      render(<NotchAiRuns />)
+      const runId = begin('file-summary')
+      act(() => useNotchQueueStore.getState().dismissCurrent())
+
+      // The run ending is what retires the card, and retiring it is what lifts the suppression —
+      // after the grace period that carries the card across the gaps between two files.
+      act(() => useAiActivityStore.getState().end(runId))
+      act(() => void vi.advanceTimersByTime(AI_RUN_NOTCH_GRACE_MS))
+      expect(current()).toBeNull()
+
+      begin('file-summary')
+      expect(current()?.model.title).toBe('Reading the files one by one…')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('carries a way back to the panel the run came from', () => {

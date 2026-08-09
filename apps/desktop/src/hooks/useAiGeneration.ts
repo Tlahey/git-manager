@@ -4,6 +4,7 @@ import {
   composeCommitMessageFromSummaries,
   fileSummaryFeature,
   formatCommitMessage,
+  summaryCommitMessageFeature,
   SummaryRunCancelled,
   validateCommitSubject,
 } from '@git-manager/ai'
@@ -95,7 +96,11 @@ export function useAiGeneration(repoPath: string) {
             compose: (reduceInput) => summaryCommitMessageService.run(aiConnection, reduceInput),
           },
           {
-            onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+            onProgress: trackAiProgress(
+              fileSummaryFeature.id,
+              summaryCommitMessageFeature.id,
+              setProgress
+            ),
             shouldCancel: () => cancelledRef.current,
             concurrency: aiConnection.concurrency,
           }

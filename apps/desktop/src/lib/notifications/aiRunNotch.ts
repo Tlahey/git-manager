@@ -14,7 +14,7 @@
 import type { TFunction } from '@git-manager/i18n'
 import type { NotchModel } from '@git-manager/notch'
 import type { AiPhaseProgress, AiRun } from '../../stores/aiActivity.store'
-import { aiFeatureLabel } from '../aiRunPresentation'
+import { aiPhaseBelongsTo, aiPhaseDetail, aiRunLabel } from '../aiRunPresentation'
 import type { NotificationRoute } from './notificationRoute'
 
 /**
@@ -81,7 +81,9 @@ export function aiRunNotchModel(input: AiRunNotchInput): NotchModel {
     tone: 'running',
     eyebrow: t('aiStatus.notch.eyebrow'),
     ...(repoName ? { context: repoName } : {}),
-    title: aiFeatureLabel(run.featureId, t),
+    // The action the user asked for, not the small call currently open — see `aiRunLabel`. Which
+    // file of how many is the detail line's job, one row below.
+    title: aiRunLabel(run, progress, t),
     ...ratioFor(run, progress),
     ...detailFor(run, progress, t),
     ...(run.origin
@@ -98,28 +100,17 @@ export function aiRunNotchModel(input: AiRunNotchInput): NotchModel {
  * as working, which is what is true.
  */
 function ratioFor(run: AiRun, progress: AiPhaseProgress | null): { ratio?: number } {
-  if (!belongsTo(run, progress) || progress.total <= 1) return {}
+  if (!aiPhaseBelongsTo(run, progress) || progress.total <= 1) return {}
   return { ratio: Math.min(1, progress.completed / progress.total) }
 }
 
+/** The phase and its count — "Reading the files — 3 / 12". Shares its rule with the footer's own
+ * count, so the card and the pill can never disagree about how far a phase has got. */
 function detailFor(
   run: AiRun,
   progress: AiPhaseProgress | null,
   t: TFunction
 ): { detail?: string } {
-  if (!belongsTo(run, progress) || progress.total <= 1) return {}
-  return {
-    detail: t('aiStatus.notch.steps', { done: progress.completed, total: progress.total }),
-  }
-}
-
-/**
- * Whether the count on the store belongs to the run being rendered.
- *
- * The count is published *between* calls and deliberately not cleared when the run list empties (a
- * sequential map phase would blank it for most of its life). The feature tag is what keeps a
- * finished phase's last count from being shown against the next, unrelated generation.
- */
-function belongsTo(run: AiRun, progress: AiPhaseProgress | null): progress is AiPhaseProgress {
-  return progress !== null && progress.featureId === run.featureId
+  const detail = aiPhaseDetail(run, progress, t)
+  return detail ? { detail } : {}
 }

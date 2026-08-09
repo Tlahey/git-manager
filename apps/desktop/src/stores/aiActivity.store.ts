@@ -39,6 +39,18 @@ export interface AiRun {
 export interface AiPhaseProgress {
   /** `AiFeature.id` of the calls being counted (`file-summary`, `commit-relevance`). */
   featureId: string
+  /**
+   * `AiFeature.id` of the action the phase is *for* — usually the composing call it feeds.
+   *
+   * A map phase is never something the user asked for: they asked for a summary, a commit message,
+   * a briefing, and reading the files one by one is how it gets done. Without this the only name
+   * available while the minutes pass is the phase's, so every two-phase feature announced itself as
+   * "Reading the files one by one…" and nothing on screen said which button had been pressed.
+   *
+   * A loop that *is* its own action (rewriting N commit messages) names itself here, which is not a
+   * degenerate case but the same rule: this is the button that was pressed.
+   */
+  owner: string
   completed: number
   total: number
 }
@@ -90,19 +102,26 @@ export const useAiActivityStore = create<AiActivityState>((set) => ({
 /**
  * Wraps a map phase's `onProgress` so the footer counts the same steps the panel does.
  *
- * Takes the feature id explicitly rather than reading whichever run happens to be in flight: the
+ * Takes both feature ids explicitly rather than reading whichever run happens to be in flight: the
  * count is published *between* calls, when nothing is in flight at all, so there would be nothing to
- * read. The caller knows which feature its phase runs — that is the whole point of it having one.
+ * read. The caller knows which phase it runs and what it is running it for — that is the whole point
+ * of it having both.
+ *
+ * `local` is optional because a run nobody is watching still has to say what it is: the morning
+ * briefing starts itself, draws no panel and therefore holds no local state, and passing no
+ * `onProgress` at all is what used to leave its card named after the calls it was making rather than
+ * after the briefing it was making them for.
  */
 export function trackAiProgress<P extends { completed: number; total: number }>(
   featureId: string,
-  local: Dispatch<SetStateAction<P | null>>
+  owner: string,
+  local?: Dispatch<SetStateAction<P | null>>
 ): (progress: P) => void {
   return (progress) => {
     useAiActivityStore
       .getState()
-      .setProgress({ featureId, completed: progress.completed, total: progress.total })
-    local(progress)
+      .setProgress({ featureId, owner, completed: progress.completed, total: progress.total })
+    local?.(progress)
   }
 }
 

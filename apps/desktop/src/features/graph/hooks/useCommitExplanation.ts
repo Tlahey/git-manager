@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
-import { fileSummaryFeature, summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import {
+  fileSummaryFeature,
+  summarizeFiles,
+  summaryExplanationFeature,
+  type SummaryProgress,
+} from '@git-manager/ai'
 import { fileSummaryService, summaryExplanationService } from '../../../api/ai.api'
 import { apiGetCommitDiff } from '../../../api/git.api'
 import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
@@ -88,7 +93,11 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
             (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
             contextTokens,
             {
-              onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+              onProgress: trackAiProgress(
+                fileSummaryFeature.id,
+                summaryExplanationFeature.id,
+                setProgress
+              ),
               shouldCancel: () => cancelledRef.current,
               concurrency: aiConnection.concurrency,
             }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { GitGraphNode, RebaseTodoStep } from '@git-manager/git-types'
 import type { CommitConvention, CommitValidation } from '@git-manager/ai'
-import { validateCommitSubject } from '@git-manager/ai'
+import { commitRecomposeFeature, validateCommitSubject } from '@git-manager/ai'
 import { apiGetAiContext, commitRecomposeService } from '../../../api/ai.api'
 import {
   apiGetCommitDiff,
@@ -9,6 +9,7 @@ import {
   apiRunInteractiveRebase,
 } from '../../../api/git.api'
 import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
+import { trackAiProgress } from '../../../stores/aiActivity.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 
@@ -54,8 +55,25 @@ export function useCommitRecompose(
   const [proposals, setProposals] = useState<RecomposeProposal[]>([])
   /** How far a generating run has got, for the progress line. */
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 })
+
   const [convention, setConvention] = useState<CommitConvention | null>(null)
   const [recentCommits, setRecentCommits] = useState<string[]>([])
+
+  /**
+   * The dialog's progress line and the notch/footer's count, from one call so they cannot disagree.
+   *
+   * The loop names *itself* as the owner: unlike a map phase, it feeds no composing call — writing
+   * these messages is the action the user asked for, one commit at a time. Without this the card
+   * said "Rewriting a commit message" for as long as ten of them took, with no way to tell a slow
+   * run from a stuck one.
+   */
+  const report = useCallback((done: number, total: number) => {
+    setProgress({ done, total })
+    trackAiProgress(
+      commitRecomposeFeature.id,
+      commitRecomposeFeature.id
+    )({ completed: done, total })
+  }, [])
 
   /**
    * Writes a message for each of `targets` (oldest first), leaving the previous ones in place until
@@ -65,7 +83,7 @@ export function useCommitRecompose(
     async (targets: { oid: string; shortOid: string; message: string }[]) => {
       setStatus('generating')
       setError(null)
-      setProgress({ done: 0, total: targets.length })
+      report(0, targets.length)
       setProposals(
         targets.map((c) => ({
           oid: c.oid,
@@ -118,7 +136,7 @@ export function useCommitRecompose(
                 : p
             )
           )
-          setProgress({ done: index + 1, total: targets.length })
+          report(index + 1, targets.length)
         }
       } catch (err) {
         setError(String(err))
@@ -126,7 +144,7 @@ export function useCommitRecompose(
         setStatus('idle')
       }
     },
-    [repoPath, aiConnection, commitInstructions, commitPattern, nodes]
+    [repoPath, aiConnection, commitInstructions, commitPattern, nodes, report]
   )
 
   function setMessage(oid: string, proposedMessage: string) {

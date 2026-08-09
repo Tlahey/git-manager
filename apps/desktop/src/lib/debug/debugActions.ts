@@ -502,10 +502,13 @@ export const DEBUG_ACTIONS: DebugAction[] = [
     kind: 'effect',
     group: 'AI runs',
     label: 'File analysis, file by file',
-    hint: 'Ticks 1→8 over 8 s, one begin/end per file.',
+    hint: 'Ticks 1→8 over 8 s, one begin/end per file. Card names the summary it feeds.',
     run: async () => {
       const store = useAiActivityStore.getState()
       const total = 8
+      // The map phase always runs *for* something, and that is what the card is named after — here,
+      // the working-changes summary.
+      const phase = { featureId: 'file-summary', owner: 'summary-explanation', total }
       for (let done = 0; done < total; done++) {
         // One run per file, exactly as `summarizeFiles` produces them — the gaps between them are
         // the thing the card's grace period exists to survive.
@@ -513,10 +516,10 @@ export const DEBUG_ACTIONS: DebugAction[] = [
           repoPath: DEMO_REPO,
           panel: { kind: 'working' },
         })
-        store.setProgress({ featureId: 'file-summary', completed: done, total })
+        store.setProgress({ ...phase, completed: done })
         await new Promise((resolve) => setTimeout(resolve, 900))
         store.end(runId)
-        store.setProgress({ featureId: 'file-summary', completed: done + 1, total })
+        store.setProgress({ ...phase, completed: done + 1 })
       }
     },
   },
