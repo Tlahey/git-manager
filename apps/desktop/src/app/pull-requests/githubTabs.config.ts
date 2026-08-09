@@ -9,7 +9,7 @@ import type { InnerTab } from './types'
  * account's data and shows nothing without it.
  *
  * A table rather than a `tab.id !== 'wip'` check at the call site, per the repo's convention for a
- * lookup keyed by a fixed set of values (see `components/git-graph/columns.config.ts`): a tab added
+ * lookup keyed by a fixed set of values (see `features/graph/lib/columns.config.ts`): a tab added
  * to `InnerTab` fails to compile until someone states which side of the line it falls on, which is
  * the whole point — the failure mode of the alternative is a tab silently offered to a signed-out
  * user and rendering blank.

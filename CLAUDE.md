@@ -75,7 +75,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 
 **A feature large enough to span several layers lives in one folder, not scattered across the app's layer folders.** `apps/desktop/src/features/<name>/` holds everything that feature is — its page, its components, its hooks, its API wrappers, its stores, its pure logic and its test factories — so that finding it, reviewing it, and knowing what a change touches are all one lookup instead of five.
 
-[features/board/](apps/desktop/src/features/board/) is the reference implementation and carries a `README.md` describing its own layout; [features/files/](apps/desktop/src/features/files/) is the smaller one. Copy that shape:
+The three views of a repo tab are the worked examples, each with its own `README.md`: [features/graph/](apps/desktop/src/features/graph/) (the largest), [features/board/](apps/desktop/src/features/board/) (the reference implementation) and [features/files/](apps/desktop/src/features/files/) (the smallest). Copy that shape:
 
 ```
 features/<name>/
@@ -106,7 +106,7 @@ features/<name>/
 - Split logical child components into a local `components/` folder next to the page (e.g. `app/dashboard/components/`), or into the feature's own `components/` when it has one — see "Feature folders" above.
 - All Tauri IPC / HTTP calls go through `src/api/*.api.ts` files named by domain — never invoke `invoke()` or `fetch()` directly inside a component.
 - Add `data-testid` attributes to interactive/structural elements (buttons, rows, panels) to ease debugging — no test framework currently consumes these, but the convention is followed throughout the codebase.
-- When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [components/git-graph/columns.config.ts](apps/desktop/src/components/git-graph/columns.config.ts) for the existing shape to follow.
+- When a component repeats the same `condition ? X : undefined` shape across several props for one discriminant (e.g. one prop per section key), or holds a lookup table of widths/labels/visibility keyed by a fixed set of values, extract a colocated `*.config.ts` file instead of piling up inline ternaries — see [features/graph/lib/columns.config.ts](apps/desktop/src/features/graph/lib/columns.config.ts) for the existing shape to follow.
 - Do not attempt to browser-test this app (see note above) — it's Tauri-only.
 
 ### UI components: consume-first (do not re-invent primitives)

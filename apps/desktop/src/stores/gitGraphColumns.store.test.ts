@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useGitGraphColumnsStore } from './gitGraphColumns.store'
-import { COLUMN_DEFS, COLUMN_ORDER } from '../components/git-graph/columns.config'
+import { COLUMN_DEFS, COLUMN_ORDER } from '../features/graph'
 
 function defaultColumns() {
   return COLUMN_ORDER.reduce(

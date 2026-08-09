@@ -13,7 +13,7 @@ before you open the PR.
 | **Temperature**   | **0.1** — the lowest of any feature, see below                                                                                                                            |
 | **Context scope** | `working` (worktree vs HEAD) or `range` (`merge-base(base, branch)..branch`), per target                                                                                  |
 | **Diff budget**   | derived from the model's context window, [budgeted per file](#reading-the-right-7)                                                                                        |
-| **UI**            | [`CodeReviewPanel`](../../apps/desktop/src/components/git-graph/CodeReviewPanel.tsx) — right panel — via [`useCodeReview`](../../apps/desktop/src/hooks/useCodeReview.ts) |
+| **UI**            | [`CodeReviewPanel`](../../apps/desktop/src/features/graph/components/CodeReviewPanel.tsx) — right panel — via [`useCodeReview`](../../apps/desktop/src/features/graph/hooks/useCodeReview.ts) |
 | **Memory**        | branch target: yes (`branch-review`) · working target: **none**                                                                                                           |
 
 ---
@@ -222,7 +222,7 @@ The same rule as the explanations, for the same reason:
 | **Working** | no                              | The tree changes with every keystroke and nothing would tell you the review describes code you already fixed. A review flagging a bug you have since deleted is worse than no review |
 
 `branch-review` is a distinct kind in
-[`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts) precisely so a branch's
+[`aiExplanation.store`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.ts) precisely so a branch's
 review and its explanation do not collide on the same key — same ref, different documents.
 
 ---
@@ -248,8 +248,8 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`codeReview.test.ts`](../../packages/ai/src/features/codeReview.test.ts)                                   | both prompt shapes, commit list, file statuses, budgeting, language, and the instruction's guarantees                                                    |
 | [`diffBudget.test.ts`](../../packages/ai/src/features/diffBudget.test.ts)                                   | path classification, the backend's origin-prefixed headers, tier priority, whole-file preference, and the never-return-an-empty-diff floor               |
 | [`diffCoverage.test.ts`](../../packages/ai/src/features/diffCoverage.test.ts)                               | the shared sizing: budget vs window, budget vs instruction length, the capped `NOT INCLUDED` list, and that the suggested window really reads everything |
-| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.test.tsx) | the shared notice: silent when complete, informational styling, the window-too-small warning                                                             |
-| [`useCodeReview.test.ts`](../../apps/desktop/src/hooks/useCodeReview.test.ts)                               | scope routing, both refusals, streaming, branch memory, and that the working scope persists nothing                                                      |
-| [`CodeReviewPanel.test.tsx`](../../apps/desktop/src/components/git-graph/CodeReviewPanel.test.tsx)          | both targets' headers, auto-start, stale-base warning, error decoding, and the three prompt-size states                                                  |
+| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/common/CoverageNotice.test.tsx) | the shared notice: silent when complete, informational styling, the window-too-small warning                                                             |
+| [`useCodeReview.test.ts`](../../apps/desktop/src/features/graph/hooks/useCodeReview.test.ts)                               | scope routing, both refusals, streaming, branch memory, and that the working scope persists nothing                                                      |
+| [`CodeReviewPanel.test.tsx`](../../apps/desktop/src/features/graph/components/CodeReviewPanel.test.tsx)          | both targets' headers, auto-start, stale-base warning, error decoding, and the three prompt-size states                                                  |
 | [`promptSize.test.ts`](../../packages/ai/src/promptSize.test.ts)                                            | the estimate, the three risk bands, and that the assumed window is reported rather than left implicit                                                    |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                         | both menu items, their placement next to the explanations, and every reason they disable                                                                 |

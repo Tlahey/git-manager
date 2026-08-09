@@ -12,7 +12,7 @@ Summarizes everything currently uncommitted — "what am I in the middle of?".
 | **Temperature**   | 0.2                                                                                                                                                                                                       |
 | **Context scope** | `working` — worktree vs HEAD, untracked included                                                                                                                                                          |
 | **Diff budget**   | none at this level: every file is read whole, in its own prompt, by the map phase                                                                                                                         |
-| **UI**            | [`WorkingExplanationPanel`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.tsx) — right panel — via [`useWorkingExplanation`](../../apps/desktop/src/hooks/useWorkingExplanation.ts) |
+| **UI**            | [`WorkingExplanationPanel`](../../apps/desktop/src/features/graph/components/WorkingExplanationPanel.tsx) — right panel — via [`useWorkingExplanation`](../../apps/desktop/src/features/graph/hooks/useWorkingExplanation.ts) |
 | **Memory**        | **none** — see below                                                                                                                                                                                      |
 
 ---
@@ -68,7 +68,7 @@ read, the other a commit plan to act on.
 
 ## Why it remembers nothing
 
-The branch and commit summaries are persisted ([`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts));
+The branch and commit summaries are persisted ([`aiExplanation.store`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.ts));
 this one deliberately is not.
 
 A commit is immutable and a branch moves in discrete, detectable steps. The working tree changes
@@ -78,7 +78,7 @@ waiting a minute for a fresh one: it is the one case where the reader has no way
 
 So the panel regenerates on every open. The hook still returns the same shape as the other two
 (`generatedAt: null`, `hasStored: false`), which is what lets it drive the shared
-[`ExplanationPanelShell`](../../apps/desktop/src/components/git-graph/components/ExplanationPanelShell.tsx)
+[`ExplanationPanelShell`](../../apps/desktop/src/features/graph/components/ExplanationPanelShell.tsx)
 unchanged — the shell reads those as "no age line" and "always generate on open".
 
 ---
@@ -99,8 +99,8 @@ Beyond the [shared ones](./README.md#known-limitations):
 | Test                                                                                                               | Covers                                                                                                                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`workingExplanation.test.ts`](../../packages/ai/src/features/workingExplanation.test.ts)                          | prompt shape, file statuses, language, window-sized budget (fits every window, the file list survives the smallest window because the count comes from it, code before noise), coverage, and the instruction's coverage ban |
-| [`useWorkingExplanation.test.ts`](../../apps/desktop/src/hooks/useWorkingExplanation.test.ts)                      | working scope, streaming, clean-tree refusal, and that nothing is persisted                                                                                                                                                 |
-| [`WorkingExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.test.tsx) | auto-start, no age line, error decoding                                                                                                                                                                                     |
+| [`useWorkingExplanation.test.ts`](../../apps/desktop/src/features/graph/hooks/useWorkingExplanation.test.ts)                      | working scope, streaming, clean-tree refusal, and that nothing is persisted                                                                                                                                                 |
+| [`WorkingExplanationPanel.test.tsx`](../../apps/desktop/src/features/graph/components/WorkingExplanationPanel.test.tsx) | auto-start, no age line, error decoding                                                                                                                                                                                     |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                                | the WIP menu item's action, and both reasons it disables                                                                                                                                                                    |
 
 ---

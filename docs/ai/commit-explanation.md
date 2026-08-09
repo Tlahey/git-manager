@@ -12,8 +12,8 @@ Explains what a single commit actually does — beyond what its message claims.
 | **Temperature** | 0.2                                                                                                                                                                                                   |
 | **Input**       | `get_commit_diff` (the commit vs its first parent) + the commit's own message + the complete changed-file list                                                                                        |
 | **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase                                                                                                                     |
-| **UI**          | [`CommitExplanationPanel`](../../apps/desktop/src/components/git-graph/CommitExplanationPanel.tsx) — right panel — via [`useCommitExplanation`](../../apps/desktop/src/hooks/useCommitExplanation.ts) |
-| **Memory**      | [`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), persisted per repo + commit, coverage included                                                                         |
+| **UI**          | [`CommitExplanationPanel`](../../apps/desktop/src/features/graph/components/CommitExplanationPanel.tsx) — right panel — via [`useCommitExplanation`](../../apps/desktop/src/features/graph/hooks/useCommitExplanation.ts) |
+| **Memory**      | [`aiExplanation.store`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.ts), persisted per repo + commit, coverage included                                                                         |
 
 ---
 
@@ -48,7 +48,7 @@ Right-click a commit → **Explain this commit (LLM)**. The right panel opens on
 generating — unless a summary is already remembered, in which case that one is shown immediately.
 Same panel chrome, memory and regenerate button as the [branch explanation](./branch-explanation.md);
 they share
-[`ExplanationPanelShell`](../../apps/desktop/src/components/git-graph/components/ExplanationPanelShell.tsx),
+[`ExplanationPanelShell`](../../apps/desktop/src/features/graph/components/ExplanationPanelShell.tsx),
 which owns that auto-start rule for both.
 
 The item sits directly beside _Explain branch changes (LLM)_ when the commit carries a branch — the
@@ -134,7 +134,7 @@ It now shares the review's machinery
 - files that did not fit at all are **named in the prompt** under `NOT INCLUDED`, before the diff, so
   the model knows what it has not read instead of discovering it halfway down;
 - the panel reports the same thing to the user through the shared
-  [`CoverageNotice`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx):
+  [`CoverageNotice`](../../apps/desktop/src/components/common/CoverageNotice.tsx):
   _"Read 6 of 40 changed files in full…"_, silent when everything fit.
 
 ### The file list is what keeps it an explanation
@@ -295,11 +295,11 @@ button beside it says how far the model can go.
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`commitExplanation.test.ts`](../../packages/ai/src/features/commitExplanation.test.ts)                          | prompt shape, body handling, merge warning, language, window-sized budget (fits every window, long message paid out of the diff, code before noise), the changed-file list (grouping, marks, cap, one list not two), coverage counted from the inventory, and the instruction's three guarantees |
 | [`diffCoverage.test.ts`](../../packages/ai/src/features/diffCoverage.test.ts)                                    | the shared budget/coverage machinery — see [code review](./code-review.md)                                                                                                                                                                                                                       |
-| [`useCommitExplanation.test.ts`](../../apps/desktop/src/hooks/useCommitExplanation.test.ts)                      | diff → patch, metadata + stats, merge flag, empty-diff refusal, context window passed through, coverage exposed, memory, no key collision with a branch                                                                                                                                          |
-| [`CommitExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/CommitExplanationPanel.test.tsx) | header per commit type, auto-start on open, no regeneration over a remembered summary, error decoding, coverage line                                                                                                                                                                             |
-| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.test.tsx)      | the shared notice: silent when complete, informational styling, the window-too-small warning                                                                                                                                                                                                     |
+| [`useCommitExplanation.test.ts`](../../apps/desktop/src/features/graph/hooks/useCommitExplanation.test.ts)                      | diff → patch, metadata + stats, merge flag, empty-diff refusal, context window passed through, coverage exposed, memory, no key collision with a branch                                                                                                                                          |
+| [`CommitExplanationPanel.test.tsx`](../../apps/desktop/src/features/graph/components/CommitExplanationPanel.test.tsx) | header per commit type, auto-start on open, no regeneration over a remembered summary, error decoding, coverage line                                                                                                                                                                             |
+| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/common/CoverageNotice.test.tsx)      | the shared notice: silent when complete, informational styling, the window-too-small warning                                                                                                                                                                                                     |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts)                              | the menu item's action, AI-disabled state, absence in multi-selection, adjacency to the branch item                                                                                                                                                                                              |
-| [`aiExplanation.store.test.ts`](../../apps/desktop/src/stores/aiExplanation.store.test.ts)                       | keying by kind, isolation, clear                                                                                                                                                                                                                                                                 |
+| [`aiExplanation.store.test.ts`](../../apps/desktop/src/features/graph/stores/aiExplanation.store.test.ts)                       | keying by kind, isolation, clear                                                                                                                                                                                                                                                                 |
 
 ---
 
@@ -318,7 +318,7 @@ model from mentioning what it could not read — a rule that only existed becaus
 a fraction and would otherwise open with an apology. With complete evidence there is nothing to hide.
 
 The panel shows the per-file count while the map phase runs
-([`SummaryProgressNotice`](../../apps/desktop/src/components/git-graph/components/SummaryProgressNotice.tsx)),
+([`SummaryProgressNotice`](../../apps/desktop/src/components/common/SummaryProgressNotice.tsx)),
 which replaces the coverage line. Coverage answered "how little did it read?"; there is no budgeted
 prompt to answer that about any more, and what the reader needs is a reason for the wait before the
 first token. Cancelling stops the map at its next call boundary.

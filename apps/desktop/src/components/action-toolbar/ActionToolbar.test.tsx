@@ -14,7 +14,7 @@ vi.mock('./MergeTargetIndicator', () => ({
 }))
 // Each view's section has its own test — this file is about *which* one the shell mounts, and about
 // the two controls that are on the bar whatever the view.
-vi.mock('./GraphToolbarActions', () => ({
+vi.mock('../../features/graph', () => ({
   GraphToolbarActions: () => <div data-testid="graph-toolbar-actions" />,
 }))
 vi.mock('../../features/files', () => ({

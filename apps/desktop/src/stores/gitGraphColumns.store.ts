@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createConfigStorage } from '../lib/appConfig/configStorage'
-import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../components/git-graph/columns.config'
+import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../features/graph'
 
 interface ColumnState {
   visible: boolean

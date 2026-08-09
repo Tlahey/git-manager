@@ -207,7 +207,7 @@ export async function fetchGitHubReviewRequestedPRs(
 
 /**
  * Pull requests of one repository matching a **raw GitHub search query** — the sidebar's saved PR
- * filters (see `stores/prFilters.store.ts`). The issue-side twin of {@link fetchIssuesByQuery};
+ * filters (see `features/graph/stores/prFilters.store.ts`). The issue-side twin of {@link fetchIssuesByQuery};
  * only `repo:` and `is:pr` are prepended.
  *
  * Search returns the *issue* representation of a pull request, which carries no `head`/`base`, so

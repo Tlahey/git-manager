@@ -10,7 +10,7 @@ import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
 import { StateTags } from './StateTags'
-import { GraphToolbarActions } from './GraphToolbarActions'
+import { GraphToolbarActions } from '../../features/graph'
 import type { Section, Scope } from '../../app/settings/SettingsPage'
 
 interface ActionToolbarProps {

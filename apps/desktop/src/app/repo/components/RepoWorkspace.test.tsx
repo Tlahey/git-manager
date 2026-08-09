@@ -1,23 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-vi.mock('../../../components/git-graph/GitGraph', () => ({
+/**
+ * One factory per feature barrel — several `vi.mock` calls on the same module would leave only the
+ * last one, and every other export would come back undefined.
+ */
+vi.mock('../../../features/graph', () => ({
   GitGraph: (props: { repoPath: string; branch?: string; soloBranches?: string[] }) => (
     <div data-testid="fake-git-graph">
       <span data-testid="graph-repo-path">{props.repoPath}</span>
       <span data-testid="graph-solo">{(props.soloBranches ?? []).join(',')}</span>
     </div>
   ),
-}))
-vi.mock('../../../components/repository-sidebar', () => ({
   RepositorySidebar: (props: { repoPath: string; remoteUrls?: string[] }) => (
     <div data-testid="fake-sidebar">
       <span data-testid="sidebar-repo-path">{props.repoPath}</span>
       <span data-testid="sidebar-remotes">{(props.remoteUrls ?? []).join(',')}</span>
     </div>
   ),
+  TagDialogsManager: () => <div data-testid="fake-tag-dialogs" />,
+  DeleteRemoteBranchDialog: (props: { branchName: string; remote: string }) => (
+    <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
+  ),
+  RenameBranchDialog: () => <div data-testid="fake-rename-branch" />,
+  CompareBranchesDialog: () => <div data-testid="fake-compare-branches" />,
+  SetUpstreamDialog: () => <div data-testid="fake-set-upstream" />,
+  useSidebarBranchMenu: () => ({
+    openBranchMenu: vi.fn(),
+    renameTarget: null,
+    setRenameTarget: vi.fn(),
+  }),
+  useSidebarTagMenu: () => ({ openTagMenu: vi.fn() }),
 }))
-vi.mock('../../../components/repository-sidebar/BlameHistoryPanel', () => ({
+vi.mock('../../../components/diff-viewer/BlameHistoryPanel', () => ({
   BlameHistoryPanel: () => <div data-testid="fake-blame-history" />,
 }))
 vi.mock('../../../components/timeline/TimelineBar', () => ({
@@ -25,24 +40,6 @@ vi.mock('../../../components/timeline/TimelineBar', () => ({
 }))
 vi.mock('../../../components/bisect/BisectSetupBanner', () => ({
   BisectSetupBanner: () => <div data-testid="fake-bisect-setup-banner" />,
-}))
-vi.mock('../../../components/git-graph/components/TagDialogsManager', () => ({
-  TagDialogsManager: () => <div data-testid="fake-tag-dialogs" />,
-}))
-vi.mock('../../../hooks/useSidebarBranchMenu', () => ({
-  useSidebarBranchMenu: () => ({
-    openBranchMenu: vi.fn(),
-    renameTarget: null,
-    setRenameTarget: vi.fn(),
-  }),
-}))
-vi.mock('../../../hooks/useSidebarTagMenu', () => ({
-  useSidebarTagMenu: () => ({ openTagMenu: vi.fn() }),
-}))
-vi.mock('../../../components/git-graph/DeleteRemoteBranchDialog', () => ({
-  DeleteRemoteBranchDialog: (props: { branchName: string; remote: string }) => (
-    <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
-  ),
 }))
 const { useBoardDataMock } = vi.hoisted(() => ({
   useBoardDataMock: vi.fn(

@@ -5,7 +5,7 @@ import type { BoardCardKind } from '@git-manager/git-types'
  * What each kind of card looks like: its glyph, and the fill of the square that glyph sits in.
  *
  * A table rather than a chain of ternaries inside the component — the colocated `*.config.ts`
- * convention (see `components/git-graph/columns.config.ts`): three kinds, three rows, and adding a
+ * convention (see `features/graph/lib/columns.config.ts`): three kinds, three rows, and adding a
  * fourth is one line rather than a new branch in the render.
  *
  * **Colour reinforces, never carries.** Each kind has a glyph that says the same thing on its own —

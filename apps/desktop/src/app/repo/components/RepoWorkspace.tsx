@@ -7,19 +7,21 @@ import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useFileExplorerStore, FilesPage, FileTreeSidebar } from '../../../features/files'
 import { BoardPage, BoardSidebar, useBoardData } from '../../../features/board'
-import { GitGraph } from '../../../components/git-graph/GitGraph'
-import { RepositorySidebar } from '../../../components/repository-sidebar'
-import { BlameHistoryPanel } from '../../../components/repository-sidebar/BlameHistoryPanel'
-import { RenameBranchDialog } from '../../../components/git-graph/RenameBranchDialog'
-import { DeleteRemoteBranchDialog } from '../../../components/git-graph/DeleteRemoteBranchDialog'
-import { CompareBranchesDialog } from '../../../components/git-graph/CompareBranchesDialog'
-import { SetUpstreamDialog } from '../../../components/git-graph/SetUpstreamDialog'
-import { TagDialogsManager } from '../../../components/git-graph/components/TagDialogsManager'
+import {
+  GitGraph,
+  RepositorySidebar,
+  RenameBranchDialog,
+  DeleteRemoteBranchDialog,
+  CompareBranchesDialog,
+  SetUpstreamDialog,
+  TagDialogsManager,
+  useSidebarBranchMenu,
+  useSidebarTagMenu,
+} from '../../../features/graph'
+import { BlameHistoryPanel } from '../../../components/diff-viewer/BlameHistoryPanel'
 import { TimelineBar } from '../../../components/timeline/TimelineBar'
 import { BisectSetupBanner } from '../../../components/bisect/BisectSetupBanner'
 import { RepoViewTabBar } from './RepoViewTabBar'
-import { useSidebarBranchMenu } from '../../../hooks/useSidebarBranchMenu'
-import { useSidebarTagMenu } from '../../../hooks/useSidebarTagMenu'
 
 interface RepoWorkspaceProps {
   /** The path actually being viewed — the repo tab's own path, or a linked worktree's. */

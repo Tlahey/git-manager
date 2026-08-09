@@ -51,7 +51,34 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 const { useBranchesMock } = vi.hoisted(() => ({ useBranchesMock: vi.fn() }))
 vi.mock('../../hooks/useBranches', () => ({ useBranches: useBranchesMock }))
 
-vi.mock('../../components/git-graph/GitGraph', () => ({
+// One factory for the whole feature barrel — a second `vi.mock` on the same module would leave
+// only the later one, and the other export would come back undefined.
+vi.mock('../../features/graph', async () => ({
+  // The menus and the ref dialogs are the **real** ones: several tests below open a branch's context
+  // menu and assert on the dialog it raises. Imported one module at a time rather than through
+  // `importActual` on the barrel, which would pull the whole graph in behind them — the thing the
+  // two fakes exist to avoid.
+  ...(await vi.importActual<typeof import('../../features/graph/hooks/useSidebarBranchMenu')>(
+    '../../features/graph/hooks/useSidebarBranchMenu'
+  )),
+  ...(await vi.importActual<typeof import('../../features/graph/hooks/useSidebarTagMenu')>(
+    '../../features/graph/hooks/useSidebarTagMenu'
+  )),
+  ...(await vi.importActual<typeof import('../../features/graph/components/RenameBranchDialog')>(
+    '../../features/graph/components/RenameBranchDialog'
+  )),
+  ...(await vi.importActual<
+    typeof import('../../features/graph/components/DeleteRemoteBranchDialog')
+  >('../../features/graph/components/DeleteRemoteBranchDialog')),
+  ...(await vi.importActual<typeof import('../../features/graph/components/CompareBranchesDialog')>(
+    '../../features/graph/components/CompareBranchesDialog'
+  )),
+  ...(await vi.importActual<typeof import('../../features/graph/components/SetUpstreamDialog')>(
+    '../../features/graph/components/SetUpstreamDialog'
+  )),
+  ...(await vi.importActual<
+    typeof import('../../features/graph/components/TagDialogsManager')
+  >('../../features/graph/components/TagDialogsManager')),
   GitGraph: (props: { repoPath: string; branch?: string; searchQuery: string }) => (
     <div data-testid="fake-git-graph">
       <span data-testid="graph-repo-path">{props.repoPath}</span>
@@ -59,13 +86,6 @@ vi.mock('../../components/git-graph/GitGraph', () => ({
       <span data-testid="graph-search">{props.searchQuery}</span>
     </div>
   ),
-}))
-
-vi.mock('../../components/action-toolbar', () => ({
-  ActionToolbar: () => <div data-testid="fake-action-toolbar" />,
-}))
-
-vi.mock('../../components/repository-sidebar', () => ({
   RepositorySidebar: (props: {
     repoPath: string
     remoteUrls?: string[]
@@ -123,6 +143,11 @@ vi.mock('../../components/repository-sidebar', () => ({
     </div>
   ),
 }))
+
+vi.mock('../../components/action-toolbar', () => ({
+  ActionToolbar: () => <div data-testid="fake-action-toolbar" />,
+}))
+
 
 vi.mock('../../components/fixup/PendingFixupsBanner', () => ({
   PendingFixupsBanner: (props: { repoPath: string }) => (
