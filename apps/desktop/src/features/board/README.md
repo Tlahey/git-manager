@@ -4,7 +4,7 @@ Everything the Board tab is, in one folder. A sibling top-level feature to Launc
 two backends — a git-native local board and a GitHub-Issues-backed shared one — that the UI never
 branches on beyond picking which `BoardBackend` to call.
 
-Mounted from `app/repo/components/RepoWorkspace.tsx`, one tab per board.
+Mounted from `app/repo/components/RepoWorkspace.tsx`, as one of the repo tab's three views.
 
 **The board view is three slots of the repo tab, not one.** Since the tab's chrome became scoped to
 the active view, this feature supplies the central area (`BoardPage`), the left panel
@@ -13,9 +13,9 @@ acts on the board). They are mounted in three different places by `RepoWorkspace
 and are joined by `stores/boardDialogs.store.ts`: a button in the toolbar opens a dialog rendered
 inside the page by writing that store, rather than by fifteen callbacks threaded up through the app.
 
-`index.ts` is the boundary: outside code imports `from '../../features/board'` and gets exactly six
-names — the three slots above, plus `useBoardData`, `useBoardStore` and `useBoardControlsStore`.
-Everything else below this folder is the feature's own business. The one sanctioned exception is
+`index.ts` is the boundary: outside code imports `from '../../features/board'` and gets exactly four
+names — the three slots above, plus `useBoardControlsStore`, whose filters the app resets when the
+view leaves the screen. Everything else below this folder is the feature's own business. The one sanctioned exception is
 `test/boardFactories`, which a suite outside the feature may import directly rather than through the
 production barrel.
 

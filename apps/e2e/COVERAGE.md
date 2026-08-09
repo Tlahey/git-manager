@@ -130,7 +130,7 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
 
 ## File explorer ✅
 
-The repo tab's Files tab (`repo-view-tab-files`) swapping the graph for `FilesPage` — the working
+The toolbar's view switcher (`repo-view-files`) swapping the graph for `FilesPage` — the working
 tree (`FileTreeSidebar`) in the left panel slot, the current directory in the middle, and a file
 search in the toolbar.
 
@@ -138,7 +138,7 @@ search in the toolbar.
   (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
   it" distinguishable from "it was never there".
 - Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), the Graph
-  tab puts the graph back, the tree filter (`file-tree-search-input`, in the toolbar) narrows the
+  segment puts the graph back, the tree filter (`file-tree-search-input`, in the toolbar) narrows the
   tree, and hiding the panel leaves `file-explorer-toggle-sidebar` behind — asserted explicitly,
   since a hide with no way back would make the tree unreachable for the rest of the session.
 - No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
@@ -147,8 +147,8 @@ search in the toolbar.
 
 ## Kanban board ✅ 📷
 
-The third thing the central area can be (`features/board/`), reached from the same tab strip as the
-file explorer (`repo-view-tab-board`, or one tab per board once any exists). **Local backend only** — the GitHub-backed board needs a
+The third thing the central area can be (`features/board/`), reached from the same toolbar switcher
+as the file explorer (`repo-view-board`). **Local backend only** — the GitHub-backed board needs a
 connected account and real issues; see the blocked row above for why that one stays out of reach.
 
 - Setup: **`fixture:feature-branches`**, which has nothing to do with boards and does not need to:

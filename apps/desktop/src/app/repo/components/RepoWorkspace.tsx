@@ -6,7 +6,7 @@ import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useFileExplorerStore, FilesPage, FileTreeSidebar } from '../../../features/files'
-import { BoardPage, BoardSidebar, useBoardData } from '../../../features/board'
+import { BoardPage, BoardSidebar } from '../../../features/board'
 import {
   GitGraph,
   RepositorySidebar,
@@ -21,7 +21,6 @@ import {
 import { BlameHistoryPanel } from '../../../components/diff-viewer/BlameHistoryPanel'
 import { TimelineBar } from '../../../components/timeline/TimelineBar'
 import { BisectSetupBanner } from '../../../components/bisect/BisectSetupBanner'
-import { RepoViewTabBar } from './RepoViewTabBar'
 
 interface RepoWorkspaceProps {
   /** The path actually being viewed — the repo tab's own path, or a linked worktree's. */
@@ -31,8 +30,9 @@ interface RepoWorkspaceProps {
 }
 
 /**
- * The body of a repo tab: the view tab strip, the left panel, the central area, the timeline rail
- * and the dialogs the branch/tag menus open.
+ * The body of a repo tab: the left panel, the central area, the timeline rail and the dialogs the
+ * branch/tag menus open. Which view all three are showing is chosen in the toolbar above
+ * (`RepoViewSwitcher`).
  *
  * **Both the panel and the central area are scoped to the active view** (`repoView.store`), and they
  * change together: the graph gets the branch sidebar beside it, the files view gets its own working
@@ -58,11 +58,6 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
 
   const view = useRepoViewStore((s) => s.view)
   const isTreeOpen = useFileExplorerStore((s) => s.isSidebarOpen)
-
-  // `useBoardData` here (not just inside the board view) is what supplies the board list for the tab
-  // labels; SWR dedupes the fetch against the board view's own calls, so this doesn't double the
-  // network cost.
-  const { boards, activeBoard } = useBoardData(repoPath)
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
@@ -90,8 +85,6 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
 
   return (
     <>
-      <RepoViewTabBar repoPath={repoPath} boards={boards} activeBoardId={activeBoard?.id ?? null} />
-
       {/* ── Main layout: the view's panel | the view ────────────── */}
       <div data-testid="repo-workspace" className="relative flex flex-1 overflow-hidden">
         {view === 'graph' && (

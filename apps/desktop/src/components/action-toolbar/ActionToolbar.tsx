@@ -11,6 +11,7 @@ import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
 import { StateTags } from './StateTags'
 import { GraphToolbarActions } from '../../features/graph'
+import { RepoViewSwitcher } from './RepoViewSwitcher'
 import type { Section, Scope } from '../../app/settings/SettingsPage'
 
 interface ActionToolbarProps {
@@ -22,8 +23,8 @@ interface ActionToolbarProps {
 /**
  * Main action bar, sitting under the tabs.
  *
- * **Only two things are on it whatever you are looking at**: which repository and branch you are on
- * (left), and the command palette (right). Everything between is the active view's own — the graph's
+ * **Only three things are on it whatever you are looking at**: which repository and branch you are
+ * on (left), and which view you want plus the command palette (right). Everything between is the active view's own — the graph's
  * fetch/push/stash/tools, the board's ticket and sprint actions, the files view's search — supplied
  * by that view rather than by this file.
  *
@@ -45,12 +46,12 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   return (
     <div
       data-testid="action-toolbar"
-      className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2"
+      className="chrome-surface border-border bg-sidebar flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b px-2"
     >
       {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />
-        <ChevronRight className="h-4 w-4 shrink-0 self-end pb-0.5 text-muted-foreground/40" />
+        <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0 self-end pb-0.5" />
         <BranchContext />
         <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
           {/* Merge-target state of the current branch, then the linked PR — both read-only tags on
@@ -63,7 +64,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         </div>
       </div>
 
-      <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
+      <div className="bg-border mx-1 hidden h-6 w-px shrink-0 sm:block" />
 
       {/* ── Middle section: the active view's own actions ──────── */}
       {/* `py-1.5` gives the buttons' overflowing count badges vertical headroom: `overflow-x-auto`
@@ -77,10 +78,11 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         {view === 'board' && effectiveRepoPath && <BoardToolbar repoPath={effectiveRepoPath} />}
       </div>
 
-      {/* ── Right section: the one command that is every view's ── */}
+      {/* ── Right section: which view, and the one command that is every view's ── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <RepoViewSwitcher />
         <ToolbarButton
-          icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
+          icon={<CommandIcon className="text-muted-foreground h-4 w-4" />}
           label={t('toolbar.actions')}
           title={`${t('toolbar.actions')} (⌘K)`}
           onClick={() => useCommandPaletteStore.getState().toggle('all')}

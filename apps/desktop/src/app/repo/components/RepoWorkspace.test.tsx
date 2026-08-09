@@ -41,14 +41,6 @@ vi.mock('../../../components/timeline/TimelineBar', () => ({
 vi.mock('../../../components/bisect/BisectSetupBanner', () => ({
   BisectSetupBanner: () => <div data-testid="fake-bisect-setup-banner" />,
 }))
-const { useBoardDataMock } = vi.hoisted(() => ({
-  useBoardDataMock: vi.fn(
-    (): {
-      boards: { id: string; name: string }[]
-      activeBoard: { id: string; name: string } | null
-    } => ({ boards: [], activeBoard: null })
-  ),
-}))
 /**
  * One factory per feature barrel — two `vi.mock` calls on the same module would leave only the later
  * one, and the page would come back undefined.
@@ -58,7 +50,6 @@ vi.mock('../../../features/board', () => ({
     <div data-testid="fake-board-page">{props.repoPath}</div>
   ),
   BoardSidebar: () => <div data-testid="fake-board-sidebar" />,
-  useBoardData: useBoardDataMock,
 }))
 /**
  * The explorer store is the *real* one: this test drives it to fold the file tree away, so a stub
@@ -76,13 +67,6 @@ vi.mock('../../../features/files', async () => {
     useFileExplorerStore: store.useFileExplorerStore,
   }
 })
-// `RepoViewTabBar` has its own dedicated test — faked here so this stays a composition test of
-// *whether* it renders, not a retest of its internals.
-vi.mock('./RepoViewTabBar', () => ({
-  RepoViewTabBar: (props: { boards: { id: string; name: string }[] }) => (
-    <div data-testid="fake-repo-view-tab-bar">{props.boards.map((b) => b.name).join(',')}</div>
-  ),
-}))
 
 import { RepoWorkspace } from './RepoWorkspace'
 import { useRepoDataStore } from '../../../stores/repoData.store'
@@ -104,7 +88,6 @@ beforeEach(() => {
     pendingRemoteBranchDelete: null,
     activeLeftPanel: 'sidebar',
   })
-  useBoardDataMock.mockReturnValue({ boards: [], activeBoard: null })
 })
 
 describe('RepoWorkspace', () => {
@@ -212,18 +195,5 @@ describe('RepoWorkspace — ref dialogs survive the graph being unmounted', () =
     render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getAllByTestId('fake-delete-remote-branch')).toHaveLength(1)
     expect(screen.getAllByTestId('fake-tag-dialogs')).toHaveLength(1)
-  })
-})
-
-describe('RepoWorkspace — view switcher tab bar', () => {
-  /** There is one switcher now, and it is always on: a view change swaps the toolbar and the panel
-   * with it, which is a navigation, and a navigation the user cannot see is one they cannot make. */
-  it('always renders the tab bar, with the board list in it', () => {
-    useBoardDataMock.mockReturnValue({
-      boards: [{ id: 'b1', name: 'Sprint 12' }],
-      activeBoard: { id: 'b1', name: 'Sprint 12' },
-    })
-    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
-    expect(screen.getByTestId('fake-repo-view-tab-bar')).toHaveTextContent('Sprint 12')
   })
 })

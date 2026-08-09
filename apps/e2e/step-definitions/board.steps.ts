@@ -28,13 +28,9 @@ import {
 // ─── Opening the board ─────────────────────────────────────────────────────
 
 When(/^I open the board$/, async () => {
-  // `RepoViewTabBar`'s board tab — the one view switcher there is. A repo with no board yet gets a
-  // plain `repo-view-tab-board`; once boards exist there is one tab each, and any of them opens the
-  // view, so the first is as good as another.
-  const plain = $('[data-testid="repo-view-tab-board"]')
-  const button = (await plain.isExisting()) ? plain : $('[data-testid^="repo-view-tab-board-"]')
-  await button.waitForDisplayed({ timeout: 15000 })
-  await button.click()
+  // The toolbar's view switcher — the one there is. Clicked in-page because its segments are
+  // `<label>`s wrapping an `sr-only` radio; see `clickViaJs`.
+  await clickViaJs('repo-view-board')
   // The board sidebar's "New board" button is on screen for every board state, including none at all.
   await $('[data-testid="create-board-button"]').waitForDisplayed({ timeout: 15000 })
 })

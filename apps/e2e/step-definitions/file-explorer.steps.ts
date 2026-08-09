@@ -1,22 +1,22 @@
 import { $, expect } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
+import { clickViaJs } from '../support/interactions'
 
 // The file explorer is one of the repo tab's three views rather than a window, so everything below
 // runs against the one main window — no handle juggling like merge.steps.ts.
 
+// The toolbar's view switcher, clicked in-page: its segments are `<label>`s wrapping an `sr-only`
+// radio, which the driver's visibility test refuses (see `clickViaJs`). A label's own `click()`
+// forwards to the control it labels, so this selects the view exactly as a user would.
 When(/^I open the file explorer$/, async () => {
-  const button = $('[data-testid="repo-view-tab-files"]')
-  await button.waitForClickable({ timeout: 10000 })
-  await button.click()
+  await clickViaJs('repo-view-files')
   await $('[data-testid="project-files-view"]').waitForDisplayed({ timeout: 10000 })
 })
 
-// Leaving the view is switching tab now: there is no "close" button, because the view is not a panel
-// laid over the graph any more — the graph is the tab beside it.
+// Leaving the view is picking another one: there is no "close" button, because the view is not a
+// panel laid over the graph any more — the graph is a sibling segment of the same switcher.
 When(/^I close the file explorer$/, async () => {
-  const button = $('[data-testid="repo-view-tab-graph"]')
-  await button.waitForClickable({ timeout: 10000 })
-  await button.click()
+  await clickViaJs('repo-view-graph')
 })
 
 When(/^I filter the file tree by "([^"]*)"$/, async (query: string) => {

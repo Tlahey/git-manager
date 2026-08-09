@@ -64,6 +64,13 @@ describe('ActionToolbar — the parts every view keeps', () => {
     )
   })
 
+  it('offers the view switcher, whichever view is on screen', () => {
+    useRepoViewStore.setState({ view: 'board' })
+    render(<ActionToolbar />)
+    expect(screen.getByRole('radio', { name: 'Board' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Graph' })).toBeInTheDocument()
+  })
+
   it('never disables the actions button, even with no active repo', () => {
     useRepoUIStore.setState({ activeRepo: null })
     render(<ActionToolbar />)

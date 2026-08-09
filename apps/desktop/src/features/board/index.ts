@@ -27,13 +27,15 @@ export { BoardSidebar } from './components/BoardSidebar'
 export { BoardToolbar } from './components/BoardToolbar'
 
 /**
- * The board list and its mutations. Reached from outside only to *name* the tabs the workspace
- * renders; everything that acts on a board goes through `BoardPage`.
+ * **Not here, deliberately**: `useBoardData` and `board.store`.
+ *
+ * Both were public while a tab strip outside the feature drew one tab per board and had to read the
+ * list to label them. The switcher moved into the toolbar and that strip is gone, so nothing outside
+ * asks the board anything any more — the surface narrows with it. `lib/appConfig/hydrate.ts` still
+ * reaches `stores/board.store` at its own path, and must: it is a persisted section, read at module
+ * evaluation, and a barrel import would drag the whole view in behind it (see
+ * `stores/gitGraphColumns.store.ts` for the crash that shape produces).
  */
-export { useBoardData, type BoardData } from './hooks/useBoardData'
-
-/** Which board is open, per repo. The tab bar writes it, the page reads it. */
-export { useBoardStore } from './stores/board.store'
 
 /**
  * The board's search box and list filters. Their *state* belongs to the board; the app resets them
