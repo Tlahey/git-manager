@@ -386,7 +386,6 @@ export function RepositorySidebar({
           remoteUrls={remoteUrls}
           currentUser={currentUser}
           githubToken={githubToken}
-          onExpand={togglePanel}
           onOpenSection={openSectionFromRail}
         />
       </div>

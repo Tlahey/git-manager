@@ -44,7 +44,6 @@ function renderRail(props: Partial<React.ComponentProps<typeof SidebarRail>> = {
       <SidebarRail
         repoPath="/repo"
         remoteUrls={[]}
-        onExpand={vi.fn()}
         onOpenSection={vi.fn()}
         {...props}
       />
@@ -121,15 +120,15 @@ describe('SidebarRail — conditional sections', () => {
   })
 })
 
-describe('SidebarRail — expand', () => {
-  it('the top button expands without singling out a section', async () => {
-    const onExpand = vi.fn()
-    const onOpenSection = vi.fn()
-    const user = userEvent.setup()
-    renderRail({ onExpand, onOpenSection })
-    await user.click(screen.getByLabelText('Expand sidebar'))
-    expect(onExpand).toHaveBeenCalledOnce()
-    expect(onOpenSection).not.toHaveBeenCalled()
+describe('SidebarRail — coming back to full width', () => {
+  /**
+   * The rail used to carry its own expand button at the top. Coming back is the toolbar's panel
+   * control (or ⌘S) now — the same one that folded the sidebar to this rail — so a second entrance
+   * here would be a third place to keep in step with the first two.
+   */
+  it('offers no expand button of its own', () => {
+    renderRail()
+    expect(screen.queryByLabelText('Expand sidebar')).not.toBeInTheDocument()
   })
 
   // Each icon stands for one section: clicking it must say which, or expanding lands the user back

@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  PanelLeftOpen,
   HardDrive,
   Globe,
   GitPullRequest,
@@ -9,7 +8,6 @@ import {
   Archive as ArchiveIcon,
 } from 'lucide-react'
 import { NumberBadge } from '@git-manager/ui'
-import { useTranslation } from '@git-manager/i18n'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePullRequests } from '../../../hooks/usePullRequests'
@@ -22,8 +20,6 @@ interface SidebarRailProps {
   remoteUrls: string[]
   currentUser?: string
   githubToken?: string
-  /** Reopens the sidebar without singling out a section — the rail's own expand button. */
-  onExpand: () => void
   /**
    * Reopens the sidebar *on* a section: an icon stands for one section, so clicking it should land
    * on that section's content rather than on whatever the sidebar happened to be showing.
@@ -60,7 +56,6 @@ export function SidebarRail({
   remoteUrls,
   currentUser,
   githubToken,
-  onExpand,
   onOpenSection,
 }: SidebarRailProps) {
   const { data: branches = [] } = useBranches(repoPath)
@@ -84,21 +79,13 @@ export function SidebarRail({
   })
 
   const { data: stashes = [] } = useGitStashes(repoPath)
-  const { t } = useTranslation('git')
 
   return (
     <div className="flex h-full flex-col items-center">
-      {/* Expand button */}
-      <button
-        onClick={onExpand}
-        title={t('sidebar.expand')}
-        aria-label={t('sidebar.expand')}
-        className="flex h-9 w-full cursor-pointer items-center justify-center border-b border-sidebar-border text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-      >
-        <PanelLeftOpen className="h-4 w-4" />
-      </button>
-
-      {/* Section icons */}
+      {/* No expand button of its own: coming back to full width is the toolbar's panel control (or
+          ⌘S), the same one that folded the sidebar to this rail. A second entrance here would be a
+          third thing to keep in step with the first two, and the icons below already come back —
+          each on its own section, which is more than a bare expand would do. */}
       <div className="flex w-full flex-1 flex-col py-1">
         <RailIcon
           icon={<HardDrive className="h-4 w-4" />}

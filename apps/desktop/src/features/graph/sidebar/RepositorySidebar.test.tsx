@@ -63,11 +63,10 @@ vi.mock('./SidebarSectionHeader', () => ({
 }))
 
 vi.mock('./SidebarRail', () => ({
-  SidebarRail: (props: { onExpand: () => void; onOpenSection: (key: string) => void }) => (
-    <>
-      <button data-testid="sidebar-rail" onClick={props.onExpand} />
+  SidebarRail: (props: { onOpenSection: (key: string) => void }) => (
+    <div data-testid="sidebar-rail">
       <button data-testid="sidebar-rail-tags" onClick={() => props.onOpenSection('tags')} />
-    </>
+    </div>
   ),
 }))
 vi.mock('../../../components/diff-viewer/BlameHistoryPanel', () => ({
@@ -258,14 +257,6 @@ describe('RepositorySidebar — mode routing', () => {
     expect(screen.getByTestId('repository-sidebar')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
     expect(screen.queryByLabelText('Filter branches')).not.toBeInTheDocument()
-  })
-
-  it('comes back to full width from the rail', async () => {
-    useRepoViewStore.setState({ isPanelOpen: false })
-    const user = userEvent.setup()
-    renderSidebar()
-    await user.click(screen.getByTestId('sidebar-rail'))
-    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
   })
 
   // Sections default to closed, so coming back alone would answer "here is the sidebar again"
