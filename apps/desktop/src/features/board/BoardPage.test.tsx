@@ -841,3 +841,59 @@ describe('BoardPage — column actions', () => {
     expect(screen.queryByTestId('board-column-todo-menu')).not.toBeInTheDocument()
   })
 })
+
+/**
+ * A board deleted with its tickets archived is not gone — it cannot be, since a card belongs to a
+ * board and the archived ones still name this one. It is hidden, read-only, and reachable again
+ * through its own toggle, which is what stops the kept tickets from being kept somewhere unreadable.
+ */
+describe('BoardPage — a deleted board is tombstoned, not gone', () => {
+  const deleted = () => board({ id: 'gone', name: 'Old sprint', deletedAt: '2026-08-06T00:00:00.000Z' })
+  const live = () => board({ id: 'live', name: 'Sprint 13' })
+
+  function renderWith(activeBoard = deleted()) {
+    useBoardData.mockReturnValue(
+      baseHookState({ boards: [live(), deleted()], activeBoard, cards: [] })
+    )
+    render(<BoardPage repoPath="/repo" />)
+  }
+
+  it('says why it is still here, rather than calling itself read-only', () => {
+    renderWith()
+    const banner = screen.getByTestId('board-deleted-banner')
+    expect(banner).toHaveTextContent('This board was deleted')
+    expect(banner).toHaveTextContent(/archived rather than destroyed/)
+    // The closed-sprint banner is a different statement and must not double up.
+    expect(screen.queryByTestId('board-closed-banner')).not.toBeInTheDocument()
+  })
+
+  it('is read-only, like a closed sprint', () => {
+    renderWith()
+    expect(screen.queryByTestId('board-edit-columns-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-settings-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('board-close-sprint-button')).not.toBeInTheDocument()
+  })
+
+  /** Deleting it again would destroy exactly what the first deletion chose to keep. */
+  it('cannot be deleted a second time', () => {
+    renderWith()
+    expect(screen.queryByTestId('board-delete-button')).not.toBeInTheDocument()
+  })
+
+  it('still offers deletion on a board that is merely live', () => {
+    renderWith(live())
+    expect(screen.getByTestId('board-delete-button')).toBeInTheDocument()
+  })
+
+  it('is hidden from the picker until asked for, and the toggle brings it back', async () => {
+    renderWith(live())
+
+    await userEvent.click(screen.getByTestId('board-switcher'))
+    expect(screen.queryByTestId('board-switcher-option-gone')).not.toBeInTheDocument()
+
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByTestId('board-show-deleted'))
+    await userEvent.click(screen.getByTestId('board-switcher'))
+    expect(screen.getByTestId('board-switcher-option-gone')).toBeInTheDocument()
+  })
+})

@@ -381,6 +381,7 @@ pub fn create_board(
         dod_template: dod_template.to_string(),
         iteration,
         closed_at: None,
+        deleted_at: None,
         summary: None,
         schema_version: SCHEMA_VERSION,
         created_at: now.clone(),
@@ -457,24 +458,63 @@ pub fn update_board_columns(
     Ok(board)
 }
 
-/// Deletes a board: its ref, and the disaster-recovery mirror with it.
+/// Deletes a board, in one of the two ways its tickets can go.
 ///
-/// **A local board's cards cannot outlive it.** They live inside the ref, so dropping the ref takes
-/// them, and the mirror under `~/.git-manager/boards/` is removed in the same breath — an intentional
-/// deletion must not resurrect the board through the "recoverable board" restore flow, which exists
-/// for accidental loss and not as an undo for this.
+/// **`delete_cards` erases everything**: the ref, and the `~/.git-manager/boards/` mirror with it. A
+/// local board's cards live inside its ref, so dropping the ref takes them, and removing the mirror
+/// is what makes that final — an erasure must not come back through the "recoverable board" restore
+/// flow, which exists for a repository that was deleted and re-cloned, not as an undo for this.
 ///
-/// Briefly, this took a `delete_cards` flag so the caller could keep the mirror and call the board
-/// "recoverable". That was wrong twice over: nothing in the app reads a recoverable board back, so
-/// the flag bought an orphaned file rather than a rescue, and it blurred the one distinction the
-/// board model actually makes — **archived** is the state that keeps a ticket and leaves it findable,
-/// **deleted** is the one that does not. Keeping work out of a board being deleted is done by
-/// archiving or moving it first, on the board, while it still exists.
-pub fn delete_board(repo: &Repository, board_id: &str) -> Result<(), String> {
-    if let Ok(mut reference) = repo.find_reference(&board_ref_name(board_id)) {
-        reference.delete().map_err(AppError::Git)?;
+/// **Otherwise the board is tombstoned**: every card is archived, `deleted_at` is stamped, and the
+/// ref *survives*. This is the branch where the tickets are kept, and keeping them is precisely why
+/// the ref cannot go — a card is stored inside its board, so a board erased out from under an
+/// archived ticket leaves it naming something that no longer exists. Archived and still attached to
+/// the board it came from is the state the caller asked for; an orphan is not.
+///
+/// The board then behaves like a closed sprint one step further along: hidden from the picker unless
+/// the user asks to see deleted boards, read-only when they do, and its archive still readable. The
+/// one thing it is not is *gone*, which is the honest price of not destroying the work.
+pub fn delete_board(repo: &Repository, board_id: &str, delete_cards: bool) -> Result<(), String> {
+    if delete_cards {
+        if let Ok(mut reference) = repo.find_reference(&board_ref_name(board_id)) {
+            reference.delete().map_err(AppError::Git)?;
+        }
+        remove_backup(repo, board_id);
+        return Ok(());
     }
-    remove_backup(repo, board_id);
+
+    let tip = read_state(repo, board_id)?
+        .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
+    let tree = tip.tree().map_err(AppError::Git)?;
+
+    let now = now_iso();
+    let mut board = read_board_json(repo, &tree)?;
+    board.deleted_at = Some(now.clone());
+    board.updated_at = now.clone();
+    let mut tree_oid = write_board_json(repo, &tree, &board)?;
+
+    // Archived in the same commit as the tombstone, so no state of the ref ever shows a deleted
+    // board still holding live cards.
+    for mut card in read_cards(repo, &tree)? {
+        if card.archived_at.is_some() {
+            continue;
+        }
+        card.archived_at = Some(now.clone());
+        card.updated_at = now.clone();
+        let base = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        tree_oid = write_card_blob(repo, &base, &card)?;
+    }
+
+    commit_state_cas(
+        repo,
+        board_id,
+        &tip,
+        tip.id(),
+        tree_oid,
+        "git-manager: delete board, archiving its cards",
+    )?;
+
+    sync_backup(repo, board_id);
     Ok(())
 }
 
@@ -1612,7 +1652,7 @@ mod tests {
         let (dir, repo) = init_repo("delete-board");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id).unwrap();
+        delete_board(&repo, &board.id, true).unwrap();
 
         assert!(list_boards(&repo).unwrap().is_empty());
         let err = get_board(&repo, &board.id).unwrap_err();
@@ -1712,6 +1752,93 @@ mod tests {
         assert!(get_board(&repo, &board.id).unwrap().1[0]
             .archived_at
             .is_none());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Keeping a deleted board's tickets means keeping the board: a card is stored *inside* its
+    /// board, so erasing the ref out from under an archived ticket would leave it naming something
+    /// that no longer exists — lost with extra steps, not archived.
+    #[test]
+    fn deleting_a_board_without_its_cards_tombstones_it_and_archives_them() {
+        let (dir, repo) = init_repo("delete-board-tombstone");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let make = |title: &str| {
+            create_card(
+                &repo,
+                &board.id,
+                "todo",
+                NewBoardCard {
+                    title: title.to_string(),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let live = make("Still going");
+        let already_away = make("Put away last week");
+        set_cards_archived(
+            &repo,
+            &board.id,
+            std::slice::from_ref(&already_away.id),
+            true,
+        )
+        .unwrap();
+        let earlier_stamp = get_board(&repo, &board.id)
+            .unwrap()
+            .1
+            .iter()
+            .find(|c| c.id == already_away.id)
+            .unwrap()
+            .archived_at
+            .clone();
+
+        delete_board(&repo, &board.id, false).unwrap();
+
+        // The board is still there — that is the point — and says it was deleted.
+        let (tombstoned, cards) = get_board(&repo, &board.id).unwrap();
+        assert!(tombstoned.deleted_at.is_some());
+        assert!(list_boards(&repo).unwrap().iter().any(|b| b.id == board.id));
+
+        // Every card archived, and still attached to the board it came from.
+        assert_eq!(cards.len(), 2);
+        assert!(cards.iter().all(|c| c.archived_at.is_some()));
+        assert!(cards.iter().all(|c| c.board_id == board.id));
+        // One already archived keeps its own date rather than being restamped by the deletion.
+        let untouched = cards.iter().find(|c| c.id == already_away.id).unwrap();
+        assert_eq!(untouched.archived_at, earlier_stamp);
+        assert!(cards
+            .iter()
+            .find(|c| c.id == live.id)
+            .unwrap()
+            .archived_at
+            .is_some());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The other branch of the same choice: nothing is kept, and nothing comes back.
+    #[test]
+    fn deleting_a_board_with_its_cards_leaves_nothing_behind() {
+        let (dir, repo) = init_repo("delete-board-erase");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Going away".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        delete_board(&repo, &board.id, true).unwrap();
+
+        assert!(list_boards(&repo).unwrap().is_empty());
+        assert!(get_board(&repo, &board.id).is_err());
+        // Not even through the restore flow — an erasure is not accidental loss.
+        assert!(list_recoverable_boards(&repo).unwrap().is_empty());
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -2562,7 +2689,7 @@ mod tests {
         let (dir, repo) = init_repo("delete-removes-backup");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id).unwrap();
+        delete_board(&repo, &board.id, true).unwrap();
 
         // An intentional delete must not be recoverable — that flow exists for accidental loss.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());

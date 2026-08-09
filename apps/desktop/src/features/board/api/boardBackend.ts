@@ -60,15 +60,15 @@ export interface BoardBackend {
     expectedRevision: string
   ): Promise<Board>
   /**
-   * Deletes the board.
+   * Deletes the board, in one of the two ways its tickets can go.
    *
-   * `deleteCards` is a **GitHub-board question only**, because only there is it a question: an issue
-   * outlives the board either way, since deleting one merely stops labelling it, so someone has to
-   * say whether the work is over. `true` closes every issue on the board.
-   *
-   * On a local board the cards live inside the board's ref and cannot outlive it — the flag has
-   * nothing to decide, and the UI does not ask. Keeping work out of a board being deleted is done by
-   * archiving or moving it first, while the board still exists.
+   * - **`deleteCards`** — the tickets go with it. Locally that erases the ref and its backup mirror;
+   *   on GitHub it closes every issue on the board.
+   * - **Otherwise** — the tickets are *archived* and the board is **tombstoned** rather than removed:
+   *   `deletedAt` is stamped and the board stays on disk. Keeping the tickets is exactly why it has
+   *   to: a card belongs to a board, so erasing the board out from under an archived ticket would
+   *   leave it naming something that no longer exists. A tombstoned board is out of the picker until
+   *   the user asks to see deleted boards, read-only when they do, and its archive stays readable.
    */
   deleteBoard(path: string, boardId: string, deleteCards: boolean): Promise<void>
   /** `card` carries the new card's own identity (title, prefix, kind, and optionally the GitHub

@@ -39,9 +39,7 @@ export const localBoardBackend: BoardBackend = {
     updateBoardMeta(path, boardId, name, tags, dodTemplate, cardPrefixes, expectedRevision),
   closeBoard: (path, boardId, summary, expectedRevision) =>
     closeBoard(path, boardId, summary, expectedRevision),
-  // `deleteCards` is deliberately not taken: a local board's cards live inside its ref and always go
-  // with it, so there is nothing here to decide. See `BoardBackend.deleteBoard`.
-  deleteBoard: (path, boardId) => deleteBoard(path, boardId),
+  deleteBoard: (path, boardId, deleteCards) => deleteBoard(path, boardId, deleteCards),
   createCard: (path, boardId, columnId, card) => createBoardCard(path, boardId, columnId, card),
   updateCard: (path, boardId, cardId, patch, expectedRevision) =>
     updateBoardCard(path, boardId, cardId, patch, expectedRevision),

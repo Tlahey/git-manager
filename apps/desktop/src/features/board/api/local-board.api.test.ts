@@ -57,10 +57,8 @@ describe('localBoardBackend', () => {
     ).resolves.toBe('updated')
     expect(mocked.updateBoardColumns).toHaveBeenCalledWith(path, 'b1', columns, 'rev-1')
 
-    // `deleteCards` is not forwarded: a local board's cards live inside its ref and always go with
-    // it, so there is nothing for the backend to decide. See `BoardBackend.deleteBoard`.
     await localBoardBackend.deleteBoard(path, 'b1', true)
-    expect(mocked.deleteBoard).toHaveBeenCalledWith(path, 'b1')
+    expect(mocked.deleteBoard).toHaveBeenCalledWith(path, 'b1', true)
   })
 
   it('forwards card create/update/move/delete with their exact args', async () => {

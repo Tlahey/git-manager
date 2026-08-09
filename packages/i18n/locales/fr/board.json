@@ -252,8 +252,12 @@
   "deleteBoard.deleteCardsLabel_one": "Supprimer aussi son ticket",
   "deleteBoard.deleteCardsLabel_other": "Supprimer aussi ses {{count}} tickets",
   "deleteBoard.remote.deleteCardsHint": "Chaque issue de ce tableau est fermée sur GitHub. Fermée, pas supprimée : GitHub ne permet pas de supprimer une issue.",
-  "deleteBoard.remote.keepCardsHint": "Les issues restent ouvertes sur GitHub, simplement sans le label de ce tableau.",
   "card.archivedOn": "Archivée le {{date}}",
-  "deleteBoard.local.cardsLost_one": "Son ticket disparaît avec lui, définitivement — les cartes d'un tableau local vivent dans le tableau. Archivez ou déplacez ce qui mérite d'être conservé avant de le supprimer.",
-  "deleteBoard.local.cardsLost_other": "Ses {{count}} tickets disparaissent avec lui, définitivement — les cartes d'un tableau local vivent dans le tableau. Archivez ou déplacez ce qui mérite d'être conservé avant de le supprimer."
+  "deleteBoard.local.deleteCardsHint": "Le tableau et ses tickets sont effacés de cette machine, sauvegarde comprise. Rien ne permet de les récupérer.",
+  "deleteBoard.local.archiveCardsHint": "Les tickets sont archivés et restent trouvables par la recherche. Le tableau est conservé pour qu'ils en aient toujours un — hors de la liste, en lecture seule, réaffiché par « Afficher les supprimés ».",
+  "deleteBoard.remote.archiveCardsHint": "Les issues restent ouvertes et reçoivent le label « archived ». Le tableau est conservé pour qu'elles en aient toujours un — hors de la liste, en lecture seule, réaffiché par « Afficher les supprimés ».",
+  "deleteBoard.showDeleted": "Afficher les supprimés",
+  "deleteBoard.deletedBadge": "Supprimé",
+  "deleteBoard.deletedNotice": "Ce tableau a été supprimé. Ses tickets ont été archivés plutôt que détruits, c'est pour cela qu'il est encore là.",
+  "deleteBoard.deletedOn": "Supprimé le {{date}}"
 }

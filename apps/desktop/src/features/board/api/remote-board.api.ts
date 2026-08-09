@@ -339,24 +339,42 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
       })),
 
     /**
-     * The issues survive either way — deleting a board here only stops labelling them — so
-     * `deleteCards` is what turns "stop tracking this work" into "this work is over": every card on
-     * the board is closed first, then the board leaves the config.
+     * Two outcomes, mirroring the local backend's — see `BoardBackend.deleteBoard`.
      *
-     * Closing before rewriting the config, deliberately: the config is how the cards are *found*, so
-     * a failure after it was rewritten would leave issues open with nothing left pointing at them.
+     * `deleteCards` closes every issue on the board and then drops the board from the config. The
+     * closing happens **first**, deliberately: the config is how the cards are *found*, so a failure
+     * after it was rewritten would leave issues open with nothing left pointing at them.
+     *
+     * Otherwise the board is tombstoned: the cards are archived — which here means gaining the
+     * `archived` label — and the board **stays in the config** with `deletedAt` set. Keeping it is
+     * the whole point: the board's entry is what defines the `board:<id>:status:<column>` labels
+     * those issues still carry, so removing it would strand them on a board id that resolves to
+     * nothing.
      */
     deleteBoard: async (path, boardId, deleteCards) => {
+      const { board, cards } = await backend.getBoard(path, boardId)
+
       if (deleteCards) {
-        const { cards } = await backend.getBoard(path, boardId)
         await backend.deleteCards(
           path,
           boardId,
           cards.map((c) => c.id)
         )
+        const config = await readConfigFile(path)
+        await writeConfigFile(path, { boards: config.boards.filter((b) => b.id !== boardId) })
+        return
       }
-      const config = await readConfigFile(path)
-      await writeConfigFile(path, { boards: config.boards.filter((b) => b.id !== boardId) })
+
+      await backend.setCardsArchived(
+        path,
+        boardId,
+        cards.map((c) => c.id),
+        true
+      )
+      await patchBoardInConfig(path, boardId, board.revision, (b) => ({
+        ...b,
+        deletedAt: new Date().toISOString(),
+      }))
     },
 
     createCard: async (path, boardId, columnId, card) => {

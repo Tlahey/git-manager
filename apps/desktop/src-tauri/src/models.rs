@@ -507,6 +507,16 @@ pub struct Board {
     /// Set when the sprint was closed; a closed board is read-only in the UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<String>,
+    /// Set when the board was deleted **but its tickets were archived rather than destroyed**.
+    ///
+    /// The board is gone as far as the user is concerned — out of the picker, read-only, no longer
+    /// somewhere work happens — yet its ref survives, because that is the only thing an archived
+    /// ticket can stay attached to. A card whose board had been erased would be an orphan naming a
+    /// board that no longer exists, which is not "archived", it is lost with extra steps.
+    ///
+    /// The other branch of the same choice erases everything and sets nothing: see `delete_board`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
     /// Statistics frozen at closing time. Stored rather than recomputed because closing a sprint
     /// *moves* its unfinished cards to the successor board — recomputing later would report a sprint
     /// that went better than it actually did.

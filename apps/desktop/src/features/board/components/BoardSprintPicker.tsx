@@ -98,6 +98,7 @@ export function BoardSprintPicker({ boards, activeBoard, onSelect }: BoardSprint
                   <span className="truncate text-[10px] leading-tight text-muted-foreground">
                     {board.source === 'remote' ? t('backend.remote') : t('backend.local')}
                     {board.closedAt ? ` · ${t('sprint.closedBadge')}` : ''}
+                    {board.deletedAt ? ` · ${t('deleteBoard.deletedBadge')}` : ''}
                   </span>
                 </span>
               </button>

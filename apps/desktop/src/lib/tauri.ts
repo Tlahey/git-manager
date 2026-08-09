@@ -1237,8 +1237,10 @@ export const updateBoardColumns = (
   expectedRevision: string
 ) => invoke<Board>('update_board_columns', { path, boardId, columns, expectedRevision })
 
-export const deleteBoard = (path: string, boardId: string) =>
-  invoke<void>('delete_board', { path, boardId })
+/** `deleteCards` erases the board and its tickets; otherwise the board is tombstoned and its cards
+ * archived, so they stay attached to it. */
+export const deleteBoard = (path: string, boardId: string, deleteCards: boolean) =>
+  invoke<void>('delete_board', { path, boardId, deleteCards })
 
 export const createBoardCard = (
   path: string,

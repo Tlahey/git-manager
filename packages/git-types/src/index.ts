@@ -775,6 +775,15 @@ export interface Board {
   /** Set when the sprint was closed. A closed board is read-only and hidden from the default board
    * list — see {@link Board.summary}. */
   closedAt?: string
+  /**
+   * Set when the board was deleted **but its tickets were archived rather than destroyed**.
+   *
+   * The board is gone as far as the user is concerned — out of the picker, read-only — yet it still
+   * exists, because an archived ticket has to stay attached to something. A card whose board had
+   * been erased would name a board that no longer exists, which is not "archived". Revealed by the
+   * board picker's "show deleted" toggle, where its archive stays readable.
+   */
+  deletedAt?: string
   /** Statistics frozen at closing time. Stored rather than recomputed because closing a sprint
    * *moves* its unfinished cards to the successor board: recomputing later would report a sprint
    * that went better than it did. */
