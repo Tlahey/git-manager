@@ -60,14 +60,15 @@ export interface BoardBackend {
     expectedRevision: string
   ): Promise<Board>
   /**
-   * Deletes the board. `deleteCards` says what becomes of its tickets, and the two backends honour it
-   * differently because the tickets are different things:
+   * Deletes the board.
    *
-   * - **Local.** The cards live inside the board's ref, so they always go with it. What `deleteCards`
-   *   controls is the `~/.git-manager/boards/` mirror — the only copy left. Keeping it leaves the
-   *   board listed as recoverable, so it and every card can be restored.
-   * - **Remote.** The cards are GitHub issues and survive the board either way, since deleting a
-   *   board only stops labelling them. `deleteCards` closes them.
+   * `deleteCards` is a **GitHub-board question only**, because only there is it a question: an issue
+   * outlives the board either way, since deleting one merely stops labelling it, so someone has to
+   * say whether the work is over. `true` closes every issue on the board.
+   *
+   * On a local board the cards live inside the board's ref and cannot outlive it — the flag has
+   * nothing to decide, and the UI does not ask. Keeping work out of a board being deleted is done by
+   * archiving or moving it first, while the board still exists.
    */
   deleteBoard(path: string, boardId: string, deleteCards: boolean): Promise<void>
   /** `card` carries the new card's own identity (title, prefix, kind, and optionally the GitHub

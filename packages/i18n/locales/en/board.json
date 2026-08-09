@@ -251,9 +251,9 @@
   "sprint.archiveColumnLabel": "Column holding the finished work",
   "deleteBoard.deleteCardsLabel_one": "Delete its ticket too",
   "deleteBoard.deleteCardsLabel_other": "Delete its {{count}} tickets too",
-  "deleteBoard.local.deleteCardsHint": "The board and its tickets are erased from this machine, backup included. Nothing brings them back.",
-  "deleteBoard.local.keepCardsHint": "The board leaves the list, but its backup is kept — it stays under recoverable boards, tickets and all.",
   "deleteBoard.remote.deleteCardsHint": "Every issue on this board is closed on GitHub. Closed, not deleted: GitHub has no way to delete an issue.",
   "deleteBoard.remote.keepCardsHint": "The issues stay open on GitHub, simply no longer labelled for this board.",
-  "card.archivedOn": "Archived on {{date}}"
+  "card.archivedOn": "Archived on {{date}}",
+  "deleteBoard.local.cardsLost_one": "Its 1 ticket goes with it, for good — a local board's cards live inside the board. Archive or move the ones worth keeping before deleting it.",
+  "deleteBoard.local.cardsLost_other": "Its {{count}} tickets go with it, for good — a local board's cards live inside the board. Archive or move the ones worth keeping before deleting it."
 }

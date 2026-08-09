@@ -45,24 +45,23 @@ describe('DeleteBoardDialog', () => {
 })
 
 /**
- * The board goes either way; its tickets are the separate question. What "keep them" means depends on
- * where they live, so the dialog says which rather than offering one sentence that is only true of
- * one backend.
+ * What becomes of the tickets is asked only where it is a question. On a GitHub board it is one — an
+ * issue outlives the board either way. On a local board it is not: the cards are inside the ref and
+ * go with it, so the dialog states the loss rather than offering a choice it cannot honour.
  */
-describe('DeleteBoardDialog — what becomes of the tickets', () => {
-  it('offers to delete them too, counted, and defaults to yes', async () => {
-    const { onConfirm } = renderDialog({ cardCount: 7 })
+describe('DeleteBoardDialog — a GitHub board asks about its issues', () => {
+  it('offers to close them too, counted, and defaults to yes', async () => {
+    const { onConfirm } = renderDialog({ source: 'remote', cardCount: 7 })
 
-    const box = screen.getByTestId('delete-board-delete-cards')
     expect(screen.getByText('Delete its 7 tickets too')).toBeInTheDocument()
-    expect(box).toBeChecked()
+    expect(screen.getByTestId('delete-board-delete-cards')).toBeChecked()
 
     await userEvent.click(screen.getByTestId('delete-board-confirm'))
     expect(onConfirm).toHaveBeenCalledWith(true)
   })
 
   it('passes the choice through when unticked', async () => {
-    const { onConfirm } = renderDialog()
+    const { onConfirm } = renderDialog({ source: 'remote' })
 
     await userEvent.click(screen.getByTestId('delete-board-delete-cards'))
     await userEvent.click(screen.getByTestId('delete-board-confirm'))
@@ -70,18 +69,8 @@ describe('DeleteBoardDialog — what becomes of the tickets', () => {
     expect(onConfirm).toHaveBeenCalledWith(false)
   })
 
-  /** A local board's cards live in its ref; the backup is the only thing that can outlast it. */
-  it('explains the local consequence, and that keeping them means recoverable', async () => {
-    renderDialog({ source: 'local' })
-    const hint = screen.getByTestId('delete-board-cards-hint')
-    expect(hint).toHaveTextContent(/erased from this machine, backup included/)
-
-    await userEvent.click(screen.getByTestId('delete-board-delete-cards'))
-    expect(hint).toHaveTextContent(/stays under recoverable boards/)
-  })
-
-  /** GitHub issues outlive the board either way, so the honest word is "closed", not "deleted". */
-  it('explains the GitHub consequence in terms of closing issues', async () => {
+  /** The issues outlive the board either way, so the honest word is "closed", not "deleted". */
+  it('says closing, not deleting, and what unticking leaves behind', async () => {
     renderDialog({ source: 'remote' })
     const hint = screen.getByTestId('delete-board-cards-hint')
     expect(hint).toHaveTextContent(/closed on GitHub/)
@@ -93,7 +82,45 @@ describe('DeleteBoardDialog — what becomes of the tickets', () => {
 
   /** Nothing to decide about: an empty board's deletion is only about the board. */
   it('asks nothing when the board has no cards', () => {
-    renderDialog({ cardCount: 0 })
+    renderDialog({ source: 'remote', cardCount: 0 })
     expect(screen.queryByTestId('delete-board-delete-cards')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * A local board's cards cannot outlive it, so offering to keep them would be a promise the app
+ * cannot keep — which is exactly what the earlier "recoverable" wording did.
+ */
+describe('DeleteBoardDialog — a local board states the loss', () => {
+  it('warns that the tickets go, counted, and names the way to avoid it', () => {
+    renderDialog({ source: 'local', cardCount: 7 })
+
+    const warning = screen.getByTestId('delete-board-cards-lost')
+    expect(warning).toHaveTextContent('Its 7 tickets go with it, for good')
+    expect(warning).toHaveTextContent(/Archive or move the ones worth keeping/)
+  })
+
+  it('offers no choice it could not honour', () => {
+    renderDialog({ source: 'local' })
+    expect(screen.queryByTestId('delete-board-delete-cards')).not.toBeInTheDocument()
+  })
+
+  /** Nothing is promised as recoverable — the earlier copy said it was, and no screen restores it. */
+  it('never claims the board can be recovered', () => {
+    renderDialog({ source: 'local' })
+    expect(screen.getByTestId('delete-board-dialog')).not.toHaveTextContent(/recoverable/i)
+  })
+
+  it('confirms with the tickets going, since that is the only outcome', async () => {
+    const { onConfirm } = renderDialog({ source: 'local' })
+
+    await userEvent.click(screen.getByTestId('delete-board-confirm'))
+
+    expect(onConfirm).toHaveBeenCalledWith(true)
+  })
+
+  it('says nothing about tickets on an empty board', () => {
+    renderDialog({ source: 'local', cardCount: 0 })
+    expect(screen.queryByTestId('delete-board-cards-lost')).not.toBeInTheDocument()
   })
 })

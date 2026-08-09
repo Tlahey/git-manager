@@ -457,25 +457,24 @@ pub fn update_board_columns(
     Ok(board)
 }
 
-/// Deletes a board's ref, and — when `delete_cards` — its disaster-recovery mirror with it.
+/// Deletes a board: its ref, and the disaster-recovery mirror with it.
 ///
-/// **`delete_cards` is what decides whether the tickets survive the board.** A local board's cards
-/// live inside its ref, so dropping the ref takes them with it; the only copy left anywhere is the
-/// mirror under `~/.git-manager/boards/`. Removing that too is a genuine erasure — the board stops
-/// existing on this machine. Keeping it leaves the board in `list_recoverable_boards`, exactly as if
-/// the repository had been re-cloned, so `restore_board_backup` can bring it and every card back.
+/// **A local board's cards cannot outlive it.** They live inside the ref, so dropping the ref takes
+/// them, and the mirror under `~/.git-manager/boards/` is removed in the same breath — an intentional
+/// deletion must not resurrect the board through the "recoverable board" restore flow, which exists
+/// for accidental loss and not as an undo for this.
 ///
-/// The choice used to be made here, always in favour of erasure, on the stated grounds that "an
-/// intentional deletion must not resurrect the board via the restore flow". That reasoning holds for
-/// someone deleting a board they are done with, and fails for someone deleting a board they only want
-/// out of the way — the two are indistinguishable from in here, which is why the caller is now asked.
-pub fn delete_board(repo: &Repository, board_id: &str, delete_cards: bool) -> Result<(), String> {
+/// Briefly, this took a `delete_cards` flag so the caller could keep the mirror and call the board
+/// "recoverable". That was wrong twice over: nothing in the app reads a recoverable board back, so
+/// the flag bought an orphaned file rather than a rescue, and it blurred the one distinction the
+/// board model actually makes — **archived** is the state that keeps a ticket and leaves it findable,
+/// **deleted** is the one that does not. Keeping work out of a board being deleted is done by
+/// archiving or moving it first, on the board, while it still exists.
+pub fn delete_board(repo: &Repository, board_id: &str) -> Result<(), String> {
     if let Ok(mut reference) = repo.find_reference(&board_ref_name(board_id)) {
         reference.delete().map_err(AppError::Git)?;
     }
-    if delete_cards {
-        remove_backup(repo, board_id);
-    }
+    remove_backup(repo, board_id);
     Ok(())
 }
 
@@ -1613,7 +1612,7 @@ mod tests {
         let (dir, repo) = init_repo("delete-board");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id, true).unwrap();
+        delete_board(&repo, &board.id).unwrap();
 
         assert!(list_boards(&repo).unwrap().is_empty());
         let err = get_board(&repo, &board.id).unwrap_err();
@@ -1713,40 +1712,6 @@ mod tests {
         assert!(get_board(&repo, &board.id).unwrap().1[0]
             .archived_at
             .is_none());
-
-        std::fs::remove_dir_all(&dir).ok();
-    }
-
-    /// Deleting a board *without* deleting its tickets leaves the mirror, which is the only copy of
-    /// them once the ref is gone — so the board comes back through the same restore flow a re-cloned
-    /// repository uses.
-    #[test]
-    fn deleting_a_board_but_keeping_its_cards_leaves_it_recoverable() {
-        let (dir, repo) = init_repo("delete-board-keep-cards");
-        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
-        create_card(
-            &repo,
-            &board.id,
-            "todo",
-            NewBoardCard {
-                title: "Worth keeping".to_string(),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        delete_board(&repo, &board.id, false).unwrap();
-
-        assert!(list_boards(&repo).unwrap().is_empty());
-        let recoverable = list_recoverable_boards(&repo).unwrap();
-        assert_eq!(recoverable.len(), 1);
-        assert_eq!(recoverable[0].id, board.id);
-
-        let restored = restore_board_backup(&repo, &board.id).unwrap();
-        assert_eq!(restored.id, board.id);
-        let (_, cards) = get_board(&repo, &board.id).unwrap();
-        assert_eq!(cards.len(), 1);
-        assert_eq!(cards[0].title, "Worth keeping");
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -2597,7 +2562,7 @@ mod tests {
         let (dir, repo) = init_repo("delete-removes-backup");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id, true).unwrap();
+        delete_board(&repo, &board.id).unwrap();
 
         // An intentional delete must not be recoverable — that flow exists for accidental loss.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());

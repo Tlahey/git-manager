@@ -251,9 +251,9 @@
   "sprint.archiveColumnLabel": "Colonne contenant le travail terminé",
   "deleteBoard.deleteCardsLabel_one": "Supprimer aussi son ticket",
   "deleteBoard.deleteCardsLabel_other": "Supprimer aussi ses {{count}} tickets",
-  "deleteBoard.local.deleteCardsHint": "Le tableau et ses tickets sont effacés de cette machine, sauvegarde comprise. Rien ne permet de les récupérer.",
-  "deleteBoard.local.keepCardsHint": "Le tableau quitte la liste mais sa sauvegarde est conservée : il reste dans les tableaux récupérables, avec ses tickets.",
   "deleteBoard.remote.deleteCardsHint": "Chaque issue de ce tableau est fermée sur GitHub. Fermée, pas supprimée : GitHub ne permet pas de supprimer une issue.",
   "deleteBoard.remote.keepCardsHint": "Les issues restent ouvertes sur GitHub, simplement sans le label de ce tableau.",
-  "card.archivedOn": "Archivée le {{date}}"
+  "card.archivedOn": "Archivée le {{date}}",
+  "deleteBoard.local.cardsLost_one": "Son ticket disparaît avec lui, définitivement — les cartes d'un tableau local vivent dans le tableau. Archivez ou déplacez ce qui mérite d'être conservé avant de le supprimer.",
+  "deleteBoard.local.cardsLost_other": "Ses {{count}} tickets disparaissent avec lui, définitivement — les cartes d'un tableau local vivent dans le tableau. Archivez ou déplacez ce qui mérite d'être conservé avant de le supprimer."
 }

@@ -1237,10 +1237,8 @@ export const updateBoardColumns = (
   expectedRevision: string
 ) => invoke<Board>('update_board_columns', { path, boardId, columns, expectedRevision })
 
-/** `deleteCards` also drops the board's `~/.git-manager/boards/` mirror, which is the only copy of
- * its cards once the ref is gone — leaving it keeps the board restorable. */
-export const deleteBoard = (path: string, boardId: string, deleteCards: boolean) =>
-  invoke<void>('delete_board', { path, boardId, deleteCards })
+export const deleteBoard = (path: string, boardId: string) =>
+  invoke<void>('delete_board', { path, boardId })
 
 export const createBoardCard = (
   path: string,

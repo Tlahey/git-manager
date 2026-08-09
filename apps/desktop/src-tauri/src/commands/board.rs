@@ -131,16 +131,10 @@ pub async fn update_board_columns(
     git_board::update_board_columns(&repo, &board_id, columns, &expected_revision)
 }
 
-/// `delete_cards` decides whether the board's tickets are erased with it or left restorable — see
-/// `git_board::delete_board`.
 #[tauri::command]
-pub async fn delete_board(
-    path: String,
-    board_id: String,
-    delete_cards: bool,
-) -> Result<(), String> {
+pub async fn delete_board(path: String, board_id: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_board::delete_board(&repo, &board_id, delete_cards)
+    git_board::delete_board(&repo, &board_id)
 }
 
 #[tauri::command]
