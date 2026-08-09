@@ -46,6 +46,18 @@
     --button-destructive-foreground: var(--destructive-foreground);
     --button-success-bg: var(--success);
     --button-success-foreground: var(--success-foreground);
+    /* The SELECTED segment of a segmented control (ToggleGroup). It aliases the button pair, and
+       being declared *here* rather than read as `--button-bg` in the component is the entire
+       point: a custom property is resolved where it is declared, so this computes against the
+       CONTENT button colours on <html> and every descendant inherits that computed value —
+       including one inside `.chrome-surface`, which re-points `--button-*` at `--sidebar-accent`.
+       That remap is right for a Button (a content fill glares on the nav) and wrong for this: the
+       sidebar accent is a row-highlight tint, 1.09:1 off the chrome on github-light and under
+       1.2:1 on six more themes. Enough to mark the active row of a list, where position carries
+       the rest of the message; not enough to mark one of three identical segments, where the fill
+       IS the message. So a segmented control wears the same fill on the toolbar as in Settings. */
+    --control-active-bg: var(--button-bg);
+    --control-active-foreground: var(--button-foreground);
     --badge-bg: var(--primary);
     --badge-foreground: var(--primary-foreground);
     --badge-secondary-bg: var(--secondary);

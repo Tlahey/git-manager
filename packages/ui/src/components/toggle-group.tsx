@@ -5,21 +5,35 @@ import { Tooltip } from './tooltip'
 let toggleGroupCount = 0
 
 export interface ToggleGroupOption<T extends string = string> {
-  /** Makes the segment icon-only; omit it and `label` is rendered as visible text instead. */
+  /** Icon-only segment under the default variant, and the icon above the label under `stacked`.
+   * Omit it (default variant only) and `label` is rendered as visible text instead. */
   icon?: React.ReactNode
   value: T
-  /** Visible text of a labelled segment. For an icon-only one it is the accessible name instead —
-   * shown as a Tooltip (pointer) and read by assistive tech (sr-only label text); never a raw
-   * `title=` attribute. */
+  /** Visible text of a labelled or stacked segment. For an icon-only one it is the accessible name
+   * instead — shown as a Tooltip (pointer) and read by assistive tech (sr-only label text);
+   * never a raw `title=` attribute. */
   label: string
   /** `data-testid` for this segment's `<label>`; the native radio stays inside it. */
   testId?: string
 }
 
+/**
+ * Which shape the segments take.
+ *
+ * - `default` — decided per option by whether it carries an `icon`: icon-only (label becomes a
+ *   tooltip and an sr-only name) or text-only. That is the only switch between those two, so a
+ *   group never mixes silent and labelled segments by accident.
+ * - `stacked` — icon above a visible label, matching the app toolbar's own buttons, for a group
+ *   that sits among them and has to read as one of them. Needs an `icon` on every option.
+ */
+export type ToggleGroupVariant = 'default' | 'stacked'
+
 export interface ToggleGroupProps<T extends string = string> {
   value: T
   onValueChange: (value: T) => void
   options: ToggleGroupOption<T>[]
+  /** See {@link ToggleGroupVariant}. Defaults to `'default'`. */
+  variant?: ToggleGroupVariant
   /** Native radio `name` shared by every option; auto-generated when omitted. */
   name?: string
   /** Disables every segment — the group still shows which one is selected, it just can't be
@@ -36,25 +50,28 @@ export interface ToggleGroupProps<T extends string = string> {
  * `ButtonGroup` is a pure layout container) would have to re-implement by hand and usually
  * doesn't.
  *
- * **One look, decided per option by whether it carries an `icon`** — never by the caller and never
- * by a variant:
- * - **icon** (e.g. the file-list tree/list toggle): rendered alone, its `label` becoming a Tooltip
- *   for pointer users and an sr-only accessible name.
- * - **no icon** (e.g. the Settings row-height picker, the toolbar's Graph/Files/Board switcher):
- *   `label` is rendered as visible text.
+ * What a segment *renders* is decided by `variant`, and by an option's `icon` within the default
+ * one — never how it looks selected:
+ * - **icon** (e.g. the file-list tree/list toggle): rendered alone, its `label` becoming a
+ *   Tooltip for pointer users and an sr-only accessible name.
+ * - **no icon** (e.g. the Settings row-height picker): `label` is rendered as visible text.
+ * - **`variant="stacked"`** (the app toolbar's Graph/Files/Board switcher): icon above a visible
+ *   label, so a group standing among `ToolbarButton`s reads as one of them rather than as a
+ *   control borrowed from Settings. No Tooltip — the label is on screen, and a tooltip repeating
+ *   visible text is noise.
  *
- * There was briefly a third, `stacked` shape — icon over a 10px label — for the toolbar switcher, on
- * the theory that a group standing among `ToolbarButton`s had to look like one. It cost a variant, a
- * contrast exemption argument and four rounds of design, and what it bought was a control that
- * looked like a toolbar button while behaving like a radio group. The text shape says "pick one of
- * these three" on sight, which is the thing the switcher actually does. If a caller wants a
- * different look, the answer is still a variant added *here*, not a group restyled locally — but the
- * bar for adding one is now this paragraph.
+ * Selection is one filled segment, identical in every shape and on every surface — the toolbar's
+ * switcher wears exactly what the Settings picker wears. It takes a fill *and* a matching
+ * foreground, so a selected segment repaints its label and its icon rather than relying on a tint
+ * behind them; the token that guarantees both, and why it isn't simply `--button-bg`, is recorded
+ * beside the classes below. That is the whole point of this living here: a caller that wants a
+ * different look gets a variant added to this file, not a group restyled locally.
  */
 export function ToggleGroup<T extends string = string>({
   value,
   onValueChange,
   options,
+  variant = 'default',
   name,
   disabled,
   className,
@@ -75,40 +92,59 @@ export function ToggleGroup<T extends string = string>({
     >
       {options.map((option) => {
         const checked = option.value === value
+        const stacked = variant === 'stacked'
         const segment = (
           <label
             data-testid={option.testId}
             className={cn(
               'flex items-center justify-center rounded-[5px] transition-colors',
               disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-              option.icon ? 'p-1.5' : 'px-3 py-1.5 text-xs',
-              // The selected segment takes a fill and lifts off the track. It rides the Tier-3
-              // `--button-*` tokens, NOT `bg-primary` / `text-primary-foreground` — and that is
-              // load-bearing, not a stylistic detail. The raw semantic pair measures ~37Lc under
-              // 12px text against an APCA bronze bar of 75 (shadcn's `accent` fill scores 46.9Lc, a
-              // 15% `primary` tint misses it on two themes), because `--primary-foreground` is
-              // graded for larger text. The button tokens default to that same pair but 13 of the
-              // 15 shipped themes re-point them precisely to fix filled-control contrast, so
-              // consuming them makes this control inherit every correction Button already earned —
-              // and any future one. Swapping in a raw colour re-breaks it; re-check with
-              // `pnpm --filter @git-manager/ui test:apca`.
+              // The only thing a shape changes: how much room the segment needs. `stacked`
+              // borrows `ToolbarButton`'s metrics — 16px icon over a 10px label — so a group of
+              // them lines up with the plain buttons beside it instead of sitting a few pixels off.
+              stacked
+                ? 'min-w-[44px] flex-col gap-0.5 px-2 py-1'
+                : option.icon
+                  ? 'p-1.5'
+                  : 'px-3 py-1.5 text-xs',
+              // The selected segment takes a fill and lifts off the track. One fill for every
+              // shape, on every surface — and the token it rides is load-bearing, not a
+              // stylistic detail.
               //
-              // The chrome is a *surface*, not a special case: `.chrome-surface` re-points the same
-              // `--button-*` pair at the sidebar accent, which is graded AA there, so a group on the
-              // toolbar wears exactly what Settings wears and needs no fill of its own.
+              // NOT `bg-primary` / `text-primary-foreground`: the raw semantic pair measures
+              // ~37Lc under 12px text against an APCA bronze bar of 75 (shadcn's `accent` fill
+              // scores 46.9Lc, a 15% `primary` tint misses it on two themes), because
+              // `--primary-foreground` is graded for larger text. `--control-active-*` aliases
+              // the Tier-3 button pair, which 13 of the 15 shipped themes re-point precisely to
+              // fix filled-control contrast — so this control inherits every correction Button
+              // already earned, and any future one.
               //
-              // That only holds because a theme whose `--sidebar-accent` equals its
-              // `--sidebar-background` has no visible active state anywhere — `TabBar` marks the
-              // active repo tab with the same token. Two light themes were in that state and were
-              // fixed there rather than worked around here; `themeTokens.test.ts` now keeps every
-              // theme's accent a real step away from its chrome.
+              // NOT `bg-button` directly either, and that distinction is the whole reason the
+              // alias exists: `.chrome-surface` re-points `--button-*` at `--sidebar-accent`, a
+              // row-highlight tint sitting 1.09:1 off the chrome on github-light. That is enough
+              // to mark the active row of a list, where position carries the rest of the message,
+              // and not enough to mark one of three identical segments — where the fill IS the
+              // message, and where on 8 of the 15 themes it comes with no change of text colour
+              // at all, since their `--sidebar-accent-foreground` is a copy of
+              // `--sidebar-foreground`. Reading the alias instead keeps the content fill *and*
+              // its own foreground, so selecting a segment repaints its label and its icon.
+              //
+              // Re-check either change with `pnpm --filter @git-manager/ui test:apca`.
               checked
-                ? 'bg-button text-button-foreground font-medium shadow-xs'
-                : cn(
-                    'text-muted-foreground',
-                    // No hover affordance on a group that cannot be changed.
-                    !disabled && 'hover:text-foreground'
-                  )
+                ? 'bg-control-active text-control-active-foreground font-medium shadow-xs'
+                : stacked
+                  ? // Not muted, unlike the other two shapes — and that is the APCA policy talking,
+                    // not taste. `muted-foreground` is exempt from the Bronze gate only where it is
+                    // decorative (an inactive Chip, a neutral Tag); an unselected segment is a
+                    // *control you click*, and the policy's own words are "actions are never
+                    // muted". At 10px on the track it measures 48Lc against a bar of 75, which the
+                    // matrix catches — see `packages/ui/stories/a11yMatrix.test.tsx`.
+                    'text-foreground'
+                  : cn(
+                      'text-muted-foreground',
+                      // No hover affordance on a group that cannot be changed.
+                      !disabled && 'hover:text-foreground'
+                    )
             )}
           >
             <input
@@ -120,7 +156,14 @@ export function ToggleGroup<T extends string = string>({
               onChange={() => onValueChange(option.value)}
               className="sr-only"
             />
-            {option.icon ? (
+            {stacked ? (
+              <>
+                <span aria-hidden="true" className="flex items-center justify-center">
+                  {option.icon}
+                </span>
+                <span className="text-[10px] leading-none">{option.label}</span>
+              </>
+            ) : option.icon ? (
               <>
                 <span aria-hidden="true">{option.icon}</span>
                 <span className="sr-only">{option.label}</span>
@@ -132,7 +175,7 @@ export function ToggleGroup<T extends string = string>({
         )
 
         // A tooltip only where the label isn't already on screen.
-        return option.icon ? (
+        return option.icon && !stacked ? (
           <Tooltip key={option.value} content={option.label}>
             {segment}
           </Tooltip>

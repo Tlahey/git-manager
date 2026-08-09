@@ -156,6 +156,12 @@
      token model makes possible without touching component code. */
   --button-bg: var(--sidebar-accent);
   --button-foreground: var(--sidebar-accent-foreground);
+  /* NB: --control-active-* (the selected segment of a ToggleGroup) is deliberately NOT remapped,
+     and can't be: it is declared on :root precisely so it keeps the content button fill in here.
+     The sidebar accent marks an active row, where position carries half the message; it is too
+     flat (1.09:1 on github-light) to mark one of three identical segments, and on 8 themes its
+     foreground is a copy of --sidebar-foreground, so the label wouldn't move either. Reason
+     recorded in full in packages/theme/src/themes.css. */
   --badge-bg: var(--sidebar-accent);
   --badge-foreground: var(--sidebar-accent-foreground);
   /* NB: tone-chip + link text is deliberately NOT overridden here. Their readable

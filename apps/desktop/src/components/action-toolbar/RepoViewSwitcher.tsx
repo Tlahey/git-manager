@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { ToggleGroup, type ToggleGroupOption } from '@git-manager/ui'
+import { GitCommitHorizontal, FolderOpen, Kanban } from 'lucide-react'
 import { useRepoViewStore, type RepoView } from '../../stores/repoView.store'
 
 /**
@@ -16,11 +17,9 @@ import { useRepoViewStore, type RepoView } from '../../stores/repoView.store'
  * for free, and the selected fill rides the `--button-*` tokens that 13 of the 15 themes correct for
  * contrast. Three loose buttons would have to spell "which one is on" in icon tint alone.
  *
- * Labels, no icons — the same shape the Settings row-height picker wears, and the reason is that a
- * shape is a promise. Icon-over-label is what a `ToolbarButton` looks like, and a toolbar button
- * *does* something when pressed; these three choose between mutually exclusive states. Dressing the
- * switcher as its neighbours made it read as three commands sitting next to ⌘K, which is the
- * confusion this whole toolbar split exists to remove.
+ * `variant="stacked"`, so each segment is an icon over a visible label — the shape every other
+ * button in this bar already has. The alternative was icon-only with tooltips, which is tighter but
+ * makes the switcher the one control here you have to hover to read.
  */
 export function RepoViewSwitcher() {
   const { t } = useTranslation('git')
@@ -28,13 +27,29 @@ export function RepoViewSwitcher() {
   const setView = useRepoViewStore((s) => s.setView)
 
   const options: ToggleGroupOption<RepoView>[] = [
-    { value: 'graph', label: t('toolbar.graph'), testId: 'repo-view-graph' },
-    { value: 'files', label: t('toolbar.files'), testId: 'repo-view-files' },
-    { value: 'board', label: t('toolbar.board'), testId: 'repo-view-board' },
+    {
+      value: 'graph',
+      icon: <GitCommitHorizontal className="h-4 w-4" />,
+      label: t('toolbar.graph'),
+      testId: 'repo-view-graph',
+    },
+    {
+      value: 'files',
+      icon: <FolderOpen className="h-4 w-4" />,
+      label: t('toolbar.files'),
+      testId: 'repo-view-files',
+    },
+    {
+      value: 'board',
+      icon: <Kanban className="h-4 w-4" />,
+      label: t('toolbar.board'),
+      testId: 'repo-view-board',
+    },
   ]
 
   return (
     <ToggleGroup
+      variant="stacked"
       name="repoView"
       value={view}
       onValueChange={setView}
