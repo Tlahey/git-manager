@@ -85,9 +85,7 @@ export function dueDateShortcuts(today: Date = new Date()): DueDateShortcut[] {
  * prefix has opted out, and number `0` predates the counter. Showing `-1` or `GM-0` in either case
  * would be worse than showing nothing.
  */
-export function cardIdentifier(
-  card: Pick<BoardCard, 'prefix' | 'number'>
-): string | undefined {
+export function cardIdentifier(card: Pick<BoardCard, 'prefix' | 'number'>): string | undefined {
   if (!card.prefix || !card.number) return undefined
   return `${card.prefix}-${card.number}`
 }
@@ -121,7 +119,10 @@ export function priorityRank(priority: BoardCardPriority): number {
 
 /** The card's tags, resolved against the board palette and returned **in the board's own order** —
  * so a given pair of tags always looks the same, whichever order they were added to the card in. */
-export function resolveCardTags(board: Pick<Board, 'tags'>, card: Pick<BoardCard, 'tagIds'>): BoardTag[] {
+export function resolveCardTags(
+  board: Pick<Board, 'tags'>,
+  card: Pick<BoardCard, 'tagIds'>
+): BoardTag[] {
   return board.tags.filter((tag) => card.tagIds.includes(tag.id))
 }
 

@@ -59,7 +59,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
           <ListFilter className="h-3.5 w-3.5" />
           {hasSelection && (
             <span
-              className="text-[9px] font-bold tabular-nums leading-none"
+              className="text-[9px] leading-none font-bold tabular-nums"
               data-testid="author-filter-count"
             >
               {activeCount}
@@ -91,7 +91,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
                 <span
                   key={a.email}
                   data-testid={`author-filter-chip-${a.email}`}
-                  className="flex max-w-full items-center gap-1 rounded-full bg-accent py-0.5 pl-1 pr-1.5 text-[10px] text-foreground"
+                  className="flex max-w-full items-center gap-1 rounded-full bg-accent py-0.5 pr-1.5 pl-1 text-[10px] text-foreground"
                 >
                   <AuthorAvatar name={a.name} email={a.email} className="h-3.5 w-3.5 text-[6px]" />
                   <span className="truncate">{a.name}</span>

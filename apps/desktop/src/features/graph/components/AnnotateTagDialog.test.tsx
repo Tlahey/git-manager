@@ -32,7 +32,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('AnnotateTagDialog', () => {
   it('shows the tag name in the title and a message textarea', () => {
     renderDialog()

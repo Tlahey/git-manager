@@ -11,14 +11,7 @@ import type { SavedFilter } from '../stores/savedFilters'
 
 /** Stable section identifiers (open state + scroll). */
 export type SectionKey =
-  | 'local'
-  | 'remotes'
-  | 'prs'
-  | 'issues'
-  | 'tags'
-  | 'submodules'
-  | 'stashes'
-  | 'worktrees'
+  'local' | 'remotes' | 'prs' | 'issues' | 'tags' | 'submodules' | 'stashes' | 'worktrees'
 
 /**
  * One row in the body of a sidebar section (branches, folders, tags, …) — not the section header

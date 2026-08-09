@@ -85,9 +85,8 @@ describe('BoardDialogsManager — the edit dialog resolves its card', () => {
   })
 
   it('renders nothing for a card the list no longer holds', () => {
-    renderManager(
-      { boards: [makeBoard()], activeBoard: makeBoard(), cards: [] },
-      (d) => d.setCardDialog({ mode: 'edit', cardId: 'gone' })
+    renderManager({ boards: [makeBoard()], activeBoard: makeBoard(), cards: [] }, (d) =>
+      d.setCardDialog({ mode: 'edit', cardId: 'gone' })
     )
     expect(screen.queryByTestId('board-card-dialog')).not.toBeInTheDocument()
   })
@@ -267,9 +266,7 @@ describe('BoardDialogsManager — column-wide actions', () => {
 
     await userEvent.click(screen.getByTestId('move-column-submit'))
 
-    await waitFor(() =>
-      expect(data.moveColumnCards).toHaveBeenCalledWith('todo', 'b2', 'todo')
-    )
+    await waitFor(() => expect(data.moveColumnCards).toHaveBeenCalledWith('todo', 'b2', 'todo'))
   })
 
   it('raises neither dialog until a column action is set', () => {

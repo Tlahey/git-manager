@@ -40,12 +40,12 @@ export function SectionHeader({
           )}
         </span>
         <span className="shrink-0 text-sidebar-muted-foreground/70">{icon}</span>
-        <span className="flex-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground">
+        <span className="flex-1 text-[10px] font-bold tracking-widest text-sidebar-muted-foreground uppercase">
           {title}
         </span>
         {count !== undefined && (
           <span
-            className={`flex shrink-0 items-center gap-1 text-[10px] tabular-nums text-sidebar-muted-foreground transition-opacity ${
+            className={`flex shrink-0 items-center gap-1 text-[10px] text-sidebar-muted-foreground tabular-nums transition-opacity ${
               action ? 'group-hover/header:opacity-0' : ''
             }`}
           >
@@ -62,7 +62,7 @@ export function SectionHeader({
       {/* The action overlays the count's right-most slot: the count stays flush right, and on hover
           it fades out while the action fades in over the same spot. */}
       {action && (
-        <div className="absolute right-1 top-1/2 flex shrink-0 -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/header:opacity-100">
+        <div className="absolute top-1/2 right-1 flex shrink-0 -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/header:opacity-100">
           {action}
         </div>
       )}

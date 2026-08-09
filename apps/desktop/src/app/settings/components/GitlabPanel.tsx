@@ -85,7 +85,7 @@ export function GitlabPanel({ accounts, activeAccountId, onChange }: GitlabPanel
             className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4"
           >
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
                 {t('settings.integrations.gitlab.authorization')}
               </h4>
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">

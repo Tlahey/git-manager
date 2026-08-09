@@ -40,11 +40,8 @@ export function CardDueDatePicker({ dueDate, onSelect }: CardDueDatePickerProps)
         </button>
       ))}
 
-      <div className="mt-1 border-t border-border px-2 pb-1 pt-1.5">
-        <label
-          htmlFor="card-due-date-input"
-          className="block text-[10px] text-muted-foreground"
-        >
+      <div className="mt-1 border-t border-border px-2 pt-1.5 pb-1">
+        <label htmlFor="card-due-date-input" className="block text-[10px] text-muted-foreground">
           {t('card.dueDate.custom')}
         </label>
         <Input

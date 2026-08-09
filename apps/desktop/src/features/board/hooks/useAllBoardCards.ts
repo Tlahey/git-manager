@@ -40,9 +40,7 @@ export function useAllBoardCards(repoPath: string, enabled: boolean): AllBoardCa
 
   const boardKey = boards.map((b) => `${b.source}:${b.id}`).join(',')
   const { data, isLoading } = useSWR(
-    enabled && boards.length > 0
-      ? ['board-cards-all', repoPath, boardKey, Boolean(token)]
-      : null,
+    enabled && boards.length > 0 ? ['board-cards-all', repoPath, boardKey, Boolean(token)] : null,
     async () => {
       const cards: CardOnBoard[] = []
       const unreadable: Board[] = []

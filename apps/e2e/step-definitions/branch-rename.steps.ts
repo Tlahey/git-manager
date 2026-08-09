@@ -18,22 +18,19 @@ import { getActiveRepoPath } from '../support/activeRepo'
 // The step's name says what the *reader* does — "open the rename dialog" — not how this gets
 // there. It used to end "via the store bridge", and the `@doc` scenario rendered that verbatim as
 // an instruction on the published page. How the dialog is reached is what this comment is for.
-When(
-  /^I open the rename dialog for the branch "([^"]*)"$/,
-  async (branch: string) => {
-    await browser.execute((branchName: string) => {
-      const store = (
-        window as unknown as {
-          __e2eRepoUIStore?: {
-            getState: () => { setPendingGraphAction: (action: unknown) => void }
-          }
+When(/^I open the rename dialog for the branch "([^"]*)"$/, async (branch: string) => {
+  await browser.execute((branchName: string) => {
+    const store = (
+      window as unknown as {
+        __e2eRepoUIStore?: {
+          getState: () => { setPendingGraphAction: (action: unknown) => void }
         }
-      ).__e2eRepoUIStore
-      store?.getState().setPendingGraphAction({ kind: 'renameBranch', branch: branchName })
-    }, branch)
-    await $('[data-testid="rename-branch-dialog"]').waitForDisplayed({ timeout: 10000 })
-  }
-)
+      }
+    ).__e2eRepoUIStore
+    store?.getState().setPendingGraphAction({ kind: 'renameBranch', branch: branchName })
+  }, branch)
+  await $('[data-testid="rename-branch-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
 
 Then(/^the rename branch dialog is shown$/, async () => {
   await expect($('[data-testid="rename-branch-dialog"]')).toBeDisplayed()

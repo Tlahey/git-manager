@@ -21,6 +21,7 @@
     "test:e2e:fast": "pnpm --filter @git-manager/e2e test:e2e",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "clean": "turbo clean",
     "clean:rust": "pnpm --filter @git-manager/desktop clean",
     "clean:deps": "turbo clean && pnpm --filter @git-manager/desktop clean:deps",

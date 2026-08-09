@@ -97,7 +97,7 @@ export function NotchNotification({
       {...(bandHeight !== undefined ? { bandHeight } : {})}
       bandStart={
         productName !== undefined ? (
-          <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+          <span className="block truncate text-[9px] font-semibold tracking-[0.18em] text-white/35 uppercase">
             {productName}
           </span>
         ) : undefined

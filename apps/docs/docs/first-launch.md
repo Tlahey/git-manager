@@ -49,7 +49,7 @@ it:
 To connect, open **Settings → Integrations** and start the sign-in.
 [Settings](/docs/features/settings) shows the flow: the app displays a one-time
 device code, sends you to `github.com/login/device` to type it, and never sees
-your password — that's GitHub's official *device flow*, and the token it
+your password — that's GitHub's official _device flow_, and the token it
 produces stays on your machine (see
 [Private by design](/docs/privacy)).
 

@@ -242,7 +242,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
             return (
               <div
                 key={seg.id}
-                className={`merge-connector-action-container absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
+                className={`merge-connector-action-container absolute right-0 left-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
                 style={{ top: anchorY, height: lineHeight }}
               >
                 {/* Accept sits closest to the source pane's edge, the ignore X right after it. */}

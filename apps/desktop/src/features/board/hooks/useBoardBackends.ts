@@ -27,7 +27,8 @@ export function useBoardBackends(repoPath: string): BoardBackends {
   const { ownerRepo, token } = useRepoGitHub(repoPath)
 
   const remoteBackend = useMemo(
-    () => (ownerRepo && token ? createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, token) : null),
+    () =>
+      ownerRepo && token ? createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, token) : null,
     [ownerRepo, token]
   )
 

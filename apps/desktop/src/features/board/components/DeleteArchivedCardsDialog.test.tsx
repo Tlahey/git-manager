@@ -32,9 +32,7 @@ describe('DeleteArchivedCardsDialog', () => {
 
   it('says the loss is permanent', () => {
     renderDialog(4)
-    expect(screen.getByTestId('delete-archived-cards-dialog')).toHaveTextContent(
-      /removed for good/
-    )
+    expect(screen.getByTestId('delete-archived-cards-dialog')).toHaveTextContent(/removed for good/)
   })
 
   it('purges and closes on confirm', async () => {

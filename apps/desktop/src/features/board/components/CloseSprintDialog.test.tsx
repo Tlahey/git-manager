@@ -111,7 +111,9 @@ describe('CloseSprintDialog — archiving the finished cards', () => {
   it('counts only what that column would actually give up', () => {
     renderDialog()
     // One card in `done`; the two in `todo` are the carry-over's business, not this one's.
-    expect(screen.getByTestId('close-sprint-archive-hint')).toHaveTextContent('1 card in the column')
+    expect(screen.getByTestId('close-sprint-archive-hint')).toHaveTextContent(
+      '1 card in the column'
+    )
 
     // Naming another column re-counts against it.
     expect(screen.getByTestId('close-sprint-archive-hint')).not.toHaveTextContent('2 cards')

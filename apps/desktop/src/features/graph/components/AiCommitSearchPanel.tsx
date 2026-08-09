@@ -162,7 +162,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
     >
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <Search className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{t('gitTree.commitSearch.panelTitle')}</span>
           </h3>
@@ -238,7 +238,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-4">
           {shown.question && (
             <p
-              className="text-[11px] italic text-muted-foreground"
+              className="text-[11px] text-muted-foreground italic"
               data-testid="commit-search-asked"
             >
               {t('gitTree.commitSearch.asked', { question: shown.question })}
@@ -246,7 +246,10 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
           )}
 
           {search.phase === 'error' && (
-            <p className="wrap-break-word text-xs text-tone-danger" data-testid="commit-search-error">
+            <p
+              className="text-xs wrap-break-word text-tone-danger"
+              data-testid="commit-search-error"
+            >
               {aiErrorMessage(search.error ?? '', tErrors)}
             </p>
           )}

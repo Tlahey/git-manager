@@ -269,7 +269,7 @@ export function CommitFileList({
               )}
             </div>
             {node.stats && (
-              <div className="ml-2 flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
+              <div className="ml-2 flex shrink-0 items-center gap-1 text-[9px] font-bold select-none">
                 {node.stats.added > 0 && (
                   <Tag tone="success" className="px-1 py-0 text-[9px]">
                     +{node.stats.added}
@@ -387,7 +387,7 @@ export function CommitFileList({
               data-testid={`file-tree-viewed-${node.path}`}
             />
           )}
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold leading-tight text-foreground">
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-tight font-semibold text-foreground">
             {node.name}
           </span>
         </div>
@@ -395,14 +395,14 @@ export function CommitFileList({
         {/* Right: Stats, Status, WIP Actions */}
         <div className="ml-2 flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {node.additions !== undefined && node.deletions !== undefined && (
-            <span className="flex shrink-0 scale-90 select-none items-center gap-0.5 text-[10px] text-muted-foreground/70">
+            <span className="flex shrink-0 scale-90 items-center gap-0.5 text-[10px] text-muted-foreground/70 select-none">
               <span className="text-green-500">+{node.additions}</span>
               <span className="text-red-500">-{node.deletions}</span>
             </span>
           )}
 
           <span
-            className={cn(statusIcons[fileStatus], 'min-w-[12px] shrink-0 select-none text-center')}
+            className={cn(statusIcons[fileStatus], 'min-w-[12px] shrink-0 text-center select-none')}
           >
             {statusLetters[fileStatus]}
           </span>
@@ -456,7 +456,7 @@ export function CommitFileList({
       {!hideStats && bodyVisible && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               Stats Summary
             </span>
             <span className="rounded border border-border/40 bg-muted/65 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
@@ -501,7 +501,7 @@ export function CommitFileList({
               </Tag>
             )}
             {processedFiles.length === 0 && (
-              <span className="text-[10px] italic text-muted-foreground/60">{noChangesLabel}</span>
+              <span className="text-[10px] text-muted-foreground/60 italic">{noChangesLabel}</span>
             )}
           </div>
         </div>
@@ -510,7 +510,7 @@ export function CommitFileList({
       {/* Search bar inside files */}
       {!hideSearch && bodyVisible && (
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             type="text"
             placeholder={t('commitDetails.searchFiles') || 'Filter files...'}
@@ -521,7 +521,7 @@ export function CommitFileList({
           {fileSearchQuery && (
             <button
               onClick={() => setFileSearchQuery('')}
-              className="absolute right-2.5 top-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
+              className="absolute top-2.5 right-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -536,7 +536,7 @@ export function CommitFileList({
           className={cn(
             'flex items-center justify-between transition-colors',
             collapsible
-              ? 'cursor-pointer select-none bg-muted/15 px-3 py-2 hover:bg-muted/25'
+              ? 'cursor-pointer bg-muted/15 px-3 py-2 select-none hover:bg-muted/25'
               : 'rounded-lg border border-border/30 bg-muted/10 p-1.5'
           )}
           role={collapsible ? 'button' : undefined}
@@ -557,7 +557,7 @@ export function CommitFileList({
               ) : (
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ))}
-            <span className="select-none text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase select-none">
               {title ?? t('commitFileList.modifications')}
             </span>
             {onBulkStage && hoverStage && (
@@ -586,7 +586,7 @@ export function CommitFileList({
             )}
             {bodyVisible && viewMode === 'tree' && allFolderPaths.size > 0 && (
               <>
-                <span className="select-none text-[10px] text-muted-foreground/30">•</span>
+                <span className="text-[10px] text-muted-foreground/30 select-none">•</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -629,7 +629,7 @@ export function CommitFileList({
             className={collapsible ? 'space-y-0.5 border-t border-border/30 p-2' : 'space-y-0.5'}
           >
             {filteredFiles.length === 0 ? (
-              <p className="px-2 py-1 text-[11px] italic text-muted-foreground/70">
+              <p className="px-2 py-1 text-[11px] text-muted-foreground/70 italic">
                 {noChangesLabel}
               </p>
             ) : (
@@ -644,7 +644,7 @@ export function CommitFileList({
             className={collapsible ? 'space-y-0.5 border-t border-border/30 p-2' : 'space-y-0.5'}
           >
             {filteredFiles.length === 0 ? (
-              <p className="px-2 py-1 text-[11px] italic text-muted-foreground/70">
+              <p className="px-2 py-1 text-[11px] text-muted-foreground/70 italic">
                 {noChangesLabel}
               </p>
             ) : (
@@ -700,7 +700,7 @@ export function CommitFileList({
                         data-testid={`file-list-viewed-${file.path}`}
                       />
                     )}
-                    <div className="flex min-w-0 flex-1 select-text items-center overflow-hidden font-mono text-[11px] leading-tight">
+                    <div className="flex min-w-0 flex-1 items-center overflow-hidden font-mono text-[11px] leading-tight select-text">
                       {(() => {
                         const lastSlash = file.path.lastIndexOf('/')
                         if (lastSlash === -1) {
@@ -730,7 +730,7 @@ export function CommitFileList({
                     onClick={(e) => e.stopPropagation()}
                   >
                     {file.additions !== undefined && file.deletions !== undefined && (
-                      <span className="flex shrink-0 scale-90 select-none items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                      <span className="flex shrink-0 scale-90 items-center gap-0.5 text-[10px] text-muted-foreground/70 select-none">
                         <span className="text-green-500">+{file.additions}</span>
                         <span className="text-red-500">-{file.deletions}</span>
                       </span>
@@ -739,7 +739,7 @@ export function CommitFileList({
                     <span
                       className={cn(
                         statusIcons[file.status],
-                        'min-w-[12px] shrink-0 select-none text-center'
+                        'min-w-[12px] shrink-0 text-center select-none'
                       )}
                     >
                       {statusLetters[file.status]}

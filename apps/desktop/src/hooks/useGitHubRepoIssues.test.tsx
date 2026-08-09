@@ -78,7 +78,6 @@ beforeEach(() => {
   mocked.fetchGitHubRepoIssues.mockResolvedValue([])
 })
 
-
 describe('useGitHubRepoIssues — signed out', () => {
   it('returns an empty list and never touches the network', async () => {
     // Behaviour change, and the point of it. This used to hand the four fixture issues to *anyone*

@@ -116,7 +116,12 @@ export function renderAchievementsPage(
     const entries = achievements.filter((achievement) => achievement.type === tier)
     if (entries.length === 0) continue
 
-    lines.push(`## ${TIER_TITLES[tier]}`, '', '| Achievement | How to unlock | Reward | Points |', '| --- | --- | --- | --- |')
+    lines.push(
+      `## ${TIER_TITLES[tier]}`,
+      '',
+      '| Achievement | How to unlock | Reward | Points |',
+      '| --- | --- | --- | --- |'
+    )
     for (const entry of entries) {
       const title = `**${escapeCell(copyFor(enLocale, entry.id, 'title'))}**`
       const description = escapeCell(copyFor(enLocale, entry.id, 'description'))
@@ -147,5 +152,8 @@ export function renderAchievementsPage(
     ''
   )
 
-  return `${lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`
+  return `${lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()}\n`
 }

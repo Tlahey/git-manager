@@ -301,7 +301,6 @@ describe('RepositorySidebar — mode routing', () => {
     expect(screen.getByText('Repository')).toBeInTheDocument()
     expect(screen.getByLabelText('Filter branches')).toBeInTheDocument()
   })
-
 })
 
 describe('RepositorySidebar — search filter', () => {

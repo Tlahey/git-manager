@@ -123,9 +123,7 @@ export function resolveCardLinks(card: BoardCard, cards: BoardCard[]): ResolvedL
       ) === index
   )
 
-  return deduped.sort(
-    (a, b) => LINK_KIND_ORDER.indexOf(a.kind) - LINK_KIND_ORDER.indexOf(b.kind)
-  )
+  return deduped.sort((a, b) => LINK_KIND_ORDER.indexOf(a.kind) - LINK_KIND_ORDER.indexOf(b.kind))
 }
 
 /**

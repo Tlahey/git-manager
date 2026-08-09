@@ -106,14 +106,14 @@ export function PackageUpdatesPage({
       {scanError != null && (
         <Alert variant="destructive" data-testid="updates-scan-error">
           <span className="text-xs">{t('health.outdated.error')}</span>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px]">{String(scanError)}</pre>
+          <pre className="mt-1 font-mono text-[11px] whitespace-pre-wrap">{String(scanError)}</pre>
         </Alert>
       )}
 
       {updateError != null && (
         <Alert variant="destructive" data-testid="updates-run-error">
           <span className="text-xs">{t('health.updates.updateError')}</span>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px]">
+          <pre className="mt-1 font-mono text-[11px] whitespace-pre-wrap">
             {String(updateError)}
           </pre>
         </Alert>

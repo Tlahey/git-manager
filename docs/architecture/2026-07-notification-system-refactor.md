@@ -115,9 +115,7 @@ export interface NotificationTypeDef {
   reviewStatus?: (pr: PRLike) => ReviewStatus | undefined
 }
 
-export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
-  /* 7 entries, one per type */
-]
+export const NOTIFICATION_TYPES: NotificationTypeDef[] = [/* 7 entries, one per type */]
 ```
 
 `useNotificationWatcher`'s big `if/else` block becomes one loop: for each `pr`, for each `def` in

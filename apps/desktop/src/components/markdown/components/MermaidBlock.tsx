@@ -120,7 +120,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
   return (
     <div
-      className="my-4 flex select-text flex-col items-center justify-center overflow-x-auto rounded-lg border border-border bg-card/60 p-4"
+      className="my-4 flex flex-col items-center justify-center overflow-x-auto rounded-lg border border-border bg-card/60 p-4 select-text"
       data-testid="mermaid-block"
     >
       {loading && (

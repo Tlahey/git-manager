@@ -29,7 +29,10 @@ export function useCardTagCreation({
 }: CardTagCreationDeps) {
   const { mutateDetail, withConflictToast } = detail
 
-  return async function createTagAndAssign(card: BoardCard, name: string): Promise<BoardTag | null> {
+  return async function createTagAndAssign(
+    card: BoardCard,
+    name: string
+  ): Promise<BoardTag | null> {
     if (!activeBoard) return null
     const trimmed = name.trim()
     if (!trimmed) return null
@@ -45,7 +48,11 @@ export function useCardTagCreation({
     const existing = current.tags.find(
       (tag) => tag.id === id || tag.name.toLowerCase() === trimmed.toLowerCase()
     )
-    const tag: BoardTag = existing ?? { id, name: trimmed, color: nextTagColor(current.tags.length) }
+    const tag: BoardTag = existing ?? {
+      id,
+      name: trimmed,
+      color: nextTagColor(current.tags.length),
+    }
 
     if (!existing) {
       const board = await withConflictToast(() =>

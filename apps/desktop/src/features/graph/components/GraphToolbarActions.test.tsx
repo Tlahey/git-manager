@@ -2,15 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('../../../components/action-toolbar/FetchButton', () => ({ FetchButton: () => <button>Fetch</button> }))
-vi.mock('../../../components/action-toolbar/BranchButton', () => ({ BranchButton: () => <button>Branch</button> }))
-vi.mock('../../../components/action-toolbar/ToolsMenu', () => ({ ToolsMenu: () => <div data-testid="tools-menu" /> }))
+vi.mock('../../../components/action-toolbar/FetchButton', () => ({
+  FetchButton: () => <button>Fetch</button>,
+}))
+vi.mock('../../../components/action-toolbar/BranchButton', () => ({
+  BranchButton: () => <button>Branch</button>,
+}))
+vi.mock('../../../components/action-toolbar/ToolsMenu', () => ({
+  ToolsMenu: () => <div data-testid="tools-menu" />,
+}))
 // TerminalButton is a self-contained split button (integrated panel + external menu) with its own
 // test — stub it here so this composition test doesn't depend on its internals.
-vi.mock('../../../components/action-toolbar/TerminalButton', () => ({ TerminalButton: () => <div data-testid="terminal-button" /> }))
+vi.mock('../../../components/action-toolbar/TerminalButton', () => ({
+  TerminalButton: () => <div data-testid="terminal-button" />,
+}))
 
 const useActionToolbarMock = vi.fn()
-vi.mock('../../../hooks/useActionToolbar', () => ({ useActionToolbar: () => useActionToolbarMock() }))
+vi.mock('../../../hooks/useActionToolbar', () => ({
+  useActionToolbar: () => useActionToolbarMock(),
+}))
 
 import { GraphToolbarActions } from './GraphToolbarActions'
 import { useCommitSearchStore } from '../../../stores/commitSearch.store'

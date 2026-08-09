@@ -54,7 +54,6 @@ beforeEach(() => {
   mocked.apiGetRebaseState.mockResolvedValue({ kind: 'idle' })
 })
 
-
 describe('AutosquashPreviewDialog', () => {
   it('shows the group summary and per-group fixups once loaded', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([

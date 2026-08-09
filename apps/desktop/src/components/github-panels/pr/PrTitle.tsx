@@ -90,7 +90,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
           onClick={() => setEditing(true)}
           data-testid="pr-title"
           title={t('pr.title.editHint')}
-          className="mt-0.5 cursor-text text-xl font-semibold leading-tight text-foreground hover:opacity-80"
+          className="mt-0.5 cursor-text text-xl leading-tight font-semibold text-foreground hover:opacity-80"
         >
           {title}
         </h1>

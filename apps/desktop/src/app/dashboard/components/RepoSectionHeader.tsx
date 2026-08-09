@@ -114,7 +114,7 @@ export function RepoSectionHeader({
           aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? t('dashboard.section.expand') : t('dashboard.section.collapse')}
           onClick={onToggleCollapse}
-          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
         >
           {isCollapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />
@@ -135,7 +135,7 @@ export function RepoSectionHeader({
       )}
 
       <span className="shrink-0">{icon}</span>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">{title}</h3>
+      <h3 className="text-xs font-semibold tracking-wider text-foreground uppercase">{title}</h3>
       <span className="rounded-full bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground">
         {count}
       </span>
@@ -291,7 +291,7 @@ export function RepoSectionHeader({
               onKeyDown={(e) => e.stopPropagation()}
               role="presentation"
             >
-              <p className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p className="px-2 py-1 text-[10px] tracking-wider text-muted-foreground uppercase">
                 {t('dashboard.section.changeColor')}
               </p>
               <SectionColorPicker sectionId={sectionId} value={sectionColor} onChange={pickColor} />

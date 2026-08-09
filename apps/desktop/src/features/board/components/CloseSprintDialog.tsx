@@ -148,7 +148,10 @@ export function CloseSprintDialog({
               />
               <span className="font-medium text-foreground">{t('sprint.archiveDoneLabel')}</span>
             </label>
-            <p className="text-[11px] text-muted-foreground" data-testid="close-sprint-archive-hint">
+            <p
+              className="text-[11px] text-muted-foreground"
+              data-testid="close-sprint-archive-hint"
+            >
               {t('sprint.archiveDoneHint', { count: archivable.length })}
             </p>
 
@@ -183,7 +186,12 @@ export function CloseSprintDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button

@@ -59,8 +59,7 @@ export function CardTagPicker({
   const showCreate =
     typed.length > 0 &&
     !tags.some(
-      (tag) =>
-        tag.name.toLowerCase() === typed.toLowerCase() || tag.id === tagIdFromName(typed)
+      (tag) => tag.name.toLowerCase() === typed.toLowerCase() || tag.id === tagIdFromName(typed)
     )
 
   async function create() {

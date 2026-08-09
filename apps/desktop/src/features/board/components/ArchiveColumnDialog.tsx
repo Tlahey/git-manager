@@ -64,7 +64,12 @@ export function ArchiveColumnDialog({
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
             {t('card.dialog.cancel')}
           </Button>
           <Button

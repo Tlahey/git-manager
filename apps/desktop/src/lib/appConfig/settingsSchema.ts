@@ -1,9 +1,6 @@
 import { z } from 'zod'
 import type { AiPresetId } from '@git-manager/ai'
-import type {
-  AppSettings,
-  NotificationDisplayStyle,
-} from '@git-manager/git-types'
+import type { AppSettings, NotificationDisplayStyle } from '@git-manager/git-types'
 
 /**
  * Zod schema for the `settings` section of `~/.git-manager/settings.json`, one schema per group.

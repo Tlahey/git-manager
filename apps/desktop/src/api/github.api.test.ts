@@ -75,7 +75,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('parsePRStatus', () => {
   it('reports merged when merged_at is set, regardless of draft/state', () => {
     expect(parsePRStatus({ state: 'closed', draft: true, merged_at: '2024-01-01' })).toBe('merged')

@@ -137,7 +137,7 @@ function QueueReadout() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-1.5">
-      <h4 className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+      <h4 className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
         {title}
       </h4>
       {children}
@@ -188,7 +188,7 @@ function DebugActionRow({ actionId }: { actionId: string }) {
               </SurfaceButton>
             )}
             {!nativeAvailable && (
-              <span className="text-[9px] italic text-muted-foreground/70">
+              <span className="text-[9px] text-muted-foreground/70 italic">
                 no banner form — a banner is written once
               </span>
             )}
@@ -291,7 +291,7 @@ function PrSimulator() {
           onChange={(e) => setPrId(e.target.value)}
           aria-label="Pull request"
           data-testid="debug-sim-pr"
-          className="h-7 flex-1 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+          className="h-7 flex-1 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:ring-1 focus:ring-primary focus:outline-hidden"
         >
           {mockPRs.map((pr) => (
             <option key={pr.id} value={pr.id}>
@@ -305,7 +305,7 @@ function PrSimulator() {
           onChange={(e) => setAction(e.target.value as SimulatedChange)}
           aria-label="Simulated change"
           data-testid="debug-sim-action"
-          className="h-7 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+          className="h-7 rounded border border-border bg-background px-1.5 text-[10px] text-foreground focus:ring-1 focus:ring-primary focus:outline-hidden"
         >
           <option value="merge">{t('notifications.sim.prMerged')}</option>
           <option value="close">{t('notifications.sim.prClosed')}</option>

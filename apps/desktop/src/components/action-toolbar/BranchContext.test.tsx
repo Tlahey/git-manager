@@ -77,7 +77,6 @@ beforeEach(() => {
   mockedListWorktrees.mockResolvedValue([])
 })
 
-
 describe('BranchContext — visibility/label', () => {
   it('renders nothing without an active repo', () => {
     const { container } = render(<BranchContext />, { wrapper })

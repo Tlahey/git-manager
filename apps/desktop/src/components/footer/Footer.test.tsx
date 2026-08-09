@@ -60,7 +60,6 @@ beforeEach(() => {
   })
 })
 
-
 describe('Footer — contextual left section', () => {
   it('shows the dashboard state with the total repo count', () => {
     useRepoDataStore.setState({ savedRepos: [{ path: '/a', name: 'a', pinned: false }] })

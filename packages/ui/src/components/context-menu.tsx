@@ -35,7 +35,7 @@ const ContextMenuItem = React.forwardRef<
   <ContextMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-40',
+      'relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-40',
       className
     )}
     {...props}
@@ -50,7 +50,7 @@ const ContextMenuLabel = React.forwardRef<
   <ContextMenuPrimitive.Label
     ref={ref}
     className={cn(
-      'px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground',
+      'px-3 py-1.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase',
       className
     )}
     {...props}

@@ -166,10 +166,10 @@ When(/^I open the interactive rebase editor from the "([^"]*)" commit$/, async (
     url
   )
 
-  await browser.waitUntil(
-    async () => (await browser.getWindowHandles()).includes(label),
-    { timeout: 15000, timeoutMsg: `The rebase editor window ("${label}") never opened` }
-  )
+  await browser.waitUntil(async () => (await browser.getWindowHandles()).includes(label), {
+    timeout: 15000,
+    timeoutMsg: `The rebase editor window ("${label}") never opened`,
+  })
   rebaseWindowHandle = label
   await browser.switchToWindow(rebaseWindowHandle)
   // The plan rows appear once the real `list_rebase_commits` query resolves.

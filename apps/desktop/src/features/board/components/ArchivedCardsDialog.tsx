@@ -66,17 +66,19 @@ export function ArchivedCardsDialog({
 
   const archived = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return cards
-      .filter((c) => c.archivedAt)
-      .filter(
-        (c) =>
-          !needle ||
-          c.title.toLowerCase().includes(needle) ||
-          c.description.toLowerCase().includes(needle) ||
-          (cardIdentifier(c) ?? '').toLowerCase().includes(needle)
-      )
-      // Most recently archived first: the one you want back is usually the one you just put away.
-      .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
+    return (
+      cards
+        .filter((c) => c.archivedAt)
+        .filter(
+          (c) =>
+            !needle ||
+            c.title.toLowerCase().includes(needle) ||
+            c.description.toLowerCase().includes(needle) ||
+            (cardIdentifier(c) ?? '').toLowerCase().includes(needle)
+        )
+        // Most recently archived first: the one you want back is usually the one you just put away.
+        .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
+    )
     // `board` is no longer read here: the identifier comes off the card's own prefix.
   }, [cards, query])
 
@@ -93,7 +95,10 @@ export function ArchivedCardsDialog({
         </DialogHeader>
 
         {totalArchived === 0 ? (
-          <p className="py-6 text-center text-xs italic text-muted-foreground" data-testid="archived-none">
+          <p
+            className="py-6 text-center text-xs text-muted-foreground italic"
+            data-testid="archived-none"
+          >
             {t('archived.none')}
           </p>
         ) : (
@@ -198,7 +203,10 @@ function ArchivedRow({
           <span className="min-w-0 truncate text-xs text-foreground">{card.title}</span>
         </span>
         <span className="text-[10px] text-muted-foreground">
-          {t('archived.rowMeta', { column: columnName, date: (card.archivedAt ?? '').slice(0, 10) })}
+          {t('archived.rowMeta', {
+            column: columnName,
+            date: (card.archivedAt ?? '').slice(0, 10),
+          })}
         </span>
       </button>
 

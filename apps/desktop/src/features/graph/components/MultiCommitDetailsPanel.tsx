@@ -63,7 +63,7 @@ export function MultiCommitDetailsPanel({
         className="flex flex-col gap-2 border-b border-border bg-muted/20 px-4 py-3"
       >
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <Layers className="h-3.5 w-3.5 text-primary" />
             {t('multiCommit.selectedCount', { count })}
           </h3>
@@ -103,7 +103,7 @@ export function MultiCommitDetailsPanel({
         <div className="w-full min-w-0 space-y-4 overflow-hidden px-4 py-4">
           {/* ── SELECTED COMMIT LIST (like the history list) ── */}
           <div className="space-y-1.5">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               <GitCommit className="h-3 w-3 text-emerald-400" />
               {t('multiCommit.commitsTitle')}
             </span>
@@ -141,7 +141,7 @@ export function MultiCommitDetailsPanel({
 
           {/* ── MERGED FILE LIST (list or tree) ── */}
           {isLoading ? (
-            <p className="px-1 py-2 text-[11px] italic text-muted-foreground/70">
+            <p className="px-1 py-2 text-[11px] text-muted-foreground/70 italic">
               {t('gitTree.loading')}
             </p>
           ) : (

@@ -51,7 +51,7 @@ export function ColumnActionsMenu({
           title={t('column.actions.menu')}
           aria-label={t('column.actions.menu')}
           data-testid={testId}
-          className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus:opacity-100 group-hover/column:opacity-100"
+          className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground opacity-0 transition-opacity group-hover/column:opacity-100 hover:bg-accent hover:text-foreground focus:opacity-100"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>

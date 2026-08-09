@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { newAiRequestId } from './aiRequestId'
 
-
 describe('newAiRequestId', () => {
   it('never returns the same id twice', () => {
     const ids = new Set(Array.from({ length: 1000 }, newAiRequestId))

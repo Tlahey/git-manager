@@ -125,7 +125,7 @@ export function RecomposeDialog({
 
         {recompose.error && (
           <p
-            className="wrap-break-word rounded bg-destructive/20 px-3 py-2 text-xs text-destructive"
+            className="rounded bg-destructive/20 px-3 py-2 text-xs wrap-break-word text-destructive"
             data-testid="recompose-error"
           >
             {t('recompose.error')} — {recompose.error}
@@ -145,7 +145,7 @@ export function RecomposeDialog({
                   <code className="shrink-0 font-mono text-[11px] text-muted-foreground">
                     {proposal.shortOid}
                   </code>
-                  <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-muted-foreground select-none hover:text-foreground">
                     <Checkbox
                       data-testid={`recompose-keep-${proposal.shortOid}`}
                       checked={!proposal.accepted}

@@ -37,7 +37,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('DeleteRemoteTagDialog', () => {
   it('names the tag and remote in the confirmation copy', () => {
     renderDialog()

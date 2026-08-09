@@ -60,7 +60,6 @@ beforeEach(() => {
   useRepoOwner.mockReturnValue({ remote: null, url: null, isLoading: false })
 })
 
-
 describe('RepoRow — identity and row activation', () => {
   it('shows the repo name', () => {
     renderRow({ name: 'repo-a' })

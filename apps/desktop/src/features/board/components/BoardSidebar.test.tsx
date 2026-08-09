@@ -28,7 +28,9 @@ describe('BoardSidebar', () => {
     )
     render(<BoardSidebar repoPath="/repo" />)
 
-    const rows = screen.getAllByRole('button').filter((b) => b.dataset.testid?.startsWith('board-sidebar-item-'))
+    const rows = screen
+      .getAllByRole('button')
+      .filter((b) => b.dataset.testid?.startsWith('board-sidebar-item-'))
     expect(rows.map((r) => r.dataset.testid)).toEqual([
       'board-sidebar-item-b2',
       'board-sidebar-item-b1',
@@ -36,9 +38,7 @@ describe('BoardSidebar', () => {
   })
 
   it('marks the board on screen as the current one', () => {
-    useBoardData.mockReturnValue(
-      makeBoardData({ boards: [makeBoard()], activeBoard: makeBoard() })
-    )
+    useBoardData.mockReturnValue(makeBoardData({ boards: [makeBoard()], activeBoard: makeBoard() }))
     render(<BoardSidebar repoPath="/repo" />)
 
     expect(screen.getByTestId('board-sidebar-item-b1')).toHaveAttribute('aria-current', 'page')
@@ -70,7 +70,9 @@ describe('BoardSidebar', () => {
   })
 
   it('says there is no board yet, but only once it knows', () => {
-    useBoardData.mockReturnValue(makeBoardData({ boards: [], activeBoard: null, boardsLoading: true }))
+    useBoardData.mockReturnValue(
+      makeBoardData({ boards: [], activeBoard: null, boardsLoading: true })
+    )
     const { rerender } = render(<BoardSidebar repoPath="/repo" />)
     expect(screen.queryByTestId('board-sidebar-empty')).not.toBeInTheDocument()
 

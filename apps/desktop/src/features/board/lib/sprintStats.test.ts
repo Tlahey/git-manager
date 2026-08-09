@@ -97,10 +97,7 @@ describe('computeSprintSummary', () => {
   })
 
   it('counts blocked cards', () => {
-    const cards = [
-      makeCard({ id: 'a', blockedReason: 'Waiting on API' }),
-      makeCard({ id: 'b' }),
-    ]
+    const cards = [makeCard({ id: 'a', blockedReason: 'Waiting on API' }), makeCard({ id: 'b' })]
     expect(computeSprintSummary(columns, cards, CLOSED_AT, TODAY).blockedCards).toBe(1)
   })
 

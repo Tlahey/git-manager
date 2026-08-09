@@ -166,7 +166,7 @@ export function Combobox({
       />
 
       {open && (matches.length > 0 || freeValueNote || emptyLabel) && (
-        <div className="z-popover border-border bg-popover absolute top-full left-0 mt-1 w-full min-w-40 rounded-md border p-1 shadow-md">
+        <div className="absolute top-full left-0 z-popover mt-1 w-full min-w-40 rounded-md border border-border bg-popover p-1 shadow-md">
           <ul
             id={listId}
             role="listbox"
@@ -186,7 +186,7 @@ export function Combobox({
                 onMouseEnter={() => setActiveIndex(index)}
                 data-testid={testId && `${testId}-option-${option}`}
                 className={cn(
-                  'text-foreground cursor-pointer truncate rounded px-2 py-1.5 text-xs',
+                  'cursor-pointer truncate rounded px-2 py-1.5 text-xs text-foreground',
                   index === activeIndex && 'bg-accent'
                 )}
               >
@@ -196,14 +196,14 @@ export function Combobox({
           </ul>
 
           {matches.length === 0 && !freeValueNote && emptyLabel && (
-            <p className="text-muted-foreground px-2 py-2 text-center text-[11px]">{emptyLabel}</p>
+            <p className="px-2 py-2 text-center text-[11px] text-muted-foreground">{emptyLabel}</p>
           )}
 
           {freeValueNote && (
             <p
               className={cn(
-                'text-muted-foreground px-2 py-1.5 text-[11px]',
-                matches.length > 0 && 'border-border mt-1 border-t pt-1.5'
+                'px-2 py-1.5 text-[11px] text-muted-foreground',
+                matches.length > 0 && 'mt-1 border-t border-border pt-1.5'
               )}
               data-testid={testId && `${testId}-free-value`}
             >

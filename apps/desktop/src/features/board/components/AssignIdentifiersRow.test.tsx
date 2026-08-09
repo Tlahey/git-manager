@@ -6,9 +6,7 @@ import { AssignIdentifiersRow } from './AssignIdentifiersRow'
 describe('AssignIdentifiersRow', () => {
   /** A board whose cards all have identifiers is a board with no problem to describe. */
   it('renders nothing when every card is numbered', () => {
-    const { container } = render(
-      <AssignIdentifiersRow count={0} prefix="GM" onAssign={vi.fn()} />
-    )
+    const { container } = render(<AssignIdentifiersRow count={0} prefix="GM" onAssign={vi.fn()} />)
     expect(container).toBeEmptyDOMElement()
   })
 

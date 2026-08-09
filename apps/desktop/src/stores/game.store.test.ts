@@ -252,8 +252,9 @@ describe('useGameStore.checkTerminalHistory', () => {
     ])
     await useGameStore.getState().checkTerminalHistory()
 
-    expect(useGameStore.getState().achievements.find((a) => a.id === 'terminal_status')?.unlocked)
-      .toBe(true)
+    expect(
+      useGameStore.getState().achievements.find((a) => a.id === 'terminal_status')?.unlocked
+    ).toBe(true)
   })
 
   it('baselines a history file it sees for the first time without crediting it', async () => {

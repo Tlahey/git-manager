@@ -3,7 +3,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import { toast } from '@git-manager/ui'
 import type { GitGraphNode } from '@git-manager/git-types'
-import { apiListRebaseCommits, apiRunInteractiveRebase, apiGetRebaseState } from '../../../api/git.api'
+import {
+  apiListRebaseCommits,
+  apiRunInteractiveRebase,
+  apiGetRebaseState,
+} from '../../../api/git.api'
 import { validatePlan, toTodoSteps } from '../../../components/rebase-editor/rebasePlan'
 import {
   buildReorderPlan,

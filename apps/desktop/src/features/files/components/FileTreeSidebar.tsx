@@ -63,16 +63,16 @@ function TreeNode({
         aria-expanded={node.isDir ? expanded : undefined}
         className={cn(
           'flex w-full cursor-pointer items-center py-1 pr-2 text-left text-xs transition-colors',
-          'focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-hidden',
+          'focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden',
           isSelected
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
             : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         onClick={handleClick}
         data-testid={`file-tree-node-${node.path}`}
       >
-        <span className="text-sidebar-muted-foreground mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
+        <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center text-sidebar-muted-foreground">
           {node.isDir ? (
             expanded ? (
               <ChevronDownIcon size={14} />
@@ -81,7 +81,7 @@ function TreeNode({
             )
           ) : null}
         </span>
-        <span className="text-sidebar-muted-foreground mr-1.5 flex shrink-0 items-center">
+        <span className="mr-1.5 flex shrink-0 items-center text-sidebar-muted-foreground">
           {node.isDir ? (
             expanded ? (
               <FolderOpenIcon size={14} className="text-primary" />
@@ -158,18 +158,18 @@ export function FileTreeSidebar() {
 
   return (
     <div
-      className="border-sidebar-border bg-sidebar flex h-full w-64 shrink-0 flex-col border-r"
+      className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
       data-testid="file-tree-sidebar"
     >
-      <div className="border-sidebar-border flex h-9 shrink-0 items-center justify-between border-b px-2">
-        <span className="text-sidebar-muted-foreground/60 text-[10px] font-bold tracking-widest uppercase select-none">
+      <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
+        <span className="text-[10px] font-bold tracking-widest text-sidebar-muted-foreground/60 uppercase select-none">
           {t('fileExplorer.filesTitle')}
         </span>
         <Tooltip content={t('fileExplorer.hideSidebar')}>
           <Button
             variant="ghost"
             size="icon"
-            className="text-sidebar-muted-foreground h-6 w-6"
+            className="h-6 w-6 text-sidebar-muted-foreground"
             onClick={togglePanel}
             aria-label={t('fileExplorer.hideSidebar')}
             data-testid="file-tree-hide-sidebar"
@@ -179,7 +179,7 @@ export function FileTreeSidebar() {
         </Tooltip>
       </div>
 
-      <div className="border-sidebar-border shrink-0 border-b px-2 py-1.5">
+      <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
         <Input
           ref={searchInputRef}
           variant="chrome"
@@ -197,7 +197,7 @@ export function FileTreeSidebar() {
               <button
                 onClick={() => setTreeSearchQuery('')}
                 aria-label={t('sidebar.clearFilter')}
-                className="text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-4 w-4 cursor-pointer items-center justify-center rounded"
+                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -221,7 +221,7 @@ export function FileTreeSidebar() {
           ))}
           {tree.length === 0 && (
             <div
-              className="text-sidebar-muted-foreground p-4 text-center text-xs"
+              className="p-4 text-center text-xs text-sidebar-muted-foreground"
               data-testid="file-tree-empty"
             >
               {t('fileExplorer.noFilesFound')}

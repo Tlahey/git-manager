@@ -135,7 +135,7 @@ export function PrHoverCard({ pr, summary, isLoading }: PrHoverCardProps) {
 
   return (
     <div className="w-72 whitespace-normal" data-testid={`pr-hover-card-${pr.number}`}>
-      <div className="text-xs font-semibold leading-snug text-foreground">
+      <div className="text-xs leading-snug font-semibold text-foreground">
         <span className="font-mono text-muted-foreground">#{pr.number}</span> {pr.title}
       </div>
 

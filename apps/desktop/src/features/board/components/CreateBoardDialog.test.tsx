@@ -29,7 +29,9 @@ describe('CreateBoardDialog', () => {
 
   it('passes on a Definition-of-Done template for the board’s cards to start from', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={onSubmit} />)
+    render(
+      <CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={onSubmit} />
+    )
 
     await userEvent.type(screen.getByTestId('board-name-input'), 'Sprint 12')
     // The template is written as the list it is — the `- [ ]` markdown is what gets stored, not what
@@ -41,7 +43,9 @@ describe('CreateBoardDialog', () => {
   })
 
   it('disables the remote option when the repo has no connected GitHub account', () => {
-    render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={vi.fn()} />)
+    render(
+      <CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={vi.fn()} />
+    )
     const remoteRadio = screen.getByRole('radio', { name: /GitHub/ })
     expect(remoteRadio).toBeDisabled()
     expect(
@@ -56,7 +60,9 @@ describe('CreateBoardDialog', () => {
 
   it('passes on the card prefix that numbers this board’s tickets', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={onSubmit} />)
+    render(
+      <CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={onSubmit} />
+    )
 
     await userEvent.type(screen.getByTestId('board-name-input'), 'Sprint 12')
     await userEvent.type(screen.getByTestId('board-prefix-input'), 'GM')
@@ -68,7 +74,9 @@ describe('CreateBoardDialog', () => {
   /** The hint has to promise what the board will actually do: it used to show `GM-1` for an empty
    * field on a board that then numbered nothing at all. */
   it('previews the prefix the board will use, typed or derived', async () => {
-    render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={vi.fn()} />)
+    render(
+      <CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={vi.fn()} />
+    )
 
     await userEvent.type(screen.getByTestId('board-name-input'), 'Mobile App')
     expect(screen.getByText('Cards get an identifier like MA-1, MA-2…')).toBeInTheDocument()

@@ -33,7 +33,6 @@ beforeEach(() => {
   vi.mocked(apiInitRepo).mockReset()
 })
 
-
 describe('NewTabPage', () => {
   it('renders the Repositories title and the three entry points', () => {
     render(<NewTabPage />)

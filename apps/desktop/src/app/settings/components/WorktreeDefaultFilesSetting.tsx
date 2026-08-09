@@ -137,7 +137,7 @@ export function WorktreeDefaultFilesSetting({ repoPath }: WorktreeDefaultFilesSe
                       className="h-7 w-full pr-16 font-mono text-xs"
                       data-testid="worktree-df-input"
                     />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                    <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
                       {countBadge(row.value)}
                     </span>
                   </div>

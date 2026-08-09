@@ -28,7 +28,6 @@ function fakeMatchMedia(initial: boolean) {
   }
 }
 
-
 describe('usePrefersReducedMotion', () => {
   it('reports the setting as it stands on the first render', () => {
     fakeMatchMedia(true).install()

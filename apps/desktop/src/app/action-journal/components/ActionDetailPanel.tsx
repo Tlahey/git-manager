@@ -64,7 +64,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
     >
       <div className="flex flex-col gap-2 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <ActionFamilyIcon family={action.family} />
             <span className="truncate">{t(action.titleKey)}</span>
           </h2>
@@ -88,7 +88,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
           {/* WHAT RAN — always present, model or no model. */}
           <section>
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <h3 className="text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase">
                 {t('actionJournal.commandsRan')}
               </h3>
               <Tooltip content={t('actionJournal.copyCommands')}>
@@ -117,7 +117,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
                   {command.lines.map((line, i) => (
                     <code
                       key={i}
-                      className="block break-all font-mono text-[11px] text-foreground/90"
+                      className="block font-mono text-[11px] break-all text-foreground/90"
                     >
                       {line}
                     </code>
@@ -127,7 +127,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
                   </p>
                   {command.status === 'error' && (
                     <p
-                      className="mt-1 wrap-break-word text-[10px] text-tone-danger"
+                      className="mt-1 text-[10px] wrap-break-word text-tone-danger"
                       data-testid="action-command-error"
                     >
                       {appErrorMessage(command.error ?? '')}
@@ -141,7 +141,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
           {/* WHAT IT MEANS — the model's part. */}
           <section>
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <h3 className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase">
                 <LlmIcon className="h-3 w-3 text-primary" />
                 {t('actionJournal.explanation')}
               </h3>
@@ -206,7 +206,7 @@ export function ActionDetailPanel({ action, aiAvailable, onClose }: ActionDetail
               </p>
             ) : status === 'error' ? (
               <p
-                className="wrap-break-word text-xs text-tone-danger"
+                className="text-xs wrap-break-word text-tone-danger"
                 data-testid="action-explain-error"
               >
                 {aiErrorMessage(error ?? '', tErrors)}

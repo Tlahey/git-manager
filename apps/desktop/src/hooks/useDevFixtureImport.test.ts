@@ -7,7 +7,6 @@ beforeEach(() => {
   useDevFixtureReposStore.setState({ fixtures: [] })
 })
 
-
 describe('useDevFixtureImport', () => {
   it('does nothing when VITE_DEV_FIXTURES is unset', () => {
     vi.stubEnv('VITE_DEV_FIXTURES', '')

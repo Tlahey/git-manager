@@ -72,7 +72,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
       </div>
 
       {/* Pane content */}
-      <div className="flex-1 select-text overflow-y-auto bg-card/10 p-5">
+      <div className="flex-1 overflow-y-auto bg-card/10 p-5 select-text">
         {isGenerating ? (
           <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
@@ -93,7 +93,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {t('dashboard.summary.error')}
             </div>
-            <p className="wrap-break-word font-mono text-[11px] opacity-80">{error}</p>
+            <p className="font-mono text-[11px] wrap-break-word opacity-80">{error}</p>
             <Button
               variant="outline"
               size="sm"
@@ -119,7 +119,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
           <div className="space-y-5" data-testid="daily-summary-content">
             {/* Headline */}
             {summary.headline && (
-              <p className="text-sm font-medium leading-relaxed text-foreground">
+              <p className="text-sm leading-relaxed font-medium text-foreground">
                 {summary.headline}
               </p>
             )}
@@ -173,10 +173,10 @@ function SummarySection({ testid, icon, title, items, emptyLabel }: SummarySecti
     <div className="space-y-2" data-testid={testid}>
       <div className="flex items-center gap-1.5 border-b border-border/40 pb-1">
         {icon}
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">{title}</h4>
+        <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">{title}</h4>
       </div>
       {items.length === 0 ? (
-        <p className="pl-1 text-[11px] italic text-muted-foreground/60">{emptyLabel}</p>
+        <p className="pl-1 text-[11px] text-muted-foreground/60 italic">{emptyLabel}</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((item, i) => (

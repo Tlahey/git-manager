@@ -60,112 +60,112 @@ export function CardDetailsPanel({
         }
 
   return (
-  <CardSidebarPanel
-    title={t('card.panel.details')}
-    sectionKey="card-details"
-    testId="card-panel-details"
-  >
-    {/* A kind is picked at creation, but a task that turns out to be a bug is the normal course
+    <CardSidebarPanel
+      title={t('card.panel.details')}
+      sectionKey="card-details"
+      testId="card-panel-details"
+    >
+      {/* A kind is picked at creation, but a task that turns out to be a bug is the normal course
         of events — so it stays editable rather than being frozen at the one moment the user knew
         least about the work. */}
-    <CardFieldRow
-      label={t('card.meta.kind')}
-      testId="card-meta-kind"
-      editTitle={t('card.meta.editKind')}
-      {...editorFor(
-        'kind',
-        <CardChoiceList
-          ariaLabel={t('card.meta.kind')}
-          value={card.kind}
-          options={KINDS.map((value) => ({
-            value,
-            label: t(`card.kind.${value}`),
-            icon: <CardKindIcon kind={value} />,
-          }))}
-          onSelect={(next) => {
-            void onPatch({ kind: next })
-            setEditing(null)
-          }}
-          testIdPrefix="card-kind-option"
-        />
-      )}
-    >
-      <CardKindIcon kind={card.kind} withLabel />
-    </CardFieldRow>
-
-    <CardFieldRow
-      label={t('card.tags.label')}
-      testId="card-meta-tags"
-      editTitle={t('card.meta.editTags')}
-      addLabel={t('card.meta.addTags')}
-      filled={cardTags.length > 0}
-      {...editorFor(
-        'tags',
-        <CardTagPicker
-          tags={tags}
-          selectedIds={card.tagIds}
-          onToggle={(tagId) =>
-            void onPatch({
-              tagIds: card.tagIds.includes(tagId)
-                ? card.tagIds.filter((id) => id !== tagId)
-                : [...card.tagIds, tagId],
-            })
-          }
-          onCreate={onCreateTag ?? (() => Promise.resolve(null))}
-          onClose={() => setEditing(null)}
-        />
-      )}
-    >
-      <ul className="flex flex-wrap gap-1">
-        {cardTags.map((tag) => (
-          <li
-            key={tag.id}
-            data-testid={`card-meta-tag-${tag.id}`}
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
-            style={{ backgroundColor: `${tag.color}22`, color: tag.color }}
-          >
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
-            {tag.name}
-          </li>
-        ))}
-      </ul>
-    </CardFieldRow>
-
-    <div data-testid="card-meta-blocked" className="px-3 py-1.5">
-      <span className="text-[11px] text-muted-foreground">{t('card.blocked.label')}</span>
-      <div className="mt-1">
-        {readOnly ? (
-          card.blockedReason ? (
-            <p className="flex items-start gap-1 text-[11px] text-destructive">
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-              {card.blockedReason}
-            </p>
-          ) : (
-            <p className="text-[11px] italic text-muted-foreground">
-              {t('card.meta.notBlocked')}
-            </p>
-          )
-        ) : (
-          <CardBlockedInlineEditor reason={card.blockedReason ?? ''} onPatch={onPatch} />
-        )}
-      </div>
-    </div>
-
-    {onCreateBranch && onCheckoutBranch && onUnlinkBranch && (
-      <div data-testid="card-meta-branch" className="px-3 py-1.5">
-        <span className="text-[11px] text-muted-foreground">{t('card.branch.label')}</span>
-        <div className="mt-1">
-          <BoardCardBranchSection
-            linkedBranch={card.linkedBranch}
-            onCreateBranch={onCreateBranch}
-            onCheckoutBranch={onCheckoutBranch}
-            onUnlinkBranch={onUnlinkBranch}
-            disabled={readOnly}
+      <CardFieldRow
+        label={t('card.meta.kind')}
+        testId="card-meta-kind"
+        editTitle={t('card.meta.editKind')}
+        {...editorFor(
+          'kind',
+          <CardChoiceList
+            ariaLabel={t('card.meta.kind')}
+            value={card.kind}
+            options={KINDS.map((value) => ({
+              value,
+              label: t(`card.kind.${value}`),
+              icon: <CardKindIcon kind={value} />,
+            }))}
+            onSelect={(next) => {
+              void onPatch({ kind: next })
+              setEditing(null)
+            }}
+            testIdPrefix="card-kind-option"
           />
+        )}
+      >
+        <CardKindIcon kind={card.kind} withLabel />
+      </CardFieldRow>
+
+      <CardFieldRow
+        label={t('card.tags.label')}
+        testId="card-meta-tags"
+        editTitle={t('card.meta.editTags')}
+        addLabel={t('card.meta.addTags')}
+        filled={cardTags.length > 0}
+        {...editorFor(
+          'tags',
+          <CardTagPicker
+            tags={tags}
+            selectedIds={card.tagIds}
+            onToggle={(tagId) =>
+              void onPatch({
+                tagIds: card.tagIds.includes(tagId)
+                  ? card.tagIds.filter((id) => id !== tagId)
+                  : [...card.tagIds, tagId],
+              })
+            }
+            onCreate={onCreateTag ?? (() => Promise.resolve(null))}
+            onClose={() => setEditing(null)}
+          />
+        )}
+      >
+        <ul className="flex flex-wrap gap-1">
+          {cardTags.map((tag) => (
+            <li
+              key={tag.id}
+              data-testid={`card-meta-tag-${tag.id}`}
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+              style={{ backgroundColor: `${tag.color}22`, color: tag.color }}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+              {tag.name}
+            </li>
+          ))}
+        </ul>
+      </CardFieldRow>
+
+      <div data-testid="card-meta-blocked" className="px-3 py-1.5">
+        <span className="text-[11px] text-muted-foreground">{t('card.blocked.label')}</span>
+        <div className="mt-1">
+          {readOnly ? (
+            card.blockedReason ? (
+              <p className="flex items-start gap-1 text-[11px] text-destructive">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                {card.blockedReason}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground italic">
+                {t('card.meta.notBlocked')}
+              </p>
+            )
+          ) : (
+            <CardBlockedInlineEditor reason={card.blockedReason ?? ''} onPatch={onPatch} />
+          )}
         </div>
       </div>
-    )}
-  </CardSidebarPanel>
+
+      {onCreateBranch && onCheckoutBranch && onUnlinkBranch && (
+        <div data-testid="card-meta-branch" className="px-3 py-1.5">
+          <span className="text-[11px] text-muted-foreground">{t('card.branch.label')}</span>
+          <div className="mt-1">
+            <BoardCardBranchSection
+              linkedBranch={card.linkedBranch}
+              onCreateBranch={onCreateBranch}
+              onCheckoutBranch={onCheckoutBranch}
+              onUnlinkBranch={onUnlinkBranch}
+              disabled={readOnly}
+            />
+          </div>
+        </div>
+      )}
+    </CardSidebarPanel>
   )
 }
 

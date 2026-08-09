@@ -6,7 +6,7 @@ import { useTranslation } from '@git-manager/i18n'
 export function TableHeader() {
   const { t } = useTranslation('launchpad')
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
       <div className="w-7 shrink-0" />
       <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
       <div className="w-[70px] shrink-0 text-left">{t('table.status')}</div>
@@ -54,7 +54,7 @@ export function GroupHeader({
       )}
       {icon && <span className={`flex items-center ${iconClassName ?? ''}`}>{icon}</span>}
       <Tag tone={tone}>{count}</Tag>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">
+      <span className="text-[10px] font-semibold tracking-wider text-foreground uppercase">
         {label}
       </span>
     </button>

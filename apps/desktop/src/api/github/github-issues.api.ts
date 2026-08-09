@@ -1,5 +1,11 @@
 import type { MockIssue } from '../../app/pull-requests/types'
-import { type GhUser, type GhLabel, type GhSearchResult, ghFetch, ghRequest } from './githubApiShared'
+import {
+  type GhUser,
+  type GhLabel,
+  type GhSearchResult,
+  ghFetch,
+  ghRequest,
+} from './githubApiShared'
 
 export interface GhRawIssue {
   number: number
@@ -202,10 +208,11 @@ export async function createIssueComment(
   body: string,
   token: string
 ): Promise<GhIssueComment> {
-  return ghRequest(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-    { method: 'POST', body: { body }, token }
-  )
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+    method: 'POST',
+    body: { body },
+    token,
+  })
 }
 
 /** Close an issue (`state: 'closed'`) or reopen it (`state: 'open'`). Shares the issues REST resource

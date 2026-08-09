@@ -401,7 +401,7 @@ export function RepositorySidebar({
     >
       {/* Sidebar header */}
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
-        <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
+        <span className="text-[10px] font-bold tracking-widest text-sidebar-muted-foreground/60 uppercase select-none">
           Repository
         </span>
         <div className="flex items-center gap-0.5">
@@ -492,7 +492,7 @@ export function RepositorySidebar({
           and then overlap with the following sections). If the sum of the open sections' floors
           exceeds the panel's height, the whole section list becomes scrollable (a single global
           scrollbar). Closed sections stay `flex-none` (never shrink below their header). */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         {sections.map((section) => (
           <div
             key={section.key}

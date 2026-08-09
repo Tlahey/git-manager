@@ -105,7 +105,7 @@ export function TimelineStepsPanel({
                 {!isFirst && (
                   <div
                     className={cn(
-                      'absolute left-1/2 top-0 h-[15px] w-0.5 -translate-x-1/2 transition-colors',
+                      'absolute top-0 left-1/2 h-[15px] w-0.5 -translate-x-1/2 transition-colors',
                       reached ? 'bg-primary' : 'bg-border'
                     )}
                   />
@@ -115,7 +115,7 @@ export function TimelineStepsPanel({
                   // segment reaches the next node instead of stopping at this row's content box.
                   <div
                     className={cn(
-                      'absolute -bottom-4 left-1/2 top-[15px] w-0.5 -translate-x-1/2 transition-colors',
+                      'absolute top-[15px] -bottom-4 left-1/2 w-0.5 -translate-x-1/2 transition-colors',
                       passed ? 'bg-primary' : 'bg-border'
                     )}
                   />
@@ -124,7 +124,7 @@ export function TimelineStepsPanel({
                   data-testid={`timeline-node-${step.index}`}
                   data-state={active ? 'active' : reached ? 'reached' : 'unreached'}
                   className={cn(
-                    'absolute left-1/2 top-[15px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-all',
+                    'absolute top-[15px] left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all',
                     active
                       ? 'h-2.5 w-2.5 bg-primary ring-2 ring-primary/25'
                       : reached

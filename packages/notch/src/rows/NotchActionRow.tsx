@@ -48,7 +48,7 @@ export function NotchActionRow({ actions, badge, onAction }: NotchActionRowProps
         <Badge
           data-testid="notch-badge"
           variant="outline"
-          className="shrink-0 border-white/15 px-2 py-0 text-[10px] font-bold tabular-nums text-white/70"
+          className="shrink-0 border-white/15 px-2 py-0 text-[10px] font-bold text-white/70 tabular-nums"
         >
           {badge}
         </Badge>

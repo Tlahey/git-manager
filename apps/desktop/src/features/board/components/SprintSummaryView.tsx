@@ -9,8 +9,10 @@ interface SprintSummaryViewProps {
 function Stat({ label, value, tone }: { label: string; value: string | number; tone?: 'bad' }) {
   return (
     <div className="rounded border border-border bg-card/40 px-2 py-1.5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`text-sm font-semibold ${tone === 'bad' ? 'text-destructive' : 'text-foreground'}`}>
+      <p className="text-[10px] tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p
+        className={`text-sm font-semibold ${tone === 'bad' ? 'text-destructive' : 'text-foreground'}`}
+      >
         {value}
       </p>
     </div>
@@ -62,7 +64,7 @@ export function SprintSummaryView({ summary }: SprintSummaryViewProps) {
       )}
 
       <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
           {t('sprint.byColumn')}
         </p>
         <ul className="space-y-0.5 text-[11px]" data-testid="sprint-by-column">
@@ -76,7 +78,7 @@ export function SprintSummaryView({ summary }: SprintSummaryViewProps) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
           {t('sprint.byPriority')}
         </p>
         <ul className="space-y-0.5 text-[11px]" data-testid="sprint-by-priority">
@@ -91,7 +93,7 @@ export function SprintSummaryView({ summary }: SprintSummaryViewProps) {
 
       {summary.byAssignee.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
             {t('sprint.byAssignee')}
           </p>
           <ul className="space-y-0.5 text-[11px]" data-testid="sprint-by-assignee">

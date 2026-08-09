@@ -39,7 +39,7 @@ export function CardArchivedBadge({ archivedAt, compact, testId }: CardArchivedB
         data-testid={testId}
         className={
           compact
-            ? 'gap-1 rounded-[3px] px-1.5 py-0.5 text-[10px] uppercase leading-tight tracking-wide'
+            ? 'gap-1 rounded-[3px] px-1.5 py-0.5 text-[10px] leading-tight tracking-wide uppercase'
             : 'shrink-0 gap-1'
         }
       >

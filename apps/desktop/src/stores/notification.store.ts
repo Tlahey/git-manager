@@ -88,14 +88,7 @@ interface NotificationState {
 }
 
 export type SimulatedChange =
-  | 'merge'
-  | 'close'
-  | 'queue'
-  | 'request_review'
-  | 'approve'
-  | 'new_pr'
-  | 'ci_success'
-  | 'ci_failed'
+  'merge' | 'close' | 'queue' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed'
 
 export const useNotificationStore = create<NotificationState>()(
   persist(

@@ -82,7 +82,10 @@ describe('searchCards', () => {
 
   it('looks across every board it was given', () => {
     const results = searchCards(
-      [on(sprint, { id: 'c1', title: 'Fix login' }), on(backlog, { id: 'c2', title: 'Login page' })],
+      [
+        on(sprint, { id: 'c1', title: 'Fix login' }),
+        on(backlog, { id: 'c2', title: 'Login page' }),
+      ],
       'login'
     )
     expect(results.map((r) => r.board.name)).toEqual(['Backlog', 'Sprint 12'])

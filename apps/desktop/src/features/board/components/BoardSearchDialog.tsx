@@ -102,7 +102,7 @@ export function BoardSearchDialog({ repoPath }: BoardSearchDialogProps) {
             trusted is finding out too late. */}
         {unreadable.length > 0 && (
           <p
-            className="text-tone-warning px-3 py-2 text-[11px]"
+            className="px-3 py-2 text-[11px] text-tone-warning"
             data-testid="board-search-unreadable"
           >
             {t('search.unreadable', {
@@ -124,20 +124,20 @@ export function BoardSearchDialog({ repoPath }: BoardSearchDialogProps) {
             >
               <CardKindIcon kind={card.kind} />
               {identifier && (
-                <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                   {highlightMatch(identifier, query)}
                 </span>
               )}
               <span className="min-w-0 flex-1 truncate">{highlightMatch(card.title, query)}</span>
               {card.archivedAt && (
                 <Archive
-                  className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
                   aria-label={t('search.archived')}
                 />
               )}
               {/* The board is what tells two identically-titled tickets apart, so it is never
                   truncated away: the column and the assignee are, being the details. */}
-              <span className="text-muted-foreground ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11px]">
+              <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11px] text-muted-foreground">
                 {card.assignee && <span className="max-w-24 truncate">{card.assignee}</span>}
                 {column && <span className="max-w-24 truncate">{column.name}</span>}
                 <span className="text-foreground">{highlightMatch(board.name, query)}</span>

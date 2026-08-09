@@ -6,7 +6,8 @@ import type { BoardCard } from '@git-manager/git-types'
  * stale the moment any field is saved, and since a card's `revision` is its optimistic-concurrency
  * token, editing a second field would send the previous revision and be rejected as a conflict.
  */
-export type CardDialogState = { mode: 'create'; columnId: string } | { mode: 'edit'; cardId: string }
+export type CardDialogState =
+  { mode: 'create'; columnId: string } | { mode: 'edit'; cardId: string }
 
 /**
  * The board-level dialogs, raised from the toolbar (or the board's empty state).

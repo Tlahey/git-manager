@@ -107,7 +107,7 @@ export function RepoSection({
 
       {!isCollapsed &&
         (repos.length === 0 ? (
-          <p className="py-1 pl-8 text-[11px] italic text-muted-foreground/60">{emptyLabel}</p>
+          <p className="py-1 pl-8 text-[11px] text-muted-foreground/60 italic">{emptyLabel}</p>
         ) : (
           <Card className="relative divide-y divide-border/20 bg-card/30 shadow-xs">
             {repos.map((repo) => {

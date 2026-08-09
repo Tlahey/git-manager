@@ -11,7 +11,6 @@ beforeEach(() => {
   useE2ePathPickerStore.setState({ open: false, value: '', resolve: null })
 })
 
-
 describe('pickFile', () => {
   it('delegates to the native dialog outside of e2e builds', async () => {
     openMock.mockResolvedValue('/tmp/changes.patch')

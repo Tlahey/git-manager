@@ -84,7 +84,7 @@ export function CommitReorderDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
             {t('commitReorder.previewTitle')}
           </p>
           <ScrollArea style={{ maxHeight: PREVIEW_MAX_HEIGHT }} className="rounded-md border">
@@ -108,7 +108,7 @@ export function CommitReorderDialog({
                     </code>
                     <span className="min-w-0 flex-1 truncate">{commit.subject}</span>
                     {folded && (
-                      <span className="shrink-0 text-[10px] uppercase text-primary">
+                      <span className="shrink-0 text-[10px] text-primary uppercase">
                         {mode === 'squash'
                           ? t('commitReorder.badgeSquash')
                           : t('commitReorder.badgeFixup')}

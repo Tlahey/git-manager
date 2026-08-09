@@ -145,7 +145,7 @@ export function IssuesTab({
           </button>
         )}
       </Toolbar>
-      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
         <div className="w-7 shrink-0" />
         <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
         <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>

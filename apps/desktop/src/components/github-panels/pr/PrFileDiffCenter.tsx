@@ -113,9 +113,9 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
             <span className="text-xs text-muted-foreground">{t('pr.view.loading')}</span>
           </div>
         ) : !file ? (
-          <p className="p-4 text-xs italic text-muted-foreground">{t('pr.diff.notFound')}</p>
+          <p className="p-4 text-xs text-muted-foreground italic">{t('pr.diff.notFound')}</p>
         ) : isBinary ? (
-          <p data-testid="pr-file-diff-binary" className="p-4 text-xs italic text-muted-foreground">
+          <p data-testid="pr-file-diff-binary" className="p-4 text-xs text-muted-foreground italic">
             {t('pr.diff.binary')}
           </p>
         ) : tab === 'file' ? (

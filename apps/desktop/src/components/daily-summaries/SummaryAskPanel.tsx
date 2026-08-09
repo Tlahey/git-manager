@@ -92,7 +92,7 @@ export function SummaryAskPanel({
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             {t('summaries.askError')}
           </div>
-          <p className="wrap-break-word font-mono text-[10px] opacity-80">{error}</p>
+          <p className="font-mono text-[10px] wrap-break-word opacity-80">{error}</p>
         </Alert>
       )}
 
@@ -101,7 +101,7 @@ export function SummaryAskPanel({
           className="mt-2 rounded-lg border border-border bg-card/60 p-3"
           data-testid="summary-answer"
         >
-          <p className="select-text text-xs leading-relaxed text-foreground">{answer.answer}</p>
+          <p className="text-xs leading-relaxed text-foreground select-text">{answer.answer}</p>
           {answer.matches.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {answer.matches.map((match) => (

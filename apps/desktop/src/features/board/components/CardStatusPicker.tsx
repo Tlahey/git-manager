@@ -27,12 +27,7 @@ interface CardStatusPickerProps {
  * statement about *state*, not about priority, and silently reordering the target column would be a
  * second, unasked-for edit.
  */
-export function CardStatusPicker({
-  columns,
-  columnId,
-  onChange,
-  readOnly,
-}: CardStatusPickerProps) {
+export function CardStatusPicker({ columns, columnId, onChange, readOnly }: CardStatusPickerProps) {
   const { t } = useTranslation('board')
   const ordered = [...columns].sort((a, b) => a.order - b.order)
   const current = ordered.find((c) => c.id === columnId)
@@ -42,7 +37,7 @@ export function CardStatusPicker({
     return (
       <span
         data-testid="card-status-readonly"
-        className="inline-flex items-center rounded bg-muted px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        className="inline-flex items-center rounded bg-muted px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
       >
         {label}
       </span>
@@ -57,7 +52,7 @@ export function CardStatusPicker({
           title={t('card.status.label')}
           aria-label={t('card.status.label')}
           data-testid="card-status-picker"
-          className="inline-flex cursor-pointer items-center gap-1 rounded bg-muted px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-accent"
+          className="inline-flex cursor-pointer items-center gap-1 rounded bg-muted px-2 py-1 text-[11px] font-semibold tracking-wide text-foreground uppercase transition-colors hover:bg-accent"
         >
           {label}
           <ChevronDown className="h-3 w-3 shrink-0" />

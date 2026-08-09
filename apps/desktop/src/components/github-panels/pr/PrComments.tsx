@@ -18,7 +18,7 @@ export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
   return (
     <section data-testid="pr-comments" className="border-t border-border px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {t('pr.comments.title')} {comments.length > 0 && `(${comments.length})`}
         </span>
         <button
@@ -33,7 +33,7 @@ export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
       </div>
 
       {comments.length === 0 ? (
-        <p className="text-xs italic text-muted-foreground">{t('pr.comments.empty')}</p>
+        <p className="text-xs text-muted-foreground italic">{t('pr.comments.empty')}</p>
       ) : (
         <ul className="space-y-3">
           {comments.map((c) => (

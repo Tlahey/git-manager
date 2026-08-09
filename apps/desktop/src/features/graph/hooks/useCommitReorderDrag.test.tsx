@@ -15,7 +15,11 @@ vi.mock('@git-manager/ui', async (importOriginal) => ({
 }))
 
 import { toast } from '@git-manager/ui'
-import { apiListRebaseCommits, apiRunInteractiveRebase, apiGetRebaseState } from '../../../api/git.api'
+import {
+  apiListRebaseCommits,
+  apiRunInteractiveRebase,
+  apiGetRebaseState,
+} from '../../../api/git.api'
 import { useCommitReorderDrag } from './useCommitReorderDrag'
 
 const mocked = {

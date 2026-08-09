@@ -14,17 +14,17 @@ is the feature's own business.
 
 ## Layout
 
-| Folder            | What lives there                                                                                                                        |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`        | The public surface, and the reason this folder is a boundary rather than a naming habit.                                                  |
-| `GitGraph.tsx`    | The view: the virtualized commit table, and whichever panel replaces it (a diff, a PR, an explanation).                                    |
-| `components/`     | Every view the graph draws — rows, ref labels, detail panels, the AI panels, the dialogs — plus `GraphToolbarActions`, its toolbar section. |
-| `sidebar/`        | The left panel: branches, remotes, tags, stashes, worktrees, pull requests, issues, and their rows' menus and dialogs.                     |
-| `hooks/`          | Data and UI state, from `useGraphLayout` to the ref-drop and commit-reorder gestures.                                                     |
-| `lib/`            | Pure logic, no React: graph layout, lane/column assignment, synthetic rows, the reorder plan, waterline buckets, bisect row state.         |
-| `stores/`         | The view's own non-persisted Zustand stores — drag state, the author filter, the saved issue/PR filters.                                   |
+| Folder         | What lives there                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`     | The public surface, and the reason this folder is a boundary rather than a naming habit.                                                    |
+| `GitGraph.tsx` | The view: the virtualized commit table, and whichever panel replaces it (a diff, a PR, an explanation).                                     |
+| `components/`  | Every view the graph draws — rows, ref labels, detail panels, the AI panels, the dialogs — plus `GraphToolbarActions`, its toolbar section. |
+| `sidebar/`     | The left panel: branches, remotes, tags, stashes, worktrees, pull requests, issues, and their rows' menus and dialogs.                      |
+| `hooks/`       | Data and UI state, from `useGraphLayout` to the ref-drop and commit-reorder gestures.                                                       |
+| `lib/`         | Pure logic, no React: graph layout, lane/column assignment, synthetic rows, the reorder plan, waterline buckets, bisect row state.          |
+| `stores/`      | The view's own non-persisted Zustand stores — drag state, the author filter, the saved issue/PR filters.                                    |
 
-## What is deliberately *not* here
+## What is deliberately _not_ here
 
 - **The diff viewer** (`components/diff-viewer/`) and the **PR/issue screens**
   (`components/github-panels/`). The graph mounts both, but so do `features/files` and
@@ -32,8 +32,8 @@ is the feature's own business.
   this folder a dependency of pages that know nothing about a commit graph. They were extracted
   from this folder for exactly that reason; each carries a README saying so.
 - **The persisted stores.** `gitGraphColumns`, `pinned-branches`, `repoUI`, `repoData` and
-  `settings` are *sections of `~/.git-manager/settings.json`* — part of the app-config contract that
-  `lib/appConfig/` validates and hydrates — so they stay in `src/stores/`. The column *definitions*
+  `settings` are _sections of `~/.git-manager/settings.json`_ — part of the app-config contract that
+  `lib/appConfig/` validates and hydrates — so they stay in `src/stores/`. The column _definitions_
   they read come back through this barrel.
 - **The generic hooks** (`useRunTasks`, `useWindowFocus`, `useSingleOrDoubleClick`) and everything
   the rest of the app also calls (`useActionToolbar`, `useBranches`, `useGitStatus`, …).

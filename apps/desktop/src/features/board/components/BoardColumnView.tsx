@@ -59,7 +59,7 @@ export function BoardColumnView({
   return (
     <div
       className={`group/column flex h-full w-[340px] shrink-0 flex-col rounded-md transition-colors ${
-        isOver ? 'bg-primary/10 ring-primary ring-1' : 'bg-muted/50'
+        isOver ? 'bg-primary/10 ring-1 ring-primary' : 'bg-muted/50'
       }`}
       data-droppable-over={isOver ? 'true' : undefined}
       data-testid={`board-column-${column.id}`}
@@ -71,13 +71,13 @@ export function BoardColumnView({
             style={{ backgroundColor: column.color }}
           />
         )}
-        <span className="text-muted-foreground min-w-0 truncate text-[11px] font-semibold tracking-wider uppercase">
+        <span className="min-w-0 truncate text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           {column.name}
         </span>
         {/* The column that means "finished" says so, rather than leaving it to whoever named it. */}
         {column.isDone && (
           <Check
-            className="text-tone-success h-3.5 w-3.5 shrink-0"
+            className="h-3.5 w-3.5 shrink-0 text-tone-success"
             aria-label={t('columnEditor.isDone')}
             data-testid={`board-column-${column.id}-done`}
           />
@@ -87,7 +87,7 @@ export function BoardColumnView({
             saying "0" is a state, where a vanished badge reads as a header still loading. */}
         <Badge
           variant="outline"
-          className="text-muted-foreground shrink-0 px-1.5 py-0 text-[11px] leading-[16px] font-medium tabular-nums"
+          className="shrink-0 px-1.5 py-0 text-[11px] leading-[16px] font-medium text-muted-foreground tabular-nums"
           data-testid={`board-column-${column.id}-count`}
         >
           {cards.length}

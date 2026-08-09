@@ -1,6 +1,13 @@
 import type { MockPR, PRStatus } from '../../app/pull-requests/types'
 import type { PrParticipant, PullRequest } from '@git-manager/git-types'
-import { type GhUser, type GhLabel, type GhSearchResult, ghFetch, ghRequest, ghGraphQL } from './githubApiShared'
+import {
+  type GhUser,
+  type GhLabel,
+  type GhSearchResult,
+  ghFetch,
+  ghRequest,
+  ghGraphQL,
+} from './githubApiShared'
 import type { GhRawIssue } from './github-issues.api'
 
 export interface GhRawPR {

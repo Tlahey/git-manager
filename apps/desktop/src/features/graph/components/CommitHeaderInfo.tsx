@@ -92,7 +92,7 @@ export function CommitHeaderInfo({
       {/* PANEL HEADER */}
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {isWip ? (
               <>
                 <Layers className="h-3.5 w-3.5 text-primary" />
@@ -165,7 +165,7 @@ export function CommitHeaderInfo({
             >
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                     Subject
                   </span>
                   <span
@@ -191,7 +191,7 @@ export function CommitHeaderInfo({
                 />
               </div>
               <div className="space-y-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Description
                 </span>
                 <Textarea
@@ -241,7 +241,7 @@ export function CommitHeaderInfo({
               <div className="flex items-start justify-between gap-2">
                 <h4
                   data-testid="commit-subject-display"
-                  className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground"
+                  className="flex-1 text-xs leading-snug font-bold wrap-break-word text-foreground"
                 >
                   {commit.subject}
                 </h4>
@@ -266,7 +266,7 @@ export function CommitHeaderInfo({
               title={t('commitHeaderInfo.editStashMessage')}
             >
               <div className="flex items-start justify-between gap-2">
-                <h4 className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground">
+                <h4 className="flex-1 text-xs leading-snug font-bold wrap-break-word text-foreground">
                   {stash ? stash.message.split('\n\n')[0] : commit.subject}
                 </h4>
                 <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/0 transition-all duration-200 group-hover:text-muted-foreground/60" />
@@ -294,7 +294,7 @@ export function CommitHeaderInfo({
               title={t('commitHeaderInfo.editCommitMessage')}
             >
               <div className="flex items-start justify-between gap-2">
-                <h4 className="flex-1 wrap-break-word text-xs font-bold leading-snug text-foreground">
+                <h4 className="flex-1 text-xs leading-snug font-bold wrap-break-word text-foreground">
                   {commit.subject}
                 </h4>
                 <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/0 transition-all duration-200 group-hover:text-muted-foreground/60" />
@@ -311,12 +311,12 @@ export function CommitHeaderInfo({
           <div className="space-y-2.5 border-t border-border/20 pt-1">
             {/* SHA */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 {t('commitDetails.sha') || 'SHA'}:
               </span>
               <div className="flex items-center gap-1 rounded border border-border/40 bg-muted/65 p-0.5">
                 <code
-                  className="max-w-[200px] select-all truncate px-1 font-mono text-[10px] font-semibold text-foreground"
+                  className="max-w-[200px] truncate px-1 font-mono text-[10px] font-semibold text-foreground select-all"
                   title={commit.oid}
                 >
                   {commit.oid}
@@ -385,7 +385,7 @@ export function CommitHeaderInfo({
             {/* Parents */}
             {parentOids.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="shrink-0 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   {t('commitDetails.parents') || 'Parents'}:
                 </span>
                 <div className="flex flex-wrap gap-1.5">

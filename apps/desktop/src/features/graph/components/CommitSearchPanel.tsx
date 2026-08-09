@@ -52,10 +52,10 @@ export function CommitSearchPanel({
 
   return (
     <div
-      className="z-panel border-border bg-popover absolute top-3 right-3 flex h-9 items-center gap-1.5 rounded-md border px-2.5 shadow-lg"
+      className="absolute top-3 right-3 z-panel flex h-9 items-center gap-1.5 rounded-md border border-border bg-popover px-2.5 shadow-lg"
       data-testid="commit-search-panel"
     >
-      <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+      <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <input
         ref={inputRef}
         value={query}
@@ -72,12 +72,12 @@ export function CommitSearchPanel({
         }}
         placeholder={t('toolbar.findCommit')}
         aria-label={t('toolbar.findCommit')}
-        className="placeholder:text-muted-foreground w-48 min-w-0 bg-transparent text-sm outline-hidden"
+        className="w-48 min-w-0 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
         data-testid="commit-search-panel-input"
       />
       {hasQuery && (
         <span
-          className="text-muted-foreground shrink-0 text-xs whitespace-nowrap tabular-nums"
+          className="shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular-nums"
           data-testid="commit-search-count"
         >
           {hasResults ? `${activeIndex + 1}/${resultCount}` : '0/0'}
@@ -107,7 +107,7 @@ export function CommitSearchPanel({
         type="button"
         onClick={closeSearch}
         aria-label={t('toolbar.cancel')}
-        className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 cursor-pointer rounded p-0.5 transition-colors"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         data-testid="commit-search-panel-close"
       >
         <X className="h-3.5 w-3.5" />

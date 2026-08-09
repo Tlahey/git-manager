@@ -6,12 +6,7 @@ import type { MockPR } from './types'
  * list. `other` is the catch-all for PRs that match none of the actionable states.
  */
 export type PrGroupKey =
-  | 'readyToMerge'
-  | 'unassignedReviewers'
-  | 'resolveConflicts'
-  | 'needsMyReview'
-  | 'draft'
-  | 'other'
+  'readyToMerge' | 'unassignedReviewers' | 'resolveConflicts' | 'needsMyReview' | 'draft' | 'other'
 
 /** Display (and first-match assignment) order for the groups. */
 export const PR_GROUP_ORDER: PrGroupKey[] = [

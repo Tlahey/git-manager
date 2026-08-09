@@ -48,7 +48,7 @@ export function HiddenSectionsMenu({ titles }: HiddenSectionsMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <p className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <p className="px-2 py-1 text-[10px] tracking-wider text-muted-foreground uppercase">
           {t('dashboard.hidden.title', { count: hidden.length })}
         </p>
         {hidden.map((id) => (

@@ -40,7 +40,7 @@ export function CommitSearchUnreadList({ unread, onOpenCommit }: CommitSearchUnr
 
   return (
     <div className="flex flex-col gap-1.5" data-testid="commit-search-unread">
-      <h4 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-tone-warning">
+      <h4 className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-tone-warning uppercase">
         <AlertTriangle className="h-3 w-3" />
         {t('gitTree.commitSearch.unread.title', { count: unread.length })}
       </h4>

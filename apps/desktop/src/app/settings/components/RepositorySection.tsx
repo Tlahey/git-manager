@@ -157,7 +157,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
               disabled={!themeOverridden}
               value={effective.theme}
               onChange={(e) => setRepoSetting(activeRepo, 'theme', e.target.value)}
-              className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring disabled:opacity-60"
+              className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-60"
             >
               {BUILTIN_THEMES.map((th) => (
                 <option key={th.id} value={th.id}>

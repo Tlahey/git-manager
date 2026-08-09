@@ -48,7 +48,7 @@ function RoundButton({
       title={label}
       data-testid={testId}
       className={cn(
-        'border-border bg-card text-foreground flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border shadow-[0_10px_24px_-4px_rgba(0,0,0,0.5)] transition-transform',
+        'flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_10px_24px_-4px_rgba(0,0,0,0.5)] transition-transform',
         'hover:enabled:scale-105 active:enabled:scale-95',
         'disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none'
       )}
@@ -116,7 +116,7 @@ export function TimelineScrubber({
           <ChevronLeft className="h-5 w-5" />
         </RoundButton>
 
-        <div className="border-border bg-card min-w-0 flex-1 rounded-full border px-8 py-5 shadow-[0_20px_48px_-10px_rgba(0,0,0,0.55)]">
+        <div className="min-w-0 flex-1 rounded-full border border-border bg-card px-8 py-5 shadow-[0_20px_48px_-10px_rgba(0,0,0,0.55)]">
           <div
             ref={trackRef}
             role="slider"
@@ -146,15 +146,15 @@ export function TimelineScrubber({
                 onPreviewChange(index + 1)
               }
             }}
-            className="focus-visible:ring-ring focus-visible:ring-offset-card relative h-6 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="relative h-6 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
-            <div className="bg-muted absolute inset-x-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full" />
+            <div className="absolute inset-x-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />
             <div
-              className="bg-primary absolute top-1/2 left-1 h-1.5 -translate-y-1/2 rounded-full"
+              className="absolute top-1/2 left-1 h-1.5 -translate-y-1/2 rounded-full bg-primary"
               style={{ width: `calc((100% - 0.5rem) * ${ratio})` }}
             />
             <div
-              className="bg-primary absolute top-1/2 h-6 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_4px_12px_-1px_rgba(0,0,0,0.55)] transition-[left]"
+              className="absolute top-1/2 h-6 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_4px_12px_-1px_rgba(0,0,0,0.55)] transition-[left]"
               style={{ left: `calc(0.25rem + (100% - 0.5rem) * ${ratio})` }}
             />
           </div>
@@ -170,7 +170,7 @@ export function TimelineScrubber({
         </RoundButton>
       </div>
 
-      <div className="border-border bg-card flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-2 shadow-[0_14px_36px_-8px_rgba(0,0,0,0.5)]">
+      <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-2 py-2 shadow-[0_14px_36px_-8px_rgba(0,0,0,0.5)]">
         <div className="flex gap-1">
           <Button
             type="button"
@@ -192,7 +192,7 @@ export function TimelineScrubber({
           </Button>
         </div>
         {hint && (
-          <p className="text-muted-foreground min-h-4 px-1 text-center text-[11px]">{hint}</p>
+          <p className="min-h-4 px-1 text-center text-[11px] text-muted-foreground">{hint}</p>
         )}
       </div>
     </div>

@@ -769,7 +769,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               </div>
               {index < panes.length - 1 && (
                 <div
-                  className="relative shrink-0 select-none overflow-hidden"
+                  className="relative shrink-0 overflow-hidden select-none"
                   style={{
                     width: GAP_WIDTH,
                     cursor: isTwoWay ? 'default' : 'col-resize',

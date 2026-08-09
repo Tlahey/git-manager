@@ -22,19 +22,19 @@ export function LaunchpadToolbar() {
       data-testid="launchpad-toolbar"
     >
       <div className="relative max-w-sm flex-1">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('toolbar.globalSearchPlaceholder')}
-          className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
+          className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
           data-testid="launchpad-global-search"
         />
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+            className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
             title={t('toolbar.searchPlaceholder')}
           >
             <X className="h-3 w-3" />

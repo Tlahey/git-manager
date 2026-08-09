@@ -213,8 +213,12 @@ describe('parentOf', () => {
 
   /** The model permits two, a breadcrumb names one — and the relations section still lists both. */
   it('names the first when two epics both claim the card', () => {
-    const a = card('epic-a', { links: [{ targetBoardId: 'b1', targetCardId: 'c2', kind: 'contains' }] })
-    const b = card('epic-b', { links: [{ targetBoardId: 'b1', targetCardId: 'c2', kind: 'contains' }] })
+    const a = card('epic-a', {
+      links: [{ targetBoardId: 'b1', targetCardId: 'c2', kind: 'contains' }],
+    })
+    const b = card('epic-b', {
+      links: [{ targetBoardId: 'b1', targetCardId: 'c2', kind: 'contains' }],
+    })
     const child = card('c2')
 
     expect(parentOf(child, [a, b, child])?.card?.id).toBe('epic-a')

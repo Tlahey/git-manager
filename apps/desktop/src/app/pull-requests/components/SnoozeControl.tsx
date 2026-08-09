@@ -60,7 +60,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full z-popover mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl"
+          className="absolute top-full left-0 z-popover mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl"
           onMouseEnter={openMenu}
           onMouseLeave={scheduleClose}
           data-testid={`snooze-menu-${prId}`}

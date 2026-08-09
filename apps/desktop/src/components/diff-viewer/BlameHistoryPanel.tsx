@@ -49,7 +49,7 @@ export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanel
       <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar-accent/20 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <History className="h-4 w-4 shrink-0 text-primary" />
-          <h2 className="select-none truncate text-xs font-semibold text-sidebar-foreground">
+          <h2 className="truncate text-xs font-semibold text-sidebar-foreground select-none">
             {t('fileHistory.title')}
           </h2>
         </div>
@@ -131,7 +131,7 @@ export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanel
             {/* End-of-history marker */}
             <li
               data-testid="history-end"
-              className="flex select-none items-center gap-2 px-3 py-3 text-[9px] uppercase tracking-wide text-sidebar-muted-foreground/60"
+              className="flex items-center gap-2 px-3 py-3 text-[9px] tracking-wide text-sidebar-muted-foreground/60 uppercase select-none"
             >
               <span className="h-px flex-1 bg-sidebar-border/60" />
               <span>{t('fileHistory.endOfHistory')}</span>
@@ -212,7 +212,7 @@ function HistoryRow({
             >
               {status.letter}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-sidebar-foreground">
+            <span className="min-w-0 flex-1 truncate text-[11px] leading-tight font-medium text-sidebar-foreground">
               {entry.summary || noMessage}
             </span>
             {/* Commit SHA, top-right — prominent for quick scanning */}

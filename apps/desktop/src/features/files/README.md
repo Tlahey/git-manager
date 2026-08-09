@@ -43,5 +43,5 @@ features/files/
 
 It has a page, a panel, a toolbar section, a store, a data hook and its own pure logic — six files
 that were spread across four of the app's layer folders and only ever changed together. The trigger
-in `CLAUDE.md` is "its own page *and* its own store *or* its own `api/` domain"; this has the first
+in `CLAUDE.md` is "its own page _and_ its own store _or_ its own `api/` domain"; this has the first
 two. It has no `api/` of its own: one SWR hook over the app's `repo.api.ts` is not a domain.

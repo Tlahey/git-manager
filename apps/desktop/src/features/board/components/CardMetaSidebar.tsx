@@ -79,10 +79,7 @@ export function CardMetaSidebar({
         but neither reaches the shared card shape, and inventing one from `updatedAt` would print a
         date that is simply wrong on every card ever edited.
       */}
-      <p
-        data-testid="card-meta-timestamps"
-        className="px-3 text-[10px] text-muted-foreground"
-      >
+      <p data-testid="card-meta-timestamps" className="px-3 text-[10px] text-muted-foreground">
         {t('card.meta.updatedAt', { date: new Date(card.updatedAt).toLocaleString() })}
       </p>
     </div>

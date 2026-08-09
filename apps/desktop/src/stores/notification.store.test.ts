@@ -70,7 +70,6 @@ beforeEach(() => {
   localStorage.clear()
 })
 
-
 describe('useNotificationStore — notifications', () => {
   it('addNotification prepends the new notification, unread, with an id and timestamp', () => {
     const created = useNotificationStore.getState().addNotification(notif())

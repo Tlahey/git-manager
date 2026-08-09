@@ -43,7 +43,9 @@ export function BoardCardBranchSection({
       <span className="flex min-w-0 items-center gap-1.5">
         <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         {linkedBranch ? (
-          <span className="min-w-0 flex-1 truncate font-medium text-foreground">{linkedBranch}</span>
+          <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+            {linkedBranch}
+          </span>
         ) : (
           <span className="min-w-0 flex-1 text-muted-foreground">{t('card.branch.none')}</span>
         )}

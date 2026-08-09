@@ -141,7 +141,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   return (
     <footer
       data-testid="app-footer"
-      className="chrome-surface flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground"
+      className="chrome-surface flex h-8 w-full shrink-0 items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground select-none"
     >
       {/* LEFT SECTION: contextual state */}
       <div className="flex items-center gap-3 overflow-hidden">
@@ -273,7 +273,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             </DialogHeader>
 
             <div className="relative shrink-0">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
               <Input
                 value={shortcutQuery}
                 onChange={(e) => setShortcutQuery(e.target.value)}
@@ -293,7 +293,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                 ) : (
                   filteredShortcuts.map((cat, idx) => (
                     <div key={idx} className="space-y-1.5">
-                      <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                      <h4 className="pl-1 text-[10px] font-bold tracking-widest text-primary/70 uppercase">
                         {cat.category}
                       </h4>
                       <Card className="divide-y divide-border/40 bg-card/40 p-1">

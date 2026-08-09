@@ -118,7 +118,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           {/* Name + emoji */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <label className="mb-1.5 block text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {t('filterEditor.nameLabel')}
               </label>
               <Input
@@ -127,18 +127,18 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                 data-testid="filter-editor-name-input"
                 onChange={(e) => set('name', e.target.value)}
                 placeholder={t('filterEditor.namePlaceholder')}
-                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
+                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 focus:outline-hidden"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <label className="mb-1.5 block text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {t('filterEditor.emoji')}
               </label>
               <div className="relative">
                 <NativeSelect
                   value={form.emoji}
                   onChange={(e) => set('emoji', e.target.value)}
-                  className="h-8 appearance-none rounded-md border border-border bg-background px-2 pr-6 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40"
+                  className="h-8 appearance-none rounded-md border border-border bg-background px-2 pr-6 text-sm text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-hidden"
                   style={{ minWidth: 60 }}
                 >
                   {EMOJI_OPTIONS.map((e) => (
@@ -153,7 +153,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
 
           {/* Type */}
           <div>
-            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="mb-1.5 block text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
               {t('filterEditor.appliesTo')}
             </label>
             <div className="flex gap-2">
@@ -180,7 +180,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           </div>
 
           <div className="border-t border-border/40 pt-3">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
               {t('filterEditor.criteria')}{' '}
               <span className="font-normal normal-case">{t('filterEditor.criteriaHint')}</span>
             </p>
@@ -195,7 +195,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.titleContains ?? ''}
                   onChange={(e) => set('titleContains', e.target.value)}
                   placeholder={t('filterEditor.titlePlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
                 />
               </div>
               {/* Author contains */}
@@ -208,7 +208,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.authorContains ?? ''}
                   onChange={(e) => set('authorContains', e.target.value)}
                   placeholder={t('filterEditor.authorPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
                 />
               </div>
               {/* Repo */}
@@ -221,7 +221,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.repo ?? ''}
                   onChange={(e) => set('repo', e.target.value)}
                   placeholder={t('filterEditor.repoPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
                 />
               </div>
               {/* Label contains */}
@@ -234,7 +234,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   value={form.labelContains ?? ''}
                   onChange={(e) => set('labelContains', e.target.value)}
                   placeholder={t('filterEditor.labelPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
                 />
               </div>
 
@@ -252,7 +252,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                         <button
                           key={s}
                           onClick={() => toggleStatus(s)}
-                          className={`flex cursor-pointer items-center rounded border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide transition-colors ${
+                          className={`flex cursor-pointer items-center rounded border px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase transition-colors ${
                             active
                               ? cfg.className + ' ring-1 ring-current ring-offset-0'
                               : 'border-border text-muted-foreground hover:text-foreground'

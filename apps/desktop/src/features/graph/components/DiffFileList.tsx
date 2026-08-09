@@ -75,7 +75,7 @@ export function DiffFileList({ files, emptyMessage, testId }: DiffFileListProps)
             absolutely positioned so it doesn't fight the spacer above, which owns the total
             height. */}
         <div
-          className="absolute left-0 top-0 w-max min-w-full"
+          className="absolute top-0 left-0 w-max min-w-full"
           style={{ transform: `translateY(${virtualItems[0]?.start ?? 0}px)` }}
           data-testid="diff-file-list-window"
         >

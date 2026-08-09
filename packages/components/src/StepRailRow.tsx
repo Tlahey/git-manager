@@ -90,7 +90,7 @@ export function StepRailRow({
           : undefined
       }
       className={cn(
-        'border-border/30 flex w-full items-center gap-1 border-b pr-3 text-xs transition-colors',
+        'flex w-full items-center gap-1 border-b border-border/30 pr-3 text-xs transition-colors',
         onRowClick && 'cursor-pointer',
         // Selection wins over the `current` tint — otherwise the step in progress, which is
         // exactly the row most likely to be selected, would never look selected.
@@ -99,7 +99,7 @@ export function StepRailRow({
       style={{ height: STEP_RAIL_ROW_HEIGHT }}
     >
       {draggable ? (
-        <GripVertical className="text-muted-foreground/40 ml-1 h-3.5 w-3.5 shrink-0 cursor-grab" />
+        <GripVertical className="ml-1 h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/40" />
       ) : (
         <span className="ml-1 h-3.5 w-3.5 shrink-0" />
       )}
@@ -158,7 +158,7 @@ export function StepRailRow({
               r={isDropped || isPending ? 3.5 : 4}
               className={cn(
                 isDropped || isPending
-                  ? 'stroke-muted-foreground/50 fill-transparent'
+                  ? 'fill-transparent stroke-muted-foreground/50'
                   : 'fill-primary stroke-none'
               )}
               strokeWidth={1.5}
@@ -168,7 +168,7 @@ export function StepRailRow({
       </svg>
 
       {progress === 'done' && (
-        <Check className="text-primary mr-0.5 -ml-1 h-3 w-3 shrink-0" aria-hidden />
+        <Check className="mr-0.5 -ml-1 h-3 w-3 shrink-0 text-primary" aria-hidden />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -177,13 +177,13 @@ export function StepRailRow({
             'truncate leading-tight font-medium',
             isDropped ? 'text-muted-foreground/50 line-through' : 'text-foreground',
             (isCombined || isPending) && 'text-muted-foreground',
-            isCurrent && 'text-foreground font-semibold'
+            isCurrent && 'font-semibold text-foreground'
           )}
         >
           {title}
         </span>
         {subtitle && (
-          <span className="text-muted-foreground/70 truncate text-[10px] leading-tight">
+          <span className="truncate text-[10px] leading-tight text-muted-foreground/70">
             {subtitle}
           </span>
         )}
@@ -196,7 +196,7 @@ export function StepRailRow({
         {badgeLabel}
       </Badge>
       {trailingCaption && (
-        <span className="text-muted-foreground/70 shrink-0 font-mono text-[10px]">
+        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
           {trailingCaption}
         </span>
       )}

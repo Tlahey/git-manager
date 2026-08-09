@@ -34,7 +34,9 @@ vi.mock('../../../api/git.api', () => ({
   apiGetTagWebUrl: vi.fn().mockResolvedValue('https://github.com/o/r/releases/tag/v1'),
   apiCopyCommitSha: vi.fn().mockResolvedValue(undefined),
 }))
-vi.mock('../../../api/worktree.api', () => ({ apiAddWorktree: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../../../api/worktree.api', () => ({
+  apiAddWorktree: vi.fn().mockResolvedValue(undefined),
+}))
 
 const openRebaseWindow = vi.fn().mockResolvedValue(undefined)
 vi.mock('../../../lib/graphWindows', () => ({

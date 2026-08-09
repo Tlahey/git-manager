@@ -217,7 +217,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
   }
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 animate-duration-100">
+    <div className="flex h-full w-full animate-in flex-col overflow-hidden bg-background select-none zoom-in-95 animate-duration-100 fade-in">
       <DiffToolbar
         parsedPath={parsedPath}
         diffData={diffData}
@@ -238,7 +238,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
         data-testid="diff-content-area"
         data-stale={isStale ? 'true' : undefined}
         className={cn(
-          'flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs',
+          'flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text',
           // Switching files keeps the previous contents on screen for the moment the next ones
           // take to arrive (see useFileRawContents). Dimmed rather than replaced: tearing the
           // editor down and rebuilding it is exactly the flicker this avoids.
@@ -266,7 +266,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
             {diffData?.isBinary ? (
               <div
                 data-testid="diff-binary-placeholder"
-                className="border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
+                className="border border-border bg-muted/20 px-4 py-8 text-center text-muted-foreground italic"
               >
                 Binary file diff content cannot be displayed.
               </div>
@@ -372,7 +372,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                 {activeTab === 'preview' ? (
                   <div
                     data-testid="file-preview-area"
-                    className="flex flex-1 select-text items-center justify-center overflow-y-auto bg-card/10 p-6"
+                    className="flex flex-1 items-center justify-center overflow-y-auto bg-card/10 p-6 select-text"
                   >
                     {isMarkdown ? (
                       <div className="mx-auto block h-full w-full max-w-4xl">
@@ -382,7 +382,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                       <div className="flex flex-col items-center gap-4">
                         {imageFailed ? (
                           <div
-                            className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
+                            className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-muted-foreground italic"
                             data-testid="file-preview-image-error"
                           >
                             {t('diffView.previewImageUnavailable')}
@@ -399,7 +399,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                         {/* The image always comes off disk: git blobs aren't served over `asset:`, so
                             a historic version can't be rendered and the caveat has to be explicit. */}
                         {effectiveOid && !imageFailed && (
-                          <div className="text-[10px] italic text-muted-foreground">
+                          <div className="text-[10px] text-muted-foreground italic">
                             {t('diffView.previewWorkingCopyNote')}
                           </div>
                         )}

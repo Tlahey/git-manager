@@ -132,7 +132,7 @@ export function MarkdownRenderer({
           h1: ({ children, id }) => (
             <h1
               id={id}
-              className="mb-3 mt-6 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground"
+              className="mt-6 mb-3 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground"
             >
               {children}
             </h1>
@@ -140,7 +140,7 @@ export function MarkdownRenderer({
           h2: ({ children, id }) => (
             <h2
               id={id}
-              className="mb-2.5 mt-5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90"
+              className="mt-5 mb-2.5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90"
             >
               {children}
             </h2>
@@ -148,13 +148,13 @@ export function MarkdownRenderer({
           h3: ({ children, id }) => (
             <h3
               id={id}
-              className="mb-2 mt-4 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85"
+              className="mt-4 mb-2 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85"
             >
               {children}
             </h3>
           ),
           h4: ({ children, id }) => (
-            <h4 id={id} className="mb-1.5 mt-3 text-xs font-semibold text-foreground/80">
+            <h4 id={id} className="mt-3 mb-1.5 text-xs font-semibold text-foreground/80">
               {children}
             </h4>
           ),
@@ -180,7 +180,7 @@ export function MarkdownRenderer({
             </MarkdownTaskItemLineContext.Provider>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="my-2.5 rounded-r border-l-2 border-primary/60 bg-muted/20 py-1.5 pl-3.5 italic text-muted-foreground">
+            <blockquote className="my-2.5 rounded-r border-l-2 border-primary/60 bg-muted/20 py-1.5 pl-3.5 text-muted-foreground italic">
               {children}
             </blockquote>
           ),

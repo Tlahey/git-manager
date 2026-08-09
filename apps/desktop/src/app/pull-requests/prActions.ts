@@ -6,13 +6,7 @@ import type { MockPR } from './types'
  * plain look). Pin and snooze are deliberately NOT here: they live as hover icons on the row's left
  * edge (see `SnoozeControl` and the pin button in `PRRow`), not in this menu. */
 export type PrActionKey =
-  | 'review'
-  | 'view'
-  | 'merge'
-  | 'close'
-  | 'openGitHub'
-  | 'viewRepo'
-  | 'copyLink'
+  'review' | 'view' | 'merge' | 'close' | 'openGitHub' | 'viewRepo' | 'copyLink'
 
 /** Whether merging this PR from the app is offered: it must be your own, still open (not draft),
  * not behind its base, and its CI must not be failing or still running (no CI at all is fine — many

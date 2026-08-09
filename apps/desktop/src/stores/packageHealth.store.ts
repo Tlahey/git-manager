@@ -7,9 +7,7 @@ import type { HealthCheckId } from '@git-manager/git-types'
  * because it is the only page that reaches the network and can change the repo.
  */
 export type HealthSelection =
-  | { kind: 'overview' }
-  | { kind: 'check'; id: HealthCheckId }
-  | { kind: 'updates' }
+  { kind: 'overview' } | { kind: 'check'; id: HealthCheckId } | { kind: 'updates' }
 
 /**
  * Drives the in-layout package health workspace, which reuses the git-graph's

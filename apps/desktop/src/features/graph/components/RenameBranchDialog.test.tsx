@@ -25,7 +25,6 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-
 describe('RenameBranchDialog — rendering', () => {
   it('shows the title and description, and prefills the input with the current name', () => {
     renderDialog()

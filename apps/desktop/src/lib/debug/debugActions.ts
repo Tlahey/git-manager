@@ -41,11 +41,7 @@ import { useRemoteProgressStore } from '../../stores/remoteProgress.store'
 import { useSettingsStore } from '../../stores/settings.store'
 
 export type DebugActionGroup =
-  | 'Notifications'
-  | 'Notch cards'
-  | 'Notch queue'
-  | 'Transfers'
-  | 'AI runs'
+  'Notifications' | 'Notch cards' | 'Notch queue' | 'Transfers' | 'AI runs'
 
 /** Where a card action aims its card. */
 export type DebugSurface = 'notch' | 'native'

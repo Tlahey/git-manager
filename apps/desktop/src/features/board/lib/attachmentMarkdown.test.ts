@@ -35,7 +35,9 @@ describe('attachmentUrl', () => {
   })
 
   it('does not double up slashes', () => {
-    expect(attachmentUrl('./x.png', 'https://example.com/base/')).toBe('https://example.com/base/x.png')
+    expect(attachmentUrl('./x.png', 'https://example.com/base/')).toBe(
+      'https://example.com/base/x.png'
+    )
   })
 })
 

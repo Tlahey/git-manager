@@ -165,7 +165,7 @@ describe('useNotchOperation — actions', () => {
 
   it('does not re-register on every render', () => {
     // Re-registering would warn about a duplicate id on each frame of a minutes-long operation.
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => { })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { rerender } = renderHook(() =>
       useNotchOperation({ id: 'op', model: progress(0.5), actions: { cancel: vi.fn() } })
     )

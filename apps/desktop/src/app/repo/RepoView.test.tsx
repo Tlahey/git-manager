@@ -76,9 +76,9 @@ vi.mock('../../features/graph', async () => ({
   ...(await vi.importActual<typeof import('../../features/graph/components/SetUpstreamDialog')>(
     '../../features/graph/components/SetUpstreamDialog'
   )),
-  ...(await vi.importActual<
-    typeof import('../../features/graph/components/TagDialogsManager')
-  >('../../features/graph/components/TagDialogsManager')),
+  ...(await vi.importActual<typeof import('../../features/graph/components/TagDialogsManager')>(
+    '../../features/graph/components/TagDialogsManager'
+  )),
   GitGraph: (props: { repoPath: string; branch?: string; searchQuery: string }) => (
     <div data-testid="fake-git-graph">
       <span data-testid="graph-repo-path">{props.repoPath}</span>
@@ -147,7 +147,6 @@ vi.mock('../../features/graph', async () => ({
 vi.mock('../../components/action-toolbar', () => ({
   ActionToolbar: () => <div data-testid="fake-action-toolbar" />,
 }))
-
 
 vi.mock('../../components/fixup/PendingFixupsBanner', () => ({
   PendingFixupsBanner: (props: { repoPath: string }) => (

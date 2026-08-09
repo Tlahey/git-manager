@@ -466,8 +466,7 @@ describe('useBoardCardActions — addComment', () => {
  * call rather than as a loop of single deletes.
  */
 describe('useBoardCardActions — deleteArchivedCards', () => {
-  const archived = (id: string) =>
-    makeCard({ id, archivedAt: '2026-08-04T00:00:00.000Z' })
+  const archived = (id: string) => makeCard({ id, archivedAt: '2026-08-04T00:00:00.000Z' })
 
   it('sends every archived card, and only those, in one backend call', async () => {
     localBackend.deleteCards.mockResolvedValue(2)

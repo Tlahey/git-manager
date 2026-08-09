@@ -48,7 +48,7 @@ export function MultiSelectDropdown({
         onClick={() => setOpen((v) => !v)}
         className={`flex h-7 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-all duration-150 ${
           activeCount > 0
-            ? 'border-primary/30 bg-primary/10 text-primary shadow-primary/5 shadow-xs'
+            ? 'border-primary/30 bg-primary/10 text-primary shadow-xs shadow-primary/5'
             : open
               ? 'border-border/80 bg-accent/60 text-foreground'
               : 'border-border text-muted-foreground hover:border-border/80 hover:bg-accent/30 hover:text-foreground'
@@ -57,7 +57,7 @@ export function MultiSelectDropdown({
         <span className="text-muted-foreground/70">{icon}</span>
         {label}
         {activeCount > 0 && (
-          <span className="bg-primary/20 text-primary flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] leading-none font-bold">
+          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary/20 px-1 text-[9px] leading-none font-bold text-primary">
             {activeCount}
           </span>
         )}
@@ -67,11 +67,11 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="animate-in fade-in slide-in-from-top-1 z-popover border-border bg-popover animate-duration-150 absolute top-full left-0 mt-1.5 max-h-[280px] min-w-[180px] overflow-hidden rounded-lg border shadow-xl">
+        <div className="absolute top-full left-0 z-popover mt-1.5 max-h-[280px] min-w-[180px] animate-in overflow-hidden rounded-lg border border-border bg-popover shadow-xl animate-duration-150 fade-in slide-in-from-top-1">
           {/* Header with clear button */}
           {activeCount > 0 && (
-            <div className="border-border/50 bg-muted/10 flex items-center justify-between border-b px-3 py-1.5">
-              <span className="text-muted-foreground text-[9px] font-semibold tracking-wider uppercase">
+            <div className="flex items-center justify-between border-b border-border/50 bg-muted/10 px-3 py-1.5">
+              <span className="text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {selectedLabel(activeCount)}
               </span>
               <button
@@ -79,7 +79,7 @@ export function MultiSelectDropdown({
                   e.stopPropagation()
                   onClear()
                 }}
-                className="text-muted-foreground/60 hover:text-primary cursor-pointer text-[9px] underline transition-colors"
+                className="cursor-pointer text-[9px] text-muted-foreground/60 underline transition-colors hover:text-primary"
               >
                 {clearAllLabel}
               </button>
@@ -89,7 +89,7 @@ export function MultiSelectDropdown({
           {/* Options list */}
           <div className="max-h-[240px] overflow-y-auto py-1">
             {options.length === 0 ? (
-              <div className="text-muted-foreground/50 px-3 py-3 text-center text-[10px] italic">
+              <div className="px-3 py-3 text-center text-[10px] text-muted-foreground/50 italic">
                 {emptyLabel}
               </div>
             ) : (
@@ -98,12 +98,12 @@ export function MultiSelectDropdown({
                 return (
                   <label
                     key={opt}
-                    className="hover:bg-accent/50 flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-xs transition-colors"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50"
                   >
                     <Checkbox checked={isActive} onChange={() => onToggle(opt)} />
                     <span
                       className={`truncate transition-colors ${
-                        isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+                        isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
                       }`}
                     >
                       {opt}

@@ -82,12 +82,7 @@ function isHistorySnapshot(value: unknown): value is TerminalHistorySnapshot | n
  *  translated strings here (see AchievementDefinition's doc comment in lib/rewards/types.ts for
  *  why the same pattern applies to achievement text). */
 export type RankId =
-  | 'novice'
-  | 'apprentice'
-  | 'practitioner'
-  | 'specialist'
-  | 'grandmaster'
-  | 'grandmasterPlatinum'
+  'novice' | 'apprentice' | 'practitioner' | 'specialist' | 'grandmaster' | 'grandmasterPlatinum'
 
 export function getLevelInfo(points: number, isPlatinumUnlocked = false) {
   if (isPlatinumUnlocked) {

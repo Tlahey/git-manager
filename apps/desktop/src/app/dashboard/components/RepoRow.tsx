@@ -78,7 +78,7 @@ export function RepoRow({
       data-testid="dashboard-repo-row"
       data-repo-path={path}
       onClick={handleActivate}
-      className="group/row flex cursor-pointer select-none items-center gap-3 border-b border-border/10 bg-transparent px-4 py-2.5 transition-colors duration-150 first:rounded-t-lg last:rounded-b-lg last:border-0 hover:bg-accent/40"
+      className="group/row flex cursor-pointer items-center gap-3 border-b border-border/10 bg-transparent px-4 py-2.5 transition-colors duration-150 select-none first:rounded-t-lg last:rounded-b-lg last:border-0 hover:bg-accent/40"
     >
       {/* Selection */}
       <span onClick={(e) => e.stopPropagation()}>
@@ -108,10 +108,10 @@ export function RepoRow({
               e.stopPropagation()
               togglePin(path)
             }}
-            className={`shrink-0 cursor-pointer rounded transition-opacity duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`shrink-0 cursor-pointer rounded transition-opacity duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden ${
               isPinned
                 ? 'text-amber-500'
-                : 'text-muted-foreground/40 opacity-0 hover:text-amber-500 focus-visible:opacity-100 group-hover/row:opacity-100'
+                : 'text-muted-foreground/40 opacity-0 group-hover/row:opacity-100 hover:text-amber-500 focus-visible:opacity-100'
             }`}
           >
             <Star className={`h-4 w-4 ${isPinned ? 'fill-amber-500' : ''}`} />
@@ -131,7 +131,7 @@ export function RepoRow({
               e.stopPropagation()
               handleActivate()
             }}
-            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring group-hover/row:text-primary"
+            className="block max-w-full cursor-pointer truncate rounded text-left text-xs font-medium text-foreground transition-colors group-hover/row:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
           >
             {name}
           </button>
@@ -152,7 +152,7 @@ export function RepoRow({
         ) : (
           <span
             data-testid="repo-row-owner-empty"
-            className="block truncate text-xs italic text-muted-foreground/40"
+            className="block truncate text-xs text-muted-foreground/40 italic"
           >
             {t('dashboard.row.noRemote')}
           </span>

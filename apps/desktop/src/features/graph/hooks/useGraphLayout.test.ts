@@ -133,7 +133,9 @@ describe('useGraphLayout', () => {
 
     act(() => result.current.scrollToColumn(6))
     expect(result.current.graphScrollX).toBeGreaterThan(0)
-    expect(result.current.graphScrollX).toBeLessThanOrEqual(result.current.graphColumnBounds.maxScrollX)
+    expect(result.current.graphScrollX).toBeLessThanOrEqual(
+      result.current.graphColumnBounds.maxScrollX
+    )
   })
 
   it('scrollToColumn is a no-op when the graph column is hidden', () => {

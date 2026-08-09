@@ -100,8 +100,7 @@ function renderDiff(
  * `merge-text-conflict merge-border-top-conflict …`) className string. */
 function decorationClasses(path: string): string[] {
   const decorations = fakeEditors.get(path)?.decorations as
-    | Array<{ options: { className?: string } }>
-    | undefined
+    Array<{ options: { className?: string } }> | undefined
   return (decorations ?? []).map((d) => d.options.className).filter((c): c is string => Boolean(c))
 }
 

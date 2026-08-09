@@ -90,7 +90,6 @@ beforeEach(() => {
   useFileHistory.mockReturnValue({ data: undefined })
 })
 
-
 describe('DiffViewCenter — loading/empty states', () => {
   it('shows a loading indicator while diff metadata or raw contents load', () => {
     useFileDiff.mockReturnValue({ data: undefined, isLoading: true, refetch: vi.fn() })

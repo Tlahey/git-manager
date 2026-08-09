@@ -209,7 +209,7 @@ export function SshSection() {
 
         {pubKeyContent ? (
           <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <p className="line-clamp-4 select-all break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+            <p className="line-clamp-4 font-mono text-[10px] leading-relaxed break-all text-muted-foreground select-all">
               {pubKeyContent}
             </p>
           </div>
@@ -258,7 +258,7 @@ export function SshSection() {
                 <NativeSelect
                   value={genType}
                   onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
-                  className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
+                  className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-ring focus:outline-hidden"
                 >
                   <option value="ed25519">{t('settings.ssh.ed25519Recommended')}</option>
                   <option value="rsa">RSA</option>
@@ -273,7 +273,7 @@ export function SshSection() {
                   <NativeSelect
                     value={genBits}
                     onChange={(e) => setGenBits(parseInt(e.target.value, 10))}
-                    className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
+                    className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-ring focus:outline-hidden"
                   >
                     <option value={2048}>2048 bits</option>
                     <option value={3072}>{t('settings.ssh.bitsSecure')}</option>
@@ -345,7 +345,7 @@ export function SshSection() {
                   />
                   <Button
                     size="sm"
-                    className="absolute bottom-2 right-2 h-7 gap-1 px-2 text-[10px]"
+                    className="absolute right-2 bottom-2 h-7 gap-1 px-2 text-[10px]"
                     onClick={() => handleCopyPubKey(generatedPubKey)}
                   >
                     {copiedKey ? t('settings.ssh.copied') : t('settings.ssh.copy')}

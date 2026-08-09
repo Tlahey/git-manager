@@ -13,13 +13,13 @@ et la section « Yeux » de `mascotArt.ts`.
 
 ## Sources & génération
 
-| Chemin                  | Rôle                                                                                                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `assets/parts/*.png`     | Un fichier par élément (`head.png`, `t1.png`…`t8.png`), déjà transparent (pas de chroma-key) — sources éditables.                                                  |
+| Chemin                   | Rôle                                                                                                                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assets/parts/*.png`     | Un fichier par élément (`head.png`, `t1.png`…`t8.png`), déjà transparent (pas de chroma-key) — sources éditables.                                                                                                      |
 | `assets/parts/pupil.png` | Référence de la pupille (rayon, reflet, couleur) — **pas** consommée par `generate.mjs` (la pupille reste dessinée en code, voir `mascotArt.ts`) ; sert seulement à re-mesurer sa géométrie si cet asset est régénéré. |
-| `assets/layout.json`     | Liste des pièces + placements/profondeur/pivots/animations — source éditable (export de l'éditeur Storybook, schéma v2 ci-dessous).                                |
-| `scripts/generate.mjs`   | Pipeline découpe alpha → WebP base64.                                                                                                                              |
-| `src/generated/`         | **Sortie committée** (`sprites.ts`, `layout.ts`), importée par `mascotArt.ts` et disponible telle quelle pour les apps — aucun outillage image dans leurs builds. |
+| `assets/layout.json`     | Liste des pièces + placements/profondeur/pivots/animations — source éditable (export de l'éditeur Storybook, schéma v2 ci-dessous).                                                                                    |
+| `scripts/generate.mjs`   | Pipeline découpe alpha → WebP base64.                                                                                                                                                                                  |
+| `src/generated/`         | **Sortie committée** (`sprites.ts`, `layout.ts`), importée par `mascotArt.ts` et disponible telle quelle pour les apps — aucun outillage image dans leurs builds.                                                      |
 
 ```bash
 pnpm --filter @git-manager/mascot generate   # régénère src/generated/ depuis assets/

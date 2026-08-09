@@ -192,8 +192,6 @@ describe('BlameFileViewer — StrictMode double-mount', () => {
     })
   })
 
-  
-
   function flushFrames() {
     act(() => {
       const queued = [...frames.values()]

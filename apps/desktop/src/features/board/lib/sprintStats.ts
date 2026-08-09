@@ -1,4 +1,9 @@
-import type { BoardCard, BoardCardPriority, BoardColumn, SprintSummary } from '@git-manager/git-types'
+import type {
+  BoardCard,
+  BoardCardPriority,
+  BoardColumn,
+  SprintSummary,
+} from '@git-manager/git-types'
 import { isOverdue, priorityRank } from './cardMeta'
 
 /**

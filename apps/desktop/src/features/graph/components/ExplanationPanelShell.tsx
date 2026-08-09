@@ -102,7 +102,7 @@ export function ExplanationPanelShell({
       {/* PANEL HEADER — matches ConflictResolutionPanel / CommitHeaderInfo */}
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <LlmIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{title}</span>
           </h3>
@@ -205,7 +205,7 @@ export function ExplanationPanelShell({
             // `wrap-break-word`: an undecoded error is a raw provider payload — a JSON blob or a URL
             // with no space in it, which would otherwise run off the panel's right edge. The
             // markdown body below sets this for itself; this paragraph is outside it.
-            <p data-testid="explanation-error" className="wrap-break-word text-xs text-tone-danger">
+            <p data-testid="explanation-error" className="text-xs wrap-break-word text-tone-danger">
               {aiErrorMessage(error ?? '', tErrors)}
             </p>
           ) : text ? (

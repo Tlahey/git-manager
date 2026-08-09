@@ -39,7 +39,6 @@ beforeEach(() => {
   mockedCommitsBetween.mockResolvedValue([{ oid: 'a', shortOid: 'a1234', subject: 'Commit A' }])
 })
 
-
 describe('ResetDialog — commits list', () => {
   it('shows the affected commit count and list once loaded', async () => {
     renderDialog()

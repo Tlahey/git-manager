@@ -147,7 +147,7 @@ export function AiProviderForm() {
               {state === 'disconnected' && detail && (
                 <p
                   data-testid="ai-connection-detail"
-                  className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground"
+                  className="mt-0.5 font-mono text-[10px] break-all text-muted-foreground"
                 >
                   {detail}
                 </p>
@@ -189,7 +189,7 @@ export function AiProviderForm() {
                 data-testid="ai-model-select"
                 value={ai.model}
                 onChange={(e) => updateAi({ model: e.target.value })}
-                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
               >
                 {/* The persisted model may no longer be served; keep it selectable rather than
                     silently snapping the setting to whatever the provider listed first. */}
@@ -225,7 +225,7 @@ export function AiProviderForm() {
                 data-testid="ai-fast-model-select"
                 value={ai.fastModel ?? ''}
                 onChange={(e) => updateAi({ fastModel: e.target.value })}
-                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
               >
                 <option value="">{t('settings.ai.fastModelNone')}</option>
                 {ai.fastModel && !models.includes(ai.fastModel) && (

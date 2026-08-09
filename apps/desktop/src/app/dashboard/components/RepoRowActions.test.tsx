@@ -43,7 +43,6 @@ beforeEach(() => {
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
-
 describe('RepoRowActions — editor button', () => {
   it('is hidden when no editor is configured', () => {
     renderActions()

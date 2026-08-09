@@ -194,7 +194,7 @@ export function SidebarRowView({
               )}
               {row.kind === 'remote-group' ? row.remoteName : row.name}
             </span>
-            <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
+            <span className="shrink-0 text-[10px] text-sidebar-muted-foreground/40 tabular-nums">
               {row.count}
             </span>
           </button>
@@ -228,10 +228,10 @@ export function SidebarRowView({
       // child — nesting buttons is invalid markup and breaks keyboard activation.
       const filter = row.filter
       return (
-        <div className="group/subgroup flex w-full items-center text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground/60 transition-colors hover:bg-sidebar-accent/30">
+        <div className="group/subgroup flex w-full items-center text-[10px] font-semibold tracking-widest text-sidebar-muted-foreground/60 uppercase transition-colors hover:bg-sidebar-accent/30">
           <button
             onClick={() => onToggleOpen(row.id)}
-            className="flex min-w-0 flex-1 items-center gap-1 py-[3px] pl-4 pr-1 text-left transition-colors hover:text-sidebar-muted-foreground"
+            className="flex min-w-0 flex-1 items-center gap-1 py-[3px] pr-1 pl-4 text-left transition-colors hover:text-sidebar-muted-foreground"
           >
             <span className="shrink-0">
               {row.isOpen ? (
@@ -252,7 +252,7 @@ export function SidebarRowView({
                   canMoveDown: row.canMoveDown,
                 })
               }
-              className="mr-1 shrink-0 rounded p-0.5 opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/subgroup:opacity-100"
+              className="mr-1 shrink-0 rounded p-0.5 opacity-0 transition-all group-hover/subgroup:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
               aria-label={t('sidebar.issueFilters.actions')}
               title={t('sidebar.issueFilters.actions')}
               data-testid={`issue-filter-actions-${filter.id}`}
@@ -296,7 +296,7 @@ export function SidebarRowView({
         onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
       return (
         <div
-          className={`group/tag relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
+          className={`group/tag relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
@@ -328,7 +328,7 @@ export function SidebarRowView({
           />
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
-          <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
+          <span className="shrink-0 font-mono text-[10px] font-normal text-sidebar-muted-foreground/40 tabular-nums">
             {shortOid(row.tag.commitOid)}
           </span>
           <button
@@ -337,7 +337,7 @@ export function SidebarRowView({
               e.stopPropagation()
               onTagContextMenu?.(e, row.tag)
             }}
-            className="absolute right-1 top-1/2 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/tag:opacity-100"
+            className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/tag:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
             aria-label={t('sidebar.tagActions')}
             title={t('sidebar.tagActions')}
             data-testid={`tag-actions-button-${row.tag.shortName}`}
@@ -355,7 +355,7 @@ export function SidebarRowView({
         : t('sidebar.stash.hideInGraph')
       return (
         <div
-          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
+          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
@@ -394,7 +394,7 @@ export function SidebarRowView({
           <HoverExpandLabel className="min-w-0 flex-1 truncate">
             {highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}
           </HoverExpandLabel>
-          <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
+          <span className="shrink-0 font-mono text-[10px] font-normal text-sidebar-muted-foreground/40 tabular-nums">
             {shortOid(row.stash.commitOid)}
           </span>
           {/* Same actions as the row's right-click, reachable by pointing — the context menu was
@@ -408,7 +408,7 @@ export function SidebarRowView({
               e.stopPropagation()
               onStashContextMenu?.(e, row.stash)
             }}
-            className="absolute right-1 top-1/2 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
+            className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/stash:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
             aria-label={t('sidebar.stashActions')}
             title={t('sidebar.stashActions')}
             data-testid={`stash-actions-button-${row.stash.index}`}
@@ -423,7 +423,7 @@ export function SidebarRowView({
       return (
         <div
           data-testid={`submodule-item-${row.sm.path}`}
-          className="group/sm relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+          className="group/sm relative flex items-start gap-1.5 py-[3px] pr-2 pl-6 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
         >
           <GitFork className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
           <div className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ export function SidebarRowView({
             </span>
           </div>
           {row.sm.headOid && (
-            <span className="shrink-0 font-mono text-[10px] tabular-nums text-sidebar-muted-foreground/30">
+            <span className="shrink-0 font-mono text-[10px] text-sidebar-muted-foreground/30 tabular-nums">
               {shortOid(row.sm.headOid)}
             </span>
           )}

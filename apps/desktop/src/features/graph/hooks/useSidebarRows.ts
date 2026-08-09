@@ -4,7 +4,11 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
 import { useGitStashes } from '../../../hooks/useGitStashes'
-import { buildBranchTree, type BranchTreeFolder, type BranchTreeNode } from '../../../lib/branchTree'
+import {
+  buildBranchTree,
+  type BranchTreeFolder,
+  type BranchTreeNode,
+} from '../../../lib/branchTree'
 import { usePullRequests } from '../../../hooks/usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'

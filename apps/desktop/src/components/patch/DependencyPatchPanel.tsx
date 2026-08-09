@@ -192,7 +192,7 @@ export function DependencyPatchPanel({ repoPath }: { repoPath: string }) {
         </div>
         {error && (
           <Alert variant="destructive" data-testid="patch-dep-error">
-            <pre className="whitespace-pre-wrap font-mono text-[11px]">{error}</pre>
+            <pre className="font-mono text-[11px] whitespace-pre-wrap">{error}</pre>
           </Alert>
         )}
         <Button

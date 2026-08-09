@@ -11,7 +11,12 @@ const { useAllBoardCards, useBoardCatalog, setActiveBoard } = vi.hoisted(() => (
 vi.mock('../hooks/useAllBoardCards', () => ({ useAllBoardCards }))
 vi.mock('../hooks/useBoardCatalog', () => ({ useBoardCatalog }))
 vi.mock('../hooks/useBoardBackends', () => ({
-  useBoardBackends: () => ({ ownerRepo: null, token: null, remoteBackend: null, backendFor: vi.fn() }),
+  useBoardBackends: () => ({
+    ownerRepo: null,
+    token: null,
+    remoteBackend: null,
+    backendFor: vi.fn(),
+  }),
 }))
 
 import { BoardSearchDialog } from './BoardSearchDialog'

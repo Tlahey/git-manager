@@ -25,7 +25,7 @@ export function PrSidebarSection({
   return (
     <section data-testid={testId} className={`border-b border-border px-3 py-2.5 ${className}`}>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {title}
         </span>
         {onEdit && (

@@ -118,7 +118,7 @@ export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: S
             return (
               <div key={pr.id} className="group/snoozed relative">
                 <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
-                <div className="pointer-events-none absolute right-[150px] top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+                <div className="pointer-events-none absolute top-1/2 right-[150px] flex -translate-y-1/2 items-center gap-1.5">
                   <span
                     className="rounded border border-border/50 bg-muted/60 px-1.5 py-px text-[10px] text-muted-foreground"
                     data-testid={`snoozed-until-${pr.id}`}

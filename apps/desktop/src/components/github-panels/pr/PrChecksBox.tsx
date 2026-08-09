@@ -109,7 +109,7 @@ export function PrChecksBox({ repoPath, prNumber, pr, mergeability, isLoading }:
           {expanded &&
             groups.map((g) => (
               <div key={g.category} className="border-t border-border bg-muted/30">
-                <p className="px-4 pt-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <p className="px-4 pt-1.5 text-[10px] tracking-wide text-muted-foreground uppercase">
                   {t(`pr.checks.group.${g.category}`, { count: g.checks.length })}
                 </p>
                 <ul className="pb-1">

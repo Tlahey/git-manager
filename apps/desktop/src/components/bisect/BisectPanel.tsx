@@ -59,7 +59,7 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
           {/* Commit under test */}
           {!finished && shortOid && (
             <div className="space-y-2">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 {t('bisect.panel.underTest')}
               </p>
               <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
@@ -74,7 +74,7 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
 
           {/* Marked commits recap */}
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               {t('bisect.panel.marked')}
             </p>
             <div className="space-y-2 text-xs">

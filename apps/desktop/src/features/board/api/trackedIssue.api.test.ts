@@ -2,16 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { makeBoard, makeCard } from '../test/boardFactories'
 import { mergeTrackedIssues, pushCardToIssue } from './trackedIssue.api'
 
-const { fetchIssueDetail, updateIssue, addLabels, removeLabel, addAssignees, removeAssignees, createOrUpdateLabel } =
-  vi.hoisted(() => ({
-    fetchIssueDetail: vi.fn(),
-    updateIssue: vi.fn(),
-    addLabels: vi.fn(),
-    removeLabel: vi.fn(),
-    addAssignees: vi.fn(),
-    removeAssignees: vi.fn(),
-    createOrUpdateLabel: vi.fn(),
-  }))
+const {
+  fetchIssueDetail,
+  updateIssue,
+  addLabels,
+  removeLabel,
+  addAssignees,
+  removeAssignees,
+  createOrUpdateLabel,
+} = vi.hoisted(() => ({
+  fetchIssueDetail: vi.fn(),
+  updateIssue: vi.fn(),
+  addLabels: vi.fn(),
+  removeLabel: vi.fn(),
+  addAssignees: vi.fn(),
+  removeAssignees: vi.fn(),
+  createOrUpdateLabel: vi.fn(),
+}))
 
 vi.mock('../../../api/github/github-issues.api', () => ({ fetchIssueDetail, updateIssue }))
 vi.mock('../../../api/github/github-labels.api', () => ({

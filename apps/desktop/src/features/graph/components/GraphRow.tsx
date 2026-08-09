@@ -277,7 +277,7 @@ function CellContent({
           <span
             className={cn(
               'truncate text-[10px] text-muted-foreground',
-              dimmed && 'italic text-muted-foreground/40'
+              dimmed && 'text-muted-foreground/40 italic'
             )}
           >
             {commit.author.name}
@@ -292,7 +292,7 @@ function CellContent({
         <span
           className={cn(
             'truncate text-[10px] text-muted-foreground/70',
-            dimmed && 'italic text-muted-foreground/40'
+            dimmed && 'text-muted-foreground/40 italic'
           )}
           title={formatExactDate(commit.author.timestamp, i18n.language)}
         >
@@ -306,7 +306,7 @@ function CellContent({
         <code
           className={cn(
             'truncate font-mono text-[10px] text-muted-foreground',
-            dimmed && 'italic text-muted-foreground/40'
+            dimmed && 'text-muted-foreground/40 italic'
           )}
           title={commit.oid}
         >
@@ -404,7 +404,7 @@ export const GraphRow = memo(function GraphRow({
       onClick={onSelect}
       onContextMenu={handleContextMenu}
       className={cn(
-        'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-graph-row-hover',
+        'group relative flex cursor-pointer items-center border-b border-transparent transition-colors select-none hover:z-graph-row-hover',
         rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
       )}
     >

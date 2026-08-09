@@ -89,7 +89,7 @@ function ActionJournalContent() {
 
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
         <div className="relative min-w-[180px] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -120,7 +120,7 @@ function ActionJournalContent() {
         <ScrollArea className="min-w-0 flex-1">
           {error ? (
             <p
-              className="wrap-break-word px-3 py-12 text-center text-[11px] text-tone-danger"
+              className="px-3 py-12 text-center text-[11px] wrap-break-word text-tone-danger"
               data-testid="action-journal-error"
             >
               {appErrorMessage(error.message)}
@@ -151,7 +151,7 @@ function ActionJournalContent() {
         </ScrollArea>
 
         {selected && (
-          <div className="w-[46%] min-w-[340px] max-w-[620px] shrink-0">
+          <div className="w-[46%] max-w-[620px] min-w-[340px] shrink-0">
             <ActionDetailPanel
               // Keyed on the action so switching rows remounts the panel: its explanation hook holds
               // one action's stream, and reusing the instance would show the previous answer under the

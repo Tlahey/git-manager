@@ -39,7 +39,7 @@ export function SummaryDayCard({ entry, onOpenInEditor, onReveal, onDelete }: Su
       <header className="mb-2.5 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="truncate text-xs font-semibold capitalize text-foreground">
+            <h3 className="truncate text-xs font-semibold text-foreground capitalize">
               {dateLabel}
             </h3>
             <Badge variant="outline" className="text-[10px]">
@@ -117,12 +117,12 @@ function CardSection({ icon, title, items, emptyLabel }: CardSectionProps) {
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         {icon}
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+        <h4 className="text-[11px] font-semibold tracking-wider text-foreground uppercase">
           {title}
         </h4>
       </div>
       {items.length === 0 ? (
-        <p className="text-[11px] italic text-muted-foreground/60">{emptyLabel}</p>
+        <p className="text-[11px] text-muted-foreground/60 italic">{emptyLabel}</p>
       ) : (
         <ul className="space-y-1">
           {items.map((item, i) => (

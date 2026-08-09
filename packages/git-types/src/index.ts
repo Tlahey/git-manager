@@ -155,13 +155,7 @@ export interface MergeTargetStatus {
  * substitutes it for `added` when diffing a file git doesn't know yet (see `force_untracked_status`
  * in `services/git_diff.rs`), whereas {@link GitStatus} keeps untracked paths in their own list. */
 export type FileStatusKind =
-  | 'added'
-  | 'modified'
-  | 'deleted'
-  | 'renamed'
-  | 'copied'
-  | 'typechange'
-  | 'untracked'
+  'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'typechange' | 'untracked'
 
 export interface GitStatusEntry {
   path: string
@@ -553,11 +547,7 @@ export interface RebaseTodoStep {
 // ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
 
 export type MergeBlockKind =
-  | 'unchanged'
-  | 'ours-only'
-  | 'theirs-only'
-  | 'both-same'
-  | 'both-different'
+  'unchanged' | 'ours-only' | 'theirs-only' | 'both-same' | 'both-different'
 
 export interface MergeBlock {
   blockId: number

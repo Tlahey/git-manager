@@ -171,7 +171,7 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
             ))}
           </ul>
         ) : (
-          <p className="text-xs italic text-muted-foreground">{t('pr.side.noLabels')}</p>
+          <p className="text-xs text-muted-foreground italic">{t('pr.side.noLabels')}</p>
         )}
         {editing === 'labels' && (
           <PrEditPopover

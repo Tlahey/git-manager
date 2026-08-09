@@ -107,7 +107,7 @@ export function DodChecklistEditor({
                 title={t('card.dod.removeItem')}
                 aria-label={t('card.dod.removeItem')}
                 data-testid={`card-dod-remove-${item.index}`}
-                className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-accent hover:text-destructive focus:opacity-100"
               >
                 <Trash2 className="h-3 w-3" />
               </button>

@@ -1,6 +1,15 @@
 import { useTranslation } from '@git-manager/i18n'
 import { ToolbarButton } from '@git-manager/components'
-import { Archive, FlagOff, ListPlus, Plus, Search, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react'
+import {
+  Archive,
+  FlagOff,
+  ListPlus,
+  Plus,
+  Search,
+  Settings2,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react'
 import { useBoardData } from '../hooks/useBoardData'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
 import { isIterationBoard } from '../lib/boardIteration'
@@ -115,14 +124,14 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
         />
       )}
 
-      <div className="bg-border mx-1 h-6 w-px shrink-0" />
+      <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
       {/* Last, as on every view. This is the *global* search — every ticket of every board — where
           the field in the left panel filters the board on screen. Two searches because they answer
           two questions: "where is that ticket" has no reason to start by asking which board it is
           on, and "narrow what I am looking at" has no reason to leave it. */}
       <ToolbarButton
-        icon={<Search className="text-muted-foreground h-4 w-4" />}
+        icon={<Search className="h-4 w-4 text-muted-foreground" />}
         label={t('git:toolbar.searchLabel')}
         title={t('search.title')}
         onClick={() => openDialog('globalSearch')}

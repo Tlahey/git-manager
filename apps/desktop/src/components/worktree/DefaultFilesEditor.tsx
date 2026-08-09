@@ -66,7 +66,7 @@ export function DefaultFilesEditor({
                 />
                 {count !== undefined && (
                   <span
-                    className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums ${
+                    className={`pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[10px] tabular-nums ${
                       count === 0 ? 'text-destructive' : 'text-muted-foreground'
                     }`}
                     data-testid="default-files-count"

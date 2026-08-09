@@ -1,0 +1,8 @@
+# Commits that touched hundreds of files without changing a line of behaviour. GitHub reads this
+# file automatically; locally it needs one opt-in:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: run prettier over the repo — the one-time reformat that made `pnpm format:check` a
+# pre-push gate (whitespace, quotes, Tailwind class order).
+b481c9dfbd9af174f97a0a4e8755bf6876bba231

@@ -59,14 +59,7 @@ export interface PrCheck {
 
 /** GitHub's mergeability signal — same enum GitHub's merge box is driven by. */
 export type PrMergeStateStatus =
-  | 'BEHIND'
-  | 'BLOCKED'
-  | 'CLEAN'
-  | 'DIRTY'
-  | 'DRAFT'
-  | 'HAS_HOOKS'
-  | 'UNKNOWN'
-  | 'UNSTABLE'
+  'BEHIND' | 'BLOCKED' | 'CLEAN' | 'DIRTY' | 'DRAFT' | 'HAS_HOOKS' | 'UNKNOWN' | 'UNSTABLE'
 
 export type PrReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
 

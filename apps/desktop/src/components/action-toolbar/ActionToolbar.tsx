@@ -56,7 +56,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   return (
     <div
       data-testid="action-toolbar"
-      className="chrome-surface border-border bg-sidebar flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b px-2"
+      className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2"
     >
       {/* Above the panel it folds away, and outside the view sections on purpose: the panel slot is
           the shell's, filled in turn by the branch sidebar, the file tree and the board list. It is
@@ -75,7 +75,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         data-testid="toolbar-toggle-panel"
       />
 
-      <div className="bg-border mx-1 hidden h-6 w-px shrink-0 sm:block" />
+      <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
       {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
@@ -85,7 +85,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
             nothing. */}
         {showsBranch && (
           <>
-            <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0 self-end pb-0.5" />
+            <ChevronRight className="h-4 w-4 shrink-0 self-end pb-0.5 text-muted-foreground/40" />
             <BranchContext />
             <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
               {/* Merge-target state of the current branch, then the linked PR — both read-only tags
@@ -102,7 +102,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         )}
       </div>
 
-      <div className="bg-border mx-1 hidden h-6 w-px shrink-0 sm:block" />
+      <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
       {/* ── Middle section: the active view's own actions ──────── */}
       {/* `py-1.5` gives the buttons' overflowing count badges vertical headroom: `overflow-x-auto`
@@ -120,7 +120,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <RepoViewSwitcher />
         <ToolbarButton
-          icon={<CommandIcon className="text-muted-foreground h-4 w-4" />}
+          icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.actions')}
           title={`${t('toolbar.actions')} (⌘K)`}
           onClick={() => useCommandPaletteStore.getState().toggle('all')}

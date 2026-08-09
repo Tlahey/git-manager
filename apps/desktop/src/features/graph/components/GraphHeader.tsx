@@ -110,7 +110,7 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
       <ContextMenuTrigger asChild>
         <div
           ref={rowRef}
-          className="flex h-7 shrink-0 select-none items-stretch border-b border-border bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+          className="flex h-7 shrink-0 items-stretch border-b border-border bg-muted/40 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase select-none"
         >
           {columns.map((col, idx) => {
             // Handle on the boundary with the next column (none after the last one).
@@ -174,7 +174,7 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
                     return (
                       <div
                         onPointerDown={(e) => handleResizeDown(e, col, partner)}
-                        className="group absolute right-0 top-0 z-content h-full w-2 translate-x-1/2 cursor-col-resize"
+                        className="group absolute top-0 right-0 z-content h-full w-2 translate-x-1/2 cursor-col-resize"
                       >
                         <div className="mx-auto h-full w-px bg-border transition-colors group-hover:bg-primary/60" />
                       </div>

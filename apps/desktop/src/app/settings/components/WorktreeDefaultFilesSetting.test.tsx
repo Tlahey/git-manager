@@ -40,7 +40,6 @@ beforeEach(() => {
   useSettingsStore.setState(INITIAL, true)
 })
 
-
 describe('WorktreeDefaultFilesSetting — per-line editing', () => {
   it('shows an empty state and only an add button when nothing is saved', () => {
     render(<WorktreeDefaultFilesSetting repoPath={REPO} />)

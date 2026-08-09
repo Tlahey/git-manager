@@ -6,7 +6,6 @@ beforeEach(() => {
   useE2ePathPickerStore.setState({ open: false, value: '', resolve: null })
 })
 
-
 describe('pickPath', () => {
   it('runs the real picker outside of e2e builds', async () => {
     const real = vi.fn().mockResolvedValue('/real/path')

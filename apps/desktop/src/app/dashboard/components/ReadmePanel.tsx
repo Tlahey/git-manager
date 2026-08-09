@@ -105,7 +105,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
       </div>
 
       {/* Pane content */}
-      <div className="flex-1 select-text overflow-y-auto bg-card/10 p-5">
+      <div className="flex-1 overflow-y-auto bg-card/10 p-5 select-text">
         {loading ? (
           <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
@@ -118,7 +118,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           </div>
         ) : showRaw ? (
           <pre
-            className="select-text whitespace-pre-wrap rounded border border-border/40 bg-muted/20 p-2 font-mono text-xs leading-relaxed text-foreground"
+            className="rounded border border-border/40 bg-muted/20 p-2 font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground select-text"
             data-testid="readme-raw-content"
           >
             {content}

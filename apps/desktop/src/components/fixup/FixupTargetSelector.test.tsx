@@ -61,7 +61,6 @@ beforeEach(() => {
   })
 })
 
-
 describe('FixupTargetSelector', () => {
   it('lists commits from the log', () => {
     renderSelector()

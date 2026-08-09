@@ -116,7 +116,7 @@ function NavItem({
     <button
       data-testid={testId}
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-2 rounded py-2 pl-5 pr-3 text-left text-xs transition-colors ${
+      className={`flex w-full cursor-pointer items-center gap-2 rounded py-2 pr-3 pl-5 text-left text-xs transition-colors ${
         active
           ? 'bg-accent font-medium text-foreground'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -365,14 +365,14 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
         <nav className="chrome-surface flex w-44 shrink-0 flex-col border-r border-border bg-sidebar p-2">
           {/* Quick search across every settings page */}
           <div className="relative mb-2 shrink-0">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('settings.search.placeholder')}
               data-testid="settings-search"
-              className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-background pr-2 pl-7 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
             />
           </div>
 
@@ -381,7 +381,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
             {visibleGlobalTabs.length > 0 && (
               <p
                 data-testid="settings-group-global"
-                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
+                className="px-3 pt-1 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase"
               >
                 {t('settings.scope.global')}
               </p>
@@ -406,11 +406,11 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
                 <p
                   data-testid="settings-group-repository"
                   title={activeRepo ?? undefined}
-                  className="mt-3 truncate px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
+                  className="mt-3 truncate px-3 pt-1 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70 uppercase"
                 >
                   {t('settings.scope.repository')}
                   {projectName && (
-                    <span className="ml-1 normal-case text-muted-foreground/50">
+                    <span className="ml-1 text-muted-foreground/50 normal-case">
                       · {projectName}
                     </span>
                   )}

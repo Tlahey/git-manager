@@ -1,8 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import {
-  useCommitExplanation,
-  type CommitExplanationSubject,
-} from '../hooks/useCommitExplanation'
+import { useCommitExplanation, type CommitExplanationSubject } from '../hooks/useCommitExplanation'
 import { SummaryProgressNotice } from '../../../components/common/SummaryProgressNotice'
 import { ExplanationPanelShell } from './ExplanationPanelShell'
 

@@ -123,7 +123,9 @@ export function GraphToolbarActions() {
       <ToolbarButton
         icon={<GitPullRequest className="h-4 w-4 text-blue-400" />}
         label={t('remote.pull')}
-        title={behindCount > 0 ? t('remote.commitsToPull', { count: behindCount }) : t('remote.pull')}
+        title={
+          behindCount > 0 ? t('remote.commitsToPull', { count: behindCount }) : t('remote.pull')
+        }
         loading={loading.pull}
         disabled={disabled}
         badge={behindCount}

@@ -150,7 +150,7 @@ function Pill({
         {/* Kept when the label folds away, unlike the label itself: on a narrow footer a spinner
             alone says "something is happening", while "7/42" says it is getting somewhere. */}
         {steps && (
-          <span className="font-mono tabular-nums text-primary" data-testid="footer-ai-steps">
+          <span className="font-mono text-primary tabular-nums" data-testid="footer-ai-steps">
             {steps}
           </span>
         )}

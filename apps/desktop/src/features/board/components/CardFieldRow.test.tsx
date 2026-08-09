@@ -55,7 +55,12 @@ describe('CardFieldRow', () => {
    * one being edited stay where the eye left them. */
   it('keeps the editor out of the row until it is opened', () => {
     const { rerender } = render(
-      <CardFieldRow label="Priority" testId="row" editor={<input data-testid="editor" />} open={false}>
+      <CardFieldRow
+        label="Priority"
+        testId="row"
+        editor={<input data-testid="editor" />}
+        open={false}
+      >
         <span>High</span>
       </CardFieldRow>
     )

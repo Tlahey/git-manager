@@ -1,6 +1,10 @@
 import type { GitCommit, GitGraphNode } from '@git-manager/git-types'
 import { isSyntheticRow } from './syntheticRows'
-import { combineInto, initPlan, type RebasePlanStep } from '../../../components/rebase-editor/rebasePlan'
+import {
+  combineInto,
+  initPlan,
+  type RebasePlanStep,
+} from '../../../components/rebase-editor/rebasePlan'
 
 /**
  * Pure logic behind dragging commits inside the graph to reorder them, or to drop one onto another

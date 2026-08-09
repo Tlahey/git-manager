@@ -209,16 +209,19 @@ describe('ToggleGroup — hover', () => {
   it.each([
     ['text', textOptions, 'small'],
     ['icon-only', options, 'tree'],
-  ])('highlights the unselected segments of a %s group, never the selected one', (_, opts, value) => {
-    const { container } = render(
-      <ToggleGroup value={value} onValueChange={() => {}} options={opts as typeof options} />
-    )
-    const [selected, unselected] = Array.from(container.querySelectorAll('label'))
-    expect(unselected.className).toContain('hover:bg-accent')
-    // A second fill landing on the one segment that is already filled would read as a state change
-    // on the segment that cannot change.
-    expect(selected.className).not.toContain('hover:bg-accent')
-  })
+  ])(
+    'highlights the unselected segments of a %s group, never the selected one',
+    (_, opts, value) => {
+      const { container } = render(
+        <ToggleGroup value={value} onValueChange={() => {}} options={opts as typeof options} />
+      )
+      const [selected, unselected] = Array.from(container.querySelectorAll('label'))
+      expect(unselected.className).toContain('hover:bg-accent')
+      // A second fill landing on the one segment that is already filled would read as a state change
+      // on the segment that cannot change.
+      expect(selected.className).not.toContain('hover:bg-accent')
+    }
+  )
 
   it('offers no hover fill at all while the group is disabled', () => {
     const { container } = render(
@@ -332,7 +335,9 @@ describe('ToggleGroup — stacked segments', () => {
     expect(selected.className).toContain('text-control-active-foreground')
     stacked.unmount()
 
-    const text = render(<ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />)
+    const text = render(
+      <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} />
+    )
     const [textSelected] = Array.from(text.container.querySelectorAll('label'))
     expect(textSelected.className).toContain('bg-control-active')
   })

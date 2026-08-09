@@ -243,7 +243,7 @@ export function AppearanceSection() {
             <span className="shrink-0 text-[10px] text-muted-foreground">
               {t('settings.appearance.glassTransparency.clear')}
             </span>
-            <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-foreground">
+            <span className="w-9 shrink-0 text-right font-mono text-[11px] text-foreground tabular-nums">
               {appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY}%
             </span>
           </div>
@@ -325,7 +325,7 @@ export function AppearanceSection() {
         <NativeSelect
           value={appearance.fontSize}
           onChange={(e) => updateAppearance({ fontSize: parseInt(e.target.value, 10) })}
-          className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+          className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
         >
           {fontSizes.map((size) => (
             <option key={size} value={size}>
@@ -374,13 +374,10 @@ export function AppearanceSection() {
           onChange={(e) =>
             updateAppearance({
               notificationLocation: e.target.value as
-                | 'top-right'
-                | 'top-left'
-                | 'bottom-right'
-                | 'bottom-left',
+                'top-right' | 'top-left' | 'bottom-right' | 'bottom-left',
             })
           }
-          className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+          className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
         >
           <option value="top-right">Haut droit (Top Right)</option>
           <option value="top-left">Haut gauche (Top Left)</option>

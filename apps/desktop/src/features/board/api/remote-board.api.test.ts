@@ -7,8 +7,9 @@ vi.mock('../../../lib/tauri', async () => {
 })
 
 vi.mock('../../../api/github/github-issues.api', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../../api/github/github-issues.api')>('../../../api/github/github-issues.api')
+  const actual = await vi.importActual<typeof import('../../../api/github/github-issues.api')>(
+    '../../../api/github/github-issues.api'
+  )
   return {
     ...actual,
     fetchRepoIssues: vi.fn(),
@@ -20,8 +21,9 @@ vi.mock('../../../api/github/github-issues.api', async () => {
 })
 
 vi.mock('../../../api/github/github-labels.api', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../../api/github/github-labels.api')>('../../../api/github/github-labels.api')
+  const actual = await vi.importActual<typeof import('../../../api/github/github-labels.api')>(
+    '../../../api/github/github-labels.api'
+  )
   return { ...actual, addLabels: vi.fn(), removeLabel: vi.fn() }
 })
 
@@ -65,7 +67,15 @@ function mockIssue(overrides: Partial<MockIssue> = {}): MockIssue {
 beforeEach(() => {
   vi.clearAllMocks()
   tauriMocked.readBoardConfig.mockResolvedValue(
-    configJson([{ id: 'b1', name: 'Board', source: 'remote', columns: [{ id: 'todo', name: 'Todo', order: 0 }], revision: 'r1' }])
+    configJson([
+      {
+        id: 'b1',
+        name: 'Board',
+        source: 'remote',
+        columns: [{ id: 'todo', name: 'Todo', order: 0 }],
+        revision: 'r1',
+      },
+    ])
   )
 })
 
@@ -160,7 +170,7 @@ describe('board config (list/create/update/delete)', () => {
 })
 
 describe('cards derived from issues + labels', () => {
-  it('only includes issues carrying this board\'s status label, mapping the label suffix to columnId', async () => {
+  it("only includes issues carrying this board's status label, mapping the label suffix to columnId", async () => {
     tauriMocked.readBoardConfig.mockResolvedValue(
       configJson([{ id: 'b1', name: 'Board', source: 'remote', columns: [], revision: 'r1' }])
     )
@@ -213,7 +223,10 @@ describe('card mutations', () => {
     )
     labelsMocked.addLabels.mockResolvedValue(undefined)
 
-    const card = await backend.createCard(path, 'b1', 'todo', { title: 'Task', description: 'Body' })
+    const card = await backend.createCard(path, 'b1', 'todo', {
+      title: 'Task',
+      description: 'Body',
+    })
 
     expect(issuesMocked.createIssue).toHaveBeenCalledWith(
       'acme',
@@ -237,7 +250,14 @@ describe('card mutations', () => {
   it('adds a prefix used for the first time to the board’s list', async () => {
     tauriMocked.readBoardConfig.mockResolvedValue(
       configJson([
-        { id: 'b1', name: 'Board', source: 'remote', columns: [], revision: 'r1', cardPrefixes: ['GM'] },
+        {
+          id: 'b1',
+          name: 'Board',
+          source: 'remote',
+          columns: [],
+          revision: 'r1',
+          cardPrefixes: ['GM'],
+        },
       ])
     )
     tauriMocked.writeBoardConfig.mockResolvedValue(undefined)

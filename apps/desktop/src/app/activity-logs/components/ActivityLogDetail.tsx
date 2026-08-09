@@ -20,8 +20,8 @@ interface ActivityLogDetailProps {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[96px_1fr] gap-2 py-1">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">{label}</span>
-      <span className="min-w-0 break-all font-mono text-[11px] text-foreground">{children}</span>
+      <span className="text-[10px] tracking-wide text-muted-foreground/60 uppercase">{label}</span>
+      <span className="min-w-0 font-mono text-[11px] break-all text-foreground">{children}</span>
     </div>
   )
 }
@@ -159,7 +159,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
           {/* Full associated data (untruncated for objects) */}
           <div className="mt-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+              <span className="text-[10px] tracking-wide text-muted-foreground/60 uppercase">
                 {t('activityLogs.detail.data')}
               </span>
               <button
@@ -175,13 +175,13 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                 {copiedData ? t('activityLogs.copied') : t('activityLogs.detail.copyData')}
               </button>
             </div>
-            <pre className="mt-1 whitespace-pre-wrap break-all rounded-md border border-border/60 bg-muted/20 p-2 font-mono text-[10px] text-muted-foreground">
+            <pre className="mt-1 rounded-md border border-border/60 bg-muted/20 p-2 font-mono text-[10px] break-all whitespace-pre-wrap text-muted-foreground">
               {data || t('activityLogs.detail.noData')}
             </pre>
             {entry.error && (
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                  <span className="text-[10px] tracking-wide text-muted-foreground/60 uppercase">
                     {t('activityLogs.detail.error')}
                   </span>
                   <button
@@ -196,7 +196,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                     {copiedError ? t('activityLogs.copied') : t('activityLogs.detail.copyError')}
                   </button>
                 </div>
-                <pre className="mt-1 whitespace-pre-wrap break-all rounded-md border border-destructive/40 bg-destructive/10 p-2 font-mono text-[10px] text-destructive">
+                <pre className="mt-1 rounded-md border border-destructive/40 bg-destructive/10 p-2 font-mono text-[10px] break-all whitespace-pre-wrap text-destructive">
                   {entry.error}
                 </pre>
               </div>

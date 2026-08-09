@@ -9,7 +9,10 @@ function card(id: string, overrides: Partial<BoardCard> = {}): BoardCard {
   return makeCard({ id, boardId: 'b1', title: id, ...overrides })
 }
 
-const BOARDS: Board[] = [makeBoard({ id: 'b1', name: 'Sprint 12' }), makeBoard({ id: 'b2', name: 'Backlog' })]
+const BOARDS: Board[] = [
+  makeBoard({ id: 'b1', name: 'Sprint 12' }),
+  makeBoard({ id: 'b2', name: 'Backlog' }),
+]
 
 function renderSection(subject: BoardCard, cards: BoardCard[], readOnly = false) {
   const onOpenCard = vi.fn()
@@ -222,7 +225,10 @@ describe('CardLinksSection — walking to the card at the other end', () => {
 
   it('opens the related card from the row', async () => {
     const subject = card('c1', { links: [related] })
-    const { onOpenCard } = renderSection(subject, [subject, card('c2', { title: 'Fix the header' })])
+    const { onOpenCard } = renderSection(subject, [
+      subject,
+      card('c2', { title: 'Fix the header' }),
+    ])
 
     await userEvent.click(screen.getByTestId('card-link-open-c2'))
     expect(onOpenCard).toHaveBeenCalledWith('c2')

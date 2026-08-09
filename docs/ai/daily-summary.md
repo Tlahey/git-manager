@@ -8,13 +8,13 @@ each morning — and the only one whose output is **archived on disk** for two m
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
 > Searching the archive is its own feature: see [summary search](./summary-search.md).
 
-|                  |                                                                                                                                                                                                                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Descriptors**  | [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) (map) → [`dailySummaryFeature`](../../packages/ai/src/features/dailySummary.ts) (reduce)                                                                                                                                                |
-| **Orchestrator** | [`composeDailySummaryFromSummaries`](../../packages/ai/src/features/composeDailySummary.ts)                                                                                                                                                                                                                   |
-| **Kind**         | completion + JSON schema → `DailySummary`                                                                                                                                                                                                                                                                     |
-| **Temperature**  | 0.3 (reduce), 0.1 (map)                                                                                                                                                                                                                                                                                       |
-| **Context**      | `get_ai_activity` (the window) **plus** `get_ai_context` at `range` scope (the window's diff)                                                                                                                                                                                                                 |
+|                  |                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Descriptors**  | [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) (map) → [`dailySummaryFeature`](../../packages/ai/src/features/dailySummary.ts) (reduce)                                                                                                                                                     |
+| **Orchestrator** | [`composeDailySummaryFromSummaries`](../../packages/ai/src/features/composeDailySummary.ts)                                                                                                                                                                                                                        |
+| **Kind**         | completion + JSON schema → `DailySummary`                                                                                                                                                                                                                                                                          |
+| **Temperature**  | 0.3 (reduce), 0.1 (map)                                                                                                                                                                                                                                                                                            |
+| **Context**      | `get_ai_activity` (the window) **plus** `get_ai_context` at `range` scope (the window's diff)                                                                                                                                                                                                                      |
 | **UI**           | ✨ per project on the dashboard → [`DailySummaryPanel`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.tsx), the morning auto-run, and the archive panel → _AI ▸ Daily summaries_ in a repo ([`DailySummariesPanel`](../../apps/desktop/src/features/graph/components/DailySummariesPanel.tsx)) |
 
 ---
@@ -251,15 +251,15 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 ## Tests
 
-| Test                                                                                                       | Covers                                                             |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [`dailySummary.test.ts`](../../packages/ai/src/features/dailySummary.test.ts)                              | prompt shape, file-summary evidence, language, parse tolerance     |
-| [`composeDailySummary.test.ts`](../../packages/ai/src/features/composeDailySummary.test.ts)                | map→reduce orchestration, progress, cancellation, per-file failure |
-| [`dailySummaryWindow.test.ts`](../../apps/desktop/src/lib/dailySummaryWindow.test.ts)                      | the weekend rule, the local date key, staleness                    |
-| [`dailySummaryMarkdown.test.ts`](../../apps/desktop/src/lib/dailySummaryMarkdown.test.ts)                  | the file format, round trip, hand-edited tolerance                 |
-| [`generateDailySummary.test.ts`](../../apps/desktop/src/lib/generateDailySummary.test.ts)                  | end-to-end orchestration, the skip rule, the archive write         |
-| [`dailySummary.store.test.ts`](../../apps/desktop/src/stores/dailySummary.store.test.ts)                   | hydration from disk, per-day indexing, deletion                    |
-| [`useMorningSummaries.test.ts`](../../apps/desktop/src/hooks/useMorningSummaries.test.ts)                  | sequential run, once-per-session, failure isolation                |
-| [`DailySummaryPanel.test.tsx`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.test.tsx) | rendering, progress, the skip state, the regenerate action         |
+| Test                                                                                                            | Covers                                                             |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`dailySummary.test.ts`](../../packages/ai/src/features/dailySummary.test.ts)                                   | prompt shape, file-summary evidence, language, parse tolerance     |
+| [`composeDailySummary.test.ts`](../../packages/ai/src/features/composeDailySummary.test.ts)                     | map→reduce orchestration, progress, cancellation, per-file failure |
+| [`dailySummaryWindow.test.ts`](../../apps/desktop/src/lib/dailySummaryWindow.test.ts)                           | the weekend rule, the local date key, staleness                    |
+| [`dailySummaryMarkdown.test.ts`](../../apps/desktop/src/lib/dailySummaryMarkdown.test.ts)                       | the file format, round trip, hand-edited tolerance                 |
+| [`generateDailySummary.test.ts`](../../apps/desktop/src/lib/generateDailySummary.test.ts)                       | end-to-end orchestration, the skip rule, the archive write         |
+| [`dailySummary.store.test.ts`](../../apps/desktop/src/stores/dailySummary.store.test.ts)                        | hydration from disk, per-day indexing, deletion                    |
+| [`useMorningSummaries.test.ts`](../../apps/desktop/src/hooks/useMorningSummaries.test.ts)                       | sequential run, once-per-session, failure isolation                |
+| [`DailySummaryPanel.test.tsx`](../../apps/desktop/src/app/dashboard/components/DailySummaryPanel.test.tsx)      | rendering, progress, the skip state, the regenerate action         |
 | [`DailySummariesPanel.test.tsx`](../../apps/desktop/src/features/graph/components/DailySummariesPanel.test.tsx) | repo scoping (list _and_ model shortlist), filters, actions        |
-| `ai_activity.rs` / `daily_summary_archive.rs` tests                                                        | branch resolution, window boundary, retention, the exclude entry   |
+| `ai_activity.rs` / `daily_summary_archive.rs` tests                                                             | branch resolution, window boundary, retention, the exclude entry   |

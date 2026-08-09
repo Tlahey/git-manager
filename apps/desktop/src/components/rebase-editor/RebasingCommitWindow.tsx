@@ -139,7 +139,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
     selectedSteps.length > 0 && selectedSteps.every((s) => s.action === 'drop')
 
   return (
-    <div className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background">
+    <div className="animate-fadeIn flex h-full w-full flex-col overflow-hidden bg-background select-none">
       {/* Header: plan actions */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2.5 shadow-xs">
         <Button

@@ -69,7 +69,6 @@ describe('useEffectiveRepoSettings', () => {
     expect(result.current.terminalForeground).toBe('#e4e4e7')
   })
 
-
   it('resolves the GitFlow fields to built-in defaults for a repo with no override', () => {
     setGlobal({ theme: 'light' })
     const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))

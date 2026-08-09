@@ -121,7 +121,10 @@ describe('CardBreadcrumb — the parent segment', () => {
    * of" is not a half of its own.
    */
   it('writes the relation on the parent, not on this card', async () => {
-    const { onAddLink } = renderCrumb({ card: child, cards: [child, card('epic', { kind: 'epic' })] })
+    const { onAddLink } = renderCrumb({
+      card: child,
+      cards: [child, card('epic', { kind: 'epic' })],
+    })
 
     await userEvent.click(screen.getByTestId('card-breadcrumb-add-parent'))
     await userEvent.click(screen.getByTestId('card-link-option-epic'))

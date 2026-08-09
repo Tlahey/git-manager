@@ -75,7 +75,7 @@ export function DiffRow({ row }: DiffRowProps) {
 
   if (row.kind === 'binary') {
     return (
-      <div className={cn('flex h-8 items-center px-3 italic text-muted-foreground', boxEdges)}>
+      <div className={cn('flex h-8 items-center px-3 text-muted-foreground italic', boxEdges)}>
         {t('diffViewer.binaryFile')}
       </div>
     )
@@ -105,16 +105,16 @@ export function DiffRow({ row }: DiffRowProps) {
       )}
     >
       {/* Line numbers */}
-      <span className="w-10 shrink-0 select-none border-r border-border pr-2 text-right text-muted-foreground/50">
+      <span className="w-10 shrink-0 border-r border-border pr-2 text-right text-muted-foreground/50 select-none">
         {line.oldLineno ?? ''}
       </span>
-      <span className="w-10 shrink-0 select-none border-r border-border pr-2 text-right text-muted-foreground/50">
+      <span className="w-10 shrink-0 border-r border-border pr-2 text-right text-muted-foreground/50 select-none">
         {line.newLineno ?? ''}
       </span>
       {/* Origin (+/-/space) */}
       <span
         className={cn(
-          'w-5 shrink-0 select-none text-center',
+          'w-5 shrink-0 text-center select-none',
           line.origin === '+' && 'text-green-400',
           line.origin === '-' && 'text-red-400',
           line.origin === ' ' && 'text-muted-foreground/40'
@@ -125,7 +125,7 @@ export function DiffRow({ row }: DiffRowProps) {
       {/* Content */}
       <span
         className={cn(
-          'flex-1 whitespace-pre pl-1',
+          'flex-1 pl-1 whitespace-pre',
           line.origin === '+' && 'text-green-300',
           line.origin === '-' && 'text-red-300',
           line.origin === ' ' && 'text-foreground/70'

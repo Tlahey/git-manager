@@ -80,7 +80,6 @@ beforeEach(() => {
   useMergedBranchesMock.mockReturnValue(hookResult([mergedCheck(branch())]))
 })
 
-
 describe('RemoveMergedBranchesDialog — body states', () => {
   it('shows a no-GitHub-remote hint and disables confirm when nothing qualifies', () => {
     useMergedBranchesMock.mockReturnValue(hookResult([], { isGithub: false }))
