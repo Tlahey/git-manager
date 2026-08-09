@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { NativeSelect } from '@git-manager/ui'
 import { AlertTriangle } from 'lucide-react'
 import type { BoardCard, BoardCardKind, BoardCardPatch, BoardTag } from '@git-manager/git-types'
 import { resolveCardTags } from '../lib/cardMeta'
+import { CardChoiceList } from './CardChoiceList'
 import { CardKindIcon } from './CardKindIcon'
 import { CardTagPicker } from './CardTagPicker'
 import { CardBlockedSection } from './CardBlockedSection'
@@ -48,8 +48,16 @@ export function CardDetailsPanel({
   const [editing, setEditing] = useState<EditTarget>(null)
   const cardTags = resolveCardTags({ tags }, card)
 
-  const openEditor = (target: Exclude<EditTarget, null>) =>
-    readOnly ? undefined : () => setEditing((c) => (c === target ? null : target))
+  /** Wires one field's choices to the panel's single open slot — one field open at a time. On a
+   * closed sprint it hands back no editor at all, which is what leaves the row as plain text. */
+  const editorFor = (target: Exclude<EditTarget, null>, editor: ReactNode) =>
+    readOnly
+      ? {}
+      : {
+          editor,
+          open: editing === target,
+          onOpenChange: (next: boolean) => setEditing(next ? target : null),
+        }
 
   return (
   <CardSidebarPanel
@@ -63,28 +71,24 @@ export function CardDetailsPanel({
     <CardFieldRow
       label={t('card.meta.kind')}
       testId="card-meta-kind"
-      onEdit={openEditor('kind')}
       editTitle={t('card.meta.editKind')}
-      editor={
-        editing === 'kind' && (
-          <NativeSelect
-            value={card.kind}
-            autoFocus
-            onChange={(e) => {
-              void onPatch({ kind: e.target.value as BoardCardKind })
-              setEditing(null)
-            }}
-            className="mt-1 h-7 text-xs"
-            data-testid="card-kind-select"
-          >
-            {KINDS.map((value) => (
-              <option key={value} value={value}>
-                {t(`card.kind.${value}`)}
-              </option>
-            ))}
-          </NativeSelect>
-        )
-      }
+      {...editorFor(
+        'kind',
+        <CardChoiceList
+          ariaLabel={t('card.meta.kind')}
+          value={card.kind}
+          options={KINDS.map((value) => ({
+            value,
+            label: t(`card.kind.${value}`),
+            icon: <CardKindIcon kind={value} />,
+          }))}
+          onSelect={(next) => {
+            void onPatch({ kind: next })
+            setEditing(null)
+          }}
+          testIdPrefix="card-kind-option"
+        />
+      )}
     >
       <CardKindIcon kind={card.kind} withLabel />
     </CardFieldRow>
@@ -92,27 +96,25 @@ export function CardDetailsPanel({
     <CardFieldRow
       label={t('card.tags.label')}
       testId="card-meta-tags"
-      onEdit={openEditor('tags')}
       editTitle={t('card.meta.editTags')}
       addLabel={t('card.meta.addTags')}
       filled={cardTags.length > 0}
-      editor={
-        editing === 'tags' && (
-          <CardTagPicker
-            tags={tags}
-            selectedIds={card.tagIds}
-            onToggle={(tagId) =>
-              void onPatch({
-                tagIds: card.tagIds.includes(tagId)
-                  ? card.tagIds.filter((id) => id !== tagId)
-                  : [...card.tagIds, tagId],
-              })
-            }
-            onCreate={onCreateTag ?? (() => Promise.resolve(null))}
-            onClose={() => setEditing(null)}
-          />
-        )
-      }
+      {...editorFor(
+        'tags',
+        <CardTagPicker
+          tags={tags}
+          selectedIds={card.tagIds}
+          onToggle={(tagId) =>
+            void onPatch({
+              tagIds: card.tagIds.includes(tagId)
+                ? card.tagIds.filter((id) => id !== tagId)
+                : [...card.tagIds, tagId],
+            })
+          }
+          onCreate={onCreateTag ?? (() => Promise.resolve(null))}
+          onClose={() => setEditing(null)}
+        />
+      )}
     >
       <ul className="flex flex-wrap gap-1">
         {cardTags.map((tag) => (

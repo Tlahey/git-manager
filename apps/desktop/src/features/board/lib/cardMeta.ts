@@ -29,16 +29,52 @@ export function dodProgress(dod: string): DodProgress {
   return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) }
 }
 
+/**
+ * A date as the `YYYY-MM-DD` a due date is stored and compared as.
+ *
+ * Built from the *local* calendar fields rather than `toISOString()`, which converts to UTC first
+ * and so hands back yesterday's date for anyone west of Greenwich for part of every day.
+ */
+export function toDateKey(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 /** Whether a due date is in the past. Compared as calendar days: a card due today is not overdue
  * until tomorrow, which is what "due `YYYY-MM-DD`" means to a person. */
 export function isOverdue(dueDate: string | undefined, today: Date = new Date()): boolean {
   if (!dueDate) return false
-  const todayKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0'),
-  ].join('-')
-  return dueDate < todayKey
+  return dueDate < toDateKey(today)
+}
+
+export interface DueDateShortcut {
+  /** Names the offer; the copy lives under `card.dueDate.<key>`. */
+  key: 'today' | 'tomorrow' | 'nextWeek'
+  /** The date it stands for, as stored. */
+  date: string
+}
+
+/**
+ * The dates worth offering as a click: today, tomorrow, this day next week.
+ *
+ * Deadlines set from a board are overwhelmingly one of those three, and a date typed into a picker
+ * is a calendar lookup for something the app already knows. The exact date is shown beside each
+ * label all the same — an offer the user cannot check is an offer they have to trust.
+ *
+ * Day arithmetic through `Date`'s own overflow (day 32 of January is 1 February), so a month end and
+ * a leap year need no special case here.
+ */
+export function dueDateShortcuts(today: Date = new Date()): DueDateShortcut[] {
+  const at = (days: number) =>
+    toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days))
+  return [
+    { key: 'today', date: at(0) },
+    { key: 'tomorrow', date: at(1) },
+    { key: 'nextWeek', date: at(7) },
+  ]
 }
 
 /**

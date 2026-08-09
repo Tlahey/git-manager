@@ -19,6 +19,10 @@ interface CardKindIconProps {
  * {@link CARD_KIND_STYLES}, which is where the rule that colour only *reinforces* the glyph is
  * recorded — the same way {@link CardPriorityIcon}'s direction does — and where each colour is
  * justified.
+ *
+ * With a label, the gap is the one `CardChoiceList` puts between a row's mark and its name: the side
+ * panel's value and the list of values it opens are the same row, and drawing them apart makes the
+ * picker look like a different control from the field it belongs to.
  */
 export function CardKindIcon({ kind, withLabel, className = '' }: CardKindIconProps) {
   const { t } = useTranslation('board')
@@ -30,7 +34,7 @@ export function CardKindIcon({ kind, withLabel, className = '' }: CardKindIconPr
       title={label}
       aria-label={label}
       data-testid={`card-kind-${kind}`}
-      className={`inline-flex items-center gap-1 ${className}`}
+      className={`inline-flex items-center ${withLabel ? 'gap-2' : 'gap-1'} ${className}`}
     >
       <span
         className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] ${chip}`}
