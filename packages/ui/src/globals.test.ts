@@ -38,3 +38,46 @@ describe('.chrome-surface (globals.css)', () => {
     expect(block).toMatch(/--badge-foreground:\s*var\(--sidebar-accent-foreground\)/)
   })
 })
+
+// The stacking scale is a *scale*: the numbers only mean anything relative to one
+// another, and every one of them is a decision some component now depends on. A
+// CSS-contract test is the only place it can be checked (jsdom applies no real
+// stylesheet, so no render can compare two layers).
+describe('stacking scale (globals.css)', () => {
+  const layer = (name: string): number => {
+    const raw = globalsCss.match(new RegExp(`--z-${name}:\\s*(\\d+);`))?.[1]
+    expect(raw, `--z-${name} not found in globals.css`).toBeDefined()
+    return Number(raw)
+  }
+
+  it('is strictly ascending in the documented order', () => {
+    const order = [
+      'graph-overflow',
+      'content',
+      'raised',
+      'resize-handle',
+      'graph-row-hover',
+      'panel',
+      'popover',
+      'notification',
+      'overlay',
+      'tooltip',
+    ]
+    const values = order.map(layer)
+    expect(values).toEqual([...values].sort((a, b) => a - b))
+    expect(new Set(values).size).toBe(values.length)
+  })
+
+  it('keeps a hovered graph row under the floating panels and popovers', () => {
+    // Regression: a hovered graph row (45) sat above the ⌘F commit search panel (40),
+    // so pointing at a commit hid the search box the rows scroll under. The row only
+    // ever needs to beat its sibling rows — its ring and its refs overflow onto them.
+    expect(layer('graph-row-hover')).toBeLessThan(layer('panel'))
+    expect(layer('graph-row-hover')).toBeLessThan(layer('popover'))
+  })
+
+  it('keeps a hovered graph row above the in-pane content it overlaps', () => {
+    expect(layer('graph-row-hover')).toBeGreaterThan(layer('content'))
+    expect(layer('graph-row-hover')).toBeGreaterThan(layer('resize-handle'))
+  })
+})
