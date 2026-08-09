@@ -26,6 +26,7 @@ apps/desktop/.updater-keys/
 # Vitest browser-mode artifacts (failure screenshots, APCA a11y reports)
 __screenshots__/
 a11y-report/
+.vitest-attachments/
 
 # Documentation site output — everything below is written by
 # apps/docs/scripts/generate.ts from the .feature files and docs/screenshots/,
