@@ -13,7 +13,8 @@ import {
 } from '@git-manager/ui'
 import { Plus, Trash2, X } from 'lucide-react'
 import type { BoardTag } from '@git-manager/git-types'
-import { nextTagColor, tagIdFromName } from '../lib/boardDefaults'
+import { defaultCardPrefix, nextTagColor, tagIdFromName } from '../lib/boardDefaults'
+import { AssignIdentifiersRow } from './AssignIdentifiersRow'
 import { DodChecklistEditor } from './DodChecklistEditor'
 
 interface BoardSettingsDialogProps {
@@ -24,6 +25,11 @@ interface BoardSettingsDialogProps {
   dodTemplate: string
   /** The prefixes this board offers at card creation — see {@link Board.cardPrefixes}. */
   cardPrefixes: string[]
+  /** How many of the board's cards carry no identifier — see {@link AssignIdentifiersRow}. Zero on a
+   * board that has nothing to repair, and on a closed one, which is read-only. */
+  unnumberedCardCount: number
+  /** Numbers those cards, from the prefix given. Immediate, unlike everything else here. */
+  onAssignIdentifiers: (prefix: string) => Promise<number>
   onSave: (
     name: string,
     tags: BoardTag[],
@@ -48,6 +54,8 @@ export function BoardSettingsDialog({
   tags,
   dodTemplate,
   cardPrefixes,
+  unnumberedCardCount,
+  onAssignIdentifiers,
   onSave,
 }: BoardSettingsDialogProps) {
   const { t } = useTranslation('board')
@@ -183,6 +191,15 @@ export function BoardSettingsDialog({
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground">{t('boardSettings.prefixHint')}</p>
+            {/* Numbered from the prefix on screen — the one just typed, if that is what's there:
+                assigning registers it on the board, so pressing this before Save can't produce a
+                sequence the board doesn't know about. */}
+            <AssignIdentifiersRow
+              count={unnumberedCardCount}
+              prefix={draftPrefixes[0] ?? defaultCardPrefix(draftName)}
+              onAssign={onAssignIdentifiers}
+              disabled={pending}
+            />
           </div>
 
           <div className="space-y-1">

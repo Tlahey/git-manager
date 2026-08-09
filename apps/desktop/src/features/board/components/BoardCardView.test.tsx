@@ -186,6 +186,16 @@ describe('BoardCardView — identifier', () => {
     expect(within(footer as HTMLElement).getByTestId('card-kind-task')).toBeInTheDocument()
     expect(footer).not.toHaveTextContent('Fix the header')
   })
+
+  /** The kind is said once, by the tile whose job that is. Colouring the key after it too would give
+   * a card three coloured marks where the eye needs one, so the identifier keeps the footer's ink and
+   * earns its legibility from the weight instead. */
+  it('leaves the identifier in the footer’s own ink, whatever the kind', () => {
+    renderCard(card({ prefix: 'GM', number: 7, kind: 'bug' }))
+    const identifier = screen.getByTestId('board-card-identifier')
+    expect(identifier.className).toContain('font-semibold')
+    expect(identifier.className).not.toMatch(/\btext-(red|green|violet)-/)
+  })
 })
 
 describe('BoardCardView — kind', () => {

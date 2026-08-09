@@ -108,7 +108,9 @@ describe('BoardDialogsManager — creating a card', () => {
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'New task')
     await userEvent.click(screen.getByTestId('board-card-save'))
 
-    expect(data.createCard).toHaveBeenCalledWith('todo', 'New task', '', '', 'task')
+    // The prefix is the one derived from the board's name: it offers none of its own, and a card
+    // created without one would carry no identifier ever (`offeredCardPrefixes`).
+    expect(data.createCard).toHaveBeenCalledWith('todo', 'New task', '', 'SPR', 'task')
     await waitFor(() => expect(screen.getByTestId('card-title-display')).toBeInTheDocument())
   })
 

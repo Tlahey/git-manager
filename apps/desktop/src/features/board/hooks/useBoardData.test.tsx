@@ -282,8 +282,9 @@ describe('useBoardData', () => {
     })
   })
 
-  /** A board that offers no sequence numbers nothing — the card still tracks its issue. */
-  it('imports without an identifier when the board has no prefix', async () => {
+  /** A board that offers no sequence falls back to the one derived from its name, rather than
+   * importing a card that can never be referred to by an identifier — see `offeredCardPrefixes`. */
+  it('imports under the board’s default prefix when it offers none', async () => {
     mockedUseRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'acme', repo: 'widgets' }, token: 'tok' })
     localBackend.listBoards.mockResolvedValue([board()])
     remoteBackend.listBoards.mockResolvedValue([])
@@ -310,7 +311,7 @@ describe('useBoardData', () => {
       path,
       'b1',
       'todo',
-      expect.objectContaining({ prefix: '' })
+      expect.objectContaining({ prefix: 'BOA' })
     )
   })
 

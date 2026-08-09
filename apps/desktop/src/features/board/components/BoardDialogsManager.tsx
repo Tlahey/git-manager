@@ -14,7 +14,8 @@ import { ArchivedCardsDialog } from './ArchivedCardsDialog'
 import { DeleteArchivedCardsDialog } from './DeleteArchivedCardsDialog'
 import { ArchiveColumnDialog } from './ArchiveColumnDialog'
 import { MoveColumnDialog } from './MoveColumnDialog'
-import { defaultColumns, branchNameForCard } from '../lib/boardDefaults'
+import { defaultColumns, branchNameForCard, offeredCardPrefixes } from '../lib/boardDefaults'
+import { cardIdentifier } from '../lib/cardMeta'
 import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
@@ -61,6 +62,7 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     addComment,
     loadComments,
     updateBoardMeta,
+    assignCardIdentifiers,
     createTagAndAssign,
     closeSprint,
     moveCardToBoard,
@@ -137,6 +139,12 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           tags={activeBoard.tags}
           dodTemplate={activeBoard.dodTemplate}
           cardPrefixes={activeBoard.cardPrefixes}
+          // A closed sprint is read-only, so it is offered no repair — its tickets are part of a
+          // report now, and renumbering them would rewrite what that report refers to.
+          unnumberedCardCount={
+            activeBoard.closedAt ? 0 : cards.filter((c) => !cardIdentifier(c)).length
+          }
+          onAssignIdentifiers={assignCardIdentifiers}
           onSave={updateBoardMeta}
         />
       )}
@@ -190,7 +198,9 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           repoPath={repoPath}
           tags={activeBoard.tags}
           dodTemplate={activeBoard.dodTemplate}
-          cardPrefixes={activeBoard.cardPrefixes}
+          // The board's own prefixes, or the default derived from its name when it offers none — a
+          // board created before it had one would otherwise go on making cards with no identifier.
+          cardPrefixes={offeredCardPrefixes(activeBoard)}
           onCreate={async ({ title, description, dod, prefix, kind }) => {
             // A prefix typed in the dialog needs no board write of its own: both backends add an
             // unseen prefix to the board's list in the same write that allocates the card's number,

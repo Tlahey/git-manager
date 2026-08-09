@@ -22,6 +22,9 @@ interface CardLinksSectionProps {
   boards: Board[]
   onAdd: (target: BoardCard, kind: DisplayedLinkKind) => Promise<unknown>
   onRemove: (link: ResolvedLink) => Promise<unknown>
+  /** Opens a related card in place of this one. Omitted leaves the rows unclickable — a row whose
+   * other end isn't loaded has nothing to open either way. */
+  onOpenCard?: (cardId: string) => void
   readOnly?: boolean
 }
 
@@ -41,6 +44,7 @@ export function CardLinksSection({
   boards,
   onAdd,
   onRemove,
+  onOpenCard,
   readOnly,
 }: CardLinksSectionProps) {
   const { t } = useTranslation('board')
@@ -81,7 +85,7 @@ export function CardLinksSection({
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 {t(`card.links.group.${kind}`)}
               </p>
-              <ul className="mt-0.5 space-y-0.5">
+              <ul className="mt-0.5">
                 {links
                   .filter((l) => l.kind === kind)
                   .map((link) => (
@@ -91,6 +95,7 @@ export function CardLinksSection({
                       currentBoardId={card.boardId}
                       boards={boards}
                       onRemove={onRemove}
+                      onOpenCard={onOpenCard}
                       readOnly={readOnly}
                     />
                   ))}
@@ -111,17 +116,35 @@ export function CardLinksSection({
   )
 }
 
+/**
+ * One relation, as a row you can walk through to the card at the other end.
+ *
+ * **The whole row is the target, not the identifier inside it.** A relation is read as "this card,
+ * over there", and the useful gesture on it is going there — so the row lights up under the pointer
+ * and opens the card, the way the breadcrumb's parent segment does. The name alone would be a
+ * three-character hit area in an eleven-pixel line.
+ *
+ * The clickable part is a `button` *inside* the `li` rather than a handler on the `li` itself: the
+ * remove control is a button too, and a button inside a button is invalid HTML the browser silently
+ * unnests. The `li` keeps the hover fill and lends it to both, which is what makes them read as one
+ * row rather than two controls that happen to be adjacent.
+ *
+ * A row whose other end isn't loaded — another board, or a card that is gone — stays plain text.
+ * There is nothing to open, and a hover state promising otherwise would be a lie.
+ */
 function LinkRow({
   link,
   currentBoardId,
   boards,
   onRemove,
+  onOpenCard,
   readOnly,
 }: {
   link: ResolvedLink
   currentBoardId: string
   boards: Board[]
   onRemove: (link: ResolvedLink) => Promise<unknown>
+  onOpenCard?: (cardId: string) => void
   readOnly?: boolean
 }) {
   const { t } = useTranslation('board')
@@ -129,22 +152,40 @@ function LinkRow({
   const board = boards.find((b) => b.id === link.targetBoardId)
   // Unresolved *and* pointing at the board on screen: the card it names is gone, not elsewhere.
   const onThisBoard = link.targetBoardId === currentBoardId
+  const target = link.card
+  const openable = Boolean(target && onOpenCard)
+
+  const name = target && (
+    <>
+      <CardKindIcon kind={target.kind} />
+      {identifier && (
+        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{identifier}</span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-left text-foreground">{target.title}</span>
+    </>
+  )
 
   return (
     <li
-      className="flex min-w-0 items-center gap-1.5 text-[11px]"
+      className={`group flex min-w-0 items-center gap-1.5 rounded px-1 py-1 text-[11px] transition-colors ${
+        openable ? 'hover:bg-accent' : ''
+      }`}
       data-testid={`card-link-${link.targetCardId}`}
     >
-      {link.card ? (
-        <>
-          <CardKindIcon kind={link.card.kind} />
-          {identifier && (
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-              {identifier}
-            </span>
-          )}
-          <span className="min-w-0 flex-1 truncate text-foreground">{link.card.title}</span>
-        </>
+      {target ? (
+        openable ? (
+          <button
+            type="button"
+            onClick={() => onOpenCard?.(target.id)}
+            title={target.title}
+            data-testid={`card-link-open-${link.targetCardId}`}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {name}
+          </button>
+        ) : (
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">{name}</span>
+        )
       ) : (
         /*
          * Two different unresolved cases, and they must not read alike. A link to *another* board is

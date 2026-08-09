@@ -14,6 +14,7 @@ import {
   deleteBoardCard,
   deleteBoardCards,
   setBoardCardsArchived,
+  assignBoardCardIdentifiers,
   getBoardHistory,
   listRecoverableBoards,
   restoreBoardBackup,
@@ -53,6 +54,8 @@ export const localBoardBackend: BoardBackend = {
   deleteCards: (path, boardId, cardIds) => deleteBoardCards(path, boardId, cardIds),
   setCardsArchived: (path, boardId, cardIds, archived) =>
     setBoardCardsArchived(path, boardId, cardIds, archived),
+  assignCardIdentifiers: (path, boardId, prefix) =>
+    assignBoardCardIdentifiers(path, boardId, prefix),
 }
 
 /** The board's full commit history — every card/column change is a commit (see `git_board.rs`'s

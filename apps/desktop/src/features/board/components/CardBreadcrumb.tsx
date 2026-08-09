@@ -94,8 +94,13 @@ export function CardBreadcrumb({
           both when it is a tracked card (the two are different facts — where the work sits here, and
           what it is called on GitHub), and failing everything the title, because a breadcrumb ending
           at the parent would say you are somewhere you are not.
+
+          It carries this card's own kind tile too, the way the parent segment carries the parent's:
+          both segments then read the same, and the kind stays visible while the sidebar that spells
+          it out is scrolled away.
         */}
         {(boardName || parentCard || canAddParent) && <span aria-hidden>/</span>}
+        <CardKindIcon kind={card.kind} />
         {identifier && (
           <span data-testid="card-identifier" className="font-mono text-foreground">
             {identifier}

@@ -16,6 +16,8 @@ function renderDialog(props: Partial<React.ComponentProps<typeof BoardSettingsDi
       tags={TAGS}
       dodTemplate="- [ ] Tests pass"
       cardPrefixes={[]}
+      unnumberedCardCount={0}
+      onAssignIdentifiers={vi.fn().mockResolvedValue(0)}
       onSave={onSave}
       {...props}
     />
@@ -112,5 +114,50 @@ describe('BoardSettingsDialog', () => {
     await userEvent.click(screen.getByTestId('board-settings-prefix-add'))
 
     expect(screen.getAllByTestId(/^board-settings-prefix-GM$/)).toHaveLength(1)
+  })
+})
+
+/**
+ * The one control here that isn't part of the draft: it repairs the *cards* the moment it is pressed,
+ * where every field around it waits for Save.
+ */
+describe('BoardSettingsDialog — cards with no identifier', () => {
+  it('says nothing when every card is numbered', () => {
+    renderDialog({ unnumberedCardCount: 0 })
+    expect(screen.queryByTestId('board-settings-assign-identifiers')).not.toBeInTheDocument()
+  })
+
+  it('offers to number them from the board’s own prefix', async () => {
+    const onAssignIdentifiers = vi.fn().mockResolvedValue(2)
+    renderDialog({ cardPrefixes: ['GM'], unnumberedCardCount: 2, onAssignIdentifiers })
+
+    expect(screen.getByTestId('board-settings-assign-identifiers')).toHaveTextContent(
+      '2 cards have no identifier'
+    )
+    await userEvent.click(screen.getByTestId('board-settings-assign-identifiers-run'))
+    expect(onAssignIdentifiers).toHaveBeenCalledWith('GM')
+  })
+
+  /** A board offering none is exactly the board this repair exists for, so it proposes the default
+   * derived from the board's name rather than nothing at all. */
+  it('proposes the name’s default when the board offers no prefix', async () => {
+    const onAssignIdentifiers = vi.fn().mockResolvedValue(1)
+    renderDialog({ cardPrefixes: [], unnumberedCardCount: 1, onAssignIdentifiers })
+
+    await userEvent.click(screen.getByTestId('board-settings-assign-identifiers-run'))
+    expect(onAssignIdentifiers).toHaveBeenCalledWith('SPR')
+  })
+
+  /** Assigning registers the prefix on the board, so numbering under one just typed can't produce a
+   * sequence the board doesn't know about. */
+  it('numbers under a prefix added but not yet saved', async () => {
+    const onAssignIdentifiers = vi.fn().mockResolvedValue(1)
+    renderDialog({ cardPrefixes: [], unnumberedCardCount: 1, onAssignIdentifiers })
+
+    await userEvent.type(screen.getByTestId('board-settings-prefix'), 'ops')
+    await userEvent.click(screen.getByTestId('board-settings-prefix-add'))
+    await userEvent.click(screen.getByTestId('board-settings-assign-identifiers-run'))
+
+    expect(onAssignIdentifiers).toHaveBeenCalledWith('OPS')
   })
 })

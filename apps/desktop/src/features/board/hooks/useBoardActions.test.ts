@@ -21,6 +21,7 @@ function makeBackend() {
     deleteCard: vi.fn(),
     deleteCards: vi.fn(),
     setCardsArchived: vi.fn(),
+    assignCardIdentifiers: vi.fn(),
   }
 }
 
@@ -102,6 +103,26 @@ describe('useBoardActions', () => {
 
     await result.current.deleteBoard(only)
     expect(setActiveBoard).not.toHaveBeenCalled()
+  })
+
+  /** The cards changed, so the open board has to be refetched — the identifiers are on them, not on
+   * the board. */
+  it('refreshes after numbering the cards that had no identifier', async () => {
+    backend.assignCardIdentifiers.mockResolvedValue(3)
+    const { result, mutateDetail, revalidateLists } = renderActions()
+
+    await expect(result.current.assignCardIdentifiers('GM')).resolves.toBe(3)
+    expect(backend.assignCardIdentifiers).toHaveBeenCalledWith(path, 'b1', 'GM')
+    expect(mutateDetail).toHaveBeenCalled()
+    expect(revalidateLists).toHaveBeenCalled()
+  })
+
+  it('does not refetch a board where nothing needed numbering', async () => {
+    backend.assignCardIdentifiers.mockResolvedValue(0)
+    const { result, mutateDetail } = renderActions()
+
+    await result.current.assignCardIdentifiers('GM')
+    expect(mutateDetail).not.toHaveBeenCalled()
   })
 })
 

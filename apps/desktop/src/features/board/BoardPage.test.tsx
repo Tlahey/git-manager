@@ -86,7 +86,9 @@ describe('BoardPage', () => {
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'New task')
     await userEvent.click(screen.getByTestId('board-card-save'))
 
-    expect(createCard).toHaveBeenCalledWith('done', 'New task', '', '', 'task')
+    // 'SPR' — the fallback derived from the board's name, since this board offers no prefix of its
+    // own. A card created with an empty prefix would have no identifier at all (`offeredCardPrefixes`).
+    expect(createCard).toHaveBeenCalledWith('done', 'New task', '', 'SPR', 'task')
   })
 
   /** The prefix and the kind are picked in the dialog and travel to the backend with the card — the

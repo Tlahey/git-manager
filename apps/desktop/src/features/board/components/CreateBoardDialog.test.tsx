@@ -11,7 +11,9 @@ describe('CreateBoardDialog', () => {
     await userEvent.type(screen.getByTestId('board-name-input'), 'Sprint 12')
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
-    expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '', '', true)
+    // 'SPR', not '': a board created with an empty prefix field used to hand every card an empty
+    // prefix and the number 0 — no identifier at all, ever. See `defaultCardPrefix`.
+    expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '', 'SPR', true)
   })
 
   it('can switch to the remote backend when available', async () => {
@@ -22,7 +24,7 @@ describe('CreateBoardDialog', () => {
     await userEvent.click(screen.getByText('GitHub'))
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
-    expect(onSubmit).toHaveBeenCalledWith('Team board', 'remote', '', '', true)
+    expect(onSubmit).toHaveBeenCalledWith('Team board', 'remote', '', 'TB', true)
   })
 
   it('passes on a Definition-of-Done template for the board’s cards to start from', async () => {
@@ -37,7 +39,7 @@ describe('CreateBoardDialog', () => {
     })
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
-    expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '- [ ] Reviewed', '', true)
+    expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '- [ ] Reviewed', 'SPR', true)
   })
 
   it('disables the remote option when the repo has no connected GitHub account', () => {
@@ -63,6 +65,18 @@ describe('CreateBoardDialog', () => {
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
     expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '', 'GM', true)
+  })
+
+  /** The hint has to promise what the board will actually do: it used to show `GM-1` for an empty
+   * field on a board that then numbered nothing at all. */
+  it('previews the prefix the board will use, typed or derived', async () => {
+    render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={vi.fn()} />)
+
+    await userEvent.type(screen.getByTestId('board-name-input'), 'Mobile App')
+    expect(screen.getByText('Cards get an identifier like MA-1, MA-2…')).toBeInTheDocument()
+
+    await userEvent.type(screen.getByTestId('board-prefix-input'), 'ops')
+    expect(screen.getByText('Cards get an identifier like OPS-1, OPS-2…')).toBeInTheDocument()
   })
 })
 
@@ -96,6 +110,6 @@ describe('CreateBoardDialog — iteration', () => {
     await userEvent.click(screen.getByTestId('board-iteration-input'))
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
-    expect(onSubmit).toHaveBeenCalledWith('Backlog', 'local', '', '', false)
+    expect(onSubmit).toHaveBeenCalledWith('Backlog', 'local', '', 'BAC', false)
   })
 })

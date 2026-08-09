@@ -7,6 +7,7 @@ import type {
 } from '@git-manager/git-types'
 import type { BoardBackend } from '../api/boardBackend'
 import { firstIterationName } from '../lib/boardIteration'
+import { offeredCardPrefixes } from '../lib/boardDefaults'
 import type { BoardCatalog } from './useBoardCatalog'
 import type { BoardDetail } from './useBoardDetail'
 
@@ -92,6 +93,29 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
     }
   }
 
+  /**
+   * Numbers the cards that have none, from `prefix`'s sequence — see
+   * {@link BoardBackend.assignCardIdentifiers} for why an ordinary edit can't.
+   *
+   * Takes no `expectedRevision`: it is not a write to the board's settings but a one-shot repair of
+   * the cards, and it decides for itself which of them are missing an identifier at the moment it
+   * runs. A card another window numbered in between is simply not among them. Resolves with how many
+   * were numbered, which the caller reports.
+   */
+  async function assignCardIdentifiers(prefix: string): Promise<number> {
+    if (!activeBoard) return 0
+    const assigned = await backendFor(activeBoard.source).assignCardIdentifiers(
+      repoPath,
+      activeBoard.id,
+      prefix
+    )
+    if (assigned > 0) {
+      revalidateLists()
+      void mutateDetail()
+    }
+    return assigned
+  }
+
   /** `deleteCards` decides whether the board's tickets are erased with it or survive it — the two
    * backends mean different things by that, both documented on {@link BoardBackend.deleteBoard}. */
   async function deleteBoard(board: Board, deleteCards = true): Promise<void> {
@@ -142,7 +166,7 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
         activeBoard.dodTemplate,
         // The successor offers the same prefixes; the carried-over cards keep their own identifiers
         // regardless, since a prefix belongs to the card.
-        activeBoard.cardPrefixes[0] ?? '',
+        offeredCardPrefixes(activeBoard)[0],
         // The successor of an iteration is an iteration. Nothing else can reach this branch: only an
         // iteration is offered a close, and the name is already numbered, so `firstIterationName`
         // leaves what `nextSprintName` proposed exactly as it is.
@@ -195,5 +219,12 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
     return closed
   }
 
-  return { createBoard, updateBoardColumns, updateBoardMeta, deleteBoard, closeSprint }
+  return {
+    createBoard,
+    updateBoardColumns,
+    updateBoardMeta,
+    assignCardIdentifiers,
+    deleteBoard,
+    closeSprint,
+  }
 }

@@ -17,6 +17,7 @@ import {
   Textarea,
 } from '@git-manager/ui'
 import { firstIterationName } from '../lib/boardIteration'
+import { defaultCardPrefix } from '../lib/boardDefaults'
 
 interface CreateBoardDialogProps {
   open: boolean
@@ -52,6 +53,11 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
   const [iteration, setIteration] = useState(true)
   const [pending, setPending] = useState(false)
 
+  // Left empty, the field takes the name's own default rather than nothing: a board created with no
+  // prefix hands every card an empty one and the number 0, and a card numbered 0 has no identifier
+  // to show — ever, since the number is allocated once, at creation. See `defaultCardPrefix`.
+  const effectivePrefix = cardPrefix.trim().toUpperCase() || defaultCardPrefix(name)
+
   function handleOpenChange(next: boolean) {
     if (!next) {
       setName('')
@@ -67,7 +73,7 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
     if (!name.trim()) return
     setPending(true)
     try {
-      await onSubmit(name.trim(), source, dodTemplate, cardPrefix, iteration)
+      await onSubmit(name.trim(), source, dodTemplate, effectivePrefix, iteration)
       handleOpenChange(false)
     } catch {
       // Reported by the action layer (`reportWriteFailures`); swallowed here so the rejection isn't
@@ -134,7 +140,7 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
               data-testid="board-prefix-input"
             />
             <p className="text-[10px] text-muted-foreground">
-              {t('createBoard.prefixHint', { example: cardPrefix.trim().toUpperCase() || 'GM' })}
+              {t('createBoard.prefixHint', { example: effectivePrefix })}
             </p>
           </div>
 

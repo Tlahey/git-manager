@@ -166,7 +166,13 @@ export function BoardCardView({
         <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-muted-foreground">
           <CardKindIcon kind={card.kind} />
           {identifier && (
-            <span data-testid="board-card-identifier" className="font-mono tracking-tight">
+            // Heavier than the metadata around it, but in the footer's own ink: the colour is the
+            // *tile*'s job, and saying the same thing twice side by side would make a card of three
+            // coloured marks where the eye only needs one.
+            <span
+              data-testid="board-card-identifier"
+              className="font-mono font-semibold tracking-tight"
+            >
               {identifier}
             </span>
           )}
