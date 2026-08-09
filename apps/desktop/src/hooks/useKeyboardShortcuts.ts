@@ -10,6 +10,9 @@ import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
+import { useRepoViewStore } from '../stores/repoView.store'
+import { useFileExplorerStore } from '../features/files'
+import { useBoardControlsStore } from '../features/board'
 import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
@@ -87,20 +90,51 @@ export function useKeyboardShortcuts({
       }
 
       const isModF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
-      if (
-        isModF &&
-        !e.altKey &&
-        !e.shiftKey &&
-        e.key.toLowerCase() === 'f' &&
-        activeRepo &&
-        isCommitsView
-      ) {
+      if (isModF && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f' && activeRepo) {
         const targetEl = e.target as HTMLElement
         if (!targetEl.closest('.monaco-editor')) {
-          e.preventDefault()
-          useCommitSearchStore.getState().toggle()
-          return
+          // ⌘F means "search what I am looking at", so it dispatches on the active view rather than
+          // belonging to one of them: the graph steps through commits, the files view filters the
+          // tree, the board filters the cards. Each view has exactly one search, which is what lets
+          // one chord serve all three without a disambiguating modifier.
+          const view = useRepoViewStore.getState().view
+          if (view === 'files') {
+            e.preventDefault()
+            useFileExplorerStore.getState().actions.toggleSearch()
+            return
+          }
+          if (view === 'board') {
+            e.preventDefault()
+            useBoardControlsStore.getState().toggleSearch()
+            return
+          }
+          // The graph's panel only exists while the plain commit list is on screen — not over a
+          // PR, a diff or the composer, which is what `isCommitsView` reads.
+          if (isCommitsView) {
+            e.preventDefault()
+            useCommitSearchStore.getState().toggle()
+            return
+          }
         }
+      }
+
+      // Left panel: ⌘S / Ctrl+S — folds the panel slot away and back, whichever of the three views
+      // is filling it. Before the input guard like the chords above, so it works while a search
+      // field or a commit message has focus. There is nothing to save in this app, which is why the
+      // key is free; a `.monaco-editor` is excluded all the same, since ⌘S is muscle memory inside
+      // an editor and swallowing it there would read as the app ignoring a save.
+      const isModS = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (
+        isModS &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === 's' &&
+        activeRepo &&
+        !(e.target as HTMLElement).closest('.monaco-editor')
+      ) {
+        e.preventDefault()
+        useRepoViewStore.getState().togglePanel()
+        return
       }
 
       // Sidebar search: ⌥⌘F / Ctrl+Alt+F — focuses the left panel's filter input, regardless of
@@ -111,6 +145,9 @@ export function useKeyboardShortcuts({
       const isModOptF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
       if (isModOptF && e.altKey && e.code === 'KeyF' && activeRepo) {
         e.preventDefault()
+        // Asking to filter a panel that ⌘S has folded away is asking for it back: without this the
+        // shortcut would request focus on an input that is not mounted, and do nothing at all.
+        if (!useRepoViewStore.getState().isPanelOpen) useRepoViewStore.getState().togglePanel()
         useSidebarSearchStore.getState().requestFocus()
         return
       }

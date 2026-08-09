@@ -22,9 +22,23 @@ export type RepoView = 'graph' | 'files' | 'board'
 interface RepoViewState {
   view: RepoView
   setView: (view: RepoView) => void
+  /**
+   * Whether the left panel slot is showing at all — the branch sidebar, the file tree or the board
+   * list, whichever the active view puts there.
+   *
+   * **One flag for the slot, not one per view**, for the same reason `view` is one slot: it is one
+   * piece of chrome that three views take turns filling, and ⌘S is one gesture. It lived in
+   * `fileExplorer.store` while the files view was the only one that could fold its panel away; that
+   * made "hide the panel" mean something different depending on where you stood, and left the other
+   * two with no way to reclaim the width at all.
+   */
+  isPanelOpen: boolean
+  togglePanel: () => void
 }
 
 export const useRepoViewStore = create<RepoViewState>((set) => ({
   view: 'graph',
   setView: (view) => set({ view }),
+  isPanelOpen: true,
+  togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
 }))

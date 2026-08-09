@@ -49,14 +49,20 @@ describe('fileExplorer.store — syncRepo', () => {
     expect(useFileExplorerStore.getState().currentDirPath).toBe('src')
   })
 
-  it('keeps the tree-panel toggle across a repository switch', () => {
+  /**
+   * The tree-panel toggle is deliberately *not* here any more — it is `repoView.store`'s
+   * `isPanelOpen`, one flag for the slot all three views take turns filling. What is left in this
+   * store is per-repository, which is exactly what `syncRepo` drops.
+   */
+  it('drops the open search along with the rest of the browsing state', () => {
     actions().syncRepo('/repo-a')
-    actions().toggleSidebar()
-    const { isSidebarOpen } = useFileExplorerStore.getState()
+    actions().toggleSearch()
+    actions().setTreeSearchQuery('Button')
 
     actions().syncRepo('/repo-b')
 
-    expect(useFileExplorerStore.getState().isSidebarOpen).toBe(isSidebarOpen)
+    expect(useFileExplorerStore.getState().isSearchOpen).toBe(false)
+    expect(useFileExplorerStore.getState().treeSearchQuery).toBe('')
   })
 
   it('resets when the repository goes away entirely', () => {

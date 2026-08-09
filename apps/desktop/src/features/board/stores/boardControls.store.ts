@@ -17,6 +17,14 @@ import { create } from 'zustand'
 interface BoardControlsState {
   search: string
   setSearch: (search: string) => void
+  /** Whether the floating search panel is on screen — opened from the toolbar or ⌘F. */
+  isSearchOpen: boolean
+  toggleSearch: () => void
+  /**
+   * Closing clears the query too: the search *filters the board*, so a stale filter left behind a
+   * panel that is no longer on screen would hide cards with nothing to say why.
+   */
+  closeSearch: () => void
   /** Include closed sprints in the board list. */
   showClosed: boolean
   setShowClosed: (showClosed: boolean) => void
@@ -30,9 +38,12 @@ interface BoardControlsState {
 export const useBoardControlsStore = create<BoardControlsState>((set) => ({
   search: '',
   setSearch: (search) => set({ search }),
+  isSearchOpen: false,
+  toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
+  closeSearch: () => set({ isSearchOpen: false, search: '' }),
   showClosed: false,
   setShowClosed: (showClosed) => set({ showClosed }),
   showDeleted: false,
   setShowDeleted: (showDeleted) => set({ showDeleted }),
-  reset: () => set({ search: '', showClosed: false, showDeleted: false }),
+  reset: () => set({ search: '', isSearchOpen: false, showClosed: false, showDeleted: false }),
 }))

@@ -32,7 +32,7 @@ describe('CommitSearchPanel', () => {
   it('renders the input focused and reflects the store query when open', () => {
     useCommitSearchStore.setState({ open: true, query: 'feat' })
     renderPanel()
-    const input = screen.getByTestId('commit-search-input') as HTMLInputElement
+    const input = screen.getByTestId('commit-search-panel-input') as HTMLInputElement
     expect(input.value).toBe('feat')
     expect(input).toHaveFocus()
   })
@@ -41,7 +41,7 @@ describe('CommitSearchPanel', () => {
     useCommitSearchStore.setState({ open: true })
     const user = userEvent.setup()
     renderPanel()
-    await user.type(screen.getByTestId('commit-search-input'), 'x')
+    await user.type(screen.getByTestId('commit-search-panel-input'), 'x')
     expect(useCommitSearchStore.getState().query).toBe('x')
   })
 
@@ -49,7 +49,7 @@ describe('CommitSearchPanel', () => {
     useCommitSearchStore.setState({ open: true, query: 'feat' })
     const user = userEvent.setup()
     renderPanel()
-    await user.click(screen.getByTestId('commit-search-close'))
+    await user.click(screen.getByTestId('commit-search-panel-close'))
     expect(useCommitSearchStore.getState().open).toBe(false)
     expect(useCommitSearchStore.getState().query).toBe('')
   })
@@ -58,7 +58,7 @@ describe('CommitSearchPanel', () => {
     useCommitSearchStore.setState({ open: true, query: 'feat' })
     const user = userEvent.setup()
     renderPanel()
-    await user.type(screen.getByTestId('commit-search-input'), '{Escape}')
+    await user.type(screen.getByTestId('commit-search-panel-input'), '{Escape}')
     expect(useCommitSearchStore.getState().open).toBe(false)
   })
 
@@ -104,7 +104,7 @@ describe('CommitSearchPanel', () => {
     const onPrevious = vi.fn()
     const user = userEvent.setup()
     renderPanel({ resultCount: 3, activeIndex: 0, onNext, onPrevious })
-    const input = screen.getByTestId('commit-search-input')
+    const input = screen.getByTestId('commit-search-panel-input')
     await user.type(input, '{Enter}')
     expect(onNext).toHaveBeenCalledOnce()
     await user.type(input, '{Shift>}{Enter}{/Shift}')

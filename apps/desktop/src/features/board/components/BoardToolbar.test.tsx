@@ -24,13 +24,21 @@ beforeEach(() => {
 })
 
 describe('BoardToolbar', () => {
-  it('writes the card filter the board reads', async () => {
+  /**
+   * The toolbar only *raises* the search now — the field itself is `BoardSearchPanel`, over the
+   * board it filters. So what a click does here is flip the store the panel reads, which is the
+   * same seam the dialog buttons use.
+   */
+  it('opens and closes the card search rather than carrying the field itself', async () => {
     const user = userEvent.setup()
     render(<BoardToolbar repoPath="/repo" />)
+    expect(screen.queryByTestId('board-search-panel-input')).not.toBeInTheDocument()
 
-    await user.type(screen.getByTestId('board-search-input'), 'header')
+    await user.click(screen.getByTestId('board-search-button'))
+    expect(useBoardControlsStore.getState().isSearchOpen).toBe(true)
 
-    expect(useBoardControlsStore.getState().search).toBe('header')
+    await user.click(screen.getByTestId('board-search-button'))
+    expect(useBoardControlsStore.getState().isSearchOpen).toBe(false)
   })
 
   /**

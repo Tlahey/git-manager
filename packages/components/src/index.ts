@@ -23,6 +23,9 @@ export type { TagInputProps } from './TagInput'
 export { ToolbarButton } from './ToolbarButton'
 export type { ToolbarButtonProps } from './ToolbarButton'
 
+export { FloatingSearchPanel } from './FloatingSearchPanel'
+export type { FloatingSearchPanelProps } from './FloatingSearchPanel'
+
 export { MultiSelectDropdown } from './MultiSelectDropdown'
 export type { MultiSelectDropdownProps } from './MultiSelectDropdown'
 

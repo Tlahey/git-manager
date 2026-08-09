@@ -908,6 +908,7 @@
   "undoRedo.deleteTag": "Undo delete tag {{tag}}",
   "toolbar.search": "Search (commits, messages, authors, files)",
   "toolbar.searchLabel": "Search",
+  "toolbar.panel": "Panel",
   "toolbar.findCommit": "Find commit",
   "toolbar.searchPrevious": "Previous match",
   "toolbar.searchNext": "Next match",

@@ -13,6 +13,7 @@ import { useFileExplorerStore } from '../stores/fileExplorer.store'
 import { useRepoFiles } from '../hooks/useRepoFiles'
 import { buildFileTree, filterFileTree, type FileNode } from '../lib/fileTree'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 function TreeNode({
   node,
@@ -111,7 +112,8 @@ export function FileTreeSidebar() {
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
   const { data: files } = useRepoFiles(effectiveRepoPath)
 
-  const toggleSidebar = useFileExplorerStore((s) => s.actions.toggleSidebar)
+  // The panel slot belongs to the shell, not to this view — same flag ⌘S and the toolbar flip.
+  const togglePanel = useRepoViewStore((s) => s.togglePanel)
   const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
   const treeSearchQuery = useFileExplorerStore((s) => s.treeSearchQuery)
   const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
@@ -136,7 +138,7 @@ export function FileTreeSidebar() {
             variant="ghost"
             size="icon"
             className="text-sidebar-muted-foreground h-6 w-6"
-            onClick={toggleSidebar}
+            onClick={togglePanel}
             aria-label={t('fileExplorer.hideSidebar')}
             data-testid="file-tree-hide-sidebar"
           >

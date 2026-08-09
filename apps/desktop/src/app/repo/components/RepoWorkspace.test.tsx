@@ -81,7 +81,7 @@ const INITIAL_EXPLORER = useFileExplorerStore.getState()
 beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useFileExplorerStore.setState(INITIAL_EXPLORER, true)
-  useRepoViewStore.setState({ view: 'graph' })
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   useSoloModeStore.setState({ active: false, soloed: new Set() })
   useRepoUIStore.setState({
     pendingTagDialog: null,
@@ -130,8 +130,7 @@ describe('RepoWorkspace', () => {
   })
 
   it('folds the file tree away without leaving the files view', () => {
-    useRepoViewStore.setState({ view: 'files' })
-    useFileExplorerStore.setState({ isSidebarOpen: false })
+    useRepoViewStore.setState({ view: 'files', isPanelOpen: false })
     render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('fake-project-files')).toBeInTheDocument()
     expect(screen.queryByTestId('fake-file-tree-sidebar')).not.toBeInTheDocument()

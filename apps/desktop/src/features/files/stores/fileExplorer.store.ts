@@ -9,21 +9,27 @@ import { create } from 'zustand'
  * it deliberately survives a switch away and back: the files view is a tab, and a tab that forgets
  * what you were reading the moment you glance at the graph is a tab you stop leaving.
  *
- * Every field but `isSidebarOpen` is scoped to a repository: a path selected in one repo means
- * nothing in the next. `syncRepo` is what enforces that — see its doc comment.
+ * **Whether the tree beside it is showing is not here either** — that is `repoView.store`'s
+ * `isPanelOpen`, one flag for the panel slot all three views take turns filling, since ⌘S is one
+ * gesture wherever you press it.
+ *
+ * Every field left is scoped to a repository: a path selected in one repo means nothing in the
+ * next. `syncRepo` is what enforces that — see its doc comment.
  */
 interface FileExplorerState {
-  isSidebarOpen: boolean
   selectedFilePath: string | null
   currentDirPath: string
   treeSearchQuery: string
+  /** Whether the floating search panel is on screen — the query outlives it, see `closeSearch`. */
+  isSearchOpen: boolean
   /** Repository the browsing state above belongs to, so `syncRepo` can tell a tab switch happened. */
   repoPath: string | null
   actions: {
-    toggleSidebar: () => void
     setSelectedFilePath: (path: string | null) => void
     setCurrentDirPath: (path: string) => void
     setTreeSearchQuery: (query: string) => void
+    toggleSearch: () => void
+    closeSearch: () => void
     syncRepo: (repoPath: string | null) => void
   }
 }
@@ -33,17 +39,22 @@ const BROWSING_DEFAULTS = {
   selectedFilePath: null,
   currentDirPath: '',
   treeSearchQuery: '',
+  isSearchOpen: false,
 } as const
 
 export const useFileExplorerStore = create<FileExplorerState>((set) => ({
-  isSidebarOpen: true,
   repoPath: null,
   ...BROWSING_DEFAULTS,
   actions: {
-    toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
     setSelectedFilePath: (path) => set({ selectedFilePath: path }),
     setCurrentDirPath: (path) => set({ currentDirPath: path, selectedFilePath: null }),
     setTreeSearchQuery: (query) => set({ treeSearchQuery: query }),
+    toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
+    /**
+     * Closing clears the query, because this search *filters the tree*: leaving a stale filter
+     * behind an invisible panel would hide files with nothing on screen to explain why.
+     */
+    closeSearch: () => set({ isSearchOpen: false, treeSearchQuery: '' }),
 
     /**
      * Points the explorer at a repository, dropping the previous one's browsing state.

@@ -1,4 +1,4 @@
-import { ChevronRight, Command as CommandIcon } from 'lucide-react'
+import { ChevronRight, Command as CommandIcon, PanelLeft } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { ToolbarButton } from '@git-manager/components'
 import { useRepoUIStore } from '../../stores/repoUI.store'
@@ -51,12 +51,31 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   // Stated as what the views *do*, not as `view !== 'board'`: a fourth view would then have to
   // answer the question rather than inherit an answer from being unlike one other view.
   const showsBranch = view === 'graph' || view === 'files'
+  const isPanelOpen = useRepoViewStore((s) => s.isPanelOpen)
+  const togglePanel = useRepoViewStore((s) => s.togglePanel)
 
   return (
     <div
       data-testid="action-toolbar"
       className="chrome-surface border-border bg-sidebar flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b px-2"
     >
+      {/* Above the panel it folds away, and outside the view sections on purpose: the panel slot is
+          the shell's, filled in turn by the branch sidebar, the file tree and the board list. It is
+          also the only way back once ⌘S has hidden one, which is why it never leaves the bar. */}
+      <ToolbarButton
+        icon={
+          <PanelLeft
+            className={`h-4 w-4 ${isPanelOpen ? 'text-primary' : 'text-muted-foreground'}`}
+          />
+        }
+        label={t('toolbar.panel')}
+        title={`${isPanelOpen ? t('sidebar.collapse') : t('sidebar.expand')} (⌘S)`}
+        onClick={togglePanel}
+        data-testid="toolbar-toggle-panel"
+      />
+
+      <div className="bg-border mx-1 hidden h-6 w-px shrink-0 sm:block" />
+
       {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />

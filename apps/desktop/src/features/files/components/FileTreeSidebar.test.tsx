@@ -10,6 +10,7 @@ vi.mock('../../../stores/repoUI.store', () => ({
 
 import { FileTreeSidebar } from './FileTreeSidebar'
 import { useFileExplorerStore } from '../stores/fileExplorer.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const initialExplorerState = useFileExplorerStore.getState()
 
@@ -68,12 +69,14 @@ describe('FileTreeSidebar', () => {
     expect(screen.getByText('No files found')).toBeInTheDocument()
   })
 
-  it('hides itself through the store when the collapse button is used', async () => {
+  /** The panel slot belongs to the shell, so the tree's own collapse button flips the same flag ⌘S
+   * and the toolbar's button do — not a files-only one that would leave the other views out of step. */
+  it('hides itself through the shared panel flag when the collapse button is used', async () => {
     const user = userEvent.setup()
     render(<FileTreeSidebar />)
 
     await user.click(screen.getByTestId('file-tree-hide-sidebar'))
 
-    expect(useFileExplorerStore.getState().isSidebarOpen).toBe(false)
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
   })
 })

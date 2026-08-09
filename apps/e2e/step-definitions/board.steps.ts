@@ -120,8 +120,17 @@ When(/^I restore the card "([^"]*)" from the archive$/, async (title: string) =>
   await closeDialog('archived-cards-dialog')
 })
 
+// The search is a floating panel raised from the toolbar (or ⌘F), not a field standing open on the
+// bar — so searching is two steps, and the panel stays open afterwards for the clear step below.
 When(/^I search the board for "([^"]*)"$/, async (query: string) => {
-  await $('[data-testid="board-search-input"]').setValue(query)
+  const input = $('[data-testid="board-search-panel-input"]')
+  if (!(await input.isExisting())) {
+    const button = $('[data-testid="board-search-button"]')
+    await button.waitForClickable({ timeout: 10000 })
+    await button.click()
+  }
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(query)
 })
 
 When(/^I clear the board search$/, async () => {
@@ -130,7 +139,7 @@ When(/^I clear the board search$/, async () => {
   // through the native value setter and dispatching the event is what a controlled input needs.
   await browser.execute(() => {
     const input = document.querySelector(
-      '[data-testid="board-search-input"]'
+      '[data-testid="board-search-panel-input"]'
     ) as HTMLInputElement | null
     if (!input) throw new Error('the board search input is not on screen')
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
@@ -138,7 +147,7 @@ When(/^I clear the board search$/, async () => {
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
   await browser.waitUntil(
-    async () => (await $('[data-testid="board-search-input"]').getValue()) === '',
+    async () => (await $('[data-testid="board-search-panel-input"]').getValue()) === '',
     { timeout: 5000, timeoutMsg: 'the board search box never emptied' }
   )
 })

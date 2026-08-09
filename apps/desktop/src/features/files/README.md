@@ -12,6 +12,7 @@ features/files/
   components/
     FileTreeSidebar.tsx        the left panel while this view is on screen
     FilesToolbar.tsx           the toolbar's middle section while this view is on screen
+    FileSearchPanel.tsx        the floating search (⌘F) over the listing it filters
   hooks/
     useRepoFiles.ts            the working tree listing (SWR)
   lib/
@@ -25,6 +26,12 @@ features/files/
 - **Whether this view is on screen** — `stores/repoView.store.ts`. One slot for the three views, so
   no pair of booleans can claim the central area at once. This feature does not know it can be
   closed; it knows what it shows.
+- **Whether the tree beside it is showing** — the same store's `isPanelOpen`, one flag for the panel
+  slot all three views take turns filling, since ⌘S is one gesture wherever it is pressed. It lived
+  here while this was the only view that could fold its panel away.
+- **The shape of the search field** — `FloatingSearchPanel` in `packages/components`, shared with
+  the graph's commit search and the board's card search. What is this feature's own is that it
+  *filters* rather than steps through matches.
 - **The diff viewer** (`components/diff-viewer/`) and the **blame/history panel**. Both
   are shared with the graph view: the same file, opened from a commit or from the tree, is the same
   screen. When blame or history is up, `RepoWorkspace` puts that panel in the left slot instead of

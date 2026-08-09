@@ -38,7 +38,7 @@ beforeEach(() => {
   useCommandPaletteStore.setState({ open: false })
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useRepoUIStore.setState({ activeRepo: '/repo' })
-  useRepoViewStore.setState({ view: 'graph' })
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
 })
 
 describe('ActionToolbar — the parts every view keeps', () => {
@@ -112,6 +112,36 @@ describe('ActionToolbar — one section per view', () => {
     render(<ActionToolbar />)
     expect(screen.getByTestId('board-toolbar')).toHaveTextContent('/repo/wt')
     expect(screen.queryByTestId('graph-toolbar-actions')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * The panel toggle is the shell's, not a view's, because the panel slot is: the branch sidebar, the
+ * file tree and the board list take turns filling one piece of chrome. It also never leaves the bar
+ * — once ⌘S has folded a panel away, this button is the only way back.
+ */
+describe('ActionToolbar — the left panel toggle', () => {
+  it.each(['graph', 'files', 'board'] as const)('is on the bar on the %s view', (view) => {
+    useRepoViewStore.setState({ view })
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('toolbar-toggle-panel')).toBeInTheDocument()
+  })
+
+  it('folds the panel away and back', async () => {
+    const user = userEvent.setup()
+    render(<ActionToolbar />)
+
+    await user.click(screen.getByTestId('toolbar-toggle-panel'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(false)
+
+    await user.click(screen.getByTestId('toolbar-toggle-panel'))
+    expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
+  })
+
+  it('says which way it goes, and names the shortcut', () => {
+    useRepoViewStore.setState({ isPanelOpen: false })
+    render(<ActionToolbar />)
+    expect(screen.getByTitle('Expand sidebar (⌘S)')).toBeInTheDocument()
   })
 })
 

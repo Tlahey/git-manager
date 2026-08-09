@@ -93,6 +93,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         { keys: ['⌘', 'P'], desc: t('footer.shortcut.findFile') },
         { keys: ['⌘', ','], desc: t('footer.shortcut.openSettings') },
         { keys: ['⌘', 'T'], desc: t('footer.shortcut.newTab') },
+        { keys: ['⌘', 'S'], desc: t('footer.shortcut.togglePanel') },
         { keys: ['Alt', 'W'], desc: t('footer.shortcut.closeTab') },
         { keys: ['Esc'], desc: t('footer.shortcut.closeDialogs') },
       ],

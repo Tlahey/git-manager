@@ -138,8 +138,8 @@ search in the toolbar.
   (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
   it" distinguishable from "it was never there".
 - Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), the Graph
-  segment puts the graph back, the tree filter (`file-tree-search-input`, in the toolbar) narrows the
-  tree, and hiding the panel leaves `file-explorer-toggle-sidebar` behind — asserted explicitly,
+  segment puts the graph back, the tree filter (`file-search-panel-input`, opened from the toolbar) narrows the
+  tree, and hiding the panel leaves `toolbar-toggle-panel` behind — asserted explicitly,
   since a hide with no way back would make the tree unreachable for the rest of the session.
 - No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
 

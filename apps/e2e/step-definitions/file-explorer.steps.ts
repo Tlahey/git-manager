@@ -19,8 +19,13 @@ When(/^I close the file explorer$/, async () => {
   await clickViaJs('repo-view-graph')
 })
 
+// The filter is a floating panel now, raised from the toolbar (or ⌘F) rather than a field standing
+// open on the bar — so filtering is two steps: open it, then type.
 When(/^I filter the file tree by "([^"]*)"$/, async (query: string) => {
-  const input = $('[data-testid="file-tree-search-input"]')
+  const button = $('[data-testid="file-search-button"]')
+  await button.waitForClickable({ timeout: 10000 })
+  await button.click()
+  const input = $('[data-testid="file-search-panel-input"]')
   await input.waitForDisplayed({ timeout: 10000 })
   await input.setValue(query)
 })
@@ -60,7 +65,8 @@ Then(/^the file tree sidebar is shown$/, async () => {
 
 Then(/^the file tree sidebar is hidden$/, async () => {
   await $('[data-testid="file-tree-sidebar"]').waitForDisplayed({ timeout: 10000, reverse: true })
-  // Hiding it must leave a way back, otherwise the tree is unreachable for the rest of the session —
-  // the toolbar's toggle is the only affordance, and it stays on screen with the panel gone.
-  await expect($('[data-testid="file-explorer-toggle-sidebar"]')).toBeDisplayed()
+  // Hiding it must leave a way back, otherwise the tree is unreachable for the rest of the session.
+  // That affordance is the toolbar shell's panel toggle now — it belongs to the slot rather than to
+  // this view, and it stays on the bar with the panel gone.
+  await expect($('[data-testid="toolbar-toggle-panel"]')).toBeDisplayed()
 })

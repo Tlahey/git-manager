@@ -3,6 +3,7 @@ import { FileIcon, FolderIcon, ChevronRightIcon } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, cn } from '@git-manager/ui'
 import { useFileExplorerStore } from './stores/fileExplorer.store'
+import { FileSearchPanel } from './components/FileSearchPanel'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoFiles } from './hooks/useRepoFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -65,10 +66,13 @@ export function FilesPage() {
 
   return (
     <div
-      className="flex h-full flex-1 flex-col overflow-hidden bg-background"
+      // `relative` so the floating search anchors to this view rather than to the window.
+      className="bg-background relative flex h-full flex-1 flex-col overflow-hidden"
       data-testid="project-files-view"
     >
-      <div className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border px-4 text-sm">
+      <FileSearchPanel />
+
+      <div className="border-border flex h-12 shrink-0 items-center gap-0.5 border-b px-4 text-sm">
         <Button
           variant="link"
           className="h-auto p-0 text-sm font-medium"

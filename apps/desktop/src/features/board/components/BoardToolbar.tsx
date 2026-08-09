@@ -1,5 +1,4 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Input } from '@git-manager/ui'
 import { ToolbarButton } from '@git-manager/components'
 import { Archive, FlagOff, ListPlus, Plus, Search, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useBoardData } from '../hooks/useBoardData'
@@ -31,8 +30,7 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
   const { t } = useTranslation('board')
   const { activeBoard, cards, canUseRemote } = useBoardData(repoPath)
 
-  const search = useBoardControlsStore((s) => s.search)
-  const setSearch = useBoardControlsStore((s) => s.setSearch)
+  const toggleSearch = useBoardControlsStore((s) => s.toggleSearch)
   const openDialog = useBoardDialogsStore((s) => s.open)
   const setCardDialog = useBoardDialogsStore((s) => s.setCardDialog)
 
@@ -49,19 +47,18 @@ export function BoardToolbar({ repoPath }: BoardToolbarProps) {
 
   return (
     <>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('page.searchPlaceholder')}
-        aria-label={t('page.searchPlaceholder')}
-        variant="chrome"
-        inputSize="sm"
-        className="h-7 w-48 shrink-0 text-xs"
-        startIcon={<Search className="h-3.5 w-3.5" />}
-        data-testid="board-search-input"
+      {/* A button rather than a field standing open on the bar, the same shape the graph's commit
+          search has: the field appears over the board it filters (`BoardSearchPanel`), so "search"
+          is one gesture across the three views instead of three different-looking controls. */}
+      <ToolbarButton
+        icon={<Search className="text-muted-foreground h-4 w-4" />}
+        label={t('git:toolbar.searchLabel')}
+        title={`${t('page.searchPlaceholder')} (⌘F)`}
+        onClick={toggleSearch}
+        data-testid="board-search-button"
       />
 
-      <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+      <div className="bg-border mx-1 h-6 w-px shrink-0" />
 
       <ToolbarButton
         icon={<Plus className="h-4 w-4 text-primary" />}

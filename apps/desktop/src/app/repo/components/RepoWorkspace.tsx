@@ -5,7 +5,7 @@ import { useRepoViewStore } from '../../../stores/repoView.store'
 import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { useFileExplorerStore, FilesPage, FileTreeSidebar } from '../../../features/files'
+import { FilesPage, FileTreeSidebar } from '../../../features/files'
 import { BoardPage, BoardSidebar } from '../../../features/board'
 import {
   GitGraph,
@@ -57,7 +57,8 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
   const soloed = useSoloModeStore((s) => s.soloed)
 
   const view = useRepoViewStore((s) => s.view)
-  const isTreeOpen = useFileExplorerStore((s) => s.isSidebarOpen)
+  // One flag for the panel slot, whichever view is filling it — see `repoView.store`.
+  const isPanelOpen = useRepoViewStore((s) => s.isPanelOpen)
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
@@ -87,7 +88,7 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
     <>
       {/* ── Main layout: the view's panel | the view ────────────── */}
       <div data-testid="repo-workspace" className="relative flex flex-1 overflow-hidden">
-        {view === 'graph' && (
+        {isPanelOpen && view === 'graph' && (
           <RepositorySidebar
             repoPath={repoPath}
             remoteUrls={repoCache[activeRepo]?.remotes ?? []}
@@ -110,7 +111,8 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
           />
         )}
 
-        {view === 'files' &&
+        {isPanelOpen &&
+          view === 'files' &&
           (isFilePanelActive ? (
             <div
               data-testid="files-blame-history-panel"
@@ -123,10 +125,10 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
               />
             </div>
           ) : (
-            isTreeOpen && <FileTreeSidebar />
+            <FileTreeSidebar />
           ))}
 
-        {view === 'board' && <BoardSidebar repoPath={repoPath} />}
+        {isPanelOpen && view === 'board' && <BoardSidebar repoPath={repoPath} />}
 
         {/* Central area — the view itself */}
         <div className="flex flex-1 flex-col overflow-hidden">
