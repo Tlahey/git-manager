@@ -60,9 +60,11 @@ export interface ToggleGroupProps<T extends string = string> {
  *   control borrowed from Settings. No Tooltip — the label is on screen, and a tooltip repeating
  *   visible text is noise.
  *
- * All three wear the one selected treatment defined below, so the control reads the same in the
- * sidebar, in Settings and in the toolbar. That is the whole point of it living here: a caller
- * that wants a different look gets a variant added to this file, not a group restyled locally.
+ * Selection is one filled segment in every shape — but the fill differs between `default` and
+ * `stacked`, because the two live on different surfaces and the chrome remaps the tokens the
+ * default one is graded against. The reason is measured, and recorded beside the classes below.
+ * That is the whole point of this living here: a caller that wants a different look gets a variant
+ * added to this file, not a group restyled locally.
  */
 export function ToggleGroup<T extends string = string>({
   value,
@@ -94,7 +96,7 @@ export function ToggleGroup<T extends string = string>({
           <label
             data-testid={option.testId}
             className={cn(
-              'relative flex items-center justify-center rounded-[5px] transition-colors',
+              'flex items-center justify-center rounded-[5px] transition-colors',
               disabled ? 'cursor-not-allowed' : 'cursor-pointer',
               // The only thing a shape changes: how much room the segment needs. `stacked`
               // borrows `ToolbarButton`'s metrics — 16px icon over a 10px label — so a group of
@@ -104,10 +106,10 @@ export function ToggleGroup<T extends string = string>({
                 : option.icon
                   ? 'p-1.5'
                   : 'px-3 py-1.5 text-xs',
-              // One selected treatment for both shapes: the whole segment takes the accent fill,
-              // lifting off the track.
+              // The selected segment takes a fill and lifts off the track — but *which* fill
+              // depends on the shape, because the two shapes live on different surfaces.
               //
-              // The fill rides the Tier-3 `--button-*` tokens, NOT `bg-primary` /
+              // `default` rides the Tier-3 `--button-*` tokens, NOT `bg-primary` /
               // `text-primary-foreground` — and that is load-bearing, not a stylistic detail.
               // The raw semantic pair measures ~37Lc under 12px text against an APCA bronze bar
               // of 75 (shadcn's `accent` fill scores 46.9Lc, a 15% `primary` tint misses it on
@@ -117,16 +119,29 @@ export function ToggleGroup<T extends string = string>({
               // this control inherit every correction Button already earned — and any future
               // one. Swapping in a raw colour re-breaks it; re-check with
               // `pnpm --filter @git-manager/ui test:apca`.
+              //
+              // `stacked` cannot use those tokens, and this is measured rather than felt. It sits
+              // on `.chrome-surface`, which remaps `--muted` to the bar's own background — so the
+              // recessed track is invisible on every theme — and `--button-bg` to
+              // `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the bar.
+              // On solarized-light the two are the *same colour* and on light they are 0.9 L%
+              // apart, so the selected segment simply had no background. It inverts the surface's
+              // own text/background pair instead: that pair is what makes every label on the bar
+              // readable, so reversing it is legible by construction on any theme, present and
+              // future, with nothing to grade per theme. It follows the surface for free —
+              // `.chrome-surface` remaps both halves to the sidebar pair, content surfaces leave
+              // them alone.
               checked
-                ? 'bg-button text-button-foreground font-medium shadow-xs'
+                ? stacked
+                  ? 'bg-foreground text-background font-medium'
+                  : 'bg-button text-button-foreground font-medium shadow-xs'
                 : stacked
                   ? // Not muted, unlike the other two shapes — and that is the APCA policy talking,
                     // not taste. `muted-foreground` is exempt from the Bronze gate only where it is
                     // decorative (an inactive Chip, a neutral Tag); an unselected segment is a
                     // *control you click*, and the policy's own words are "actions are never
                     // muted". At 10px on the track it measures 48Lc against a bar of 75, which the
-                    // matrix catches — see `packages/ui/stories/a11yMatrix.test.tsx`. The selected
-                    // segment is told apart by its fill and weight, so it loses nothing.
+                    // matrix catches — see `packages/ui/stories/a11yMatrix.test.tsx`.
                     'text-foreground'
                   : cn(
                       'text-muted-foreground',
@@ -150,27 +165,6 @@ export function ToggleGroup<T extends string = string>({
                   {option.icon}
                 </span>
                 <span className="text-[10px] leading-none">{option.label}</span>
-                {/* An accent underline, on top of the fill — because on a `.chrome-surface`
-                    (the app toolbar, which is the only place this variant is used) the fill is
-                    not there. That block remaps `--muted` to the bar's own background, so the
-                    recessed track vanishes on every theme, and `--button-bg` to
-                    `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the
-                    bar — on solarized-light the two are the *same colour*. Accents are the one
-                    family `.chrome-surface` deliberately leaves alone, so `--primary` is the only
-                    thing here guaranteed to differ from the surface on every theme.
-
-                    Both markers ride together rather than one replacing the other: on a content
-                    surface the fill is `--primary` and swallows this bar, on the chrome the bar
-                    is all there is. Each covers the other's blind spot, and it is a bare graphic
-                    — no text on it, so nothing to grade. It is also the idiom the app already
-                    uses for "this one is active" in its tab strips. */}
-                {checked && (
-                  <span
-                    aria-hidden="true"
-                    data-testid="toggle-group-indicator"
-                    className="bg-primary absolute inset-x-1.5 bottom-0.5 h-0.5 rounded-full"
-                  />
-                )}
               </>
             ) : option.icon ? (
               <>
