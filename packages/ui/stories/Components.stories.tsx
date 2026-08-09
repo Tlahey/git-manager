@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { FolderTree, GitCommitHorizontal, Kanban, List as ListIcon } from 'lucide-react'
+import { FolderTree, List as ListIcon } from 'lucide-react'
 import {
   Button,
   Input,
@@ -192,8 +192,8 @@ function ToggleGroupDemo() {
   )
 }
 
-// The labelled shape of the same control: no icon, so each segment shows its own text — how
-// the Settings row-height and density pickers are wired.
+// The labelled shape of the same control: no icon, so each segment shows its own text — how the
+// Settings row-height picker and the toolbar's Graph/Files/Board switcher are both wired.
 function ToggleGroupTextDemo() {
   const [rowHeight, setRowHeight] = useState<'small' | 'standard'>('small')
   return (
@@ -203,25 +203,6 @@ function ToggleGroupTextDemo() {
       options={[
         { value: 'small', label: 'Small' },
         { value: 'standard', label: 'Standard' },
-      ]}
-    />
-  )
-}
-
-// The toolbar shape: icon over a visible label, so a group standing among ToolbarButtons reads as
-// one of them. Here so the APCA matrix sweeps its 10px label on the selected fill across every
-// theme × surface, which is the pair the variant actually changes.
-function ToggleGroupStackedDemo() {
-  const [view, setView] = useState<'graph' | 'files' | 'board'>('graph')
-  return (
-    <ToggleGroup
-      variant="stacked"
-      value={view}
-      onValueChange={setView}
-      options={[
-        { value: 'graph', icon: <GitCommitHorizontal className="h-4 w-4" />, label: 'Graph' },
-        { value: 'files', icon: <FolderTree className="h-4 w-4" />, label: 'Files' },
-        { value: 'board', icon: <Kanban className="h-4 w-4" />, label: 'Board' },
       ]}
     />
   )
@@ -297,10 +278,6 @@ export const Overview: Story = {
 
       <Section title="ToggleGroup — segmented text control">
         <ToggleGroupTextDemo />
-      </Section>
-
-      <Section title="ToggleGroup — stacked icon + label control">
-        <ToggleGroupStackedDemo />
       </Section>
 
       <Section title="NativeSelect">
