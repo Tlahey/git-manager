@@ -22,6 +22,7 @@
   "page.newCard": "Nouvelle carte",
   "page.archivedShort": "Archive",
   "sidebar.title": "Tableaux",
+  "sidebar.filterPlaceholder": "Filtrer les tableaux…",
   "card.dialog.createTitle": "Nouvelle carte",
   "card.dialog.titlePlaceholder": "Titre de la carte",
   "card.dialog.descriptionPlaceholder": "Description (markdown)",

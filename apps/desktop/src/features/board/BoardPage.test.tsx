@@ -81,7 +81,12 @@ describe('BoardPage', () => {
     expect(screen.getByText('Second task')).toBeInTheDocument()
   })
 
-  it('filters cards by the panel’s own search field', async () => {
+  /**
+   * The panel's field narrows the *board list*, not the cards. Looking for a ticket is the toolbar's
+   * search (⌘F), across every board — so typing a card's title here must leave the columns alone
+   * rather than half-answer the question.
+   */
+  it('leaves the columns alone when the panel’s board filter is typed in', async () => {
     useBoardData.mockReturnValue(
       baseHookState({
         boards: [board()],
@@ -91,10 +96,10 @@ describe('BoardPage', () => {
     )
     renderBoardView()
 
-    await userEvent.type(screen.getByTestId('board-search-input'), 'Second')
+    await userEvent.type(screen.getByTestId('board-filter-input'), 'Second')
 
     expect(screen.getByText('Second task')).toBeInTheDocument()
-    expect(screen.queryByText('Fix the header')).not.toBeInTheDocument()
+    expect(screen.getByText('Fix the header')).toBeInTheDocument()
   })
 
   it('creates a card in the column whose add button was clicked', async () => {
@@ -523,7 +528,13 @@ describe('BoardPage — archived cards', () => {
     })
   })
 
-  it('brings it back as soon as the search matches it', async () => {
+  /**
+   * The columns hold what has not been archived, full stop. A card filter used to live on this page
+   * and brought archived cards back into the columns while it was set; finding an archived ticket is
+   * the global search's job now (it matches them deliberately — see `lib/searchCards.ts`), and
+   * putting it back on the board is the archive dialog's.
+   */
+  it('keeps an archived card out of the columns whatever the panel filter says', async () => {
     useBoardData.mockReturnValue(
       baseHookState({
         boards: [board()],
@@ -534,9 +545,8 @@ describe('BoardPage — archived cards', () => {
     renderBoardView()
     expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
 
-    await userEvent.type(screen.getByTestId('board-search-input'), 'Buried')
-    expect(screen.getByTestId('board-card-c2')).toBeInTheDocument()
-    expect(screen.getByTestId('board-card-archived')).toBeInTheDocument()
+    await userEvent.type(screen.getByTestId('board-filter-input'), 'Buried')
+    expect(screen.queryByTestId('board-card-c2')).not.toBeInTheDocument()
   })
 
   /**

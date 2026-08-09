@@ -8,7 +8,7 @@ import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { useRepoViewStore } from '../stores/repoView.store'
 import { useFileExplorerStore } from '../features/files'
-import { useBoardControlsStore } from '../features/board'
+import { useBoardControlsStore, useBoardDialogsStore } from '../features/board'
 import { queryClient } from '../lib/queryClient'
 
 function setUserAgent(ua: string) {
@@ -46,7 +46,8 @@ beforeEach(() => {
   // ⌘F dispatches on the active view, so every test below states which one it is looking at.
   useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   useFileExplorerStore.setState({ treeSearchQuery: '' })
-  useBoardControlsStore.setState({ search: '' })
+  useBoardControlsStore.setState({ boardFilter: '' })
+  useBoardDialogsStore.getState().reset()
   plainEl = document.createElement('div')
   inputEl = document.createElement('input')
   document.body.append(plainEl, inputEl)
@@ -545,20 +546,33 @@ describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
     dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
   }
 
-  it.each(['files', 'board'] as const)('asks the %s panel for its filter', (view) => {
+  it('asks the files panel for its filter', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view })
+    useRepoViewStore.setState({ view: 'files' })
     press()
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
     expect(useCommitSearchStore.getState().open).toBe(false)
   })
 
-  it('brings the panel back before asking its filter for focus', () => {
+  it('brings the files panel back before asking its filter for focus', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoViewStore.setState({ view: 'board', isPanelOpen: false })
+    useRepoViewStore.setState({ view: 'files', isPanelOpen: false })
     press()
     expect(useRepoViewStore.getState().isPanelOpen).toBe(true)
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
+  /**
+   * The board is the one view where ⌘F is *not* the panel's field: the panel filters the board list,
+   * and looking for a ticket has no reason to start by naming its board. ⌥⌘F still reaches the
+   * panel's filter here, as on the other two views.
+   */
+  it('opens the global ticket search on the board, not the panel’s board filter', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+    press()
+    expect(useBoardDialogsStore.getState().openDialog).toBe('globalSearch')
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
   })
 
   it('opens the commit search on the graph, and nobody else’s', () => {
@@ -577,7 +591,7 @@ describe('useKeyboardShortcuts — ⌘F follows the active view', () => {
     useRepoUIStore.setState({ activeRepo: '/repo', activePrNumber: 42 })
     useRepoViewStore.setState({ view: 'board' })
     press()
-    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+    expect(useBoardDialogsStore.getState().openDialog).toBe('globalSearch')
   })
 })
 

@@ -11,6 +11,7 @@ import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { useRepoViewStore } from '../stores/repoView.store'
+import { useBoardDialogsStore } from '../features/board'
 import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
@@ -96,14 +97,20 @@ export function useKeyboardShortcuts({
           // tree, the board filters the cards. Each view has exactly one search, which is what lets
           // one chord serve all three without a disambiguating modifier.
           const view = useRepoViewStore.getState().view
-          if (view === 'files' || view === 'board') {
+          if (view === 'files') {
             e.preventDefault()
-            // On both of these the search is the left panel's own field, so this is the very
-            // request ⌥⌘F makes — and it has to put the panel back first, or it asks an unmounted
-            // input for focus. The graph is the exception below: there ⌘F is the commit search,
-            // which is a *different* search from the branch filter ⌥⌘F raises.
+            // The files search is the panel's own field, so this is the very request ⌥⌘F makes —
+            // and it has to put the panel back first, or it asks an unmounted input for focus.
             if (!useRepoViewStore.getState().isPanelOpen) useRepoViewStore.getState().togglePanel()
             useSidebarSearchStore.getState().requestFocus()
+            return
+          }
+          if (view === 'board') {
+            e.preventDefault()
+            // The board's ⌘F is the *global* ticket search, not the panel's field: the panel filters
+            // the board list, and looking for a ticket has no reason to start by naming its board.
+            // ⌥⌘F still reaches the panel's filter, on this view as on the other two.
+            useBoardDialogsStore.getState().open('globalSearch')
             return
           }
           // The graph's panel only exists while the plain commit list is on screen — not over a

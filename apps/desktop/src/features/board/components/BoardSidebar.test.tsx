@@ -79,6 +79,43 @@ describe('BoardSidebar', () => {
     expect(screen.getByTestId('board-sidebar-empty')).toBeInTheDocument()
   })
 
+  /**
+   * The panel's field narrows the *board list*, which is what the panel holds. Finding a ticket is
+   * the toolbar's search (⌘F), across every board — so neither control narrows something it doesn't
+   * sit next to.
+   */
+  it('filters the board list by name, and marks what matched', async () => {
+    const user = userEvent.setup()
+    const sprint = makeBoard({ id: 'b1', name: 'Sprint 12' })
+    const backlog = makeBoard({ id: 'b2', name: 'Backlog', createdAt: '2026-01-02T00:00:00.000Z' })
+    useBoardData.mockReturnValue(makeBoardData({ boards: [sprint, backlog], activeBoard: sprint }))
+    const { container } = render(<BoardSidebar repoPath="/repo" />)
+
+    await user.type(screen.getByTestId('board-filter-input'), 'back')
+
+    expect(screen.getByTestId('board-sidebar-item-b2')).toBeInTheDocument()
+    expect(screen.queryByTestId('board-sidebar-item-b1')).not.toBeInTheDocument()
+    expect(Array.from(container.querySelectorAll('mark')).map((m) => m.textContent)).toEqual([
+      'Back',
+    ])
+  })
+
+  /**
+   * Including the board on screen. It is kept listed against the closed/deleted toggles below —
+   * those hide *kinds* of board — but a filter that always kept one row would be lying about what
+   * matched.
+   */
+  it('lets the filter take even the active board off the list', async () => {
+    const user = userEvent.setup()
+    const sprint = makeBoard({ id: 'b1', name: 'Sprint 12' })
+    useBoardData.mockReturnValue(makeBoardData({ boards: [sprint], activeBoard: sprint }))
+    render(<BoardSidebar repoPath="/repo" />)
+
+    await user.type(screen.getByTestId('board-filter-input'), 'zzz')
+
+    expect(screen.queryByTestId('board-sidebar-item-b1')).not.toBeInTheDocument()
+  })
+
   /** The board being viewed is always listed, so it doesn't vanish from under the user the moment
    * they close or delete it. */
   it('keeps the active board listed even when its own filter is off', () => {

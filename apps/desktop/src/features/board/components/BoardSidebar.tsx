@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Button, Checkbox, Input } from '@git-manager/ui'
 import { Kanban, Plus, Search, X } from 'lucide-react'
 import type { Board } from '@git-manager/git-types'
+import { highlightMatch } from '@git-manager/components'
 import { useBoardData } from '../hooks/useBoardData'
 import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
@@ -28,8 +29,8 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
   const { t } = useTranslation('board')
   const { boards, boardsLoading, activeBoard, setActiveBoard } = useBoardData(repoPath)
 
-  const search = useBoardControlsStore((s) => s.search)
-  const setSearch = useBoardControlsStore((s) => s.setSearch)
+  const boardFilter = useBoardControlsStore((s) => s.boardFilter)
+  const setBoardFilter = useBoardControlsStore((s) => s.setBoardFilter)
   const showClosed = useBoardControlsStore((s) => s.showClosed)
   const setShowClosed = useBoardControlsStore((s) => s.setShowClosed)
   const showDeleted = useBoardControlsStore((s) => s.showDeleted)
@@ -55,12 +56,15 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
    * alphabetical ordering puts "Sprint 10" above "Sprint 9".
    */
   const visibleBoards = useMemo(() => {
-    const shown = boards.filter(
-      (b) =>
-        b.id === activeBoard?.id || ((showClosed || !b.closedAt) && (showDeleted || !b.deletedAt))
-    )
+    const needle = boardFilter.trim().toLowerCase()
+    const shown = boards.filter((b) => {
+      // The filter applies to the open board as well — it is the one thing that can take it off the
+      // list, because a filter that always kept one row would be lying about what matched.
+      if (needle && !b.name.toLowerCase().includes(needle)) return false
+      return b.id === activeBoard?.id || ((showClosed || !b.closedAt) && (showDeleted || !b.deletedAt))
+    })
     return [...shown].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [boards, activeBoard?.id, showClosed, showDeleted])
+  }, [boards, activeBoard?.id, boardFilter, showClosed, showDeleted])
 
   return (
     <div
@@ -84,25 +88,24 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
         </Button>
       </div>
 
-      {/* Filters the *board on screen*, not the list below it — this is the "find a ticket in what
-          I am looking at" search, and the toolbar's button is the one that looks everywhere. It sits
-          here because that is where every view's filter sits now, and because the board it narrows
-          is named right above it. */}
+      {/* Filters the list below it, and only that: boards by name. Finding a *ticket* is the
+          toolbar's search (⌘F), which looks across every board — so neither control narrows
+          something it doesn't sit next to. */}
       <div className="border-sidebar-border shrink-0 border-b px-2 py-1.5">
         <Input
           ref={searchInputRef}
           variant="chrome"
           type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('page.searchPlaceholder')}
-          aria-label={t('page.searchPlaceholder')}
+          value={boardFilter}
+          onChange={(e) => setBoardFilter(e.target.value)}
+          placeholder={t('sidebar.filterPlaceholder')}
+          aria-label={t('sidebar.filterPlaceholder')}
           className="h-7 text-xs shadow-none"
           startIcon={<Search className="h-3.5 w-3.5" />}
           endIcon={
-            search ? (
+            boardFilter ? (
               <button
-                onClick={() => setSearch('')}
+                onClick={() => setBoardFilter('')}
                 aria-label={t('git:sidebar.clearFilter')}
                 className="text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-4 w-4 cursor-pointer items-center justify-center rounded"
               >
@@ -110,7 +113,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
               </button>
             ) : undefined
           }
-          data-testid="board-search-input"
+          data-testid="board-filter-input"
         />
       </div>
 
@@ -131,6 +134,7 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
               board={board}
               active={board.id === activeBoard?.id}
               onSelect={() => setActiveBoard(board.id)}
+              query={boardFilter}
               subtitle={`${board.source === 'remote' ? t('backend.remote') : t('backend.local')}${
                 board.closedAt ? ` · ${t('sprint.closedBadge')}` : ''
               }${board.deletedAt ? ` · ${t('deleteBoard.deletedBadge')}` : ''}`}
@@ -165,11 +169,14 @@ function BoardRow({
   board,
   active,
   subtitle,
+  query,
   onSelect,
 }: {
   board: Board
   active: boolean
   subtitle: string
+  /** The panel's filter, marked inside the name so a row says why it survived it. */
+  query: string
   onSelect: () => void
 }) {
   return (
@@ -186,7 +193,7 @@ function BoardRow({
     >
       <Kanban className="h-3.5 w-3.5 shrink-0 text-primary" />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-xs font-medium">{board.name}</span>
+        <span className="truncate text-xs font-medium">{highlightMatch(board.name, query)}</span>
         <span className="truncate text-[10px] leading-tight text-sidebar-muted-foreground">
           {subtitle}
         </span>

@@ -113,8 +113,8 @@ Feature: Kanban board
     And a full-window screenshot is saved as "doc-board-sprint"
 
   # Not documented: archiving is described on the page above only as the reversible neighbour of
-  # deleting. This covers the round trip, and above all the deliberate rule that a search runs over
-  # archived cards too — the one place the board shows a card it otherwise hides.
+  # deleting. This covers the round trip, and above all the deliberate rule that the global ticket
+  # search runs over archived cards too — archiving hides a card from the board without losing it.
   Scenario: An archived card leaves the board but stays findable
     Given the "feature-branches" fixture repository is opened
     When I open the board
@@ -122,9 +122,9 @@ Feature: Kanban board
     And I add a card titled "Rework the onboarding" to the "To do" column
     And I archive the card "Rework the onboarding"
     Then the "To do" column holds 0 cards
-    When I search the board for "onboarding"
-    Then the card "Rework the onboarding" is shown on the board
-    When I clear the board search
+    When I search every board for "onboarding"
+    Then the ticket "Rework the onboarding" is offered by the search
+    When I close the ticket search
     And I restore the card "Rework the onboarding" from the archive
     Then the "To do" column holds 1 card
     And no error notification is displayed

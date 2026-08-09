@@ -6,9 +6,15 @@ describe('boardControls.store', () => {
     useBoardControlsStore.getState().reset()
   })
 
-  it('updates the search text', () => {
-    useBoardControlsStore.getState().setSearch('header')
-    expect(useBoardControlsStore.getState().search).toBe('header')
+  it('updates the board-list filter', () => {
+    useBoardControlsStore.getState().setBoardFilter('sprint')
+    expect(useBoardControlsStore.getState().boardFilter).toBe('sprint')
+  })
+
+  /** Finding a *ticket* is `BoardSearchDialog`'s job, across every board — this store narrows the
+   * panel's board list and nothing else. */
+  it('carries no card query', () => {
+    expect(useBoardControlsStore.getState()).not.toHaveProperty('search')
   })
 
   it('toggles the closed and deleted board filters', () => {
@@ -19,15 +25,15 @@ describe('boardControls.store', () => {
     expect(useBoardControlsStore.getState().showDeleted).toBe(true)
   })
 
-  it('clears the search and both filters on reset', () => {
-    useBoardControlsStore.getState().setSearch('header')
+  it('clears the filter and both toggles on reset', () => {
+    useBoardControlsStore.getState().setBoardFilter('sprint')
     useBoardControlsStore.getState().setShowClosed(true)
     useBoardControlsStore.getState().setShowDeleted(true)
 
     useBoardControlsStore.getState().reset()
 
     expect(useBoardControlsStore.getState()).toMatchObject({
-      search: '',
+      boardFilter: '',
       showClosed: false,
       showDeleted: false,
     })

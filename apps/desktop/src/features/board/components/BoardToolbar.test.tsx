@@ -25,18 +25,18 @@ beforeEach(() => {
 
 describe('BoardToolbar', () => {
   /**
-   * The toolbar's search is the *global* one — every ticket of every board, not the board on screen,
-   * which the left panel's own field filters. It goes through the dialog store like every other
-   * button up here, since the dialog it opens is rendered down in the page.
+   * The toolbar's search is the global one — every ticket of every board. The left panel's field is
+   * a different control answering a different question: which *board* to open. So a click here must
+   * not touch that filter.
    */
-  it('raises the global ticket search, not the board-scoped filter', async () => {
+  it('raises the global ticket search, leaving the panel’s board filter alone', async () => {
     const user = userEvent.setup()
     render(<BoardToolbar repoPath="/repo" />)
 
     await user.click(screen.getByTestId('board-search-button'))
 
     expect(useBoardDialogsStore.getState().openDialog).toBe('globalSearch')
-    expect(useBoardControlsStore.getState().search).toBe('')
+    expect(useBoardControlsStore.getState().boardFilter).toBe('')
   })
 
   /**

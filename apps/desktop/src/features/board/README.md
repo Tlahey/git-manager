@@ -35,16 +35,21 @@ production barrel.
 
 ## Two searches, and why
 
-- **The board-scoped filter** — a field at the top of `BoardSidebar`, writing `boardControls.search`,
-  applied by `BoardPage`. It narrows the board on screen, archived cards included, and answers
-  "which of these am I looking for". ⌘F focuses it, as it focuses the left panel's filter on every
-  view.
-- **The global search** — `BoardSearchDialog`, raised from the toolbar's search button through
-  `boardDialogs.store`. It answers "where is GM-7", which has no reason to begin by asking which
-  board GM-7 is on. It reads every board once (`useAllBoardCards`, gated on the dialog being open,
-  since that is one board detail fetch per board), ranks with `lib/searchCards.ts`, and on select
-  switches to the card's board *before* opening the card dialog — that dialog resolves its id out of
-  the open board's live card list, so the order is load-bearing.
+**Neither narrows something it doesn't sit next to.** That is the whole rule.
+
+- **The panel's field** (`BoardSidebar`, writing `boardControls.boardFilter`) narrows the **board
+  list**, which is what the panel holds — by name, marking what matched, the open board included. It
+  answers "which board". ⌥⌘F reaches it, as it reaches the left panel's filter on every view.
+- **The toolbar's search** (`BoardSearchDialog`, raised through `boardDialogs.store` by the button
+  and by ⌘F) is over every **ticket** of every board. It answers "where is GM-7", which has no
+  reason to begin by asking which board GM-7 is on. It reads every board once (`useAllBoardCards`,
+  gated on the dialog being open, since that is one board-detail fetch per board), ranks with
+  `lib/searchCards.ts`, and on select switches to the card's board *before* opening the card dialog
+  — that dialog resolves its id out of the open board's live card list, so the order is load-bearing.
+
+The board page therefore carries no card query at all: its columns hold what has not been archived.
+An archived ticket is still found by the toolbar's search, which matches archived cards on purpose,
+and put back by the archive dialog.
 
 ## What is deliberately *not* here
 

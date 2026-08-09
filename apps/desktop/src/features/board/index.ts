@@ -38,7 +38,14 @@ export { BoardToolbar } from './components/BoardToolbar'
  */
 
 /**
- * The board's search box and list filters. Their *state* belongs to the board; the app resets them
- * when the view leaves the screen, which is why this is public and `board.store`'s fold state is not.
+ * The panel's board-list filters. Their *state* belongs to the board; the app resets them when the
+ * view leaves the screen, which is why this is public and `board.store`'s fold state is not.
  */
 export { useBoardControlsStore } from './stores/boardControls.store'
+
+/**
+ * Public for one reason: ⌘F on this view raises the global ticket search, and the binding lives in
+ * the app's `useKeyboardShortcuts` rather than in the feature. Nothing outside opens any of the
+ * other dialogs — the toolbar that does is this feature's own.
+ */
+export { useBoardDialogsStore } from './stores/boardDialogs.store'

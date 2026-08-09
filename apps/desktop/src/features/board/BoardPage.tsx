@@ -40,7 +40,6 @@ export function BoardPage({ repoPath }: BoardPageProps) {
     duplicateCard,
   } = data
 
-  const search = useBoardControlsStore((s) => s.search)
   const dialogs = useBoardDialogsStore()
   // Once for the board, not once per card — see the hook.
   const avatarUrlFor = useBoardAssigneeAvatars(repoPath)
@@ -64,19 +63,14 @@ export function BoardPage({ repoPath }: BoardPageProps) {
   const isClosed = Boolean(activeBoard?.closedAt) || Boolean(activeBoard?.deletedAt)
 
   /**
-   * What the columns show.
+   * What the columns show: the cards that have not been archived.
    *
-   * An archived card is hidden while browsing and returns as soon as there is a search — which is
-   * the whole point of archiving over deleting: the card is still there, just out of the way. So the
-   * search deliberately runs over *every* card, archived included.
+   * There used to be a query here as well — the board's own card filter, which also brought archived
+   * cards back into the columns while it was set. Finding a ticket is `BoardSearchDialog`'s job now
+   * (⌘F, or the toolbar's button), across every board rather than this one, and it finds archived
+   * cards too. So archiving still hides without losing; what changed is where you go to look.
    */
-  const filteredCards = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return cards.filter((c) => !c.archivedAt)
-    return cards.filter(
-      (c) => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
-    )
-  }, [cards, search])
+  const filteredCards = useMemo(() => cards.filter((c) => !c.archivedAt), [cards])
 
   /**
    * The column-wide actions, reachable from the column header's own `⋯` menu.

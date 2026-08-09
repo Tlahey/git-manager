@@ -22,6 +22,7 @@
   "page.newCard": "New card",
   "page.archivedShort": "Archive",
   "sidebar.title": "Boards",
+  "sidebar.filterPlaceholder": "Filter boards…",
   "card.dialog.createTitle": "New card",
   "card.dialog.titlePlaceholder": "Card title",
   "card.dialog.descriptionPlaceholder": "Description (markdown)",
