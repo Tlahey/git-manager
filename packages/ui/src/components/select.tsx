@@ -8,7 +8,16 @@ import { cn } from '../lib/utils'
 // as the other overlays.
 const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
-const SelectValue = SelectPrimitive.Value
+
+/**
+ * Tagged with `data-slot` so the trigger can clamp *the value* to one line without clamping whatever
+ * else a caller puts in the trigger — see `SelectTrigger`.
+ */
+const SelectValue = React.forwardRef<
+  React.ComponentRef<typeof SelectPrimitive.Value>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
+>((props, ref) => <SelectPrimitive.Value ref={ref} data-slot="select-value" {...props} />)
+SelectValue.displayName = SelectPrimitive.Value.displayName
 
 const SelectTrigger = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Trigger>,
@@ -17,7 +26,11 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-hidden placeholder:text-muted-foreground focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+      // The clamp targets the value slot, not `[&>span]` as shadcn's own does: that selector hits
+      // *any* span a caller renders in the trigger and switches it to `display: -webkit-box`, which
+      // silently kills a flex row — an icon and its label ended up glued together (the board's
+      // card-kind picker). A trigger may hold more than its value; only the value gets clamped.
+      'border-input placeholder:text-muted-foreground focus:ring-ring flex h-9 w-full cursor-pointer items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-hidden focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50 [&_[data-slot=select-value]]:line-clamp-1',
       className
     )}
     {...props}
@@ -66,7 +79,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'relative z-popover max-h-96 min-w-32 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg',
+        'z-popover border-border bg-popover text-popover-foreground relative max-h-96 min-w-32 overflow-hidden rounded-md border shadow-lg',
         position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
         className
       )}
@@ -74,11 +87,16 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       <SelectScrollUpButton />
+      {/* Width only, never height. shadcn's own popper branch also sets
+          `h-(--radix-select-trigger-height)` here; Radix defines that variable as the *trigger's*
+          height, and the viewport is `overflow: hidden auto`, so the menu collapses to one scrolling
+          row — the shorter the trigger, the more of the list disappears. Found the first time an app
+          screen used this Select (the board's card-kind picker, on a 32px trigger). The list's height
+          is bounded by the content's own `max-h-96`. */}
       <SelectPrimitive.Viewport
         className={cn(
           'p-1',
-          position === 'popper' &&
-            'h-(--radix-select-trigger-height) w-full min-w-(--radix-select-trigger-width)'
+          position === 'popper' && 'w-full min-w-(--radix-select-trigger-width)'
         )}
       >
         {children}
@@ -95,7 +113,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn('px-2 py-1.5 text-xs font-semibold text-muted-foreground', className)}
+    className={cn('text-muted-foreground px-2 py-1.5 text-xs font-semibold', className)}
     {...props}
   />
 ))
@@ -108,7 +126,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+      'focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50',
       className
     )}
     {...props}
@@ -129,7 +147,7 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-border', className)}
+    className={cn('bg-border -mx-1 my-1 h-px', className)}
     {...props}
   />
 ))
