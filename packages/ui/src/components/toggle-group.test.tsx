@@ -268,14 +268,13 @@ describe('ToggleGroup — stacked segments', () => {
   })
 
   /**
-   * Not the `--button-*` fill the other shapes wear, and that is measured rather than felt.
-   * `.chrome-surface` — the toolbar, the only place this variant is used — remaps `--button-bg` to
-   * `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the bar; on
-   * solarized-light the two are the same colour, so the selected segment had no background at all.
-   * Inverting the surface's own text/background pair is legible by construction: that pair is what
-   * makes every label on the bar readable in the first place.
+   * No fill, and that is measured. `.chrome-surface` — the toolbar, the only place this variant is
+   * used — remaps `--button-bg` to `--sidebar-accent`, which 9 of the 14 themes set within 10 L% of
+   * the bar (the same colour on solarized-light), so the fill was invisible. An accent fill would
+   * carry the theme but cannot hold a 10px label: the APCA matrix fails it on 48 of 60 cells. The
+   * accent therefore marks the segment as a ring, where no text sits on it.
    */
-  it('inverts the surface pair rather than riding the button fill', () => {
+  it('marks the selected segment with an accent ring and no fill', () => {
     const { container } = render(
       <ToggleGroup
         variant="stacked"
@@ -285,9 +284,8 @@ describe('ToggleGroup — stacked segments', () => {
       />
     )
     const [selected] = Array.from(container.querySelectorAll('label'))
-    expect(selected.className).toContain('bg-foreground')
-    expect(selected.className).toContain('text-background')
-    expect(selected.className).not.toContain('bg-button')
+    expect(selected.className).toContain('ring-primary')
+    expect(selected.className).not.toMatch(/\bbg-/)
   })
 
   /** The other two shapes sit on content surfaces, where `--button-bg` is `--primary` and reads on

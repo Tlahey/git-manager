@@ -120,20 +120,27 @@ export function ToggleGroup<T extends string = string>({
               // one. Swapping in a raw colour re-breaks it; re-check with
               // `pnpm --filter @git-manager/ui test:apca`.
               //
-              // `stacked` cannot use those tokens, and this is measured rather than felt. It sits
-              // on `.chrome-surface`, which remaps `--muted` to the bar's own background — so the
-              // recessed track is invisible on every theme — and `--button-bg` to
+              // `stacked` gets no fill at all, and that is the conclusion of two measurements
+              // rather than a preference.
+              //
+              // It sits on `.chrome-surface`, which remaps `--muted` to the bar's own background —
+              // so the recessed track is invisible on every theme — and `--button-bg` to
               // `--sidebar-accent`, which 9 of the 14 shipped themes set within 10 L% of the bar.
-              // On solarized-light the two are the *same colour* and on light they are 0.9 L%
-              // apart, so the selected segment simply had no background. It inverts the surface's
-              // own text/background pair instead: that pair is what makes every label on the bar
-              // readable, so reversing it is legible by construction on any theme, present and
-              // future, with nothing to grade per theme. It follows the surface for free —
-              // `.chrome-surface` remaps both halves to the sidebar pair, content surfaces leave
-              // them alone.
+              // On solarized-light the two are the *same colour*, so the segment had no visible
+              // background. Both ways out fail on their own terms: inverting the surface pair is
+              // legible everywhere but is the *text* colour, deliberately near-neutral — a
+              // near-white block on 8 of the 14 themes rather than anything of the theme; and an
+              // accent fill carries the theme but cannot hold a 10px label, which the matrix
+              // settles at 48 of 60 cells failing (the raw `--primary` pair measures ~37Lc, which
+              // is why `--button-*` exists at all).
+              //
+              // So the accent marks the segment without ever sitting under text: a one-pixel ring,
+              // a graphic with nothing to grade, while the label stays on `text-foreground` where
+              // it already passes. `--primary` is also the one family `.chrome-surface` leaves
+              // alone, and it clears 3:1 against the bar on 13 of the 14 themes.
               checked
                 ? stacked
-                  ? 'bg-foreground text-background font-medium'
+                  ? 'ring-primary font-medium ring-1'
                   : 'bg-button text-button-foreground font-medium shadow-xs'
                 : stacked
                   ? // Not muted, unlike the other two shapes — and that is the APCA policy talking,
