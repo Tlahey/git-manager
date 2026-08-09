@@ -1,4 +1,5 @@
 export { ActionToolbar } from './ActionToolbar'
+export { GraphToolbarActions } from './GraphToolbarActions'
 export { RepoSelector } from './RepoSelector'
 export { BranchContext } from './BranchContext'
 export { MergeTargetIndicator } from './MergeTargetIndicator'

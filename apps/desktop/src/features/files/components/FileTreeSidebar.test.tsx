@@ -3,13 +3,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { useRepoFiles } = vi.hoisted(() => ({ useRepoFiles: vi.fn() }))
-vi.mock('../../hooks/useRepoFiles', () => ({ useRepoFiles }))
-vi.mock('../../stores/repoUI.store', () => ({
+vi.mock('../hooks/useRepoFiles', () => ({ useRepoFiles }))
+vi.mock('../../../stores/repoUI.store', () => ({
   useRepoUIStore: () => ({ activeRepo: '/repo', activeWorkspacePath: null }),
 }))
 
 import { FileTreeSidebar } from './FileTreeSidebar'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { useFileExplorerStore } from '../stores/fileExplorer.store'
 
 const initialExplorerState = useFileExplorerStore.getState()
 
@@ -50,22 +50,20 @@ describe('FileTreeSidebar', () => {
     expect(useFileExplorerStore.getState().selectedFilePath).toBe('README.md')
   })
 
-  it('shows search matches expanded, instead of behind folders the user must open', async () => {
-    const user = userEvent.setup()
+  // The search box itself lives in the toolbar now (`FilesToolbar`); the tree reads the query it
+  // writes, so the filtering behaviour is still this component's and is still tested here.
+  it('shows search matches expanded, instead of behind folders the user must open', () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('Button')
     render(<FileTreeSidebar />)
-
-    await user.type(screen.getByTestId('file-tree-search-input'), 'Button')
 
     // The match itself is on screen, not just the `src` folder that contains it.
     expect(screen.getByTestId('file-tree-node-src/components/Button.tsx')).toBeInTheDocument()
     expect(screen.queryByTestId('file-tree-node-README.md')).not.toBeInTheDocument()
   })
 
-  it('tells the user when a search matches nothing', async () => {
-    const user = userEvent.setup()
+  it('tells the user when a search matches nothing', () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('zzz')
     render(<FileTreeSidebar />)
-
-    await user.type(screen.getByTestId('file-tree-search-input'), 'zzz')
 
     expect(screen.getByText('No files found')).toBeInTheDocument()
   })

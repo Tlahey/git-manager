@@ -78,7 +78,7 @@ export function useSidebarBranchMenu(repoPath: string) {
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   // Shared state, not `useState`: the confirmation must survive `GitGraph` unmounting when the file
-  // explorer opens, and it is mounted once by `RepoGraphWorkspace`. See `pendingRemoteBranchDelete`.
+  // explorer opens, and it is mounted once by `RepoWorkspace`. See `pendingRemoteBranchDelete`.
   const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
   // The branch whose "Set upstream" picker is open, or null — only reached when no default is
   // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.

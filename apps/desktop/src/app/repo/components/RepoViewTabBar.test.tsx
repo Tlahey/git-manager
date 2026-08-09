@@ -4,10 +4,9 @@ import userEvent from '@testing-library/user-event'
 import type { Board } from '@git-manager/git-types'
 import { makeBoard } from '../../../features/board/test/boardFactories'
 import { RepoViewTabBar } from './RepoViewTabBar'
-import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore, useBoardStore } from '../../../features/board'
+import { useRepoViewStore } from '../../../stores/repoView.store'
+import { useBoardStore } from '../../../features/board'
 
-const INITIAL_EXPLORER = useFileExplorerStore.getState()
 const path = '/repo'
 
 function board(overrides: Partial<Board> = {}): Board {
@@ -15,8 +14,7 @@ function board(overrides: Partial<Board> = {}): Board {
 }
 
 beforeEach(() => {
-  useFileExplorerStore.setState(INITIAL_EXPLORER, true)
-  useBoardControlsStore.setState({ isOpen: false })
+  useRepoViewStore.setState({ view: 'graph' })
   useBoardStore.setState({ activeBoardIdByRepo: {}, collapsedColumns: {} })
 })
 
@@ -25,8 +23,6 @@ describe('RepoViewTabBar', () => {
     render(
       <RepoViewTabBar
         repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen={false}
         boards={[board(), board({ id: 'b2', name: 'Backlog' })]}
         activeBoardId={null}
       />
@@ -37,66 +33,36 @@ describe('RepoViewTabBar', () => {
     expect(screen.getByText('Backlog')).toBeInTheDocument()
   })
 
-  it('highlights Graph as active when neither file explorer nor board is open', () => {
-    render(
-      <RepoViewTabBar
-        repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen={false}
-        boards={[]}
-        activeBoardId={null}
-      />
-    )
+  it('highlights the tab of whichever view is active', () => {
+    render(<RepoViewTabBar repoPath={path} boards={[]} activeBoardId={null} />)
     expect(screen.getByTestId('repo-view-tab-graph').className).toContain('border-primary')
     expect(screen.getByTestId('repo-view-tab-files').className).not.toContain('border-primary')
   })
 
   it('highlights the active board tab, not Files or Graph', () => {
-    render(
-      <RepoViewTabBar
-        repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen
-        boards={[board()]}
-        activeBoardId="b1"
-      />
-    )
+    useRepoViewStore.setState({ view: 'board' })
+    render(<RepoViewTabBar repoPath={path} boards={[board()]} activeBoardId="b1" />)
+
     expect(screen.getByTestId('repo-view-tab-board-b1').className).toContain('border-primary')
     expect(screen.getByTestId('repo-view-tab-graph').className).not.toContain('border-primary')
   })
 
-  it('clicking Files opens the file explorer and closes the board', async () => {
-    useBoardControlsStore.setState({ isOpen: true })
+  it('clicking Files switches the view', async () => {
+    useRepoViewStore.setState({ view: 'board' })
     const user = userEvent.setup()
-    render(
-      <RepoViewTabBar
-        repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen
-        boards={[]}
-        activeBoardId={null}
-      />
-    )
+    render(<RepoViewTabBar repoPath={path} boards={[]} activeBoardId={null} />)
+
     await user.click(screen.getByTestId('repo-view-tab-files'))
-    expect(useFileExplorerStore.getState().isOpen).toBe(true)
-    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+    expect(useRepoViewStore.getState().view).toBe('files')
   })
 
-  it('clicking a board tab opens the board, closes the file explorer, and sets it active', async () => {
-    useFileExplorerStore.setState({ isOpen: true })
+  it('clicking a board tab switches the view and makes that board the active one', async () => {
+    useRepoViewStore.setState({ view: 'files' })
     const user = userEvent.setup()
-    render(
-      <RepoViewTabBar
-        repoPath={path}
-        isFileExplorerOpen
-        isBoardOpen={false}
-        boards={[board({ id: 'b2' })]}
-        activeBoardId={null}
-      />
-    )
+    render(<RepoViewTabBar repoPath={path} boards={[board({ id: 'b2' })]} activeBoardId={null} />)
+
     await user.click(screen.getByTestId('repo-view-tab-board-b2'))
-    expect(useBoardControlsStore.getState().isOpen).toBe(true)
-    expect(useFileExplorerStore.getState().isOpen).toBe(false)
+    expect(useRepoViewStore.getState().view).toBe('board')
     expect(useBoardStore.getState().activeBoardIdByRepo[path]).toBe('b2')
   })
 
@@ -104,8 +70,6 @@ describe('RepoViewTabBar', () => {
     render(
       <RepoViewTabBar
         repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen={false}
         boards={[board(), board({ id: 'b2', name: 'Sprint 11', closedAt: '2026-08-01T00:00:00Z' })]}
         activeBoardId={null}
       />
@@ -115,11 +79,10 @@ describe('RepoViewTabBar', () => {
   })
 
   it('keeps a closed sprint’s tab while it is the one being viewed', () => {
+    useRepoViewStore.setState({ view: 'board' })
     render(
       <RepoViewTabBar
         repoPath={path}
-        isFileExplorerOpen={false}
-        isBoardOpen
         boards={[board({ id: 'b2', name: 'Sprint 11', closedAt: '2026-08-01T00:00:00Z' })]}
         activeBoardId="b2"
       />
@@ -127,21 +90,22 @@ describe('RepoViewTabBar', () => {
     expect(screen.getByText('Sprint 11')).toBeInTheDocument()
   })
 
-  it('clicking Graph closes both the file explorer and the board', async () => {
-    useFileExplorerStore.setState({ isOpen: true })
-    useBoardControlsStore.setState({ isOpen: false })
+  it('clicking Graph switches back to it', async () => {
+    useRepoViewStore.setState({ view: 'files' })
     const user = userEvent.setup()
-    render(
-      <RepoViewTabBar
-        repoPath={path}
-        isFileExplorerOpen
-        isBoardOpen={false}
-        boards={[]}
-        activeBoardId={null}
-      />
-    )
+    render(<RepoViewTabBar repoPath={path} boards={[]} activeBoardId={null} />)
+
     await user.click(screen.getByTestId('repo-view-tab-graph'))
-    expect(useFileExplorerStore.getState().isOpen).toBe(false)
-    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  /** With no board there is no board tab, and the only screen offering to create one would be
+   * unreachable — so a repo with none still gets a plain "Board" tab. */
+  it('offers a way into the board view for a repo with no board at all', async () => {
+    const user = userEvent.setup()
+    render(<RepoViewTabBar repoPath={path} boards={[]} activeBoardId={null} />)
+
+    await user.click(screen.getByTestId('repo-view-tab-board'))
+    expect(useRepoViewStore.getState().view).toBe('board')
   })
 })

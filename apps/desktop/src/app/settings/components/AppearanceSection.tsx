@@ -8,7 +8,6 @@ import {
   type ToggleGroupOption,
 } from '@git-manager/ui'
 import { Monitor, Check, Lock } from 'lucide-react'
-import type { ViewSwitcherPosition } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { SettingInfo } from './SettingInfo'
@@ -150,19 +149,6 @@ export function AppearanceSection() {
       value: 'standard',
       label: t('settings.appearance.rowHeight.standard'),
       testId: 'row-height-radio-standard',
-    },
-  ]
-
-  const viewSwitcherPositions: ToggleGroupOption<ViewSwitcherPosition>[] = [
-    {
-      value: 'toolbar',
-      label: t('settings.appearance.viewSwitcherPosition.toolbar'),
-      testId: 'view-switcher-position-radio-toolbar',
-    },
-    {
-      value: 'tabs',
-      label: t('settings.appearance.viewSwitcherPosition.tabs'),
-      testId: 'view-switcher-position-radio-tabs',
     },
   ]
 
@@ -371,26 +357,6 @@ export function AppearanceSection() {
           value={appearance.rowHeight ?? 'small'}
           onValueChange={(rowHeight) => updateAppearance({ rowHeight })}
           options={rowHeights}
-        />
-      </FilterableSetting>
-
-      {/* View switcher position */}
-      <FilterableSetting
-        className="space-y-2"
-        testId="setting-view-switcher-position"
-        match={`${t('settings.appearance.viewSwitcherPosition')} view switcher tabs graph files board kanban onglets bascule vue`}
-      >
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-foreground">
-            <Highlight text={t('settings.appearance.viewSwitcherPosition')} />
-          </p>
-          <OverriddenBadge field="viewSwitcherPosition" />
-        </div>
-        <ToggleGroup
-          name="viewSwitcherPosition"
-          value={appearance.viewSwitcherPosition}
-          onValueChange={(viewSwitcherPosition) => updateAppearance({ viewSwitcherPosition })}
-          options={viewSwitcherPositions}
         />
       </FilterableSetting>
 

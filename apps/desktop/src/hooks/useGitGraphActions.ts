@@ -161,7 +161,7 @@ export function useGitGraphActions({
   // top bar when that column is hidden), plus whether the tag should be annotated. `null` = idle.
   const [tagDraft, setTagDraft] = useState<{ oid: string; annotated: boolean } | null>(null)
   // Shared state, not `useState` — see `pendingRemoteBranchDelete` on the repoUI store: the graph
-  // opens this dialog but `RepoGraphWorkspace` mounts it, so it survives the file explorer
+  // opens this dialog but `RepoWorkspace` mounts it, so it survives the file explorer
   // unmounting the graph.
   const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
 

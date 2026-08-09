@@ -17,11 +17,8 @@ vi.mock('../../../components/repository-sidebar', () => ({
     </div>
   ),
 }))
-vi.mock('../../../components/file-explorer/ProjectFilesView', () => ({
-  ProjectFilesView: () => <div data-testid="fake-project-files" />,
-}))
-vi.mock('../../../components/file-explorer/FileTreeSidebar', () => ({
-  FileTreeSidebar: () => <div data-testid="fake-file-tree-sidebar" />,
+vi.mock('../../../components/repository-sidebar/BlameHistoryPanel', () => ({
+  BlameHistoryPanel: () => <div data-testid="fake-blame-history" />,
 }))
 vi.mock('../../../components/timeline/TimelineBar', () => ({
   TimelineBar: () => <div data-testid="fake-timeline-bar" />,
@@ -47,10 +44,7 @@ vi.mock('../../../components/git-graph/DeleteRemoteBranchDialog', () => ({
     <div data-testid="fake-delete-remote-branch">{`${props.remote}/${props.branchName}`}</div>
   ),
 }))
-const { useEffectiveRepoSettingsMock, useBoardDataMock } = vi.hoisted(() => ({
-  useEffectiveRepoSettingsMock: vi.fn(
-    (): { viewSwitcherPosition: 'toolbar' | 'tabs' } => ({ viewSwitcherPosition: 'toolbar' })
-  ),
+const { useBoardDataMock } = vi.hoisted(() => ({
   useBoardDataMock: vi.fn(
     (): {
       boards: { id: string; name: string }[]
@@ -58,28 +52,31 @@ const { useEffectiveRepoSettingsMock, useBoardDataMock } = vi.hoisted(() => ({
     } => ({ boards: [], activeBoard: null })
   ),
 }))
-vi.mock('../../../hooks/useEffectiveRepoSettings', () => ({
-  useEffectiveRepoSettings: useEffectiveRepoSettingsMock,
+/**
+ * One factory per feature barrel — two `vi.mock` calls on the same module would leave only the later
+ * one, and the page would come back undefined.
+ */
+vi.mock('../../../features/board', () => ({
+  BoardPage: (props: { repoPath: string }) => (
+    <div data-testid="fake-board-page">{props.repoPath}</div>
+  ),
+  BoardSidebar: () => <div data-testid="fake-board-sidebar" />,
+  useBoardData: useBoardDataMock,
 }))
 /**
- * One factory for the whole feature barrel — two `vi.mock` calls on the same module would leave only
- * the later one, and `BoardPage` would come back undefined.
- *
- * The controls store is the *real* one: this test drives it to open the board panel, so a stub would
- * make those cases assert against themselves. Imported from its own module rather than through
+ * The explorer store is the *real* one: this test drives it to fold the file tree away, so a stub
+ * would make that case assert against itself. Imported from its own module rather than through
  * `importActual` on the barrel, which would pull the whole page in behind it — the thing being faked
- * two lines up.
+ * two lines down.
  */
-vi.mock('../../../features/board', async () => {
-  const controls = await vi.importActual<
-    typeof import('../../../features/board/stores/boardControls.store')
-  >('../../../features/board/stores/boardControls.store')
+vi.mock('../../../features/files', async () => {
+  const store = await vi.importActual<
+    typeof import('../../../features/files/stores/fileExplorer.store')
+  >('../../../features/files/stores/fileExplorer.store')
   return {
-    BoardPage: (props: { repoPath: string }) => (
-      <div data-testid="fake-board-page">{props.repoPath}</div>
-    ),
-    useBoardData: useBoardDataMock,
-    useBoardControlsStore: controls.useBoardControlsStore,
+    FilesPage: () => <div data-testid="fake-project-files" />,
+    FileTreeSidebar: () => <div data-testid="fake-file-tree-sidebar" />,
+    useFileExplorerStore: store.useFileExplorerStore,
   }
 })
 // `RepoViewTabBar` has its own dedicated test — faked here so this stays a composition test of
@@ -90,10 +87,10 @@ vi.mock('./RepoViewTabBar', () => ({
   ),
 }))
 
-import { RepoGraphWorkspace } from './RepoGraphWorkspace'
+import { RepoWorkspace } from './RepoWorkspace'
 import { useRepoDataStore } from '../../../stores/repoData.store'
-import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../../features/board'
+import { useRepoViewStore } from '../../../stores/repoView.store'
+import { useFileExplorerStore } from '../../../features/files'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
@@ -103,18 +100,22 @@ const INITIAL_EXPLORER = useFileExplorerStore.getState()
 beforeEach(() => {
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useFileExplorerStore.setState(INITIAL_EXPLORER, true)
-  useBoardControlsStore.setState({ isOpen: false })
+  useRepoViewStore.setState({ view: 'graph' })
   useSoloModeStore.setState({ active: false, soloed: new Set() })
-  useRepoUIStore.setState({ pendingTagDialog: null, pendingRemoteBranchDelete: null })
-  useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'toolbar' })
+  useRepoUIStore.setState({
+    pendingTagDialog: null,
+    pendingRemoteBranchDelete: null,
+    activeLeftPanel: 'sidebar',
+  })
   useBoardDataMock.mockReturnValue({ boards: [], activeBoard: null })
 })
 
-describe('RepoGraphWorkspace', () => {
-  it('shows the graph by default', () => {
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
-    expect(screen.getByTestId('repo-graph-view')).toBeInTheDocument()
+describe('RepoWorkspace', () => {
+  it('shows the graph and the branch sidebar by default', () => {
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('repo-workspace')).toBeInTheDocument()
     expect(screen.getByTestId('fake-git-graph')).toBeInTheDocument()
+    expect(screen.getByTestId('fake-sidebar')).toBeInTheDocument()
     expect(screen.queryByTestId('fake-project-files')).not.toBeInTheDocument()
   })
 
@@ -131,62 +132,79 @@ describe('RepoGraphWorkspace', () => {
         },
       },
     })
-    render(<RepoGraphWorkspace repoPath="/repo/wt" activeRepo="/repo" />)
+    render(<RepoWorkspace repoPath="/repo/wt" activeRepo="/repo" />)
     expect(screen.getByTestId('graph-repo-path')).toHaveTextContent('/repo/wt')
     expect(screen.getByTestId('sidebar-repo-path')).toHaveTextContent('/repo/wt')
     expect(screen.getByTestId('sidebar-remotes')).toHaveTextContent('origin')
   })
 
-  it('swaps the graph for the file explorer when it is open', () => {
-    useFileExplorerStore.setState({ isOpen: true, isSidebarOpen: true })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+  /** The point of the whole split: each view brings its own panel, and the previous view's goes
+   * with it. A branch list beside a Kanban is a command for a screen that isn't there. */
+  it('gives the files view its own tree in the panel slot, and drops the branch sidebar', () => {
+    useRepoViewStore.setState({ view: 'files' })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('fake-project-files')).toBeInTheDocument()
     expect(screen.getByTestId('fake-file-tree-sidebar')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-sidebar')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
   })
 
-  it('swaps the graph for the board when it is open', () => {
-    useBoardControlsStore.setState({ isOpen: true })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
-    expect(screen.getByTestId('fake-board-page')).toHaveTextContent('/repo')
-    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
-  })
-
-  it('the board takes priority over the file explorer, and hides the file tree sidebar', () => {
-    useBoardControlsStore.setState({ isOpen: true })
-    useFileExplorerStore.setState({ isOpen: true, isSidebarOpen: true })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
-    expect(screen.getByTestId('fake-board-page')).toBeInTheDocument()
-    expect(screen.queryByTestId('fake-project-files')).not.toBeInTheDocument()
+  it('folds the file tree away without leaving the files view', () => {
+    useRepoViewStore.setState({ view: 'files' })
+    useFileExplorerStore.setState({ isSidebarOpen: false })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-project-files')).toBeInTheDocument()
     expect(screen.queryByTestId('fake-file-tree-sidebar')).not.toBeInTheDocument()
+  })
+
+  /**
+   * Blame and history are a *file's* panel, not a view's: they are opened from the diff viewer, which
+   * the files view has too. Before the panel became view-scoped this came for free, because the graph's
+   * sidebar was mounted on every view and swapped itself out for them.
+   */
+  it('gives blame the panel slot on the files view, ahead of the tree', () => {
+    useRepoViewStore.setState({ view: 'files' })
+    useRepoUIStore.setState({ activeLeftPanel: 'blame' })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-blame-history')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-file-tree-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('gives the board view its board list in the panel slot', () => {
+    useRepoViewStore.setState({ view: 'board' })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
+    expect(screen.getByTestId('fake-board-page')).toHaveTextContent('/repo')
+    expect(screen.getByTestId('fake-board-sidebar')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-sidebar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
   })
 
   it('passes the soloed branches to the graph only while solo mode is on', () => {
     useSoloModeStore.setState({ active: true, soloed: new Set(['main']) })
-    const { rerender } = render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    const { rerender } = render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('graph-solo')).toHaveTextContent('main')
     useSoloModeStore.setState({ active: false })
-    rerender(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    rerender(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('graph-solo')).toHaveTextContent('')
   })
 })
 
 /**
  * The ref-scoped dialogs are mounted here and nowhere else. `GitGraph` used to own a second copy of
- * this state, and it is unmounted whenever the file explorer opens — so a confirmation opened from
- * a tag badge disappeared the moment the user switched view, mid-action.
+ * this state, and it is unmounted whenever another view takes the central area — so a confirmation
+ * opened from a tag badge disappeared the moment the user switched view, mid-action.
  */
-describe('RepoGraphWorkspace — ref dialogs survive the graph being unmounted', () => {
+describe('RepoWorkspace — ref dialogs survive the graph being unmounted', () => {
   it('renders the remote-branch confirmation from the shared store', () => {
     useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('fake-delete-remote-branch')).toHaveTextContent('origin/feat')
   })
 
-  it('keeps it open once the file explorer has replaced the graph', () => {
+  it('keeps it open once another view has replaced the graph', () => {
     useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
-    useFileExplorerStore.setState({ isOpen: true })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    useRepoViewStore.setState({ view: 'files' })
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.queryByTestId('fake-git-graph')).not.toBeInTheDocument()
     expect(screen.getByTestId('fake-delete-remote-branch')).toBeInTheDocument()
     expect(screen.getByTestId('fake-tag-dialogs')).toBeInTheDocument()
@@ -194,26 +212,21 @@ describe('RepoGraphWorkspace — ref dialogs survive the graph being unmounted',
 
   it('draws each dialog once — two mount sites would double them', () => {
     useRepoUIStore.setState({ pendingRemoteBranchDelete: { remote: 'origin', branchName: 'feat' } })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getAllByTestId('fake-delete-remote-branch')).toHaveLength(1)
     expect(screen.getAllByTestId('fake-tag-dialogs')).toHaveLength(1)
   })
 })
 
-describe('RepoGraphWorkspace — view switcher tab bar', () => {
-  it('does not render the tab bar when the effective position is "toolbar"', () => {
-    useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'toolbar' })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
-    expect(screen.queryByTestId('fake-repo-view-tab-bar')).not.toBeInTheDocument()
-  })
-
-  it('renders the tab bar with the board list when the effective position is "tabs"', () => {
-    useEffectiveRepoSettingsMock.mockReturnValue({ viewSwitcherPosition: 'tabs' })
+describe('RepoWorkspace — view switcher tab bar', () => {
+  /** There is one switcher now, and it is always on: a view change swaps the toolbar and the panel
+   * with it, which is a navigation, and a navigation the user cannot see is one they cannot make. */
+  it('always renders the tab bar, with the board list in it', () => {
     useBoardDataMock.mockReturnValue({
       boards: [{ id: 'b1', name: 'Sprint 12' }],
       activeBoard: { id: 'b1', name: 'Sprint 12' },
     })
-    render(<RepoGraphWorkspace repoPath="/repo" activeRepo="/repo" />)
+    render(<RepoWorkspace repoPath="/repo" activeRepo="/repo" />)
     expect(screen.getByTestId('fake-repo-view-tab-bar')).toHaveTextContent('Sprint 12')
   })
 })

@@ -150,7 +150,7 @@ describe('useTagContextMenu', () => {
     )
   })
 
-  // The dialog is opened on the shared store, not on hook state: `RepoGraphWorkspace` mounts it,
+  // The dialog is opened on the shared store, not on hook state: `RepoWorkspace` mounts it,
   // so it survives the file explorer unmounting the graph this menu belongs to.
   it('opens the remote-delete confirmation on the shared store', () => {
     const { result } = setup()

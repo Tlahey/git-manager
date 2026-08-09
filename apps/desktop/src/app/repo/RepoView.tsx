@@ -4,7 +4,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { ActionToolbar } from '../../components/action-toolbar'
 import type { Section, Scope } from '../settings/SettingsPage'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { useFileExplorerStore } from '../../features/files'
 import { apiOpenRepo } from '../../api/repo.api'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 import { BisectBanner } from '../../components/bisect/BisectBanner'
@@ -15,7 +15,7 @@ import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useBranches } from '../../hooks/useBranches'
 import { useBoardConfigAutoSync } from '../../hooks/useBoardConfigAutoSync'
-import { RepoGraphWorkspace } from './components/RepoGraphWorkspace'
+import { RepoWorkspace } from './components/RepoWorkspace'
 
 interface RepoViewProps {
   /** Opens Settings on a given page/scope — forwarded to the toolbar, whose merge-target popover
@@ -103,7 +103,7 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
       <PendingFixupsBanner repoPath={activeRepo} />
       <BisectBanner repoPath={repoPath} />
 
-      <RepoGraphWorkspace repoPath={repoPath} activeRepo={activeRepo} />
+      <RepoWorkspace repoPath={repoPath} activeRepo={activeRepo} />
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />

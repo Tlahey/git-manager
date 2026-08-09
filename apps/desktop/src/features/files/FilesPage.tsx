@@ -1,19 +1,27 @@
 import { useEffect, useMemo } from 'react'
-import { FileIcon, FolderIcon, ChevronRightIcon, PanelRightOpen, X } from 'lucide-react'
+import { FileIcon, FolderIcon, ChevronRightIcon } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Tooltip, cn } from '@git-manager/ui'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { Button, cn } from '@git-manager/ui'
+import { useFileExplorerStore } from './stores/fileExplorer.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useRepoFiles } from '../../hooks/useRepoFiles'
+import { useRepoFiles } from './hooks/useRepoFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { buildFileTree, findDirectoryNodes } from './utils'
-import { DiffViewCenter } from '../git-graph/DiffViewCenter'
-import { isPreviewableImage } from '../git-graph/previewableFile'
-import { TerminalPanel } from '../terminal/TerminalPanel'
-import { TerminalStatusBar } from '../terminal/TerminalStatusBar'
+import { buildFileTree, findDirectoryNodes } from './lib/fileTree'
+import { DiffViewCenter } from '../../components/git-graph/DiffViewCenter'
+import { isPreviewableImage } from '../../components/git-graph/previewableFile'
+import { TerminalPanel } from '../../components/terminal/TerminalPanel'
+import { TerminalStatusBar } from '../../components/terminal/TerminalStatusBar'
 import { useTerminalStore } from '../../stores/terminal.store'
 
-export function ProjectFilesView() {
+/**
+ * The project files view: a breadcrumb, the directory listing under it, and the diff/blame viewer a
+ * selected file opens into.
+ *
+ * The chrome that used to sit in its own header — closing the view, revealing the tree, filtering it
+ * — is gone from here: closing is switching tab now, and the other two belong to the toolbar, which
+ * is scoped to this view (see `FilesToolbar`). What is left is the view itself.
+ */
+export function FilesPage() {
   const { t } = useTranslation('git')
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
@@ -25,9 +33,6 @@ export function ProjectFilesView() {
   const currentDirPath = useFileExplorerStore((s) => s.currentDirPath)
   const setCurrentDirPath = useFileExplorerStore((s) => s.actions.setCurrentDirPath)
   const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
-  const toggleOpen = useFileExplorerStore((s) => s.actions.toggleOpen)
-  const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
-  const toggleSidebar = useFileExplorerStore((s) => s.actions.toggleSidebar)
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const terminalOpen = useTerminalStore((s) => s.open)
 
@@ -53,10 +58,7 @@ export function ProjectFilesView() {
   }, [selectedFilePath, gitStatus])
 
   const tree = useMemo(() => buildFileTree(files ?? []), [files])
-  const currentNodes = useMemo(
-    () => findDirectoryNodes(tree, currentDirPath),
-    [tree, currentDirPath]
-  )
+  const currentNodes = useMemo(() => findDirectoryNodes(tree, currentDirPath), [tree, currentDirPath])
 
   const breadcrumbs = currentDirPath ? currentDirPath.split('/') : []
   const repoName = effectiveRepoPath?.split('/').pop() ?? ''
@@ -105,35 +107,6 @@ export function ProjectFilesView() {
             </span>
           </span>
         )}
-
-        <div className="ml-auto flex items-center gap-1">
-          <Tooltip content={t('fileExplorer.close')}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground"
-              onClick={toggleOpen}
-              aria-label={t('fileExplorer.close')}
-              data-testid="file-explorer-close"
-            >
-              <X size={16} />
-            </Button>
-          </Tooltip>
-          {!isSidebarOpen && (
-            <Tooltip content={t('fileExplorer.showSidebar')}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground"
-                onClick={toggleSidebar}
-                aria-label={t('fileExplorer.showSidebar')}
-                data-testid="file-explorer-show-sidebar"
-              >
-                <PanelRightOpen size={16} />
-              </Button>
-            </Tooltip>
-          )}
-        </div>
       </div>
 
       <div className="flex-1 overflow-hidden">

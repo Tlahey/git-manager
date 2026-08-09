@@ -1,18 +1,20 @@
 import { $, expect } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 
-// The file explorer replaces the graph in the centre area rather than opening a window, so
-// everything below runs against the one main window — no handle juggling like merge.steps.ts.
+// The file explorer is one of the repo tab's three views rather than a window, so everything below
+// runs against the one main window — no handle juggling like merge.steps.ts.
 
 When(/^I open the file explorer$/, async () => {
-  const button = $('[data-testid="toolbar-files-button"]')
+  const button = $('[data-testid="repo-view-tab-files"]')
   await button.waitForClickable({ timeout: 10000 })
   await button.click()
   await $('[data-testid="project-files-view"]').waitForDisplayed({ timeout: 10000 })
 })
 
+// Leaving the view is switching tab now: there is no "close" button, because the view is not a panel
+// laid over the graph any more — the graph is the tab beside it.
 When(/^I close the file explorer$/, async () => {
-  const button = $('[data-testid="file-explorer-close"]')
+  const button = $('[data-testid="repo-view-tab-graph"]')
   await button.waitForClickable({ timeout: 10000 })
   await button.click()
 })
@@ -58,7 +60,7 @@ Then(/^the file tree sidebar is shown$/, async () => {
 
 Then(/^the file tree sidebar is hidden$/, async () => {
   await $('[data-testid="file-tree-sidebar"]').waitForDisplayed({ timeout: 10000, reverse: true })
-  // Hiding it must leave a way back, otherwise the sidebar is unreachable for the rest of the
-  // session — the button that restores it is the only affordance.
-  await expect($('[data-testid="file-explorer-show-sidebar"]')).toBeDisplayed()
+  // Hiding it must leave a way back, otherwise the tree is unreachable for the rest of the session —
+  // the toolbar's toggle is the only affordance, and it stays on screen with the panel gone.
+  await expect($('[data-testid="file-explorer-toggle-sidebar"]')).toBeDisplayed()
 })

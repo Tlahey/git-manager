@@ -1,43 +1,16 @@
-import {
-  ChevronRight,
-  Command as CommandIcon,
-  GitPullRequest,
-  Redo2,
-  Search,
-  Code as CodeIcon,
-  Undo2,
-  History,
-  Archive,
-  ArchiveRestore,
-  FolderOpen,
-  Kanban,
-} from 'lucide-react'
+import { ChevronRight, Command as CommandIcon } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { useActionToolbar } from '../../hooks/useActionToolbar'
+import { ToolbarButton } from '@git-manager/components'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useTimelineNavStore } from '../../stores/timelineNav.store'
-import { useUndoHistoryStore } from '../../stores/undoHistory.store'
-import { useAiEnabled } from '../../hooks/useAiEnabled'
-import { useIsCommitsView } from '../../hooks/useIsCommitsView'
-import { useRunTasks } from '../../hooks/useRunTasks'
+import { useRepoViewStore } from '../../stores/repoView.store'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
-import { useCommitSearchStore } from '../../stores/commitSearch.store'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
-import { useBoardControlsStore } from '../../features/board'
-import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
-import { deriveTimeline } from '../../lib/timelineModel'
+import { BoardToolbar } from '../../features/board'
+import { FilesToolbar } from '../../features/files'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
 import { StateTags } from './StateTags'
-import { FetchButton } from './FetchButton'
-import { PushButton } from './PushButton'
-import { BranchButton } from './BranchButton'
-import { RunButton } from './RunButton'
-import { TerminalButton } from './TerminalButton'
-import { ToolsMenu } from './ToolsMenu'
-import { AiMenu } from './AiMenu'
-import { ToolbarButton } from '@git-manager/components'
+import { GraphToolbarActions } from './GraphToolbarActions'
 import type { Section, Scope } from '../../app/settings/SettingsPage'
 
 interface ActionToolbarProps {
@@ -46,74 +19,28 @@ interface ActionToolbarProps {
   onOpenSettings?: (section?: Section, scope?: Scope) => void
 }
 
-/** Main action bar, sitting under the tabs. */
+/**
+ * Main action bar, sitting under the tabs.
+ *
+ * **Only two things are on it whatever you are looking at**: which repository and branch you are on
+ * (left), and the command palette (right). Everything between is the active view's own — the graph's
+ * fetch/push/stash/tools, the board's ticket and sprint actions, the files view's search — supplied
+ * by that view rather than by this file.
+ *
+ * That is the whole point of the split: a toolbar listing every command in the app made most of them
+ * wrong most of the time. Pushing while reading a Kanban is not a mistake the user should have to
+ * avoid making; it should not be on screen. It also means adding a command to a view is a change in
+ * that view's folder, with nothing to register here.
+ */
 export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const { t } = useTranslation('git')
 
-  const {
-    activeRepo,
-    fromRef,
-    loading,
-    hasChanges,
-    hasStashes,
-    aheadCount,
-    behindCount,
-    canUndo,
-    canRedo,
-    undoLabel,
-    redoLabel,
-    hasEditor,
-    handleOpenEditor,
-    handleFetch,
-    handleFetchAll,
-    handlePull,
-    handlePush,
-    handleUndo,
-    handleRedo,
-    handleStash,
-    handlePop,
-    handleCreateBranch,
-  } = useActionToolbar(t)
-
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
   // A viewed workspace (linked worktree) has its own HEAD, so branch-scoped indicators read from
   // its path rather than the repo tab's — same rule as the rest of the workspace-aware views.
   const activeWorkspacePath = useRepoUIStore((s) => s.activeWorkspacePath)
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
-
-  const aiEnabled = useAiEnabled()
-  const isCommitsView = useIsCommitsView()
-  const { tasks, defaultTask, hasTasks, runTask } = useRunTasks()
-  const disabled = !activeRepo
-
-  const openTimeline = () => {
-    if (!activeRepo) return
-    // The overlay is indexed by *gesture*, not by stack entry, so the starting step has to come
-    // from the model rather than from the raw pointer (they differ as soon as one gesture recorded
-    // several git operations — see `lib/undoGestures.ts`).
-    const history = useUndoHistoryStore.getState().byRepo[activeRepo]
-    const { currentIndex } = deriveTimeline(history?.stack ?? [], history?.pointer ?? 0)
-    useTimelineNavStore.getState().open(activeRepo, currentIndex)
-  }
-
-  const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
-  const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
-  // The board panel and the file explorer share one central-area slot in `RepoGraphWorkspace`
-  // (alongside the graph), so opening one closes the other.
-  const isBoardOpen = useBoardControlsStore((s) => s.isOpen)
-  function toggleBoard() {
-    const opening = !isBoardOpen
-    useBoardControlsStore.getState().setOpen(opening)
-    if (opening && isFileExplorerOpen) useFileExplorerStore.getState().actions.setIsOpen(false)
-  }
-  function handleToggleFileExplorer() {
-    const opening = !isFileExplorerOpen
-    toggleFileExplorer()
-    if (opening && isBoardOpen) useBoardControlsStore.getState().setOpen(false)
-  }
-  // These buttons are the toggle-button flavor of the Graph/Files/Board switcher; when the setting
-  // is 'tabs', `RepoViewTabBar` (rendered below the toolbar) takes over instead — no dual controls.
-  const { viewSwitcherPosition } = useEffectiveRepoSettings(effectiveRepoPath)
-  const showViewSwitcherButtons = viewSwitcherPosition !== 'tabs'
+  const view = useRepoViewStore((s) => s.view)
 
   return (
     <div
@@ -138,151 +65,20 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
 
       <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
-      {/* ── Middle section: quick actions ─────────────────────── */}
+      {/* ── Middle section: the active view's own actions ──────── */}
       {/* `py-1.5` gives the buttons' overflowing count badges vertical headroom: `overflow-x-auto`
           also clips the y-axis, so without padding a badge poking above its icon gets cropped. */}
-      <div className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto py-1.5">
-        <ToolbarButton
-          icon={<Undo2 className="h-4 w-4 text-muted-foreground" />}
-          label={t('toolbar.undo')}
-          title={undoLabel ? t(undoLabel.key, undoLabel.params) : t('toolbar.undo')}
-          loading={loading.undo}
-          disabled={disabled || !canUndo}
-          onClick={handleUndo}
-          data-testid="toolbar-undo-button"
-        />
-        <ToolbarButton
-          icon={<Redo2 className="h-4 w-4 text-muted-foreground" />}
-          label={t('toolbar.redo')}
-          title={redoLabel ? t(redoLabel.key, redoLabel.params) : t('toolbar.redo')}
-          loading={loading.redo}
-          disabled={disabled || !canRedo}
-          onClick={handleRedo}
-          data-testid="toolbar-redo-button"
-        />
-        <ToolbarButton
-          icon={<History className="h-4 w-4 text-muted-foreground" />}
-          label={t('timeline.open')}
-          title={t('timeline.openTitle')}
-          disabled={disabled || !(canUndo || canRedo)}
-          onClick={openTimeline}
-          data-testid="toolbar-timeline-button"
-        />
-
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-
-        <FetchButton
-          loading={loading.fetch}
-          onFetch={handleFetch}
-          onFetchAll={handleFetchAll}
-          onFetchPrune={handleFetch}
-        />
-        <ToolbarButton
-          icon={<GitPullRequest className="h-4 w-4 text-blue-400" />}
-          label={t('remote.pull')}
-          title={
-            behindCount > 0 ? t('remote.commitsToPull', { count: behindCount }) : t('remote.pull')
-          }
-          loading={loading.pull}
-          disabled={disabled}
-          badge={behindCount}
-          onClick={handlePull}
-          data-testid="toolbar-pull-button"
-        />
-        <PushButton
-          loading={loading.push}
-          disabled={disabled}
-          aheadCount={aheadCount}
-          onPush={() => handlePush()}
-          onPushSkippingHooks={() => handlePush({ skipHooks: true })}
-        />
-
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-
-        <BranchButton fromRef={fromRef} onCreate={handleCreateBranch} />
-        <ToolbarButton
-          icon={<Archive className="h-4 w-4 text-violet-400" />}
-          label={t('toolbar.stash')}
-          loading={loading.stash}
-          disabled={disabled || !hasChanges}
-          onClick={handleStash}
-          data-testid="toolbar-stash-button"
-        />
-        <ToolbarButton
-          icon={<ArchiveRestore className="h-4 w-4 text-violet-400" />}
-          label={t('toolbar.pop')}
-          loading={loading.pop}
-          disabled={disabled || !hasStashes}
-          onClick={handlePop}
-        />
-
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-
-        <ToolsMenu repoPath={activeRepo} />
-
-        {/* The model's own zone, kept apart from Tools: bisect and patches are deterministic, these
-            spend a model run. `AiMenu` renders nothing when the provider is off, and the divider
-            goes with it rather than leaving a stray separator behind. */}
-        {aiEnabled && (
-          <>
-            <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-            <AiMenu repoPath={activeRepo} />
-          </>
-        )}
-
-        {hasTasks && (
-          <>
-            <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-            <RunButton tasks={tasks} defaultTask={defaultTask} onRun={runTask} />
-          </>
-        )}
-
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-
-        <TerminalButton />
-
-        {hasEditor && (
-          <ToolbarButton
-            icon={<CodeIcon className="h-4 w-4 text-sky-400" />}
-            label={t('toolbar.editor')}
-            title={t('toolbar.editorTitle')}
-            disabled={!activeRepo}
-            onClick={handleOpenEditor}
-            data-testid="toolbar-editor-button"
-          />
-        )}
+      <div
+        className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto py-1.5"
+        data-testid={`toolbar-view-actions-${view}`}
+      >
+        {view === 'graph' && <GraphToolbarActions />}
+        {view === 'files' && <FilesToolbar />}
+        {view === 'board' && effectiveRepoPath && <BoardToolbar repoPath={effectiveRepoPath} />}
       </div>
 
-      {/* ── Right section: actions & search ───────────────────── */}
+      {/* ── Right section: the one command that is every view's ── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {showViewSwitcherButtons && (
-          <>
-            <ToolbarButton
-              icon={
-                <FolderOpen
-                  className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`}
-                />
-              }
-              label={isFileExplorerOpen ? t('toolbar.filesClose') : t('toolbar.files')}
-              title={t('toolbar.filesTitle')}
-              disabled={disabled}
-              onClick={handleToggleFileExplorer}
-              data-testid="toolbar-files-button"
-            />
-            <ToolbarButton
-              icon={
-                <Kanban
-                  className={`h-4 w-4 ${isBoardOpen ? 'text-primary' : 'text-muted-foreground'}`}
-                />
-              }
-              label={isBoardOpen ? t('toolbar.boardClose') : t('toolbar.board')}
-              title={t('toolbar.boardTitle')}
-              disabled={disabled}
-              onClick={toggleBoard}
-              data-testid="toolbar-board-button"
-            />
-          </>
-        )}
         <ToolbarButton
           icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.actions')}
@@ -290,17 +86,6 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           onClick={() => useCommandPaletteStore.getState().toggle('all')}
           data-testid="toolbar-actions-button"
         />
-        <ToolbarButton
-          icon={<Search className="h-4 w-4 text-muted-foreground" />}
-          label={t('toolbar.searchLabel')}
-          title={`${t('toolbar.search')} (⌘F)`}
-          disabled={disabled || !isCommitsView}
-          onClick={() => useCommitSearchStore.getState().toggle()}
-          data-testid="toolbar-search-button"
-        />
-        {/* The AI history search deliberately does NOT sit here beside ⌘F: the two look alike and
-            behave nothing alike (milliseconds over subjects vs minutes over every commit's diff).
-            It lives in the AI menu, with the other actions that spend a model run. */}
       </div>
     </div>
   )

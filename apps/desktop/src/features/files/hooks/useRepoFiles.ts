@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { apiGetRepoFiles } from '../api/repo.api'
+import { apiGetRepoFiles } from '../../../api/repo.api'
 
 /**
  * Every file in the repository's working tree, for the project files explorer.

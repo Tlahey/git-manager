@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import type { ViewSwitcherPosition } from '@git-manager/git-types'
-import { Input, Textarea, NativeSelect, ToggleGroup, type ToggleGroupOption } from '@git-manager/ui'
+import { Input, Textarea, NativeSelect } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
 import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
 import { RunTasksSetting } from './RunTasksSetting'
@@ -102,19 +101,6 @@ export function RepositorySection({ category }: RepositorySectionProps) {
   const effective = useEffectiveRepoSettings(activeRepo)
   const { data: userThemes } = useUserThemes()
 
-  const viewSwitcherPositions: ToggleGroupOption<ViewSwitcherPosition>[] = [
-    {
-      value: 'toolbar',
-      label: t('settings.appearance.viewSwitcherPosition.toolbar'),
-      testId: 'repo-view-switcher-position-radio-toolbar',
-    },
-    {
-      value: 'tabs',
-      label: t('settings.appearance.viewSwitcherPosition.tabs'),
-      testId: 'repo-view-switcher-position-radio-tabs',
-    },
-  ]
-
   if (!activeRepo) {
     return (
       <div data-testid="repository-section" className="space-y-3">
@@ -133,7 +119,6 @@ export function RepositorySection({ category }: RepositorySectionProps) {
     override?.terminalBackground !== undefined || override?.terminalForeground !== undefined
   const instructionsOverridden = override?.commitInstructions !== undefined
   const patternOverridden = override?.commitPattern !== undefined
-  const viewSwitcherOverridden = override?.viewSwitcherPosition !== undefined
 
   return (
     <div data-testid="repository-section" className="space-y-6">
@@ -242,33 +227,6 @@ export function RepositorySection({ category }: RepositorySectionProps) {
                 $ git status
               </div>
             </div>
-          </OverrideField>
-        </FilterableSetting>
-      )}
-
-      {/* Graph/Files/Board switcher position (appearance category) */}
-      {category === 'appearance' && (
-        <FilterableSetting
-          match={`${t('settings.appearance.viewSwitcherPosition')} view switcher tabs graph files board kanban onglets bascule vue`}
-        >
-          <OverrideField
-            label={t('settings.appearance.viewSwitcherPosition')}
-            isOverridden={viewSwitcherOverridden}
-            onInherit={() => resetRepoSetting(activeRepo, 'viewSwitcherPosition')}
-            onOverride={() =>
-              setRepoSetting(activeRepo, 'viewSwitcherPosition', effective.viewSwitcherPosition)
-            }
-            testId="repo-override-viewSwitcherPosition"
-          >
-            <ToggleGroup
-              name="repoViewSwitcherPosition"
-              value={effective.viewSwitcherPosition}
-              onValueChange={(position) =>
-                setRepoSetting(activeRepo, 'viewSwitcherPosition', position)
-              }
-              options={viewSwitcherPositions}
-              disabled={!viewSwitcherOverridden}
-            />
           </OverrideField>
         </FilterableSetting>
       )}

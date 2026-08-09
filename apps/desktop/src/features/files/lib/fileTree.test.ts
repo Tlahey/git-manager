@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFileTree, filterFileTree, findDirectoryNodes } from './utils'
+import { buildFileTree, filterFileTree, findDirectoryNodes } from './fileTree'
 
 const PATHS = [
   'src/components/Button.tsx',

@@ -452,7 +452,7 @@ export function GitGraph({
 
   // Tag badge right-click menu: reuses the commit dialogs above (via selectSingle +
   // setPendingAction). Its own two dialogs are opened on the shared store and mounted by
-  // `RepoGraphWorkspace`, not here.
+  // `RepoWorkspace`, not here.
   const { openTagMenu } = useTagContextMenu({
     repoPath,
     currentBranch: headBranchName ?? null,
@@ -968,7 +968,7 @@ export function GitGraph({
             {/* The tag dialogs and the remote-branch delete confirmation are NOT mounted here: they
               are about a ref rather than a commit in this page, and this component is unmounted
               whenever the file explorer is open — which used to take an open dialog down with it.
-              `RepoGraphWorkspace` mounts them from the shared store state this menu writes. */}
+              `RepoWorkspace` mounts them from the shared store state this menu writes. */}
           </div>
         </CommitDragProvider>
       </TagMenuProvider>

@@ -12,14 +12,6 @@ beforeEach(() => {
 })
 
 describe('fileExplorer.store — browsing', () => {
-  it('clears the selected file when opening the explorer', () => {
-    actions().setSelectedFilePath('src/a.ts')
-    actions().toggleOpen()
-
-    expect(useFileExplorerStore.getState().isOpen).toBe(true)
-    expect(useFileExplorerStore.getState().selectedFilePath).toBeNull()
-  })
-
   it('drops the selected file when navigating into a directory', () => {
     actions().setSelectedFilePath('src/a.ts')
     actions().setCurrentDirPath('docs')
@@ -57,15 +49,13 @@ describe('fileExplorer.store — syncRepo', () => {
     expect(useFileExplorerStore.getState().currentDirPath).toBe('src')
   })
 
-  it('keeps the panel toggles across a repository switch', () => {
+  it('keeps the tree-panel toggle across a repository switch', () => {
     actions().syncRepo('/repo-a')
-    actions().toggleOpen()
     actions().toggleSidebar()
-    const { isOpen, isSidebarOpen } = useFileExplorerStore.getState()
+    const { isSidebarOpen } = useFileExplorerStore.getState()
 
     actions().syncRepo('/repo-b')
 
-    expect(useFileExplorerStore.getState().isOpen).toBe(isOpen)
     expect(useFileExplorerStore.getState().isSidebarOpen).toBe(isSidebarOpen)
   })
 

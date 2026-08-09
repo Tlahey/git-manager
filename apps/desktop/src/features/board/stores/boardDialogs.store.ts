@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { create } from 'zustand'
 import type { BoardCard } from '@git-manager/git-types'
 
 /**
@@ -9,10 +9,10 @@ import type { BoardCard } from '@git-manager/git-types'
 export type CardDialogState = { mode: 'create'; columnId: string } | { mode: 'edit'; cardId: string }
 
 /**
- * The board-level dialogs, all raised from the page header (or the empty state).
+ * The board-level dialogs, raised from the toolbar (or the board's empty state).
  *
- * One slot rather than seven booleans, because they are **mutually exclusive in fact**: every one is
- * modal and covers the header the others are opened from, so two could never be true at once. Seven
+ * One slot rather than eight booleans, because they are **mutually exclusive in fact**: every one is
+ * modal and covers the board the others are opened from, so two could never be true at once. Eight
  * independent flags could represent that impossible state, and `openFrom` below would then have to
  * remember to clear each of them by name — which is exactly the bug it used to carry, closing only
  * the archive list.
@@ -80,58 +80,73 @@ export interface BoardDialogs {
   /** Reopens whatever the dialog just closed was opened from, one hop at a time; a no-op when it was
    * opened from the board itself. */
   returnToOrigin: () => void
+  /** Closes everything and forgets the trail — the board view leaving the screen. */
+  reset: () => void
 }
 
+/** Everything `reset` puts back, so adding a slot can't quietly escape it. */
+const closed = () => ({
+  openDialog: null,
+  cardDialog: null,
+  movingCard: null,
+  deletingCard: null,
+  columnAction: null,
+  originTrail: [] as DialogOrigin[],
+})
+
 /**
- * Which of the board page's dialogs is on screen, and the way back out of the ones that were opened
- * from another.
+ * Which of the board's dialogs is on screen, and the way back out of the ones that were opened from
+ * another.
+ *
+ * **A store rather than the `useBoardDialogs` hook it started as**, because the buttons that raise
+ * these dialogs no longer live in the same React tree as the dialogs themselves: the board's actions
+ * moved into the app's own toolbar when the toolbar became view-scoped, while `BoardDialogsManager`
+ * still renders them inside the page. Threading fifteen callbacks up through `RepoView` to reach the
+ * toolbar would have coupled the app's chrome to the board's internals; one store keeps the coupling
+ * to a single import of this feature's public surface.
  *
  * Pure state: no data, no effects, no knowledge of what any dialog *does* — which is what makes the
  * return-path rule above testable on its own rather than only through a page that mounts fourteen
  * dialogs. `BoardPage` owns the board data, `BoardDialogsManager` renders the dialogs, and this owns
  * the question of which one you are looking at.
  */
-export function useBoardDialogs(): BoardDialogs {
-  const [openDialog, setOpenDialog] = useState<BoardDialogName | null>(null)
-  const [cardDialog, setCardDialog] = useState<CardDialogState | null>(null)
-  const [movingCard, setMovingCard] = useState<BoardCard | null>(null)
-  const [deletingCard, setDeletingCard] = useState<BoardCard | null>(null)
-  const [columnAction, setColumnAction] = useState<ColumnAction | null>(null)
-  const [originTrail, setOriginTrail] = useState<DialogOrigin[]>([])
+export const useBoardDialogsStore = create<BoardDialogs & { originTrail: DialogOrigin[] }>(
+  (set, get) => ({
+    ...closed(),
 
-  function openFrom(origin: DialogOrigin, next: () => void) {
-    setOpenDialog(null)
-    setCardDialog(null)
-    setOriginTrail((trail) => [...trail, origin])
-    next()
-  }
+    isOpen: (name) => get().openDialog === name,
+    setOpen: (name, open) => set({ openDialog: open ? name : null }),
+    open: (name) => set({ openDialog: name }),
+    setCardDialog: (cardDialog) => set({ cardDialog }),
+    setMovingCard: (movingCard) => set({ movingCard }),
+    setDeletingCard: (deletingCard) => set({ deletingCard }),
+    setColumnAction: (columnAction) => set({ columnAction }),
 
-  /**
-   * A card that was deleted in the meantime needs no special case: the card dialog resolves its id
-   * out of the live card list, so a stale id simply renders nothing.
-   */
-  function returnToOrigin() {
-    const origin = originTrail[originTrail.length - 1]
-    if (!origin) return
-    if (origin.kind === 'archived') setOpenDialog('archived')
-    else setCardDialog({ mode: 'edit', cardId: origin.cardId })
-    setOriginTrail((trail) => trail.slice(0, -1))
-  }
+    openFrom: (origin, next) => {
+      set((state) => ({
+        openDialog: null,
+        cardDialog: null,
+        originTrail: [...state.originTrail, origin],
+      }))
+      next()
+    },
 
-  return {
-    openDialog,
-    isOpen: (name) => openDialog === name,
-    setOpen: (name, open) => setOpenDialog(open ? name : null),
-    open: (name) => setOpenDialog(name),
-    cardDialog,
-    setCardDialog,
-    movingCard,
-    setMovingCard,
-    deletingCard,
-    setDeletingCard,
-    columnAction,
-    setColumnAction,
-    openFrom,
-    returnToOrigin,
-  }
-}
+    /**
+     * A card that was deleted in the meantime needs no special case: the card dialog resolves its id
+     * out of the live card list, so a stale id simply renders nothing.
+     */
+    returnToOrigin: () => {
+      const { originTrail } = get()
+      const origin = originTrail[originTrail.length - 1]
+      if (!origin) return
+      set({
+        ...(origin.kind === 'archived'
+          ? { openDialog: 'archived' as const }
+          : { cardDialog: { mode: 'edit' as const, cardId: origin.cardId } }),
+        originTrail: originTrail.slice(0, -1),
+      })
+    },
+
+    reset: () => set(closed()),
+  })
+)

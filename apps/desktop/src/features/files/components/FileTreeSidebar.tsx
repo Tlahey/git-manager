@@ -3,17 +3,16 @@ import {
   FileIcon,
   FolderIcon,
   FolderOpenIcon,
-  SearchIcon,
   ChevronRightIcon,
   ChevronDownIcon,
-  PanelRightClose,
+  PanelLeftClose,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Tooltip, cn } from '@git-manager/ui'
-import { useFileExplorerStore } from '../../stores/fileExplorer.store'
-import { useRepoFiles } from '../../hooks/useRepoFiles'
-import { buildFileTree, filterFileTree, type FileNode } from './utils'
-import { useRepoUIStore } from '../../stores/repoUI.store'
+import { Button, Tooltip, cn } from '@git-manager/ui'
+import { useFileExplorerStore } from '../stores/fileExplorer.store'
+import { useRepoFiles } from '../hooks/useRepoFiles'
+import { buildFileTree, filterFileTree, type FileNode } from '../lib/fileTree'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 function TreeNode({
   node,
@@ -48,16 +47,16 @@ function TreeNode({
         aria-expanded={node.isDir ? expanded : undefined}
         className={cn(
           'flex w-full cursor-pointer items-center py-1 pr-2 text-left text-xs transition-colors',
-          'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring',
+          'focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-hidden',
           isSelected
-            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
             : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         onClick={handleClick}
         data-testid={`file-tree-node-${node.path}`}
       >
-        <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center text-sidebar-muted-foreground">
+        <span className="text-sidebar-muted-foreground mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
           {node.isDir ? (
             expanded ? (
               <ChevronDownIcon size={14} />
@@ -66,7 +65,7 @@ function TreeNode({
             )
           ) : null}
         </span>
-        <span className="mr-1.5 flex shrink-0 items-center text-sidebar-muted-foreground">
+        <span className="text-sidebar-muted-foreground mr-1.5 flex shrink-0 items-center">
           {node.isDir ? (
             expanded ? (
               <FolderOpenIcon size={14} className="text-primary" />
@@ -98,6 +97,14 @@ function TreeNode({
   )
 }
 
+/**
+ * The files view's left panel: the repository's working tree, filtered by whatever the toolbar's
+ * search box holds.
+ *
+ * It sits on the **left**, where the graph view's branch sidebar sits — a repo tab has one panel
+ * slot and each view fills it with its own navigation, rather than the files view adding a second
+ * panel on the right and leaving the branch list on the left for a view that has no use for it.
+ */
 export function FileTreeSidebar() {
   const { t } = useTranslation('git')
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
@@ -108,7 +115,6 @@ export function FileTreeSidebar() {
   const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
   const treeSearchQuery = useFileExplorerStore((s) => s.treeSearchQuery)
   const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
-  const setTreeSearchQuery = useFileExplorerStore((s) => s.actions.setTreeSearchQuery)
 
   const isSearching = treeSearchQuery.trim().length > 0
   const tree = useMemo(
@@ -118,44 +124,28 @@ export function FileTreeSidebar() {
 
   return (
     <div
-      className="flex h-full w-64 shrink-0 flex-col border-l border-sidebar-border bg-sidebar"
+      className="border-sidebar-border bg-sidebar flex h-full w-64 shrink-0 flex-col border-r"
       data-testid="file-tree-sidebar"
     >
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted-foreground">
+      <div className="border-sidebar-border flex h-9 shrink-0 items-center justify-between border-b px-2">
+        <span className="text-sidebar-muted-foreground/60 text-[10px] font-bold tracking-widest uppercase select-none">
           {t('fileExplorer.filesTitle')}
         </span>
         <Tooltip content={t('fileExplorer.hideSidebar')}>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-sidebar-muted-foreground"
+            className="text-sidebar-muted-foreground h-6 w-6"
             onClick={toggleSidebar}
             aria-label={t('fileExplorer.hideSidebar')}
             data-testid="file-tree-hide-sidebar"
           >
-            <PanelRightClose size={14} />
+            <PanelLeftClose size={14} />
           </Button>
         </Tooltip>
       </div>
 
-      <div className="shrink-0 p-2">
-        <Input
-          variant="chrome"
-          inputSize="sm"
-          type="search"
-          placeholder={t('fileExplorer.searchPlaceholder')}
-          aria-label={t('fileExplorer.searchPlaceholder')}
-          value={treeSearchQuery}
-          onChange={(e) => setTreeSearchQuery(e.target.value)}
-          // No colour class: the icon takes the field's own graded pair (see `Input`'s ICON_CLASSES),
-          // so it always matches the text and placeholder it sits next to.
-          startIcon={<SearchIcon className="h-3.5 w-3.5" />}
-          data-testid="file-tree-search-input"
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <div className="py-2">
           {tree.map((node) => (
             <TreeNode
@@ -168,7 +158,7 @@ export function FileTreeSidebar() {
           ))}
           {tree.length === 0 && (
             <div
-              className="p-4 text-center text-xs text-sidebar-muted-foreground"
+              className="text-sidebar-muted-foreground p-4 text-center text-xs"
               data-testid="file-tree-empty"
             >
               {t('fileExplorer.noFilesFound')}

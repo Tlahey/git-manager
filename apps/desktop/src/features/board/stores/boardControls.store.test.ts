@@ -3,7 +3,7 @@ import { useBoardControlsStore } from './boardControls.store'
 
 describe('boardControls.store', () => {
   beforeEach(() => {
-    useBoardControlsStore.setState({ search: '', isOpen: false })
+    useBoardControlsStore.getState().reset()
   })
 
   it('updates the search text', () => {
@@ -11,16 +11,25 @@ describe('boardControls.store', () => {
     expect(useBoardControlsStore.getState().search).toBe('header')
   })
 
-  it('clears the search on reset', () => {
-    useBoardControlsStore.getState().setSearch('header')
-    useBoardControlsStore.getState().reset()
-    expect(useBoardControlsStore.getState().search).toBe('')
+  it('toggles the closed and deleted board filters', () => {
+    useBoardControlsStore.getState().setShowClosed(true)
+    useBoardControlsStore.getState().setShowDeleted(true)
+
+    expect(useBoardControlsStore.getState().showClosed).toBe(true)
+    expect(useBoardControlsStore.getState().showDeleted).toBe(true)
   })
 
-  it('toggles the board panel open state', () => {
-    useBoardControlsStore.getState().setOpen(true)
-    expect(useBoardControlsStore.getState().isOpen).toBe(true)
-    useBoardControlsStore.getState().setOpen(false)
-    expect(useBoardControlsStore.getState().isOpen).toBe(false)
+  it('clears the search and both filters on reset', () => {
+    useBoardControlsStore.getState().setSearch('header')
+    useBoardControlsStore.getState().setShowClosed(true)
+    useBoardControlsStore.getState().setShowDeleted(true)
+
+    useBoardControlsStore.getState().reset()
+
+    expect(useBoardControlsStore.getState()).toMatchObject({
+      search: '',
+      showClosed: false,
+      showDeleted: false,
+    })
   })
 })

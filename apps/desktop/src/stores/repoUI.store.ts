@@ -331,13 +331,13 @@ interface RepoUIState {
    * awaiting confirmation, or `null` for "no dialog open".
    *
    * They live here rather than in the menu hooks for the same reason the branch-comparison dialog
-   * is mounted by `RepoGraphWorkspace`: they are about a **ref**, not about a commit in the graph's
+   * is mounted by `RepoWorkspace`: they are about a **ref**, not about a commit in the graph's
    * loaded page, so they must stay open — and openable — while the file explorer has `GitGraph`
    * unmounted. Held as component state they were owned *twice*, once by the graph and once by the
    * workspace, and the graph's copy took its open dialog down with it the moment the user opened
    * the file explorer.
    *
-   * One store field means one mount site: `RepoGraphWorkspace` renders these, and `GitGraph` must
+   * One store field means one mount site: `RepoWorkspace` renders these, and `GitGraph` must
    * not — two mounts of one shared value draw the dialog twice.
    */
   pendingTagDialog: TagDialogAction

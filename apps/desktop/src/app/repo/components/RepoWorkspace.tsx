@@ -1,28 +1,27 @@
 import { useState } from 'react'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
-import { useBoardControlsStore, BoardPage, useBoardData } from '../../../features/board'
+import { useFileExplorerStore, FilesPage, FileTreeSidebar } from '../../../features/files'
+import { BoardPage, BoardSidebar, useBoardData } from '../../../features/board'
 import { GitGraph } from '../../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../../components/repository-sidebar'
+import { BlameHistoryPanel } from '../../../components/repository-sidebar/BlameHistoryPanel'
 import { RenameBranchDialog } from '../../../components/git-graph/RenameBranchDialog'
 import { DeleteRemoteBranchDialog } from '../../../components/git-graph/DeleteRemoteBranchDialog'
 import { CompareBranchesDialog } from '../../../components/git-graph/CompareBranchesDialog'
 import { SetUpstreamDialog } from '../../../components/git-graph/SetUpstreamDialog'
 import { TagDialogsManager } from '../../../components/git-graph/components/TagDialogsManager'
-import { ProjectFilesView } from '../../../components/file-explorer/ProjectFilesView'
-import { FileTreeSidebar } from '../../../components/file-explorer/FileTreeSidebar'
 import { TimelineBar } from '../../../components/timeline/TimelineBar'
 import { BisectSetupBanner } from '../../../components/bisect/BisectSetupBanner'
 import { RepoViewTabBar } from './RepoViewTabBar'
 import { useSidebarBranchMenu } from '../../../hooks/useSidebarBranchMenu'
 import { useSidebarTagMenu } from '../../../hooks/useSidebarTagMenu'
-import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 
-interface RepoGraphWorkspaceProps {
+interface RepoWorkspaceProps {
   /** The path actually being viewed — the repo tab's own path, or a linked worktree's. */
   repoPath: string
   /** The repo tab's own path, whose cached remotes label the sidebar. */
@@ -30,12 +29,24 @@ interface RepoGraphWorkspaceProps {
 }
 
 /**
- * The body of a repo tab: branch sidebar, the commit graph (or the file explorer that takes its
- * place), the timeline rail, and the dialogs the sidebar's own menus open. Kept out of `RepoView`,
- * which owns only the toolbar and the repo-wide banners, so everything graph-scoped — including a
- * rename/tag dialog — mounts and unmounts as one unit.
+ * The body of a repo tab: the view tab strip, the left panel, the central area, the timeline rail
+ * and the dialogs the branch/tag menus open.
+ *
+ * **Both the panel and the central area are scoped to the active view** (`repoView.store`), and they
+ * change together: the graph gets the branch sidebar beside it, the files view gets its own working
+ * tree, the board gets the repo's boards. A repo tab has one panel slot and the active view fills it
+ * — rather than every view sharing the graph's branch list and adding a panel of its own on the
+ * other side, which is how the files view ended up with its tree on the right.
+ *
+ * The one exception is blame/history, which is not a view's panel but a *file's*: it is opened from
+ * the diff viewer, and the diff viewer is reachable from the graph and from the files view alike, so
+ * it takes the slot on both. On the graph `RepositorySidebar` swaps itself out for it; on the files
+ * view the branch below does the same explicitly.
+ *
+ * Kept out of `RepoView`, which owns only the toolbar and the repo-wide banners, so everything
+ * repo-scoped — including a rename or tag dialog — mounts and unmounts as one unit.
  */
-export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceProps) {
+export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const repoCache = useRepoDataStore((s) => s.repoCache)
   const searchQuery = useCommitSearchStore((s) => s.query)
@@ -43,15 +54,12 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
   const soloActive = useSoloModeStore((s) => s.active)
   const soloed = useSoloModeStore((s) => s.soloed)
 
-  const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
-  const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
-  const isBoardOpen = useBoardControlsStore((s) => s.isOpen)
+  const view = useRepoViewStore((s) => s.view)
+  const isTreeOpen = useFileExplorerStore((s) => s.isSidebarOpen)
 
-  // Graph/Files/Board switcher as a tab strip below the toolbar instead of ActionToolbar's toggle
-  // buttons — see `RepoViewTabBar`'s doc comment. `useBoardData` here (not just inside `BoardPage`)
-  // is what supplies the board list for the tab labels; SWR dedupes the fetch against `BoardPage`'s
-  // own call when the board view is open, so this doesn't double the network cost.
-  const { viewSwitcherPosition } = useEffectiveRepoSettings(repoPath)
+  // `useBoardData` here (not just inside the board view) is what supplies the board list for the tab
+  // labels; SWR dedupes the fetch against the board view's own calls, so this doesn't double the
+  // network cost.
   const { boards, activeBoard } = useBoardData(repoPath)
 
   const github = useSettingsStore((s) => s.settings.github)
@@ -61,9 +69,9 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
     useSidebarBranchMenu(repoPath)
   const { openTagMenu } = useSidebarTagMenu(repoPath)
   // The ref-scoped dialogs are mounted *here*, and only here, for the reason the comparison dialog
-  // below already gives: this component stays mounted while the file explorer replaces the graph,
-  // so a dialog opened from a tag badge does not vanish the moment the user opens it. Both the
-  // graph's menus and the sidebar's write the same shared state (`repoUI.store`).
+  // below already gives: this component stays mounted whichever view is active, so a dialog opened
+  // from a tag badge does not vanish the moment the user switches. Both the graph's menus and the
+  // sidebar's write the same shared state (`repoUI.store`).
   const pendingTagAction = useRepoUIStore((s) => s.pendingTagDialog)
   const setPendingTagAction = useRepoUIStore((s) => s.setPendingTagDialog)
   const pendingDeleteRemoteBranch = useRepoUIStore((s) => s.pendingRemoteBranchDelete)
@@ -72,47 +80,65 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
   // branch menus alike), or null when it is closed.
   const compareRefsTarget = useRepoUIStore((s) => s.compareRefsTarget)
   const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
+  // Whether a file's blame or history has taken the panel slot — see the doc comment above.
+  const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
+  const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
+  const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
+  const isFilePanelActive = activeLeftPanel === 'blame' || activeLeftPanel === 'history'
 
   return (
     <>
-      {viewSwitcherPosition === 'tabs' && (
-        <RepoViewTabBar
-          repoPath={repoPath}
-          isFileExplorerOpen={isFileExplorerOpen}
-          isBoardOpen={isBoardOpen}
-          boards={boards}
-          activeBoardId={activeBoard?.id ?? null}
-        />
-      )}
+      <RepoViewTabBar repoPath={repoPath} boards={boards} activeBoardId={activeBoard?.id ?? null} />
 
-      {/* ── Main layout: sidebar | central area ─────────────────── */}
-      <div data-testid="repo-graph-view" className="relative flex flex-1 overflow-hidden">
-        {/* Branch sidebar — resizable */}
-        <RepositorySidebar
-          repoPath={repoPath}
-          remoteUrls={repoCache[activeRepo]?.remotes ?? []}
-          selectedBranch={selectedBranch}
-          onSelectBranch={(name) => setSelectedBranch(name)}
-          // A tag isn't a filterable ref: instead of reloading the whole log, scroll to and select
-          // its commit in the current graph via the graph-selection bridge.
-          onSelectTag={(commitOid) => useRepoUIStore.getState().setPendingGraphSelection(commitOid)}
-          onOpenPr={(pr) => {
-            setSelectedBranch(pr.headRef)
-            useRepoUIStore.getState().setActivePrNumber(pr.number)
-          }}
-          currentUser={activeAccount?.user?.login}
-          githubToken={activeAccount?.token ?? undefined}
-          onContextMenu={openBranchMenu}
-          onRemoteBranchContextMenu={openBranchMenu}
-          onTagContextMenu={openTagMenu}
-        />
+      {/* ── Main layout: the view's panel | the view ────────────── */}
+      <div data-testid="repo-workspace" className="relative flex flex-1 overflow-hidden">
+        {view === 'graph' && (
+          <RepositorySidebar
+            repoPath={repoPath}
+            remoteUrls={repoCache[activeRepo]?.remotes ?? []}
+            selectedBranch={selectedBranch}
+            onSelectBranch={(name) => setSelectedBranch(name)}
+            // A tag isn't a filterable ref: instead of reloading the whole log, scroll to and select
+            // its commit in the current graph via the graph-selection bridge.
+            onSelectTag={(commitOid) =>
+              useRepoUIStore.getState().setPendingGraphSelection(commitOid)
+            }
+            onOpenPr={(pr) => {
+              setSelectedBranch(pr.headRef)
+              useRepoUIStore.getState().setActivePrNumber(pr.number)
+            }}
+            currentUser={activeAccount?.user?.login}
+            githubToken={activeAccount?.token ?? undefined}
+            onContextMenu={openBranchMenu}
+            onRemoteBranchContextMenu={openBranchMenu}
+            onTagContextMenu={openTagMenu}
+          />
+        )}
 
-        {/* Central area — full-width history, the file explorer, or the Kanban board */}
+        {view === 'files' &&
+          (isFilePanelActive ? (
+            <div
+              data-testid="files-blame-history-panel"
+              className="flex h-full w-[350px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
+            >
+              <BlameHistoryPanel
+                file={activeDiffFile}
+                repoPath={repoPath}
+                onClose={() => setActiveLeftPanel('sidebar')}
+              />
+            </div>
+          ) : (
+            isTreeOpen && <FileTreeSidebar />
+          ))}
+
+        {view === 'board' && <BoardSidebar repoPath={repoPath} />}
+
+        {/* Central area — the view itself */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {isBoardOpen ? (
+          {view === 'board' ? (
             <BoardPage repoPath={repoPath} />
-          ) : isFileExplorerOpen ? (
-            <ProjectFilesView />
+          ) : view === 'files' ? (
+            <FilesPage />
           ) : (
             <GitGraph
               repoPath={repoPath}
@@ -122,8 +148,6 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
             />
           )}
         </div>
-
-        {!isBoardOpen && isFileExplorerOpen && isSidebarOpen && <FileTreeSidebar />}
 
         <TimelineBar repoPath={repoPath} />
 
@@ -159,7 +183,7 @@ export function RepoGraphWorkspace({ repoPath, activeRepo }: RepoGraphWorkspaceP
 
       {/* Branch comparison — mounted here rather than in the graph's overlay manager for the same
           reason as the tag dialogs: it is about two refs, not about a selected commit, so it must
-          stay open (and openable) while the file explorer has the graph unmounted. */}
+          stay open (and openable) while another view has the graph unmounted. */}
       {compareRefsTarget && (
         <CompareBranchesDialog
           repoPath={repoPath}

@@ -41,7 +41,7 @@ interface UseTagContextMenuParams {
  * the tag's commit), the branch-relationship actions (merge/rebase relative to the current branch),
  * and the tag-specific ones (delete local/remote, copy name/link, annotate). Commit dialogs are
  * routed through the graph's own `pendingAction`; the two tag-only dialogs (annotate, remote delete)
- * go through `pendingTagDialog` on the repoUI store, which `RepoGraphWorkspace` renders — so this
+ * go through `pendingTagDialog` on the repoUI store, which `RepoWorkspace` renders — so this
  * hook opens them and never mounts them.
  */
 export function useTagContextMenu({
@@ -60,7 +60,7 @@ export function useTagContextMenu({
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { data: branches } = useBranches(repoPath)
   // Shared state, not `useState`: the tag dialogs must survive `GitGraph` unmounting when the file
-  // explorer opens, and they are mounted once by `RepoGraphWorkspace`. See `pendingTagDialog`.
+  // explorer opens, and they are mounted once by `RepoWorkspace`. See `pendingTagDialog`.
   const setPendingTagAction = useRepoUIStore((s) => s.setPendingTagDialog)
 
   // Stable identity: this handler is published through TagMenuContext to every memoized GraphRow, so

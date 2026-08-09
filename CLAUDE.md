@@ -75,7 +75,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 
 **A feature large enough to span several layers lives in one folder, not scattered across the app's layer folders.** `apps/desktop/src/features/<name>/` holds everything that feature is — its page, its components, its hooks, its API wrappers, its stores, its pure logic and its test factories — so that finding it, reviewing it, and knowing what a change touches are all one lookup instead of five.
 
-[features/board/](apps/desktop/src/features/board/) is the reference implementation and carries a `README.md` describing its own layout; copy that shape:
+[features/board/](apps/desktop/src/features/board/) is the reference implementation and carries a `README.md` describing its own layout; [features/files/](apps/desktop/src/features/files/) is the smaller one. Copy that shape:
 
 ```
 features/<name>/
@@ -90,13 +90,15 @@ features/<name>/
   test/              factories shared by the feature's suites
 ```
 
-- **`index.ts` is the boundary, and it is the thing that makes the folder one.** Outside code imports `from '../../features/<name>'`, never from a path inside it, so "the app depends on this" is one `grep` away instead of a reading of forty files. Keep the surface narrow — `features/board/index.ts` exports four names, and widening it is a decision about coupling that should be visible in a diff. Test factories are the one sanctioned exception: a suite may reach `features/<name>/test/…` directly, since shipping builders through the production barrel would put them in the bundle.
+- **`index.ts` is the boundary, and it is the thing that makes the folder one.** Outside code imports `from '../../features/<name>'`, never from a path inside it, so "the app depends on this" is one `grep` away instead of a reading of forty files. Keep the surface narrow — `features/files/index.ts` exports four names, and widening it is a decision about coupling that should be visible in a diff. Test factories are the one sanctioned exception: a suite may reach `features/<name>/test/…` directly, since shipping builders through the production barrel would put them in the bundle.
 
 - **The layering rules above still apply inside a feature.** `features/<name>/api/` is an `api/*.api.ts` layer, subject to the same hard invariant: components, hooks and stores go through it, never through `lib/tauri.ts`. Moving a feature into its own folder is a change of *address*, never of architecture.
 - **What stays outside**: the DTOs (`packages/git-types`, because Rust mirrors them), the copy (`packages/i18n`), the Rust half (`src-tauri/`), and anything genuinely shared with another feature — which belongs in `src/components/`, `src/hooks/` or a package, not in a second feature's folder.
 - **When to promote a folder to a feature**: it has its own page *and* its own store *or* its own `api/` domain. Below that, the existing `app/<page>/components/` convention is enough — don't create a feature folder for a page with three components.
 - **Not a package.** A feature folder is not a step towards `packages/<name>`: a feature reaches the app's IPC layer, its stores and its shared components, so extracting it would either drag the app in behind it or turn fifteen imports into injected dependencies. `packages/*` stays horizontal (primitives, DTOs, i18n, theme, AI runtime); `features/*` is vertical and stays in the app. `features/board/README.md` states this at length.
 - Pages that aren't features stay under `app/`. `app/` and `features/` coexist; migrating an existing page is worth it only when it is already spread across `app/`, `hooks/`, `api/` and `stores/`.
+
+**A repo tab's chrome is scoped to the view on screen.** Which of the three views a repo tab shows — the commit graph, the project files, the Kanban board — is [stores/repoView.store.ts](apps/desktop/src/stores/repoView.store.ts)'s single `view` slot, and both the toolbar and the left panel follow it: `ActionToolbar` draws the repo/branch context and ⌘K and hands its middle to the active view (`GraphToolbarActions`, `FilesToolbar`, `BoardToolbar`), while `RepoWorkspace` gives the panel slot to that view's own navigation (branch sidebar, working tree, board list). So a feature that *is* a view supplies three things through its barrel — its central area, its panel and its toolbar section — and a command is never on screen for a view that cannot answer for it. The exception, stated where it is enforced in `RepoWorkspace`, is blame/history: it belongs to a *file*, not a view, so it takes the panel slot on both views that can open a diff.
 
 ### Frontend organization rules (from `.agents/AGENTS.md`)
 

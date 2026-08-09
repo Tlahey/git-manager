@@ -3,7 +3,6 @@ import type { AiPresetId } from '@git-manager/ai'
 import type {
   AppSettings,
   NotificationDisplayStyle,
-  ViewSwitcherPosition,
 } from '@git-manager/git-types'
 
 /**
@@ -75,7 +74,6 @@ const appearanceSchema = z.object({
   terminalBackground: z.string(),
   terminalForeground: z.string(),
   glassTransparency: z.number().optional(),
-  viewSwitcherPosition: looseString<ViewSwitcherPosition>(),
 })
 
 const advancedSchema = z.object({
@@ -160,7 +158,6 @@ const repoScopedSchema = z.object({
   theme: z.string().optional(),
   terminalBackground: z.string().optional(),
   terminalForeground: z.string().optional(),
-  viewSwitcherPosition: looseString<ViewSwitcherPosition>().optional(),
   worktreeDefaultFiles: z.array(z.string()).optional(),
   runTasks: z.array(runTaskSchema).optional(),
   defaultRunTaskId: z.string().optional(),
