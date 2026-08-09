@@ -42,11 +42,13 @@ beforeEach(() => {
 })
 
 describe('ActionToolbar — the parts every view keeps', () => {
-  it('renders the repo/branch context children', () => {
+  it('renders the repo selector whichever view is on screen', () => {
     render(<ActionToolbar />)
     expect(screen.getByTestId('repo-selector')).toBeInTheDocument()
-    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
-    expect(screen.getByTestId('state-tags')).toBeInTheDocument()
+
+    useRepoViewStore.setState({ view: 'board' })
+    render(<ActionToolbar />)
+    expect(screen.getAllByTestId('repo-selector')).toHaveLength(2)
   })
 
   it('points the merge-target indicator at the repo, or at the viewed workspace when there is one', () => {
@@ -110,5 +112,35 @@ describe('ActionToolbar — one section per view', () => {
     render(<ActionToolbar />)
     expect(screen.getByTestId('board-toolbar')).toHaveTextContent('/repo/wt')
     expect(screen.queryByTestId('graph-toolbar-actions')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * The branch context follows the same rule as the sections: it is on the bar for the views that
+ * read the checked-out branch, and off it for the one that doesn't. Nothing under
+ * `features/board/` touches the current branch, so a checkout offered there answers a question the
+ * screen never asked — and it is a *destructive-adjacent* one, moving the working tree under a
+ * user who was reordering tickets.
+ */
+describe('ActionToolbar — the branch context is view-scoped too', () => {
+  it('names the branch on the graph, where the graph is drawn from it', () => {
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
+  })
+
+  it('names it on the files view too, which lists that branch’s working tree', () => {
+    useRepoViewStore.setState({ view: 'files' })
+    render(<ActionToolbar />)
+    expect(screen.getByTestId('branch-context')).toBeInTheDocument()
+  })
+
+  it('takes the branch and everything hanging off it off the board', () => {
+    useRepoViewStore.setState({ view: 'board' })
+    render(<ActionToolbar />)
+    expect(screen.queryByTestId('branch-context')).not.toBeInTheDocument()
+    // The merge target and the pull-request tag are read-only statements *about that branch*, so
+    // they leave with it rather than floating next to a repo name.
+    expect(screen.queryByTestId('merge-target-indicator-stub')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('state-tags')).not.toBeInTheDocument()
   })
 })

@@ -23,15 +23,21 @@ interface ActionToolbarProps {
 /**
  * Main action bar, sitting under the tabs.
  *
- * **Only three things are on it whatever you are looking at**: which repository and branch you are
- * on (left), and which view you want plus the command palette (right). Everything between is the active view's own — the graph's
- * fetch/push/stash/tools, the board's ticket and sprint actions, the files view's search — supplied
- * by that view rather than by this file.
+ * **Two things are on it whatever you are looking at**: which repository you are in (left), and
+ * which view you want plus the command palette (right). Everything between is the active view's
+ * own — the graph's fetch/push/stash/tools, the board's ticket and sprint actions, the files view's
+ * search — supplied by that view rather than by this file.
  *
  * That is the whole point of the split: a toolbar listing every command in the app made most of them
  * wrong most of the time. Pushing while reading a Kanban is not a mistake the user should have to
  * avoid making; it should not be on screen. It also means adding a command to a view is a change in
  * that view's folder, with nothing to register here.
+ *
+ * **The branch context is part of that rule, not an exception to it.** Which branch is checked out
+ * decides what the graph draws and what the files view lists, so both name it and both let you
+ * switch. A board does not read it — nothing under `features/board/` touches the current branch —
+ * so on that view the branch picker, its merge-target tag and its pull-request tag all come off the
+ * bar. Leaving them there offered a checkout as the answer to a question the screen had not asked.
  */
 export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const { t } = useTranslation('git')
@@ -42,6 +48,9 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const activeWorkspacePath = useRepoUIStore((s) => s.activeWorkspacePath)
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
   const view = useRepoViewStore((s) => s.view)
+  // Stated as what the views *do*, not as `view !== 'board'`: a fourth view would then have to
+  // answer the question rather than inherit an answer from being unlike one other view.
+  const showsBranch = view === 'graph' || view === 'files'
 
   return (
     <div
@@ -51,17 +60,26 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
       {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />
-        <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0 self-end pb-0.5" />
-        <BranchContext />
-        <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
-          {/* Merge-target state of the current branch, then the linked PR — both read-only tags on
-              the branch shown to their left. */}
-          <MergeTargetIndicator
-            repoPath={effectiveRepoPath}
-            onOpenSettings={onOpenSettings ? () => onOpenSettings('general', 'local') : undefined}
-          />
-          <StateTags />
-        </div>
+        {/* The branch and everything hanging off it, on the two views that read it. The chevron
+            goes with them: it separates the repo from a branch, so on the board it would point at
+            nothing. */}
+        {showsBranch && (
+          <>
+            <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0 self-end pb-0.5" />
+            <BranchContext />
+            <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
+              {/* Merge-target state of the current branch, then the linked PR — both read-only tags
+                  on the branch shown to their left. */}
+              <MergeTargetIndicator
+                repoPath={effectiveRepoPath}
+                onOpenSettings={
+                  onOpenSettings ? () => onOpenSettings('general', 'local') : undefined
+                }
+              />
+              <StateTags />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="bg-border mx-1 hidden h-6 w-px shrink-0 sm:block" />
