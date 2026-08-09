@@ -3,11 +3,11 @@ import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
 import { Square, RefreshCw, Copy, Check as CheckIcon, X } from 'lucide-react'
 import type { GitDiffFile } from '@git-manager/git-types'
-import { useChangeExplanation } from '../../../hooks/useChangeExplanation'
-import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
-import { aiErrorMessage } from '../../../lib/aiErrorMessage'
-import { Markdown } from '../../Markdown'
-import { CoverageNotice } from './CoverageNotice'
+import { useChangeExplanation } from '../../hooks/useChangeExplanation'
+import { formatUnifiedPatch } from '../../lib/formatUnifiedPatch'
+import { aiErrorMessage } from '../../lib/aiErrorMessage'
+import { Markdown } from '../Markdown'
+import { CoverageNotice } from '../common/CoverageNotice'
 
 interface ChangeExplanationPanelProps {
   repoPath: string

@@ -91,7 +91,7 @@ vi.mock('./CommitDetailsPanel', () => ({
     return <div data-testid="commit-details-panel" />
   },
 }))
-vi.mock('./DiffViewCenter', () => ({
+vi.mock('../diff-viewer/DiffViewCenter', () => ({
   DiffViewCenter: (props: Record<string, unknown>) => {
     lastDiffViewCenterProps.current = props
     return <div data-testid="diff-view-center" />

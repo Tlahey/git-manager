@@ -12,7 +12,7 @@ vi.mock('../../api/git.api', () => ({
   apiPrepareDependencyPatch: vi.fn(),
   apiCommitDependencyPatch: vi.fn(),
 }))
-vi.mock('../git-graph/components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: ({
     processedFiles,
     onSelectFileDiff,

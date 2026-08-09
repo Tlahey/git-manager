@@ -9,8 +9,8 @@ import type { GitGraphNode, GitStatusEntry } from '@git-manager/git-types'
 
 import { CommitHeaderInfo } from './components/CommitHeaderInfo'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { CommitFileList } from './components/CommitFileList'
-import type { ProcessedFileItem } from './components/CommitFileList'
+import { CommitFileList } from '../common/CommitFileList'
+import type { ProcessedFileItem } from '../common/CommitFileList'
 import { WipStagingPanel } from './components/WipStagingPanel'
 import { apiStageAll, apiUnstageAll } from '../../api/git.api'
 

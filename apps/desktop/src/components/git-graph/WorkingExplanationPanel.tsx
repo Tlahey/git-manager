@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useWorkingExplanation } from '../../hooks/useWorkingExplanation'
-import { SummaryProgressNotice } from './components/SummaryProgressNotice'
+import { SummaryProgressNotice } from '../common/SummaryProgressNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface WorkingExplanationPanelProps {

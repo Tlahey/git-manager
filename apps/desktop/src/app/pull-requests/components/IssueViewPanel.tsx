@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { RepoGitHubOverrideContext } from '../../../hooks/useRepoGitHub'
-import { IssueDetailCenter } from '../../../components/git-graph/issue/IssueDetailCenter'
+import { IssueDetailCenter } from '../../../components/github-panels/issue/IssueDetailCenter'
 import type { MockIssue } from '../types'
 
 interface IssueViewPanelProps {

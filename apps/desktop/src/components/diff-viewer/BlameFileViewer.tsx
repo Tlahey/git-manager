@@ -8,7 +8,7 @@ import { useFileBlame } from '../../hooks/useFileBlame'
 import { useCommitAvatars } from '../../hooks/useCommitAvatars'
 import { MonacoFileViewer } from './MonacoFileViewer'
 import { blameBlocks, blameColorIndex, truncateCommitName, type BlameBlock } from './blameBlocks'
-import { CommitAvatar } from './components/CommitAvatar'
+import { CommitAvatar } from '../common/CommitAvatar'
 import './blameGutter.css'
 
 interface BlameFileViewerProps {

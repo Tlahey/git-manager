@@ -1,5 +1,5 @@
 import { Avatar, cn } from '@git-manager/ui'
-import { getAuthorAvatarStyle, getAuthorInitials } from '../../../lib/authorAvatar'
+import { getAuthorAvatarStyle, getAuthorInitials } from '../../lib/authorAvatar'
 
 interface CommitAvatarProps {
   /** GitHub-resolved avatar URL; when absent or it fails to load, colored initials are shown. */

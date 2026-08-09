@@ -18,7 +18,7 @@ import {
   ArrowRight,
   Check,
 } from 'lucide-react'
-import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
+import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../api/git.api'
 import { useFileTree, getSortedNodes, useConfirm, type TreeNode } from '@git-manager/components'
 
 export interface ProcessedFileItem {

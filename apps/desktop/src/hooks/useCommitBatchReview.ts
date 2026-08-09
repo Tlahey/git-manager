@@ -16,7 +16,7 @@ import { apiGetAiContext, fileSummaryService, summaryGroupingService } from '../
 import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
-import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
+import type { ProcessedFileItem } from '../components/common/CommitFileList'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 

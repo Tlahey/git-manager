@@ -3,7 +3,7 @@ import {
   useCommitExplanation,
   type CommitExplanationSubject,
 } from '../../hooks/useCommitExplanation'
-import { SummaryProgressNotice } from './components/SummaryProgressNotice'
+import { SummaryProgressNotice } from '../common/SummaryProgressNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface CommitExplanationPanelProps {

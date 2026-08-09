@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitStatus } from '@git-manager/git-types'
-import type { ProcessedFileItem } from './CommitFileList'
+import type { ProcessedFileItem } from '../../common/CommitFileList'
 
 const { useWipCommitPanel } = vi.hoisted(() => ({ useWipCommitPanel: vi.fn() }))
 vi.mock('../../../hooks/useWipCommitPanel', () => ({ useWipCommitPanel }))
 
 // The publish-PR button has its own flow (query client, SWR, GitHub) and its own test — stub it here
 // so this panel test stays focused on the commit form.
-vi.mock('../pr/PrPublishButton', () => ({ PrPublishButton: () => null }))
+vi.mock('../../github-panels/pr/PrPublishButton', () => ({ PrPublishButton: () => null }))
 
 import { WipStagingPanel } from './WipStagingPanel'
 import { useSettingsStore } from '../../../stores/settings.store'

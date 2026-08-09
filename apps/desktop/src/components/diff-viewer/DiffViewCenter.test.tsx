@@ -41,7 +41,7 @@ vi.mock('./BlameFileViewer', () => ({
     return <div data-testid="blame-file-viewer" />
   },
 }))
-vi.mock('./components/DiffToolbar', () => ({
+vi.mock('./DiffToolbar', () => ({
   DiffToolbar: (props: Record<string, unknown>) => {
     lastToolbarProps.current = props
     return <div data-testid="diff-toolbar" />
@@ -50,7 +50,7 @@ vi.mock('./components/DiffToolbar', () => ({
 
 import { DiffViewCenter } from './DiffViewCenter'
 // Type-only: the module itself is mocked above, but the real props keep this harness honest.
-import type { DiffToolbar as DiffToolbarComponent } from './components/DiffToolbar'
+import type { DiffToolbar as DiffToolbarComponent } from './DiffToolbar'
 
 type ToolbarProps = ComponentProps<typeof DiffToolbarComponent>
 

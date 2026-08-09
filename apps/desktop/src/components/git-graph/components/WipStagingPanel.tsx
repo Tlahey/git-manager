@@ -25,8 +25,8 @@ import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { CommitBatchReviewPanel } from './CommitBatchReviewPanel'
-import { PrPublishButton } from '../pr/PrPublishButton'
-import type { ProcessedFileItem } from './CommitFileList'
+import { PrPublishButton } from '../../github-panels/pr/PrPublishButton'
+import type { ProcessedFileItem } from '../../common/CommitFileList'
 
 interface WipStagingPanelProps {
   repoPath: string

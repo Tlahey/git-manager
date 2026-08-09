@@ -25,7 +25,7 @@ features/files/
 - **Whether this view is on screen** — `stores/repoView.store.ts`. One slot for the three views, so
   no pair of booleans can claim the central area at once. This feature does not know it can be
   closed; it knows what it shows.
-- **The diff viewer** (`components/git-graph/DiffViewCenter`) and the **blame/history panel**. Both
+- **The diff viewer** (`components/diff-viewer/`) and the **blame/history panel**. Both
   are shared with the graph view: the same file, opened from a commit or from the tree, is the same
   screen. When blame or history is up, `RepoWorkspace` puts that panel in the left slot instead of
   the tree — see its doc comment.

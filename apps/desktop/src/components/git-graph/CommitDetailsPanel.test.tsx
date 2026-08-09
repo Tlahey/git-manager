@@ -32,7 +32,7 @@ vi.mock('./components/CommitHeaderInfo', () => ({
     return <div data-testid="commit-header-info" />
   },
 }))
-vi.mock('./components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     fileListCalls.current.push(props)
     return <div data-testid="commit-file-list" data-title={String(props.title ?? '')} />

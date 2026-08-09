@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useBranchExplanation } from '../../hooks/useBranchExplanation'
-import { SummaryProgressNotice } from './components/SummaryProgressNotice'
+import { SummaryProgressNotice } from '../common/SummaryProgressNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface BranchExplanationPanelProps {

@@ -1,4 +1,4 @@
-import { CommitAvatar } from '../../../components/git-graph/components/CommitAvatar'
+import { CommitAvatar } from '../../../components/common/CommitAvatar'
 import type { Collaborator } from '../types'
 
 interface AvatarStackProps {

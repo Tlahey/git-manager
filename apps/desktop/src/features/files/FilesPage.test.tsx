@@ -9,7 +9,7 @@ const { useRepoFiles, useGitStatus, lastDiffProps } = vi.hoisted(() => ({
 }))
 vi.mock('./hooks/useRepoFiles', () => ({ useRepoFiles }))
 vi.mock('../../hooks/useGitStatus', () => ({ useGitStatus }))
-vi.mock('../../components/git-graph/DiffViewCenter', () => ({
+vi.mock('../../components/diff-viewer/DiffViewCenter', () => ({
   DiffViewCenter: (props: Record<string, unknown>) => {
     lastDiffProps.current = props
     return <div data-testid="diff-view-center" />

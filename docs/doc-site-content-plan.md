@@ -720,7 +720,7 @@ tracking"` — ✅ done
 
 ### Page: Pull requests inside the graph (`pr-graph.feature`) — 🚫 blocked (see note)
 
-A second, separate PR surface lives in `apps/desktop/src/components/git-graph/pr/` (~35 files:
+A second, separate PR surface lives in `apps/desktop/src/components/github-panels/pr/` (~35 files:
 `PrCreateCenter`, `PrDetailCenter`, `PrMergeButton`, `PrReviewComposer`, `PrChecksBox`, …) — this is
 the center-pane takeover for _your current branch's_ PR (create one, or view/merge/review the one
 that already exists), as opposed to the Launchpad's browse-everything list above. It does not share

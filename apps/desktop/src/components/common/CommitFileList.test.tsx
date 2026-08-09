@@ -3,13 +3,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CommitFileList, type ProcessedFileItem } from './CommitFileList'
 
-vi.mock('../../../api/git.api', () => ({
+vi.mock('../../api/git.api', () => ({
   apiStageFile: vi.fn(),
   apiUnstageFile: vi.fn(),
   apiDiscardFileChanges: vi.fn(),
 }))
 
-import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
+import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../api/git.api'
 
 const mockedStage = apiStageFile as unknown as ReturnType<typeof vi.fn>
 const mockedUnstage = apiUnstageFile as unknown as ReturnType<typeof vi.fn>

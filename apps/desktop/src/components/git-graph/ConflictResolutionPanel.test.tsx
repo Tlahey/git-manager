@@ -22,7 +22,7 @@ vi.mock('../../api/git.api', () => ({
 const { fileListCalls } = vi.hoisted(() => ({
   fileListCalls: { current: [] as Record<string, unknown>[] },
 }))
-vi.mock('./components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     fileListCalls.current.push(props)
     return <div data-testid="commit-file-list" data-commit-oid={String(props.commitOid)} />

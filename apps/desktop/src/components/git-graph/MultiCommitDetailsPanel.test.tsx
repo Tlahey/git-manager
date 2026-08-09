@@ -10,7 +10,7 @@ vi.mock('../../hooks/useCommitsMergedDiff', () => ({ useCommitsMergedDiff }))
 vi.mock('./components/CommitDetailsAvatar', () => ({
   CommitDetailsAvatar: () => <div data-testid="avatar" />,
 }))
-vi.mock('./components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     fileListCalls.current.push(props)
     return <div data-testid="commit-file-list" />

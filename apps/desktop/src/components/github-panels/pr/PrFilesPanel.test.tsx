@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GhPrFile } from '../../../api/github.api'
-import type { ProcessedFileItem } from '../components/CommitFileList'
+import type { ProcessedFileItem } from '../../common/CommitFileList'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
@@ -16,7 +16,7 @@ vi.mock('../../../hooks/usePrFilesViewedState', () => ({
 }))
 
 // Use the shared list/tree component, but stub it here to assert the mapping + selection wiring.
-vi.mock('../components/CommitFileList', () => ({
+vi.mock('../../common/CommitFileList', () => ({
   CommitFileList: (p: {
     processedFiles: ProcessedFileItem[]
     onSelectFileDiff?: (f: { path: string; staged: boolean }) => void

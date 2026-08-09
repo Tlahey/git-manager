@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useCodeReview, type CodeReviewTarget } from '../../hooks/useCodeReview'
-import { CoverageNotice } from './components/CoverageNotice'
+import { CoverageNotice } from '../common/CoverageNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface CodeReviewPanelProps {

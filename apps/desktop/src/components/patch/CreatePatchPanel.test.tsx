@@ -14,7 +14,7 @@ vi.mock('../../api/git.api', () => ({
 }))
 vi.mock('../../hooks/useGitStatus', () => ({ useGitStatus: vi.fn() }))
 vi.mock('../../lib/pickSaveDestination', () => ({ pickSaveDestination: vi.fn() }))
-vi.mock('../git-graph/components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: ({
     title,
     processedFiles,

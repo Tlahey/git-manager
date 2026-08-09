@@ -4,7 +4,7 @@ import { Spinner } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrFiles } from '../../../hooks/usePrFiles'
 import { usePrFilesViewedState } from '../../../hooks/usePrFilesViewedState'
-import { CommitFileList, type ProcessedFileItem } from '../components/CommitFileList'
+import { CommitFileList, type ProcessedFileItem } from '../../common/CommitFileList'
 
 interface PrFilesPanelProps {
   repoPath: string

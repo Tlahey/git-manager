@@ -9,13 +9,13 @@ vi.mock('@git-manager/i18n', () => ({
       opts ? `${key} ${JSON.stringify(opts)}` : key,
   }),
 }))
-vi.mock('../../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
-vi.mock('../../../hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
+vi.mock('../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
+vi.mock('../../hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
 
 const { useGitStatus } = vi.hoisted(() => ({ useGitStatus: vi.fn() }))
-vi.mock('../../../hooks/useGitStatus', () => ({ useGitStatus }))
+vi.mock('../../hooks/useGitStatus', () => ({ useGitStatus }))
 
-vi.mock('../../../api/git.api', () => ({
+vi.mock('../../api/git.api', () => ({
   apiCreateFixupCommit: vi.fn(),
   apiCheckFixupTarget: vi.fn(),
   apiGetCommitFileVsWorkdir: vi.fn(),
@@ -43,13 +43,13 @@ const { lastMergeEditorProps, lastFileListProps } = vi.hoisted(() => ({
   lastMergeEditorProps: { current: null as Record<string, unknown> | null },
   lastFileListProps: { current: null as Record<string, unknown> | null },
 }))
-vi.mock('../../merge-editor/ThreeWayMergeEditor', () => ({
+vi.mock('../merge-editor/ThreeWayMergeEditor', () => ({
   ThreeWayMergeEditor: (props: Record<string, unknown>) => {
     lastMergeEditorProps.current = props
     return <div data-testid="three-way-merge-editor" />
   },
 }))
-vi.mock('../components/CommitFileList', () => ({
+vi.mock('../common/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     lastFileListProps.current = props
     return <div data-testid="commit-file-list" />
@@ -61,9 +61,9 @@ import {
   apiCheckFixupTarget,
   apiGetCommitFileVsWorkdir,
   apiPushBranch,
-} from '../../../api/git.api'
+} from '../../api/git.api'
 import { FixupCommitWindow } from './FixupCommitWindow'
-import { queryClient } from '../../../lib/queryClient'
+import { queryClient } from '../../lib/queryClient'
 
 const mockedCreateFixup = apiCreateFixupCommit as unknown as ReturnType<typeof vi.fn>
 const mockedCheckFixupTarget = apiCheckFixupTarget as unknown as ReturnType<typeof vi.fn>

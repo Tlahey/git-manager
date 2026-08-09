@@ -5,8 +5,8 @@ import { GitCommit, Layers, X } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { useCommitsMergedDiff } from '../../hooks/useCommitsMergedDiff'
 import { CommitDetailsAvatar } from './components/CommitDetailsAvatar'
-import { CommitFileList } from './components/CommitFileList'
-import type { ProcessedFileItem } from './components/CommitFileList'
+import { CommitFileList } from '../common/CommitFileList'
+import type { ProcessedFileItem } from '../common/CommitFileList'
 import type { ActiveDiffFile } from '../../stores/repoUI.store'
 
 interface MultiCommitDetailsPanelProps {

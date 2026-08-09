@@ -7,7 +7,7 @@ import { useConflictedFiles } from '../../hooks/useConflictedFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useRebaseControls } from '../../hooks/useRebaseControls'
 import { apiGetRebaseState } from '../../api/git.api'
-import { CommitFileList, type ProcessedFileItem } from './components/CommitFileList'
+import { CommitFileList, type ProcessedFileItem } from '../common/CommitFileList'
 
 interface ConflictResolutionPanelProps {
   repoPath: string

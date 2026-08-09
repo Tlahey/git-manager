@@ -6,7 +6,7 @@ import type { FileHistoryEntry, FileHistoryStatus } from '@git-manager/git-types
 import { useFileHistory } from '../../hooks/useFileHistory'
 import { useCommitAvatars } from '../../hooks/useCommitAvatars'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { CommitAvatar } from '../git-graph/components/CommitAvatar'
+import { CommitAvatar } from '../common/CommitAvatar'
 import { formatRelativeTime, formatExactDate } from '../../lib/relativeDate'
 
 interface BlameHistoryPanelProps {

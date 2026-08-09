@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { CommitBatchReviewPanel } from './CommitBatchReviewPanel'
 import type { CommitBatchReview } from '../../../hooks/useCommitBatchReview'
-import type { ProcessedFileItem } from './CommitFileList'
+import type { ProcessedFileItem } from '../../common/CommitFileList'
 
 function file(path: string, status = 'modified'): ProcessedFileItem {
   return { path, status, staged: false } as ProcessedFileItem

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { GitCommit, GitGraphNode, GitRef, GitStatus } from '@git-manager/git-types'
-import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
+import type { ProcessedFileItem } from '../components/common/CommitFileList'
 
 const fetchQuery = vi.fn()
 const invalidateQueries = vi.fn()

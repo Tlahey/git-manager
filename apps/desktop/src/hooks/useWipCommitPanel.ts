@@ -14,7 +14,7 @@ import {
   apiStashPush,
 } from '../api/git.api'
 import { useAiGeneration } from './useAiGeneration'
-import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
+import type { ProcessedFileItem } from '../components/common/CommitFileList'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 

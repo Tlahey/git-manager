@@ -19,12 +19,12 @@ const explanation = vi.hoisted(() => ({
   } | null,
 }))
 
-vi.mock('../../../hooks/useChangeExplanation', () => ({
+vi.mock('../../hooks/useChangeExplanation', () => ({
   useChangeExplanation: () => explanation,
 }))
 
 // The real renderer pulls the whole markdown pipeline in; this panel's job is what it hands over.
-vi.mock('../../Markdown', () => ({
+vi.mock('../Markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
 }))
 
