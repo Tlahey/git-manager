@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateBoardDialog } from './CreateBoardDialog'
 
@@ -32,11 +32,9 @@ describe('CreateBoardDialog', () => {
     render(<CreateBoardDialog open onOpenChange={() => {}} canUseRemote={false} onSubmit={onSubmit} />)
 
     await userEvent.type(screen.getByTestId('board-name-input'), 'Sprint 12')
-    // `fireEvent.change` rather than `type`: userEvent reads `[` as the start of a key descriptor,
-    // and a markdown checklist is nothing but square brackets.
-    fireEvent.change(screen.getByTestId('board-dod-template-input'), {
-      target: { value: '- [ ] Reviewed' },
-    })
+    // The template is written as the list it is — the `- [ ]` markdown is what gets stored, not what
+    // gets typed.
+    await userEvent.type(screen.getByTestId('card-dod-add-input'), 'Reviewed{Enter}')
     await userEvent.click(screen.getByTestId('create-board-submit'))
 
     expect(onSubmit).toHaveBeenCalledWith('Sprint 12', 'local', '- [ ] Reviewed', 'SPR', true)

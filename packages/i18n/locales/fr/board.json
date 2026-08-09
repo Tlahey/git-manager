@@ -73,6 +73,7 @@
   "card.dod.progress": "{{done}}/{{total}}",
   "card.dod.empty": "Aucune checklist sur cette carte.",
   "card.dod.addItem": "Ajouter un élément…",
+  "card.dod.addItemAction": "Ajouter cet élément",
   "card.dod.removeItem": "Supprimer cet élément",
   "card.blocked.label": "Bloqué",
   "card.blocked.reasonPlaceholder": "Qu'est-ce qui bloque ?",

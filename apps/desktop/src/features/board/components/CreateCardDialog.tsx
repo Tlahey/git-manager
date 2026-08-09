@@ -12,6 +12,7 @@ import {
 } from '@git-manager/ui'
 import type { BoardCardKind } from '@git-manager/git-types'
 import { AttachmentTextarea } from './AttachmentTextarea'
+import { DodChecklistEditor } from './DodChecklistEditor'
 import { CardKindPicker } from './CardKindPicker'
 import { CardPrefixPicker } from './CardPrefixPicker'
 import type { CreateProps } from './BoardCardDialog'
@@ -112,20 +113,16 @@ export function CreateCardDialog({
             className="text-xs"
             data-testid="board-card-description-input"
           />
-          <div className="space-y-1">
+          {/* The checklist the card will carry, as the list of conditions it is — the board's
+              template arrives already filled in, each line removable, and the `+` adds one more.
+              A markdown box here asked the user to know the `- [ ]` syntax before they could drop a
+              condition the template had proposed. Tickless, like the template it comes from: nothing
+              is done on a card that does not exist yet. */}
+          <div className="space-y-1" data-testid="board-card-dod">
             <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
               {t('card.dod.label')}
             </span>
-            <AttachmentTextarea
-              value={dod}
-              onChange={setDod}
-              repoPath={repoPath}
-              placeholder={t('card.dod.placeholder')}
-              rows={4}
-              disabled={pending}
-              className="text-xs"
-              data-testid="board-card-dod-input"
-            />
+            <DodChecklistEditor value={dod} onChange={setDod} hideChecks disabled={pending} />
           </div>
         </div>
 

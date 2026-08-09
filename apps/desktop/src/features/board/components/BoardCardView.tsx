@@ -72,17 +72,25 @@ export function BoardCardView({
         A raised tile on the column's flat track, lifted further on hover — the shadow is what the
         drag then picks up.
 
-        **The border stays, and carries the separation.** The obvious reading of the design is a
-        white card on a grey column, but `--muted` is lighter than `--card` in every theme this app
-        ships (see `packages/theme/src/themes/`), so in a dark one the two fills land within a
-        percent of each other and the card would dissolve into its column. Border plus shadow
-        delineate it in both polarities; the fill difference is a bonus where it exists, never the
-        only cue.
+        **The fill is `--background`, not `--card`.** In almost every theme this app ships (see
+        `packages/theme/src/themes/`) `--card` lands between `--background` and `--muted`, which put
+        the tile within a percent or two of the `bg-muted/50` track under it — on `light` and
+        `twilight` the "white card on a grey column" was white in name only, and on `dark` the two
+        were 2% apart. `--background` is the far end of that scale in both polarities: the lightest
+        surface where the track is light, the darkest where it is dark.
+
+        It is not a universal win — `solarized-light` puts `--card` *below* its `--muted`, so that
+        theme's cards were already the darker shape and now separate by less. That is the trade, and
+        it is the right way round: one theme loses a little contrast where twelve gain it.
+
+        **The border stays regardless.** The separation must never rest on the fill alone — a theme
+        is free to close the gap again, and a card is a drop target whose edge has to stay visible
+        mid-drag. Border plus shadow delineate it; the fill is the third cue, not the only one.
       */}
       <Card
         onClick={onClick}
         data-testid={`board-card-${card.id}`}
-        className={`group cursor-pointer space-y-2 p-3 text-xs shadow-xs transition-shadow hover:shadow-md ${
+        className={`group cursor-pointer space-y-2 bg-background p-3 text-xs shadow-xs transition-shadow hover:shadow-md ${
           card.blockedReason ? 'border-destructive/50' : 'border-border'
         } ${card.archivedAt ? 'opacity-60' : ''}`}
       >

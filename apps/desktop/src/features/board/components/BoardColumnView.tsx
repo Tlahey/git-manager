@@ -35,9 +35,9 @@ interface BoardColumnViewProps {
  * attention, and "six cards" is a fact, not a notification — the outline gives it an edge to be read
  * as a count against the label beside it, without the weight of a fill.
  *
- * `--muted` sits *above* `--card` in every shipped theme, so this track is lighter than the cards in
- * a dark one and about level with them in a light one — see the note on `BoardCardView`'s own
- * surface for why that is fine and what must not be "fixed".
+ * The track is `--muted` at half opacity, so it settles between `--muted` and `--background` — which
+ * is exactly the gap the cards' own `bg-background` opens against it. See the note on
+ * `BoardCardView`'s surface for why the card is not on `--card`, and what must not be "fixed" back.
  */
 export function BoardColumnView({
   column,

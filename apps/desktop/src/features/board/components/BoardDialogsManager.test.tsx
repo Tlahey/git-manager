@@ -149,8 +149,7 @@ describe('BoardDialogsManager — creating a card', () => {
     )
 
     await userEvent.type(screen.getByTestId('board-card-title-input'), 'New task')
-    // `[[` is userEvent's escape for a literal `[`, which it otherwise reads as a key descriptor.
-    await userEvent.type(screen.getByTestId('board-card-dod-input'), '\n- [[ ] Reviewed')
+    await userEvent.type(screen.getByTestId('card-dod-add-input'), 'Reviewed{Enter}')
     await userEvent.click(screen.getByTestId('board-card-save'))
 
     await waitFor(() =>

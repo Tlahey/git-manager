@@ -14,10 +14,10 @@ import {
   RadioGroupItem,
   Spinner,
   Switch,
-  Textarea,
 } from '@git-manager/ui'
 import { firstIterationName } from '../lib/boardIteration'
 import { defaultCardPrefix } from '../lib/boardDefaults'
+import { DodChecklistEditor } from './DodChecklistEditor'
 
 interface CreateBoardDialogProps {
   open: boolean
@@ -171,17 +171,17 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="board-dod-input">{t('createBoard.dodLabel')}</Label>
-            <Textarea
-              id="board-dod-input"
-              value={dodTemplate}
-              onChange={(e) => setDodTemplate(e.target.value)}
-              placeholder={t('boardSettings.dodPlaceholder')}
-              rows={3}
-              disabled={pending}
-              className="text-xs"
-              data-testid="board-dod-template-input"
-            />
+            <Label>{t('createBoard.dodLabel')}</Label>
+            {/* The same list `BoardSettingsDialog` edits it with afterwards, rather than the markdown
+                box that made the template look like something you had to know a syntax to write. */}
+            <div data-testid="board-dod-template-input">
+              <DodChecklistEditor
+                value={dodTemplate}
+                onChange={setDodTemplate}
+                hideChecks
+                disabled={pending}
+              />
+            </div>
             <p className="text-[10px] text-muted-foreground">{t('boardSettings.dodHint')}</p>
           </div>
         </div>
