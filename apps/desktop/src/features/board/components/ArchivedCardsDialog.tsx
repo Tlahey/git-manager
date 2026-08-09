@@ -87,8 +87,21 @@ export function ArchivedCardsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A list of card titles with three actions on each row — the default width left the titles
-          barely readable between the identifier and the buttons. */}
-      <DialogContent data-testid="archived-cards-dialog" size="lg" className="overflow-hidden">
+          barely readable between the identifier and the buttons.
+
+          The height is capped and the *list* is what gives way, never the dialog. A centered
+          `DialogContent` is `overflow-hidden` with no scroller of its own, so a surface taller than
+          the window is clipped at the viewport edge, top and bottom, with no way to reach what was
+          cut. That is what an uncapped header + fixed-height list + danger zone did on a modest
+          window: the padding went with the clipped edge, so the rows read as flush against the
+          dialog and the purge button below them was simply gone. `minmax(0,1fr)` on the body row is
+          the half that makes the cap work — an implicit grid row is `auto`, which refuses to shrink
+          below its content and would hand the overflow straight back. */}
+      <DialogContent
+        data-testid="archived-cards-dialog"
+        size="lg"
+        className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
+      >
         <DialogHeader>
           <DialogTitle>{t('archived.title')}</DialogTitle>
           <DialogDescription>{t('archived.description')}</DialogDescription>
@@ -102,16 +115,24 @@ export function ArchivedCardsDialog({
             {t('archived.none')}
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="flex min-h-0 flex-col space-y-3">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('archived.searchPlaceholder')}
               autoFocus
+              className="shrink-0"
               data-testid="archived-search-input"
             />
 
-            <ScrollArea className="h-72 rounded-md border border-border">
+            {/* 18rem when there is room — the height this list has always had — and the first thing
+                to give when there isn't, down to a floor of four rows. `min-h-32` is load-bearing:
+                a flex item's `min-height: auto` is its *content* height, which for a scroller full
+                of cards is the whole list, and the box would grow to it instead of scrolling.
+                `grow basis-72` rather than `flex-1 basis-72`: the `flex` shorthand is emitted after
+                `flex-basis` in Tailwind's own order, so `flex-1`'s `0%` basis would win and the box
+                would collapse to its floor whatever the window size. */}
+            <ScrollArea className="min-h-32 grow basis-72 rounded-md border border-border">
               <ul className="p-1" data-testid="archived-list">
                 {archived.length === 0 && (
                   <li className="p-3 text-xs text-muted-foreground" data-testid="archived-empty">
@@ -133,7 +154,9 @@ export function ArchivedCardsDialog({
             </ScrollArea>
 
             {onDeleteAll && (
-              <div className="space-y-2" data-testid="archived-danger-zone">
+              // Never the part that gives: the number it names is the whole point of the zone, and
+              // a purge button clipped off the bottom edge is how this looked when it broke.
+              <div className="shrink-0 space-y-2" data-testid="archived-danger-zone">
                 <Separator />
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">

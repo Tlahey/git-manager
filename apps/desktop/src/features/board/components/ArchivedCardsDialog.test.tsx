@@ -104,6 +104,34 @@ describe('ArchivedCardsDialog', () => {
 })
 
 /**
+ * jsdom lays nothing out, so these assert the classes that *are* the rule rather than the pixels
+ * they produce — the only automatable guard for a bug that was invisible to every test above.
+ *
+ * A centered `DialogContent` is `overflow-hidden` and has no scroller: a surface taller than the
+ * window is clipped at the viewport edge with no way to reach what was cut. Uncapped, this dialog
+ * was exactly that on a modest window — the padding went with the clipped edge, so the rows read as
+ * flush against the dialog and the purge button below them was gone.
+ */
+describe('ArchivedCardsDialog — fitting the window', () => {
+  it('caps its height and lets the body row shrink', () => {
+    renderDialog()
+    const surface = screen.getByTestId('archived-cards-dialog')
+    expect(surface).toHaveClass('max-h-[85vh]')
+    // An implicit grid row is `auto` and refuses to shrink below its content, handing the overflow
+    // straight back — the cap only works with the body row allowed to give.
+    expect(surface).toHaveClass('grid-rows-[auto_minmax(0,1fr)]')
+  })
+
+  /** The list is the part that gives; the search box and the purge button are not. */
+  it('makes the list the flexible part and pins what sits around it', () => {
+    renderDialog()
+    expect(screen.getByTestId('archived-list').closest('[class*="basis-72"]')).not.toBeNull()
+    expect(screen.getByTestId('archived-search-input')).toHaveClass('shrink-0')
+    expect(screen.getByTestId('archived-danger-zone')).toHaveClass('shrink-0')
+  })
+})
+
+/**
  * Emptying the archive destroys every card in it at once. It sits below a separator in its own
  * labelled zone rather than inline with restore and open, which are reversible, and it says how many
  * cards it is about to take — the number being the only thing that distinguishes a harmless click
