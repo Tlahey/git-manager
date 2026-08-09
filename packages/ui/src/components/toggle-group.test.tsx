@@ -182,3 +182,102 @@ describe('ToggleGroup — disabled', () => {
     expect(unselected.className).toContain('hover:text-foreground')
   })
 })
+
+const stackedOptions: ToggleGroupOption<'graph' | 'files'>[] = [
+  { value: 'graph', icon: <svg data-testid="icon-graph" />, label: 'Graph', testId: 'view-graph' },
+  { value: 'files', icon: <svg data-testid="icon-files" />, label: 'Files' },
+]
+
+describe('ToggleGroup — stacked segments', () => {
+  it('shows the label under the icon rather than hiding it in a tooltip', () => {
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(screen.getByText('Graph')).toBeVisible()
+    expect(screen.getByTestId('icon-graph')).toBeInTheDocument()
+  })
+
+  /** The label is the accessible name either way — visible here, sr-only in the icon-only shape —
+   * so the same query finds the radio whichever variant a caller picked. */
+  it('still names each radio by its label', () => {
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(screen.getByRole('radio', { name: 'Graph' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Files' })).not.toBeChecked()
+  })
+
+  it('selects on click, like every other shape', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={onValueChange}
+        options={stackedOptions}
+      />
+    )
+    await user.click(screen.getByText('Files'))
+    expect(onValueChange).toHaveBeenCalledWith('files')
+  })
+
+  /** A tooltip repeating text that is already on screen is noise, and it would cover the segment
+   * below it in a 52px toolbar. */
+  it('drops the tooltip the icon-only shape needs', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    expect(container.querySelector('[data-slot="tooltip-trigger"]')).toBeNull()
+    expect(container.querySelector('.sr-only:not(input)')).toBeNull()
+  })
+
+  /**
+   * The APCA matrix caught this one: a 10px `muted-foreground` label measures 48Lc on the track
+   * against a Bronze bar of 75. The exemption that covers muted text elsewhere is for *decorative*
+   * nodes — an inactive Chip, a neutral Tag — and its own wording is "actions are never muted". A
+   * segment you click to change view is an action.
+   */
+  it('never mutes an unselected segment, which is a control and not decoration', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const [, unselected] = Array.from(container.querySelectorAll('label'))
+    expect(unselected.className).toContain('text-foreground')
+    expect(unselected.className).not.toContain('text-muted-foreground')
+  })
+
+  it('wears the same selected treatment as the other shapes', () => {
+    const { container } = render(
+      <ToggleGroup
+        variant="stacked"
+        value="graph"
+        onValueChange={() => {}}
+        options={stackedOptions}
+      />
+    )
+    const [selected] = Array.from(container.querySelectorAll('label'))
+    expect(selected.className).toContain('bg-button')
+    expect(selected.className).toContain('text-button-foreground')
+  })
+})

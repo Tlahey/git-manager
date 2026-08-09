@@ -17,9 +17,9 @@ import { useRepoViewStore, type RepoView } from '../../stores/repoView.store'
  * for free, and the selected fill rides the `--button-*` tokens that 13 of the 15 themes correct for
  * contrast. Three loose buttons would have to spell "which one is on" in icon tint alone.
  *
- * Icon-only, with each label carried as a tooltip and an accessible name (see `ToggleGroup`): this
- * sits in a 52px bar next to the command palette, and three visible labels would cost the width the
- * active view's own actions need.
+ * `variant="stacked"`, so each segment is an icon over a visible label — the shape every other
+ * button in this bar already has. The alternative was icon-only with tooltips, which is tighter but
+ * makes the switcher the one control here you have to hover to read.
  */
 export function RepoViewSwitcher() {
   const { t } = useTranslation('git')
@@ -49,6 +49,7 @@ export function RepoViewSwitcher() {
 
   return (
     <ToggleGroup
+      variant="stacked"
       name="repoView"
       value={view}
       onValueChange={setView}
