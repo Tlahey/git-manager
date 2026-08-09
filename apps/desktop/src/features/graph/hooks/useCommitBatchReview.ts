@@ -4,6 +4,7 @@ import {
   SummaryRunCancelled,
   fileSummaryFeature,
   planCommitsFromSummaries,
+  summaryGroupingFeature,
   validateCommitSubject,
 } from '@git-manager/ai'
 import {
@@ -139,7 +140,11 @@ export function useCommitBatchReview(
           group: (reduceInput) => summaryGroupingService.run(aiConnection, reduceInput),
         },
         {
-          onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+          onProgress: trackAiProgress(
+            fileSummaryFeature.id,
+            summaryGroupingFeature.id,
+            setProgress
+          ),
           shouldCancel: () => cancelledRef.current,
           concurrency: aiConnection.concurrency,
         }

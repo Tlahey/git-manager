@@ -1,5 +1,14 @@
 import type { ReactNode } from 'react'
-import { Download, GitMerge, GitPullRequest, Rocket, Search, Terminal, XCircle } from 'lucide-react'
+import {
+  Download,
+  GitMerge,
+  GitPullRequest,
+  Rocket,
+  Search,
+  Sparkles,
+  Terminal,
+  XCircle,
+} from 'lucide-react'
 import type {
   NotchEventModel,
   NotchModel,
@@ -152,6 +161,40 @@ export const commitScanProgress: NotchProgressModel = {
 export const commitScanIcon = (
   <NotchIcon tone="running">
     <Search className="h-3.5 w-3.5" />
+  </NotchIcon>
+)
+
+/** How many files the sample AI run reads. Long enough that the count is the interesting part. */
+export const AI_RUN_FILE_COUNT = 12
+
+/** One card for all AI work, as in the app — every file of a run coalesces onto this id. */
+export const AI_RUN_ID = 'ai-run'
+
+/**
+ * A two-phase AI feature mid-run, which is the shape the app's own card takes for minutes at a time.
+ *
+ * Worth a sample of its own because it is the card that made the naming rule necessary: the calls in
+ * flight are one small "describe this file" each, so a card named after them announced every feature
+ * identically. The title is the action the user asked for; what the model is doing right now, and how
+ * far it has got, is the line underneath.
+ */
+export function aiRunProgress(filesRead: number): NotchProgressModel {
+  return {
+    kind: 'progress',
+    id: AI_RUN_ID,
+    tone: 'running',
+    eyebrow: 'AI',
+    context: 'git-manager',
+    title: 'Explaining the changes…',
+    ratio: Math.min(1, filesRead / AI_RUN_FILE_COUNT),
+    detail: `Reading the files — ${filesRead} / ${AI_RUN_FILE_COUNT}`,
+    actions: [{ id: 'activate', label: 'Open', variant: 'primary' }],
+  }
+}
+
+export const aiRunIcon = (
+  <NotchIcon tone="running">
+    <Sparkles className="h-3.5 w-3.5" />
   </NotchIcon>
 )
 

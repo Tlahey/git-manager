@@ -149,6 +149,42 @@ describe('dismissCurrentNotch', () => {
   it('is safe on an already-idle queue', () => {
     expect(dismissCurrentNotch<TestEntry>(emptyNotchQueue)).toEqual(emptyNotchQueue)
   })
+
+  /**
+   * Closing a live card used to last exactly one tick: coalescing by id is what makes it live, so
+   * the next tick re-enqueued the same id and the card slid back in, animation and all. The ✕ has
+   * to mean the whole operation.
+   */
+  it('holds a closed progress card out for the rest of its operation', () => {
+    let state = enqueueNotch<TestEntry>(emptyNotchQueue, progress('clone', 0.1))
+    state = dismissCurrentNotch(state)
+    state = enqueueNotch(state, progress('clone', 0.6))
+    expect(ids(state)).toEqual([])
+  })
+
+  it('lets the operation’s next run through once its producer retires the card', () => {
+    let state = enqueueNotch<TestEntry>(emptyNotchQueue, progress('clone', 0.1))
+    state = dismissCurrentNotch(state)
+    // The producer saying "this is over" is what lifts it — the card is already off screen, so this
+    // removes nothing and does only that.
+    state = removeNotch(state, 'clone')
+    state = enqueueNotch(state, progress('clone', 0.2))
+    expect(ids(state)).toEqual(['clone'])
+  })
+
+  it('holds out only the card that was closed', () => {
+    let state = enqueueNotch<TestEntry>(emptyNotchQueue, progress('clone', 0.1))
+    state = dismissCurrentNotch(state)
+    state = enqueueNotch(state, progress('fetch', 0.3))
+    expect(ids(state)).toEqual(['fetch'])
+  })
+
+  it('lets a finished card’s id come back — a second failure is not the first one lingering', () => {
+    let state = enqueueNotch<TestEntry>(emptyNotchQueue, failure('hook'))
+    state = dismissCurrentNotch(state)
+    state = enqueueNotch(state, failure('hook'))
+    expect(ids(state)).toEqual(['hook'])
+  })
 })
 
 describe('removeNotch', () => {

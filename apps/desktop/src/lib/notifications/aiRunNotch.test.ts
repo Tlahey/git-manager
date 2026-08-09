@@ -11,7 +11,13 @@ function run(overrides: Partial<AiRun> = {}): AiRun {
 }
 
 function progress(overrides: Partial<AiPhaseProgress> = {}): AiPhaseProgress {
-  return { featureId: 'file-summary', completed: 3, total: 12, ...overrides }
+  return {
+    featureId: 'file-summary',
+    owner: 'summary-explanation',
+    completed: 3,
+    total: 12,
+    ...overrides,
+  }
 }
 
 function model(...args: Parameters<typeof aiRunNotchModel>): NotchProgressModel {
@@ -31,6 +37,27 @@ describe('aiRunNotchModel', () => {
     expect(model({ run: run(), progress: null, t }).title).toBe('Reading the files one by one…')
   })
 
+  it('names the action a map phase is running for, not the phase', () => {
+    // The user pressed "explain these changes"; one small call per file is only how that gets
+    // answered. Naming the call made every two-phase feature announce itself identically, with
+    // nothing on screen saying which button had been pressed.
+    const card = model({ run: run(), progress: progress(), t })
+    expect(card.title).toBe('Explaining the changes…')
+    expect(card.detail).toBe('Reading the files — 3 / 12')
+  })
+
+  it('keeps the name across the handover to the composing call', () => {
+    // The map's last count is still on the store when the composing run begins — matching on the
+    // phase is what stops it being shown against it, and the name simply doesn't move.
+    const composing = model({
+      run: run({ featureId: 'summary-explanation' }),
+      progress: progress({ completed: 12 }),
+      t,
+    })
+    expect(composing.title).toBe('Explaining the changes…')
+    expect(composing.detail).toBeUndefined()
+  })
+
   it('falls back to a generic label for a feature nobody has named yet', () => {
     // The right way round for something whose job is to prove the app hasn't frozen.
     expect(model({ run: run({ featureId: 'brand-new' }), progress: null, t }).title).toBe(
@@ -47,7 +74,16 @@ describe('aiRunNotchModel', () => {
   it('fills the bar from the map phase’s count', () => {
     const card = model({ run: run(), progress: progress(), t })
     expect(card.ratio).toBeCloseTo(0.25)
-    expect(card.detail).toBe('3 / 12 files')
+    expect(card.detail).toBe('Reading the files — 3 / 12')
+  })
+
+  it('words the count after whatever the phase is reading', () => {
+    const card = model({
+      run: run({ featureId: 'commit-relevance' }),
+      progress: progress({ featureId: 'commit-relevance', owner: 'commit-search-answer' }),
+      t,
+    })
+    expect(card.detail).toBe('Reading the commits — 3 / 12')
   })
 
   it('ignores a count belonging to a different feature', () => {

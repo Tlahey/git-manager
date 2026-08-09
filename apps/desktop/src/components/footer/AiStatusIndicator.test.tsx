@@ -22,8 +22,13 @@ function startRun(featureId: string, origin?: AiRunOrigin) {
   return runId
 }
 
-function setPhaseProgress(featureId: string, completed: number, total: number) {
-  act(() => useAiActivityStore.getState().setProgress({ featureId, completed, total }))
+function setPhaseProgress(
+  featureId: string,
+  completed: number,
+  total: number,
+  owner = 'commit-search-answer'
+) {
+  act(() => useAiActivityStore.getState().setProgress({ featureId, owner, completed, total }))
 }
 
 beforeEach(() => {
@@ -189,13 +194,29 @@ describe('AiStatusIndicator', () => {
     expect(onOpenSettings).toHaveBeenCalledOnce()
   })
 
-  it('names the phase that takes the minutes', () => {
+  it('names the phase that takes the minutes when nothing claims it', () => {
     render(<AiStatusIndicator onOpenSettings={vi.fn()} />)
     setStatus('connected')
     startRun('commit-relevance')
     expect(screen.getByTestId('footer-ai-status')).toHaveTextContent(
       'Reading the commits one by one…'
     )
+  })
+
+  /**
+   * A map phase is one small call per file, and it is where the minutes go — so naming the call left
+   * a summary, a commit message and a briefing all announcing themselves as "Reading the files one
+   * by one…", with nothing saying which button had been pressed. The count beside it is what says
+   * how far the reading has got.
+   */
+  it('names the action a map phase is running for, and counts its files', () => {
+    render(<AiStatusIndicator onOpenSettings={vi.fn()} />)
+    setStatus('connected')
+    startRun('file-summary')
+    setPhaseProgress('file-summary', 3, 12, 'summary-explanation')
+
+    expect(screen.getByTestId('footer-ai-status')).toHaveTextContent('Explaining the changes…')
+    expect(screen.getByTestId('footer-ai-steps')).toHaveTextContent('3/12')
   })
 
   /**

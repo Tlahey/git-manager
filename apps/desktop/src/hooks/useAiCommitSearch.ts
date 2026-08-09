@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import {
   AiCallTimedOut,
   commitRelevanceFeature,
+  commitSearchAnswerFeature,
   scanCommits,
   type AiCommitScan,
   stripReasoning,
@@ -318,7 +319,11 @@ export function useAiCommitSearch(repoPath: string) {
             }),
           { question: trimmed, language, contextTokens },
           {
-            onProgress: trackAiProgress(commitRelevanceFeature.id, setProgress),
+            onProgress: trackAiProgress(
+              commitRelevanceFeature.id,
+              commitSearchAnswerFeature.id,
+              setProgress
+            ),
             // Placed at its own index rather than appended: above concurrency 1 verdicts land in
             // completion order, and a list that showed them that way would shuffle history under
             // the user while the scan runs.

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { dailySummaryFeature, fileSummaryFeature } from '@git-manager/ai'
 import { useDailySummaryStore, selectSummariesFor } from '../stores/dailySummary.store'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { isSummaryStale, previousWorkingDayKey } from '../lib/dailySummaryWindow'
 import { generateDailySummary } from '../lib/generateDailySummary'
@@ -68,6 +70,10 @@ export function useMorningSummaries(paths: string[]) {
             targetBranches: settings.repoOverrides[path]?.targetBranches ?? DEFAULT_TARGET_BRANCHES,
             saveToRepo,
             language,
+            // Nothing on screen is watching this one — which is exactly why it has to report. It
+            // starts itself, so a card named after the calls it happens to be making ("reading the
+            // files") is the one run the user has no way of attributing to anything.
+            onProgress: trackAiProgress(fileSummaryFeature.id, dailySummaryFeature.id),
           })
         } catch {
           // A failing project (unreachable provider, invalid repo) shouldn't block the others; the

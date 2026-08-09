@@ -11,6 +11,7 @@ vi.mock('../api/dailySummary.api', () => ({ apiListDailySummaries, apiDeleteDail
 
 import { useMorningSummaries } from './useMorningSummaries'
 import { useDailySummaryStore, type StoredDailySummary } from '../stores/dailySummary.store'
+import { useAiActivityStore } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { DEFAULT_TARGET_BRANCHES } from './useEffectiveRepoSettings'
 import { previousWorkingDayKey } from '../lib/dailySummaryWindow'
@@ -48,6 +49,7 @@ beforeEach(() => {
   generateDailySummary.mockResolvedValue(summary)
   apiListDailySummaries.mockResolvedValue([])
   useDailySummaryStore.setState({ entries: {}, hydrated: true })
+  useAiActivityStore.setState({ runs: [], progress: null })
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
@@ -72,6 +74,29 @@ describe('useMorningSummaries', () => {
       date: previousWorkingDayKey(),
       targetBranches: DEFAULT_TARGET_BRANCHES,
       saveToRepo: false,
+    })
+  })
+
+  /**
+   * The run nobody is watching is the one that most needs to say what it is: it starts itself, so a
+   * card named after the calls it happens to be making ("reading the files one by one") is the one
+   * the user cannot attribute to any button they pressed.
+   */
+  it('reports its progress as the briefing’s, though no panel is watching', async () => {
+    setDailySummarySettings(true, true)
+    renderHook(() => useMorningSummaries(['/repo/a']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+
+    generateDailySummary.mock.calls[0][2].onProgress({
+      phase: 'summarizing',
+      completed: 2,
+      total: 7,
+    })
+    expect(useAiActivityStore.getState().progress).toEqual({
+      featureId: 'file-summary',
+      owner: 'daily-summary',
+      completed: 2,
+      total: 7,
     })
   })
 
