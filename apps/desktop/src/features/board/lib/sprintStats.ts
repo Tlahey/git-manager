@@ -82,3 +82,17 @@ export function computeSprintSummary(
     byAssignee,
   }
 }
+
+/**
+ * Which column the sprint close's "archive the finished cards" box points at when it opens.
+ *
+ * The one flagged done, since that is the board's own statement about where finished work sits — the
+ * sprint report above reads off the same flag, so the two cannot disagree about what "finished"
+ * means. Failing that, the last column by order: a board whose author never set the flag has almost
+ * always still put "done" at the right-hand end, and that guess is one the user can see and change in
+ * the picker beside the box.
+ */
+export function defaultArchiveColumnId(columns: BoardColumn[]): string {
+  const ordered = [...columns].sort((a, b) => a.order - b.order)
+  return (ordered.find((c) => c.isDone) ?? ordered[ordered.length - 1])?.id ?? ''
+}

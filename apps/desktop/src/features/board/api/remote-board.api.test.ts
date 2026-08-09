@@ -80,7 +80,7 @@ describe('board config (list/create/update/delete)', () => {
     tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
 
     const columns = [{ id: 'todo', name: 'Todo', order: 0 }]
-    const board = await backend.createBoard(path, 'My board', columns, '', '')
+    const board = await backend.createBoard(path, 'My board', columns, '', '', true)
 
     expect(board.name).toBe('My board')
     expect(board.source).toBe('remote')
@@ -127,7 +127,7 @@ describe('board config (list/create/update/delete)', () => {
     )
     tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
 
-    await backend.deleteBoard(path, 'b1')
+    await backend.deleteBoard(path, 'b1', false)
 
     const [, contents] = tauriMocked.writeBoardConfig.mock.calls[0]
     expect(JSON.parse(contents).boards.map((b: { id: string }) => b.id)).toEqual(['b2'])

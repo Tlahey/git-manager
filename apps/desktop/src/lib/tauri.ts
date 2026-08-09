@@ -1182,8 +1182,9 @@ export const createBoard = (
   name: string,
   columns: BoardColumn[],
   dodTemplate: string,
-  cardPrefix: string
-) => invoke<Board>('create_board', { path, name, columns, dodTemplate, cardPrefix })
+  cardPrefix: string,
+  iteration: boolean
+) => invoke<Board>('create_board', { path, name, columns, dodTemplate, cardPrefix, iteration })
 
 export const updateBoardMeta = (
   path: string,
@@ -1236,8 +1237,10 @@ export const updateBoardColumns = (
   expectedRevision: string
 ) => invoke<Board>('update_board_columns', { path, boardId, columns, expectedRevision })
 
-export const deleteBoard = (path: string, boardId: string) =>
-  invoke<void>('delete_board', { path, boardId })
+/** `deleteCards` also drops the board's `~/.git-manager/boards/` mirror, which is the only copy of
+ * its cards once the ref is gone — leaving it keeps the board restorable. */
+export const deleteBoard = (path: string, boardId: string, deleteCards: boolean) =>
+  invoke<void>('delete_board', { path, boardId, deleteCards })
 
 export const createBoardCard = (
   path: string,
@@ -1275,6 +1278,20 @@ export const addBoardCardComment = (
 
 export const deleteBoardCard = (path: string, boardId: string, cardId: string) =>
   invoke<void>('delete_board_card', { path, boardId, cardId })
+
+/** Deletes a set of cards in one board commit — the archived-card purge. Resolves with how many
+ * were actually removed, which is fewer than asked when one had already gone. */
+export const deleteBoardCards = (path: string, boardId: string, cardIds: string[]) =>
+  invoke<number>('delete_board_cards', { path, boardId, cardIds })
+
+/** Archives (or un-archives) a set of cards in one board commit, all under the same instant.
+ * Resolves with how many actually changed state. */
+export const setBoardCardsArchived = (
+  path: string,
+  boardId: string,
+  cardIds: string[],
+  archived: boolean
+) => invoke<number>('set_board_cards_archived', { path, boardId, cardIds, archived })
 
 export const getBoardHistory = (path: string, boardId: string) =>
   invoke<GitCommit[]>('get_board_history', { path, boardId })

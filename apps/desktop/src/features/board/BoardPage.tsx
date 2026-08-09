@@ -9,7 +9,8 @@ import { BoardPageHeader } from './components/BoardPageHeader'
 import { BoardColumnsArea } from './components/BoardColumnsArea'
 import { BoardDialogsManager } from './components/BoardDialogsManager'
 import { SprintSummaryView } from './components/SprintSummaryView'
-import { moveTargetsFor } from './lib/cardMoveTargets'
+import { columnMoveTargetsFor, moveTargetsFor } from './lib/cardMoveTargets'
+import { isIterationBoard } from './lib/boardIteration'
 import { useBoardDialogs } from './hooks/useBoardDialogs'
 import { useBoardAssigneeAvatars } from './hooks/useBoardAssigneeAvatars'
 
@@ -74,6 +75,23 @@ export function BoardPage({ repoPath }: BoardPageProps) {
     )
   }, [cards, search])
 
+  /**
+   * The column-wide actions, reachable from the column header's own `⋯` menu.
+   *
+   * Moving is offered only when there is somewhere to move to — `columnMoveTargetsFor` refuses a
+   * closed sprint and the other backend — so the menu never opens onto a picker with no options.
+   */
+  const columnActionsFor = (columnId: string) =>
+    isClosed || !activeBoard
+      ? undefined
+      : {
+          onArchiveAll: () => dialogs.setColumnAction({ kind: 'archive', columnId }),
+          onMoveAll:
+            columnMoveTargetsFor(boards, activeBoard).length > 0
+              ? () => dialogs.setColumnAction({ kind: 'move', columnId })
+              : undefined,
+        }
+
   /** The whole-card actions reachable from the card's own `⋯` menu, without opening it. */
   const cardActionsFor = (card: BoardCard) =>
     isClosed
@@ -119,7 +137,13 @@ export function BoardPage({ repoPath }: BoardPageProps) {
         onOpenArchived={() => dialogs.open('archived')}
         onEditColumns={() => dialogs.open('columnEditor')}
         onOpenSettings={() => dialogs.open('boardSettings')}
-        onCloseSprint={() => dialogs.open('closeSprint')}
+        // Only an iteration ends. A standing board — a backlog a ticket passes through on its way to
+        // a sprint — has no period to close, so it is offered no way to.
+        onCloseSprint={
+          activeBoard && isIterationBoard(activeBoard)
+            ? () => dialogs.open('closeSprint')
+            : undefined
+        }
         onDeleteBoard={() => dialogs.open('deleteBoard')}
         onCreateBoard={() => dialogs.open('createBoard')}
       />
@@ -174,6 +198,7 @@ export function BoardPage({ repoPath }: BoardPageProps) {
               onCardClick={(card) => dialogs.setCardDialog({ mode: 'edit', cardId: card.id })}
               onMoveCard={(card, columnId, order) => void moveCard(card, columnId, order)}
               cardActionsFor={cardActionsFor}
+              columnActionsFor={columnActionsFor}
               avatarUrlFor={avatarUrlFor}
             />
           </div>

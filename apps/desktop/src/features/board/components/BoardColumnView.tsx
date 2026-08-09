@@ -5,6 +5,7 @@ import type { BoardCard, BoardColumn, BoardTag } from '@git-manager/git-types'
 import { Button } from '@git-manager/ui'
 import { Check, ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { BoardCardView, type CardActions } from './BoardCardView'
+import { ColumnActionsMenu, type ColumnActions } from './ColumnActionsMenu'
 
 interface BoardColumnViewProps {
   column: BoardColumn
@@ -20,6 +21,8 @@ interface BoardColumnViewProps {
   cardActionsFor?: (card: BoardCard) => CardActions | undefined
   /** Resolves an assignee's picture — see `BoardCardView`. */
   avatarUrlFor?: (assignee: string) => string | undefined
+  /** The column-wide actions — omitted for a closed sprint, like `onAddCard`. */
+  columnActions?: ColumnActions
 }
 
 /**
@@ -48,6 +51,7 @@ export function BoardColumnView({
   tags,
   cardActionsFor,
   avatarUrlFor,
+  columnActions,
 }: BoardColumnViewProps) {
   const { t } = useTranslation('board')
   // `isOver` is what turns the column into a visible drop target — without it a drag gives no clue
@@ -117,6 +121,15 @@ export function BoardColumnView({
             <Plus className="h-3.5 w-3.5" />
           </Button>
         )}
+        {/* `ml-auto` only when the add button isn't there to carry it — a closed sprint has neither,
+            and the menu would otherwise sit against the count. */}
+        <div className={onAddCard ? '' : 'ml-auto'}>
+          <ColumnActionsMenu
+            {...columnActions}
+            cardCount={cards.length}
+            testId={`board-column-${column.id}-menu`}
+          />
+        </div>
       </div>
 
       {!collapsed && (

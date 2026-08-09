@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { makeBoard, makeCard } from '../test/boardFactories'
 import {
+  ARCHIVED_LABEL,
   BLOCKED_LABEL,
   PRIORITY_LABELS,
   boardColumnLabel,
@@ -150,5 +151,44 @@ describe('reconcileLabels', () => {
   it('is a no-op when the issue already carries exactly the right labels', () => {
     const labels = [boardColumnLabel('b1', 'todo'), 'bug']
     expect(reconcileLabels(board, labels, labels)).toEqual({ toAdd: [], toRemove: [] })
+  })
+})
+
+/**
+ * Archiving used to have no home on this backend at all: the patch was accepted, nothing carried it,
+ * and the card came back unarchived — the exact failure the backend contract warns about. A label is
+ * what carries it now, and these are the three halves that have to agree for that to hold.
+ */
+describe('archiving on a GitHub board', () => {
+  it('writes the label for an archived card, and not for a live one', () => {
+    const archived = makeCard({ archivedAt: '2026-08-04T00:00:00.000Z' })
+    expect(managedLabelsFor(board, archived)).toContain(ARCHIVED_LABEL)
+    expect(managedLabelsFor(board, makeCard())).not.toContain(ARCHIVED_LABEL)
+  })
+
+  /** Unless the board owns the label, reconciliation would never take it back off. */
+  it('claims the label as one this board manages', () => {
+    expect(isManagedLabel(board, ARCHIVED_LABEL)).toBe(true)
+    expect(
+      reconcileLabels(board, [boardColumnLabel('b1', 'todo'), ARCHIVED_LABEL], [
+        boardColumnLabel('b1', 'todo'),
+      ]).toRemove
+    ).toEqual([ARCHIVED_LABEL])
+  })
+
+  it('reads the label back as an archive date', () => {
+    const card = cardFromIssue(
+      board,
+      issue({
+        labels: [boardColumnLabel('b1', 'todo'), ARCHIVED_LABEL],
+        updatedAt: '2026-08-06T12:00:00.000Z',
+      })
+    )
+    // A label carries no timestamp, so `updated_at` stands in for when it was applied.
+    expect(card?.archivedAt).toBe('2026-08-06T12:00:00.000Z')
+  })
+
+  it('leaves an unlabelled card unarchived rather than dating it', () => {
+    expect(cardFromIssue(board, issue())?.archivedAt).toBeUndefined()
   })
 })

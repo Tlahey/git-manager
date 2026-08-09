@@ -10,10 +10,11 @@ import {
   DialogFooter,
   Input,
   Label,
+  NativeSelect,
   Spinner,
 } from '@git-manager/ui'
 import type { Board, BoardCard, SprintSummary } from '@git-manager/git-types'
-import { computeSprintSummary, unfinishedCards } from '../lib/sprintStats'
+import { computeSprintSummary, defaultArchiveColumnId, unfinishedCards } from '../lib/sprintStats'
 import { nextSprintName } from '../lib/boardDefaults'
 import { SprintSummaryView } from './SprintSummaryView'
 
@@ -24,7 +25,9 @@ interface CloseSprintDialogProps {
   cards: BoardCard[]
   onConfirm: (
     summary: SprintSummary,
-    successor: { name: string; carryOverCardIds: string[] } | null
+    successor: { name: string; carryOverCardIds: string[] } | null,
+    /** The column whose remaining cards are archived, or `null` to leave them on the closed sprint. */
+    archiveColumnId: string | null
   ) => Promise<unknown>
 }
 
@@ -46,16 +49,26 @@ export function CloseSprintDialog({
   const { t } = useTranslation('board')
   const [carryOver, setCarryOver] = useState(true)
   const [nextName, setNextName] = useState('')
+  const [archiveDone, setArchiveDone] = useState(true)
+  const [archiveColumnId, setArchiveColumnId] = useState('')
   const [pending, setPending] = useState(false)
 
   const leftovers = unfinishedCards(cards, board.columns)
   const summary = computeSprintSummary(board.columns, cards, new Date().toISOString())
 
+  const orderedColumns = [...board.columns].sort((a, b) => a.order - b.order)
+  // What archiving would actually take: the chosen column's cards that are still on the board. The
+  // count is what makes the checkbox mean something — "archive the finished cards" over an empty
+  // column is a promise about nothing.
+  const archivable = cards.filter((c) => c.columnId === archiveColumnId && !c.archivedAt)
+
   useEffect(() => {
     if (!open) return
     setCarryOver(true)
     setNextName(nextSprintName(board.name))
-  }, [open, board.name])
+    setArchiveDone(true)
+    setArchiveColumnId(defaultArchiveColumnId(board.columns))
+  }, [open, board.name, board.columns])
 
   async function handleConfirm() {
     setPending(true)
@@ -64,7 +77,8 @@ export function CloseSprintDialog({
         summary,
         carryOver && nextName.trim()
           ? { name: nextName.trim(), carryOverCardIds: leftovers.map((card) => card.id) }
-          : null
+          : null,
+        archiveDone && archiveColumnId ? archiveColumnId : null
       )
       onOpenChange(false)
     } catch {
@@ -118,6 +132,51 @@ export function CloseSprintDialog({
                   className="h-8 text-xs"
                   data-testid="close-sprint-next-name"
                 />
+              </div>
+            )}
+          </div>
+
+          {/* Carry-over takes the *unfinished* work forward; this puts what stayed behind away, so a
+              closed sprint's board isn't left holding every ticket it ever completed. */}
+          <div className="space-y-2 rounded border border-border bg-card/40 p-2.5">
+            <label className="flex cursor-pointer items-start gap-2 text-xs">
+              <Checkbox
+                checked={archiveDone}
+                onChange={(e) => setArchiveDone(e.target.checked)}
+                disabled={pending}
+                data-testid="close-sprint-archive-done"
+              />
+              <span className="font-medium text-foreground">{t('sprint.archiveDoneLabel')}</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground" data-testid="close-sprint-archive-hint">
+              {t('sprint.archiveDoneHint', { count: archivable.length })}
+            </p>
+
+            {archiveDone && (
+              <div className="space-y-1">
+                {/* Which column holds "finished" is the board's own decision, not this dialog's — it
+                    defaults to the one flagged done and is shown so a board that never set the flag
+                    can say where its finished work actually sits. */}
+                <Label
+                  className="text-[11px] text-muted-foreground"
+                  htmlFor="close-sprint-archive-column"
+                >
+                  {t('sprint.archiveColumnLabel')}
+                </Label>
+                <NativeSelect
+                  id="close-sprint-archive-column"
+                  value={archiveColumnId}
+                  onChange={(e) => setArchiveColumnId(e.target.value)}
+                  disabled={pending}
+                  className="h-8 text-xs"
+                  data-testid="close-sprint-archive-column"
+                >
+                  {orderedColumns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </NativeSelect>
               </div>
             )}
           </div>

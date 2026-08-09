@@ -358,6 +358,7 @@ pub fn create_board(
     columns: Vec<BoardColumn>,
     dod_template: &str,
     card_prefix: &str,
+    iteration: bool,
 ) -> Result<Board, String> {
     let board_id = generate_id(name);
     let now = now_iso();
@@ -378,6 +379,7 @@ pub fn create_board(
         },
         next_card_numbers: BTreeMap::new(),
         dod_template: dod_template.to_string(),
+        iteration,
         closed_at: None,
         summary: None,
         schema_version: SCHEMA_VERSION,
@@ -455,11 +457,25 @@ pub fn update_board_columns(
     Ok(board)
 }
 
-pub fn delete_board(repo: &Repository, board_id: &str) -> Result<(), String> {
+/// Deletes a board's ref, and — when `delete_cards` — its disaster-recovery mirror with it.
+///
+/// **`delete_cards` is what decides whether the tickets survive the board.** A local board's cards
+/// live inside its ref, so dropping the ref takes them with it; the only copy left anywhere is the
+/// mirror under `~/.git-manager/boards/`. Removing that too is a genuine erasure — the board stops
+/// existing on this machine. Keeping it leaves the board in `list_recoverable_boards`, exactly as if
+/// the repository had been re-cloned, so `restore_board_backup` can bring it and every card back.
+///
+/// The choice used to be made here, always in favour of erasure, on the stated grounds that "an
+/// intentional deletion must not resurrect the board via the restore flow". That reasoning holds for
+/// someone deleting a board they are done with, and fails for someone deleting a board they only want
+/// out of the way — the two are indistinguishable from in here, which is why the caller is now asked.
+pub fn delete_board(repo: &Repository, board_id: &str, delete_cards: bool) -> Result<(), String> {
     if let Ok(mut reference) = repo.find_reference(&board_ref_name(board_id)) {
         reference.delete().map_err(AppError::Git)?;
     }
-    remove_backup(repo, board_id);
+    if delete_cards {
+        remove_backup(repo, board_id);
+    }
     Ok(())
 }
 
@@ -915,6 +931,122 @@ pub fn delete_card(repo: &Repository, board_id: &str, card_id: &str) -> Result<(
     Ok(())
 }
 
+/// Deletes several cards in **one** commit — the archived-card purge (`ArchivedCardsDialog`'s danger
+/// zone), which is one gesture over a set the user reviewed as a set.
+///
+/// Not a loop over `delete_card` on the frontend, for two reasons. A purge of thirty cards would
+/// otherwise be thirty commits saying "delete board card" in the board's history, burying whatever
+/// came before it, and thirty rewrites of the disaster-recovery mirror — of which only the last is
+/// the state anyone wanted. It would also be interruptible halfway: a failure on card seventeen
+/// leaves the board in a state no one asked for, whereas the compare-and-swap here either lands the
+/// whole purge or none of it.
+///
+/// An id naming no card is **skipped**, not an error — unlike `delete_card`, which is asked about one
+/// card and has nothing to do if it is gone. The caller here derived this list from what it last read,
+/// and a card another window deleted in between is a list that has already got what it wanted; failing
+/// would refuse the other twenty-nine deletions over it. The count returned is what actually went.
+pub fn delete_cards(
+    repo: &Repository,
+    board_id: &str,
+    card_ids: &[String],
+) -> Result<usize, String> {
+    let tip = read_state(repo, board_id)?
+        .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
+    let tree = tip.tree().map_err(AppError::Git)?;
+
+    let mut tree_oid = tree.id();
+    let mut deleted = 0usize;
+    for card_id in card_ids {
+        let current = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        if !read_cards(repo, &current)?.iter().any(|c| &c.id == card_id) {
+            continue;
+        }
+        // Same rule as `delete_card`: the links pointing at a card go in the same commit it does.
+        let swept_oid = retarget_links_to(repo, &current, board_id, card_id, None)?;
+        let swept_tree = repo.find_tree(swept_oid).map_err(AppError::Git)?;
+        tree_oid = remove_card_blob(repo, &swept_tree, card_id)?;
+        deleted += 1;
+    }
+
+    // Nothing to record: an empty purge must not leave a commit claiming one happened.
+    if deleted == 0 {
+        return Ok(0);
+    }
+
+    commit_state_cas(
+        repo,
+        board_id,
+        &tip,
+        tip.id(),
+        tree_oid,
+        "git-manager: delete board cards",
+    )?;
+
+    sync_backup(repo, board_id);
+    Ok(deleted)
+}
+
+/// Archives — or un-archives — a set of cards in **one** commit.
+///
+/// The bulk counterpart of an `archived_at` patch through `update_card`, and it exists for the same
+/// reason `delete_cards` does: "archive this column" is one gesture over a set the user chose as a
+/// set, and thirty commits saying "update board card" is not a record of it. Unlike `delete_cards`
+/// this is reversible, which is exactly why it is the *default* offered on a column and the purge is
+/// the one behind a danger zone.
+///
+/// `archived_at` is stamped here rather than taken from the caller, so every card in one gesture
+/// carries the same instant and the archive list orders them as the single event they were. Pass
+/// `false` for `archived` to clear it.
+///
+/// Cards already in the requested state are skipped rather than rewritten: re-archiving a column that
+/// is half archived must not restamp the half that was put away last week under today's date.
+pub fn set_cards_archived(
+    repo: &Repository,
+    board_id: &str,
+    card_ids: &[String],
+    archived: bool,
+) -> Result<usize, String> {
+    let tip = read_state(repo, board_id)?
+        .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
+    let tree = tip.tree().map_err(AppError::Git)?;
+
+    let now = now_iso();
+    let wanted: Option<String> = archived.then(|| now.clone());
+
+    let mut tree_oid = tree.id();
+    let mut changed = 0usize;
+    for mut card in read_cards(repo, &tree)? {
+        if !card_ids.contains(&card.id) || card.archived_at.is_some() == archived {
+            continue;
+        }
+        card.archived_at = wanted.clone();
+        card.updated_at = now.clone();
+        let base = repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        tree_oid = write_card_blob(repo, &base, &card)?;
+        changed += 1;
+    }
+
+    if changed == 0 {
+        return Ok(0);
+    }
+
+    commit_state_cas(
+        repo,
+        board_id,
+        &tip,
+        tip.id(),
+        tree_oid,
+        if archived {
+            "git-manager: archive board cards"
+        } else {
+            "git-manager: unarchive board cards"
+        },
+    )?;
+
+    sync_backup(repo, board_id);
+    Ok(changed)
+}
+
 /// The board's full commit history, newest first — every card/column change is a commit, so this is
 /// literally `git log` over the board's own hidden ref.
 pub fn board_history(repo: &Repository, board_id: &str) -> Result<Vec<GitCommit>, String> {
@@ -948,8 +1080,16 @@ fn repo_root(repo: &Repository) -> String {
         .to_string()
 }
 
+#[cfg(not(test))]
 fn backups_root() -> Option<PathBuf> {
     crate::utils::app_data_dir().map(|dir| dir.join("boards"))
+}
+
+/// Under test the mirror is redirected out of the user's home — see `tests::test_backups_root` for
+/// why, and for what it cost before it was.
+#[cfg(test)]
+fn backups_root() -> Option<PathBuf> {
+    Some(tests::test_backups_root())
 }
 
 fn backup_dir(repo: &Repository) -> Option<PathBuf> {
@@ -1059,6 +1199,28 @@ mod tests {
     // `BoardCardPatch`.
     use crate::models::{BoardCardLink, BoardCardSourceIssue};
 
+    /// Where `backups_root` points while the tests run, emptied once at the start of the run.
+    ///
+    /// Every mutation in this module mirrors the board to `backups_root()`, and the tests exercise
+    /// all of them — so with the mirror pointed at the real `~/.git-manager/boards`, each `cargo
+    /// test` left one directory per test repository behind in the user's home, named after a
+    /// `/tmp` path that no longer existed. Nothing ever removed them: 585 had piled up before anyone
+    /// looked, next to the one board that was real.
+    ///
+    /// Redirecting the root is what fixes that, rather than deleting after each test: a test that
+    /// panics half-way still leaves nothing outside the temp directory, and `list_recoverable_boards`
+    /// / `restore_board_backup` stay covered by tests that exercise the genuine path. The wipe runs
+    /// once per process, not per test, so the tests still see each other's absence of leftovers from
+    /// the *previous* run without racing each other within this one.
+    pub(super) fn test_backups_root() -> PathBuf {
+        static CLEANED: std::sync::Once = std::sync::Once::new();
+        let root = std::env::temp_dir().join("gm-test-board-backups");
+        CLEANED.call_once(|| {
+            std::fs::remove_dir_all(&root).ok();
+        });
+        root
+    }
+
     fn init_repo(name: &str) -> (PathBuf, Repository) {
         let dir =
             std::env::temp_dir().join(format!("gm-test-board-{}-{}", name, std::process::id()));
@@ -1080,7 +1242,7 @@ mod tests {
 
     /// Most tests don't care about the Definition-of-Done template or the card prefix.
     fn board_with(repo: &Repository, name: &str, columns: Vec<BoardColumn>) -> Board {
-        create_board(repo, name, columns, "", "").unwrap()
+        create_board(repo, name, columns, "", "", true).unwrap()
     }
 
     #[test]
@@ -1356,16 +1518,256 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
+    /// The archived-card purge is one gesture, so it is one commit — and it sweeps the links pointing
+    /// at what it removes exactly like the single-card delete does, since a purge that left dangling
+    /// relations behind would be a worse version of the bug `delete_card` already fixed.
+    #[test]
+    fn delete_cards_removes_the_whole_set_in_a_single_commit() {
+        let (dir, repo) = init_repo("delete-cards-bulk");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let make = |title: &str| {
+            create_card(
+                &repo,
+                &board.id,
+                "todo",
+                NewBoardCard {
+                    title: title.to_string(),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let first = make("Archived one");
+        let second = make("Archived two");
+        let survivor = make("Still on the board");
+
+        // The survivor declares a relation towards one of the doomed cards.
+        update_card(
+            &repo,
+            &board.id,
+            &survivor.id,
+            BoardCardPatch {
+                links: Some(vec![BoardCardLink {
+                    target_board_id: board.id.clone(),
+                    target_card_id: second.id.clone(),
+                    kind: "blocks".to_string(),
+                }]),
+                ..Default::default()
+            },
+            &survivor.revision,
+        )
+        .unwrap();
+
+        let before = board_history(&repo, &board.id).unwrap().len();
+        let deleted =
+            delete_cards(&repo, &board.id, &[first.id.clone(), second.id.clone()]).unwrap();
+        assert_eq!(deleted, 2);
+
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].id, survivor.id);
+        // Its link went with the card it pointed at, rather than resolving to nothing.
+        assert!(cards[0].links.is_empty());
+        // Two cards, one commit — not one commit each.
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before + 1);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A card someone else removed in between is a list that has already got what it wanted — unlike
+    /// `delete_card`, which is asked about one card and errors. Failing here would refuse every other
+    /// deletion in the set over it.
+    #[test]
+    fn delete_cards_skips_ids_that_name_nothing_and_reports_the_real_count() {
+        let (dir, repo) = init_repo("delete-cards-missing");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Real".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let deleted =
+            delete_cards(&repo, &board.id, &[card.id.clone(), "gone".to_string()]).unwrap();
+        assert_eq!(deleted, 1);
+        assert!(get_board(&repo, &board.id).unwrap().1.is_empty());
+
+        // Nothing to remove leaves no commit claiming a purge happened.
+        let before = board_history(&repo, &board.id).unwrap().len();
+        assert_eq!(
+            delete_cards(&repo, &board.id, &["gone".to_string()]).unwrap(),
+            0
+        );
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn delete_board_removes_it_from_list_boards_and_get_board_fails() {
         let (dir, repo) = init_repo("delete-board");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id).unwrap();
+        delete_board(&repo, &board.id, true).unwrap();
 
         assert!(list_boards(&repo).unwrap().is_empty());
         let err = get_board(&repo, &board.id).unwrap_err();
         assert!(err.contains("BOARD_NOT_FOUND"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Archiving a column is one gesture: one commit, and one instant stamped on every card it took,
+    /// so the archive list orders them as the single event they were.
+    #[test]
+    fn set_cards_archived_stamps_one_instant_in_a_single_commit() {
+        let (dir, repo) = init_repo("archive-cards");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let make = |title: &str| {
+            create_card(
+                &repo,
+                &board.id,
+                "todo",
+                NewBoardCard {
+                    title: title.to_string(),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let first = make("One");
+        let second = make("Two");
+        let untouched = make("Not in the set");
+
+        let before = board_history(&repo, &board.id).unwrap().len();
+        let changed = set_cards_archived(
+            &repo,
+            &board.id,
+            &[first.id.clone(), second.id.clone()],
+            true,
+        )
+        .unwrap();
+        assert_eq!(changed, 2);
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before + 1);
+
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        let archived_at = |id: &str| {
+            cards
+                .iter()
+                .find(|c| c.id == id)
+                .unwrap()
+                .archived_at
+                .clone()
+        };
+        assert!(archived_at(&first.id).is_some());
+        // One gesture, one instant.
+        assert_eq!(archived_at(&first.id), archived_at(&second.id));
+        assert!(archived_at(&untouched.id).is_none());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Re-archiving a column that is already half archived must not restamp the half put away last
+    /// week under today's date — the archive list is ordered by that field.
+    #[test]
+    fn set_cards_archived_leaves_an_already_archived_card_alone() {
+        let (dir, repo) = init_repo("archive-cards-idempotent");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Already away".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        set_cards_archived(&repo, &board.id, std::slice::from_ref(&card.id), true).unwrap();
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        let first_stamp = cards[0].archived_at.clone();
+
+        let before = board_history(&repo, &board.id).unwrap().len();
+        assert_eq!(
+            set_cards_archived(&repo, &board.id, std::slice::from_ref(&card.id), true).unwrap(),
+            0
+        );
+        // No change means no commit, and the original date survives.
+        assert_eq!(board_history(&repo, &board.id).unwrap().len(), before);
+        assert_eq!(
+            get_board(&repo, &board.id).unwrap().1[0].archived_at,
+            first_stamp
+        );
+
+        // ...and the same call with `false` puts it back on the board.
+        assert_eq!(
+            set_cards_archived(&repo, &board.id, std::slice::from_ref(&card.id), false).unwrap(),
+            1
+        );
+        assert!(get_board(&repo, &board.id).unwrap().1[0]
+            .archived_at
+            .is_none());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Deleting a board *without* deleting its tickets leaves the mirror, which is the only copy of
+    /// them once the ref is gone — so the board comes back through the same restore flow a re-cloned
+    /// repository uses.
+    #[test]
+    fn deleting_a_board_but_keeping_its_cards_leaves_it_recoverable() {
+        let (dir, repo) = init_repo("delete-board-keep-cards");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Worth keeping".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        delete_board(&repo, &board.id, false).unwrap();
+
+        assert!(list_boards(&repo).unwrap().is_empty());
+        let recoverable = list_recoverable_boards(&repo).unwrap();
+        assert_eq!(recoverable.len(), 1);
+        assert_eq!(recoverable[0].id, board.id);
+
+        let restored = restore_board_backup(&repo, &board.id).unwrap();
+        assert_eq!(restored.id, board.id);
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].title, "Worth keeping");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A board written before `iteration` existed was created when closing was the only behaviour
+    /// there was — reading it back as a standing board would silently take that action away.
+    #[test]
+    fn a_board_written_without_the_iteration_field_reads_back_as_one() {
+        let (dir, repo) = init_repo("iteration-default");
+        let standing =
+            create_board(&repo, "Backlog", vec![column("todo", 0)], "", "", false).unwrap();
+        assert!(!standing.iteration);
+        // An explicit `false` survives the round trip rather than being defaulted back to `true`.
+        assert!(!get_board(&repo, &standing.id).unwrap().0.iteration);
+
+        let legacy: Board = serde_json::from_str(
+            r#"{"id":"b1","name":"Old","source":"local","columns":[],"revision":"",
+                "schemaVersion":2,"createdAt":"2026-01-01","updatedAt":"2026-01-01"}"#,
+        )
+        .unwrap();
+        assert!(legacy.iteration);
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -1502,7 +1904,8 @@ mod tests {
     fn a_new_card_materializes_the_boards_dod_template_and_can_then_diverge_from_it() {
         let (dir, repo) = init_repo("dod-template");
         let template = "- [ ] Tests pass\n- [ ] Reviewed";
-        let board = create_board(&repo, "Board", vec![column("todo", 0)], template, "").unwrap();
+        let board =
+            create_board(&repo, "Board", vec![column("todo", 0)], template, "", true).unwrap();
 
         let card = create_card(
             &repo,
@@ -1838,7 +2241,7 @@ mod tests {
     #[test]
     fn cards_are_numbered_from_one_and_the_counter_advances_with_them() {
         let (dir, repo) = init_repo("card-numbers");
-        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "gm").unwrap();
+        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "gm", true).unwrap();
         // The board's suggested prefix is normalized once, on the way in.
         assert_eq!(board.card_prefixes, vec!["GM".to_string()]);
 
@@ -1883,7 +2286,7 @@ mod tests {
     #[test]
     fn each_prefix_numbers_its_own_cards() {
         let (dir, repo) = init_repo("card-numbers-per-prefix");
-        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM").unwrap();
+        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM", true).unwrap();
 
         let gm1 = create_card(
             &repo,
@@ -1944,7 +2347,8 @@ mod tests {
     #[test]
     fn a_board_written_with_a_single_prefix_keeps_its_sequence() {
         let (dir, repo) = init_repo("card-numbers-migration");
-        let mut legacy = create_board(&repo, "Board", vec![column("todo", 0)], "", "").unwrap();
+        let mut legacy =
+            create_board(&repo, "Board", vec![column("todo", 0)], "", "", true).unwrap();
         legacy.card_prefix = "GM".to_string();
         legacy.next_card_number = Some(7);
         legacy.card_prefixes.clear();
@@ -1982,8 +2386,8 @@ mod tests {
     #[test]
     fn a_card_moved_to_another_board_keeps_its_identifier() {
         let (dir, repo) = init_repo("move-keeps-identifier");
-        let ideas = create_board(&repo, "Ideas", vec![column("todo", 0)], "", "GM").unwrap();
-        let sprint = create_board(&repo, "Sprint", vec![column("wip", 0)], "", "SP").unwrap();
+        let ideas = create_board(&repo, "Ideas", vec![column("todo", 0)], "", "GM", true).unwrap();
+        let sprint = create_board(&repo, "Sprint", vec![column("wip", 0)], "", "SP", true).unwrap();
 
         create_card(
             &repo,
@@ -2052,7 +2456,7 @@ mod tests {
     #[test]
     fn a_deleted_cards_number_is_never_handed_out_again() {
         let (dir, repo) = init_repo("card-numbers-no-reuse");
-        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM").unwrap();
+        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM", true).unwrap();
 
         create_card(
             &repo,
@@ -2105,7 +2509,7 @@ mod tests {
     #[test]
     fn editing_the_prefix_list_never_touches_a_cards_own_prefix() {
         let (dir, repo) = init_repo("card-prefix-list");
-        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM").unwrap();
+        let board = create_board(&repo, "Board", vec![column("todo", 0)], "", "GM", true).unwrap();
         let card = create_card(
             &repo,
             &board.id,
@@ -2193,7 +2597,7 @@ mod tests {
         let (dir, repo) = init_repo("delete-removes-backup");
         let board = board_with(&repo, "Board", vec![column("todo", 0)]);
 
-        delete_board(&repo, &board.id).unwrap();
+        delete_board(&repo, &board.id, true).unwrap();
 
         // An intentional delete must not be recoverable — that flow exists for accidental loss.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());

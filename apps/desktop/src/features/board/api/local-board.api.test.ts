@@ -47,18 +47,18 @@ describe('localBoardBackend', () => {
     mocked.deleteBoard.mockResolvedValue(undefined)
 
     const columns = [{ id: 'todo', name: 'Todo', order: 0 }]
-    await expect(localBoardBackend.createBoard(path, 'My board', columns, '- [ ] Done', 'GM')).resolves.toBe(
+    await expect(localBoardBackend.createBoard(path, 'My board', columns, '- [ ] Done', 'GM', true)).resolves.toBe(
       'created'
     )
-    expect(mocked.createBoard).toHaveBeenCalledWith(path, 'My board', columns, '- [ ] Done', 'GM')
+    expect(mocked.createBoard).toHaveBeenCalledWith(path, 'My board', columns, '- [ ] Done', 'GM', true)
 
     await expect(
       localBoardBackend.updateBoardColumns(path, 'b1', columns, 'rev-1')
     ).resolves.toBe('updated')
     expect(mocked.updateBoardColumns).toHaveBeenCalledWith(path, 'b1', columns, 'rev-1')
 
-    await localBoardBackend.deleteBoard(path, 'b1')
-    expect(mocked.deleteBoard).toHaveBeenCalledWith(path, 'b1')
+    await localBoardBackend.deleteBoard(path, 'b1', true)
+    expect(mocked.deleteBoard).toHaveBeenCalledWith(path, 'b1', true)
   })
 
   it('forwards card create/update/move/delete with their exact args', async () => {

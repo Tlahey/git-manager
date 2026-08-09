@@ -31,7 +31,9 @@ export interface BoardBackend {
     columns: BoardColumn[],
     dodTemplate: string,
     /** Prefix for this board's card identifiers — `"GM"` makes the first card `GM-1`. */
-    cardPrefix: string
+    cardPrefix: string,
+    /** Whether this board is one iteration of a cycle — see {@link Board.iteration}. */
+    iteration: boolean
   ): Promise<Board>
   updateBoardColumns(
     path: string,
@@ -57,7 +59,17 @@ export interface BoardBackend {
     summary: SprintSummary,
     expectedRevision: string
   ): Promise<Board>
-  deleteBoard(path: string, boardId: string): Promise<void>
+  /**
+   * Deletes the board. `deleteCards` says what becomes of its tickets, and the two backends honour it
+   * differently because the tickets are different things:
+   *
+   * - **Local.** The cards live inside the board's ref, so they always go with it. What `deleteCards`
+   *   controls is the `~/.git-manager/boards/` mirror — the only copy left. Keeping it leaves the
+   *   board listed as recoverable, so it and every card can be restored.
+   * - **Remote.** The cards are GitHub issues and survive the board either way, since deleting a
+   *   board only stops labelling them. `deleteCards` closes them.
+   */
+  deleteBoard(path: string, boardId: string, deleteCards: boolean): Promise<void>
   /** `card` carries the new card's own identity (title, prefix, kind, and optionally the GitHub
    * issue it tracks from its first commit); `columnId` is the placement. */
   createCard(
@@ -101,4 +113,30 @@ export interface BoardBackend {
     toColumnId?: string
   ): Promise<void>
   deleteCard(path: string, boardId: string, cardId: string): Promise<void>
+  /**
+   * Deletes a whole set of cards — the archived-card purge (see `ArchivedCardsDialog`).
+   *
+   * Its own method rather than a loop over {@link BoardBackend.deleteCard} at the call site, because
+   * the two backends can honour "one gesture" differently and only they know how: the local one
+   * writes a single board commit for the set, where a loop would bury the board's history under one
+   * "delete board card" entry per card. Resolves with how many were actually removed — a card another
+   * window deleted in between is skipped rather than failing the rest of the purge.
+   */
+  deleteCards(path: string, boardId: string, cardIds: string[]): Promise<number>
+  /**
+   * Archives — or un-archives — a whole set of cards: "archive this column", and the sprint close's
+   * offer to put the finished work away.
+   *
+   * The reversible neighbour of {@link BoardBackend.deleteCards}, and its own method for the same
+   * reason: the local backend records the set as one commit under one instant, so the archive list
+   * orders them as the single event they were, where a loop of patches would stamp each card a
+   * millisecond apart and spend a commit on every one. Resolves with how many actually changed —
+   * a card already in the requested state is left untouched rather than restamped.
+   */
+  setCardsArchived(
+    path: string,
+    boardId: string,
+    cardIds: string[],
+    archived: boolean
+  ): Promise<number>
 }

@@ -10,9 +10,10 @@ import {
   DialogTitle,
   Input,
   ScrollArea,
+  Separator,
   Tooltip,
 } from '@git-manager/ui'
-import { ArchiveRestore, ExternalLink, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArchiveRestore, ExternalLink, Trash2 } from 'lucide-react'
 import { cardIdentifier } from '../lib/cardMeta'
 import { CardKindIcon } from './CardKindIcon'
 
@@ -25,6 +26,8 @@ interface ArchivedCardsDialogProps {
   onOpenCard: (card: BoardCard) => void
   onUnarchive: (card: BoardCard) => Promise<unknown>
   onDelete: (card: BoardCard) => void
+  /** Raises the purge confirmation for the whole archive. Omitted when the board is read-only. */
+  onDeleteAll?: () => void
 }
 
 /**
@@ -35,7 +38,14 @@ interface ArchivedCardsDialogProps {
  * requires already knowing what to search for — this is the list you read when you don't.
  *
  * Deleting is delegated rather than done here: it is the one irreversible action on a card, and its
- * confirmation lives in `DeleteCardDialog`, which the caller owns.
+ * confirmation lives in `DeleteCardDialog`, which the caller owns. Emptying the whole archive is
+ * delegated the same way, to `DeleteArchivedCardsDialog`.
+ *
+ * That bulk action sits below a separator, in its own labelled danger zone, and it is the only thing
+ * there. The list above is made of reversible gestures — restore, open — and one per-card delete
+ * already marked destructive; a button that destroys all of them reading as just another row would
+ * be a misrepresentation of what it does. The rule is the general one: an action that cannot be
+ * undone goes below the waterline, never inline with the ones that can.
  */
 export function ArchivedCardsDialog({
   open,
@@ -45,6 +55,7 @@ export function ArchivedCardsDialog({
   onOpenCard,
   onUnarchive,
   onDelete,
+  onDeleteAll,
 }: ArchivedCardsDialogProps) {
   const { t } = useTranslation('board')
   const [query, setQuery] = useState('')
@@ -115,6 +126,33 @@ export function ArchivedCardsDialog({
                 ))}
               </ul>
             </ScrollArea>
+
+            {onDeleteAll && (
+              <div className="space-y-2" data-testid="archived-danger-zone">
+                <Separator />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {t('archived.dangerZone')}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                      {t('archived.dangerZoneHint', { count: totalArchived })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={onDeleteAll}
+                    data-testid="archived-delete-all"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t('archived.deleteAll', { count: totalArchived })}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

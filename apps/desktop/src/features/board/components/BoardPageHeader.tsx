@@ -28,7 +28,8 @@ interface BoardPageHeaderProps {
   onOpenArchived: () => void
   onEditColumns: () => void
   onOpenSettings: () => void
-  onCloseSprint: () => void
+  /** Omitted on a board that is not an iteration — there is no period to close. */
+  onCloseSprint?: () => void
   onDeleteBoard: () => void
   onCreateBoard: () => void
 }
@@ -141,15 +142,17 @@ export function BoardPageHeader({
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" /> {t('boardSettings.title')}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={onCloseSprint}
-                  data-testid="board-close-sprint-button"
-                >
-                  <FlagOff className="h-3.5 w-3.5" /> {t('sprint.close')}
-                </Button>
+                {onCloseSprint && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={onCloseSprint}
+                    data-testid="board-close-sprint-button"
+                  >
+                    <FlagOff className="h-3.5 w-3.5" /> {t('sprint.close')}
+                  </Button>
+                )}
               </>
             )}
             <Button

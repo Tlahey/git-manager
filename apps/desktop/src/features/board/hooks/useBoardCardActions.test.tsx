@@ -19,6 +19,8 @@ const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastE
       moveCard: vi.fn(),
       moveCardsToBoard: vi.fn(),
       deleteCard: vi.fn(),
+      deleteCards: vi.fn(),
+      setCardsArchived: vi.fn(),
     })
     return {
       localBackend: make(),
@@ -53,7 +55,9 @@ function renderActions(
   activeBoard: Board | null = local,
   boards: Board[] = [local, remote],
   trackedRef: (card: BoardCard) => null | { owner: string; repo: string; number: number } = () =>
-    null
+    null,
+  /** What the cached detail holds — only the purge reads it, everything else is handed its card. */
+  cards: BoardCard[] = []
 ) {
   // SWR's `mutate(fn, opts)`: the writer runs and its rejection reaches the caller, which is the
   // whole contract `moveCard` leans on for its rollback.
@@ -67,7 +71,7 @@ function renderActions(
       activeBoard,
       boards,
       detail: {
-        boardDetail: activeBoard ? { board: activeBoard, cards: [] } : undefined,
+        boardDetail: activeBoard ? { board: activeBoard, cards } : undefined,
         cardsLoading: false,
         mutateDetail: mutateDetail as never,
         revalidateAllDetails,
@@ -452,5 +456,127 @@ describe('useBoardCardActions — addComment', () => {
 
     await result.current.addComment(makeCard(), '  Looks good  ')
     expect(localBackend.addComment).toHaveBeenCalledWith(path, 'b1', 'c1', 'Looks good', 'rev-1')
+  })
+})
+
+/**
+ * The archive purge is the board's one bulk-destructive action, so what it takes is worth pinning
+ * down: the set is read from the live cards at the moment it runs, and it reaches the backend as one
+ * call rather than as a loop of single deletes.
+ */
+describe('useBoardCardActions — deleteArchivedCards', () => {
+  const archived = (id: string) =>
+    makeCard({ id, archivedAt: '2026-08-04T00:00:00.000Z' })
+
+  it('sends every archived card, and only those, in one backend call', async () => {
+    localBackend.deleteCards.mockResolvedValue(2)
+    const { result, mutateDetail } = renderActions(local, [local], () => null, [
+      makeCard({ id: 'live' }),
+      archived('a1'),
+      archived('a2'),
+    ])
+
+    await expect(result.current.deleteArchivedCards()).resolves.toBe(2)
+
+    expect(localBackend.deleteCards).toHaveBeenCalledTimes(1)
+    expect(localBackend.deleteCards).toHaveBeenCalledWith(path, 'b1', ['a1', 'a2'])
+    expect(localBackend.deleteCard).not.toHaveBeenCalled()
+    expect(mutateDetail).toHaveBeenCalled()
+  })
+
+  /** Nothing archived is not an empty purge to record — it is no purge at all. */
+  it('does not reach the backend when the archive is empty', async () => {
+    const { result } = renderActions(local, [local], () => null, [makeCard({ id: 'live' })])
+
+    await expect(result.current.deleteArchivedCards()).resolves.toBe(0)
+    expect(localBackend.deleteCards).not.toHaveBeenCalled()
+  })
+
+  it('goes to the backend the active board belongs to', async () => {
+    remoteBackend.deleteCards.mockResolvedValue(1)
+    const { result } = renderActions(remote, [remote], () => null, [archived('a1')])
+
+    await result.current.deleteArchivedCards()
+
+    expect(remoteBackend.deleteCards).toHaveBeenCalledWith(path, 'b9', ['a1'])
+    expect(localBackend.deleteCards).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * A column-wide action reaches the set the *board* shows in that column. Archived cards are not in it
+ * as far as anyone looking at the board is concerned, which is the rule both actions share.
+ */
+describe('useBoardCardActions — column-wide actions', () => {
+  const inColumn = (id: string, columnId: string, extra = {}) =>
+    makeCard({ id, columnId, ...extra })
+
+  const columnCards = [
+    inColumn('a1', 'todo'),
+    inColumn('a2', 'todo'),
+    inColumn('away', 'todo', { archivedAt: '2026-08-04T00:00:00.000Z' }),
+    inColumn('elsewhere', 'done'),
+  ]
+
+  it('archives a column in one call, skipping what is already away', async () => {
+    localBackend.setCardsArchived.mockResolvedValue(2)
+    const { result, mutateDetail } = renderActions(local, [local], () => null, columnCards)
+
+    await expect(result.current.archiveColumn('todo')).resolves.toBe(2)
+
+    expect(localBackend.setCardsArchived).toHaveBeenCalledTimes(1)
+    expect(localBackend.setCardsArchived).toHaveBeenCalledWith(path, 'b1', ['a1', 'a2'], true)
+    expect(mutateDetail).toHaveBeenCalled()
+  })
+
+  it('does not reach the backend for a column with nothing on the board', async () => {
+    const { result } = renderActions(local, [local], () => null, [
+      inColumn('away', 'todo', { archivedAt: '2026-08-04T00:00:00.000Z' }),
+    ])
+
+    await expect(result.current.archiveColumn('todo')).resolves.toBe(0)
+    expect(localBackend.setCardsArchived).not.toHaveBeenCalled()
+  })
+
+  it('moves a column as one bulk move, not card by card', async () => {
+    localBackend.moveCardsToBoard.mockResolvedValue(undefined)
+    const other = makeBoard({ id: 'b2', source: 'local' })
+    const { result, revalidateAllDetails } = renderActions(
+      local,
+      [local, other],
+      () => null,
+      columnCards
+    )
+
+    await expect(result.current.moveColumnCards('todo', 'b2', 'backlog')).resolves.toBe(2)
+
+    expect(localBackend.moveCardsToBoard).toHaveBeenCalledTimes(1)
+    expect(localBackend.moveCardsToBoard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'b2',
+      ['a1', 'a2'],
+      'backlog'
+    )
+    // The destination's cached cards are stale and live under a key `mutateDetail` cannot reach.
+    expect(revalidateAllDetails).toHaveBeenCalled()
+  })
+
+  /**
+   * The local→GitHub direction creates an issue per card. Doing that for a set is not one operation,
+   * and a failure part-way leaves a half-moved column no one can describe — so it is refused here as
+   * well as kept out of the picker by `columnMoveTargetsFor`.
+   */
+  it('refuses to empty a column onto the other backend', async () => {
+    const { result } = renderActions(local, [local, remote], () => null, columnCards)
+
+    await expect(result.current.moveColumnCards('todo', 'b9', 'todo')).rejects.toThrow()
+    expect(localBackend.moveCardsToBoard).not.toHaveBeenCalled()
+    expect(remoteBackend.createCard).not.toHaveBeenCalled()
+  })
+
+  it('refuses a board that no longer exists', async () => {
+    const { result } = renderActions(local, [local], () => null, columnCards)
+    await expect(result.current.moveColumnCards('todo', 'gone', 'todo')).rejects.toThrow()
   })
 })

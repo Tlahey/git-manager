@@ -13,8 +13,10 @@ import {
   RadioGroup,
   RadioGroupItem,
   Spinner,
+  Switch,
   Textarea,
 } from '@git-manager/ui'
+import { firstIterationName } from '../lib/boardIteration'
 
 interface CreateBoardDialogProps {
   open: boolean
@@ -24,19 +26,30 @@ interface CreateBoardDialogProps {
     name: string,
     source: BoardSource,
     dodTemplate: string,
-    cardPrefix: string
+    cardPrefix: string,
+    iteration: boolean
   ) => Promise<unknown>
 }
 
-/** New-board dialog: a name, which backend it lives on, and optionally the Definition-of-Done
- * template its cards start from. Columns start from `boardDefaults.defaultColumns()` — edited
- * afterward via `ColumnEditorDialog`, not chosen here; tags likewise via `BoardSettingsDialog`. */
+/**
+ * New-board dialog: a name, whether it is an iteration, which backend it lives on, and optionally the
+ * Definition-of-Done template its cards start from. Columns start from
+ * `boardDefaults.defaultColumns()` — edited afterward via `ColumnEditorDialog`, not chosen here; tags
+ * likewise via `BoardSettingsDialog`.
+ *
+ * **Iteration is asked here and only here.** It decides whether the board can ever be closed, which
+ * is a statement about what the board *is* — a sprint that ends, or a backlog that doesn't — rather
+ * than a preference to revise later. Getting it wrong costs creating another board, which is cheap;
+ * the alternative, a board mid-sprint being reclassified as one that never ends, has no sensible
+ * meaning for the report and the successor it would have produced.
+ */
 export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }: CreateBoardDialogProps) {
   const { t } = useTranslation('board')
   const [name, setName] = useState('')
   const [source, setSource] = useState<BoardSource>('local')
   const [dodTemplate, setDodTemplate] = useState('')
   const [cardPrefix, setCardPrefix] = useState('')
+  const [iteration, setIteration] = useState(true)
   const [pending, setPending] = useState(false)
 
   function handleOpenChange(next: boolean) {
@@ -45,6 +58,7 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
       setSource('local')
       setDodTemplate('')
       setCardPrefix('')
+      setIteration(true)
     }
     onOpenChange(next)
   }
@@ -53,7 +67,7 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
     if (!name.trim()) return
     setPending(true)
     try {
-      await onSubmit(name.trim(), source, dodTemplate, cardPrefix)
+      await onSubmit(name.trim(), source, dodTemplate, cardPrefix, iteration)
       handleOpenChange(false)
     } catch {
       // Reported by the action layer (`reportWriteFailures`); swallowed here so the rejection isn't
@@ -82,6 +96,29 @@ export function CreateBoardDialog({ open, onOpenChange, canUseRemote, onSubmit }
               autoFocus
               data-testid="board-name-input"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="flex cursor-pointer items-start gap-2 text-xs">
+              <Switch
+                checked={iteration}
+                onChange={(e) => setIteration(e.target.checked)}
+                disabled={pending}
+                data-testid="board-iteration-input"
+              />
+              <span>
+                <span className="block font-medium text-foreground">
+                  {t('createBoard.iterationLabel')}
+                </span>
+                <span className="block text-muted-foreground">
+                  {iteration
+                    ? t('createBoard.iterationDescription', {
+                        example: firstIterationName(name || 'Sprint', true),
+                      })
+                    : t('createBoard.standingDescription')}
+                </span>
+              </span>
+            </label>
           </div>
 
           <div className="space-y-1.5">

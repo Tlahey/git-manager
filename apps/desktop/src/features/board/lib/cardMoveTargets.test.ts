@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Board } from '@git-manager/git-types'
 import { makeBoard, makeCard } from '../test/boardFactories'
-import { defaultColumnFor, moveTargetsFor } from './cardMoveTargets'
+import { columnMoveTargetsFor, defaultColumnFor, moveTargetsFor } from './cardMoveTargets'
 
 const columns = [
   { id: 'todo', name: 'Todo', order: 0 },
@@ -86,5 +86,37 @@ describe('defaultColumnFor', () => {
 
   it('reports no column for a board that has none', () => {
     expect(defaultColumnFor(board({ columns: [] }), 'todo')).toBe('')
+  })
+})
+
+/**
+ * A column is a set, and the only genuinely bulk move either backend has — `moveCardsToBoard` — is
+ * same-backend by construction. The local→GitHub direction a *single* card enjoys creates an issue
+ * per card, which is not one operation, so it is kept out of the picker rather than half-supported.
+ */
+describe('columnMoveTargetsFor', () => {
+  const local = makeBoard({ id: 'b1', source: 'local' })
+  const otherLocal = makeBoard({ id: 'b2', source: 'local' })
+  const closedLocal = makeBoard({ id: 'b3', source: 'local', closedAt: '2026-08-01T00:00:00.000Z' })
+  const remote = makeBoard({ id: 'b9', source: 'remote' })
+
+  it('offers the other open boards on the same backend', () => {
+    expect(
+      columnMoveTargetsFor([local, otherLocal, closedLocal, remote], local).map((b) => b.id)
+    ).toEqual(['b2'])
+  })
+
+  it('never offers the board the column is on', () => {
+    expect(columnMoveTargetsFor([local], local)).toEqual([])
+  })
+
+  /** A closed sprint's statistics are frozen; cards arriving would make it report a total it never had. */
+  it('never offers a closed sprint', () => {
+    expect(columnMoveTargetsFor([local, closedLocal], local)).toEqual([])
+  })
+
+  it('refuses the crossing a single card is allowed', () => {
+    expect(columnMoveTargetsFor([local, remote], local)).toEqual([])
+    expect(columnMoveTargetsFor([remote, local], remote)).toEqual([])
   })
 })

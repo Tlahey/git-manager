@@ -157,6 +157,95 @@ export function useBoardCardActions({
   }
 
   /**
+   * The cards a column-wide action applies to: everything in it that is still on the board.
+   *
+   * Archived cards are excluded on purpose. They are not in the column as far as anyone looking at
+   * the board is concerned — the columns don't render them — so "archive this column" must not
+   * restamp them, and "move this column elsewhere" must not drag a card someone put away last month
+   * onto the next sprint.
+   */
+  function liveCardsIn(columnId: string): BoardCard[] {
+    return (boardDetail?.cards ?? []).filter((c) => c.columnId === columnId && !c.archivedAt)
+  }
+
+  /** Puts a whole column away in one write — see {@link BoardBackend.setCardsArchived}. Reversible,
+   * one card at a time, from the archive list. */
+  async function archiveColumn(columnId: string): Promise<number> {
+    if (!activeBoard) return 0
+    const ids = liveCardsIn(columnId).map((c) => c.id)
+    if (ids.length === 0) return 0
+    const archived = await backendFor(activeBoard.source).setCardsArchived(
+      repoPath,
+      activeBoard.id,
+      ids,
+      true
+    )
+    void mutateDetail()
+    return archived
+  }
+
+  /**
+   * Moves a whole column's cards onto another board, into one column of it.
+   *
+   * Deliberately *not* a loop over `moveCardToBoard`: `moveCardsToBoard` already takes a list on both
+   * backends, and going card by card would leave a half-moved column behind on any failure. The
+   * consequence is that this handles the same-backend case only — the local→GitHub direction that
+   * `moveCardToBoard` supports has to create an issue per card, which is not one operation and is not
+   * what "empty this column into the next sprint" means. `columnMoveTargetsFor` is what keeps the
+   * unsupported direction out of the picker.
+   */
+  async function moveColumnCards(
+    columnId: string,
+    targetBoardId: string,
+    targetColumnId: string
+  ): Promise<number> {
+    if (!activeBoard) return 0
+    const target = boards.find((b) => b.id === targetBoardId)
+    if (!target) throw new Error(`Board not found: ${targetBoardId}`)
+    if (target.source !== activeBoard.source) {
+      throw new Error('A column can only be emptied into a board on the same backend')
+    }
+
+    const ids = liveCardsIn(columnId).map((c) => c.id)
+    if (ids.length === 0) return 0
+
+    await backendFor(activeBoard.source).moveCardsToBoard(
+      repoPath,
+      activeBoard.id,
+      targetBoardId,
+      ids,
+      targetColumnId
+    )
+    revalidateLists()
+    // The destination's cached cards are stale too, and `mutateDetail` cannot reach its SWR key —
+    // the same trap `moveCardToBoard` documents at length.
+    revalidateAllDetails()
+    void mutateDetail()
+    return ids.length
+  }
+
+  /**
+   * Destroys every archived card on the board — the one bulk-destructive action the board offers,
+   * confirmed in `DeleteArchivedCardsDialog` before it gets here.
+   *
+   * The set is recomputed from the live cards rather than passed in, so what gets deleted is what is
+   * archived at the moment the confirmation is accepted, not what was archived when the dialog was
+   * opened. A card unarchived from another window in between is a card that is no longer archived,
+   * and the whole point of archiving over deleting is that it survives.
+   *
+   * Resolves with how many actually went — see {@link BoardBackend.deleteCards}, which skips an id
+   * that has already stopped naming a card rather than refusing the rest of the purge over it.
+   */
+  async function deleteArchivedCards(): Promise<number> {
+    if (!activeBoard) return 0
+    const ids = (boardDetail?.cards ?? []).filter((c) => c.archivedAt).map((c) => c.id)
+    if (ids.length === 0) return 0
+    const deleted = await backendFor(activeBoard.source).deleteCards(repoPath, activeBoard.id, ids)
+    void mutateDetail()
+    return deleted
+  }
+
+  /**
    * Copies a card into the same column, right after the original.
    *
    * Everything the card *is* travels: description, checklist, assignee, priority, due date, tags,
@@ -310,6 +399,9 @@ export function useBoardCardActions({
     moveCard,
     moveCardToBoard,
     deleteCard,
+    deleteArchivedCards,
+    archiveColumn,
+    moveColumnCards,
     duplicateCard,
     addComment,
   }
