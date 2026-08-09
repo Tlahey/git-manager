@@ -105,7 +105,9 @@ describe('ToggleGroup — labelled segments', () => {
     // tokens, the only ones corrected per theme for a filled control.
     expect(selected.className).not.toMatch(/bg-(primary|accent)\b/)
     expect(selected.className).not.toContain('text-primary-foreground')
-    expect(unselected.className).not.toMatch(/\bbg-/)
+    // No fill at rest on an unselected segment — the hover one below is a pointer affordance, and
+    // is the only `bg-` it is allowed.
+    expect(unselected.className).not.toMatch(/(^|\s)bg-/)
   })
 
   /**
@@ -196,6 +198,35 @@ describe('ToggleGroup — disabled', () => {
     const [, unselected] = Array.from(container.querySelectorAll('label'))
     expect(unselected.className).toContain('cursor-pointer')
     expect(unselected.className).toContain('hover:text-foreground')
+  })
+})
+
+/**
+ * `hover:bg-accent` is `ToolbarButton`'s own hover, so a group standing among those buttons answers
+ * the pointer the way they do — and only the segments that can act on a click take it.
+ */
+describe('ToggleGroup — hover', () => {
+  it.each([
+    ['text', textOptions, 'small'],
+    ['icon-only', options, 'tree'],
+  ])('highlights the unselected segments of a %s group, never the selected one', (_, opts, value) => {
+    const { container } = render(
+      <ToggleGroup value={value} onValueChange={() => {}} options={opts as typeof options} />
+    )
+    const [selected, unselected] = Array.from(container.querySelectorAll('label'))
+    expect(unselected.className).toContain('hover:bg-accent')
+    // A second fill landing on the one segment that is already filled would read as a state change
+    // on the segment that cannot change.
+    expect(selected.className).not.toContain('hover:bg-accent')
+  })
+
+  it('offers no hover fill at all while the group is disabled', () => {
+    const { container } = render(
+      <ToggleGroup value="small" onValueChange={() => {}} options={textOptions} disabled />
+    )
+    Array.from(container.querySelectorAll('label')).forEach((label) =>
+      expect(label.className).not.toContain('hover:bg-accent')
+    )
   })
 })
 

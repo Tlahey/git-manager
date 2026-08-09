@@ -132,19 +132,27 @@ export function ToggleGroup<T extends string = string>({
               // Re-check either change with `pnpm --filter @git-manager/ui test:apca`.
               checked
                 ? 'bg-control-active text-control-active-foreground font-medium shadow-xs'
-                : stacked
-                  ? // Not muted, unlike the other two shapes — and that is the APCA policy talking,
-                    // not taste. `muted-foreground` is exempt from the Bronze gate only where it is
-                    // decorative (an inactive Chip, a neutral Tag); an unselected segment is a
-                    // *control you click*, and the policy's own words are "actions are never
-                    // muted". At 10px on the track it measures 48Lc against a bar of 75, which the
-                    // matrix catches — see `packages/ui/stories/a11yMatrix.test.tsx`.
-                    'text-foreground'
-                  : cn(
-                      'text-muted-foreground',
-                      // No hover affordance on a group that cannot be changed.
-                      !disabled && 'hover:text-foreground'
-                    )
+                : cn(
+                    // The unselected segments alone are hoverable, and they take `ToolbarButton`'s
+                    // own `hover:bg-accent` so a group standing among those buttons answers the
+                    // pointer the way they do. Never on the selected one: it already carries a
+                    // fill, and a second one landing on top would read as a state change on the
+                    // segment that cannot change.
+                    !disabled && 'hover:bg-accent',
+                    stacked
+                      ? // Not muted, unlike the other shape — and that is the APCA policy talking,
+                        // not taste. `muted-foreground` is exempt from the Bronze gate only where
+                        // it is decorative (an inactive Chip, a neutral Tag); an unselected segment
+                        // is a *control you click*, and the policy's own words are "actions are
+                        // never muted". At 10px on the track it measures 48Lc against a bar of 75,
+                        // which the matrix catches — see `packages/ui/stories/a11yMatrix.test.tsx`.
+                        'text-foreground'
+                      : cn(
+                          'text-muted-foreground',
+                          // No hover affordance on a group that cannot be changed.
+                          !disabled && 'hover:text-foreground'
+                        )
+                  )
             )}
           >
             <input
