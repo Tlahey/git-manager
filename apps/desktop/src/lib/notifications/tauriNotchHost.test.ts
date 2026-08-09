@@ -1,37 +1,48 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createTauriNotchHost, NOTCH_SOUND } from './tauriNotchHost'
 
-const { showWindow, closeWindow, setPosition, raise, clearBackdrop, playSound, calls } = vi.hoisted(
-  () => {
-    const calls: string[] = []
-    return {
-      calls,
-      showWindow: vi.fn(() => {
-        calls.push('show')
-        return Promise.resolve()
-      }),
-      closeWindow: vi.fn(() => {
-        calls.push('close')
-        return Promise.resolve()
-      }),
-      // Typed parameter on purpose: an untyped `vi.fn(() => …)` gives `mock.calls` an empty tuple
-      // type, so reading the position back out fails to compile.
-      setPosition: vi.fn((_position: { x: number; y: number }) => {
-        calls.push('setPosition')
-        return Promise.resolve()
-      }),
-      raise: vi.fn(() => {
-        calls.push('raise')
-        return Promise.resolve()
-      }),
-      clearBackdrop: vi.fn(() => {
-        calls.push('clearBackdrop')
-        return Promise.resolve()
-      }),
-      playSound: vi.fn(),
-    }
+const {
+  showWindow,
+  showWithoutActivating,
+  closeWindow,
+  setPosition,
+  raise,
+  clearBackdrop,
+  playSound,
+  calls,
+} = vi.hoisted(() => {
+  const calls: string[] = []
+  return {
+    calls,
+    showWindow: vi.fn(() => {
+      calls.push('show')
+      return Promise.resolve()
+    }),
+    showWithoutActivating: vi.fn(() => {
+      calls.push('showWithoutActivating')
+      return Promise.resolve()
+    }),
+    closeWindow: vi.fn(() => {
+      calls.push('close')
+      return Promise.resolve()
+    }),
+    // Typed parameter on purpose: an untyped `vi.fn(() => …)` gives `mock.calls` an empty tuple
+    // type, so reading the position back out fails to compile.
+    setPosition: vi.fn((_position: { x: number; y: number }) => {
+      calls.push('setPosition')
+      return Promise.resolve()
+    }),
+    raise: vi.fn(() => {
+      calls.push('raise')
+      return Promise.resolve()
+    }),
+    clearBackdrop: vi.fn(() => {
+      calls.push('clearBackdrop')
+      return Promise.resolve()
+    }),
+    playSound: vi.fn(),
   }
-)
+})
 
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({ show: showWindow, close: closeWindow, setPosition }),
@@ -41,6 +52,7 @@ vi.mock('../../api/notification.api', () => ({
   apiRaiseAboveMenuBar: raise,
   apiClearWindowBackdrop: clearBackdrop,
   apiPlaySystemSound: playSound,
+  apiShowWithoutActivating: showWithoutActivating,
 }))
 
 beforeEach(() => {
@@ -89,12 +101,20 @@ describe('createTauriNotchHost', () => {
     await expect(host.setY(40)).resolves.toBeUndefined()
   })
 
-  it('delegates show and close to the window itself', async () => {
+  it('delegates close to the window itself', async () => {
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
+    await host.close()
+    expect(closeWindow).toHaveBeenCalled()
+  })
+
+  // The whole point of the card: it can arrive while the user is typing in another app and must
+  // not take the keyboard away from them. `WebviewWindow.show()` would — it makes the window key
+  // on macOS and brings the application forward with it.
+  it('reveals the card without activating the app', async () => {
     const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     await host.show()
-    await host.close()
-    expect(showWindow).toHaveBeenCalled()
-    expect(closeWindow).toHaveBeenCalled()
+    expect(showWithoutActivating).toHaveBeenCalled()
+    expect(showWindow).not.toHaveBeenCalled()
   })
 
   it('chimes with the fixed notch sound when the user enabled sound', () => {

@@ -7,6 +7,7 @@ import {
   playSystemSound,
   raiseAboveMenuBar,
   sendNativeNotification,
+  showWithoutActivating,
   type NotchMetrics,
   type TrayIconRect,
 } from '../lib/tauri'
@@ -172,6 +173,25 @@ export async function apiClearWindowBackdrop(): Promise<void> {
     await clearWindowBackdrop()
   } catch (e) {
     console.warn('Failed to clear the notification popover backdrop:', e)
+  }
+}
+
+/**
+ * Reveals the notch window without stealing focus.
+ *
+ * A notification is not a request for attention the user made, so it must never interrupt what they
+ * are doing: `WebviewWindow.show()` makes the window key on macOS and brings the whole application
+ * forward, which pulled the keyboard out of the editor the user was typing in. The backend orders
+ * the window front without activating instead. Failures fall back to the plain `show()` there, so
+ * the worst case is a card that appears rudely rather than one that never appears.
+ */
+export async function apiShowWithoutActivating(): Promise<void> {
+  try {
+    await showWithoutActivating()
+  } catch (e) {
+    console.warn('Failed to show the notch window without activating:', e)
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    await getCurrentWindow().show()
   }
 }
 

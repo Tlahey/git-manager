@@ -96,6 +96,7 @@ use commands::undo::{
 };
 use commands::window::{
     clear_window_backdrop, get_notch_metrics, raise_above_menu_bar, set_window_vibrancy,
+    show_without_activating,
 };
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
@@ -351,6 +352,7 @@ pub fn run() {
             set_window_vibrancy,
             raise_above_menu_bar,
             clear_window_backdrop,
+            show_without_activating,
             get_notch_metrics,
             // Native notifications (clickable — see commands/notification.rs)
             send_native_notification,

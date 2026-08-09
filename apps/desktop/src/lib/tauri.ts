@@ -576,6 +576,13 @@ export const raiseAboveMenuBar = () => invoke<void>('raise_above_menu_bar')
 export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
 
 /**
+ * Reveals this window without activating the app or taking the keyboard — what a notification must
+ * use instead of `WebviewWindow.show()`, which on macOS makes the window key and pulls the whole
+ * application forward.
+ */
+export const showWithoutActivating = () => invoke<void>('show_without_activating')
+
+/**
  * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
  * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
  */
