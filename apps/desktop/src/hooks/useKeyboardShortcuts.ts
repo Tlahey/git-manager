@@ -10,7 +10,7 @@ import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
-import { useRepoViewStore } from '../stores/repoView.store'
+import { goToRepoContent, useRepoViewStore } from '../stores/repoView.store'
 import { useBoardDialogsStore } from '../features/board'
 import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
@@ -80,7 +80,10 @@ export function useKeyboardShortcuts({
       ) {
         e.preventDefault()
         // Clearing the centre slot's other claimants first, exactly as `AiMenu` does: without it
-        // the panel opens behind a diff the user then has to close by hand.
+        // the panel opens behind a diff the user then has to close by hand. `isCommitsView` reads
+        // those claimants, not the active view, so this chord still fires on the board and the files
+        // view — where the panel has no slot at all until the graph is back.
+        goToRepoContent()
         const ui = useRepoUIStore.getState()
         ui.setActiveDiffFile(null)
         ui.setActivePrNumber(null)
@@ -202,9 +205,17 @@ export function useKeyboardShortcuts({
         // and the views have to show where it actually stopped.
         const settle = (p: Promise<void>) =>
           p.catch((err: unknown) => toast.error(String(err))).finally(invalidate)
+        // Undoing is a git operation like any other, and this chord fires on all three views: it
+        // moves history the board and the files view do not draw. Land on the content view so the
+        // step back is visible, and only when there is actually something to step back to — an
+        // exhausted ⌘Z should not quietly reshuffle the screen.
         if (e.shiftKey) {
-          if (undoHistory.canRedo(activeRepo)) settle(undoHistory.redo(activeRepo))
+          if (undoHistory.canRedo(activeRepo)) {
+            goToRepoContent()
+            settle(undoHistory.redo(activeRepo))
+          }
         } else if (undoHistory.canUndo(activeRepo)) {
+          goToRepoContent()
           settle(undoHistory.undo(activeRepo))
         }
         return

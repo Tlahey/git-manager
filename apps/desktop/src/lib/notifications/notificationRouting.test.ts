@@ -15,6 +15,7 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../stores/repoUI.store'
+import { useRepoViewStore } from '../../stores/repoView.store'
 import type { NotificationRoute } from './notificationRoute'
 
 const PR_ROUTE: NotificationRoute = {
@@ -54,6 +55,7 @@ beforeEach(() => {
     activeDiffFile: null,
     aiPanelTarget: null,
   })
+  useRepoViewStore.setState({ view: 'graph' })
   useLaunchpadStore.setState({ activeTab: 'prs', pendingOpenPrId: null })
   useNotificationStore.setState({ notifications: [notification()] })
   useRepoDataStore.setState({ savedRepos: [], recentRepoPaths: [] })
@@ -106,6 +108,29 @@ describe('routeNotification — pull request', () => {
     expect(useNotificationStore.getState().notifications[0].read).toBe(false)
   })
 
+  // The PR page is drawn by the graph view alone. Left on the board, the click would set
+  // `activePrNumber` under a screen that renders neither it nor anything else about the PR.
+  it('brings the content view forward when the tab was left on the board', async () => {
+    findLocalRepoPath.mockResolvedValue('/code/git-manager')
+    useRepoViewStore.setState({ view: 'board' })
+
+    await routeNotification(PR_ROUTE)
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+    expect(useRepoUIStore.getState().activePrNumber).toBe(42)
+  })
+
+  // The Launchpad is a tab of its own, not a repo view: switching the repo view underneath it would
+  // silently discard whichever view the user's repo tab was on.
+  it('leaves the repo view alone on the no-local-clone fallback', async () => {
+    useRepoViewStore.setState({ view: 'board' })
+
+    await routeNotification(PR_ROUTE)
+
+    expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
+    expect(useRepoViewStore.getState().view).toBe('board')
+  })
+
   it('looks the repo up by fullName and name together', async () => {
     await routeNotification(PR_ROUTE)
     expect(findLocalRepoPath).toHaveBeenCalledWith(
@@ -154,11 +179,24 @@ describe('routeNotification — ai-run', () => {
     expect(useRepoUIStore.getState().activePrNumber).toBeNull()
   })
 
+  // The AI panels are part of the graph's centre slot, so the board has nowhere to draw one at all.
+  it('brings the content view forward for the panel', async () => {
+    useRepoViewStore.setState({ view: 'board' })
+
+    await routeNotification({ kind: 'ai-run', repoPath: '/repo', panel: { kind: 'working' } })
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
   it('just opens the repository when the run named no panel', async () => {
+    useRepoViewStore.setState({ view: 'board' })
+
     await routeNotification({ kind: 'ai-run', repoPath: '/repo' })
 
     expect(useRepoUIStore.getState().activeTab).toBe('/repo')
     expect(useRepoUIStore.getState().aiPanelTarget).toBeNull()
+    // Nothing to reveal, so nothing is taken away either.
+    expect(useRepoViewStore.getState().view).toBe('board')
   })
 
   it('does not look for a repo — the run already knew its path', async () => {

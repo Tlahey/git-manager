@@ -5,6 +5,7 @@ import type { GitRef } from '@git-manager/git-types'
 import { GitMerge, FastForward, Trash2, Upload } from 'lucide-react'
 import { toast } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { goToRepoContent } from '../../../stores/repoView.store'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useBranches } from '../../../hooks/useBranches'
 import {
@@ -66,7 +67,14 @@ export function useRefCommands(): PaletteCommand[] {
     queryClient.invalidateQueries({ queryKey: ['tags', activeRepo] })
   }
 
+  // The single funnel for every entry that moves the repository, which is also the right place to
+  // answer "where does the user see this happen": all of them land in the graph, and the palette can
+  // be opened from the board or the files view. The two dialog-based entries below deliberately do
+  // *not* come through here — their dialogs are mounted outside the view switch (`RepoWorkspace`),
+  // so they already work whichever view is up, and dragging the user to the graph to confirm a
+  // remote-tag deletion would be a detour, not a destination.
   function run(action: () => Promise<unknown>, success: string) {
+    goToRepoContent()
     action()
       .then(() => {
         toast.success(success)

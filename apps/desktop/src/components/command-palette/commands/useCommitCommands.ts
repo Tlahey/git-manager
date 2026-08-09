@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { toast, GithubIcon } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { goToRepoContent } from '../../../stores/repoView.store'
 import {
   apiCopyCommitSha,
   apiCherryPickCommit,
@@ -66,6 +67,20 @@ export function useCommitCommands(): PaletteCommand[] {
   const shortOid = toShortOid(selectedCommitOid)
   const shaKeyword = [shortOid, selectedCommitOid]
 
+  /**
+   * Dispatches through the `pendingGraphAction` bridge, from the view that owns it.
+   *
+   * The bridge's other end is an effect inside `GitGraph` (`useGitGraphActions`), so setting a
+   * pending action while the board or the files view is on screen does not merely do nothing: the
+   * value stays in the store, and the dialog springs open later, unprompted, the next time the user
+   * returns to the graph — a reset confirmation appearing on its own, minutes after the keystroke
+   * that asked for it. Landing on the content view first is what keeps the command meaning *now*.
+   */
+  const dispatchToGraph = (action: Parameters<typeof setPendingGraphAction>[0]) => {
+    goToRepoContent()
+    setPendingGraphAction(action)
+  }
+
   const commands: PaletteCommand[] = [
     {
       id: 'commit-reset-soft',
@@ -73,7 +88,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.resetSoft'),
       keywords: shaKeyword,
       icon: createElement(RotateCcw),
-      run: () => setPendingGraphAction({ kind: 'reset', mode: 'soft' }),
+      run: () => dispatchToGraph({ kind: 'reset', mode: 'soft' }),
     },
     {
       id: 'commit-reset-mixed',
@@ -81,7 +96,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.resetMixed'),
       keywords: shaKeyword,
       icon: createElement(RotateCcw),
-      run: () => setPendingGraphAction({ kind: 'reset', mode: 'mixed' }),
+      run: () => dispatchToGraph({ kind: 'reset', mode: 'mixed' }),
     },
     {
       id: 'commit-reset-hard',
@@ -89,7 +104,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.resetHard'),
       keywords: shaKeyword,
       icon: createElement(RotateCcw),
-      run: () => setPendingGraphAction({ kind: 'reset', mode: 'hard' }),
+      run: () => dispatchToGraph({ kind: 'reset', mode: 'hard' }),
     },
     {
       id: 'commit-revert',
@@ -97,7 +112,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.revert'),
       keywords: shaKeyword,
       icon: createElement(Undo2),
-      run: () => setPendingGraphAction({ kind: 'revert' }),
+      run: () => dispatchToGraph({ kind: 'revert' }),
     },
     {
       id: 'commit-branch',
@@ -105,7 +120,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.branch'),
       keywords: shaKeyword,
       icon: createElement(GitBranch),
-      run: () => setPendingGraphAction({ kind: 'branch' }),
+      run: () => dispatchToGraph({ kind: 'branch' }),
     },
     {
       id: 'commit-tag',
@@ -113,7 +128,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.tag'),
       keywords: shaKeyword,
       icon: createElement(Tag),
-      run: () => setPendingGraphAction({ kind: 'tag', annotated: false }),
+      run: () => dispatchToGraph({ kind: 'tag', annotated: false }),
     },
     {
       id: 'commit-tag-annotated',
@@ -121,7 +136,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.tagAnnotated'),
       keywords: shaKeyword,
       icon: createElement(Tag),
-      run: () => setPendingGraphAction({ kind: 'tag', annotated: true }),
+      run: () => dispatchToGraph({ kind: 'tag', annotated: true }),
     },
     {
       id: 'commit-fixup',
@@ -129,7 +144,7 @@ export function useCommitCommands(): PaletteCommand[] {
       title: t('commandPalette.commit.fixup'),
       keywords: shaKeyword,
       icon: createElement(Wrench),
-      run: () => setPendingGraphAction({ kind: 'fixup' }),
+      run: () => dispatchToGraph({ kind: 'fixup' }),
     },
     {
       id: 'commit-cherry-pick',

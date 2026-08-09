@@ -47,3 +47,39 @@ export const useRepoViewStore = create<RepoViewState>((set) => ({
   isPanelOpen: true,
   togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
 }))
+
+/**
+ * Puts the commit graph back on screen — the view that owns the central area, and the only one that
+ * draws what the rest of the app navigates *to*.
+ *
+ * **Why this is a named function and not a bare `setView('graph')` at each call site.** A pull
+ * request, the PR composer and every AI panel are rendered by `GitGraph` alone (see `RepoWorkspace`:
+ * the centre slot holds `BoardPage`, `FilesPage` or `GitGraph`, and neither of the first two reads
+ * `activePrNumber`, `prCreateOpen` or `aiPanelTarget` — the files view draws its own diffs and
+ * nothing else). So anything that sets one of those from *outside* the graph — a clicked
+ * notification, the footer's AI pill, a command palette entry — navigates the user to a destination
+ * the screen does not contain: the state changes, nothing moves, and the click reads as broken. The
+ * same holds for an action that only moves the repository: fetching from the board updated the graph
+ * behind a Kanban.
+ *
+ * Imperative rather than a hook because every caller is one — a Tauri event listener, a palette
+ * `run`, a keydown handler — none of which has a component in scope.
+ *
+ * It deliberately does **not** touch `isPanelOpen`: which panel is folded away is the user's
+ * standing choice about width, not part of where they are being taken.
+ */
+export function goToRepoContent(): void {
+  useRepoViewStore.getState().setView('graph')
+}
+
+/**
+ * Makes room for a *file diff*, which is the one destination two views can draw: the graph opens it
+ * in its centre slot, and the files view is built around it. Only the board has nowhere to put one.
+ *
+ * Separate from {@link goToRepoContent} precisely so it can stay put on those two. Opening a file
+ * from ⌘P while reading the files view must not throw the user onto the graph — the diff was already
+ * going to appear exactly where they were looking.
+ */
+export function goToRepoDiff(): void {
+  if (useRepoViewStore.getState().view === 'board') goToRepoContent()
+}

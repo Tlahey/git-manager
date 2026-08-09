@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { FileText } from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { goToRepoDiff } from '../../../stores/repoView.store'
 import { useTrackedFiles } from '../../../hooks/useTrackedFiles'
 import { apiGetFileHistory } from '../../../api/git.api'
 import type { PaletteCommand } from './types'
@@ -83,6 +84,10 @@ export function useFileLookupCommands(query: string): PaletteCommand[] {
         } catch {
           latestOid = undefined
         }
+        // The graph and the files view both draw a diff, so this only moves the user off the board —
+        // the one view with nowhere to put one. Opening a file from ⌘P while already reading the
+        // files view leaves them exactly where the diff was going to appear.
+        goToRepoDiff()
         setActiveDiffFile({ path, staged: false, oid: latestOid, initialTab: 'file' })
         setActiveLeftPanel('history')
       },

@@ -5,6 +5,7 @@ import { mutate } from 'swr'
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { toast } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { goToRepoContent } from '../../../stores/repoView.store'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../../api/git.api'
 import type { PaletteCommand } from './types'
 
@@ -32,6 +33,17 @@ export function useStashCommands(): PaletteCommand[] {
   const index = selectedStashIndex
   const keywords = [`stash@{${index}}`]
 
+  // All three move the repository and show their result on the graph, while the palette can be
+  // opened from the board or the files view — so landing on the content view is part of running one,
+  // the same rule `useRefCommands` follows. One funnel rather than three copies of the same
+  // then/catch, which is what let the three drift apart in the first place.
+  function run(action: () => Promise<unknown>) {
+    goToRepoContent()
+    action()
+      .then(refresh)
+      .catch((err) => toast.error(String(err)))
+  }
+
   return [
     {
       id: 'stash-apply',
@@ -39,11 +51,7 @@ export function useStashCommands(): PaletteCommand[] {
       title: t('commandPalette.stash.apply'),
       keywords,
       icon: createElement(ArchiveRestore),
-      run: () => {
-        apiStashApply(activeRepo, index)
-          .then(refresh)
-          .catch((err) => toast.error(String(err)))
-      },
+      run: () => run(() => apiStashApply(activeRepo, index)),
     },
     {
       id: 'stash-pop',
@@ -51,11 +59,7 @@ export function useStashCommands(): PaletteCommand[] {
       title: t('commandPalette.stash.pop'),
       keywords,
       icon: createElement(Archive),
-      run: () => {
-        apiStashPop(activeRepo, index)
-          .then(refresh)
-          .catch((err) => toast.error(String(err)))
-      },
+      run: () => run(() => apiStashPop(activeRepo, index)),
     },
     {
       id: 'stash-drop',
@@ -63,11 +67,7 @@ export function useStashCommands(): PaletteCommand[] {
       title: t('commandPalette.stash.drop'),
       keywords,
       icon: createElement(Trash2),
-      run: () => {
-        apiStashDrop(activeRepo, index)
-          .then(refresh)
-          .catch((err) => toast.error(String(err)))
-      },
+      run: () => run(() => apiStashDrop(activeRepo, index)),
     },
   ]
 }

@@ -19,12 +19,14 @@ vi.mock('../../../api/git.api', () => ({ apiStashApply, apiStashPop, apiStashDro
 
 import { useStashCommands } from './useStashCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const INITIAL = useRepoUIStore.getState()
 
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState(INITIAL, true)
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   apiStashApply.mockResolvedValue(undefined)
   apiStashPop.mockResolvedValue(undefined)
   apiStashDrop.mockResolvedValue(undefined)
@@ -66,4 +68,19 @@ describe('useStashCommands', () => {
     byId('stash-drop').run()
     await vi.waitFor(() => expect(apiStashDrop).toHaveBeenCalledWith('/repo', 2))
   })
+
+  // The palette opens on any view, and all three show their result on the graph.
+  it.each([['stash-apply'], ['stash-pop'], ['stash-drop']])(
+    '%s lands on the content view',
+    (id) => {
+      useRepoUIStore.setState({ selectedStashIndex: 0, activeRepo: '/repo' })
+      useRepoViewStore.setState({ view: 'board' })
+
+      commands()
+        .find((c) => c.id === id)!
+        .run()
+
+      expect(useRepoViewStore.getState().view).toBe('graph')
+    }
+  )
 })

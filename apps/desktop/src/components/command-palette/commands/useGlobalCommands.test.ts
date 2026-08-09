@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const { toolbar } = vi.hoisted(() => ({
   toolbar: {
     activeRepo: null as string | null,
@@ -32,12 +30,14 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const INITIAL = useRepoUIStore.getState()
 
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState(INITIAL, true)
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   toolbar.activeRepo = null
   toolbar.hasStashes = false
 })
@@ -119,6 +119,19 @@ describe('useGlobalCommands — run', () => {
     expect(openRepository).toHaveBeenCalledOnce()
   })
 
+  it('repo-files opens the files view', () => {
+    toolbar.activeRepo = '/repo'
+    ids().byId('repo-files')!.run()
+    expect(useRepoViewStore.getState().view).toBe('files')
+  })
+
+  it('the terminal command leaves the view alone — it opens nothing in the app', () => {
+    toolbar.activeRepo = '/repo'
+    useRepoViewStore.setState({ view: 'board' })
+    ids().byId('repo-terminal')!.run()
+    expect(useRepoViewStore.getState().view).toBe('board')
+  })
+
   it('settings commands call onOpenSettings with the section id', () => {
     const onOpenSettings = vi.fn()
     ids(onOpenSettings).byId('settings-ssh')!.run()
@@ -129,5 +142,42 @@ describe('useGlobalCommands — run', () => {
     const onOpenActivityLogs = vi.fn()
     ids(vi.fn(), onOpenActivityLogs).byId('nav-activity-logs')!.run()
     expect(onOpenActivityLogs).toHaveBeenCalledOnce()
+  })
+})
+
+// The palette is the only surface that offers the repo actions from a view that cannot show their
+// result — the toolbar's own copies live on the graph. Run from the board, each of these used to
+// change something entirely off screen.
+describe('useGlobalCommands — repo commands land on the content view', () => {
+  it.each([
+    ['repo-fetch'],
+    ['repo-fetch-all'],
+    ['repo-pull'],
+    ['repo-push'],
+    ['repo-stash'],
+    ['repo-pop'],
+    ['repo-create-pr'],
+  ])('%s brings the graph forward from the board', (id) => {
+    toolbar.activeRepo = '/repo'
+    toolbar.hasStashes = true
+    useRepoViewStore.setState({ view: 'board' })
+
+    ids().byId(id)!.run()
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  it('does so from the files view too', () => {
+    toolbar.activeRepo = '/repo'
+    useRepoViewStore.setState({ view: 'files' })
+    ids().byId('repo-pull')!.run()
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  it('still runs the action it was asked for', () => {
+    toolbar.activeRepo = '/repo'
+    useRepoViewStore.setState({ view: 'board' })
+    ids().byId('repo-fetch')!.run()
+    expect(toolbar.handleFetch).toHaveBeenCalledOnce()
   })
 })

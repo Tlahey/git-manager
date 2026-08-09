@@ -183,6 +183,82 @@ describe('useKeyboardShortcuts — undo/redo', () => {
     expect(undoSpy).not.toHaveBeenCalled()
   })
 
+  // ⇧⌘F is gated on `isCommitsView`, which reads the centre slot's claimants rather than the active
+  // view — so the chord still fires on the board, where the AI search panel has no slot to open in.
+  it('⇧⌘F brings the content view forward for the AI commit search panel', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { key: 'F', ctrlKey: true, shiftKey: true })
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+    expect(useRepoUIStore.getState().aiPanelTarget).toEqual({ kind: 'search' })
+  })
+
+  // ⌘Z fires on all three views but moves history only the graph draws, so an undo run from the
+  // board would otherwise be a git operation with nothing on screen to show for it.
+  it('brings the content view forward when undoing from the board', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+    vi.spyOn(useUndoHistoryStore.getState(), 'undo').mockResolvedValue(undefined)
+    vi.spyOn(useUndoHistoryStore.getState(), 'canUndo').mockReturnValue(true)
+
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { key: 'z', ctrlKey: true })
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  it('brings the content view forward when redoing from the files view', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'files' })
+    vi.spyOn(useUndoHistoryStore.getState(), 'redo').mockResolvedValue(undefined)
+    vi.spyOn(useUndoHistoryStore.getState(), 'canRedo').mockReturnValue(true)
+
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { key: 'Z', ctrlKey: true, shiftKey: true })
+
+    expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+
+  // An exhausted ⌘Z performs no git operation, so it has nothing to reveal — reshuffling the screen
+  // for it would make a dead shortcut look like it did something.
+  it('leaves the view alone when there is nothing to undo', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoViewStore.setState({ view: 'board' })
+    vi.spyOn(useUndoHistoryStore.getState(), 'canUndo').mockReturnValue(false)
+
+    renderHook(() =>
+      useKeyboardShortcuts({
+        onOpenSettings: vi.fn(),
+        onCloseSettings: vi.fn(),
+        showSettings: false,
+      })
+    )
+    dispatchFrom(plainEl, { key: 'z', ctrlKey: true })
+
+    expect(useRepoViewStore.getState().view).toBe('board')
+  })
+
   it('uses metaKey instead of ctrlKey on a Mac user agent', () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     useRepoUIStore.setState({ activeRepo: '/repo' })

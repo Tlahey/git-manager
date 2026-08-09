@@ -49,6 +49,7 @@ vi.mock('../../../api/git.api', () => ({
 import { useRefCommands } from './useRefCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useRepoDataStore } from '../../../stores/repoData.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 
 const REPO = '/repo'
 const INITIAL_UI = useRepoUIStore.getState()
@@ -115,6 +116,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState(INITIAL_UI, true)
   useRepoDataStore.setState(INITIAL_DATA, true)
+  useRepoViewStore.setState({ view: 'graph', isPanelOpen: true })
   branchesQuery.current = []
   tagsQuery.current = []
   apiMergeBranch.mockResolvedValue(undefined)
@@ -201,5 +203,27 @@ describe('useRefCommands — tag actions', () => {
       oid: 'oid-v1.0',
       remote: 'origin',
     })
+  })
+})
+
+// The palette opens on any view. Everything that moves the repository shows its result on the graph,
+// so running one from the board has to land there — while the two confirmation dialogs are mounted
+// outside the view switch and work wherever they are opened from.
+describe('useRefCommands — where the result is seen', () => {
+  it.each([['ref-merge-feature'], ['ref-fast-forward-feature'], ['ref-delete-branch-feature']])(
+    '%s lands on the content view',
+    (id) => {
+      const cmds = setup({ branches: [branch('feature')], head: 'main' })
+      useRepoViewStore.setState({ view: 'board' })
+      byId(cmds, id).run()
+      expect(useRepoViewStore.getState().view).toBe('graph')
+    }
+  )
+
+  it('a remote-tag deletion opens its confirmation without moving the user', () => {
+    const cmds = setup({ tags: [tag('v1.0')] })
+    useRepoViewStore.setState({ view: 'board' })
+    byId(cmds, 'ref-delete-remote-tag-v1.0').run()
+    expect(useRepoViewStore.getState().view).toBe('board')
   })
 })

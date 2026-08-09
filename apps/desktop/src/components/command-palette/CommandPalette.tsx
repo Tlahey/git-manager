@@ -11,6 +11,7 @@ import {
 } from '@git-manager/ui'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { goToRepoContent } from '../../stores/repoView.store'
 import { shortOid } from '../../lib/shortOid'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
@@ -48,6 +49,9 @@ function useCommitLookupCommands(query: string): PaletteCommand[] {
       keywords: [sha],
       icon: createElement(Crosshair),
       run: () => {
+        // Same clearing, one step out: the commit only exists on the graph, so a SHA typed while the
+        // board is on screen has to bring that view back before anything can be focused in it.
+        goToRepoContent()
         // The graph cedes its center panel to any open PR view/composer; clear those so the newly
         // focused commit is actually visible (an open file diff clears itself on selection change).
         setActivePrNumber(null)

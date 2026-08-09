@@ -10,6 +10,7 @@
 import type { TFunction } from '@git-manager/i18n'
 import type { AiRunOrigin } from '../stores/aiActivity.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
+import { goToRepoContent } from '../stores/repoView.store'
 
 /**
  * What each running feature is called, keyed by its `AiFeature.id` from `@git-manager/ai`. A module
@@ -50,7 +51,9 @@ export function aiFeatureLabel(featureId: string, t: TFunction): string {
  *
  * The panel is restored *and* the centre slot's other claimants are cleared, the same handoff the AI
  * menu performs — otherwise the panel reopens behind whatever diff the user has since opened, which
- * would make the affordance look broken precisely when it is doing its job.
+ * would make the affordance look broken precisely when it is doing its job. Bringing the content
+ * view forward is the same clearing one step out: the AI panels are drawn by the graph, so a tab
+ * left on the board or the files view has no slot for one at all.
  *
  * Imperative store access rather than hooks: one caller is a footer button, the other is a Tauri
  * event listener with no component in scope.
@@ -59,6 +62,7 @@ export function goToAiRun(origin: AiRunOrigin): void {
   const ui = useRepoUIStore.getState()
   if (ui.activeTab !== origin.repoPath) ui.setActiveTab(origin.repoPath)
   if (origin.panel) {
+    goToRepoContent()
     ui.setActiveDiffFile(null)
     ui.setActivePrNumber(null)
     ui.setAiPanelTarget(origin.panel)
