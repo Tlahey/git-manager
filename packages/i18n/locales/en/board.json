@@ -254,5 +254,6 @@
   "deleteBoard.local.deleteCardsHint": "The board and its tickets are erased from this machine, backup included. Nothing brings them back.",
   "deleteBoard.local.keepCardsHint": "The board leaves the list, but its backup is kept — it stays under recoverable boards, tickets and all.",
   "deleteBoard.remote.deleteCardsHint": "Every issue on this board is closed on GitHub. Closed, not deleted: GitHub has no way to delete an issue.",
-  "deleteBoard.remote.keepCardsHint": "The issues stay open on GitHub, simply no longer labelled for this board."
+  "deleteBoard.remote.keepCardsHint": "The issues stay open on GitHub, simply no longer labelled for this board.",
+  "card.archivedOn": "Archived on {{date}}"
 }

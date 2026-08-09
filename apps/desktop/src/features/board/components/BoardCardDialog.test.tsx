@@ -285,3 +285,31 @@ describe('BoardCardDialog — read-only for a closed sprint', () => {
     expect(screen.queryByTestId('card-dod-edit')).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Archiving a card from this dialog used to change the screen in no way at all: the action
+ * succeeded, the card left the board *behind* the dialog, and the only thing that said so was the
+ * `⋯` menu quietly swapping "Archive" for "Restore". The badge is the answer to "did that work?".
+ */
+describe('BoardCardDialog — the card says when it is archived', () => {
+  it('shows the badge on an archived card', () => {
+    renderEdit({ card: makeCard({ archivedAt: '2026-08-04T09:30:00.000Z' }) })
+    expect(screen.getByTestId('card-dialog-archived')).toHaveTextContent('Archived')
+  })
+
+  it('shows nothing on a card that is still on the board', () => {
+    renderEdit({ card: makeCard() })
+    expect(screen.queryByTestId('card-dialog-archived')).not.toBeInTheDocument()
+  })
+
+  /**
+   * In the header row, where the eye already is — not somewhere in the scrolling body, which on an
+   * 85vh dialog is a place a confirmation can be missed entirely.
+   */
+  it('puts the badge in the title row', () => {
+    renderEdit({ card: makeCard({ archivedAt: '2026-08-04T00:00:00.000Z' }) })
+
+    // `DialogTitle` is the header's `h2`; a badge moved into the body would no longer be inside one.
+    expect(screen.getByTestId('card-dialog-archived').closest('h2')).not.toBeNull()
+  })
+})

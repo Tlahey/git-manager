@@ -254,5 +254,6 @@
   "deleteBoard.local.deleteCardsHint": "Le tableau et ses tickets sont effacés de cette machine, sauvegarde comprise. Rien ne permet de les récupérer.",
   "deleteBoard.local.keepCardsHint": "Le tableau quitte la liste mais sa sauvegarde est conservée : il reste dans les tableaux récupérables, avec ses tickets.",
   "deleteBoard.remote.deleteCardsHint": "Chaque issue de ce tableau est fermée sur GitHub. Fermée, pas supprimée : GitHub ne permet pas de supprimer une issue.",
-  "deleteBoard.remote.keepCardsHint": "Les issues restent ouvertes sur GitHub, simplement sans le label de ce tableau."
+  "deleteBoard.remote.keepCardsHint": "Les issues restent ouvertes sur GitHub, simplement sans le label de ce tableau.",
+  "card.archivedOn": "Archivée le {{date}}"
 }
