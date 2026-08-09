@@ -652,8 +652,10 @@ describe('BoardPage — relating two cards', () => {
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-links-add'))
-    await userEvent.selectOptions(screen.getByTestId('card-link-kind'), 'blocks')
+    await userEvent.click(screen.getByTestId('card-link-kind'))
+    await userEvent.click(screen.getByTestId('card-link-kind-blocks'))
     await userEvent.click(screen.getByTestId('card-link-option-c2'))
+    await userEvent.click(screen.getByTestId('card-link-draft-add'))
 
     expect(updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), {
       links: [{ targetBoardId: 'b1', targetCardId: 'c2', kind: 'blocks' }],
@@ -676,8 +678,10 @@ describe('BoardPage — relating two cards', () => {
 
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('card-links-add'))
-    await userEvent.selectOptions(screen.getByTestId('card-link-kind'), 'blockedBy')
+    await userEvent.click(screen.getByTestId('card-link-kind'))
+    await userEvent.click(screen.getByTestId('card-link-kind-blockedBy'))
     await userEvent.click(screen.getByTestId('card-link-option-c2'))
+    await userEvent.click(screen.getByTestId('card-link-draft-add'))
 
     expect(updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }), {
       links: [{ targetBoardId: 'b1', targetCardId: 'c1', kind: 'blocks' }],

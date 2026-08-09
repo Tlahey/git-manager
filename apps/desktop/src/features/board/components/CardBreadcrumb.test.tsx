@@ -136,6 +136,30 @@ describe('CardBreadcrumb — the parent segment', () => {
     expect(screen.queryByTestId('card-link-kind')).not.toBeInTheDocument()
   })
 
+  /**
+   * The breadcrumb is the dialog's first line: a picker rendered *inside* it pushed the title, the
+   * description and every field below down the moment the button was pressed. Anchored in a popover,
+   * it hangs over the layout instead of displacing it — which is what "not a descendant of the
+   * breadcrumb" tests, the DOM place being the only thing jsdom can see of a portal.
+   */
+  it('hangs the picker over the card rather than inside the path', async () => {
+    renderCrumb({ card: child, cards: [child, card('epic')] })
+    await userEvent.click(screen.getByTestId('card-breadcrumb-add-parent'))
+
+    const picker = screen.getByTestId('card-link-picker')
+    expect(picker).toBeInTheDocument()
+    expect(screen.getByTestId('card-breadcrumb')).not.toContainElement(picker)
+  })
+
+  /** The search field is what the picker invites you to type into — not whichever control the
+   * popover would have focused on its own. */
+  it('lands the caret in the search field', async () => {
+    renderCrumb({ card: child, cards: [child, card('epic')] })
+    await userEvent.click(screen.getByTestId('card-breadcrumb-add-parent'))
+
+    expect(screen.getByTestId('card-link-search')).toHaveFocus()
+  })
+
   it('offers nothing to add once the card has a parent', () => {
     renderCrumb({ card: child, cards: [epic, child] })
     expect(screen.queryByTestId('card-breadcrumb-add-parent')).not.toBeInTheDocument()
