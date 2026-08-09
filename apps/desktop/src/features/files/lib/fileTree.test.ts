@@ -69,14 +69,34 @@ describe('filterFileTree', () => {
     expect(filtered[0].children?.[0].children?.map((n) => n.name)).toEqual(['Button.tsx'])
   })
 
-  it('matches case-insensitively on the whole path', () => {
-    expect(filterFileTree(tree, 'SRC/INDEX').map((n) => n.name)).toEqual(['src'])
+  it('matches a file name case-insensitively', () => {
+    expect(filterFileTree(tree, 'BUTTON')[0].children?.[0].children?.map((n) => n.name)).toEqual([
+      'Button.tsx',
+    ])
   })
 
-  it('keeps a matching directory whole, contents included', () => {
-    const filtered = filterFileTree(tree, 'docs')
+  /**
+   * A directory is never a match itself. It used to be one — matched on its path and kept whole —
+   * so a result meant either "the file you asked for" or "a file under a folder you asked for", and
+   * the row you clicked was rarely the row you wanted.
+   */
+  it('does not answer a query naming a directory', () => {
+    expect(filterFileTree(tree, 'docs')).toEqual([])
+    expect(filterFileTree(tree, 'components')).toEqual([])
+  })
+
+  /** Matching the name rather than the path is what keeps the rule above from coming back in
+   * through the path: `src/index.ts` must not answer `src` either. */
+  it('does not answer a query naming a directory in the path of a file', () => {
+    expect(filterFileTree(tree, 'src/index')).toEqual([])
+    expect(filterFileTree(tree, 'src')).toEqual([])
+  })
+
+  it('keeps the directories above a match, as the path to it and nothing more', () => {
+    const filtered = filterFileTree(tree, 'setup')
 
     expect(filtered.map((n) => n.name)).toEqual(['docs'])
+    expect(filtered[0].children?.map((n) => n.name)).toEqual(['guide'])
     expect(filtered[0].children?.[0].children?.map((n) => n.name)).toEqual(['setup.md'])
   })
 

@@ -107,17 +107,27 @@ describe('FileTreeSidebar', () => {
   })
 
   /**
-   * The filter matches the **full path**, so a query naming a folder keeps files whose own name
-   * contains nothing of it. Marking only the folder is the honest answer — it *is* the match, and
-   * the tree renders expanded while searching, so it is on screen right above the file.
+   * A folder is never a result, so every row on screen is a file that contains what you typed and
+   * carries the mark to prove it. While folders *were* matchable — on their full path, kept whole
+   * with everything under them — a query like `components` filled the tree with files that had
+   * nothing of it in their own name and nothing to highlight, and the row you clicked was rarely
+   * the row you meant.
    */
-  it('marks the folder, not the file, when the query matched the path above it', () => {
+  it('answers nothing for a query that only names a folder', () => {
     useFileExplorerStore.getState().actions.setTreeSearchQuery('components')
+    render(<FileTreeSidebar />)
+
+    expect(screen.queryByTestId('file-tree-node-src/components/Button.tsx')).not.toBeInTheDocument()
+    expect(screen.getByText('No files found')).toBeInTheDocument()
+  })
+
+  it('marks every row it does show, folders on the way included', () => {
+    useFileExplorerStore.getState().actions.setTreeSearchQuery('Button')
     const { container } = render(<FileTreeSidebar />)
 
-    expect(screen.getByTestId('file-tree-node-src/components/Button.tsx')).toBeInTheDocument()
+    // `src` and `components` are the path to the match, not matches — only the file is marked.
     const marks = Array.from(container.querySelectorAll('mark'))
-    expect(marks.map((m) => m.textContent)).toEqual(['components'])
+    expect(marks.map((m) => m.textContent)).toEqual(['Button'])
   })
 
   it('tells the user when a search matches nothing', () => {

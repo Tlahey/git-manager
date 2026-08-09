@@ -25,13 +25,21 @@ export function findDirectoryNodes(nodes: FileNode[], dirPath: string): FileNode
 }
 
 /**
- * Narrows a tree to the nodes matching `query` (case-insensitive, matched on the full path).
+ * Narrows a tree to the **files** whose own name contains `query` (case-insensitive), keeping the
+ * directories above them as the path to a result and nothing more.
  *
- * A directory survives when it matches itself — it then keeps all of its contents — or when one of
- * its descendants does, in which case only the matching branch is kept. Filtering the tree rather
- * than the flat path list is what lets a folder name be searched for, and it pairs with the
- * sidebar rendering matches expanded: a filtered tree the user still has to unfold by hand hides
- * the very results it just found.
+ * **A directory is never a match itself**, and that is the rule the whole shape rests on. It used
+ * to be one — matched on its full path, and kept whole with every file under it — which made a
+ * result mean two different things: a file you asked for, or a file that happened to sit under a
+ * folder you asked for. Searching `src` then "found" the entire source tree, so the row you clicked
+ * was rarely the row you wanted, and the highlight had nothing to mark on it because the match was
+ * three levels up in the path.
+ *
+ * Matching the *name* rather than the path follows from that: `src/Button.tsx` must not answer a
+ * query of `src` either, or the folder rule comes back in through the path. Every surviving row is
+ * a file that contains what you typed, and carries the mark to prove it. Pair with the sidebar
+ * rendering matches expanded — a filtered tree the user still has to unfold by hand hides the very
+ * results it just found.
  */
 export function filterFileTree(nodes: FileNode[], query: string): FileNode[] {
   const needle = query.trim().toLowerCase()
@@ -39,14 +47,12 @@ export function filterFileTree(nodes: FileNode[], query: string): FileNode[] {
 
   const filtered: FileNode[] = []
   for (const node of nodes) {
-    if (node.path.toLowerCase().includes(needle)) {
-      filtered.push(node)
+    if (node.isDir) {
+      const children = filterFileTree(node.children ?? [], needle)
+      if (children.length > 0) filtered.push({ ...node, children })
       continue
     }
-    if (node.isDir && node.children) {
-      const children = filterFileTree(node.children, needle)
-      if (children.length > 0) filtered.push({ ...node, children })
-    }
+    if (node.name.toLowerCase().includes(needle)) filtered.push(node)
   }
   return filtered
 }
