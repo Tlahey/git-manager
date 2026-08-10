@@ -7,6 +7,7 @@ import type {
 } from './config'
 import { getAiPreset } from './presets'
 import { RESERVED_OUTPUT_TOKENS } from './promptSize'
+import { newAiRequestId } from './requestId'
 
 /**
  * Which of the configured models a feature's calls should go to.
@@ -101,7 +102,12 @@ export type AiFeature<Input, Output = string> =
  * caller listens to; the promise itself resolves when the generation *finishes* (or rejects if it
  * fails), not when the request is accepted — so awaiting it is a valid way to know the model is
  * done, which is what the app's footer activity indicator relies on. `runComplete` resolves with the
- * full response text. Neither knows anything about *which* feature it serves. */
+ * full response text. Neither knows anything about *which* feature it serves.
+ *
+ * **Both take a request id, and for the same reason: it is what {@link cancel} names.** It used to
+ * be the stream's alone, because a stream has events to stop emitting and a completion has nothing
+ * visible to stop — which mistook what the user is waiting for. The request is what costs their
+ * time, and the features that map over files or commits are made of hundreds of completions. */
 export interface AiTransport {
   runStream(
     config: AiGenerateConfig,
@@ -113,10 +119,11 @@ export interface AiTransport {
     config: AiGenerateConfig,
     systemPrompt: string,
     userPrompt: string,
-    schema?: JsonSchema
+    schema: JsonSchema | undefined,
+    requestId: string
   ): Promise<string>
   checkStatus(config: AiCheckConfig): Promise<AiProviderStatus>
-  /** Cancels one streaming generation by the id it was started with. */
+  /** Cancels one call — streaming or completion — by the id it was started with. */
   cancel(requestId: string): Promise<void>
 }
 
@@ -178,7 +185,22 @@ export interface StreamingFeatureService<Input> {
 /** A completion feature exposed as a service. `run` resolves the request, awaits the full response,
  * and returns the feature's typed, parsed output. */
 export interface CompletionFeatureService<Input, Output> {
-  run(connection: AiConnectionConfig, input: Input): Promise<Output>
+  /**
+   * `requestId` is **optional here, unlike on the streaming service, and the difference is not an
+   * oversight.** A stream's caller has to mint the id because it is listening for events before the
+   * request starts, and a listener that does not know its own id cannot tell its tokens from another
+   * feature's. A completion answers on the promise itself, so nothing outside needs a name for it —
+   * except a caller that intends to *stop* it, which cannot cancel what it did not name. So: minted
+   * here when the caller has no use for it, supplied by the caller when it is running many calls and
+   * tracking which are still open (see `AiCallTracker`).
+   *
+   * One id per call either way. The backend's registry replaces an entry on re-registration and
+   * removes it on completion, so two concurrent calls sharing an id leaves one of them uncancellable
+   * and lets the first to finish unregister the other's flag.
+   */
+  run(connection: AiConnectionConfig, input: Input, requestId?: string): Promise<Output>
+  /** Stops one call started by {@link run}, named by the id it was given. */
+  cancel(requestId: string): Promise<void>
 }
 
 export function createStreamingService<Input>(
@@ -207,7 +229,7 @@ export function createCompletionService<Input, Output>(
   transport: AiTransport
 ): CompletionFeatureService<Input, Output> {
   return {
-    async run(connection, input) {
+    async run(connection, input, requestId) {
       const config = resolveGenerateConfig(
         connection,
         feature.temperature,
@@ -219,9 +241,13 @@ export function createCompletionService<Input, Output>(
         config,
         feature.instruction,
         feature.buildPrompt(input),
-        feature.schema
+        feature.schema,
+        requestId ?? newAiRequestId()
       )
       return feature.parse(raw)
+    },
+    cancel(requestId) {
+      return transport.cancel(requestId)
     },
   }
 }
@@ -348,7 +374,11 @@ export function createStatusService(transport: AiTransport): AiStatusService {
           config,
           MODEL_PROBE_INSTRUCTION,
           MODEL_PROBE_PROMPT,
-          MODEL_PROBE_SCHEMA
+          MODEL_PROBE_SCHEMA,
+          // Minted and dropped: the probe has no cancel button — it is capped at 32 output tokens
+          // and 30 seconds — but the backend keys its registry by id, so every call needs one of its
+          // own or two probes at once would share an entry.
+          newAiRequestId()
         )
         const reply = raw.trim()
         return {

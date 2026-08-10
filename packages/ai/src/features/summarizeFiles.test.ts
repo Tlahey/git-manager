@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { AiContext } from '../config'
+import { COMPLETION_CANCELLED } from './completionCancelled'
 import { summarizeFiles, SummaryRunCancelled, type SummaryProgress } from './summarizeFiles'
 
 function context(paths: string[]): AiContext {
@@ -103,5 +104,68 @@ describe('summarizeFiles', () => {
     ).rejects.toThrow(SummaryRunCancelled)
 
     expect(summarize).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * The half that used to be missing. Stopping between calls left whatever was already sent running
+   * to the end — one call at the shipped concurrency, eight at the ceiling — which is the whole of
+   * "the UI says cancelled and the model keeps working".
+   */
+  it('aborts the call already in flight, naming the id it was dispatched under', async () => {
+    const pending = new Map<string, (reason: unknown) => void>()
+    const summarize = vi.fn(
+      (_input: unknown, requestId: string) =>
+        new Promise<{ intent: string; area: string }>((_resolve, reject) => {
+          pending.set(requestId, reject)
+        })
+    )
+    let cancelled = false
+    const cancelledIds: string[] = []
+
+    const run = summarizeFiles(context(['a.ts', 'b.ts']), summarize, undefined, {
+      shouldCancel: () => cancelled,
+      cancelCall: (requestId) => {
+        cancelledIds.push(requestId)
+        pending.get(requestId)?.(new Error(`AI provider error: ${COMPLETION_CANCELLED}`))
+      },
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(summarize).toHaveBeenCalledTimes(1)
+    expect(cancelledIds).toEqual([])
+
+    cancelled = true
+    await expect(run).rejects.toThrow(SummaryRunCancelled)
+    // Not "one call was dispatched and abandoned": the request itself was called off, by the id it
+    // was sent under — and only that one, since only that one was open.
+    expect(cancelledIds).toEqual([...pending.keys()])
+    expect(cancelledIds).toHaveLength(1)
+  })
+
+  /**
+   * A file kept with empty fields means "the model could not describe this one", and every
+   * consumer's instruction has a rule for handling that. The user's own stop is not that, and a run
+   * that recorded it as one would hand the composing call a gap it would write around.
+   */
+  it('does not record a cancelled file as one that could not be described', async () => {
+    const summarize = vi.fn(
+      async () =>
+        // Rejected in the same tick, as an aborted request is: no cancelCall needed to reproduce
+        // what the caller sees.
+        Promise.reject(new Error(`AI provider error: ${COMPLETION_CANCELLED}`)) as Promise<{
+          intent: string
+          area: string
+        }>
+    )
+
+    const settled: string[] = []
+    await expect(
+      summarizeFiles(context(['a.ts', 'b.ts']), summarize, undefined, {
+        onProgress: (p) => settled.push(`${p.completed}`),
+      })
+    ).rejects.toThrow(SummaryRunCancelled)
+
+    // Nothing settled: the first file's cancellation ended the run rather than becoming a result.
+    expect(settled).toEqual(['0'])
   })
 })

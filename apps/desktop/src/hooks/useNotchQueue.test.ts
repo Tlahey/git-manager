@@ -8,20 +8,21 @@ import type { NotchRequest } from '../lib/notifications/notchDelivery'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
 
-const { openWindow, closeWindow, emitUpdate, sendNative, dismissedHandlers, unlisten } = vi.hoisted(
-  () => ({
+const { openWindow, closeWindow, warmUp, emitUpdate, sendNative, dismissedHandlers, unlisten } =
+  vi.hoisted(() => ({
     openWindow: vi.fn(),
     closeWindow: vi.fn(),
+    warmUp: vi.fn(),
     emitUpdate: vi.fn(),
     sendNative: vi.fn(),
     dismissedHandlers: { current: [] as ((p: { notchId: string }) => void)[] },
     unlisten: vi.fn(),
-  })
-)
+  }))
 
 vi.mock('../lib/notifications/notchWindow', () => ({
   openNotchWindow: (...a: unknown[]) => openWindow(...a),
   closeNotchWindow: (...a: unknown[]) => closeWindow(...a),
+  warmUpNotchWindow: (...a: unknown[]) => warmUp(...a),
 }))
 
 vi.mock('../api/notification.api', () => ({
@@ -194,6 +195,23 @@ describe('useNotchQueue', () => {
     expect(openWindow).not.toHaveBeenCalled()
   })
 
+  // Creating a webview activates the whole application on macOS, so the notch window is made once,
+  // here, while the app is frontmost at launch — never by a card, which is by definition raised
+  // while the user is somewhere else. See `notchWindow.ts`'s header.
+  it('parks a notch window at startup, so no card ever has to create one', async () => {
+    renderHook(() => useNotchQueue())
+
+    await waitFor(() => expect(warmUp).toHaveBeenCalledTimes(1))
+  })
+
+  it('parks nothing in the e2e build, whose driver handles a second window badly', async () => {
+    vi.stubEnv('VITE_E2E', 'true')
+    renderHook(() => useNotchQueue())
+    await waitFor(() => expect(closeWindow).toHaveBeenCalled())
+
+    expect(warmUp).not.toHaveBeenCalled()
+  })
+
   it('opens a window for the card that becomes current', async () => {
     renderHook(() => useNotchQueue())
     enqueue(request('a'))
@@ -267,6 +285,28 @@ describe('useNotchQueue', () => {
 
     expect(useNotchQueueStore.getState().queue.current?.model.id).toBe('b')
     expect(openWindow).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a window death for a card that has since been re-opened under the same id', async () => {
+    // The id is not enough on its own here: the *same* card can be dropped and shown again within
+    // a few hundred milliseconds (a producer that removes and re-enqueues in consecutive ticks —
+    // the focus gate that first showed this up is gone, the shape is not), and the first
+    // window's death notice lands after the second window is already up. Applying it retired the
+    // card that was on screen and left the queue quiet with a window nobody owned — one of the two
+    // ways a running search ended up showing no card at all.
+    renderHook(() => useNotchQueue())
+    enqueue(request('search'))
+    await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      useNotchQueueStore.getState().remove('search')
+    })
+    enqueue(request('search'))
+    await waitFor(() => expect(openWindow).toHaveBeenCalledTimes(2))
+
+    await reportWindowDestroyed(0)
+
+    expect(useNotchQueueStore.getState().queue.current?.model.id).toBe('search')
   })
 
   it('pushes an update in place when the same card changes, instead of reopening', async () => {

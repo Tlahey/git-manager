@@ -36,6 +36,7 @@
 //! API, which bars the app from the Mac App Store — not a constraint here, since
 //! git-manager ships through GitHub releases and its own updater.
 
+use crate::error::AppError;
 use tauri::{Theme, WebviewWindow};
 
 /// Applies (or removes) the native window material behind the webview.
@@ -527,10 +528,13 @@ pub fn show_without_activating(window: WebviewWindow) {
         use objc2_app_kit::NSWindow;
 
         let Ok(ptr) = window.ns_window() else {
-            // No native handle to be gentle with — better a card that shows (and takes focus) than
-            // one that never appears at all.
-            eprintln!("[notification-popover] no ns_window handle; falling back to show()");
-            let _ = window.show();
+            // Deliberately no `window.show()` fallback. It used to be one, on the reasoning that a
+            // card that appears rudely beats one that never appears — and that trade is wrong.
+            // `show()` is `makeKeyAndOrderFront:`, which pulls the whole application forward and
+            // takes the keyboard out of whatever the user is actually typing in. A card is a
+            // courtesy; one that costs the user their keystrokes costs more than it is worth. So
+            // the failure mode is silence (and this line in the log), not an interruption.
+            eprintln!("[notification-popover] no ns_window handle; card not shown");
             return;
         };
         // SAFETY: `ns_window()` hands back the live NSWindow for this webview window, and the
@@ -547,6 +551,185 @@ pub fn show_without_activating(window: WebviewWindow) {
         // it does not activate the application.
         let _ = window.show();
     }
+}
+
+/// Whether this application is the active (frontmost) one right now.
+///
+/// Exists for exactly one caller: the notch window's opener, which refuses to *create* a window
+/// while the app is in the background — because creating one activates the whole application, and
+/// nothing can reliably undo that (handing the activation back afterwards was tried, shipped, and
+/// reported from the real app as still visibly stealing the window). See `notchWindow.ts`.
+///
+/// Deliberately not read as `document.hasFocus()` in the frontend. That answers "does *this
+/// webview* have focus", which is false whenever another window of this same app is key — the
+/// merge editor, the fixup window, the action journal. Deactivating the application on the
+/// strength of that would throw the user out of a window they were working in. `NSApplication`'s
+/// own flag is about the *application*, which is the thing being activated and so the thing worth
+/// asking about.
+///
+/// `true` when there is nothing to ask (off macOS, or off the main thread) — the answer that keeps
+/// a platform with no such problem, and a call that could not be made, from silencing every card.
+///
+/// NOT `async`, for the same reason as `raise_above_menu_bar`: `NSApplication` is main-thread-only
+/// in AppKit's own terms, and Tauri runs async commands on a worker.
+#[tauri::command]
+pub fn is_app_active() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSApplication;
+        use objc2_foundation::MainThreadMarker;
+
+        let Some(mtm) = MainThreadMarker::new() else {
+            return true;
+        };
+        // SAFETY: a read-only property, on the main thread the marker proves this call is on.
+        unsafe { NSApplication::sharedApplication(mtm).isActive() }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        true
+    }
+}
+
+/// The escape hatch for the panel conversion below. Set it to `0` (or `false`/`off`) to switch the
+/// conversion off; anything else, including leaving it unset, leaves it on.
+///
+/// It is a *disable* switch rather than an enable one, and the direction is the point: this ships
+/// on, but an earlier form of the same mechanism aborted the process, so a user who meets a crash
+/// has to be able to get a working app back without waiting for a release. An environment variable
+/// is the only lever that works when the crash happens before any setting can be read.
+#[cfg(target_os = "macos")]
+pub const NOTCH_PANEL_ENV: &str = "GIT_MANAGER_NOTCH_PANEL";
+
+/// Whether the panel conversion is switched on — true unless [`NOTCH_PANEL_ENV`] says otherwise.
+#[cfg(target_os = "macos")]
+fn notch_panel_enabled() -> bool {
+    match std::env::var(NOTCH_PANEL_ENV) {
+        Ok(value) => !matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "0" | "false" | "off" | "no"
+        ),
+        Err(_) => true,
+    }
+}
+
+/// Turns the notch window into a nonactivating `NSPanel`, so that clicking the card does not drag
+/// the whole application in front of the user.
+///
+/// ## What it is trying to settle
+///
+/// Clicking any window of a *background* macOS application activates that application. A notch card
+/// is only ever raised while the user is in another app, so pressing its ✕ takes them out of
+/// whatever they were doing. `NSWindowStyleMaskNonactivatingPanel` is the one documented way to opt
+/// out — and only an `NSPanel` may carry it, which is why the window's class has to change.
+///
+/// Two things already tried and ruled out, so nobody repeats them: `focus: false` at creation and
+/// `setFocusable(false)` per card. Both govern whether a *window* becomes key; both were plumbed
+/// end to end and the bug survived. The activation is the *application's*, and no window-level flag
+/// reaches it.
+///
+/// ## Why it is opt-in, and why the class swap is not hand-rolled this time
+///
+/// A hand-written version of this shipped and **crashed the app** (`EXC_CRASH`/`SIGABRT`) — an
+/// AppKit assertion inside `-[NSView(NSSafeAreas) safeAreaRect]`, reached from tracking-area
+/// routing on a mouse-enter over the card. That version re-classed the *view* as well as the
+/// window; this one never touches a view, which is the single largest difference between them.
+/// Whether the remaining half is also unsafe is exactly what this experiment exists to find out, so
+/// it is off unless `GIT_MANAGER_NOTCH_PANEL` is set: a crash then costs the user unsetting a
+/// variable rather than a rebuild, and a default build cannot regress.
+///
+/// ## The one integration trap
+///
+/// The plugin's panel class re-implements `canBecomeKeyWindow` but declares **no `focusable` ivar**,
+/// where tao's window class has one. `WebviewWindow::set_focusable` writes that ivar *by name*, so
+/// calling it on a converted window would not merely misbehave — it would abort the process. The
+/// frontend therefore asks this first and skips `setFocusable` whenever it answers `true`
+/// (`notchWindow.ts`). Nothing else may call `set_focusable` on this window.
+///
+/// Returns whether the window is now a nonactivating panel. `false` is the ordinary answer, and the
+/// caller's cue that the old, key-window-based handling still applies.
+///
+/// NOT `async`, for the same reason as every other command here: AppKit window mutations must be on
+/// the main thread, and Tauri runs async commands on a worker.
+#[tauri::command]
+pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::Manager;
+        use tauri_nspanel::{ManagerExt, WebviewWindowExt};
+
+        // `NSWindowStyleMaskNonactivatingPanel`. Only a panel may carry it, which is the entire
+        // reason the class has to change at all.
+        const NONACTIVATING_PANEL: i32 = 1 << 7;
+
+        if !notch_panel_enabled() {
+            return false;
+        }
+
+        // Already converted: re-assert the mask and stop. `to_panel` a second time would re-class a
+        // window that is already the panel class, and the plugin keeps its own registry.
+        let panel = match app.get_webview_panel(&label) {
+            Ok(panel) => panel,
+            Err(_) => {
+                let Some(window) = app.get_webview_window(&label) else {
+                    eprintln!("[notch] no window labelled {label} to turn into a panel");
+                    return false;
+                };
+                match window.to_panel() {
+                    Ok(panel) => panel,
+                    Err(e) => {
+                        eprintln!("[notch] could not turn the card into a panel: {e:?}");
+                        return false;
+                    }
+                }
+            }
+        };
+
+        panel.set_style_mask(NONACTIVATING_PANEL);
+        // A panel's own default is to disappear whenever its application is deactivated — which for
+        // a card raised *because* the user is elsewhere would mean never being seen at all.
+        panel.set_hides_on_deactivate(false);
+        // The level and the collection behaviour are deliberately left alone: `raise_above_menu_bar`
+        // runs later, from the card's own `prepare()`, and must keep the last word on both.
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Nothing to do, and nothing wrong: no other platform activates a whole application because
+        // one of its windows was clicked.
+        let _ = (app, label);
+        false
+    }
+}
+
+/// Points an existing window at a new URL, instead of closing it and opening another.
+///
+/// The notch's reason for existing: creating a webview activates the whole application (see
+/// [`is_app_active`]), and a card is by definition raised while the user is somewhere else. One window, created once while the app is legitimately frontmost and then *navigated*
+/// per card, is the only shape that never pays that price — a navigation touches no
+/// `NSApplication` at all.
+///
+/// It also keeps what made the per-card window worth having: the card's content still travels in
+/// the URL, so the page still mounts with everything it needs and there is still no race between a
+/// window appearing and its content arriving.
+///
+/// NOT `async`: `navigate` posts a message to the event loop, and `send_user_message` runs it
+/// inline when it is already on the main thread — which a synchronous command is. From a worker it
+/// would take the long way round for no reason.
+#[tauri::command]
+pub fn navigate_window(app: tauri::AppHandle, label: String, url: String) -> Result<(), String> {
+    use tauri::Manager;
+
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| AppError::InvalidInput(format!("no window labelled {label}")))?;
+    let parsed: tauri::Url = url
+        .parse()
+        .map_err(|e| AppError::InvalidInput(format!("unusable window URL {url}: {e}")))?;
+    window
+        .navigate(parsed)
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(())
 }
 
 /// The real per-machine notch/camera-housing geometry, read from AppKit instead of guessed at.

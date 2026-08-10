@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import {
   AiCallTimedOut,
+  AiCallTracker,
   commitRelevanceFeature,
   commitSearchAnswerFeature,
   scanCommits,
@@ -173,8 +174,21 @@ export function useAiCommitSearch(repoPath: string) {
   /** The question the visible results answer — kept so the panel labels them after the input moves. */
   const [askedQuestion, setAskedQuestion] = useState('')
 
-  /** Set by `cancelSearch`, polled by the scan between commits: the loop closed over an old render. */
+  /**
+   * Set by `cancelSearch`, polled by the scan before each commit and while its calls are in flight:
+   * the loop closed over an old render.
+   */
   const cancelledRef = useRef(false)
+  /**
+   * The calls this hook dispatches *itself*, so `cancelSearch` can stop them.
+   *
+   * Only one such call exists — the quick mode's triage over every commit message — and it is
+   * exactly the kind that needs this: a single completion carrying a month of subjects, which on a
+   * local model is the longest request of the run and the one most likely to be underway when the
+   * user gives up. Everything inside `scanCommits` is tracked by `scanCommits`, whose own tracker is
+   * driven by the `shouldCancel` poll below.
+   */
+  const ownCalls = useRef<AiCallTracker | null>(null)
   /**
    * Verdicts by their position in history, holes where a commit has not been decided yet.
    *
@@ -191,6 +205,7 @@ export function useAiCommitSearch(repoPath: string) {
 
       cancelledRef.current = false
       ordered.current = []
+      ownCalls.current = new AiCallTracker(commitQuickScanService.cancel)
       setCancelled(false)
       setScanError(null)
       setResults([])
@@ -242,20 +257,26 @@ export function useAiCommitSearch(repoPath: string) {
       async function runQuickScan(commitScan: AiCommitScan): Promise<ScannedCommit[]> {
         // The triage is one call: `total: 1` is literal, and its own phase so the panel can name it.
         setProgress({ phase: 'triaging', completed: 0, total: 1 })
-        const matches = await commitQuickScanService.run(aiConnection, {
-          question: trimmed,
-          repoName: commitScan.repoName,
-          branch: commitScan.branch,
-          commits: commitScan.commits.map((c) => ({
-            shortOid: c.shortOid,
-            subject: c.subject,
-            body: c.body,
-            author: c.author,
-            date: isoDay(c.timestamp),
-          })),
-          language,
-          contextTokens,
-        })
+        const matches = await ownCalls.current!.track((requestId) =>
+          commitQuickScanService.run(
+            aiConnection,
+            {
+              question: trimmed,
+              repoName: commitScan.repoName,
+              branch: commitScan.branch,
+              commits: commitScan.commits.map((c) => ({
+                shortOid: c.shortOid,
+                subject: c.subject,
+                body: c.body,
+                author: c.author,
+                date: isoDay(c.timestamp),
+              })),
+              language,
+              contextTokens,
+            },
+            requestId
+          )
+        )
 
         const shortlisted = new Set(matches.map((m) => m.shortOid))
         const candidates = commitScan.commits.filter((c) => shortlisted.has(c.shortOid))
@@ -282,20 +303,28 @@ export function useAiCommitSearch(repoPath: string) {
        * reading every file. The commit's message travels along because a path is barely legible
        * without it: `index.ts` means nothing until you know the commit was about the graph.
        */
-      async function selectFiles(commit: ScanCommit, paths: string[]): Promise<string[]> {
-        return commitFileScanService.run(aiConnection, {
-          question: trimmed,
-          commit: {
-            shortOid: commit.shortOid,
-            subject: commit.subject,
-            body: commit.body,
+      async function selectFiles(
+        commit: ScanCommit,
+        paths: string[],
+        requestId: string
+      ): Promise<string[]> {
+        return commitFileScanService.run(
+          aiConnection,
+          {
+            question: trimmed,
+            commit: {
+              shortOid: commit.shortOid,
+              subject: commit.subject,
+              body: commit.body,
+            },
+            files: paths.map((path) => ({
+              path,
+              status: commit.files.find((f) => f.path === path)?.status ?? 'modified',
+            })),
+            contextTokens,
           },
-          files: paths.map((path) => ({
-            path,
-            status: commit.files.find((f) => f.path === path)?.status ?? 'modified',
-          })),
-          contextTokens,
-        })
+          requestId
+        )
       }
 
       async function runDeepScan(
@@ -312,8 +341,8 @@ export function useAiCommitSearch(repoPath: string) {
           // is the likeliest failure of a per-commit scan (one call per commit, each reading a
           // whole diff, against a budget sized for a single quick generation) and the only one the
           // user can fix from Settings.
-          (input) =>
-            commitRelevanceService.run(aiConnection, input).catch((error: unknown) => {
+          (input, requestId) =>
+            commitRelevanceService.run(aiConnection, input, requestId).catch((error: unknown) => {
               if (isAiTimeout(String(error))) throw new AiCallTimedOut()
               throw error
             }),
@@ -332,6 +361,15 @@ export function useAiCommitSearch(repoPath: string) {
               setResults(ordered.current.filter((r): r is ScannedCommit => r !== undefined))
             },
             shouldCancel: () => cancelledRef.current,
+            // What makes "stop" mean stop. Both of the scan's calls — the per-file verdict and the
+            // quick mode's per-commit narrowing — are dispatched under ids `scanCommits` tracks, and
+            // this is how it hands them back to the backend. Without it the poll above could only
+            // stop *dispatching*, which on a run of hundreds of file reads left the model working
+            // for as long as the call in flight took.
+            //
+            // Which service's `cancel` this is does not matter: they all resolve to the one
+            // `cancel_generation` command, and the id alone names the call.
+            cancelCall: commitRelevanceService.cancel,
             concurrency: aiConnection.concurrency,
             selectFiles: narrowFiles,
           }
@@ -411,9 +449,17 @@ export function useAiCommitSearch(repoPath: string) {
     [repoPath, aiConnection, language, contextTokens, run, addRun]
   )
 
-  /** Stops the scan at its next commit boundary, then the answer stream if it has started. */
+  /**
+   * Stops everything the run has open: the triage call this hook dispatched, whatever the scan has
+   * in flight, and the answer stream if it has started.
+   *
+   * The scan's own calls are not named here — `scanCommits` owns those ids — so they are stopped
+   * through the `shouldCancel` poll instead, which now fires while a call is running rather than
+   * only between commits. That indirection is why the flag is set first and awaited last.
+   */
   const cancelSearch = useCallback(async () => {
     cancelledRef.current = true
+    ownCalls.current?.cancelAll()
     setCancelled(true)
     setProgress(null)
     await cancel()

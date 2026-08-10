@@ -4,6 +4,7 @@ vi.mock('../lib/tauri', () => ({
   sendNativeNotification: vi.fn(),
   getNotchMetrics: vi.fn(),
   showWithoutActivating: vi.fn(),
+  isAppActive: vi.fn(),
 }))
 
 const listen = vi.hoisted(() => vi.fn())
@@ -17,12 +18,14 @@ import {
   apiSendNativeNotification,
   apiOnNotificationActivated,
   apiGetNotchMetrics,
+  apiIsAppActive,
   apiShowWithoutActivating,
 } from './notification.api'
 
 const sendNativeNotification = tauri.sendNativeNotification as unknown as ReturnType<typeof vi.fn>
 const getNotchMetrics = tauri.getNotchMetrics as unknown as ReturnType<typeof vi.fn>
 const showWithoutActivating = tauri.showWithoutActivating as unknown as ReturnType<typeof vi.fn>
+const isAppActive = tauri.isAppActive as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -77,15 +80,31 @@ describe('apiShowWithoutActivating', () => {
     expect(showWindow).not.toHaveBeenCalled()
   })
 
-  // A card that appears rudely still beats one that never appears — but only as the last resort,
-  // never as the normal path.
-  it('falls back to a plain show when the native call fails', async () => {
+  // There used to be a `show()` fallback here, on the reasoning that a rude card beats no card.
+  // It is gone: `show()` is `makeKeyAndOrderFront:`, and a card that takes the keyboard out of
+  // whatever the user is typing in costs more than the card is worth.
+  it('shows nothing rather than stealing focus when the native call fails', async () => {
     showWithoutActivating.mockRejectedValue(new Error('no tauri host'))
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(apiShowWithoutActivating()).resolves.toBeUndefined()
-    expect(showWindow).toHaveBeenCalled()
+    expect(showWindow).not.toHaveBeenCalled()
     expect(warnSpy).toHaveBeenCalled()
+  })
+})
+
+describe('apiIsAppActive', () => {
+  it('forwards what AppKit says', async () => {
+    isAppActive.mockResolvedValue(false)
+
+    await expect(apiIsAppActive()).resolves.toBe(false)
+  })
+
+  it('answers “active” when it cannot tell, so nothing deactivates the app on a guess', async () => {
+    isAppActive.mockRejectedValue(new Error('no tauri host'))
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(apiIsAppActive()).resolves.toBe(true)
   })
 })
 

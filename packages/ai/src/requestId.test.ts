@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { newAiRequestId } from './aiRequestId'
+import { newAiRequestId } from './requestId'
 
 describe('newAiRequestId', () => {
   it('never returns the same id twice', () => {
@@ -8,8 +8,9 @@ describe('newAiRequestId', () => {
   })
 
   it('stays unique without randomUUID', () => {
-    // The fallback is the path that matters for correctness across windows: `ai:*` events come from
-    // one shared Rust backend, so ids minted in different windows land in the same namespace.
+    // The fallback is the path that matters for correctness across windows: the backend's
+    // generation registry is shared by every window, so ids minted in different windows land in the
+    // same namespace.
     vi.stubGlobal('crypto', {})
     const ids = new Set(Array.from({ length: 1000 }, newAiRequestId))
     expect(ids.size).toBe(1000)

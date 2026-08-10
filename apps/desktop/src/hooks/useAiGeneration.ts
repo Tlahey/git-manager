@@ -51,12 +51,13 @@ export function useAiGeneration(repoPath: string) {
   const { commitInstructions, commitPattern } = useEffectiveRepoSettings(repoPath)
 
   /**
-   * Set by {@link cancel}, read when the answer arrives.
+   * Set by {@link cancel}, polled by the map phase and read again when the answer arrives.
    *
-   * `ai_complete` is a single awaited request with no cancellation channel, so "stop" cannot call
-   * anything off — it abandons the result instead. Honest for what the user is asking (they want the
-   * box left alone), and the window in which it matters is now a second or two rather than the half
-   * minute a reasoning model used to spend streaming.
+   * It used to be able to do nothing but abandon the result: `ai_complete` was a single awaited
+   * request with no cancellation channel. It has one now, so stopping during the map phase — the
+   * long half, one call per staged file — actually calls the request off. The **composing** call
+   * that follows is still only abandoned: it is one request, it starts after the phase the user is
+   * watching a progress bar for, and it answers in a second or two.
    */
   const cancelledRef = useRef(false)
 
@@ -92,7 +93,8 @@ export function useAiGeneration(repoPath: string) {
         const draft = await composeCommitMessageFromSummaries(
           input,
           {
-            summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+            summarize: (summaryInput, requestId) =>
+              fileSummaryService.run(aiConnection, summaryInput, requestId),
             compose: (reduceInput) => summaryCommitMessageService.run(aiConnection, reduceInput),
           },
           {
@@ -102,6 +104,7 @@ export function useAiGeneration(repoPath: string) {
               setProgress
             ),
             shouldCancel: () => cancelledRef.current,
+            cancelCall: fileSummaryService.cancel,
             concurrency: aiConnection.concurrency,
           }
         )

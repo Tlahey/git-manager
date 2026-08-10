@@ -44,6 +44,28 @@ export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
 export const showWithoutActivating = () => invoke<void>('show_without_activating')
 
 /**
+ * Whether the *application* is frontmost — not whether this webview has focus, which is a different
+ * question whenever a second window of ours is key. `true` off macOS.
+ */
+export const isAppActive = () => invoke<boolean>('is_app_active')
+
+/**
+ * Points an existing window at a new URL. The notch reuses one window this way rather than opening
+ * a fresh one per card, because *creating* a webview is what activates the app — see
+ * `navigate_window` in `commands/window.rs`.
+ */
+/**
+ * Turns the notch window into a nonactivating `NSPanel`, so clicking its card does not drag the app
+ * in front of the user. Answers whether it is one now — `false` off macOS, or when
+ * `GIT_MANAGER_NOTCH_PANEL=0` switches it off. See `make_notch_window_nonactivating`.
+ */
+export const makeNotchWindowNonactivating = (label: string) =>
+  invoke<boolean>('make_notch_window_nonactivating', { label })
+
+export const navigateWindow = (label: string, url: string) =>
+  invoke<void>('navigate_window', { label, url })
+
+/**
  * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
  * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
  */

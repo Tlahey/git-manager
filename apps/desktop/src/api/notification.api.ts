@@ -4,6 +4,9 @@ import {
   clearWindowBackdrop,
   getNotchMetrics,
   getTrayIconRect,
+  isAppActive,
+  makeNotchWindowNonactivating,
+  navigateWindow,
   playSystemSound,
   raiseAboveMenuBar,
   sendNativeNotification,
@@ -182,17 +185,65 @@ export async function apiClearWindowBackdrop(): Promise<void> {
  * A notification is not a request for attention the user made, so it must never interrupt what they
  * are doing: `WebviewWindow.show()` makes the window key on macOS and brings the whole application
  * forward, which pulled the keyboard out of the editor the user was typing in. The backend orders
- * the window front without activating instead. Failures fall back to the plain `show()` there, so
- * the worst case is a card that appears rudely rather than one that never appears.
+ * the window front without activating instead.
+ *
+ * A failure is swallowed, and there is deliberately **no** `show()` fallback any more. It used to
+ * be one, reasoning that a card that appears rudely beats one that never appears; that trade is
+ * wrong. A card is a courtesy, and one that takes the keyboard mid-keystroke costs the user far
+ * more than the card was ever worth — so the failure mode is silence and a line in the console.
+ * The backend half of `show_without_activating` dropped the same fallback for the same reason.
  */
 export async function apiShowWithoutActivating(): Promise<void> {
   try {
     await showWithoutActivating()
   } catch (e) {
     console.warn('Failed to show the notch window without activating:', e)
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().show()
   }
+}
+
+/**
+ * Whether the *application* was frontmost — the question the notch opener has to answer before it
+ * creates a window, since creating one activates the app (see {@link apiResignAppActivation}).
+ *
+ * A failure answers `true`: the caller reads that as "it was already active, leave it alone", which
+ * is the one answer that can never deactivate the app behind the user's back.
+ */
+export async function apiIsAppActive(): Promise<boolean> {
+  try {
+    return await isAppActive()
+  } catch (e) {
+    console.warn('Failed to read whether the app is active:', e)
+    return true
+  }
+}
+
+/**
+ * Points a window that already exists at a new URL.
+ *
+ * How the notch shows every card after the first: navigating touches no `NSApplication`, where
+ * *creating* a webview activates the whole app whatever the window options say. Rejects rather than
+ * swallowing — the caller's fallback is to open a window the old way, and it can only choose that
+ * if it is told.
+ */
+/**
+ * Asks for the notch window to become a nonactivating panel, so clicking the card does not bring
+ * the app forward. A no-op off macOS, or when `GIT_MANAGER_NOTCH_PANEL=0` switches it off.
+ *
+ * Answers whether it is one now. That answer is load-bearing rather than informational: a converted
+ * window has no `focusable` ivar, and `setFocusable` writes that ivar by name, so calling it on one
+ * would abort the process. A failure answers `false`, which keeps the caller on the old path.
+ */
+export async function apiMakeNotchWindowNonactivating(label: string): Promise<boolean> {
+  try {
+    return await makeNotchWindowNonactivating(label)
+  } catch (e) {
+    console.warn('Failed to ask for a nonactivating notch panel:', e)
+    return false
+  }
+}
+
+export async function apiNavigateWindow(label: string, url: string): Promise<void> {
+  await navigateWindow(label, url)
 }
 
 /**

@@ -85,7 +85,9 @@ describe('feature services', () => {
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
       expect.any(String),
       expect.stringContaining('All 1 staged files'),
-      COMMIT_MESSAGE_SCHEMA
+      COMMIT_MESSAGE_SCHEMA,
+      // Every completion is named in the backend's registry, which is what a stop targets.
+      expect.stringMatching(/^ai-/)
     )
     expect(draft).toEqual({ subject: 'feat: a', body: '' })
   })
@@ -104,7 +106,8 @@ describe('feature services', () => {
       expect.objectContaining({ temperature: 0.2 }),
       expect.any(String),
       expect.stringContaining('All 1 changed files'),
-      FILE_GROUPING_SCHEMA
+      FILE_GROUPING_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
     expect(commits).toEqual([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
   })

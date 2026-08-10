@@ -36,7 +36,7 @@ export function usePrDescriptionGeneration(repoPath: string) {
    * author had to be told separately. Now there is nothing to admit: every file is read whole.
    */
   const [progress, setProgress] = useState<SummaryProgress | null>(null)
-  /** Set by `cancel`, polled by the map loop between calls. */
+  /** Set by `cancel`, polled by the map loop before each call and while one is in flight. */
   const cancelledRef = useRef(false)
 
   const generate = useCallback(
@@ -59,7 +59,8 @@ export function usePrDescriptionGeneration(repoPath: string) {
           cancelledRef.current = false
           const summaries = await summarizeFiles(
             context,
-            (summaryInput) => fileSummaryService.run(settings.ai, summaryInput),
+            (summaryInput, requestId) =>
+              fileSummaryService.run(settings.ai, summaryInput, requestId),
             settings.ai.contextTokens,
             {
               onProgress: trackAiProgress(
@@ -68,6 +69,7 @@ export function usePrDescriptionGeneration(repoPath: string) {
                 setProgress
               ),
               shouldCancel: () => cancelledRef.current,
+              cancelCall: fileSummaryService.cancel,
               concurrency: settings.ai.concurrency,
             }
           )
@@ -99,7 +101,7 @@ export function usePrDescriptionGeneration(repoPath: string) {
     [run, repoPath, settings.ai]
   )
 
-  /** Stops the map phase at its next call boundary, then the stream. */
+  /** Stops the map phase — the call in flight included — then the stream. */
   const cancelRun = useCallback(async () => {
     cancelledRef.current = true
     setProgress(null)

@@ -91,7 +91,8 @@ export async function apiGetModelContextLimits(
   return getModelContextLimits(url, model, apiKey)
 }
 
-/** Cancels one streaming generation by the id it was started with — see {@link tauriAiTransport}. */
+/** Cancels one call — streaming or completion — by the id it was started with; see
+ * {@link tauriAiTransport}. */
 export async function apiCancelGeneration(requestId: string) {
   return cancelGeneration(requestId)
 }
@@ -111,8 +112,9 @@ const tauriAiTransport: AiTransport = {
     config: AiGenerateConfig,
     systemPrompt: string,
     userPrompt: string,
-    schema?: JsonSchema
-  ) => aiComplete(config, systemPrompt, userPrompt, schema),
+    schema: JsonSchema | undefined,
+    requestId: string
+  ) => aiComplete(config, systemPrompt, userPrompt, schema, requestId),
   checkStatus: apiCheckAiStatus,
   cancel: apiCancelGeneration,
 }
@@ -193,12 +195,12 @@ function trackedTransport(featureId: string): AiTransport {
         () => tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId),
         () => undefined
       ),
-    runComplete: (config, systemPrompt, userPrompt, schema) =>
+    runComplete: (config, systemPrompt, userPrompt, schema, requestId) =>
       run(
         config,
         systemPrompt,
         userPrompt,
-        () => tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema),
+        () => tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema, requestId),
         (raw) => raw
       ),
   }

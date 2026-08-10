@@ -81,7 +81,15 @@ export function createTauriNotchHost({
       return Promise.resolve()
     },
     close() {
-      return getCurrentWindow().close()
+      // Hidden, not closed. The window outlives every card it shows, because *creating* a webview
+      // activates the whole application on macOS and a card is by definition raised while the user
+      // is elsewhere — see `notchWindow.ts`'s header. Closing it here would hand that cost to
+      // whatever card came next.
+      //
+      // It also makes the dismissal announcement this runs after actually reliable: it used to
+      // travel out of a webview that was being destroyed underneath it, which is the race the
+      // queue's `onDestroyed` backstop exists for.
+      return getCurrentWindow().hide()
     },
   }
 

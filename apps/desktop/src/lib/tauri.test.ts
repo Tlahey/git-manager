@@ -364,7 +364,9 @@ const cases: {
           maxTokens: 600,
         },
         'system',
-        'user'
+        'user',
+        undefined,
+        'req-2'
       ),
     command: 'ai_complete',
     args: {
@@ -378,6 +380,10 @@ const cases: {
       },
       systemPrompt: 'system',
       userPrompt: 'user',
+      schema: undefined,
+      // A completion is named in the same registry a stream is, and for the same reason: it is
+      // what `cancel_generation` targets.
+      requestId: 'req-2',
     },
   },
   {

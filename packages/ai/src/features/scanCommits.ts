@@ -1,9 +1,15 @@
 import type { ScanCommit } from '../config'
 import { AiCallTimedOut } from './aiCallTimedOut'
+import { AiCallTracker, type CancelCall } from './aiCallTracker'
 import { CommitVerdictUnreadable } from './commitRelevance'
 import type { CommitRelevanceInput, CommitRelevanceResult } from './commitRelevance'
+import { isCompletionCancelled } from './completionCancelled'
 import { splitDiffByFile, type DiffFileSection } from './diffBudget'
-import { DEFAULT_AI_CONCURRENCY, mapConcurrently } from './mapConcurrently'
+import {
+  DEFAULT_AI_CONCURRENCY,
+  mapConcurrently,
+  type MapConcurrentlyOutcome,
+} from './mapConcurrently'
 import { SummaryRunCancelled } from './summarizeFiles'
 
 /**
@@ -93,12 +99,24 @@ export interface ScanCommitsOptions {
    */
   onResult?(result: ScannedCommit, index: number): void
   /**
-   * Polled before each commit is dispatched. Cancellation is therefore **between** commits, never
-   * within one: the completion transport takes no request id, so a call already in flight runs to
-   * completion and its result is discarded. With `concurrency` above 1 that waste is multiplied by
-   * however many calls were in flight.
+   * Polled before each commit is dispatched, and on a timer while calls are in flight.
+   *
+   * Cancellation used to be **between** commits and nothing else, because the completion transport
+   * took no request id — a call already sent ran to completion and had its result discarded. On this
+   * feature that was the difference between a stop and a stop: a search is one call per *file* of
+   * every commit, each reading a whole diff, so "stop dispatching" left the model working for the
+   * length of whatever it had already started. Paired with {@link cancelCall}, the in-flight call is
+   * now aborted too.
    */
   shouldCancel?(): boolean
+  /**
+   * Stops one in-flight call, named by the id it was dispatched under.
+   *
+   * Covers both calls this function makes — the per-file verdict and the quick mode's narrowing —
+   * since both go through the same tracker. Anything the *caller* dispatches outside this function
+   * (the quick mode's triage pass over every message) is the caller's own to stop.
+   */
+  cancelCall?: CancelCall
   /**
    * How many commits may be read at once. Defaults to {@link DEFAULT_AI_CONCURRENCY} (one).
    *
@@ -118,9 +136,12 @@ export interface ScanCommitsOptions {
    * A path it returns that the diff has no section for is ignored, and returning nothing means the
    * commit is read as touching nothing relevant. Throwing is *not* fatal: the caller falls back to
    * opening every file, because a failed narrowing must degrade into the slow, complete behaviour
-   * rather than into a commit silently skipped.
+   * rather than into a commit silently skipped. The one rejection that *is* fatal is a cancellation —
+   * degrading a stop into "read everything" would be the opposite of what was asked.
+   *
+   * `requestId` is the id this narrowing call must be dispatched under, so a stop can reach it.
    */
-  selectFiles?(commit: ScanCommit, paths: string[]): Promise<string[]>
+  selectFiles?(commit: ScanCommit, paths: string[], requestId: string): Promise<string[]>
 }
 
 /** How many of a commit's file-level findings are carried into its single `finding` line. */
@@ -176,7 +197,9 @@ function readingUnits(diff: string): DiffFileSection[] {
  *    everything without this function having an opinion about it.
  *  - **A failure opens everything.** If the narrowing call throws, the commit is read whole rather
  *    than skipped: degrading into the slow behaviour is recoverable, degrading into a commit nobody
- *    looked at is the exact silence the feature exists to prevent.
+ *    looked at is the exact silence the feature exists to prevent. A *cancelled* call is the one
+ *    exception and is rethrown — falling back to reading every file because the user pressed stop
+ *    would turn the stop into the longest possible run.
  *  - **An unnamed section is always kept.** A diff with no file structure has no path to judge it
  *    by, so it is not the narrowing's to reject.
  */
@@ -184,6 +207,7 @@ async function narrowSections(
   sections: DiffFileSection[],
   commit: ScanCommit,
   selectFiles: ScanCommitsOptions['selectFiles'],
+  calls: AiCallTracker,
   onNarrowing: () => void
 ): Promise<DiffFileSection[]> {
   if (!selectFiles || sections.length === 0) return sections
@@ -194,8 +218,9 @@ async function narrowSections(
   onNarrowing()
   let kept: string[]
   try {
-    kept = await selectFiles(commit, paths)
-  } catch {
+    kept = await calls.track((requestId) => selectFiles(commit, paths, requestId))
+  } catch (error) {
+    if (isCompletionCancelled(error)) throw error
     return sections
   }
 
@@ -237,7 +262,8 @@ async function narrowSections(
 async function judgeFileByFile(
   input: CommitRelevanceInput,
   sections: DiffFileSection[],
-  judge: (input: CommitRelevanceInput) => Promise<CommitRelevanceResult>,
+  judge: (input: CommitRelevanceInput, requestId: string) => Promise<CommitRelevanceResult>,
+  calls: AiCallTracker,
   onFileRead: () => void
 ): Promise<CommitRelevanceResult> {
   const statuses = new Map(input.files.map((f) => [f.path, f.status]))
@@ -248,15 +274,20 @@ async function judgeFileByFile(
   const shared = { ...input, commit: { ...input.commit, body: commitIntent(input.commit.body) } }
 
   for (const section of sections) {
-    const verdict = await judge({
-      ...shared,
-      // An unnamed section is the whole patch: the model gets the commit's real file list, since
-      // there is no single path to attribute it to.
-      files: section.path
-        ? [{ path: section.path, status: statuses.get(section.path) ?? 'modified' }]
-        : input.files,
-      diff: section.text,
-    })
+    const verdict = await calls.track((requestId) =>
+      judge(
+        {
+          ...shared,
+          // An unnamed section is the whole patch: the model gets the commit's real file list, since
+          // there is no single path to attribute it to.
+          files: section.path
+            ? [{ path: section.path, status: statuses.get(section.path) ?? 'modified' }]
+            : input.files,
+          diff: section.text,
+        },
+        requestId
+      )
+    )
     // Reported per file, not per commit. A commit of twenty-five files is twenty-five calls, so a
     // counter that only moves when the commit finishes sits at zero for minutes — which is exactly
     // what "0 of 15" looked like on the first real run of this.
@@ -306,12 +337,13 @@ export interface ScanCommitsParams {
 export async function scanCommits(
   commits: ScanCommit[],
   loadDiff: (commit: ScanCommit) => Promise<string>,
-  judge: (input: CommitRelevanceInput) => Promise<CommitRelevanceResult>,
+  judge: (input: CommitRelevanceInput, requestId: string) => Promise<CommitRelevanceResult>,
   params: ScanCommitsParams,
   options: ScanCommitsOptions = {}
 ): Promise<ScannedCommit[]> {
   const { onProgress, onResult, shouldCancel } = options
   const concurrency = options.concurrency ?? DEFAULT_AI_CONCURRENCY
+  const calls = new AiCallTracker(options.cancelCall)
 
   let completed = 0
   let filesRead = 0
@@ -352,17 +384,22 @@ export async function scanCommits(
         contextTokens: params.contextTokens,
       }
 
-      const sections = await narrowSections(readingUnits(diff), commit, options.selectFiles, () =>
-        onProgress?.({
-          phase: 'scanning',
-          completed,
-          total: commits.length,
-          filesRead,
-          narrowing: true,
-          ...(concurrency <= 1 ? { current: commit.shortOid } : {}),
-        })
+      const sections = await narrowSections(
+        readingUnits(diff),
+        commit,
+        options.selectFiles,
+        calls,
+        () =>
+          onProgress?.({
+            phase: 'scanning',
+            completed,
+            total: commits.length,
+            filesRead,
+            narrowing: true,
+            ...(concurrency <= 1 ? { current: commit.shortOid } : {}),
+          })
       )
-      const verdict = await judgeFileByFile(input, sections, judge, () => {
+      const verdict = await judgeFileByFile(input, sections, judge, calls, () => {
         filesRead++
         onProgress?.({
           phase: 'scanning',
@@ -383,6 +420,10 @@ export async function scanCommits(
         filesRead: sections.length,
       }
     } catch (error) {
+      // A stop is not a failure, and this is the catch that would turn it into one: every unread
+      // commit here is reported to the user as a commit that could not be read, with a cause and a
+      // suggested fix. Rethrown so a cancelled run records nothing at all.
+      if (isCompletionCancelled(error)) throw new SummaryRunCancelled()
       // The parse throws its own type, so "the provider answered nonsense" is distinguishable from
       // "the provider never answered" — the difference between a model to change and a server to
       // start.
@@ -400,15 +441,27 @@ export async function scanCommits(
     }
   }
 
-  const { results, stopped } = await mapConcurrently(commits, concurrency, readOne, {
-    onSettled: (result, index) => {
-      completed++
-      onResult?.(result, index)
-      onProgress?.({ phase: 'scanning', completed, total: commits.length, filesRead })
-    },
-    shouldStop: () => shouldCancel?.() ?? false,
-  })
+  let outcome: MapConcurrentlyOutcome<ScannedCommit>
+  try {
+    outcome = await mapConcurrently(commits, concurrency, readOne, {
+      onSettled: (result, index) => {
+        completed++
+        onResult?.(result, index)
+        onProgress?.({ phase: 'scanning', completed, total: commits.length, filesRead })
+      },
+      shouldStop: () => shouldCancel?.() ?? false,
+      onStop: () => calls.cancelAll(),
+    })
+  } catch (error) {
+    // The aborted calls surface here as the pool's rethrown rejection — every commit they belonged
+    // to has already declined to record itself. They mean what `stopped` means below.
+    if (error instanceof SummaryRunCancelled || isCompletionCancelled(error)) {
+      throw new SummaryRunCancelled()
+    }
+    throw error
+  }
 
+  const { results, stopped } = outcome
   if (stopped || shouldCancel?.()) throw new SummaryRunCancelled()
   return results
 }

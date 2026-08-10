@@ -130,6 +130,70 @@ describe('mapConcurrently', () => {
     expect(slowFinished).toBe(true)
   })
 
+  /**
+   * The bug this pool was half of: polling only before a dispatch meant "stop" reached nothing that
+   * was already talking to the provider, which on a run of one call per file is most of the wait.
+   */
+  it('notices a stop while a call is in flight, not only between dispatches', async () => {
+    const gate = deferred<number>()
+    let stop = false
+    let aborted = false
+
+    const run = mapConcurrently([0, 1, 2], 1, () => gate.promise, {
+      shouldStop: () => stop,
+      onStop: () => {
+        aborted = true
+        gate.reject(new Error('aborted'))
+      },
+      stopPollIntervalMs: 1,
+    })
+
+    await tick()
+    // Nothing has been dispatched since the first call, so the old between-calls poll would never
+    // have run again — the worker is parked on the provider.
+    expect(aborted).toBe(false)
+
+    stop = true
+    await expect(run).rejects.toThrow('aborted')
+    expect(aborted).toBe(true)
+  })
+
+  it('fires onStop once however many calls are in flight', async () => {
+    const gates = [deferred<number>(), deferred<number>(), deferred<number>()]
+    let stop = false
+    let stops = 0
+
+    const run = mapConcurrently([0, 1, 2], 3, (i: number) => gates[i].promise, {
+      shouldStop: () => stop,
+      onStop: () => {
+        stops++
+        gates.forEach((gate) => gate.resolve(0))
+      },
+      stopPollIntervalMs: 1,
+    })
+
+    await tick()
+    stop = true
+    await run
+    expect(stops).toBe(1)
+  })
+
+  /** An orphaned poll would outlive the run and fire `onStop` against ids belonging to the next one. */
+  it('stops polling once the run is over', async () => {
+    let polls = 0
+    await mapConcurrently([0, 1], 1, async (n: number) => n, {
+      shouldStop: () => {
+        polls++
+        return false
+      },
+      stopPollIntervalMs: 1,
+    })
+
+    const after = polls
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(polls).toBe(after)
+  })
+
   it('treats a nonsense width as one at a time', async () => {
     for (const width of [0, -4, Number.NaN]) {
       const tracker = peakTracker()

@@ -49,6 +49,19 @@ tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 # way to get the real macOS sidebar material. Enabled at runtime only by the theme
 # that asks for it (see set_window_vibrancy in commands/window.rs).
 [target."cfg(target_os = \"macos\")".dependencies]
+# Turns the notch card into a nonactivating NSPanel, so clicking it does not drag the whole app in
+# front of the user — see `make_notch_window_nonactivating` in commands/window.rs. On by default,
+# with GIT_MANAGER_NOTCH_PANEL=0 as the escape hatch, because an earlier form of the same mechanism
+# aborted the process and a user who meets a crash must be able to get a working app back without
+# waiting for a release.
+#
+# A git dependency because there is no crates.io release: the name `tauri-nspanel` is unpublished,
+# and this is the plugin every "click me without activating the app" Tauri project uses. Pinned to a
+# revision rather than the branch, so what builds today is what builds in six months. It brings the
+# *old* `objc` 0.2 stack (cocoa, objc_id, objc-foundation) alongside the `objc2` 0.5 this crate
+# already uses; both compile, and one transitive crate (`block` 0.1.6) already warns as
+# future-incompatible. Worth revisiting if a maintained objc2-based equivalent appears.
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", rev = "18ffb9a201fbf6fedfaa382fd4b92315ea30ab1a" }
 window-vibrancy = "0.5"
 # Clickable notifications. tauri-plugin-notification can only *show* one on desktop (its
 # `onAction` listener is mobile-only), and this is the crate its own macOS backend already
@@ -75,6 +88,10 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   # housing geometry, read once at startup instead of guessed at with a hard-coded 32pt/100pt.
   # See get_notch_metrics in commands/window.rs.
   "NSScreen",
+  # NSApplication.isActive — the veto on creating a webview while the app is in the background,
+  # which wry would turn into an activation and so into a stolen keyboard. See is_app_active in
+  # commands/window.rs.
+  "NSApplication",
 ] }
 # NSRect/NSEdgeInsets, the return types of the NSScreen geometry methods above. Same version
 # NSScreen's own "NSScreen" feature already pulls in transitively; declared directly because the

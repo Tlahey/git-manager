@@ -1,9 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { emptyNotchQueue, type NotchModel } from '@git-manager/notch'
 import { useNotchOperation } from './useNotchOperation'
 import { useNotchQueueStore } from '../stores/notchQueue.store'
 import { clearNotchActions, runNotchAction } from '../lib/notifications/notchActions'
+
+const { dismissedHandlers, unlisten } = vi.hoisted(() => ({
+  dismissedHandlers: { current: [] as ((p: { notchId: string }) => void)[] },
+  unlisten: vi.fn(),
+}))
+
+vi.mock('../api/notification.api', () => ({
+  apiOnNotchDismissed: (handler: (p: { notchId: string }) => void) => {
+    dismissedHandlers.current.push(handler)
+    return Promise.resolve(unlisten)
+  },
+}))
 
 function progress(ratio: number): NotchModel {
   return {
@@ -16,11 +28,35 @@ function progress(ratio: number): NotchModel {
   }
 }
 
+/** The card an ended run leaves behind — a `status`, which is the one that times out on its own. */
+function outcome(): NotchModel {
+  return {
+    kind: 'status',
+    id: 'commit-search:/repo',
+    tone: 'success',
+    eyebrow: 'SEARCHING COMMITS',
+    title: '3 commits found',
+  }
+}
+
 function current() {
   return useNotchQueueStore.getState().queue.current
 }
 
+/** Fires the dismissal the notch window emits on its way out — the ✕, a click away, a timer. */
+async function reportDismissed(notchId: string) {
+  await act(async () => {
+    for (const handler of dismissedHandlers.current) handler({ notchId })
+  })
+}
+
+/** Waits for the hook's dismissal listener to have bound — it binds through a promise. */
+async function listenerBound() {
+  await waitFor(() => expect(dismissedHandlers.current.length).toBeGreaterThan(0))
+}
+
 beforeEach(() => {
+  dismissedHandlers.current = []
   useNotchQueueStore.setState({ queue: emptyNotchQueue })
   clearNotchActions()
 })
@@ -100,8 +136,8 @@ describe('useNotchOperation', () => {
   })
 
   it('shows nothing while disabled, and appears the moment it is enabled', () => {
-    // The gate the search uses: the panel in front of the user is a better place to watch a run
-    // than a card duplicating it.
+    // The gate is for a card nobody asked for — a switched-off setting, a scheduled fetch. Never
+    // for window focus: the AI cards are shown whether or not the app is frontmost.
     const { rerender } = renderHook(
       ({ enabled }: { enabled: boolean }) =>
         useNotchOperation({ id: 'op', model: progress(0.5), enabled }),
@@ -127,6 +163,122 @@ describe('useNotchOperation', () => {
     const { unmount } = renderHook(() => useNotchOperation({ id: 'op', model: progress(0.5) }))
     unmount()
     expect(current()).toBeNull()
+  })
+})
+
+/**
+ * A `progress` card never times out, so the ✕ is the only way to be rid of one — and the enqueue
+ * effect re-runs on every tick of the model, which is what used to put it straight back.
+ */
+describe('useNotchOperation — a card the user closed', () => {
+  it('does not come back on the next progress tick', async () => {
+    const { rerender } = renderHook(
+      ({ ratio }: { ratio: number }) =>
+        useNotchOperation({ id: 'op', model: progress(ratio), runId: '1' }),
+      { initialProps: { ratio: 0.1 } }
+    )
+    await listenerBound()
+
+    await reportDismissed('op')
+    // The queue itself is retired by `useNotchQueue`; here it is the producer that must not push
+    // the card back in.
+    act(() => {
+      useNotchQueueStore.getState().remove('op')
+    })
+
+    rerender({ ratio: 0.2 })
+    rerender({ ratio: 0.9 })
+
+    expect(current()).toBeNull()
+  })
+
+  it('stays closed for the rest of the run, outcome card included', async () => {
+    // Closing it is the user saying they are done with this run — not "hide the bar and tell me
+    // how it went in a minute".
+    const { rerender } = renderHook(
+      ({ model }: { model: NotchModel }) => useNotchOperation({ id: 'op', model, runId: '1' }),
+      { initialProps: { model: progress(0.4) } }
+    )
+    await listenerBound()
+
+    await reportDismissed('op')
+    act(() => {
+      useNotchQueueStore.getState().remove('op')
+    })
+    rerender({ model: outcome() })
+
+    expect(current()).toBeNull()
+  })
+
+  it('ignores a dismissal that named somebody else’s card', async () => {
+    const { rerender } = renderHook(
+      ({ ratio }: { ratio: number }) =>
+        useNotchOperation({ id: 'repo-a', model: progress(ratio), runId: '1' }),
+      { initialProps: { ratio: 0.1 } }
+    )
+    await listenerBound()
+
+    await reportDismissed('repo-b')
+    rerender({ ratio: 0.5 })
+
+    expect(current()?.model).toMatchObject({ id: 'repo-a', ratio: 0.5 })
+  })
+
+  it('comes back for the next run, since that is a card about something else', async () => {
+    const { rerender } = renderHook(
+      ({ runId }: { runId: string }) =>
+        useNotchOperation({ id: 'op', model: progress(0.1), runId }),
+      { initialProps: { runId: '1' } }
+    )
+    await listenerBound()
+
+    await reportDismissed('op')
+    act(() => {
+      useNotchQueueStore.getState().remove('op')
+    })
+    // Deliberately the *same* model: the question asked twice builds the same card byte for byte,
+    // so the run id is the only thing that can tell the second search from the first.
+    rerender({ runId: '2' })
+
+    expect(current()?.model.id).toBe('op')
+  })
+
+  it('comes back once there is nothing left to show, for a producer with no run id', async () => {
+    // The default boundary: `NotchAiRuns` has one permanent card id and no runs to number, so the
+    // model going away is what has to lift the latch — or one ✕ would silence it for the session.
+    const { rerender } = renderHook(
+      ({ model }: { model: NotchModel | null }) => useNotchOperation({ id: 'ai-run', model }),
+      { initialProps: { model: progress(0.3) as NotchModel | null } }
+    )
+    await listenerBound()
+
+    await reportDismissed('ai-run')
+    rerender({ model: null })
+    rerender({ model: progress(0.1) })
+
+    expect(current()?.model.id).toBe('ai-run')
+  })
+
+  it('unbinds its listener on unmount', async () => {
+    const { unmount } = renderHook(() => useNotchOperation({ id: 'op', model: progress(0.5) }))
+    await listenerBound()
+
+    unmount()
+    expect(unlisten).toHaveBeenCalled()
+  })
+})
+
+describe('useNotchOperation — the end of a run', () => {
+  it('replaces the live card with the outcome one, which is what auto-dismisses', () => {
+    // `resolveNotchDurationMs` returns `null` for a `progress` card and the user's duration for a
+    // `status` one: the run's last card is the only one with a timer, and it must still get there.
+    const { rerender } = renderHook(
+      ({ model }: { model: NotchModel }) => useNotchOperation({ id: 'op', model, runId: '1' }),
+      { initialProps: { model: progress(0.9) } }
+    )
+    rerender({ model: outcome() })
+
+    expect(current()?.model).toMatchObject({ kind: 'status', title: '3 commits found' })
   })
 })
 

@@ -35,8 +35,8 @@ is the feature's own business.
   `settings` are _sections of `~/.git-manager/settings.json`_ — part of the app-config contract that
   `lib/appConfig/` validates and hydrates — so they stay in `src/stores/`. The column _definitions_
   they read come back through this barrel.
-- **The generic hooks** (`useRunTasks`, `useWindowFocus`, `useSingleOrDoubleClick`) and everything
-  the rest of the app also calls (`useActionToolbar`, `useBranches`, `useGitStatus`, …).
+- **The generic hooks** (`useRunTasks`, `useSingleOrDoubleClick`) and everything the rest of the app
+  also calls (`useActionToolbar`, `useBranches`, `useGitStatus`, …).
 - **The DTOs** (`packages/git-types`), the **copy** (`packages/i18n`, the `git` namespace) and the
   **Rust half** (`src-tauri/`).
 

@@ -125,12 +125,17 @@ describe('main entry', () => {
     expect(screen.queryByTestId('fake-notch-window')).not.toBeInTheDocument()
   })
 
-  it('shows nothing, not the whole app, when the notch payload is missing entirely', async () => {
+  it('parks, rather than closing, a notch window with no payload at all', async () => {
+    // Not a failure: the notch window is created once at startup and navigated per card, because
+    // creating a webview activates the whole application (see lib/notifications/notchWindow.ts).
+    // No payload is a window waiting for its first card, and closing it would put the app straight
+    // back to opening one window per notification.
     setSearch('?window=notch')
     await import('./main')
 
-    await waitFor(() => expect(closeCurrentWindow).toHaveBeenCalled())
-    expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByTestId('fake-app')).not.toBeInTheDocument())
+    expect(screen.queryByTestId('fake-notch-window')).not.toBeInTheDocument()
+    expect(closeCurrentWindow).not.toHaveBeenCalled()
   })
 
   it('renders the merge window when windowKind=merge with repoPath and filePath', async () => {

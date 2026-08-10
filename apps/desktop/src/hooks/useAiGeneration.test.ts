@@ -128,8 +128,9 @@ describe('useAiGeneration', () => {
 
 describe('useAiGeneration — cancelling', () => {
   it('does not write back a cancelled generation', async () => {
-    // `ai_complete` has no cancellation channel: "stop" abandons the answer rather than stopping
-    // the request. What the user asked for is that the box be left alone, and it is.
+    // The *composing* call is the one still only abandoned rather than called off — the map phase
+    // above it cancels its in-flight request properly. What the user asked for is that the box be
+    // left alone, and it is.
     let settle: (d: CommitMessageDraft) => void = () => {}
     mockedCompose.mockReturnValue(
       new Promise<CommitMessageDraft>((resolve) => {

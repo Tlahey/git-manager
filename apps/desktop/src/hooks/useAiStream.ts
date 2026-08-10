@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
+import { newAiRequestId } from '@git-manager/ai'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { newAiRequestId } from '../lib/aiRequestId'
 
 export type AiStreamStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
 

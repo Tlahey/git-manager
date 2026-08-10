@@ -95,8 +95,8 @@ use commands::undo::{
     unpin_object,
 };
 use commands::window::{
-    clear_window_backdrop, get_notch_metrics, raise_above_menu_bar, set_window_vibrancy,
-    show_without_activating,
+    clear_window_backdrop, get_notch_metrics, is_app_active, make_notch_window_nonactivating,
+    navigate_window, raise_above_menu_bar, set_window_vibrancy, show_without_activating,
 };
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
@@ -193,6 +193,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
+
+    // Registered unconditionally, used conditionally: the plugin only supplies the machinery for
+    // turning a window into an NSPanel, and nothing is converted unless
+    // `make_notch_window_nonactivating` is asked to — which it refuses to do unless
+    // `GIT_MANAGER_NOTCH_PANEL` is set. See that command for what the experiment is establishing.
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_nspanel::init());
+    }
 
     // Embedded WebDriver server for WebdriverIO e2e tests (see apps/desktop/e2e/). Only
     // compiled in when built with `--features e2e`; never present in a normal dev or
@@ -353,6 +362,9 @@ pub fn run() {
             raise_above_menu_bar,
             clear_window_backdrop,
             show_without_activating,
+            is_app_active,
+            navigate_window,
+            make_notch_window_nonactivating,
             get_notch_metrics,
             // Native notifications (clickable — see commands/notification.rs)
             send_native_notification,
