@@ -99,11 +99,27 @@
     /* Tone chips, light polarity (dark ink on the pale /15 tints). Declared here
        rather than joining the shared light-content group in themes.css, because
        that group block comes after this file in source order and would override
-       anything set here. */
-    --tone-success-foreground: 152 78% 16%;
-    --tone-warning-foreground: 26 86% 26%;
-    --tone-danger-foreground: 0 74% 23%;
-    --tone-info-foreground: 221 80% 32%;
+       anything set here.
+
+       One percent deeper than that shared set, and the difference is load-bearing.
+       This theme's chrome is greyer than the other light themes' (--sidebar-background
+       215 28% 96%, and the material darkens it further), so the same /15 tint blends
+       to a darker chip on `sidebar` than it does on `background`/`card`/`popover` —
+       which makes that surface, not the white ones, the binding constraint. On the
+       shared shades all four tones landed in a 74.99–75.41Lc band against an APCA
+       Bronze bar of 75: success failed outright and warning cleared it by 0.02Lc,
+       which is not a pass anyone can rely on. These shades put the whole set at
+       76.1–76.6Lc there, in line with every other theme's tightest tone cell, and
+       higher again on the three lighter surfaces.
+
+       Nothing here is graded by the token grader — the /15 blend only exists once
+       rendered — so the gate is the rendered sweep: `pnpm --filter @git-manager/ui
+       test:apca`. Move any of these, or anything that changes what sits behind a
+       chip (--sidebar-background, --glass-chrome-alpha, --glass-tint), and run it. */
+    --tone-success-foreground: 152 78% 15%;
+    --tone-warning-foreground: 26 86% 25%;
+    --tone-danger-foreground: 0 74% 22%;
+    --tone-info-foreground: 221 80% 31%;
 
     /* ── Nav chrome ─────────────────────────────────────────────────────────── */
     /* A touch greyer than --card so the rail and tab bar sit *behind* the content
