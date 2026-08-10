@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import type * as monaco from 'monaco-editor'
 import type { editor } from 'monaco-editor'
-import { registerAndApplyDynamicTheme } from './monaco/themes'
+import { registerAndApplyDynamicTheme } from './monaco/dynamicTheme'
 import { MonacoEditor, languageForFilePath } from './monaco/setup'
 
 export interface CodeEditorProps {
