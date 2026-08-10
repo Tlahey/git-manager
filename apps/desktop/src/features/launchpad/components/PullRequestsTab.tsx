@@ -13,14 +13,14 @@ import type { TagTone } from '@git-manager/ui'
 
 import { Toolbar } from './Toolbar'
 import { TableHeader, GroupHeader, LoadMore } from './ListHelpers'
-import { usePRSort, useSetFilter } from '../hooks/listHooks'
+import { usePRSort } from '../hooks/listHooks'
+import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
 import { groupPrs, PR_GROUP_ORDER, PR_GROUP_META, type PrGroupKey } from '../lib/prGroups'
 import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 import { matchesPrSearch } from '../lib/prSearch'
 import type { MockPR } from '../../../lib/github/types'
-import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
 const PAGE_SIZE = 20
 
@@ -73,21 +73,29 @@ interface PullRequestsTabProps {
 
 export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: PullRequestsTabProps) {
   const { t } = useTranslation('launchpad')
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
-  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
-  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   // Collapse + pagination state is keyed by group id ('pinned' plus every PrGroupKey) so each
   // section folds and paginates on its own. Missing keys default to open / one page shown.
   const [openState, setOpenState] = useState<OpenState>({})
   const [shownState, setShownState] = useState<ShownState>({})
 
-  // Global Launchpad controls (search + collapse/expand-all), shared across every tab.
-  const globalSearch = useLaunchpadControlsStore((s) => s.search)
+  // Global Launchpad controls (collapse/expand-all), shared across every tab.
   const collapseNonce = useLaunchpadControlsStore((s) => s.collapseAllNonce)
   const expandNonce = useLaunchpadControlsStore((s) => s.expandAllNonce)
+
+  const repos = useMemo(() => [...new Set(allPRs.map((p) => p.repo))].sort(), [allPRs])
+  const statuses = useMemo(() => [...new Set(allPRs.map((p) => p.status))].sort(), [allPRs])
+  const authors = useMemo(() => [...new Set(allPRs.map((p) => p.author))].sort(), [allPRs])
+
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({ repos, statuses, authors })
 
   const isOpen = useCallback((key: string) => openState[key] ?? true, [openState])
   const toggleOpen = useCallback(
@@ -112,22 +120,6 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
     (key: string) => setShownState((s) => ({ ...s, [key]: (s[key] ?? PAGE_SIZE) + PAGE_SIZE })),
     []
   )
-
-  const handleSort = useCallback((k: SortKey) => {
-    setSortKey((prevKey) => {
-      if (k === prevKey) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-        return prevKey
-      } else {
-        setSortDir('desc')
-        return k
-      }
-    })
-  }, [])
-
-  const repos = useMemo(() => [...new Set(allPRs.map((p) => p.repo))].sort(), [allPRs])
-  const statuses = useMemo(() => [...new Set(allPRs.map((p) => p.status))].sort(), [allPRs])
-  const authors = useMemo(() => [...new Set(allPRs.map((p) => p.author))].sort(), [allPRs])
 
   const filtered = useMemo(() => {
     return allPRs.filter((pr) => {
@@ -155,25 +147,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={handleSort}
-        statusFilter={statusFilter}
-        onToggleStatus={toggleStatus}
-        onClearStatus={clearStatus}
-        repoFilter={repoFilter}
-        onToggleRepo={toggleRepo}
-        onClearRepo={clearRepo}
-        authorFilter={authorFilter}
-        onToggleAuthor={toggleAuthor}
-        onClearAuthor={clearAuthor}
-        repos={repos}
-        statuses={statuses}
-        authors={authors}
-      />
+      <Toolbar {...toolbarProps} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
         {loading ? (

@@ -3,13 +3,11 @@ import { CheckSquare } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore } from './ListHelpers'
-import { useSetFilter } from '../hooks/listHooks'
+import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
 import { matchesPrSearch } from '../lib/prSearch'
-import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 import type { MockPR } from '../../../lib/github/types'
-import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
 const PAGE_SIZE = 20
 
@@ -27,27 +25,22 @@ export function WaitingForReviewTab({
   loading,
 }: WaitingForReviewTabProps) {
   const { t } = useTranslation('launchpad')
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
-  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
-  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [shown, setShown] = useState(PAGE_SIZE)
-  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const repos = useMemo(() => [...new Set(allPRs.map((p) => p.repo))].sort(), [allPRs])
   const statuses = useMemo(() => [...new Set(allPRs.map((p) => p.status))].sort(), [allPRs])
   const authors = useMemo(() => [...new Set(allPRs.map((p) => p.author))].sort(), [allPRs])
 
-  function handleSort(k: SortKey) {
-    if (k === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(k)
-      setSortDir('desc')
-    }
-  }
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({ repos, statuses, authors })
 
   const waitingPRs = useMemo(() => {
     return allPRs
@@ -69,25 +62,7 @@ export function WaitingForReviewTab({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={handleSort}
-        statusFilter={statusFilter}
-        onToggleStatus={toggleStatus}
-        onClearStatus={clearStatus}
-        repoFilter={repoFilter}
-        onToggleRepo={toggleRepo}
-        onClearRepo={clearRepo}
-        authorFilter={authorFilter}
-        onToggleAuthor={toggleAuthor}
-        onClearAuthor={clearAuthor}
-        repos={repos}
-        statuses={statuses}
-        authors={authors}
-      />
+      <Toolbar {...toolbarProps} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
         {loading ? (

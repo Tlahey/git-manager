@@ -1,13 +1,12 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo } from 'react'
 import { FolderGit2, GitBranch, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Tag } from '@git-manager/ui'
 import { Toolbar } from './Toolbar'
-import { useSetFilter } from '../hooks/listHooks'
+import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
 import { useLocalWipRepos, type LocalWipEntry } from '../hooks/useLocalWipRepos'
 import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
-import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
 function WipEntryRow({ entry }: { entry: LocalWipEntry }) {
   const { t } = useTranslation('launchpad')
@@ -91,25 +90,14 @@ export function WipTab() {
   const { t } = useTranslation('launchpad')
   const { entries, loading } = useLocalWipRepos()
 
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('files')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
-  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
-  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
-
-  const handleSort = useCallback((k: SortKey) => {
-    setSortKey((prevKey) => {
-      if (k === prevKey) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-        return prevKey
-      }
-      setSortDir('desc')
-      return k
-    })
-  }, [])
-
   const repos = useMemo(() => [...new Set(entries.map((e) => e.repoName))].sort(), [entries])
+
+  const { search, sortKey, sortDir, repoFilter, toolbarProps } = useListToolbar({
+    initialSortKey: 'files',
+    repos,
+    statuses: [],
+    authors: [],
+  })
 
   const filtered = useMemo(
     () =>
@@ -140,25 +128,7 @@ export function WipTab() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={handleSort}
-        statusFilter={statusFilter}
-        onToggleStatus={toggleStatus}
-        onClearStatus={clearStatus}
-        repoFilter={repoFilter}
-        onToggleRepo={toggleRepo}
-        onClearRepo={clearRepo}
-        authorFilter={authorFilter}
-        onToggleAuthor={toggleAuthor}
-        onClearAuthor={clearAuthor}
-        repos={repos}
-        statuses={[]}
-        authors={[]}
-      />
+      <Toolbar {...toolbarProps} />
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (

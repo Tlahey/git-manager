@@ -4,7 +4,7 @@ import { MultiSelectDropdown } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
-interface ToolbarProps {
+export interface ToolbarProps {
   search: string
   onSearch: (v: string) => void
   sortKey: SortKey

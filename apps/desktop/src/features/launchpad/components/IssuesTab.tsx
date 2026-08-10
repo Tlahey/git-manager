@@ -5,11 +5,9 @@ import { Toolbar } from './Toolbar'
 import { IssueRowSkeleton } from './RowSkeletons'
 import { IssueRow } from './IssueRow'
 import { InfiniteScrollSentinel } from './ListHelpers'
-import { useSetFilter } from '../hooks/listHooks'
-import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
+import { useListToolbar } from '../hooks/useListToolbar'
 import { isMyIssue } from '../lib/launchpadUtils'
 import type { MockIssue } from '../../../lib/github/types'
-import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
 /** Free-text match for an issue (title/author/repo/number). Empty query matches everything. */
 function matchesIssueSearch(issue: MockIssue, query: string): boolean {
@@ -56,29 +54,30 @@ export function IssuesTab({
   onIssueChanged,
 }: IssuesTabProps) {
   const { t } = useTranslation('launchpad')
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, toggleStatus, clearStatus] = useSetFilter(['open'])
-  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
-  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   // We fetch every issue in the added repos, but default to showing only the user's own — cleared
   // via the toolbar toggle to browse all of a project's issues. No user (demo) => no filter.
   const [mineOnly, setMineOnly] = useState(true)
   const [shown, setShown] = useState(INITIAL_SHOWN)
-  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const repos = useMemo(() => [...new Set(allIssues.map((i) => i.repo))].sort(), [allIssues])
   const authors = useMemo(() => [...new Set(allIssues.map((i) => i.author))].sort(), [allIssues])
 
-  function handleSort(k: SortKey) {
-    if (k === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(k)
-      setSortDir('desc')
-    }
-  }
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({
+    repos,
+    statuses: ISSUE_STATUSES,
+    authors,
+    // The tab opens on open issues alone; the closed ones are one dropdown tick away.
+    initialStatuses: ['open'],
+  })
 
   const filtered = useMemo(() => {
     return allIssues
@@ -112,25 +111,7 @@ export function IssuesTab({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={handleSort}
-        statusFilter={statusFilter}
-        onToggleStatus={toggleStatus}
-        onClearStatus={clearStatus}
-        repoFilter={repoFilter}
-        onToggleRepo={toggleRepo}
-        onClearRepo={clearRepo}
-        authorFilter={authorFilter}
-        onToggleAuthor={toggleAuthor}
-        onClearAuthor={clearAuthor}
-        repos={repos}
-        statuses={ISSUE_STATUSES}
-        authors={authors}
-      >
+      <Toolbar {...toolbarProps}>
         {currentUser && (
           <button
             onClick={() => setMineOnly((v) => !v)}

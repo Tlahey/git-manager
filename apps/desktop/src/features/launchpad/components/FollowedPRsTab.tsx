@@ -1,17 +1,16 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, Trash2, BookOpen, GitPullRequest } from 'lucide-react'
 import { Button } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore } from './ListHelpers'
-import { usePRSort, useSetFilter } from '../hooks/listHooks'
+import { usePRSort } from '../hooks/listHooks'
+import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
 import { FollowPRDialog } from './FollowPRDialog'
 import { matchesPrSearch } from '../lib/prSearch'
-import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 import type { MockPR } from '../../../lib/github/types'
-import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
 const PAGE_SIZE = 20
 
@@ -66,27 +65,8 @@ export function FollowedPRsTab({
   loading,
 }: FollowedPRsTabProps) {
   const { t } = useTranslation('launchpad')
-  const [search, setSearch] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
-  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
-  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [shown, setShown] = useState(PAGE_SIZE)
   const [showFollowDialog, setShowFollowDialog] = useState(false)
-  const globalSearch = useLaunchpadControlsStore((s) => s.search)
-
-  const handleSort = useCallback((k: SortKey) => {
-    setSortKey((prevKey) => {
-      if (k === prevKey) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-        return prevKey
-      } else {
-        setSortDir('desc')
-        return k
-      }
-    })
-  }, [])
 
   const repos = useMemo(() => [...new Set(followedPRs.map((p) => p.repo))].sort(), [followedPRs])
   const statuses = useMemo(
@@ -97,6 +77,17 @@ export function FollowedPRsTab({
     () => [...new Set(followedPRs.map((p) => p.author))].sort(),
     [followedPRs]
   )
+
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({ repos, statuses, authors })
 
   const filtered = useMemo(() => {
     return followedPRs.filter((pr) => {
@@ -111,25 +102,7 @@ export function FollowedPRsTab({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={handleSort}
-        statusFilter={statusFilter}
-        onToggleStatus={toggleStatus}
-        onClearStatus={clearStatus}
-        repoFilter={repoFilter}
-        onToggleRepo={toggleRepo}
-        onClearRepo={clearRepo}
-        authorFilter={authorFilter}
-        onToggleAuthor={toggleAuthor}
-        onClearAuthor={clearAuthor}
-        repos={repos}
-        statuses={statuses}
-        authors={authors}
-      >
+      <Toolbar {...toolbarProps}>
         <Button
           size="sm"
           data-testid="launchpad-follow-pr-button"
