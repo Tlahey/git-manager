@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { FolderGit2, GitBranch, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import { EmptyState, NoResults } from '@git-manager/components'
 import { Button, Tag } from '@git-manager/ui'
 import { Toolbar } from './Toolbar'
 import { useListToolbar } from '../hooks/useListToolbar'
@@ -137,18 +138,16 @@ export function WipTab() {
             <PRRowSkeleton />
           </>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
-              <FolderGit2 className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mb-1 text-sm font-semibold text-foreground">{t('wip.emptyTitle')}</h3>
-            <p className="max-w-[280px] text-xs text-muted-foreground">{t('wip.emptyDesc')}</p>
-          </div>
+          <EmptyState
+            icon={<FolderGit2 className="h-6 w-6 text-primary" />}
+            title={t('wip.emptyTitle')}
+            description={t('wip.emptyDesc')}
+          />
         ) : sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
-            <FolderGit2 className="mb-2 h-6 w-6 opacity-30" />
-            <p className="text-xs">{t('wip.noMatch')}</p>
-          </div>
+          <NoResults
+            icon={<FolderGit2 className="h-6 w-6 opacity-30" />}
+            message={t('wip.noMatch')}
+          />
         ) : (
           sorted.map((entry) => <WipEntryRow key={entry.worktreePath} entry={entry} />)
         )}

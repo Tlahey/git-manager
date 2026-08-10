@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { CheckSquare } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import { NoResults } from '@git-manager/components'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore } from './ListHelpers'
 import { useListToolbar } from '../hooks/useListToolbar'
@@ -73,10 +74,10 @@ export function WaitingForReviewTab({
             <PRRowSkeleton />
           </>
         ) : waitingPRs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
-            <CheckSquare className="h-6 w-6 opacity-30" />
-            <p className="text-xs">{t('waiting.allCaughtUp')}</p>
-          </div>
+          <NoResults
+            icon={<CheckSquare className="h-6 w-6 opacity-30" />}
+            message={t('waiting.allCaughtUp')}
+          />
         ) : (
           <>
             {waitingPRs.slice(0, shown).map((pr) => (

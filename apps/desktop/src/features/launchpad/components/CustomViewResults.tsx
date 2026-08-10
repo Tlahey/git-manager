@@ -2,6 +2,7 @@ import { useState, useMemo, type ReactNode } from 'react'
 import { Search, X, GitPullRequest, AlertCircle } from 'lucide-react'
 import { Input } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
+import { NoResults } from '@git-manager/components'
 import type { SavedFilter } from '../stores/launchpad.store'
 import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 import { prMatchesSavedFilter, issueMatchesSavedFilter } from '../lib/savedFilterMatch'
@@ -156,10 +157,10 @@ export function CustomViewResults({
             )}
           </>
         ) : total === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground/50">
-            <span className="text-3xl">{filter.emoji}</span>
-            <p className="text-xs">{t('views.noResults')}</p>
-          </div>
+          <NoResults
+            icon={<span className="text-3xl">{filter.emoji}</span>}
+            message={t('views.noResults')}
+          />
         ) : (
           <>
             {matchedPRs.length > 0 && (

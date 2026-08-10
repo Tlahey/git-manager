@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { AlertCircle, User } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import { NoResults } from '@git-manager/components'
 import { Toolbar } from './Toolbar'
 import { IssueRowSkeleton } from './RowSkeletons'
 import { IssueRow } from './IssueRow'
@@ -137,10 +138,10 @@ export function IssuesTab({
             <IssueRowSkeleton />
           </>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
-            <AlertCircle className="h-6 w-6 opacity-30" />
-            <p className="text-xs">{t('issues.noMatch')}</p>
-          </div>
+          <NoResults
+            icon={<AlertCircle className="h-6 w-6 opacity-30" />}
+            message={t('issues.noMatch')}
+          />
         ) : (
           <>
             {filtered.slice(0, shown).map((issue) => (

@@ -14,6 +14,9 @@ export type { StepRailVariant, StepRailProgress } from './StepRailRow'
 export { KpiCard } from './KpiCard'
 export type { KpiCardProps } from './KpiCard'
 
+export { EmptyState, NoResults } from './EmptyState'
+export type { EmptyStateProps, NoResultsProps } from './EmptyState'
+
 export { InnerTab } from './InnerTab'
 export type { InnerTabProps } from './InnerTab'
 

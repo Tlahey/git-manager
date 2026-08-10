@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Plus, Trash2, BookOpen, GitPullRequest } from 'lucide-react'
 import { Button } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
+import { EmptyState, NoResults } from '@git-manager/components'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore } from './ListHelpers'
 import { usePRSort } from '../hooks/listHooks'
@@ -123,29 +124,25 @@ export function FollowedPRsTab({
             <PRRowSkeleton />
           </>
         ) : followedPRs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
-              <BookOpen className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mb-1 text-sm font-semibold text-foreground">
-              {t('followed.emptyTitle')}
-            </h3>
-            <p className="mb-4 max-w-[280px] text-xs text-muted-foreground">
-              {t('followed.emptyDesc')}
-            </p>
-            <Button
-              size="sm"
-              onClick={() => setShowFollowDialog(true)}
-              className="gap-1.5 rounded-lg"
-            >
-              <Plus className="h-3.5 w-3.5" /> {t('followed.addByUrl')}
-            </Button>
-          </div>
+          <EmptyState
+            icon={<BookOpen className="h-6 w-6 text-primary" />}
+            title={t('followed.emptyTitle')}
+            description={t('followed.emptyDesc')}
+            action={
+              <Button
+                size="sm"
+                onClick={() => setShowFollowDialog(true)}
+                className="gap-1.5 rounded-lg"
+              >
+                <Plus className="h-3.5 w-3.5" /> {t('followed.addByUrl')}
+              </Button>
+            }
+          />
         ) : sortedPRs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
-            <GitPullRequest className="mb-2 h-6 w-6 opacity-30" />
-            <p className="text-xs">{t('followed.noMatch')}</p>
-          </div>
+          <NoResults
+            icon={<GitPullRequest className="h-6 w-6 opacity-30" />}
+            message={t('followed.noMatch')}
+          />
         ) : (
           <>
             {sortedPRs.slice(0, shown).map((pr) => (
