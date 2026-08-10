@@ -13,22 +13,30 @@ own, mounted by `App.tsx` beside the dashboard and the settings.
 ```
 features/launchpad/
   index.ts                     the public surface — the ONLY thing outside code may import
-  PullRequestsPage.tsx         the page: KPI bar, toolbar, inner tabs, side panels
+  PullRequestsPage.tsx         the layout: header, banner, KPI bar, tab bar, side panels
   components/
+    LaunchpadHeader.tsx        the title bar: sync status and manual refresh
     <Inner>Tab.tsx             one per inner tab (prs, wip, followed, issues, waiting, snoozed,
                                stats, views, rewards)
+    CustomViewResults          what one saved view matches; SavedFilterList is its rail
+    RewardsSummary             rank + trophy cabinet; AchievementCard is one challenge
     PRRow / IssueRow           the list rows, and their quick actions
     Pr/IssueSidePanel.tsx      the right-hand detail slot, filled by the shared github-panels
     Open{Pr,Issue}Context.ts   how a row asks the page to open its detail panel
-    Toolbar / LaunchpadToolbar / LaunchpadKpiBar / FilterEditorDialog / FollowPRDialog / …
+    Toolbar / ListHelpers / LaunchpadToolbar / LaunchpadKpiBar / FilterEditorDialog / …
   hooks/
     usePullRequestsPage.ts     the page's own state: pins, follows, snoozes, per-tab counts
-    listHooks.ts               sorting/filtering shared by every list tab
+    useLaunchpadTabs.tsx       the eight inner tabs — what each is called and renders
+    useListToolbar.ts          one list tab's search, sort and three filters (all six share it)
+    listHooks.ts               the PR sort and the set-filter primitive behind it
     useLocalWipRepos.ts        the WIP tab's local-branch side
     useGitHubRepoIssues.ts     the Issues tab's fetch
     usePendingPrOpen.ts        opening a PR the app was asked to show (notification, deep link)
   lib/
     prGroups / prSearch / prActions / githubTabs.config
+    savedFilterMatch.ts        whether a PR or issue satisfies a custom view
+    rewardVisuals.config.ts    the trophy board's palette, keyed by rank and tier
+    filterEditor.config.ts     the filter editor's status/emoji/criterion vocabularies
     launchpadTypes.ts          this page's view state (sort key/dir, which inner tab)
     launchpadUtils.ts          snooze arithmetic, "is this issue mine", CI action link
   stores/
