@@ -14,14 +14,14 @@ const { listeners, listen } = vi.hoisted(() => {
 })
 vi.mock('@tauri-apps/api/event', () => ({ listen }))
 
-vi.mock('../api/ai.api', () => ({
+vi.mock('../../../api/ai.api', () => ({
   apiGetAiCommitScan: vi.fn(),
   commitFileScanService: { run: vi.fn() },
   commitQuickScanService: { run: vi.fn() },
   commitRelevanceService: { run: vi.fn() },
   commitSearchAnswerService: { run: vi.fn(), cancel: vi.fn() },
 }))
-vi.mock('../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
+vi.mock('../../../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
 
 import {
   apiGetAiCommitScan,
@@ -29,8 +29,8 @@ import {
   commitQuickScanService,
   commitRelevanceService,
   commitSearchAnswerService,
-} from '../api/ai.api'
-import { apiGetCommitDiff } from '../api/git.api'
+} from '../../../api/ai.api'
+import { apiGetCommitDiff } from '../../../api/git.api'
 import { useAiCommitSearch } from './useAiCommitSearch'
 import { useAiCommitSearchStore } from '../stores/aiCommitSearch.store'
 

@@ -7,7 +7,7 @@
  * footer pill already covers the case where the user is looking at the app; this covers the case
  * where they aren't.
  *
- * A pure builder, like `commitSearchNotch.ts`: the card for every feature, every count and every
+ * A pure builder, like `features/ai-search/lib/commitSearchNotch.ts`: the card for every feature, every count and every
  * missing origin is assertable without a provider, a repository or a model.
  */
 

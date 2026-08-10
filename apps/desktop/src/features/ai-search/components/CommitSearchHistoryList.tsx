@@ -1,7 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Tooltip } from '@git-manager/ui'
 import { History, Trash2 } from 'lucide-react'
-import type { StoredSearchRun } from '../../../stores/aiCommitSearch.store'
+import type { StoredSearchRun } from '../stores/aiCommitSearch.store'
 import { formatRelativeTime } from '../../../lib/relativeDate'
 
 interface CommitSearchHistoryListProps {

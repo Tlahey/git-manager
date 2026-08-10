@@ -14,7 +14,7 @@
 import type { CommitScanProgress } from '@git-manager/ai'
 import type { NotchModel } from '@git-manager/notch'
 import type { TFunction } from '@git-manager/i18n'
-import type { AiCommitSearchPhase } from '../../hooks/useAiCommitSearch'
+import type { AiCommitSearchPhase } from '../hooks/useAiCommitSearch'
 
 /** One card per repository — a second search in the same repo replaces the first. */
 export function commitSearchNotchId(repoPath: string): string {

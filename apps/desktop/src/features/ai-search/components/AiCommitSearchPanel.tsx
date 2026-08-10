@@ -7,14 +7,11 @@ import {
   DEFAULT_MAX_SCANNED_COMMITS,
   dominantFailure,
   useAiCommitSearch,
-} from '../../../hooks/useAiCommitSearch'
+} from '../hooks/useAiCommitSearch'
 import { useNotchOperation } from '../../../hooks/useNotchOperation'
 import { useWindowFocus } from '../../../hooks/useWindowFocus'
-import {
-  commitSearchNotchId,
-  commitSearchNotchModel,
-} from '../../../lib/notifications/commitSearchNotch'
-import type { StoredSearchMatch, StoredSearchRun } from '../../../stores/aiCommitSearch.store'
+import { commitSearchNotchId, commitSearchNotchModel } from '../lib/commitSearchNotch'
+import type { StoredSearchMatch, StoredSearchRun } from '../stores/aiCommitSearch.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { Markdown } from '../../../components/Markdown'
