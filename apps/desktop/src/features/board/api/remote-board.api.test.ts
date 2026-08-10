@@ -17,6 +17,7 @@ vi.mock('../../../api/github/github-issues.api', async () => {
     createIssue: vi.fn(),
     updateIssue: vi.fn(),
     setIssueState: vi.fn(),
+    createIssueComment: vi.fn(),
   }
 })
 
@@ -24,7 +25,12 @@ vi.mock('../../../api/github/github-labels.api', async () => {
   const actual = await vi.importActual<typeof import('../../../api/github/github-labels.api')>(
     '../../../api/github/github-labels.api'
   )
-  return { ...actual, addLabels: vi.fn(), removeLabel: vi.fn() }
+  return {
+    ...actual,
+    addLabels: vi.fn(),
+    removeLabel: vi.fn(),
+    createOrUpdateLabel: vi.fn(),
+  }
 })
 
 import * as tauri from '../../../lib/tauri'
@@ -419,5 +425,201 @@ describe('addExistingIssueToColumn', () => {
       'gh-token'
     )
     expect(issuesMocked.createIssue).not.toHaveBeenCalled()
+  })
+})
+
+// ── The five methods that mutate a user's real issues ────────────────────────────────────────────
+// Added before the backend was split, so they describe the behaviour that existed rather than the
+// behaviour the split produced.
+
+describe('updateBoardMeta', () => {
+  /**
+   * The tag palette *is* the repo's label set, so colours go to GitHub before the config is
+   * rewritten — otherwise a tag would show the user's colour in-app and a random one on github.com.
+   */
+  it('pushes every tag colour to GitHub before rewriting the config', async () => {
+    tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+    const order: string[] = []
+    labelsMocked.createOrUpdateLabel.mockImplementation(() => {
+      order.push('label')
+      return Promise.resolve()
+    })
+    tauriMocked.writeBoardConfig.mockImplementation(() => {
+      order.push('write')
+      return Promise.resolve()
+    })
+
+    await backend.updateBoardMeta(
+      path,
+      'b1',
+      'Renamed',
+      [{ id: 'tag-bug', name: 'bug', color: '#ff0000' }],
+      '',
+      [],
+      'r1'
+    )
+
+    expect(labelsMocked.createOrUpdateLabel).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      'bug',
+      '#ff0000',
+      'gh-token'
+    )
+    expect(order).toEqual(['label', 'write'])
+  })
+
+  /** A prefix is an identifier: trimmed, upper-cased, deduplicated, and never empty. */
+  it('normalises the card prefixes and drops the empty ones', async () => {
+    tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+
+    await backend.updateBoardMeta(path, 'b1', 'Board', [], '', [' gm ', 'GM', '', 'ops'], 'r1')
+
+    const [, contents] = tauriMocked.writeBoardConfig.mock.calls[0]
+    expect(JSON.parse(contents).boards[0].cardPrefixes).toEqual(['GM', 'OPS'])
+  })
+
+  it('refuses a stale revision like every other board write', async () => {
+    await expect(
+      backend.updateBoardMeta(path, 'b1', 'Board', [], '', [], 'stale')
+    ).rejects.toMatchObject({ code: 'BOARD_CONFLICT' })
+    expect(tauriMocked.writeBoardConfig).not.toHaveBeenCalled()
+  })
+})
+
+describe('closeBoard', () => {
+  it('stamps the summary and its closing date onto the board', async () => {
+    tauriMocked.writeBoardConfig.mockResolvedValue(undefined)
+    const summary = { closedAt: '2026-02-03T00:00:00.000Z', done: 3, total: 4 }
+
+    await backend.closeBoard(path, 'b1', summary as never, 'r1')
+
+    const [, contents] = tauriMocked.writeBoardConfig.mock.calls[0]
+    const saved = JSON.parse(contents).boards[0]
+    expect(saved.closedAt).toBe(summary.closedAt)
+    expect(saved.summary).toEqual(summary)
+  })
+
+  it('refuses a stale revision', async () => {
+    await expect(
+      backend.closeBoard(path, 'b1', { closedAt: 'x' } as never, 'stale')
+    ).rejects.toMatchObject({ code: 'BOARD_CONFLICT' })
+  })
+})
+
+describe('addComment', () => {
+  /**
+   * Note for whoever reads this next: unlike every other write on this backend, `addComment`
+   * accepts an `expectedRevision` and **ignores it**. That is defensible — a comment is appended,
+   * so a stale revision cannot clobber anything the way a card patch could — but it was nowhere
+   * stated, and this test is where it now is.
+   */
+  it('posts a real issue comment rather than storing it in the card', async () => {
+    issuesMocked.createIssueComment.mockResolvedValue(undefined)
+    issuesMocked.fetchIssueDetail.mockResolvedValue({
+      number: 7,
+      title: 'Do the thing',
+      body: '',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      // The column label has to be there: `addComment` re-reads the card afterwards, and a card
+      // that no longer carries one is not on this board any more.
+      labels: [{ name: 'board:b1:status:todo' }],
+      assignees: [],
+      comments: 1,
+    })
+
+    const card = await backend.addComment(path, 'b1', '7', 'Looks good', 'r1')
+    expect(card.columnId).toBe('todo')
+
+    expect(issuesMocked.createIssueComment).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      7,
+      'Looks good',
+      'gh-token'
+    )
+  })
+})
+
+describe('moveCardsToBoard', () => {
+  const twoBoards = configJson([
+    {
+      id: 'b1',
+      name: 'From',
+      source: 'remote',
+      columns: [{ id: 'todo', name: 'Todo', order: 0 }],
+      revision: 'r1',
+    },
+    {
+      id: 'b2',
+      name: 'To',
+      source: 'remote',
+      columns: [
+        { id: 'backlog', name: 'Backlog', order: 0 },
+        { id: 'todo', name: 'Todo', order: 1 },
+      ],
+      revision: 'r1',
+    },
+  ])
+
+  /** A move is a label swap: the old board's column label off, the new board's on. */
+  it('keeps the column when the destination board has one with the same id', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(twoBoards)
+    issuesMocked.fetchIssueDetail.mockResolvedValue({
+      number: 7,
+      labels: [{ name: 'board:b1:status:todo' }],
+      assignees: [],
+      comments: 0,
+      updated_at: '',
+      title: '',
+      body: '',
+    })
+
+    await backend.moveCardsToBoard(path, 'b1', 'b2', ['7'], undefined)
+
+    expect(labelsMocked.removeLabel).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      7,
+      'board:b1:status:todo',
+      'gh-token'
+    )
+    expect(labelsMocked.addLabels).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      7,
+      ['board:b2:status:todo'],
+      'gh-token'
+    )
+  })
+
+  /** No matching column means the first one by order, not a card left with no column at all. */
+  it('falls back to the destination first column when the id does not exist there', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(twoBoards)
+    issuesMocked.fetchIssueDetail.mockResolvedValue({
+      number: 7,
+      labels: [{ name: 'board:b1:status:archivedish' }],
+      assignees: [],
+      comments: 0,
+      updated_at: '',
+      title: '',
+      body: '',
+    })
+
+    await backend.moveCardsToBoard(path, 'b1', 'b2', ['7'], undefined)
+
+    expect(labelsMocked.addLabels).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      7,
+      ['board:b2:status:backlog'],
+      'gh-token'
+    )
+  })
+
+  it('refuses a destination column that does not exist rather than guessing', async () => {
+    tauriMocked.readBoardConfig.mockResolvedValue(twoBoards)
+    await expect(backend.moveCardsToBoard(path, 'b1', 'b2', ['7'], 'nope')).rejects.toThrow()
+    expect(labelsMocked.addLabels).not.toHaveBeenCalled()
   })
 })
