@@ -129,10 +129,14 @@ export function GithubSection() {
                   {t('settings.github.deviceCodeInstructions')}
                 </p>
 
-                <div className="flex items-center justify-center gap-4 rounded-md border border-border/60 bg-muted/30 p-4">
+                {/* Stacked, not side by side: the code is the thing to read here, and sharing a
+                    row with the copy button left it too little width — an eight-character code
+                    broke across two lines in a settings pane. `whitespace-nowrap` keeps it on one
+                    whatever the pane is doing. */}
+                <div className="flex flex-col items-center gap-3 rounded-md border border-border/60 bg-muted/30 p-4">
                   <span
                     data-testid="github-device-user-code"
-                    className="font-mono text-2xl font-bold tracking-wider text-foreground"
+                    className="font-mono text-2xl font-bold tracking-wider whitespace-nowrap text-foreground select-all"
                   >
                     {deviceFlowData.user_code}
                   </span>
@@ -154,16 +158,28 @@ export function GithubSection() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <a
-                    href={deviceFlowData.verification_uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="github-device-verification-link"
-                    className="hover:bg-primary-hover inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs transition-colors"
-                  >
-                    <span>{t('settings.github.openActivationPage')}</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {/* `asChild` so this stays a real link — right-click, copy address, middle-click
+                      all keep working — while riding the Button recipe.
+                      Hand-rolled it had three problems, in descending order of how much they cost
+                      a user: no `focus-visible` ring at all, so tabbing to the primary action of
+                      this screen showed nothing; `hover:bg-primary-hover`, a token that does not
+                      exist, so the hover was dead; and a fixed `rounded` plus raw `--primary`
+                      instead of `rounded-(--control-radius)` and the `--button-*` pair, so it
+                      ignored both the theme's button shape (glass makes them capsules) and any
+                      re-pointing of the button colours (`.chrome-surface` does exactly that).
+                      Its contrast was fine — that pair is audited too; the focus ring is the part
+                      that was actually inaccessible. */}
+                  <Button asChild size="sm">
+                    <a
+                      href={deviceFlowData.verification_uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="github-device-verification-link"
+                    >
+                      {t('settings.github.openActivationPage')}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </Button>
 
                   <Button
                     size="sm"

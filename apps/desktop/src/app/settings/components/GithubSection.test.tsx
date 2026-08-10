@@ -155,6 +155,46 @@ describe('GithubSection — device flow in progress', () => {
     )
   })
 
+  /**
+   * The activation link is the primary action of this screen and was hand-rolled: a bare `<a>`
+   * painted to look like a button. It had no `focus-visible` ring, so tabbing to it showed nothing
+   * — the reason it was unusable from the keyboard.
+   */
+  it('gives the activation link the shared button treatment, focus ring included', () => {
+    useGithubDeviceFlow.mockReturnValue(
+      deviceFlowState({
+        deviceFlowData: {
+          user_code: 'ABCD-1234',
+          verification_uri: 'https://github.com/login/device',
+        } as never,
+      })
+    )
+    render(<GithubSection />)
+
+    const link = screen.getByRole('link', { name: /Open Activation Page/ })
+    expect(link).toHaveClass('focus-visible:ring-1')
+    // The button colour and shape tokens, so a theme moves this with every other button.
+    expect(link).toHaveClass('bg-button', 'text-button-foreground')
+    expect(link.className).toContain('rounded-(--control-radius)')
+    // The dead token the hand-rolled version hovered with.
+    expect(link.className).not.toContain('primary-hover')
+  })
+
+  /** Sharing a row with the copy button left the code too narrow: an eight-character code broke
+   * across two lines in the settings pane. */
+  it('stacks the code above its copy button rather than beside it', () => {
+    useGithubDeviceFlow.mockReturnValue(
+      deviceFlowState({
+        deviceFlowData: { user_code: 'ABCD-1234', verification_uri: 'https://x' } as never,
+      })
+    )
+    render(<GithubSection />)
+
+    const code = screen.getByTestId('github-device-user-code')
+    expect(code).toHaveClass('whitespace-nowrap')
+    expect(code.parentElement).toHaveClass('flex-col')
+  })
+
   it('copies the user code and reverts the label after 2s', async () => {
     useGithubDeviceFlow.mockReturnValue(
       deviceFlowState({
