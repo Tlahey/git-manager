@@ -109,6 +109,20 @@ export function getSortedNodes(nodes: Record<string, TreeNode>): TreeNode[] {
   })
 }
 
+/**
+ * Every *file* below `node`, at any depth. A file is its own only descendant.
+ *
+ * Lives here beside {@link getSortedNodes} rather than in the app because it is the same kind of
+ * thing — a pure walk over this module's own tree — and because the answer it gives is what a
+ * folder-level action acts on: staging a folder means staging the files under it, and a folder's
+ * checkbox state is "how many of them are staged".
+ */
+export function collectDescendantFiles(node: TreeNode): TreeNode[] {
+  if (!node.isFolder) return [node]
+  if (!node.children) return []
+  return Object.values(node.children).flatMap(collectDescendantFiles)
+}
+
 function findNodeByPath(root: Record<string, TreeNode>, path: string): TreeNode | null {
   if (!path) return null
   const parts = path.split('/')

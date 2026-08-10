@@ -2,7 +2,7 @@ export { useHorizontalResize } from './useHorizontalResize'
 export { useVerticalResize } from './useVerticalResize'
 export { highlightMatch } from './highlightMatch'
 
-export { useFileTree, getSortedNodes } from './useFileTree'
+export { useFileTree, getSortedNodes, collectDescendantFiles } from './useFileTree'
 export type { FileTreeInputFile, TreeNode } from './useFileTree'
 
 export { SplitButton } from './SplitButton'
