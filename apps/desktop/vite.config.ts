@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
@@ -11,7 +12,13 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(
   async () =>
     ({
-      plugins: [react()],
+      // Tailwind as a Vite plugin, not through PostCSS. `@tailwindcss/postcss` re-parses the
+      // stylesheet it generates without a `from`, and Vite's own url-rewriting PostCSS plugin then
+      // warns "A PostCSS plugin did not pass the `from` option to postcss.parse" on every dev
+      // start — a false alarm about *our* assets, since none of the declarations without a source
+      // file are ours. The Vite plugin is also the integration Tailwind v4 documents for Vite, and
+      // it compiles the CSS outside the PostCSS pipeline entirely: no postcss.config here anymore.
+      plugins: [react(), tailwindcss()],
       resolve: {
         alias: {
           '@': fileURLToPath(new URL('./src', import.meta.url)),

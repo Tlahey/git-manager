@@ -119,10 +119,30 @@ describe('useGlobalCommands — run', () => {
     expect(openRepository).toHaveBeenCalledOnce()
   })
 
-  it('repo-files opens the files view', () => {
+  // One entry per view of the repo tab — the keyboard route to the toolbar's own switcher.
+  it.each([
+    ['nav-view-graph', 'graph'],
+    ['nav-view-files', 'files'],
+    ['nav-view-board', 'board'],
+  ])('%s switches the repo tab to the %s view', (id, view) => {
     toolbar.activeRepo = '/repo'
-    ids().byId('repo-files')!.run()
-    expect(useRepoViewStore.getState().view).toBe('files')
+    useRepoViewStore.setState({ view: view === 'graph' ? 'board' : 'graph' })
+    ids().byId(id)!.run()
+    expect(useRepoViewStore.getState().view).toBe(view)
+  })
+
+  // The palette opens over the Dashboard and the Launchpad too, where setting a view would change
+  // something nobody is showing.
+  it('a view command activates the repo tab first', () => {
+    toolbar.activeRepo = '/repo'
+    useRepoUIStore.setState({ openTabs: ['/repo'], activeTab: DASHBOARD_TAB })
+    ids().byId('nav-view-board')!.run()
+    expect(useRepoUIStore.getState().activeTab).toBe('/repo')
+    expect(useRepoViewStore.getState().view).toBe('board')
+  })
+
+  it('offers no view commands without an active repo', () => {
+    expect(ids().commands.some((c) => c.id.startsWith('nav-view-'))).toBe(false)
   })
 
   it('the terminal command leaves the view alone — it opens nothing in the app', () => {

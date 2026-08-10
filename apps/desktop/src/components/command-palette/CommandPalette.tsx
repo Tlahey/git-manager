@@ -18,6 +18,8 @@ import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
 import { useRefCommands } from './commands/useRefCommands'
 import { useFileLookupCommands } from './commands/useFileLookupCommands'
+import { highlightMatch } from '@git-manager/components'
+import { scoreCommand } from './commandMatch'
 import type { Section } from '../../app/settings/SettingsPage'
 import type { PaletteCommand, PaletteGroup } from './commands/types'
 
@@ -63,6 +65,26 @@ function useCommitLookupCommands(query: string): PaletteCommand[] {
   ]
 }
 
+/**
+ * A row's title with the part that answered the query marked.
+ *
+ * Everything it needs comes from the row itself (`highlight`), not from the palette's query, because
+ * a row can spell out more than the thing being searched. `checkout ada-boost` is found by typing
+ * `ada`: `from` keeps the verb out of the marking, and `query` is the argument alone — which is also
+ * what lets a match land anywhere in the branch, `checkout ada-**boost**` included. Marking the
+ * whole query across the whole title could only ever find it where it sat flush against the verb.
+ */
+function MarkedTitle({ command }: { command: PaletteCommand }) {
+  const { query, from = 0 } = command.highlight ?? { query: '' }
+
+  return (
+    <>
+      {command.title.slice(0, from)}
+      {highlightMatch(command.title.slice(from), query)}
+    </>
+  )
+}
+
 interface CommandPaletteProps {
   onOpenSettings: (section: Section) => void
   onCloseSettings: () => void
@@ -88,6 +110,10 @@ export function CommandPalette({
       onOpenChange={(next) => {
         if (!next) closePalette()
       }}
+      // Our own scorer rather than cmdk's, which accepts any subsequence: `ada` matched a branch
+      // that merely had an a, a d and an a scattered through it, and a row could be listed with
+      // nothing in it the user had actually typed. See `scoreCommand` for the order it produces.
+      filter={scoreCommand}
     >
       {open && (
         <CommandPaletteBody
@@ -117,27 +143,41 @@ function CommandPaletteBody({
   const { t } = useTranslation('common')
   const [search, setSearch] = useState('')
   const mode = useCommandPaletteStore((s) => s.mode)
+  // The branch action waiting for its target, or null for the ordinary list — see `RefPickerStep`.
+  const refPicker = useCommandPaletteStore((s) => s.refPicker)
+  const setRefPicker = useCommandPaletteStore((s) => s.setRefPicker)
   const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
   const globalCommands = useGlobalCommands({ onOpenSettings, onOpenActivityLogs })
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
-  const refCommands = useRefCommands()
+  const refCommands = useRefCommands(search)
   const isFilesOnly = mode === 'files'
   const lookupCommands = useCommitLookupCommands(search)
   const fileCommands = useFileLookupCommands(isFilesOnly ? search : '')
 
   // Lookup (paste-a-sha) first, then file search, then commit/stash actions — the most contextual.
-  const allCommands = [
-    ...lookupCommands,
-    ...fileCommands,
-    ...commitCommands,
-    ...stashCommands,
-    ...refCommands,
-    ...globalCommands,
-  ]
+  // Picking a branch for a verb is one question: everything else steps aside until it is answered.
+  const allCommands = refPicker
+    ? refCommands
+    : [
+        ...lookupCommands,
+        ...fileCommands,
+        ...commitCommands,
+        ...stashCommands,
+        ...refCommands,
+        ...globalCommands,
+      ]
 
   function run(cmd: PaletteCommand) {
+    // A command that only narrows the palette (a branch verb awaiting its target) leaves the dialog
+    // open, and clears the query so the next screen starts from an empty search rather than from
+    // the letters that found the verb.
+    if (cmd.keepOpen) {
+      cmd.run()
+      setSearch('')
+      return
+    }
     // Running any non-settings command should return the user to the main view if they triggered it
     // from within Settings; settings commands manage their own section instead.
     if (cmd.group !== 'settings') onCloseSettings()
@@ -145,38 +185,63 @@ function CommandPaletteBody({
     onDone()
   }
 
-  const groups: { group: PaletteGroup; heading: string }[] = isFilesOnly
-    ? [
-        { group: 'lookup', heading: t('commandPalette.group.lookup') },
-        { group: 'files', heading: t('commandPalette.group.files') },
-      ]
-    : [
-        { group: 'lookup', heading: t('commandPalette.group.lookup') },
-        {
-          group: 'commit',
-          heading: t('commandPalette.group.commit', {
-            sha: selectedCommitOid ? shortOid(selectedCommitOid) : '',
-          }),
-        },
-        {
-          group: 'stash',
-          heading: t('commandPalette.group.stash', { index: selectedStashIndex ?? '' }),
-        },
-        { group: 'ref', heading: t('commandPalette.group.ref') },
-        { group: 'navigation', heading: t('commandPalette.group.navigation') },
-        { group: 'repo', heading: t('commandPalette.group.repo') },
-        { group: 'settings', heading: t('commandPalette.group.settings') },
-      ]
+  /** Leaves the branch picker for the full list, keeping the palette open. */
+  function backToCommands() {
+    setRefPicker(null)
+    setSearch('')
+  }
+
+  const groups: { group: PaletteGroup; heading: string }[] = refPicker
+    ? [{ group: 'ref', heading: refPicker.label }]
+    : isFilesOnly
+      ? [
+          { group: 'lookup', heading: t('commandPalette.group.lookup') },
+          { group: 'files', heading: t('commandPalette.group.files') },
+        ]
+      : [
+          { group: 'lookup', heading: t('commandPalette.group.lookup') },
+          {
+            group: 'commit',
+            heading: t('commandPalette.group.commit', {
+              sha: selectedCommitOid ? shortOid(selectedCommitOid) : '',
+            }),
+          },
+          {
+            group: 'stash',
+            heading: t('commandPalette.group.stash', { index: selectedStashIndex ?? '' }),
+          },
+          { group: 'ref', heading: t('commandPalette.group.ref') },
+          { group: 'navigation', heading: t('commandPalette.group.navigation') },
+          { group: 'repo', heading: t('commandPalette.group.repo') },
+          { group: 'settings', heading: t('commandPalette.group.settings') },
+        ]
 
   return (
     <>
       <CommandInput
         data-testid="command-palette-input"
         placeholder={
-          isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')
+          refPicker
+            ? t('commandPalette.placeholderRef')
+            : isFilesOnly
+              ? t('commandPalette.placeholderFiles')
+              : t('commandPalette.placeholder')
         }
         value={search}
         onValueChange={setSearch}
+        // The two ways out of the branch picker, both the ones a palette teaches by habit: Escape
+        // undoes the step (a second one then closes the dialog, since Radix sees that keypress),
+        // and Backspace on an empty query walks back the way it was entered. Escape has to be
+        // stopped here or the dialog's own dismiss handler would close the whole palette instead.
+        onKeyDown={(event) => {
+          if (!refPicker) return
+          const atStart = search.length === 0
+          if (event.key === 'Escape' || (event.key === 'Backspace' && atStart)) {
+            event.preventDefault()
+            event.stopPropagation()
+            backToCommands()
+          }
+        }}
       />
       <CommandList data-testid="command-palette">
         <CommandEmpty>{t('commandPalette.empty')}</CommandEmpty>
@@ -194,7 +259,7 @@ function CommandPaletteBody({
                   onSelect={() => run(cmd)}
                 >
                   {cmd.icon}
-                  <span>{cmd.title}</span>
+                  <span>{cmd.highlight ? <MarkedTitle command={cmd} /> : cmd.title}</span>
                   {cmd.subtitle && (
                     <span className="ml-auto truncate pl-2 font-mono text-[11px] text-muted-foreground">
                       {cmd.subtitle}
