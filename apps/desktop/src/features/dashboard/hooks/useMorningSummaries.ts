@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { dailySummaryFeature, fileSummaryFeature } from '@git-manager/ai'
+import { dailySummaryFeature, fileSummaryFeature, SummaryRunCancelled } from '@git-manager/ai'
 import { useDailySummaryStore, selectSummariesFor } from '../../../stores/dailySummary.store'
 import { trackAiProgress } from '../../../stores/aiActivity.store'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -74,10 +74,19 @@ export function useMorningSummaries(paths: string[]) {
             // starts itself, so a card named after the calls it happens to be making ("reading the
             // files") is the one run the user has no way of attributing to anything.
             onProgress: trackAiProgress(fileSummaryFeature.id, dailySummaryFeature.id),
+            // The same flag the loop checks, handed to the run itself. Checking it only between
+            // repositories left the current project's calls going: this is one model call per
+            // changed file, so leaving the dashboard used to abandon the loop and keep the model
+            // working — for minutes, on nothing anyone would ever see.
+            shouldCancel: () => cancelled,
           })
-        } catch {
+        } catch (error) {
           // A failing project (unreachable provider, invalid repo) shouldn't block the others; the
           // user can retry manually from the panel. Already marked attempted above.
+          //
+          // A cancellation is not one of those, and it must not be swallowed as one: the teardown
+          // that raised it also means there is no longer anything to summarize for.
+          if (error instanceof SummaryRunCancelled) return
         }
       }
     })()

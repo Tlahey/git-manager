@@ -15,7 +15,7 @@ import { useAiActivityStore } from '../../../stores/aiActivity.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { DEFAULT_TARGET_BRANCHES } from '../../../hooks/useEffectiveRepoSettings'
 import { previousWorkingDayKey } from '../../../lib/dailySummaryWindow'
-import type { DailySummary } from '@git-manager/ai'
+import { SummaryRunCancelled, type DailySummary } from '@git-manager/ai'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
 const summary: DailySummary = { headline: 'H', highlights: [] }
@@ -183,5 +183,35 @@ describe('useMorningSummaries', () => {
     generateDailySummary.mockRejectedValueOnce(new Error('provider down'))
     renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
     await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(2))
+  })
+
+  /**
+   * The run is one model call per changed file and nothing on screen is watching it, so leaving the
+   * dashboard used to abandon the loop and leave the model working — for minutes, on a briefing
+   * nobody would ever see. The flag now reaches the run itself.
+   */
+  it('tells the run in flight to stop when the dashboard goes away', async () => {
+    setDailySummarySettings(true, true)
+    generateDailySummary.mockReturnValue(new Promise(() => {}))
+    const { unmount } = renderHook(() => useMorningSummaries(['/repo/a']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+
+    const shouldCancel = generateDailySummary.mock.calls[0]![2].shouldCancel as () => boolean
+    expect(shouldCancel()).toBe(false)
+
+    unmount()
+    expect(shouldCancel()).toBe(true)
+  })
+
+  it('stops the whole sweep on a cancellation rather than moving to the next project', async () => {
+    // A stop means the dashboard is gone: carrying on to the next repository would start work for
+    // a surface that no longer exists, which is what the teardown was trying to end.
+    setDailySummarySettings(true, true)
+    generateDailySummary.mockRejectedValueOnce(new SummaryRunCancelled())
+    renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
+
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(generateDailySummary).toHaveBeenCalledTimes(1)
   })
 })
