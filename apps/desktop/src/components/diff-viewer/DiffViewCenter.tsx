@@ -21,6 +21,7 @@ import { DiffToolbar } from './DiffToolbar'
 import { ChangeExplanationPanel } from './ChangeExplanationPanel'
 import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { hasPreviewTab, isPreviewableImage, isPreviewableMarkdown } from './previewableFile'
+import { splitPath } from '../../lib/filePath'
 
 interface DiffViewCenterProps {
   repoPath: string
@@ -151,15 +152,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
       : diffData.newPath || diffData.oldPath
   }, [diffData, file.path])
 
-  const parsedPath = useMemo(() => {
-    const lastSlash = displayPath.lastIndexOf('/')
-    if (lastSlash === -1) {
-      return { dir: '', name: displayPath }
-    }
-    const dir = displayPath.substring(0, lastSlash + 1)
-    const name = displayPath.substring(lastSlash + 1)
-    return { dir, name }
-  }, [displayPath])
+  const parsedPath = useMemo(() => splitPath(displayPath), [displayPath])
 
   async function handleCopyPath() {
     await navigator.clipboard.writeText(file.path)

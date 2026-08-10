@@ -8,6 +8,7 @@ import {
   ThreeWayMergeEditor,
   type ThreeWayMergeEditorRef,
 } from '../../../components/merge-editor/ThreeWayMergeEditor'
+import { splitPath } from '../../../lib/filePath'
 
 interface ConflictDiffViewProps {
   repoPath: string
@@ -42,11 +43,7 @@ export function ConflictDiffView({
 
   const { data: view, isLoading } = useMergeView(repoPath, filePath)
 
-  const parsedPath = useMemo(() => {
-    const lastSlash = filePath.lastIndexOf('/')
-    if (lastSlash === -1) return { dir: '', name: filePath }
-    return { dir: filePath.substring(0, lastSlash + 1), name: filePath.substring(lastSlash + 1) }
-  }, [filePath])
+  const parsedPath = useMemo(() => splitPath(filePath), [filePath])
 
   async function handleKeepSide(side: 'ours' | 'theirs') {
     setIsSaving(true)

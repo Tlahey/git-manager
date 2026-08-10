@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import { FILE_STATUS_LETTER, FILE_STATUS_COLOR } from '../../lib/fileStatusStyle'
+import { FilePathLabel } from './FilePathLabel'
 import { Input, Tag, ToggleGroup, cn } from '@git-manager/ui'
 import {
   ChevronDown,
@@ -158,23 +160,11 @@ export function CommitFileList({
     }
   }
 
-  const statusIcons: Record<string, string> = {
-    added: 'text-green-500 font-bold text-xs',
-    modified: 'text-yellow-500 font-bold text-xs',
-    deleted: 'text-red-500 font-bold text-xs',
-    renamed: 'text-blue-500 font-bold text-xs',
-    untracked: 'text-muted-foreground font-bold text-xs',
-    conflicted: 'text-orange-500 font-bold text-xs',
-  }
-
-  const statusLetters: Record<string, string> = {
-    added: 'A',
-    modified: 'M',
-    deleted: 'D',
-    renamed: 'R',
-    untracked: '?',
-    conflicted: 'U',
-  }
+  // Letters and colours are shared (see `lib/fileStatusStyle.ts`); the size is this list's own.
+  const statusIcons: Record<string, string> = Object.fromEntries(
+    Object.entries(FILE_STATUS_COLOR).map(([k, color]) => [k, `${color} font-bold text-xs`])
+  )
+  const statusLetters = FILE_STATUS_LETTER
 
   function collectDescendantFiles(node: TreeNode): TreeNode[] {
     if (!node.isFolder) return [node]
@@ -701,26 +691,7 @@ export function CommitFileList({
                       />
                     )}
                     <div className="flex min-w-0 flex-1 items-center overflow-hidden font-mono text-[11px] leading-tight select-text">
-                      {(() => {
-                        const lastSlash = file.path.lastIndexOf('/')
-                        if (lastSlash === -1) {
-                          return (
-                            <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
-                              {file.path}
-                            </span>
-                          )
-                        }
-                        const dir = file.path.substring(0, lastSlash + 1)
-                        const name = file.path.substring(lastSlash + 1)
-                        return (
-                          <>
-                            <span className="min-w-0 shrink truncate pr-0.5 text-muted-foreground/45">
-                              {dir}
-                            </span>
-                            <span className="shrink-0 font-semibold text-foreground">{name}</span>
-                          </>
-                        )
-                      })()}
+                      <FilePathLabel path={file.path} />
                     </div>
                   </div>
 
