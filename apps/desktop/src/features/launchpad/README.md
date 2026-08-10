@@ -64,6 +64,12 @@ features/launchpad/
 - **The copy** (`packages/i18n`, `launchpad` namespace) and the **rewards engine** (`lib/rewards/`,
   `stores/game.store.ts`), which counts events from the whole app and merely renders one of its
   tabs here.
+- **The chrome the lists are made of** — `SidePanelOverlay` (the PR and issue panels), `EmptyState`
+  / `NoResults` (every "nothing here" and "nothing matched"), `SearchInput` (all three search
+  boxes), all from `packages/components`. Each was hand-rolled here first, several times over, and
+  each copy had started to drift; reach for the shared one before writing markup that looks like a
+  neighbour's. `SavedFilterList`'s empty rail is the one deliberate exception — it is a 208px
+  column, not a list body.
 
 ## The one import that skips the barrel
 
