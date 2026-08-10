@@ -90,7 +90,9 @@ git-manager/
 │   ├── README.md                   # This file
 │   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
 │   ├── ai/                         # The AI system: one page per feature + a shared overview
-│   └── architecture/               # Architecture refactor plans + execution tracking
+│   ├── architecture/               # Architecture refactor plans, audits + execution tracking
+│   ├── integrations/               # Third-party setup (GitHub OAuth app + scopes)
+│   └── docs-site/                  # Plans for the documentation site itself (apps/docs)
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
 ├── package.json                    # Root package (global scripts)
 ├── pnpm-workspace.yaml
@@ -170,6 +172,8 @@ ollama pull qwen2.5-coder:7b
 | [Issue tracker](https://github.com/Tlahey/git-manager/issues)    | Remaining work. There is no roadmap file: see the note below                           |
 | [AI system](./ai/README.md)                                      | How every AI feature works — shared runtime + one page per feature                     |
 | [Architecture refactors](./architecture/README.md)               | Five refactor audits and their execution records (July 2026) — all complete            |
+| [GitHub OAuth](./integrations/github-oauth.md)                   | The OAuth app, device flow and token scopes behind the GitHub integration              |
+| [Doc site content plan](./docs-site/content-plan.md)             | Which page of the documentation site comes next, and the scenario that proves it       |
 
 ### One rule behind this list
 

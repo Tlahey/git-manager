@@ -18,7 +18,7 @@ All GitHub API requests are proxied through the Tauri Rust backend (via `reqwest
 
 ## GitHub OAuth App Configuration
 
-The OAuth App is configured with the Client ID defined in [`github.rs`](src-tauri/src/commands/github.rs).
+The OAuth App is configured with the Client ID defined in [`github.rs`](../../apps/desktop/src-tauri/src/commands/github.rs).
 
 ### Creating a GitHub OAuth App
 
@@ -35,7 +35,7 @@ If you need to create or reconfigure the GitHub OAuth App:
 | **Authorization callback URL** | `http://localhost` (not used in Device Flow, but required)             |
 
 4. Click **"Register application"**
-5. Copy the **Client ID** and update it in `src-tauri/src/commands/github.rs`:
+5. Copy the **Client ID** and update it in `apps/desktop/src-tauri/src/commands/github.rs`:
    ```rust
    const GITHUB_CLIENT_ID: &str = "your_client_id_here";
    ```
@@ -73,7 +73,7 @@ The following OAuth scopes are requested during authentication:
 
 ### Backend Commands (Rust)
 
-All GitHub API interactions are handled by Tauri commands in [`src-tauri/src/commands/github.rs`](src-tauri/src/commands/github.rs):
+All GitHub API interactions are handled by Tauri commands in [`apps/desktop/src-tauri/src/commands/github.rs`](../../apps/desktop/src-tauri/src/commands/github.rs):
 
 | Command              | Description                                         |
 | -------------------- | --------------------------------------------------- |
@@ -84,7 +84,7 @@ All GitHub API interactions are handled by Tauri commands in [`src-tauri/src/com
 
 ### Frontend (TypeScript)
 
-The frontend wrappers in [`src/lib/tauri.ts`](src/lib/tauri.ts) call these commands via Tauri's `invoke` mechanism:
+The frontend wrappers in [`apps/desktop/src/lib/tauri.ts`](../../apps/desktop/src/lib/tauri.ts) call these commands via Tauri's `invoke` mechanism:
 
 ```typescript
 import { githubDeviceCode, githubPollToken, githubGetUser, githubListRepos } from './lib/tauri'

@@ -1,14 +1,14 @@
 # Documentation site content plan
 
-The blueprint for what the documentation site ([`apps/docs`](../apps/docs)) should contain,
+The blueprint for what the documentation site ([`apps/docs`](../../apps/docs)) should contain,
 section by section, page by page. It exists so adding a page is a checklist, not a judgment call:
 pick the next unstarted row, tag the scenario, write the prose, capture the screenshot.
 
 This is a **structure document, not prose**. It states what each page must contain and which e2e
 scenario proves it — the actual explanations live in the `.feature` files themselves (see
-[`apps/docs/README.md`](../apps/docs/README.md) for that pipeline). Update this file whenever the
+[`apps/docs/README.md`](../../apps/docs/README.md) for that pipeline). Update this file whenever the
 plan changes: a page's scope changes, a section gets reordered, new coverage is needed. It is
-expected to evolve — keep it in sync with [`apps/docs/docs.config.ts`](../apps/docs/docs.config.ts)
+expected to evolve — keep it in sync with [`apps/docs/docs.config.ts`](../../apps/docs/docs.config.ts)
 (which turns "Section" below into an actual sidebar group) and with issue
 [#189](https://github.com/Tlahey/git-manager/issues/189) (which tracks doing the work below).
 
@@ -350,7 +350,7 @@ doesn't get a page.
     AI-backed risk badge (low/medium/high) that cross-references the release notes against this
     repo's own import sites — labelled advisory, never a merge gate.
   - e2e: `package-health.feature → "An outdated package's upgrade risk is shown with its changelog"`
-    — 🆕 write it — see [docs/ai/README.md](../docs/ai/README.md) for why this one AI feature isn't
+    — 🆕 write it — see [docs/ai/README.md](../ai/README.md) for why this one AI feature isn't
     listed under "AI features" below: it's package-health-specific, not general-purpose.
   - Why this one's harder: unlike the offline checks above, `check_outdated_packages` shells out to
     the repo's real `pnpm`/`npm outdated` against the live npm registry (`package_outdated.rs`'s own
@@ -443,7 +443,7 @@ commit in the window.
 ### Page: Explaining what changed (`ai-explanation.feature`) — ✅ done
 
 Three of the four sub-parts below share one instruction and one temperature, discriminated by scope
-(`packages/ai`'s `summaryExplanationFeature`, per [CLAUDE.md](../CLAUDE.md)); the fourth
+(`packages/ai`'s `summaryExplanationFeature`, per [CLAUDE.md](../../CLAUDE.md)); the fourth
 (`change-explanation.md`) is a related-but-separate descriptor for a single pending file. Grouped on
 one page because a reader who finds one "Explain (LLM)" entry point has effectively found all four.
 
