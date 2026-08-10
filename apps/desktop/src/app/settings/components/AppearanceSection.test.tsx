@@ -9,6 +9,7 @@ import { AppearanceSection } from './AppearanceSection'
 import { SettingsSearchProvider } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useGameStore } from '../../../stores/game.store'
+import { DEV_FLAG_DEFAULTS, useDevFlagsStore } from '../../../stores/devFlags.store'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
 const INITIAL_GAME = useGameStore.getState()
@@ -17,6 +18,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState(INITIAL_SETTINGS, true)
   useGameStore.setState(INITIAL_GAME, true)
+  useDevFlagsStore.setState(DEV_FLAG_DEFAULTS)
   useUserThemes.mockReturnValue({ data: [] })
 })
 
@@ -51,6 +53,25 @@ describe('AppearanceSection — theme picker', () => {
     const before = useSettingsStore.getState().settings.appearance.theme
     await user.click(screen.getByTestId('theme-card-forest'))
     expect(useSettingsStore.getState().settings.appearance.theme).toBe(before)
+  })
+
+  // The dev escape hatch behind `pnpm dev:themes` / VITE_UNLOCK_THEMES: twelve of the fourteen
+  // built-ins are gated, and a theme nobody can select is a theme nobody restyles or grades.
+  it('opens every gated theme while the dev unlock flag is on', async () => {
+    const user = userEvent.setup()
+    useDevFlagsStore.setState({ unlockThemes: true })
+    render(<AppearanceSection />)
+
+    expect(screen.queryByTestId('theme-locked-badge-forest')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('theme-locked-badge-glass')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('theme-card-forest'))
+    expect(useSettingsStore.getState().settings.appearance.theme).toBe('forest')
+  })
+
+  it('leaves the gate alone when the flag is off, which is every build that did not ask for it', () => {
+    render(<AppearanceSection />)
+    expect(screen.getByTestId('theme-locked-badge-forest')).toBeInTheDocument()
   })
 
   it('lists custom user themes with a "custom" badge', () => {

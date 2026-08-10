@@ -45,17 +45,47 @@ function envFlag(value: unknown): boolean | undefined {
  */
 const DEFAULT_MOCK_GITHUB = envFlag(import.meta.env.VITE_MOCK_GITHUB) ?? false
 
+/**
+ * Show every built-in theme in the appearance picker, ignoring the achievement that gates it.
+ *
+ * Twelve of the fourteen built-in themes are earned rather than given (`effects: [{ type:
+ * 'theme' }]` in `stores/achievements.json`), which is right for a player and wrong for whoever
+ * has to look at one. Restyling a theme, grading its contrast, or checking a component against
+ * every surface all start with *seeing* it, and the only ways in were to earn the achievement or
+ * to hand-edit `~/.git-manager/settings.json` — so in practice a locked theme got changed and
+ * never looked at. `pnpm dev:themes` (or `VITE_UNLOCK_THEMES=1 pnpm dev`) opens all of them.
+ *
+ * **Off unless something explicitly asks for it**, exactly like the flag above, and for a sharper
+ * reason: this one hands out the rewards. Nothing in `tools/release/` sets the variable, so a
+ * release build ships the gate intact; setting it while cutting one would give every player every
+ * theme for free.
+ *
+ * It unlocks the *picker*, which is the whole of the gate — `AppearanceSection` is the only reader
+ * of `isEffectUnlocked(…, 'theme', …)`, and applying a theme never re-checks it. So a theme chosen
+ * under the flag stays applied after the flag goes away; pick a free one again to get back. That
+ * is a dev-only wart, not a way for a user to keep a theme they haven't earned — they would need a
+ * build with the variable baked in to reach the card at all.
+ */
+const DEFAULT_UNLOCK_THEMES = envFlag(import.meta.env.VITE_UNLOCK_THEMES) ?? false
+
 interface DevFlagsState {
   mockGitHub: boolean
   setMockGitHub: (value: boolean) => void
+  unlockThemes: boolean
+  setUnlockThemes: (value: boolean) => void
 }
 
 export const useDevFlagsStore = create<DevFlagsState>((set) => ({
   mockGitHub: DEFAULT_MOCK_GITHUB,
   setMockGitHub: (mockGitHub) => set({ mockGitHub }),
+  unlockThemes: DEFAULT_UNLOCK_THEMES,
+  setUnlockThemes: (unlockThemes) => set({ unlockThemes }),
 }))
 
-/** The default the store starts from, exported so tests can assert what a build ships with. */
-export const DEV_FLAG_DEFAULTS = { mockGitHub: DEFAULT_MOCK_GITHUB } as const
+/** The defaults the store starts from, exported so tests can assert what a build ships with. */
+export const DEV_FLAG_DEFAULTS = {
+  mockGitHub: DEFAULT_MOCK_GITHUB,
+  unlockThemes: DEFAULT_UNLOCK_THEMES,
+} as const
 
 export { envFlag }

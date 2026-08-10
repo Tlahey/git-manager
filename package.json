@@ -7,6 +7,7 @@
     "dev:desktop": "turbo dev",
     "dev:doc": "pnpm --filter @git-manager/docs dev",
     "dev:import-repo": "bash tools/git-fixtures/dev-import.sh",
+    "dev:themes": "VITE_UNLOCK_THEMES=1 pnpm dev",
     "fixture:build": "bash tools/git-fixtures/build-all.sh",
     "release:build:local": "bash tools/release/build-local.sh",
     "release": "bash tools/release/cut-release.sh",

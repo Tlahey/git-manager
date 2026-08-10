@@ -232,27 +232,53 @@ function SurfaceButton({
 function DevFlags() {
   const mockGitHub = useDevFlagsStore((s) => s.mockGitHub)
   const setMockGitHub = useDevFlagsStore((s) => s.setMockGitHub)
+  const unlockThemes = useDevFlagsStore((s) => s.unlockThemes)
+  const setUnlockThemes = useDevFlagsStore((s) => s.setUnlockThemes)
 
   return (
     <Section title="Flags">
-      <label
-        className="flex cursor-pointer items-center justify-between gap-3 rounded border border-border/40 px-2.5 py-2"
-        data-testid="debug-flag-mock-github"
-      >
-        <span className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-foreground">Mock GitHub data</span>
-          <span className="text-[10px] leading-snug text-muted-foreground">
-            Fill the Launchpad with the built-in fixtures instead of a real account. Off, a
-            token-less app shows an empty list — which is what a user gets.
-          </span>
-        </span>
-        <Switch
-          checked={mockGitHub}
-          onChange={(e) => setMockGitHub(e.target.checked)}
-          aria-label="Mock GitHub data"
-        />
-      </label>
+      <FlagRow
+        testId="debug-flag-mock-github"
+        label="Mock GitHub data"
+        hint="Fill the Launchpad with the built-in fixtures instead of a real account. Off, a token-less app shows an empty list — which is what a user gets."
+        checked={mockGitHub}
+        onChange={setMockGitHub}
+      />
+      <FlagRow
+        testId="debug-flag-unlock-themes"
+        label="Unlock every theme"
+        hint="Open the twelve achievement-gated themes in Settings › Appearance, so one can be styled and graded without earning it first. Same switch as VITE_UNLOCK_THEMES=1 / pnpm dev:themes."
+        checked={unlockThemes}
+        onChange={setUnlockThemes}
+      />
     </Section>
+  )
+}
+
+function FlagRow({
+  testId,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  testId: string
+  label: string
+  hint: string
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <label
+      className="flex cursor-pointer items-center justify-between gap-3 rounded border border-border/40 px-2.5 py-2"
+      data-testid={testId}
+    >
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[11px] font-medium text-foreground">{label}</span>
+        <span className="text-[10px] leading-snug text-muted-foreground">{hint}</span>
+      </span>
+      <Switch checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+    </label>
   )
 }
 

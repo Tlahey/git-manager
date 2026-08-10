@@ -181,6 +181,15 @@ describe('DebugMenu — dev flags', () => {
     await user.click(screen.getByRole('switch', { name: 'Mock GitHub data' }))
     expect(useDevFlagsStore.getState().mockGitHub).toBe(true)
   })
+
+  it('opens the gated themes without a relaunch', async () => {
+    // The env variable behind `pnpm dev:themes` decides this once, at boot; the switch is what
+    // makes "look at glass for a second" not cost a restart.
+    useDevFlagsStore.setState({ unlockThemes: false })
+    const user = await openMenu()
+    await user.click(screen.getByRole('switch', { name: 'Unlock every theme' }))
+    expect(useDevFlagsStore.getState().unlockThemes).toBe(true)
+  })
 })
 
 describe('DebugMenu — PR simulator', () => {
