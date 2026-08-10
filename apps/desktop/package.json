@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@git-manager/config": "workspace:*",
-    "@tailwindcss/postcss": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
@@ -75,7 +75,6 @@
     "@vitest/coverage-v8": "^4.1.10",
     "@wdio/tauri-plugin": "^1.3.0",
     "jsdom": "catalog:",
-    "postcss": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
