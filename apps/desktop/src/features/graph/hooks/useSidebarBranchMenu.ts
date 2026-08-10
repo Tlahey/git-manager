@@ -76,7 +76,10 @@ export function useSidebarBranchMenu(repoPath: string) {
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
-  const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // Shared state rather than `useState`, like the two below it: the command palette offers Rename
+  // for any branch too, and it cannot reach this hook's local state. See `pendingBranchRename`.
+  const renameTarget = useRepoUIStore((s) => s.pendingBranchRename)
+  const setRenameTarget = useRepoUIStore((s) => s.setPendingBranchRename)
   // Shared state, not `useState`: the confirmation must survive `GitGraph` unmounting when the file
   // explorer opens, and it is mounted once by `RepoWorkspace`. See `pendingRemoteBranchDelete`.
   const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)

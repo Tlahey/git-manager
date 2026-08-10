@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   CommandDialog,
   CommandInput,
@@ -9,9 +10,15 @@ import {
   CommandItem,
 } from './command'
 
-function ExamplePalette({ open = true }: { open?: boolean }) {
+function ExamplePalette({
+  open = true,
+  filter,
+}: {
+  open?: boolean
+  filter?: (value: string, search: string, keywords?: string[]) => number
+}) {
   return (
-    <CommandDialog open={open}>
+    <CommandDialog open={open} filter={filter}>
       <CommandInput placeholder="Search…" data-testid="palette-input" />
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
@@ -47,5 +54,32 @@ describe('Command', () => {
     expect(screen.getByTestId('palette-input')).toBeInTheDocument()
     expect(screen.getByTestId('item-dashboard')).toBeInTheDocument()
     expect(screen.getByTestId('item-settings')).toBeInTheDocument()
+  })
+
+  // Callers whose rows cmdk's own subsequence scorer reads wrongly — refs, paths — pass their own.
+  it("filters and ranks with the caller's own scorer when one is given", async () => {
+    const user = userEvent.setup()
+    // Keeps only the row that contains the query, where cmdk's own scorer accepts `dsh` for both.
+    const filter = vi.fn((value: string, search: string) =>
+      value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+    )
+    render(<ExamplePalette filter={filter} />)
+
+    await user.type(screen.getByTestId('palette-input'), 'dsh')
+
+    expect(filter).toHaveBeenCalled()
+    expect(screen.queryByTestId('item-dashboard')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('item-settings')).not.toBeInTheDocument()
+  })
+
+  it('leaves cmdk its own scorer when none is given', async () => {
+    const user = userEvent.setup()
+    render(<ExamplePalette />)
+
+    await user.type(screen.getByTestId('palette-input'), 'dsh')
+
+    // cmdk accepts a subsequence — d, s, h scattered through "Dashboard".
+    expect(screen.getByTestId('item-dashboard')).toBeInTheDocument()
+    expect(screen.queryByTestId('item-settings')).not.toBeInTheDocument()
   })
 })

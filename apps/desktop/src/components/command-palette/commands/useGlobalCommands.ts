@@ -14,6 +14,9 @@ import {
   Settings,
   Activity,
   GraduationCap,
+  GitCommitHorizontal,
+  Kanban,
+  type LucideIcon,
 } from 'lucide-react'
 import { createElement } from 'react'
 import { toast } from '@git-manager/ui'
@@ -23,7 +26,7 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../../stores/repoUI.store'
-import { goToRepoContent, useRepoViewStore } from '../../../stores/repoView.store'
+import { goToRepoContent, useRepoViewStore, type RepoView } from '../../../stores/repoView.store'
 import { useActionToolbar } from '../../../hooks/useActionToolbar'
 import { useOpenRepository } from '../../../hooks/useOpenRepository'
 import { openActionJournalWindow } from '../../../lib/actionJournalWindow'
@@ -40,6 +43,27 @@ const SETTINGS_SECTIONS: Section[] = [
   'external_tools',
   'notifications',
   'rewards',
+]
+
+/**
+ * The three views a repo tab can show, as palette entries — the keyboard route to the toolbar's
+ * segmented switcher. Their labels are `commandPalette.nav.<view>`, keyed by the `RepoView` value
+ * itself so the list and the store cannot drift apart.
+ */
+const REPO_VIEWS: { view: RepoView; id: string; icon: LucideIcon; keywords: string[] }[] = [
+  {
+    view: 'graph',
+    id: 'nav-view-graph',
+    icon: GitCommitHorizontal,
+    keywords: ['graph', 'commits', 'history'],
+  },
+  {
+    view: 'files',
+    id: 'nav-view-files',
+    icon: FolderOpen,
+    keywords: ['files', 'tree', 'explorer'],
+  },
+  { view: 'board', id: 'nav-view-board', icon: Kanban, keywords: ['board', 'kanban', 'tickets'] },
 ]
 
 interface UseGlobalCommandsParams {
@@ -189,17 +213,26 @@ export function useGlobalCommands({
       icon: createElement(TerminalSquare),
       run: () => void toolbar.handleOpenTerminal(),
     })
-    commands.push({
-      id: 'repo-files',
-      group: 'repo',
-      title: t('commandPalette.repo.files'),
-      keywords: ['files', 'tree', 'explorer'],
-      icon: createElement(FolderOpen),
-      run: () => {
-        setActiveTab(toolbar.activeRepo!)
-        useRepoViewStore.getState().setView('files')
-      },
-    })
+    // One entry per view of the repo tab, mirroring the toolbar's own switcher (`RepoViewSwitcher`).
+    // They are *navigation*, not repo actions: they move the user rather than the repository, which
+    // is why they don't go through `onContent` above — that helper exists to bring the graph forward
+    // so an action's result is visible, and here the destination *is* the point.
+    //
+    // Each one activates the repo tab first: the palette opens over the Dashboard, the Launchpad and
+    // the Rewards tab too, and setting a view nobody is showing would look like nothing happened.
+    for (const { view, id, icon, keywords } of REPO_VIEWS) {
+      commands.push({
+        id,
+        group: 'navigation',
+        title: t(`commandPalette.nav.${view}`),
+        keywords,
+        icon: createElement(icon),
+        run: () => {
+          setActiveTab(toolbar.activeRepo!)
+          useRepoViewStore.getState().setView(view)
+        },
+      })
+    }
   }
 
   for (const section of SETTINGS_SECTIONS) {

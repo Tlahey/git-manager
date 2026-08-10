@@ -344,6 +344,17 @@ interface RepoUIState {
   setPendingTagDialog: (action: TagDialogAction) => void
   pendingRemoteBranchDelete: PendingDeleteRemoteBranch
   setPendingRemoteBranchDelete: (target: PendingDeleteRemoteBranch) => void
+  /**
+   * The local branch whose rename dialog is open, or `null`. Third of the ref-scoped dialogs above,
+   * held here for the same reason and — since it is only ever a branch name — as a bare string.
+   *
+   * It was the one that stayed `useState` inside `useSidebarBranchMenu`, which made the sidebar's
+   * context menu the only thing in the app able to open it: the command palette offers the branch
+   * actions from anywhere, and it has no way to reach another hook's local state. `RepoWorkspace`
+   * still mounts `RenameBranchDialog` exactly once, now from this slot.
+   */
+  pendingBranchRename: string | null
+  setPendingBranchRename: (branch: string | null) => void
 
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
@@ -383,6 +394,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       selectedCommitOids: [],
       pendingTagDialog: null,
       pendingRemoteBranchDelete: null,
+      pendingBranchRename: null,
       selectedStashIndex: null,
       pendingGraphAction: null,
       pendingCommitMenuOid: null,
@@ -501,6 +513,7 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setPendingTagDialog: (action) => set({ pendingTagDialog: action }),
       setPendingRemoteBranchDelete: (target) => set({ pendingRemoteBranchDelete: target }),
+      setPendingBranchRename: (branch) => set({ pendingBranchRename: branch }),
 
       setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
 
@@ -528,6 +541,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           pendingCommitMenuOid: null,
           pendingTagDialog: null,
           pendingRemoteBranchDelete: null,
+          pendingBranchRename: null,
         })
       },
 
@@ -561,6 +575,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           pendingCommitMenuOid: null,
           pendingTagDialog: null,
           pendingRemoteBranchDelete: null,
+          pendingBranchRename: null,
         }))
       },
 

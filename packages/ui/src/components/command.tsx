@@ -27,6 +27,7 @@ function CommandDialog({
   children,
   title = 'Command Palette',
   shouldFilter,
+  filter,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   children: React.ReactNode
@@ -37,6 +38,16 @@ function CommandDialog({
    * identifier before title before assignee, say — would see that order quietly replaced.
    */
   shouldFilter?: boolean
+  /**
+   * Scores one row against the query, `0` hiding it — forwarded to cmdk, which also sorts by it.
+   *
+   * Worth passing when cmdk's own scorer is wrong *for your rows* rather than merely unranked:
+   * it accepts any subsequence, so `ada` matches a name that merely has an a, a d and an a
+   * scattered through it. On a list of refs or paths, where the query is a fragment of a name the
+   * user is half-way through typing, that is noise — see the desktop palette's `scoreCommand`,
+   * which requires the letters as a contiguous group.
+   */
+  filter?: (value: string, search: string, keywords?: string[]) => number
 }) {
   return (
     <Dialog {...props}>
@@ -44,6 +55,7 @@ function CommandDialog({
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <Command
           shouldFilter={shouldFilter}
+          filter={filter}
           className="[&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground **:[[cmdk-group]]:px-2 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:px-2 **:[[cmdk-item]]:py-3"
         >
           {children}
