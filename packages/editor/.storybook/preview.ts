@@ -9,7 +9,12 @@ import type { Preview } from '@storybook/react'
 import type { Environment } from 'monaco-editor'
 import * as monaco from 'monaco-editor'
 import { loader } from '@monaco-editor/react'
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+// `monaco-editor/editor/…`, NOT the `monaco-editor/esm/vs/editor/…` path every Monaco guide still
+// shows: since 0.5x the package ships an `exports` map whose `"./*"` entry already prepends
+// `esm/vs/`, so the documented path resolves to `esm/vs/esm/vs/…` and fails. It failed silently for
+// a while — the Storybook build emits the CSS before the JS bundle dies, so the only symptom was a
+// non-zero exit nobody was watching.
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
 // Theme tokens (--foreground etc.) + tailwind layers come from the shared ui globals; the
 // merge-specific classes ship with this package.
 import '@git-manager/ui/globals.css'
