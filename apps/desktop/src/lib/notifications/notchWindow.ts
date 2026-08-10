@@ -180,6 +180,16 @@ export async function openNotchWindow(
       // correctness requirement — a card shown rudely still beats no card at all, and unlike the
       // `show()` fallbacks this one only costs focus when the reuse path is already broken.
       console.warn('Notch window could not be reused; opening a new one:', e)
+      // And the window in the way has to go first. A label is unique, so `new WebviewWindow` on a
+      // label that still exists fails outright — which would make this "fallback" no fallback at
+      // all: `openNotchWindow` would report failure, and the queue's own last resort is a macOS
+      // banner. That is how a user who chose the notch ends up with a system notification.
+      try {
+        await parked.close()
+      } catch (closeError) {
+        console.warn('Notch window could not be closed either:', closeError)
+        return false
+      }
     }
   }
 

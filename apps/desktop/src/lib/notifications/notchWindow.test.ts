@@ -341,6 +341,26 @@ describe('openNotchWindow', () => {
     listeners.current.get('tauri://created')?.()
 
     await expect(promise).resolves.toBe(true)
+    // The window in the way has to be closed first: a label is unique, so creating one on a label
+    // that still exists fails outright. Without this the "fallback" reports failure, and the
+    // queue's own last resort is a macOS banner — which is how a user who chose the notch ends up
+    // with a system notification instead.
+    expect(closeExisting).toHaveBeenCalled()
+    expect(closeExisting.mock.invocationCallOrder[0]!).toBeLessThan(
+      ctor.mock.invocationCallOrder[0]!
+    )
+  })
+
+  it('reports failure rather than a half-open notch when the window in the way will not close', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    getByLabel.mockResolvedValue({
+      ...parkedWindow(),
+      close: vi.fn(() => Promise.reject(new Error('stuck'))),
+    })
+    navigateFails.current = true
+
+    await expect(openNotchWindow(request)).resolves.toBe(false)
+    expect(ctor).not.toHaveBeenCalled()
   })
 
   it('parks the window on the way out rather than destroying it', async () => {
