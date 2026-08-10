@@ -4,9 +4,11 @@ import { Focus, X } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
-import { useGitStatus } from '../../hooks/useGitStatus'
-import { useWorktreeWipStatuses } from './hooks/useWorktreeWipStatuses'
-import { useWorktreeAgentActivity } from './hooks/useWorktreeAgentActivity'
+import { useWipRowData } from './hooks/useWipRowData'
+import { useGraphBisect } from './hooks/useGraphBisect'
+import { useGraphSelectionPublish } from './hooks/useGraphSelectionPublish'
+import { useConflictPanelControls } from './hooks/useConflictPanelControls'
+import { isCommitHead } from './lib/isCommitHead'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 
 import { useSettingsStore } from '../../stores/settings.store'
@@ -17,7 +19,6 @@ import { useCommitSelection } from './hooks/useCommitSelection'
 import { useGraphLayout } from './hooks/useGraphLayout'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes } from './hooks/useGitGraphNodes'
-import type { RebaseProgressStep } from '@git-manager/git-types'
 import { useGitGraphActions } from './hooks/useGitGraphActions'
 import { useTagContextMenu } from './hooks/useTagContextMenu'
 import { useRebaseGraphView } from './hooks/useRebaseGraphView'
@@ -37,9 +38,6 @@ import { GraphHeader } from './components/GraphHeader'
 import { CommitSearchPanel } from './components/CommitSearchPanel'
 import { EmptyRepoPanel } from './components/EmptyRepoPanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
-import { useBisectState } from '../../hooks/useBisectState'
-import { useBisectUIStore } from '../../stores/bisectUI.store'
-import { buildBisectStatusMap } from './lib/bisectStatus'
 import { isSyntheticRow } from './lib/syntheticRows'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
@@ -111,25 +109,12 @@ export function GitGraph({
   }, [repoPath, closePatch])
 
   // Bisect: an active session claims the right panel (top priority) and annotates the graph rows.
-  const { data: bisect } = useBisectState(repoPath)
-  const bisectActive = bisect?.active ?? false
-  const bisectSettingUp = useBisectUIStore((s) => s.setupActive)
-  const bisectPendingBadOid = useBisectUIStore((s) => s.pendingBadOid)
-  const bisectPendingGoodOid = useBisectUIStore((s) => s.pendingGoodOid)
-  const bisectStatusMap = useMemo(() => {
-    const map = buildBisectStatusMap(bisect)
-    // While setting up, preview the chosen bad/good commits with the same row treatment.
-    if (bisectPendingBadOid) map.set(bisectPendingBadOid, 'bad')
-    if (bisectPendingGoodOid) map.set(bisectPendingGoodOid, 'good')
-    return map
-  }, [bisect, bisectPendingBadOid, bisectPendingGoodOid])
-
-  // During graph-driven setup, a commit click fills the active bisect slot instead of selecting it.
-  // Synthetic rows (WIP / CONFLICT) are not valid bisect targets.
-  function handleBisectPick(oid: string) {
-    if (isSyntheticRow(oid)) return
-    useBisectUIStore.getState().pickCommit(oid)
-  }
+  const {
+    isActive: bisectActive,
+    isSettingUp: bisectSettingUp,
+    statusMap: bisectStatusMap,
+    pickCommit: handleBisectPick,
+  } = useGraphBisect(repoPath)
 
   useConflictMergeWindow(repoPath, conflictFilePath, setConflictFilePath)
 
@@ -141,9 +126,6 @@ export function GitGraph({
 
   const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
-  const setSelectedCommitOid = useRepoUIStore((s) => s.setSelectedCommitOid)
-  const setSelectedCommitOids = useRepoUIStore((s) => s.setSelectedCommitOids)
-  const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
   // from the log entirely — this only suppresses the badge, so it is filtered here at render time.
@@ -167,44 +149,14 @@ export function GitGraph({
   } = useRebaseGraphView(repoPath)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
-  const { data: status } = useGitStatus(repoPath)
-  const totalChanges = useMemo(() => {
-    if (!status) return 0
-    return (
-      (status.staged?.length || 0) +
-      (status.unstaged?.length || 0) +
-      (status.untracked?.length || 0) +
-      (status.conflicted?.length || 0)
-    )
-  }, [status])
-  const wipStats = useMemo(() => {
-    if (!status) return { added: 0, modified: 0, deleted: 0 }
-    let added = status.untracked?.length || 0
-    let modified = status.conflicted?.length || 0
-    let deleted = 0
-    for (const entry of [...(status.staged || []), ...(status.unstaged || [])]) {
-      if (entry.status === 'added') added++
-      else if (entry.status === 'deleted') deleted++
-      else modified++
-    }
-    return { added, modified, deleted }
-  }, [status])
-
-  // WIP status of every OTHER linked worktree with uncommitted changes — lets several "// WIP"
-  // rows coexist on different branches at once (see useGitGraphNodes' worktreeWipNodes).
-  const { data: worktreeWipStatuses = [] } = useWorktreeWipStatuses(repoPath)
-  // Live AI-agent activity for the active repo plus every linked worktree with a WIP row — drives
-  // the agent logo in the dashed ring and the working/idle status tag. Only worktrees that actually
-  // carry a WIP row can surface it, so this asks about exactly those paths.
-  const agentActivityPaths = useMemo(
-    () => [repoPath, ...worktreeWipStatuses.map((w) => w.path)],
-    [repoPath, worktreeWipStatuses]
-  )
-  const worktreeAgentActivity = useWorktreeAgentActivity(agentActivityPaths)
-  const wipAgentActivity = useMemo(
-    () => worktreeAgentActivity.find((a) => a.path === repoPath),
-    [worktreeAgentActivity, repoPath]
-  )
+  const {
+    status,
+    totalChanges,
+    wipStats,
+    worktreeWipStatuses,
+    worktreeAgentActivity,
+    wipAgentActivity,
+  } = useWipRowData(repoPath)
   // Opening a worktree is a view switch, not a new tab — it only sets which path the graph/sidebar
   // render data for (see repoUI.store.ts's `activeWorkspacePath`).
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
@@ -355,41 +307,6 @@ export function GitGraph({
     setActiveDiffFile(null)
   }, [primaryOid, repoPath, setActiveDiffFile])
 
-  // Stash index (same detection as `useGraphRowMenus.ts`'s native stash-menu path) when the
-  // selection is a stash row, `null` otherwise. Derived via useMemo — rather than read directly
-  // inside the publish effect below — so the effect's dependency is a stable primitive instead of
-  // the raw `nodes` array: `nodes` (react-query's `data`, defaulted to `[]`) is a fresh reference
-  // on every render while the query has no data yet, which previously fed straight into the
-  // effect's deps and re-ran it (hence re-publishing to the store) on every single render. Several
-  // consumers (`TabBar`, `NewTabMenu`, `UserProfile`) subscribe to the whole `repoUI` store without
-  // a selector, so *any* publish — even to an unchanged value — re-renders them; that compounded
-  // into a "Maximum update depth exceeded" loop. Memoizing to a primitive here means the effect
-  // only re-publishes when the actual stash index changes, not on every `nodes` reference churn.
-  const derivedStashIndex = useMemo(() => {
-    if (!primaryOid || isSyntheticRow(primaryOid)) return null
-    const stashRef = nodes
-      .find((n) => n.commit.oid === primaryOid)
-      ?.refs.find((r) => r.type === 'stash')
-    const stashMatch = stashRef?.shortName.match(/stash@\{(\d+)\}/)
-    return stashMatch ? parseInt(stashMatch[1], 10) : null
-  }, [primaryOid, nodes])
-
-  // Publish the selected commit OID to the store so out-of-tree UI (the command palette) can act on
-  // it. The synthetic WIP/CONFLICT rows aren't valid commit-action targets → publish null. Cleared
-  // on unmount so a closed tab doesn't leave a stale selection behind.
-  useEffect(() => {
-    const isRealCommit = !!primaryOid && !isSyntheticRow(primaryOid)
-    setSelectedCommitOid(isRealCommit ? primaryOid : null)
-    setSelectedStashIndex(derivedStashIndex)
-  }, [primaryOid, derivedStashIndex, setSelectedCommitOid, setSelectedStashIndex])
-  useEffect(
-    () => () => {
-      setSelectedCommitOid(null)
-      setSelectedStashIndex(null)
-    },
-    [setSelectedCommitOid, setSelectedStashIndex]
-  )
-
   // ── Native context menu (macOS) + dialogs + graph actions ─────────────────
   const {
     pendingAction,
@@ -478,77 +395,34 @@ export function GitGraph({
   }, [selected, filteredNodes])
   const isMultiSelect = selectedCommitNodes.length > 1
 
-  // Publish the multi-selection's OIDs (newest first, like `selectedCommitNodes`) so out-of-tree
-  // UI (the command palette's "create patch from selection") can act on the whole group — the
-  // single `selectedCommitOid` mirror above only names the primary row. Cleared on unmount for the
-  // same reason as that mirror: a closed tab must not leave a stale selection behind.
-  useEffect(() => {
-    setSelectedCommitOids(selectedCommitNodes.map((n) => n.commit.oid))
-  }, [selectedCommitNodes, setSelectedCommitOids])
-  useEffect(() => () => setSelectedCommitOids([]), [setSelectedCommitOids])
+  // Mirrors what is selected into the shared store, for the command palette to act on. Placed here
+  // rather than beside the other effects because it needs `selectedCommitNodes`, resolved just
+  // above — see the hook for why the stash index must stay a memoized primitive.
+  useGraphSelectionPublish({ primaryOid, nodes, selectedCommitNodes })
 
-  // The conflicted-files panel needs the CONFLICT row selected *and* not dismissed. The dismissal
-  // is explicit state rather than "the row got deselected", so the header's toggle (and the graph
-  // banner) can put it back — see rebaseView.store.
-  const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT' && !rebaseFilesHidden
-  // Dismissing the conflict panel leaves the CONFLICT row selected (see above), which would
-  // otherwise fall through to CommitDetailsPanel and render a bogus "commit" for it — so the
-  // whole right-hand panel has to stay closed for that row until it's re-shown or reselected.
-  const isDismissedConflictRow = primaryNode?.commit.oid === 'CONFLICT' && rebaseFilesHidden
+  const {
+    isOpen: isConflictPanelOpen,
+    isDismissedRow: isDismissedConflictRow,
+    close: closeConflictPanel,
+    toggle: handleToggleConflictFiles,
+    selectStep: handleSelectRebaseStep,
+    isStepLoaded: isRebaseStepLoaded,
+  } = useConflictPanelControls({
+    repoPath,
+    primaryNode,
+    nodes,
+    rebaseFilesHidden,
+    showRebaseFiles,
+    hideRebaseFiles,
+    toggleRebaseFiles,
+    selectSingle,
+    setConflictFilePath,
+  })
 
-  function closeConflictPanel() {
-    hideRebaseFiles(repoPath)
-    setConflictFilePath(null)
-  }
-
-  /** Header toggle for the files panel: showing it again also has to re-select the row it hangs
-   * off, since the user may have navigated to another commit in the meantime. */
-  function handleToggleConflictFiles() {
-    if (rebaseFilesHidden || primaryNode?.commit.oid !== 'CONFLICT') {
-      showRebaseFiles(repoPath)
-      selectSingle('CONFLICT')
-    } else {
-      toggleRebaseFiles(repoPath)
-    }
-  }
-
-  /**
-   * Clicking a row of the rebase progress rail. The step git stopped on is the one with work to
-   * do, so it opens the conflicted-files panel rather than the commit's details — that panel is
-   * what actually lets the user resolve the files and continue. Every other step just points at a
-   * commit to inspect, which only makes sense once the graph has it loaded.
-   */
-  function handleSelectRebaseStep(step: RebaseProgressStep) {
-    if (step.status === 'current') {
-      showRebaseFiles(repoPath)
-      selectSingle('CONFLICT')
-      return
-    }
-    if (step.oid && isRebaseStepLoaded(step)) selectSingle(step.oid)
-  }
-
-  /** A step's commit is only openable while it's in the loaded window of the graph — the details
-   * panel is built from a graph node, so selecting anything else would render nothing. */
-  function isRebaseStepLoaded(step: RebaseProgressStep) {
-    return !!step.oid && nodes.some((n) => n.commit.oid === step.oid)
-  }
-
-  const isSelectedCommitHead = useMemo(() => {
-    if (!primaryNode || isSyntheticRow(primaryNode.commit.oid)) return false
-    // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
-    const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
-    // Strategy 2: the commit carries the branch that HEAD currently points to
-    const hasBranchRef = headBranchName
-      ? primaryNode.refs.some(
-          (r) =>
-            r.type === 'branch' && (r.shortName === headBranchName || r.name === headBranchName)
-        )
-      : false
-    // Strategy 3: fallback – first node in the walk is typically HEAD
-    const isFirstNode = primaryNode.commit.oid === nodes[0]?.commit?.oid
-
-    return hasHeadRef || hasBranchRef || isFirstNode
-  }, [primaryNode, nodes, headBranchName])
+  const isSelectedCommitHead = useMemo(
+    () => isCommitHead(primaryNode, nodes, headBranchName),
+    [primaryNode, nodes, headBranchName]
+  )
 
   return (
     <RefDropProvider repoPath={repoPath}>
