@@ -250,11 +250,26 @@ async function createNotchWindow(
     // renders as a grey blurred rectangle floating in the transparent margin, with a hard edge
     // where the window ends. The card's glow is the halo, and only the halo.
     shadow: false,
-    // Never takes focus: `focus: false` keeps the window from being made key, and
+    // Never takes focus: `focus: false` keeps the window from being made key *at creation*, and
     // `show_without_activating` (rather than `show()`) is how it is revealed — the two halves are
     // separate and neither covers the other. What neither covers at all is the *application*-level
     // activation wry performs at creation, which is why getting here is gated above.
     focus: false,
+    // And it can never *become* key either, which is a third, separate thing and the one that made
+    // closing a card jump the app in front of the user.
+    //
+    // tao maps this option onto `canBecomeKeyWindow` **and** `canBecomeMainWindow`
+    // (`platform_impl/macos/window.rs`, the `focusable` ivar behind both selectors). Left at its
+    // default of `true`, clicking the card's ✕ made this window key — and hiding it is
+    // `orderOut:`, which does not drop key status but hands it to the next window of the same
+    // application. That is the main window. So dismissing a notification pulled the user out of
+    // whatever they were in, at the exact moment they said they were done with it.
+    //
+    // Nothing on the card wants keyboard focus — it is two buttons and a progress bar, and mouse
+    // events reach a window whether or not it is key. Clicking the card *body* still brings the app
+    // forward, because that path asks for it explicitly (`NotchWindow.activate`) instead of
+    // inheriting it from a window manager's idea of what a click means.
+    focusable: false,
     visible: false,
   })
 

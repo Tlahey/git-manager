@@ -270,6 +270,19 @@ describe('openNotchWindow', () => {
     })
   })
 
+  it('can never become the key window, so closing a card cannot hand focus to the app', async () => {
+    // tao maps `focusable` onto both `canBecomeKeyWindow` and `canBecomeMainWindow`. Left at its
+    // default, clicking the ✕ made this window key — and hiding it is `orderOut:`, which hands key
+    // status to the next window of the same application rather than dropping it. That window is the
+    // main one, so dismissing a notification pulled the user out of whatever they were doing.
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    expect(creationOptions().focusable).toBe(false)
+  })
+
   // ── the parked window ──────────────────────────────────────────────────────────────────────
   // Creating a webview activates the whole application on macOS, whatever the window options say,
   // so a card must never be the thing that creates one. These are the assertions that keep it that
