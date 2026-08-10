@@ -39,6 +39,13 @@ export function ConflictMergeWindowContent({
 
   const { data: view, isLoading } = useMergeView(repoPath, filePath)
 
+  // The pane a discard would accept, named rather than interpolated raw: 'left'/'right' are
+  // internal identifiers, and dropping them into a sentence would leave the English word in
+  // every locale.
+  const confirmSideLabel = confirmSide
+    ? t(confirmSide === 'left' ? 'conflictEditor.sideLeft' : 'conflictEditor.sideRight')
+    : ''
+
   async function handleKeepSide(side: 'ours' | 'theirs') {
     setIsSaving(true)
     setError(null)
@@ -58,10 +65,23 @@ export function ConflictMergeWindowContent({
   }
 
   async function handleApply() {
+    // Never derive a write to disk from an absent editor. `resolve_conflict` (services/
+    // git_conflict.rs) truncates the working-tree file to whatever it is handed and stages the
+    // result, so applying the `?? ''` fallback of an unmounted resolver resolves the conflict by
+    // destroying the file. The merge editor is deliberately not rendered in four states — while
+    // the view loads, and for binary / delete-rename / unparseable conflicts — and the Apply
+    // button is disabled in all of them (see its `disabled` below); this is the same rule
+    // enforced where the write actually happens, since a button state is not a guarantee.
+    //
+    // The guard is on the ref, never on the value: an empty string from a *mounted* editor is a
+    // legitimate resolution (both sides deleted the content) and must still be written.
+    const mergeEditor = mergeEditorRef.current
+    if (!mergeEditor) return
+
     setIsSaving(true)
     setError(null)
     try {
-      const content = mergeEditorRef.current?.getCenterValue() ?? ''
+      const content = mergeEditor.getCenterValue()
       await apiResolveConflict(repoPath, filePath, content)
       await emit('conflict-resolved', { repoPath, filePath })
       await getCurrentWindow().close()
@@ -176,7 +196,7 @@ export function ConflictMergeWindowContent({
                 className="h-8 text-[11px] font-semibold"
                 data-testid="merge-accept-left"
               >
-                Accept Left
+                {t('conflictEditor.acceptLeft')}
               </Button>
               <Button
                 variant="outline"
@@ -186,7 +206,7 @@ export function ConflictMergeWindowContent({
                 className="h-8 text-[11px] font-semibold"
                 data-testid="merge-accept-right"
               >
-                Accept Right
+                {t('conflictEditor.acceptRight')}
               </Button>
             </>
           )}
@@ -202,18 +222,24 @@ export function ConflictMergeWindowContent({
             className="h-8 text-[11px] font-semibold"
             data-testid="merge-cancel"
           >
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button
             variant="success"
             size="sm"
             onClick={handleApply}
-            disabled={isSaving || (view?.renderable ? pendingCount > 0 : false)}
+            // Applying means writing the result pane's content over the conflicted file, so this
+            // is enabled only when there IS a result pane: `renderable` is exactly the condition
+            // under which the merge editor is rendered above. The previous `view?.renderable ?
+            // pendingCount > 0 : false` had it backwards — it left Apply enabled in every state
+            // that renders no editor (loading, binary, delete/rename, unparseable), where it
+            // applied an empty result and emptied the file.
+            disabled={isSaving || !view?.renderable || pendingCount > 0}
             className="h-8 px-4 text-[11px] font-semibold"
             data-testid="merge-apply"
           >
             {isSaving ? <Spinner className="mr-1.5 h-3.5 w-3.5" /> : null}
-            Apply
+            {t('conflictEditor.apply')}
           </Button>
         </div>
       </div>
@@ -221,10 +247,9 @@ export function ConflictMergeWindowContent({
       <Dialog open={confirmSide !== null} onOpenChange={(open) => !open && setConfirmSide(null)}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Discard changes?</DialogTitle>
+            <DialogTitle>{t('conflictEditor.discardTitle')}</DialogTitle>
             <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground">
-              There are unsaved changes in the result file. Discard changes and accept {confirmSide}{' '}
-              anyway?
+              {t('conflictEditor.discardDescription', { side: confirmSideLabel })}
             </DialogDescription>
           </DialogHeader>
 
@@ -236,7 +261,7 @@ export function ConflictMergeWindowContent({
               disabled={isSaving}
               data-testid="dialog-continue-merge"
             >
-              Continue merge
+              {t('conflictEditor.continueMerge')}
             </Button>
             <Button
               variant="destructive"
@@ -247,7 +272,7 @@ export function ConflictMergeWindowContent({
               data-testid="dialog-discard-and-apply"
             >
               {isSaving && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
-              discard changes and apply {confirmSide}
+              {t('conflictEditor.discardAndApply', { side: confirmSideLabel })}
             </Button>
           </DialogFooter>
         </DialogContent>
