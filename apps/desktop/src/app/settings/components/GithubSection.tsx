@@ -1,49 +1,44 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Alert, Tag, Card, GithubIcon } from '@git-manager/ui'
-import {
-  ArrowLeft,
-  Check,
-  ExternalLink,
-  Lock,
-  Unlock,
-  RefreshCw,
-  AlertCircle,
-  Key,
-} from 'lucide-react'
+import { ScrollArea } from '@git-manager/ui'
+import type { GitHubUser } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
 import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
-import type { GitHubUser } from '@git-manager/git-types'
+import { GithubDeviceFlowCard } from './github/GithubDeviceFlowCard'
+import { GithubLoginForm, type LoginMethod } from './github/GithubLoginForm'
+import { GithubAccountList } from './github/GithubAccountList'
+import { GithubReposPanel } from './github/GithubReposPanel'
 
+/**
+ * GitHub settings: the accounts on the left, the active one's repositories on the right.
+ *
+ * What stays here is the account *state* — the list, which one is active, and the login flow that
+ * adds to it — because all three write to the same `settings.github` object and every one of the
+ * four panels below is a view of it. Splitting that ownership across them would mean four
+ * components each doing a read-modify-write on one shared record.
+ */
 export function GithubSection() {
-  const { t, i18n } = useTranslation('settings')
+  const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
   const github = settings.github || { accounts: [], activeAccountId: null }
 
-  const [copied, setCopied] = useState(false)
-  const [loginMethod, setLoginMethod] = useState<'oauth' | 'pat' | null>(null)
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>(null)
   const [patToken, setPatToken] = useState('')
 
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
-
-  // SWR Hook replaces manual useEffect for repo list fetching
   const { data: reposData, isLoading: loadingRepos } = useGitHubRepos(activeAccount?.token ?? null)
   const repos = reposData ?? []
 
   const { connecting, error, deviceFlowData, startOAuthLogin, completeLoginWithToken, cancelFlow } =
     useGithubDeviceFlow({
       onLoginSuccess: (token, user: GitHubUser) => {
-        const newAccount = { id: user.login, token, user }
+        // Logging in as someone already connected replaces that entry rather than adding a second:
+        // the account id *is* the login.
         const updatedAccounts = github.accounts.filter((a) => a.id !== user.login)
-        updatedAccounts.push(newAccount)
-
+        updatedAccounts.push({ id: user.login, token, user })
         updateSettings({
-          github: {
-            ...github,
-            accounts: updatedAccounts,
-            activeAccountId: user.login,
-          },
+          github: { ...github, accounts: updatedAccounts, activeAccountId: user.login },
         })
       },
     })
@@ -64,35 +59,19 @@ export function GithubSection() {
   }
 
   function handleSetActive(id: string) {
-    updateSettings({
-      github: {
-        ...github,
-        activeAccountId: id,
-      },
-    })
+    updateSettings({ github: { ...github, activeAccountId: id } })
   }
 
   function handleRemoveAccount(id: string) {
     const updatedAccounts = github.accounts.filter((a) => a.id !== id)
-    let nextActiveId = github.activeAccountId
-
-    if (github.activeAccountId === id) {
-      nextActiveId = updatedAccounts.length > 0 ? updatedAccounts[0].id : null
-    }
+    // Removing the active account promotes the first one left rather than leaving the app pointing
+    // at an id that no longer exists.
+    const nextActiveId =
+      github.activeAccountId === id ? (updatedAccounts[0]?.id ?? null) : github.activeAccountId
 
     updateSettings({
-      github: {
-        ...github,
-        accounts: updatedAccounts,
-        activeAccountId: nextActiveId,
-      },
+      github: { ...github, accounts: updatedAccounts, activeAccountId: nextActiveId },
     })
-  }
-
-  function handleCopyCode(code: string) {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -108,421 +87,35 @@ export function GithubSection() {
               <p className="text-xs text-muted-foreground">{t('settings.github.tokenHint')}</p>
             </div>
 
-            {/* Add Form */}
+            {/* A device flow in progress owns the slot: the code on screen is the only thing that
+                can finish it, so offering the choice again underneath would be a dead end. */}
             {deviceFlowData ? (
-              // Device Flow Authentication Steps Card
-              <div
-                data-testid="github-device-flow-card"
-                className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4"
-              >
-                {/* Stacked rather than title-left / status-right: side by side, each got half a
-                    340px pane, which wrapped the title onto two lines and the status onto two more.
-                    The status is a caption for the title anyway, not a peer of it. */}
-                <div className="space-y-1">
-                  <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
-                    {t('settings.github.authorizationTitle')}
-                  </h4>
-                  <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-primary" />
-                    {t('settings.github.waitingAuth')}
-                  </span>
-                </div>
-
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {t('settings.github.deviceCodeInstructions')}
-                </p>
-
-                {/* Stacked, not side by side: the code is the thing to read here, and sharing a
-                    row with the copy button left it too little width — an eight-character code
-                    broke across two lines in a settings pane. `whitespace-nowrap` keeps it on one
-                    whatever the pane is doing. */}
-                <div className="flex flex-col items-center gap-3 rounded-md border border-border/60 bg-muted/30 p-4">
-                  <span
-                    data-testid="github-device-user-code"
-                    className="font-mono text-2xl font-bold tracking-wider whitespace-nowrap text-foreground select-all"
-                  >
-                    {deviceFlowData.user_code}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCopyCode(deviceFlowData.user_code)}
-                    className="h-8 text-xs"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="mr-1.5 h-3.5 w-3.5 text-green-500" />
-                        {t('settings.github.codeCopied')}
-                      </>
-                    ) : (
-                      t('settings.github.copyCode')
-                    )}
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* `asChild` so this stays a real link — right-click, copy address, middle-click
-                      all keep working — while riding the Button recipe.
-                      Hand-rolled it had three problems, in descending order of how much they cost
-                      a user: no `focus-visible` ring at all, so tabbing to the primary action of
-                      this screen showed nothing; `hover:bg-primary-hover`, a token that does not
-                      exist, so the hover was dead; and a fixed `rounded` plus raw `--primary`
-                      instead of `rounded-(--control-radius)` and the `--button-*` pair, so it
-                      ignored both the theme's button shape (glass makes them capsules) and any
-                      re-pointing of the button colours (`.chrome-surface` does exactly that).
-                      Its contrast was fine — that pair is audited too; the focus ring is the part
-                      that was actually inaccessible. */}
-                  <Button asChild size="sm">
-                    <a
-                      href={deviceFlowData.verification_uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid="github-device-verification-link"
-                    >
-                      {t('settings.github.openActivationPage')}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelFlow}
-                    data-testid="github-device-cancel-button"
-                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {t('settings.github.cancel')}
-                  </Button>
-                </div>
-              </div>
-            ) : loginMethod === 'oauth' ? (
-              <Card className="space-y-4 bg-card/30 p-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground">
-                    {t('settings.github.addUser')}
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={handleCancelFlow}
-                    data-testid="github-back-to-choice-button"
-                    className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-2.5 w-2.5" />
-                    {t('settings.github.backToAuthOptions')}
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-3">
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {t('settings.github.tokenHint')}
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={startOAuthLogin}
-                      disabled={connecting}
-                      className="h-8 w-full gap-2 text-xs"
-                    >
-                      {connecting ? (
-                        <>
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          {t('settings.github.connecting')}
-                        </>
-                      ) : (
-                        <>
-                          <GithubIcon className="h-4 w-4" />
-                          {t('settings.github.loginButton')}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {error && (
-                    <Alert
-                      data-testid="github-error-message"
-                      className="items-center"
-                      icon={<AlertCircle className="h-4 w-4" />}
-                    >
-                      {error}
-                    </Alert>
-                  )}
-                </div>
-              </Card>
-            ) : loginMethod === 'pat' ? (
-              <Card className="space-y-4 bg-card/30 p-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground">
-                    {t('settings.github.addUser')}
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={handleCancelFlow}
-                    data-testid="github-back-to-choice-button"
-                    className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-2.5 w-2.5" />
-                    {t('settings.github.backToAuthOptions')}
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      handleAddPatToken()
-                    }}
-                    className="space-y-3"
-                  >
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                        {t('settings.github.patLabel')}
-                      </label>
-                      <Input
-                        type="password"
-                        value={patToken}
-                        onChange={(e) => setPatToken(e.target.value)}
-                        placeholder={t('settings.github.patPlaceholder')}
-                        className="h-8 font-mono text-xs"
-                        disabled={connecting}
-                        data-testid="github-pat-input"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={connecting || !patToken.trim()}
-                      className="h-8 w-full gap-2 text-xs"
-                      data-testid="github-pat-submit-button"
-                    >
-                      {connecting ? (
-                        <>
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          {t('settings.github.connecting')}
-                        </>
-                      ) : (
-                        <>
-                          <Key className="h-3.5 w-3.5" />
-                          {t('settings.github.addPatButton')}
-                        </>
-                      )}
-                    </Button>
-                  </form>
-
-                  {error && (
-                    <Alert
-                      data-testid="github-error-message"
-                      className="items-center"
-                      icon={<AlertCircle className="h-4 w-4" />}
-                    >
-                      {error}
-                    </Alert>
-                  )}
-                </div>
-              </Card>
+              <GithubDeviceFlowCard flow={deviceFlowData} onCancel={handleCancelFlow} />
             ) : (
-              <Card className="space-y-4 bg-card/30 p-4">
-                <h4 className="text-xs font-semibold text-foreground">
-                  {t('settings.github.addUser')}
-                </h4>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setLoginMethod('oauth')
-                      startOAuthLogin()
-                    }}
-                    className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
-                    data-testid="github-login-oauth-button"
-                  >
-                    <GithubIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>{t('settings.github.loginButton')}</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLoginMethod('pat')}
-                    className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
-                    data-testid="github-login-pat-button"
-                  >
-                    <Key className="h-4 w-4 text-muted-foreground" />
-                    <span>{t('settings.github.loginWithPAT')}</span>
-                  </Button>
-                </div>
-              </Card>
+              <GithubLoginForm
+                method={loginMethod}
+                onPickMethod={setLoginMethod}
+                onCancel={handleCancelFlow}
+                connecting={connecting}
+                error={error}
+                onStartOAuth={startOAuthLogin}
+                patToken={patToken}
+                onPatTokenChange={setPatToken}
+                onSubmitPat={handleAddPatToken}
+              />
             )}
 
-            {/* Accounts List */}
-            {github.accounts.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
-                  {t('settings.github.accountsTitle')}
-                </h4>
-
-                <div className="space-y-2">
-                  {github.accounts.map((acc) => {
-                    const isActive = acc.id === github.activeAccountId
-                    return (
-                      <div
-                        key={acc.id}
-                        data-testid={`github-account-item-${acc.id}`}
-                        className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
-                          isActive ? 'border-primary/50 bg-primary/5' : 'border-border bg-card'
-                        }`}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <img
-                            src={acc.user.avatarUrl}
-                            alt={acc.user.login}
-                            className="h-10 w-10 rounded-full border border-border"
-                          />
-                          <div className="flex min-w-0 flex-col">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="max-w-[120px] truncate text-xs font-semibold text-foreground">
-                                {acc.user.name || acc.user.login}
-                              </span>
-                              {isActive && (
-                                <Tag
-                                  tone="success"
-                                  className="rounded-full text-[8px] leading-none"
-                                >
-                                  {t('settings.github.activeAccount')}
-                                </Tag>
-                              )}
-                            </div>
-                            <span className="truncate text-[10px] text-muted-foreground">
-                              @{acc.user.login}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {!isActive && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSetActive(acc.id)}
-                              data-testid={`github-account-switch-${acc.id}`}
-                              className="h-7 px-2 text-[10px]"
-                            >
-                              {t('settings.github.switch')}
-                            </Button>
-                          )}
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveAccount(acc.id)}
-                            data-testid={`github-account-remove-${acc.id}`}
-                            className="h-7 border-destructive/20 px-2 text-[10px] text-destructive/80 transition-colors hover:border-destructive hover:bg-destructive/5 hover:text-destructive"
-                          >
-                            {t('settings.github.remove')}
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <GithubAccountList
+              accounts={github.accounts}
+              activeAccountId={github.activeAccountId}
+              onSetActive={handleSetActive}
+              onRemove={handleRemoveAccount}
+            />
           </div>
         </ScrollArea>
       </div>
 
-      {/* Right panel: Repository Info (Full Height) */}
-      <div className="flex h-full flex-1 flex-col bg-background">
-        <div className="flex shrink-0 items-center justify-between border-b border-border p-6 pb-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">
-              {t('settings.github.reposTitle')}
-            </h4>
-            {activeAccount && (
-              <p className="text-xs text-muted-foreground">
-                {t('settings.github.connectedAs', { login: activeAccount.user.login })}
-              </p>
-            )}
-          </div>
-          {activeAccount && (
-            <span className="rounded border border-border/40 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              {repos.length} repos
-            </span>
-          )}
-        </div>
-
-        <div className="min-h-0 flex-1">
-          {loadingRepos ? (
-            <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
-              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-              <p className="text-xs text-muted-foreground">Loading repositories...</p>
-            </div>
-          ) : !activeAccount ? (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <AlertCircle className="mb-2 h-8 w-8 text-muted-foreground opacity-40" />
-              <p className="max-w-xs text-xs leading-relaxed">
-                Connect an account or select one from the list to view its repositories.
-              </p>
-            </div>
-          ) : repos.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <p className="text-xs">{t('settings.github.noRepos')}</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="divide-y divide-border px-6">
-                {repos.map((repo) => (
-                  <div
-                    key={repo.id}
-                    className="-mx-2 flex items-start justify-between rounded px-2 py-4 transition-colors hover:bg-accent/10"
-                  >
-                    <div className="min-w-0 space-y-1 pr-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className="max-w-[240px] truncate text-xs font-medium text-foreground"
-                          title={repo.name}
-                        >
-                          {repo.name}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] leading-none font-medium ${
-                            repo.private
-                              ? 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20'
-                              : 'bg-green-500/10 text-green-500 ring-1 ring-green-500/20'
-                          }`}
-                        >
-                          {repo.private ? (
-                            <Lock className="h-2.5 w-2.5" />
-                          ) : (
-                            <Unlock className="h-2.5 w-2.5" />
-                          )}
-                          {repo.private ? 'Private' : 'Public'}
-                        </span>
-                      </div>
-                      {repo.description && (
-                        <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
-                          {repo.description}
-                        </p>
-                      )}
-                      <p className="font-mono text-[9px] text-muted-foreground/60">
-                        Updated {new Date(repo.updatedAt).toLocaleDateString(i18n.language)}
-                      </p>
-                    </div>
-
-                    <a
-                      href={repo.htmlUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      title={t('settings.github.openOnGitHub')}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
-      </div>
+      <GithubReposPanel account={activeAccount} repos={repos} isLoading={loadingRepos} />
     </div>
   )
 }
