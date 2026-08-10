@@ -113,7 +113,7 @@ them — use it whenever you're the one un-growing a file rather than keeping a 
 
 R1/R2 are about not creating the next god-file. R3 is what to actually do once one already exists —
 distilled from unwinding `GitGraph.tsx`, `git.api.ts` and `RepositorySidebar.tsx` in the 2026-08
-audit (see `AUDIT.md` at the repo root for the full diagnostic behind these rules; that file is a
+audit (see `docs/architecture/2026-08-code-audit.md` for the full diagnostic behind these rules; that file is a
 point-in-time audit artifact, not a living doc — don't treat it as a spec to keep in sync).
 
 - **Map the cut to an existing test before moving anything.** Find the `describe`/`it` block (TS)
