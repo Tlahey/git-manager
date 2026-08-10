@@ -19,6 +19,31 @@ export function TableHeader() {
   )
 }
 
+/**
+ * The column strip above a custom view's issue results — item first, then the metadata columns.
+ *
+ * Not the only issue header in the Launchpad: `IssuesTab` renders its own, which mirrors
+ * {@link TableHeader}'s column *order* (updated / status / item) and widths instead. The two have
+ * drifted apart and only one of them can be right, but reconciling them moves columns on screen,
+ * so it is a design decision rather than a tidy-up. This one is shared because the custom-view
+ * results pane had it twice, verbatim.
+ */
+export function IssueTableHeader() {
+  const { t } = useTranslation('launchpad')
+  return (
+    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
+      <div className="w-4 shrink-0" />
+      <div className="min-w-0 flex-1">{t('table.item')}</div>
+      <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
+      <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>
+      <div className="w-[90px] shrink-0">{t('table.author')}</div>
+      <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
+      <div className="w-[110px] shrink-0">{t('table.repo')}</div>
+      <div className="w-6 shrink-0" />
+    </div>
+  )
+}
+
 interface GroupHeaderProps {
   label: string
   count: number
