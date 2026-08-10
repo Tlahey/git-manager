@@ -126,6 +126,7 @@ describe('useCollapseUnchanged', () => {
         placements,
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
         editorsReady: true,
       })
     )
@@ -157,6 +158,7 @@ describe('useCollapseUnchanged', () => {
         placements,
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
         editorsReady: true,
       })
     )
@@ -195,6 +197,7 @@ describe('useCollapseUnchanged', () => {
         placements,
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
         editorsReady: true,
       })
     )
@@ -226,6 +229,7 @@ describe('useCollapseUnchanged', () => {
         placements,
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
         editorsReady: true,
       })
     )
@@ -252,6 +256,7 @@ describe('useCollapseUnchanged', () => {
         placements,
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
         editorsReady: true,
       })
     )

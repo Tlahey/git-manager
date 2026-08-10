@@ -21,7 +21,8 @@ type PaneKey = 'theirs' | 'center' | 'ours'
 
 interface StickyOverlay {
   widget: editor.IOverlayWidget
-  domNode: HTMLDivElement
+  /** HTMLElement, not HTMLDivElement: the banner is a <button>. */
+  domNode: HTMLElement
 }
 
 interface UseCollapseUnchangedParams {
@@ -30,6 +31,9 @@ interface UseCollapseUnchangedParams {
   placements: Map<number, BlockPlacement>
   scheduleRecompute: () => void
   defaultCollapseUnchanged: boolean
+  /** Formats the banner's text, e.g. "12 lines collapsed" — host-provided so it can be
+   * translated and pluralised; falls back to English. */
+  collapsedLinesLabel: (count: number) => string
   /** Flips to `true` once every pane's Monaco instance has mounted. The `editors` bundle is a
    * stable ref object, so mutating its `.current` handles never re-triggers the apply effect on
    * its own — without this flag in the deps, the effect's first (and, with static `blocks`/
@@ -60,6 +64,7 @@ export function useCollapseUnchanged({
   placements,
   scheduleRecompute,
   defaultCollapseUnchanged,
+  collapsedLinesLabel,
   editorsReady,
 }: UseCollapseUnchangedParams) {
   const [collapseUnchanged, setCollapseUnchanged] = useState(defaultCollapseUnchanged)
@@ -114,9 +119,15 @@ export function useCollapseUnchanged({
       const overlays = stickyOverlaysRef.current[key]
 
       infos.forEach((info) => {
-        const domNode = document.createElement('div')
+        // A real <button>, not a styled div: it is a control — clicking it expands the region —
+        // and only a button is focusable and Enter/Space-operable without reimplementing both.
+        // `all: unset` in styles.css strips the UA button chrome, so this renders identically to
+        // the div it replaces (the package's Playwright baselines cover it).
+        const domNode = document.createElement('button')
+        domNode.type = 'button'
         domNode.className = 'monaco-collapsed-zone-banner'
         domNode.style.pointerEvents = 'auto'
+        domNode.setAttribute('aria-label', collapsedLinesLabel(info.collapsedCount))
         // The overlay widget layer only ever sets `top`/`left`/`position` from getPosition()
         // (once, at addOverlayWidget time) — `right` is ours to own, giving the banner the same
         // full-width span (viewport width here, not document scroll width) as a real fold line.
@@ -125,7 +136,7 @@ export function useCollapseUnchanged({
 
         const label = document.createElement('span')
         label.className = 'monaco-collapsed-zone-banner-label'
-        label.textContent = `${info.collapsedCount} lines collapsed`
+        label.textContent = collapsedLinesLabel(info.collapsedCount)
         domNode.appendChild(label)
 
         const onTrigger = (e: MouseEvent) => {
@@ -147,7 +158,7 @@ export function useCollapseUnchanged({
         overlays.set(info.blockId, { widget, domNode })
       })
     },
-    [expandBlock]
+    [expandBlock, collapsedLinesLabel]
   )
 
   // Repositions every collapsed-region overlay for the current scroll position: a region's

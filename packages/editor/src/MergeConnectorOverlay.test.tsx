@@ -29,6 +29,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     expect(container.querySelectorAll('svg path')).toHaveLength(2)
@@ -44,6 +46,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     expect(screen.getAllByRole('button')).toHaveLength(2) // one accept + one reject, for segment 1 only
@@ -58,6 +62,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     const buttons = screen.getAllByRole('button')
@@ -74,6 +80,8 @@ describe('MergeConnectorOverlay', () => {
         side="right"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept current change"
+        rejectLabel="Ignore this change"
       />
     )
     const buttons = screen.getAllByRole('button')
@@ -92,6 +100,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={onAccept}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     await user.click(screen.getByRole('button', { name: 'Accept incoming change' }))
@@ -110,6 +120,8 @@ describe('MergeConnectorOverlay', () => {
         side="right"
         onAccept={vi.fn()}
         onReject={onReject}
+        acceptLabel="Accept current change"
+        rejectLabel="Ignore this change"
       />
     )
     await user.click(screen.getByRole('button', { name: 'Ignore this change' }))
@@ -129,6 +141,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     const container = screen.getByRole('button', { name: 'Accept incoming change' }).parentElement
@@ -144,6 +158,8 @@ describe('MergeConnectorOverlay', () => {
         side="right"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept current change"
+        rejectLabel="Ignore this change"
       />
     )
     const container = screen.getByRole('button', { name: 'Accept current change' }).parentElement
@@ -169,6 +185,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     const path = container.querySelector('svg path')
@@ -186,6 +204,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     expect(screen.queryAllByRole('button')).toHaveLength(0)
@@ -211,6 +231,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     expect(container.querySelectorAll('.monaco-collapsed-zone-banner')).toHaveLength(0)
@@ -257,6 +279,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
         onExpandBlock={onExpandBlock}
       />
     )
@@ -275,6 +299,8 @@ describe('MergeConnectorOverlay', () => {
         side="left"
         onAccept={vi.fn()}
         onReject={vi.fn()}
+        acceptLabel="Accept incoming change"
+        rejectLabel="Ignore this change"
       />
     )
     // Stands in for a pane's own in-editor banner: a separate element elsewhere in the document

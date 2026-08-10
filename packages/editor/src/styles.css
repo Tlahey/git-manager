@@ -474,6 +474,11 @@
 }
 
 .monaco-collapsed-zone-banner {
+  /* The banner is a real <button> (it expands the region, and a div was neither focusable nor
+     Enter/Space-operable). `all: unset` strips the UA button chrome — border, background, font,
+     padding — so everything below applies to the same blank slate the div started from. It has to
+     come first: it is a shorthand covering every property, so any declaration after it wins. */
+  all: unset;
   /* absolute, NOT relative: Monaco positions every view-zone DOM node with an inline
      `position: absolute; top: <px>`. Forcing `position: relative` here re-interpreted that `top`
      as an offset from the node's normal-flow position instead of an absolute one — and since the

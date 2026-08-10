@@ -40,6 +40,19 @@ export interface ConflictResolverLabels {
   changesLabel?: (count: number) => string
   /** Formats the "N conflict(s)" half of the stats line. */
   conflictsLabel?: (count: number) => string
+  /* The three below name controls that are not in the header at all — the gutter actions in the
+   * connector gaps, and the collapsed-region banner inside each pane. They live here anyway
+   * because this is the resolver's one string bag, and a host that translates the toolbar has no
+   * way to reach those without it: they were hardcoded English, so a French app read them in
+   * English through a screen reader. */
+  /** Accessible name for the accept button in the LEFT gap (pulls the incoming side in). */
+  acceptIncomingLabel?: string
+  /** Accessible name for the accept button in the RIGHT gap (pulls the current side in). */
+  acceptCurrentLabel?: string
+  /** Accessible name for either gap's ignore button. */
+  ignoreChangeLabel?: string
+  /** Formats the collapsed-region banner, e.g. "12 lines collapsed". */
+  collapsedLinesLabel?: (count: number) => string
 }
 
 const DEFAULT_WHITESPACE_LABELS: Record<'compare' | 'ignore' | 'trim', string> = {
@@ -151,6 +164,7 @@ export function ConflictResolverHeader({
                 disabled={!canNavigatePrev}
                 className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70 disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
                 title={navPrevTitle}
+                aria-label={navPrevTitle}
                 data-testid="merge-nav-prev"
               >
                 <span className="text-sm font-bold">↑</span>
@@ -160,6 +174,7 @@ export function ConflictResolverHeader({
                 disabled={!canNavigateNext}
                 className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70 disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
                 title={navNextTitle}
+                aria-label={navNextTitle}
                 data-testid="merge-nav-next"
               >
                 <span className="text-sm font-bold">↓</span>
@@ -173,6 +188,7 @@ export function ConflictResolverHeader({
                     onClick={onApplyAll}
                     className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                     title={applyAllIconTitle}
+                    aria-label={applyAllIconTitle}
                     data-testid="merge-apply-all-icon"
                   >
                     <CombinedMergeIcon className="h-3.5 w-3.5" />
@@ -214,6 +230,7 @@ export function ConflictResolverHeader({
                   onClick={onApplyAuto}
                   className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                   title={autoMergeTitle}
+                  aria-label={autoMergeTitle}
                   data-testid="merge-wand-btn"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
@@ -266,6 +283,8 @@ export function ConflictResolverHeader({
                         : 'border-border bg-secondary text-muted-foreground/80 hover:bg-accent hover:text-accent-foreground active:bg-accent/70'
                     }`}
                     title={collapseUnchangedTitle}
+                    aria-label={collapseUnchangedTitle}
+                    aria-pressed={collapseUnchanged}
                     data-testid="merge-collapse-unchanged-btn"
                   >
                     <FoldVertical className="h-3.5 w-3.5" />
@@ -278,6 +297,7 @@ export function ConflictResolverHeader({
                     onClick={onReset}
                     className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                     title={resetTitle}
+                    aria-label={resetTitle}
                     data-testid="merge-reset-btn"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -290,6 +310,7 @@ export function ConflictResolverHeader({
                     onClick={onRecalculate}
                     className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                     title={recalculateTitle}
+                    aria-label={recalculateTitle}
                     data-testid="merge-recalc-btn"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />

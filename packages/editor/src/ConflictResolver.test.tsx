@@ -647,6 +647,97 @@ describe('ConflictResolver — collapse-unchanged toggle', () => {
   })
 })
 
+/* The gutter actions and the collapsed banner used to hardcode their own English names, which
+ * made them unreachable for a translated host — the French app read them in English. They are
+ * `labels` entries now, and the side→name choice moved from the overlay (which only knew "left
+ * gap") up to the resolver (which knows the left gap pulls the incoming side in). */
+describe('ConflictResolver — accessible names', () => {
+  function collapsibleBlocks(): MergeBlock[] {
+    const unchangedLines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`)
+    return [
+      {
+        blockId: 1,
+        kind: 'unchanged',
+        oursStartLine: 1,
+        oursLineCount: 10,
+        theirsStartLine: 1,
+        theirsLineCount: 10,
+        oursLines: unchangedLines,
+        theirsLines: unchangedLines,
+      },
+    ]
+  }
+
+  it('names each gap’s accept button after the side that gap pulls from', async () => {
+    renderMerge(conflictBlocks())
+
+    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeDefined())
+    expect(screen.getByTestId('merge-connector-accept-left-2')).toHaveAccessibleName(
+      'Accept incoming change'
+    )
+    expect(screen.getByTestId('merge-connector-accept-right-2')).toHaveAccessibleName(
+      'Accept current change'
+    )
+    expect(screen.getByTestId('merge-connector-reject-left-2')).toHaveAccessibleName(
+      'Ignore this change'
+    )
+  })
+
+  it('lets the host override every gutter-action name', async () => {
+    renderMerge(conflictBlocks(), {
+      labels: {
+        acceptIncomingLabel: 'Accepter la modification entrante',
+        acceptCurrentLabel: 'Accepter la modification actuelle',
+        ignoreChangeLabel: 'Ignorer cette modification',
+      },
+    })
+
+    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeDefined())
+    expect(screen.getByTestId('merge-connector-accept-left-2')).toHaveAccessibleName(
+      'Accepter la modification entrante'
+    )
+    expect(screen.getByTestId('merge-connector-accept-right-2')).toHaveAccessibleName(
+      'Accepter la modification actuelle'
+    )
+    expect(screen.getByTestId('merge-connector-reject-left-2')).toHaveAccessibleName(
+      'Ignorer cette modification'
+    )
+  })
+
+  it('gives the collapsed banner a real button with a name, not a bare div', async () => {
+    renderMerge(collapsibleBlocks())
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    await waitFor(() => expect(fakeEditors.get(theirsPath)!.hiddenAreas).toHaveLength(1))
+
+    const banner = fakeEditors
+      .get(theirsPath)!
+      .overlayWidgets.find((w) => w.getDomNode().getAttribute('data-collapsed-block-id') === '1')!
+      .getDomNode()
+
+    // A div could be clicked but never focused or activated from the keyboard.
+    expect(banner.tagName).toBe('BUTTON')
+    expect(banner).toHaveAccessibleName('4 lines collapsed')
+  })
+
+  it('lets the host translate and pluralise the collapsed banner', async () => {
+    renderMerge(collapsibleBlocks(), {
+      labels: { collapsedLinesLabel: (count) => `${count} lignes repliées` },
+    })
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    await waitFor(() => expect(fakeEditors.get(theirsPath)!.hiddenAreas).toHaveLength(1))
+
+    const banner = fakeEditors
+      .get(theirsPath)!
+      .overlayWidgets.find((w) => w.getDomNode().getAttribute('data-collapsed-block-id') === '1')!
+      .getDomNode()
+
+    expect(banner).toHaveAccessibleName('4 lignes repliées')
+    expect(banner.textContent).toBe('4 lignes repliées')
+  })
+})
+
 describe('ConflictResolver — 2-panel diff mode', () => {
   it('computes a dynamic diff from the fake Monaco diff editor: a one-line modification renders as a modification', async () => {
     renderDiff('line1\noriginal line\nline3', 'line1\nmodified line\nline3')
