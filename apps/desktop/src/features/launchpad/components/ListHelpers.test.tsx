@@ -1,10 +1,78 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act, renderHook } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { MockPR } from '../../../lib/github/types'
+import type { MockPR, MockIssue } from '../../../lib/github/types'
 import type { SortDir } from '../lib/launchpadTypes'
-import { TableHeader, GroupHeader, LoadMore, InfiniteScrollSentinel } from './ListHelpers'
+
+// `IssueRow` is rendered below to check the header lines up with it; its actions hook reaches for
+// a repo on disk, which a column-geometry test has no business waking up.
+vi.mock('../../../hooks/useIssueActions', () => ({
+  useIssueActions: () => ({
+    repoPath: null,
+    branch: null,
+    viewRepo: vi.fn(),
+    createBranch: vi.fn(),
+    creatingBranch: false,
+    close: vi.fn(),
+    closing: false,
+    canClose: false,
+  }),
+}))
+
+import {
+  TableHeader,
+  IssueTableHeader,
+  GroupHeader,
+  LoadMore,
+  InfiniteScrollSentinel,
+} from './ListHelpers'
+import { PRRow } from './PRRow'
+import { IssueRow } from './IssueRow'
 import { usePRSort, useSetFilter } from '../hooks/listHooks'
+
+function samplePr(): MockPR {
+  return {
+    id: '1',
+    number: 42,
+    title: 'Add feature X',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/owner/git-manager',
+    url: 'https://github.com/owner/git-manager/pull/42',
+    status: 'open',
+    ciStatus: null,
+    author: 'octocat',
+    authorAvatar: '',
+    collaborators: [],
+    filesChanged: 0,
+    additions: 0,
+    deletions: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    reviewStatus: 'pending',
+    isDraft: false,
+    labels: [],
+    comments: 0,
+  }
+}
+
+function sampleIssue(): MockIssue {
+  return {
+    id: '1',
+    number: 42,
+    title: 'Fix the thing',
+    repo: 'git-manager',
+    url: 'https://github.com/owner/git-manager/issues/42',
+    status: 'open',
+    author: 'octocat',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    comments: 0,
+    thumbsUp: 0,
+  }
+}
 
 function lastObserver() {
   return (
@@ -20,6 +88,66 @@ describe('TableHeader', () => {
     for (const label of ['Item', 'Updated', 'Status', 'Author', 'With', 'Repo']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
+  })
+})
+
+describe('IssueTableHeader', () => {
+  it('names the assignee column, where the PR header names collaborators', () => {
+    render(<IssueTableHeader />)
+    for (const label of ['Item', 'Updated', 'Status', 'Author', 'Assigned', 'Repo']) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+    expect(screen.queryByText('With')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * A header and its rows live in different files and have to agree on eight column widths in one
+ * order. Nothing but this test makes them: a header listing the right columns in the wrong order
+ * still renders perfectly, just over the wrong data — which is exactly what the issue header did
+ * in the custom-views pane until it was reconciled with `IssuesTab`'s.
+ *
+ * Compared as the *sequence of width classes*, since that is what decides where a column lands.
+ * `min-w-[52px]` on a row against `w-[52px]` on the header is the one sanctioned difference: the
+ * cell may grow past the header for a long relative date, as it always could.
+ */
+describe('header/row column alignment', () => {
+  /** The width class of each direct child of a header or row, in document order. */
+  function columnWidths(container: HTMLElement): string[] {
+    const strip = container.firstElementChild
+    if (!strip) throw new Error('nothing rendered')
+    return [...strip.children].map((cell) => {
+      const classes = [...cell.classList]
+      // The elastic column is `min-w-0 flex-1` on both sides; report it as the former so the
+      // failure diff names a column rather than a stray `w-0`.
+      if (classes.includes('flex-1')) return 'flex-1'
+      const width = classes.find((c) => c.startsWith('w-') || c.startsWith('min-w-'))
+      if (!width) throw new Error(`no width class on ${cell.className}`)
+      return width.replace(/^min-w-/, 'w-')
+    })
+  }
+
+  it('lines the PR header up with a PR row', () => {
+    const { container: header } = render(<TableHeader />)
+    const { container: row } = render(
+      <PRRow pr={samplePr()} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(columnWidths(header)).toEqual(columnWidths(row))
+  })
+
+  it('lines the issue header up with an issue row', () => {
+    const { container: header } = render(<IssueTableHeader />)
+    const { container: row } = render(
+      <IssueRow issue={sampleIssue()} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(columnWidths(header)).toEqual(columnWidths(row))
+  })
+
+  /** Both lists show the same eight columns; only the labels and the status alignment differ. */
+  it('gives the two lists the same geometry', () => {
+    const { container: prHeader } = render(<TableHeader />)
+    const { container: issueHeader } = render(<IssueTableHeader />)
+    expect(columnWidths(prHeader)).toEqual(columnWidths(issueHeader))
   })
 })
 

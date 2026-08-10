@@ -3,45 +3,51 @@ import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { Tag, type TagTone } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
-export function TableHeader() {
+/**
+ * The column strip above a Launchpad list.
+ *
+ * Its widths are hand-matched to `PRRow` / `IssueRow`, which carry their own — a header and its
+ * rows are two files that have to agree, and nothing but a test makes them. `ListHelpers.test.tsx`
+ * compares the two slot by slot, because the failure mode here is silent: a header that lists the
+ * right columns in the wrong order still renders perfectly, just over the wrong data.
+ *
+ * The PR and issue variants differ in exactly two things — where the status sits and what the
+ * assignee column is called — so they share this body rather than being two copies. They were two
+ * copies, and the issue one had drifted into a different column order entirely.
+ */
+function ListTableHeader({
+  statusAlign,
+  peopleLabel,
+}: {
+  statusAlign: 'text-left' | 'text-center'
+  peopleLabel: string
+}) {
   const { t } = useTranslation('launchpad')
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
       <div className="w-7 shrink-0" />
       <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
-      <div className="w-[70px] shrink-0 text-left">{t('table.status')}</div>
+      <div className={`w-[70px] shrink-0 ${statusAlign}`}>{t('table.status')}</div>
       <div className="min-w-0 flex-1">{t('table.item')}</div>
       <div className="w-[90px] shrink-0">{t('table.author')}</div>
-      <div className="w-[60px] shrink-0 text-center">{t('table.with')}</div>
+      <div className="w-[60px] shrink-0 text-center">{peopleLabel}</div>
       <div className="w-[130px] shrink-0">{t('table.repo')}</div>
       <div className="w-[150px] shrink-0" />
     </div>
   )
 }
 
-/**
- * The column strip above a custom view's issue results — item first, then the metadata columns.
- *
- * Not the only issue header in the Launchpad: `IssuesTab` renders its own, which mirrors
- * {@link TableHeader}'s column *order* (updated / status / item) and widths instead. The two have
- * drifted apart and only one of them can be right, but reconciling them moves columns on screen,
- * so it is a design decision rather than a tidy-up. This one is shared because the custom-view
- * results pane had it twice, verbatim.
- */
+/** The pull-request lists' column strip. `PRRow` left-aligns its status badge. */
+export function TableHeader() {
+  const { t } = useTranslation('launchpad')
+  return <ListTableHeader statusAlign="text-left" peopleLabel={t('table.with')} />
+}
+
+/** The issue lists' column strip — the Issues tab and a custom view's issue results, which render
+ * the same `IssueRow`. It centres its status badge where `PRRow` left-aligns one. */
 export function IssueTableHeader() {
   const { t } = useTranslation('launchpad')
-  return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
-      <div className="w-4 shrink-0" />
-      <div className="min-w-0 flex-1">{t('table.item')}</div>
-      <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
-      <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>
-      <div className="w-[90px] shrink-0">{t('table.author')}</div>
-      <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
-      <div className="w-[110px] shrink-0">{t('table.repo')}</div>
-      <div className="w-6 shrink-0" />
-    </div>
-  )
+  return <ListTableHeader statusAlign="text-center" peopleLabel={t('table.assigned')} />
 }
 
 interface GroupHeaderProps {
