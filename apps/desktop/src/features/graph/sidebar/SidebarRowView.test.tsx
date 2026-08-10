@@ -726,7 +726,7 @@ describe('SidebarRowView — tag visibility and actions', () => {
     renderRow(tagRow())
     const toggle = screen.getByLabelText('Hide this tag from the graph')
     expect(toggle.className).toContain('opacity-0')
-    expect(toggle.className).toContain('group-hover/tag:opacity-100')
+    expect(toggle.className).toContain('group-hover/row:opacity-100')
   })
 
   // Same reasoning as the stash: once hidden, the icon is the only thing saying so.
@@ -767,7 +767,7 @@ describe('SidebarRowView — tag visibility and actions', () => {
 
     const button = screen.getByTestId('tag-actions-button-v1')
     expect(button.className).toContain('opacity-0')
-    expect(button.className).toContain('group-hover/tag:opacity-100')
+    expect(button.className).toContain('group-hover/row:opacity-100')
 
     await user.click(button)
     expect(onTagContextMenu).toHaveBeenCalledWith(expect.anything(), row.tag)
@@ -855,7 +855,7 @@ describe('SidebarRowView — stash', () => {
 
     const button = screen.getByTestId('stash-actions-button-0')
     expect(button.className).toContain('opacity-0')
-    expect(button.className).toContain('group-hover/stash:opacity-100')
+    expect(button.className).toContain('group-hover/row:opacity-100')
 
     await user.click(button)
     expect(h.onStashContextMenu).toHaveBeenCalledWith(expect.anything(), item)
@@ -964,7 +964,7 @@ describe('SidebarRowView — stash', () => {
     renderRow(row)
     const shownToggle = screen.getByLabelText('Hide this stash from the graph')
     expect(shownToggle.className).toContain('opacity-0')
-    expect(shownToggle.className).toContain('group-hover/stash:opacity-100')
+    expect(shownToggle.className).toContain('group-hover/row:opacity-100')
 
     render(<SidebarRowView row={row} {...baseHandlers()} hiddenStashes={['stashoid1234567']} />)
     const hiddenToggle = screen.getByLabelText('Show this stash in the graph')

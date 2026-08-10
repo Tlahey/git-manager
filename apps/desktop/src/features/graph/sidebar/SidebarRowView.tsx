@@ -23,6 +23,7 @@ import { PullRequestItem } from './PullRequestItem'
 import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
+import { SidebarHideableRow } from './SidebarHideableRow'
 import { shortOid } from '../../../lib/shortOid'
 
 interface SidebarRowViewProps {
@@ -291,131 +292,51 @@ export function SidebarRowView({
 
     case 'tag': {
       const isHidden = hiddenTags.includes(row.tag.shortName)
-      const visibilityLabel = isHidden ? t('sidebar.tag.showInGraph') : t('sidebar.tag.hideInGraph')
-      const select = () =>
-        onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
       return (
-        <div
-          className={`group/tag relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs transition-colors ${
-            row.isSelected
-              ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
-              : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          } ${isHidden ? 'opacity-50' : ''}`}
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest('[data-toggle]')) return
-            select()
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onTagContextMenu?.(e, row.tag)
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
-            if ((e.target as HTMLElement).closest('[data-toggle]')) return
-            select()
-          }}
-          data-testid={`tag-item-${row.tag.shortName}`}
-        >
-          <VisibilityToggle
-            isHidden={isHidden}
-            onToggle={() => onToggleTagVisibility?.(row.tag.shortName)}
-            label={visibilityLabel}
-            dataToggle="tag-visibility"
-            hoverClass="group-hover/tag:opacity-100"
-          />
-          <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
-          <span className="shrink-0 font-mono text-[10px] font-normal text-sidebar-muted-foreground/40 tabular-nums">
-            {shortOid(row.tag.commitOid)}
-          </span>
-          <button
-            data-toggle="tag-actions"
-            onClick={(e) => {
-              e.stopPropagation()
-              onTagContextMenu?.(e, row.tag)
-            }}
-            className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/tag:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
-            aria-label={t('sidebar.tagActions')}
-            title={t('sidebar.tagActions')}
-            data-testid={`tag-actions-button-${row.tag.shortName}`}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <SidebarHideableRow
+          kind="tag"
+          icon={<TagIcon className="h-3 w-3 shrink-0 opacity-30" />}
+          label={highlightMatch(row.tag.shortName, filterQuery)}
+          commitOid={row.tag.commitOid}
+          isSelected={row.isSelected}
+          isHidden={isHidden}
+          // Clicking a tag scrolls to / selects its commit in the graph; the fallback re-filters
+          // the log to the tag, which is what callers without `onSelectTag` still expect.
+          onSelect={() =>
+            onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
+          }
+          onOpenMenu={(e) => onTagContextMenu?.(e, row.tag)}
+          onToggleVisibility={() => onToggleTagVisibility?.(row.tag.shortName)}
+          visibilityLabel={isHidden ? t('sidebar.tag.showInGraph') : t('sidebar.tag.hideInGraph')}
+          actionsLabel={t('sidebar.tagActions')}
+          testId={`tag-item-${row.tag.shortName}`}
+          actionsTestId={`tag-actions-button-${row.tag.shortName}`}
+        />
       )
     }
 
     case 'stash': {
       const isHidden = hiddenStashes.includes(row.stash.commitOid)
-      const visibilityLabel = isHidden
-        ? t('sidebar.stash.showInGraph')
-        : t('sidebar.stash.hideInGraph')
       return (
-        <div
-          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs transition-colors ${
-            row.isSelected
-              ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
-              : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          } ${isHidden ? 'opacity-50' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation()
-            if ((e.target as HTMLElement).closest('[data-toggle]')) {
-              return
-            }
-            onSelectBranch(row.stash.commitOid)
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onStashContextMenu?.(e, row.stash)
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            e.stopPropagation()
-            if (e.key === 'Enter') {
-              if ((e.target as HTMLElement).closest('[data-toggle]')) return
-              onSelectBranch(row.stash.commitOid)
-            }
-          }}
-          data-testid={`stash-item-${row.stash.index}`}
-        >
-          <VisibilityToggle
-            isHidden={isHidden}
-            onToggle={() => onToggleStashVisibility?.(row.stash.commitOid)}
-            label={visibilityLabel}
-            dataToggle="stash-visibility"
-            hoverClass="group-hover/stash:opacity-100"
-          />
-          <ArchiveIcon className="h-3 w-3 shrink-0 text-violet-400 opacity-40" />
-          <HoverExpandLabel className="min-w-0 flex-1 truncate">
-            {highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}
-          </HoverExpandLabel>
-          <span className="shrink-0 font-mono text-[10px] font-normal text-sidebar-muted-foreground/40 tabular-nums">
-            {shortOid(row.stash.commitOid)}
-          </span>
-          {/* Same actions as the row's right-click, reachable by pointing — the context menu was
-              the only way in, which is not something a hover-only affordance advertises. It opens
-              the very same native menu spec rather than a second, forkable definition of it. */}
-          <button
-            // Marked like the visibility toggle so the row's own click/Enter handlers skip it —
-            // otherwise activating it with the keyboard would also select the stash.
-            data-toggle="stash-actions"
-            onClick={(e) => {
-              e.stopPropagation()
-              onStashContextMenu?.(e, row.stash)
-            }}
-            className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/stash:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
-            aria-label={t('sidebar.stashActions')}
-            title={t('sidebar.stashActions')}
-            data-testid={`stash-actions-button-${row.stash.index}`}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <SidebarHideableRow
+          kind="stash"
+          icon={<ArchiveIcon className="h-3 w-3 shrink-0 text-violet-400 opacity-40" />}
+          label={highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}
+          // A stash message runs long where a tag name does not, so this one takes the row.
+          labelFills
+          commitOid={row.stash.commitOid}
+          isSelected={row.isSelected}
+          isHidden={isHidden}
+          onSelect={() => onSelectBranch(row.stash.commitOid)}
+          onOpenMenu={(e) => onStashContextMenu?.(e, row.stash)}
+          onToggleVisibility={() => onToggleStashVisibility?.(row.stash.commitOid)}
+          visibilityLabel={
+            isHidden ? t('sidebar.stash.showInGraph') : t('sidebar.stash.hideInGraph')
+          }
+          actionsLabel={t('sidebar.stashActions')}
+          testId={`stash-item-${row.stash.index}`}
+          actionsTestId={`stash-actions-button-${row.stash.index}`}
+        />
       )
     }
 
