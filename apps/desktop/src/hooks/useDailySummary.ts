@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { dailySummaryFeature, fileSummaryFeature, type SummaryProgress } from '@git-manager/ai'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  dailySummaryFeature,
+  fileSummaryFeature,
+  SummaryRunCancelled,
+  type SummaryProgress,
+} from '@git-manager/ai'
 import { useDailySummaryStore, selectLatestSummary } from '../stores/dailySummary.store'
 import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
@@ -46,12 +51,31 @@ export function useDailySummary(path: string) {
     if (!hydrated) void hydrate().catch(() => undefined)
   }, [hydrated, hydrate])
 
+  /**
+   * Set when the panel goes away, read by the run in flight.
+   *
+   * There is no stop button, and this deliberately does not add one — neither `DailySummariesPanel`
+   * nor the dashboard's `DailySummaryPanel` renders one, and inventing UI nothing shows would be
+   * worse than the gap. What it does cover is the case the user *can* reach: closing the panel, or
+   * switching repository, while a run of one model call per changed file is under way. Without it
+   * that run kept going with nowhere left to put its answer.
+   */
+  const cancelledRef = useRef(false)
+  useEffect(() => {
+    return () => {
+      cancelledRef.current = true
+    }
+  }, [])
+
   const generate = useCallback(
     async (date: string = previousWorkingDayKey()) => {
       setIsGenerating(true)
       setError(null)
       setSkipped(false)
       setProgress(null)
+      // A remount reuses the ref's owner but not its meaning: a previous teardown must not stop the
+      // run the user just asked for.
+      cancelledRef.current = false
       try {
         const summary = await generateDailySummary(path, aiConnection, {
           date,
@@ -59,10 +83,13 @@ export function useDailySummary(path: string) {
           saveToRepo,
           language,
           onProgress: trackAiProgress(fileSummaryFeature.id, dailySummaryFeature.id, setProgress),
+          shouldCancel: () => cancelledRef.current,
         })
         if (summary === null) setSkipped(true)
       } catch (err) {
-        setError(String(err))
+        // A cancellation is the panel going away, not something that went wrong. Reporting it would
+        // leave an error on a surface nobody is looking at, to be found on the next visit.
+        if (!(err instanceof SummaryRunCancelled)) setError(String(err))
       } finally {
         setIsGenerating(false)
         setProgress(null)

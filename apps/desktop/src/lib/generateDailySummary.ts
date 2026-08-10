@@ -11,7 +11,13 @@ import { useDailySummaryStore } from '../stores/dailySummary.store'
 import { dayBounds } from './dailySummaryWindow'
 import { renderDailySummaryMarkdown } from './dailySummaryMarkdown'
 
-export interface GenerateDailySummaryOptions extends SummarizeOptions {
+/**
+ * `cancelCall` is deliberately not among these: this module owns the service the calls are made
+ * through, so it supplies the canceller itself rather than asking every caller to remember. A caller
+ * says *whether* to stop (`shouldCancel`); how to reach a call already sent is not its business, and
+ * making it one is how the six hooks that call `summarizeFiles` directly each had to get it right.
+ */
+export interface GenerateDailySummaryOptions extends Omit<SummarizeOptions, 'cancelCall'> {
   /**
    * The local calendar day to summarize, `YYYY-MM-DD`. Required, and the only thing that decides
    * the window: a briefing is about the work done *that day*, and is archived under it.
@@ -50,6 +56,17 @@ function summaryBranchCandidates(targetBranches: string[]): string[] {
  * When there *is* work, it runs the same two-phase shape as the commit-message path — a call per
  * changed file, then one composing call — and writes the result to the markdown archive, which is
  * the store's source of truth.
+ *
+ * **Stoppable, if the caller says so.** Pass `shouldCancel` and the map phase stops dispatching
+ * *and* aborts the call in flight; the run then rejects with `SummaryRunCancelled`, which a caller
+ * must tell apart from a real failure — it is the user's own doing, not something to report. Every
+ * caller should pass one: this is one model call per changed file, and both of them start it
+ * without anyone pressing anything (the morning run, and a panel the user can navigate away from),
+ * so "nobody is watching" is the normal case rather than the exception.
+ *
+ * The single composing call that follows is still only abandoned, not called off — the same
+ * deliberate limitation the commit-message path documents. It is one request, it starts after the
+ * phase the user was waiting through, and it answers in seconds.
  */
 export async function generateDailySummary(
   path: string,
@@ -80,10 +97,20 @@ export async function generateDailySummary(
   const summary = await composeDailySummaryFromSummaries(
     { activity, context, date, contextTokens: aiConnection.contextTokens },
     {
-      summarize: (input) => fileSummaryService.run(aiConnection, input),
+      // The request id is forwarded, not dropped. `summarizeFiles` mints one per call and hands it
+      // here precisely so a stop can reach a call already sent; a `summarize` that ignores it
+      // dispatches under an id nothing is tracking, and `cancelCall` then cancels nothing. That was
+      // this run's bug, and it is invisible — the code compiles and the summary is correct.
+      summarize: (input, requestId) => fileSummaryService.run(aiConnection, input, requestId),
       compose: (input) => dailySummaryService.run(aiConnection, input),
     },
-    { concurrency: aiConnection.concurrency, ...summarizeOptions }
+    {
+      concurrency: aiConnection.concurrency,
+      ...summarizeOptions,
+      // After the spread: this module owns the service, so it owns the canceller. See
+      // `GenerateDailySummaryOptions`.
+      cancelCall: fileSummaryService.cancel,
+    }
   )
 
   const entry = {

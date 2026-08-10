@@ -13,7 +13,7 @@ import { useDailySummary } from './useDailySummary'
 import { useDailySummaryStore, type StoredDailySummary } from '../stores/dailySummary.store'
 import { previousWorkingDayKey } from '../lib/dailySummaryWindow'
 import { DEFAULT_TARGET_BRANCHES } from './useEffectiveRepoSettings'
-import type { DailySummary } from '@git-manager/ai'
+import { SummaryRunCancelled, type DailySummary } from '@git-manager/ai'
 
 const summary: DailySummary = { headline: 'H', highlights: ['a'] }
 
@@ -132,5 +132,40 @@ describe('useDailySummary', () => {
     })
     await waitFor(() => expect(result.current.error).toContain('boom'))
     expect(result.current.isGenerating).toBe(false)
+  })
+
+  /**
+   * There is no stop button and this does not add one — neither panel renders a control for it. What
+   * it covers is the exit the user *can* reach: closing the panel, or switching repository, while a
+   * run of one model call per changed file is under way.
+   */
+  describe('stopping a run', () => {
+    it('tells the run in flight to stop when the panel goes away', async () => {
+      generateDailySummary.mockReturnValue(new Promise(() => {}))
+      const { result, unmount } = renderHook(() => useDailySummary('/repo/a'))
+      act(() => {
+        void result.current.generate()
+      })
+      await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+
+      const shouldCancel = generateDailySummary.mock.calls[0]![2].shouldCancel as () => boolean
+      expect(shouldCancel()).toBe(false)
+
+      unmount()
+      expect(shouldCancel()).toBe(true)
+    })
+
+    it('does not report a stop as an error', async () => {
+      // It would sit on a surface nobody is looking at, to be found on the next visit and read as a
+      // failure of the model.
+      generateDailySummary.mockRejectedValue(new SummaryRunCancelled())
+      const { result } = renderHook(() => useDailySummary('/repo/a'))
+      await act(async () => {
+        await result.current.generate()
+      })
+
+      expect(result.current.error).toBeNull()
+      expect(result.current.isGenerating).toBe(false)
+    })
   })
 })

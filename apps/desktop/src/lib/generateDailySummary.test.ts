@@ -1,19 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AiActivity, AiConnectionConfig, AiContext, DailySummary } from '@git-manager/ai'
+import { COMPLETION_CANCELLED, SummaryRunCancelled } from '@git-manager/ai'
 
-const { apiGetAiActivity, apiGetAiContext, composeRun, summarizeRun, apiSaveDailySummary } =
-  vi.hoisted(() => ({
-    apiGetAiActivity: vi.fn(),
-    apiGetAiContext: vi.fn(),
-    composeRun: vi.fn(),
-    summarizeRun: vi.fn(),
-    apiSaveDailySummary: vi.fn(),
-  }))
+const {
+  apiGetAiActivity,
+  apiGetAiContext,
+  composeRun,
+  summarizeRun,
+  summarizeCancel,
+  apiSaveDailySummary,
+} = vi.hoisted(() => ({
+  apiGetAiActivity: vi.fn(),
+  apiGetAiContext: vi.fn(),
+  composeRun: vi.fn(),
+  summarizeRun: vi.fn(),
+  summarizeCancel: vi.fn(),
+  apiSaveDailySummary: vi.fn(),
+}))
 vi.mock('../api/ai.api', () => ({
   apiGetAiActivity,
   apiGetAiContext,
   dailySummaryService: { run: composeRun },
-  fileSummaryService: { run: summarizeRun },
+  fileSummaryService: { run: summarizeRun, cancel: summarizeCancel },
 }))
 vi.mock('../api/dailySummary.api', () => ({
   apiSaveDailySummary,
@@ -168,5 +176,54 @@ describe('generateDailySummary', () => {
     expect(await generateDailySummary('/repo/a', connection, options)).toBeNull()
     expect(composeRun).not.toHaveBeenCalled()
     expect(apiSaveDailySummary).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The briefing is one model call per changed file and nobody presses anything to start it — the
+   * morning run starts itself, and the panel can be navigated away from. So stopping it has to
+   * reach a call already sent, which is the whole of what these two assert.
+   */
+  describe('stopping a run', () => {
+    it('dispatches each file summary under the id the run can cancel it by', async () => {
+      await generateDailySummary('/repo/a', connection, options)
+
+      // Third argument, and not merely present: a `summarize` that ignored it would dispatch under
+      // an id nothing is tracking, and cancelling would then reach nothing at all. That was the bug.
+      const requestId = summarizeRun.mock.calls[0]![2]
+      expect(typeof requestId).toBe('string')
+      expect(requestId).not.toBe('')
+    })
+
+    it('aborts the call in flight, by that id, and reports the stop as a stop', async () => {
+      let stop = false
+      let dispatched: string | undefined
+      let rejectCall: ((error: Error) => void) | undefined
+      // Parked: nothing else is dispatched, so a poll that only ran between calls would never fire.
+      summarizeRun.mockImplementation((_c: unknown, _i: unknown, requestId: string) => {
+        dispatched = requestId
+        stop = true
+        return new Promise<never>((_resolve, reject) => {
+          rejectCall = reject
+        })
+      })
+      // What the canceller does for real: reaching the backend is what makes the request in flight
+      // fail, carrying the marker that tells a stop apart from a provider error.
+      summarizeCancel.mockImplementation((requestId: string) => {
+        if (requestId === dispatched) rejectCall?.(new Error(COMPLETION_CANCELLED))
+        return Promise.resolve()
+      })
+
+      const run = generateDailySummary('/repo/a', connection, {
+        ...options,
+        shouldCancel: () => stop,
+      })
+
+      await expect(run).rejects.toBeInstanceOf(SummaryRunCancelled)
+      expect(summarizeCancel).toHaveBeenCalledWith(dispatched)
+      // A cancelled run writes nothing: a briefing built from a half-read window would be archived
+      // as if it were complete.
+      expect(composeRun).not.toHaveBeenCalled()
+      expect(apiSaveDailySummary).not.toHaveBeenCalled()
+    })
   })
 })
