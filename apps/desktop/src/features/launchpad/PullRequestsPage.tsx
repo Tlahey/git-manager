@@ -1,42 +1,19 @@
-import {
-  Rocket,
-  WifiOff,
-  CheckCircle2,
-  Clock,
-  RefreshCw,
-  GitPullRequest,
-  Eye,
-  AlertCircle,
-  BarChart2,
-  Sliders,
-  BookOpen,
-  FolderGit2,
-  BellOff,
-} from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { usePullRequestsPage } from './hooks/usePullRequestsPage'
-import { usePendingPrOpen } from './hooks/usePendingPrOpen'
-import { timeAgo } from '../../lib/relativeDate'
-import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { InnerTab } from '@git-manager/components'
+import { usePullRequestsPage } from './hooks/usePullRequestsPage'
+import { usePendingPrOpen } from './hooks/usePendingPrOpen'
+import { useLaunchpadTabs } from './hooks/useLaunchpadTabs'
 import { OpenPrContext } from './components/OpenPrContext'
 import { OpenIssueContext } from './components/OpenIssueContext'
 import { PrSidePanel } from './components/PrSidePanel'
 import { IssueSidePanel } from './components/IssueSidePanel'
 import { ConnectGithubBanner } from './components/ConnectGithubBanner'
+import { LaunchpadHeader } from './components/LaunchpadHeader'
 import { LaunchpadKpiBar } from './components/LaunchpadKpiBar'
 import { LaunchpadToolbar } from './components/LaunchpadToolbar'
-import { PullRequestsTab } from './components/PullRequestsTab'
-import { WipTab } from './components/WipTab'
-import { FollowedPRsTab } from './components/FollowedPRsTab'
-import { IssuesTab } from './components/IssuesTab'
-import { WaitingForReviewTab } from './components/WaitingForReviewTab'
-import { SnoozedPRsTab } from './components/SnoozedPRsTab'
-import { CommitStatsTab } from './components/CommitStatsTab'
-import { CustomViewsTab } from './components/CustomViewsTab'
 import { appEventBus } from '../../lib/appEventBus'
-import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
+import { renderActiveTab } from '../../lib/navigation/tabRegistry'
 import { useLaunchpadControlsStore } from './stores/launchpadControls.store'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { TAB_REQUIRES_GITHUB, resolveActiveTab } from './lib/githubTabs.config'
@@ -55,17 +32,12 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
 
   // Clear the global search when leaving the Launchpad so the filter doesn't linger next visit.
   useEffect(() => () => useLaunchpadControlsStore.getState().reset(), [])
+
+  const page = usePullRequestsPage()
   const {
     activeTab,
     setActiveTab,
     prs,
-    visiblePRs,
-    snoozedPRs,
-    issues,
-    issuesLoading,
-    refreshIssues,
-    commitDays,
-    yearDays,
     loading,
     isValidating,
     error,
@@ -77,18 +49,14 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
     username,
     lastRefreshed,
     refresh,
-    pinnedIds,
-    togglePin,
-    followedPRs,
-    addFollowed,
-    removeFollowed,
+    refreshIssues,
     openPRsCount,
     needsReviewCount,
     openIssuesCount,
     ciPassRate,
     weekCommits,
     tabCounts,
-  } = usePullRequestsPage()
+  } = page
 
   // Drive the global loading overlay while the Launchpad's first data load is in flight. This also
   // holds the startup splash until the Launchpad is ready when it's the active tab (see
@@ -99,105 +67,7 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
   // tab's PR page (see `lib/notifications/notificationRouting.ts`); open its panel now.
   usePendingPrOpen({ prs, loading, onOpen: setOpenedPr })
 
-  const ALL_TABS: TabDef<InnerTabType>[] = defineTabs([
-    {
-      id: 'prs',
-      label: t('tab.myPrs'),
-      icon: GitPullRequest,
-      render: () => (
-        <PullRequestsTab
-          allPRs={visiblePRs}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          loading={loading}
-        />
-      ),
-    },
-    {
-      id: 'wip',
-      label: t('tab.wip'),
-      icon: FolderGit2,
-      render: () => <WipTab />,
-    },
-    {
-      id: 'followed',
-      label: t('tab.followed'),
-      icon: BookOpen,
-      render: () => (
-        <FollowedPRsTab
-          followedPRs={followedPRs}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          onAddFollowed={addFollowed}
-          onRemoveFollowed={removeFollowed}
-          loading={loading}
-        />
-      ),
-    },
-    {
-      id: 'issues',
-      label: t('tab.myIssues'),
-      icon: AlertCircle,
-      render: () => (
-        <IssuesTab
-          allIssues={issues}
-          loading={issuesLoading}
-          currentUser={username}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          onIssueChanged={refreshIssues}
-        />
-      ),
-    },
-    {
-      id: 'waiting',
-      label: t('tab.waiting'),
-      icon: Eye,
-      render: () => (
-        <WaitingForReviewTab
-          allPRs={visiblePRs}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          loading={loading}
-        />
-      ),
-    },
-    {
-      id: 'snoozed',
-      label: t('tab.snoozed'),
-      icon: BellOff,
-      render: () => (
-        <SnoozedPRsTab
-          snoozedPRs={snoozedPRs}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          loading={loading}
-        />
-      ),
-    },
-    {
-      id: 'stats',
-      label: t('tab.commitStats'),
-      icon: BarChart2,
-      render: () => (
-        <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />
-      ),
-    },
-    {
-      id: 'views',
-      label: t('tab.customViews'),
-      icon: Sliders,
-      render: () => (
-        <CustomViewsTab
-          allPRs={visiblePRs}
-          allIssues={issues}
-          pinnedIds={pinnedIds}
-          onTogglePin={togglePin}
-          loading={loading}
-        />
-      ),
-    },
-  ])
+  const ALL_TABS = useLaunchpadTabs(page)
 
   // Signed out, only the tabs that read the local disk remain — see `githubTabs.config.ts`. The
   // persisted active tab is resolved against what's left rather than rewritten, so signing back in
@@ -217,68 +87,17 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
       <OpenIssueContext.Provider value={setOpenedIssue}>
         <div className="relative flex h-full overflow-hidden bg-background">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            {/* Page Header */}
-            <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-xs">
-              <div className="flex items-center gap-2">
-                <Rocket className="h-4 w-4 text-primary" />
-                <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
-              </div>
-              {/* The divider belongs to the status that follows it — signed out with no fixtures
-                  there is no status, and a rule floating beside the title is just debris. */}
-              {(hasToken || isMocked) && <div className="h-4 w-px bg-border" />}
-              {hasToken ? (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  {loading || isValidating ? (
-                    <>
-                      <Spinner className="h-3 w-3" /> {t('page.fetching')}
-                    </>
-                  ) : error ? (
-                    <>
-                      <WifiOff className="h-3 w-3 text-destructive" />{' '}
-                      <span className="text-destructive">{error}</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3 w-3 text-green-400" /> {t('page.syncedAs')}{' '}
-                      <strong className="ml-0.5 text-foreground">{username}</strong>
-                    </>
-                  )}
-                </span>
-              ) : (
-                // Only the fixtures get a warning here. Being signed out is not a fault worth an
-                // amber strip in the title bar: the page below already says it, once, in the
-                // connect banner — and says what to do about it, which a status pill cannot. Two
-                // notices for one fact left the header shouting about a state the user had chosen.
-                // Invented pull requests are a different matter and keep their warning.
-                isMocked && (
-                  <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
-                    <WifiOff className="h-3 w-3" /> {t('page.demoData')}
-                  </span>
-                )
-              )}
-              <div className="ml-auto flex items-center gap-3">
-                {/* Nothing to refresh, and no last-refresh time to report, without an account. */}
-                {githubConnected && (
-                  <>
-                    {lastRefreshed && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                        <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
-                      </span>
-                    )}
-                    <button
-                      onClick={refresh}
-                      disabled={isValidating}
-                      data-testid="manual-refresh-button"
-                      className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                      title={t('page.refreshNow')}
-                    >
-                      <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
-                      {t('page.refresh')}
-                    </button>
-                  </>
-                )}
-              </div>
-            </header>
+            <LaunchpadHeader
+              hasToken={hasToken}
+              isMocked={isMocked}
+              githubConnected={githubConnected}
+              loading={loading}
+              isValidating={isValidating}
+              error={error}
+              username={username}
+              lastRefreshed={lastRefreshed}
+              onRefresh={refresh}
+            />
 
             {/* Loading progress bar container - fixed height to prevent CLS */}
             <div
