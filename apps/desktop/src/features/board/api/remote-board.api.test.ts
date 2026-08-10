@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 vi.mock('../../../lib/tauri', async () => {
   const actual = await vi.importActual<typeof import('../../../lib/tauri')>('../../../lib/tauri')

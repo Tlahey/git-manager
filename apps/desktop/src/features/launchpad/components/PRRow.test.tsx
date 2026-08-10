@@ -1,0 +1,312 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithLanguage } from '../../../test/i18n'
+import type { MockPR } from '../../../lib/github/types'
+
+const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
+vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
+
+import { PRRow } from './PRRow'
+import { OpenPrContext } from './OpenPrContext'
+
+function pr(overrides: Partial<MockPR> = {}): MockPR {
+  return {
+    id: '1',
+    number: 42,
+    title: 'Add feature X',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/owner/git-manager',
+    url: 'https://github.com/owner/git-manager/pull/42',
+    status: 'open',
+    ciStatus: null,
+    author: 'octocat',
+    authorAvatar: 'https://x/a.png',
+    collaborators: [],
+    filesChanged: 0,
+    additions: 0,
+    deletions: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    reviewStatus: 'pending',
+    isDraft: false,
+    labels: [],
+    comments: 0,
+    ...overrides,
+  }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  pluginOpen.mockResolvedValue(undefined)
+})
+
+describe('PRRow — content', () => {
+  it('shows the title, PR number, author and repo', () => {
+    render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByText('Add feature X')).toBeInTheDocument()
+    expect(screen.getByText('#42')).toBeInTheDocument()
+    expect(screen.getByText('octocat')).toBeInTheDocument()
+    expect(screen.getByText('git-manager')).toBeInTheDocument()
+  })
+
+  it('shows additions/deletions and file count when present', () => {
+    render(
+      <PRRow
+        pr={pr({ additions: 12, deletions: 4, filesChanged: 3 })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByText('+12')).toBeInTheDocument()
+    expect(screen.getByText('−4')).toBeInTheDocument()
+    expect(screen.getByText('· 3 files')).toBeInTheDocument()
+  })
+
+  it('shows just the file count when there are no line changes', () => {
+    render(
+      <PRRow
+        pr={pr({ additions: 0, deletions: 0, filesChanged: 5 })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByText('5 files')).toBeInTheDocument()
+  })
+
+  it('shows up to 2 labels', () => {
+    render(
+      <PRRow
+        pr={pr({ labels: ['bug', 'urgent', 'wontfix'] })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByText('bug')).toBeInTheDocument()
+    expect(screen.getByText('urgent')).toBeInTheDocument()
+    expect(screen.queryByText('wontfix')).not.toBeInTheDocument()
+  })
+
+  it('shows the source branch in a tag under the repo when present', () => {
+    render(
+      <PRRow pr={pr({ id: 'pr-b', headRef: 'feat/thing' })} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(screen.getByTestId('pr-branch-pr-b')).toHaveTextContent('feat/thing')
+  })
+
+  it('omits the branch tag when there is no head ref', () => {
+    render(<PRRow pr={pr({ id: 'pr-c' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
+  })
+
+  // GitHub reports no `user` for a deleted account, and a PR followed by URL has no author at all
+  // — both arrive as `authorAvatar: ''`, which a bare <img> rendered as a broken-image glyph.
+  it("falls back to the author's coloured initials when there is no picture", () => {
+    render(
+      <PRRow
+        pr={pr({ authorAvatar: '', author: 'octocat' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.queryByAltText('octocat')).not.toBeInTheDocument()
+    expect(screen.getByText('OC')).toBeInTheDocument()
+  })
+
+  it('still shows the real picture when there is one', () => {
+    render(
+      <PRRow
+        pr={pr({ authorAvatar: 'https://x/a.png', author: 'octocat' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByAltText('octocat')).toHaveAttribute('src', 'https://x/a.png')
+  })
+
+  it('shows a rebase-required icon when needsRebase is true', () => {
+    render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Rebase required')).toBeInTheDocument()
+  })
+
+  it('hides the rebase-required icon otherwise', () => {
+    render(<PRRow pr={pr({ needsRebase: false })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByLabelText('Rebase required')).not.toBeInTheDocument()
+  })
+
+  it('shows an em-dash when there are no collaborators, an avatar stack otherwise', () => {
+    // With ciStatus: null, CiBadge also renders its own "—", so there are 2 by default.
+    const { rerender } = render(
+      <PRRow pr={pr({ collaborators: [] })} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(screen.getAllByText('—')).toHaveLength(2)
+
+    rerender(
+      <PRRow
+        pr={pr({ collaborators: [{ login: 'bob', avatar: 'b.png' }] })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getAllByText('—')).toHaveLength(1)
+  })
+})
+
+describe('PRRow — last-updated column', () => {
+  const NOW = new Date('2024-06-15T12:00:00.000Z')
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('shows the compact relative time', () => {
+    render(
+      <PRRow
+        pr={pr({ updatedAt: new Date(NOW.getTime() - 3 * 3_600_000) })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByText('3h ago')).toBeInTheDocument()
+  })
+
+  /**
+   * The row has to hand the app's language to the formatter, not just call a localized one — the
+   * bug this replaced was a formatter that hardcoded English, and forgetting the second argument
+   * would silently fall back to the *system* locale, which is not the app's.
+   */
+  it('follows the app language rather than the system one', () => {
+    renderWithLanguage(
+      <PRRow
+        pr={pr({ updatedAt: new Date(NOW.getTime() - 3 * 3_600_000) })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />,
+      'fr'
+    )
+    expect(screen.getByText('-3 h')).toBeInTheDocument()
+    expect(screen.queryByText('3h ago')).not.toBeInTheDocument()
+  })
+})
+
+describe('PRRow — status icons', () => {
+  it('shows a merged icon for merged PRs', () => {
+    render(<PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Merged')).toBeInTheDocument()
+  })
+
+  it('shows a closed icon for closed PRs', () => {
+    render(<PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Closed')).toBeInTheDocument()
+  })
+
+  it('shows a draft icon for draft PRs', () => {
+    render(<PRRow pr={pr({ status: 'draft' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Draft')).toBeInTheDocument()
+  })
+
+  it('shows an open icon for open PRs', () => {
+    render(<PRRow pr={pr({ status: 'open' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Open')).toBeInTheDocument()
+  })
+})
+
+describe('PRRow — pin button', () => {
+  it('shows an amber, filled pin icon when pinned', () => {
+    const { container } = render(<PRRow pr={pr()} pinned onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Unpin')).toBeInTheDocument()
+    expect(container.querySelector('.text-amber-400')).toBeTruthy()
+  })
+
+  it('shows a muted, unfilled pin icon when unpinned', () => {
+    render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Pin')).toBeInTheDocument()
+  })
+
+  it('toggles pin without opening the PR', async () => {
+    const onTogglePin = vi.fn()
+    const user = userEvent.setup()
+    render(<PRRow pr={pr({ id: 'pr-1' })} pinned={false} onTogglePin={onTogglePin} />)
+    await user.click(screen.getByTitle('Pin'))
+    expect(onTogglePin).toHaveBeenCalledWith('pr-1')
+    expect(pluginOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('PRRow — PR number link and row click', () => {
+  it('opens the PR url on GitHub when clicking the #number link', async () => {
+    render(
+      <PRRow
+        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByText('#42'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
+  })
+
+  it('does not open GitHub or panel when clicking on the row title', async () => {
+    const onOpen = vi.fn()
+    const thePr = pr({ id: 'pr-9', url: 'https://github.com/owner/git-manager/pull/42' })
+    render(
+      <OpenPrContext.Provider value={onOpen}>
+        <PRRow pr={thePr} pinned={false} onTogglePin={vi.fn()} />
+      </OpenPrContext.Provider>
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByText('Add feature X'))
+      await Promise.resolve()
+    })
+    expect(onOpen).not.toHaveBeenCalled()
+    expect(pluginOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('PRRow — quick actions', () => {
+  it('renders a state-dependent primary split button (View for a plain open PR)', () => {
+    render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTestId('pr-actions-1-btn')).toHaveTextContent('View')
+  })
+
+  it('exposes the secondary actions in the caret dropdown', async () => {
+    const user = userEvent.setup()
+    render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.getByRole('menuitem', { name: 'Open on GitHub' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument()
+  })
+
+  it('renders a snooze control on the row edge, not in the dropdown', async () => {
+    const user = userEvent.setup()
+    render(<PRRow pr={pr({ id: 'pr-2' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTestId('snooze-trigger-pr-2')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.queryByRole('menuitem', { name: /Snooze/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Pin/ })).not.toBeInTheDocument()
+  })
+
+  it('renders an open-in-app icon that opens the in-app view when available', async () => {
+    const onOpen = vi.fn()
+    const thePr = pr({ id: 'pr-3' })
+    const user = userEvent.setup()
+    render(
+      <OpenPrContext.Provider value={onOpen}>
+        <PRRow pr={thePr} pinned={false} onTogglePin={vi.fn()} />
+      </OpenPrContext.Provider>
+    )
+    await user.click(screen.getByTestId('pr-open-in-app-pr-3'))
+    expect(onOpen).toHaveBeenCalledWith(thePr)
+  })
+
+  it('hides the open-in-app icon when no in-app view is available', () => {
+    render(<PRRow pr={pr({ id: 'pr-4' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-open-in-app-pr-4')).not.toBeInTheDocument()
+  })
+})

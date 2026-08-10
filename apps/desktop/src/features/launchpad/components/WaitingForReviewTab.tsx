@@ -1,0 +1,96 @@
+import { useState, useMemo } from 'react'
+import { CheckSquare } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
+import { NoResults } from '@git-manager/components'
+import { Toolbar } from './Toolbar'
+import { TableHeader, LoadMore } from './ListHelpers'
+import { useListToolbar } from '../hooks/useListToolbar'
+import { PRRowSkeleton } from './RowSkeletons'
+import { PRRow } from './PRRow'
+import { matchesPrSearch } from '../lib/prSearch'
+import type { MockPR } from '../../../lib/github/types'
+
+const PAGE_SIZE = 20
+
+interface WaitingForReviewTabProps {
+  allPRs: MockPR[]
+  pinnedIds: Set<string>
+  onTogglePin: (id: string) => void
+  loading: boolean
+}
+
+export function WaitingForReviewTab({
+  allPRs,
+  pinnedIds,
+  onTogglePin,
+  loading,
+}: WaitingForReviewTabProps) {
+  const { t } = useTranslation('launchpad')
+  const [shown, setShown] = useState(PAGE_SIZE)
+
+  const repos = useMemo(() => [...new Set(allPRs.map((p) => p.repo))].sort(), [allPRs])
+  const statuses = useMemo(() => [...new Set(allPRs.map((p) => p.status))].sort(), [allPRs])
+  const authors = useMemo(() => [...new Set(allPRs.map((p) => p.author))].sort(), [allPRs])
+
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({ repos, statuses, authors })
+
+  const waitingPRs = useMemo(() => {
+    return allPRs
+      .filter((pr) => pr.needsMyReview)
+      .filter((pr) => {
+        if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
+        if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
+        if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
+        return matchesPrSearch(pr, search) && matchesPrSearch(pr, globalSearch)
+      })
+      .sort((a, b) => {
+        let cmp = 0
+        if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime()
+        else if (sortKey === 'author') cmp = a.author.localeCompare(b.author)
+        else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo)
+        return sortDir === 'desc' ? -cmp : cmp
+      })
+  }, [allPRs, search, globalSearch, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <Toolbar {...toolbarProps} />
+      <TableHeader />
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <>
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+          </>
+        ) : waitingPRs.length === 0 ? (
+          <NoResults
+            icon={<CheckSquare className="h-6 w-6 opacity-30" />}
+            message={t('waiting.allCaughtUp')}
+          />
+        ) : (
+          <>
+            {waitingPRs.slice(0, shown).map((pr) => (
+              <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
+            ))}
+            <LoadMore
+              total={waitingPRs.length}
+              shown={shown}
+              onLoadMore={() => setShown((n) => n + PAGE_SIZE)}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

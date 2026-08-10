@@ -1,4 +1,4 @@
-import type { MockPR } from '../../app/pull-requests/types'
+import type { MockPR } from '../github/types'
 import type { PreviousPRSnapshot } from '../../stores/notification.store'
 
 /** The watcher's view of one PR for the next poll's diff — see `PreviousPRSnapshot`. */

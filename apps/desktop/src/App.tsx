@@ -10,9 +10,8 @@ import {
   PULL_REQUESTS_TAB,
 } from './stores/repoUI.store'
 import { NewTabPage } from './app/new-tab/NewTabPage'
-import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
-import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
+import { PullRequestsPage, RewardsTab } from './features/launchpad'
 import {
   SettingsPage,
   type Section,

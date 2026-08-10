@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DayCommit, MockIssue } from '../app/pull-requests/types'
+import type { DayCommit, MockIssue } from '../lib/github/types'
 import { loadDevFixtures } from '../lib/devFixtures'
 import { useNotificationStore } from './notification.store'
 

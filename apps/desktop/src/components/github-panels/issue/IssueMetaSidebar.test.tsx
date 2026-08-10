@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GhRawIssue } from '../../../api/github.api'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 import type { IssueActions } from '../../../hooks/useIssueActions'
 
 vi.mock('../../../hooks/useIssueDetail', () => ({ useIssueDetail: vi.fn() }))

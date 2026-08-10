@@ -30,8 +30,8 @@ vi.mock('../../../api/git.api', () => ({
 }))
 
 const openUrl = vi.fn().mockResolvedValue(undefined)
-vi.mock('../../../app/pull-requests/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../app/pull-requests/utils')>()),
+vi.mock('../../../lib/openUrl', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/openUrl')>()),
   openUrl: (...a: unknown[]) => openUrl(...a),
 }))
 

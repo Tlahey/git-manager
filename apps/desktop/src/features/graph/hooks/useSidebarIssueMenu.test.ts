@@ -29,8 +29,8 @@ vi.mock('../../../api/git.api', () => ({
 }))
 
 const openUrl = vi.fn().mockResolvedValue(undefined)
-vi.mock('../../../app/pull-requests/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../app/pull-requests/utils')>()),
+vi.mock('../../../lib/openUrl', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/openUrl')>()),
   openUrl: (...a: unknown[]) => openUrl(...a),
 }))
 
@@ -38,7 +38,7 @@ const useQueryMock = vi.fn()
 
 import * as gitApi from '../../../api/git.api'
 import { useSidebarIssueMenu } from './useSidebarIssueMenu'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 

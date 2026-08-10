@@ -7,7 +7,7 @@ import { DEBUG_ACTIONS } from '../../lib/debug/debugActions'
 import { useDevFlagsStore } from '../../stores/devFlags.store'
 import { useNotchQueueStore } from '../../stores/notchQueue.store'
 import { useNotificationStore } from '../../stores/notification.store'
-import type { MockPR } from '../../app/pull-requests/types'
+import type { MockPR } from '../../lib/github/types'
 
 const { sendNative } = vi.hoisted(() => ({ sendNative: vi.fn() }))
 vi.mock('../../api/notification.api', () => ({

@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 import { IssueItem } from './IssueItem'
 
 const { openUrl, hoverExpandLabel } = vi.hoisted(() => ({
   openUrl: vi.fn(),
   hoverExpandLabel: vi.fn(),
 }))
-vi.mock('../../../app/pull-requests/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../app/pull-requests/utils')>()),
+vi.mock('../../../lib/openUrl', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/openUrl')>()),
   openUrl,
 }))
 // Spied on, not stubbed out, so the row's title can be asserted to no longer go through it.

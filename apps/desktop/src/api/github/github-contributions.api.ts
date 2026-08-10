@@ -1,4 +1,4 @@
-import type { DayCommit } from '../../app/pull-requests/types'
+import type { DayCommit } from '../../lib/github/types'
 
 /** Fetch full-year contribution calendar via GitHub GraphQL API */
 export async function fetchGitHubContributions(

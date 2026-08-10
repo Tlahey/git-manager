@@ -1,0 +1,189 @@
+import {
+  Pin,
+  MessageSquare,
+  ThumbsUp,
+  GitBranch,
+  GitBranchPlus,
+  PanelRight,
+  Loader2,
+} from 'lucide-react'
+import { Tag } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
+import type { MockIssue } from '../../../lib/github/types'
+import { StatusBadge } from './Badges'
+import { AvatarStack } from './AvatarStack'
+import { CommitAvatar } from '../../../components/common/CommitAvatar'
+import { SnoozeControl } from './SnoozeControl'
+import { IssueQuickActions } from './IssueQuickActions'
+import { openUrl } from '../../../lib/openUrl'
+import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
+import { useOpenIssue } from './OpenIssueContext'
+import { useIssueActions } from '../../../hooks/useIssueActions'
+
+interface IssueRowProps {
+  issue: MockIssue
+  pinned: boolean
+  onTogglePin: (id: string) => void
+  /** Called after a mutation (e.g. the issue is closed) so the list can revalidate. */
+  onChanged?: () => void
+}
+
+export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProps) {
+  const { t, i18n } = useTranslation('launchpad')
+  const openIssue = useOpenIssue()
+  const { repoPath, branch, viewRepo, createBranch, creatingBranch, close, closing, canClose } =
+    useIssueActions(issue, onChanged)
+
+  const open = () => (openIssue ? openIssue(issue) : openUrl(issue.url))
+  const extraLabels = issue.labels.length - 1
+
+  return (
+    // The `pr` group name is intentional: SnoozeControl + the pin reveal on `group-hover/pr`.
+    <div
+      className="group/pr relative flex items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
+      data-testid={`issue-row-${issue.id}`}
+    >
+      {/* Pin + snooze */}
+      <div className="flex w-7 shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => onTogglePin(issue.id)}
+          title={pinned ? t('row.unpin') : t('row.pin')}
+          className={`shrink-0 cursor-pointer transition-all ${
+            pinned
+              ? 'text-amber-400'
+              : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
+          }`}
+        >
+          <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
+        </button>
+        <SnoozeControl prId={issue.id} />
+      </div>
+
+      {/* Last update */}
+      <div className="min-w-[52px] shrink-0 text-right text-[10px] text-muted-foreground">
+        {formatRelativeTimeCompact(issue.updatedAt, i18n.language)}
+      </div>
+
+      {/* Status */}
+      <div className="flex w-[70px] shrink-0 justify-center">
+        <StatusBadge status={issue.status} />
+      </div>
+
+      {/* Item: title #id + tags */}
+      <div className="min-w-0 flex-1">
+        <div className="leading-snug">
+          <span className="text-xs font-medium wrap-anywhere text-foreground transition-colors group-hover/pr:text-primary">
+            {issue.title}
+          </span>{' '}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openUrl(issue.url)
+            }}
+            title={t('row.openOnGitHub')}
+            data-testid={`issue-number-link-${issue.id}`}
+            className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+          >
+            #{issue.number}
+          </button>
+        </div>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">
+            <MessageSquare className="h-2.5 w-2.5" />
+            {issue.comments}
+          </span>
+          {issue.thumbsUp > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">
+              <ThumbsUp className="h-2.5 w-2.5" />
+              {issue.thumbsUp}
+            </span>
+          )}
+          {issue.labels[0] && (
+            <span className="rounded border border-border/50 bg-muted/60 px-1 py-px text-[9px] text-muted-foreground">
+              {issue.labels[0]}
+            </span>
+          )}
+          {extraLabels > 0 && (
+            <Tag tone="neutral" className="shrink-0 px-1 text-[9px]">
+              +{extraLabels}
+            </Tag>
+          )}
+        </div>
+      </div>
+
+      {/* Author */}
+      <div className="flex w-[90px] shrink-0 items-center gap-1.5">
+        {/* Coloured initials when GitHub reports no picture, exactly as `PRRow` and the graph do —
+            a raw <img> here rendered a broken-image glyph for a deleted author. */}
+        <CommitAvatar avatarUrl={issue.authorAvatar} name={issue.author} size={18} />
+        <span className="truncate text-[10px] text-muted-foreground">{issue.author}</span>
+      </div>
+
+      {/* Collaborators */}
+      <div className="flex w-[60px] shrink-0 justify-center">
+        {issue.assignees.length > 0 ? (
+          <AvatarStack users={issue.assignees} max={3} />
+        ) : (
+          <span className="text-[10px] text-muted-foreground/30">—</span>
+        )}
+      </div>
+
+      {/* Repo / branch */}
+      <div className="w-[130px] shrink-0" onClick={(e) => e.stopPropagation()}>
+        <span className="block truncate font-mono text-[10px] text-muted-foreground/70">
+          {issue.repo}
+        </span>
+        {branch ? (
+          <span
+            className="mt-0.5 flex w-fit max-w-full items-center gap-0.5 rounded border border-border/50 bg-muted/60 px-1 py-px text-[9px] text-muted-foreground"
+            title={branch}
+            data-testid={`issue-branch-${issue.id}`}
+          >
+            <GitBranch className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate font-mono">{branch}</span>
+          </span>
+        ) : repoPath ? (
+          <button
+            onClick={createBranch}
+            disabled={creatingBranch}
+            data-testid={`issue-create-branch-${issue.id}`}
+            className="mt-0.5 flex w-fit cursor-pointer items-center gap-0.5 rounded border border-border/50 px-1 py-px text-[9px] text-muted-foreground transition-colors hover:enabled:border-primary/40 hover:enabled:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {creatingBranch ? (
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            ) : (
+              <GitBranchPlus className="h-2.5 w-2.5" />
+            )}
+            {t('row.createBranch')}
+          </button>
+        ) : null}
+      </div>
+
+      {/* Actions: a split button with a dropdown (View / Mark as closed / View repo / …) plus a
+          dedicated "open in app" button, mirroring the PR row. */}
+      <div
+        className="flex w-[150px] shrink-0 items-center justify-end gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <IssueQuickActions
+          issue={issue}
+          viewRepo={viewRepo}
+          close={close}
+          closing={closing}
+          canClose={canClose}
+        />
+        {openIssue && (
+          <button
+            onClick={open}
+            title={t('row.openInApp')}
+            aria-label={t('row.openInApp')}
+            data-testid={`issue-open-in-app-${issue.id}`}
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
+          >
+            <PanelRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

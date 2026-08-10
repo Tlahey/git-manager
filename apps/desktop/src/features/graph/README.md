@@ -28,7 +28,7 @@ is the feature's own business.
 
 - **The diff viewer** (`components/diff-viewer/`) and the **PR/issue screens**
   (`components/github-panels/`). The graph mounts both, but so do `features/files` and
-  `app/pull-requests` — a shared screen belongs in `src/components/`, or importing it would make
+  `features/launchpad` — a shared screen belongs in `src/components/`, or importing it would make
   this folder a dependency of pages that know nothing about a commit graph. They were extracted
   from this folder for exactly that reason; each carries a README saying so.
 - **The persisted stores.** `gitGraphColumns`, `pinned-branches`, `repoUI`, `repoData` and

@@ -1,4 +1,4 @@
-import type { MockPR, PRStatus } from '../../app/pull-requests/types'
+import type { MockPR, PRStatus } from '../../lib/github/types'
 import type { PrParticipant, PullRequest } from '@git-manager/git-types'
 import {
   type GhUser,

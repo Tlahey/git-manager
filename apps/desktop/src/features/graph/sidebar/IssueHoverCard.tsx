@@ -2,8 +2,8 @@ import { CircleDot, CircleCheck, MessageSquare, ThumbsUp } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { PrSidebarSection } from '../../../components/github-panels/pr/PrSidebarSection'
 import { PrUserList } from '../../../components/github-panels/pr/PrUserList'
-import type { MockIssue } from '../../../app/pull-requests/types'
-import { timeAgo } from '../../../app/pull-requests/utils'
+import type { MockIssue } from '../../../lib/github/types'
+import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 import { issueExcerpt } from './issueExcerpt'
 
 interface IssueHoverCardProps {
@@ -28,7 +28,7 @@ const MAX_LABELS = 6
  * needs no follow-up request: the issue endpoints carry the body, labels, assignees and reactions.
  */
 export function IssueHoverCard({ issue }: IssueHoverCardProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
   const isOpen = issue.status === 'open'
   const excerpt = issueExcerpt(issue.body)
   const extraLabels = issue.labels.length - MAX_LABELS
@@ -44,7 +44,7 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
           <span>{issue.author}</span>
           <span aria-hidden>·</span>
-          <span>{timeAgo(issue.updatedAt)}</span>
+          <span>{formatRelativeTimeCompact(issue.updatedAt, i18n.language)}</span>
         </div>
 
         <div className="mt-2 flex-1">

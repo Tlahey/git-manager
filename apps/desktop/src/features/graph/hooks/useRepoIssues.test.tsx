@@ -16,7 +16,7 @@ vi.mock('../../../stores/settings.store', () => ({
 
 import { useRepoIssues } from './useRepoIssues'
 import type { IssueFilter } from '../stores/issueFilters.store'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 const GITHUB_REMOTE = 'https://github.com/org/repo.git'
 

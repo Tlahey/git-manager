@@ -8,9 +8,9 @@ import { IssueDescription } from './IssueDescription'
 import { IssueMetaSidebar } from './IssueMetaSidebar'
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
-import { openUrl } from '../../../app/pull-requests/utils'
+import { openUrl } from '../../../lib/openUrl'
 import { resolveGithubUrl } from '../../../lib/githubUrls'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 interface IssueDetailCenterProps {
   /** `owner/repo` string — resolved by the panel's `RepoGitHubOverrideContext`. */

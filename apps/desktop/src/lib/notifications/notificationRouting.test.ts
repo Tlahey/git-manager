@@ -6,7 +6,7 @@ vi.mock('./findLocalRepo', () => ({
 }))
 
 import { routeNotification } from './notificationRouting'
-import { useLaunchpadStore } from '../../stores/launchpad.store'
+import { useLaunchpadStore } from '../../features/launchpad/stores/launchpad.store'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import {

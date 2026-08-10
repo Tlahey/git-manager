@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 import type { GitBranch } from '@git-manager/git-types'
-import type { MockIssue } from '../app/pull-requests/types'
+import type { MockIssue } from '../lib/github/types'
 
 vi.mock('../api/git.api', () => ({ apiGetRemotes: vi.fn(), apiGetBranches: vi.fn() }))
 

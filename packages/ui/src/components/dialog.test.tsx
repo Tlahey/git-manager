@@ -135,6 +135,50 @@ describe('Dialog', () => {
     })
   })
 
+  describe('showCloseButton', () => {
+    it('renders the ✕ by default', () => {
+      render(
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Panel</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      )
+
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    })
+
+    /** For content that already fills the top-right corner — a side panel wrapping a screen with
+     * its own toolbar there, where the ✕ would land on the toolbar's buttons. */
+    it('can be suppressed when the content owns that corner', () => {
+      render(
+        <Dialog defaultOpen>
+          <DialogContent position="right" showCloseButton={false}>
+            <DialogTitle>Panel</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      )
+
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    })
+
+    /** Suppressing the ✕ removes a duplicate affordance, never the only way out. */
+    it('still closes on Escape without the ✕', async () => {
+      const user = userEvent.setup()
+      render(
+        <Dialog defaultOpen>
+          <DialogContent position="right" showCloseButton={false}>
+            <DialogTitle>Panel</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      )
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
   it('renders a side panel flush right instead of centered', () => {
     render(
       <Dialog defaultOpen>

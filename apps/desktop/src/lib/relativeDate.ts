@@ -1,5 +1,13 @@
-/** Human-friendly date helpers for commit timestamps (Unix epoch seconds).
- * Extracted from `GraphRow` so the blame gutter / history panel format dates the same way. */
+/**
+ * Human-friendly date helpers. Every date the app shows goes through one of these, and every one
+ * of them takes the app's own language — see `formatExactDate` on why omitting it is a bug rather
+ * than a default.
+ *
+ * Timestamps are Unix epoch **seconds** (what git hands us) except where a `Date` is accepted
+ * (what the GitHub API layer builds) or milliseconds are named explicitly.
+ *
+ * Extracted from `GraphRow` so the blame gutter / history panel format dates the same way.
+ */
 
 import type { TFunction } from '@git-manager/i18n'
 
@@ -23,19 +31,6 @@ export function formatRelativeTimestamp(timestampMs: number, t: TFunction): stri
   if (hours < 24) return t('time.hoursAgo', { count: hours })
 
   return t('time.daysAgo', { count: Math.floor(hours / 24) })
-}
-
-/** Coarse relative time, e.g. `just now`, `5m ago`, `3d ago`, `2y ago`. */
-export function formatRelativeDate(timestamp: number): string {
-  const now = Date.now() / 1000
-  const diff = now - timestamp
-
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)}d ago`
-  if (diff < 86400 * 365) return `${Math.floor(diff / (86400 * 30))}mo ago`
-  return `${Math.floor(diff / (86400 * 365))}y ago`
 }
 
 /**
@@ -81,12 +76,25 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['second', 1],
 ]
 
-/** Localized relative time (e.g. `il y a 5 jours`, `5 days ago`, `maintenant`, `now`) using
- * `Intl.RelativeTimeFormat`. `numeric: 'auto'` yields idiomatic wording (`yesterday` / `hier`,
- * `now` / `maintenant`) for the nearest units. */
-export function formatRelativeTime(timestamp: number, locale?: string): string {
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-  const diffSec = Math.round(timestamp - Date.now() / 1000) // negative = in the past
+/**
+ * Epoch **seconds** from either input shape.
+ *
+ * A `Date` is accepted because the GitHub API layer builds them (`MockPR.updatedAt`) while git
+ * timestamps arrive as second-based numbers, and converting at four call sites is four chances to
+ * divide by 1000 in the wrong direction. A bare number is still seconds — the ms/seconds confusion
+ * has bitten this file before (see `formatRelativeTimestamp`), and `Date` is the unambiguous form.
+ */
+function toEpochSeconds(when: number | Date): number {
+  return when instanceof Date ? when.getTime() / 1000 : when
+}
+
+function relativeTime(
+  when: number | Date,
+  locale: string | undefined,
+  style: Intl.RelativeTimeFormatStyle
+): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style })
+  const diffSec = Math.round(toEpochSeconds(when) - Date.now() / 1000) // negative = in the past
   const abs = Math.abs(diffSec)
   for (const [unit, secs] of RELATIVE_UNITS) {
     if (abs >= secs) {
@@ -94,4 +102,27 @@ export function formatRelativeTime(timestamp: number, locale?: string): string {
     }
   }
   return rtf.format(0, 'second')
+}
+
+/** Localized relative time (e.g. `il y a 5 jours`, `5 days ago`, `maintenant`, `now`) using
+ * `Intl.RelativeTimeFormat`. `numeric: 'auto'` yields idiomatic wording (`yesterday` / `hier`,
+ * `now` / `maintenant`) for the nearest units. */
+export function formatRelativeTime(when: number | Date, locale?: string): string {
+  return relativeTime(when, locale, 'long')
+}
+
+/**
+ * The same thing in `Intl`'s **narrow** style — `5s ago`, `2h ago`, `3d ago`, `-2 h`, `hier`.
+ *
+ * For the columns that are too narrow for the long form: the Launchpad's "updated" column is 52px
+ * and the graph's date column can be dragged down to 60, where `il y a 2 heures` is a truncation
+ * rather than a date. Narrow is what makes those columns work in French without widening them at
+ * the expense of the PR title and the commit message beside them.
+ *
+ * It replaced two hand-rolled formatters that hardcoded English (`5m ago` in a French UI). In
+ * English the narrow CLDR forms are word-for-word what those produced, so nothing moved for an
+ * English reader beyond `just now` → `now` and `1d ago` → `yesterday`.
+ */
+export function formatRelativeTimeCompact(when: number | Date, locale?: string): string {
+  return relativeTime(when, locale, 'narrow')
 }

@@ -1,4 +1,4 @@
-import type { CiStatus, CiDetail } from '../app/pull-requests/types'
+import type { CiStatus, CiDetail } from './github/types'
 import type {
   GhCheckRun,
   GhCommitStatus,
