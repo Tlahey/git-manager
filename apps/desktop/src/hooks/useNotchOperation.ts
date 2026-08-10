@@ -67,9 +67,18 @@ export interface NotchOperationOptions {
   runId?: string
   /**
    * Gate on showing it at all, for callers with a reason to suppress the card entirely — a setting
-   * switched off, an operation nobody asked for. **Not window focus**: the AI cards are shown
-   * whether or not the app is frontmost, because a run the user started is theirs to watch or to
-   * close, and a card that vanished every time they came back to the app read as a bug.
+   * switched off, an operation nobody asked for.
+   *
+   * **Never window focus.** Three producers have reached for it and all three had it taken back
+   * out: auto-fetch paused while unfocused, when unattended is precisely when a background fetch
+   * earns its keep; `NotchAiRuns` showed only while unfocused, to avoid duplicating the footer's
+   * busy pill, which is easy to miss unless you were already looking at it; and the commit search
+   * gated on it until the card left every time the user came back to the app and returned the
+   * moment they switched away. The reasoning is the same each time and worth stating once: a card
+   * is about work the user started, it costs nothing to ignore, and it has its own ✕ — so *they*
+   * decide when it goes, not which window happens to be in front. The hook that read the flag
+   * (`useWindowFocus`) was deleted along with its last caller; reintroducing it here means
+   * reintroducing this bug for a fourth time.
    */
   enabled?: boolean
   /**
