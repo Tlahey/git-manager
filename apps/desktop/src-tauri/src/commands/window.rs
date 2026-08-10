@@ -515,8 +515,13 @@ pub fn raise_above_menu_bar(window: WebviewWindow) {
 /// notch card arriving mid-keystroke used to steal the keyboard.
 ///
 /// `orderFrontRegardless` is the AppKit call that means precisely this: order the window to the
-/// front of its level *even though the application isn't active*, without making it key. Clicking
-/// the card still activates the app the normal way, which is the one moment focus should move.
+/// front of its level *even though the application isn't active*, without making it key.
+///
+/// This used to add "clicking the card still activates the app the normal way, which is the one
+/// moment focus should move". That was wrong, and it was the bug: a *click* — on the ✕, on the
+/// Cancel button, anywhere — is not a request to leave what you were doing, and macOS activating
+/// the whole application for it is exactly what users reported. See
+/// [`make_window_nonactivating`], which is what stops it.
 ///
 /// NOT `async`, for the same reason as `raise_above_menu_bar`: AppKit window mutations must happen
 /// on the main thread, and Tauri runs async commands on a worker where the call would silently do
@@ -551,6 +556,318 @@ pub fn show_without_activating(window: WebviewWindow) {
         // it does not activate the application.
         let _ = window.show();
     }
+}
+
+/// `NSWindowStyleMaskNonactivatingPanel` — the one style bit that stops a click on a window from
+/// activating the application that owns it. AppKit asserts unless the receiver really is an
+/// `NSPanel`, which is the entire reason [`make_window_nonactivating`] swaps the window's class
+/// before setting it.
+#[cfg(target_os = "macos")]
+const NONACTIVATING_PANEL_MASK: usize = 1 << 7;
+
+/// The runtime `NSPanel` subclass the notch window is re-classed into.
+#[cfg(target_os = "macos")]
+const NOTCH_PANEL_CLASS: &str = "GitManagerNotchPanel";
+
+/// The runtime subclass of wry's own webview class that accepts the first click.
+///
+/// The name deliberately still contains `WebView`: [`clear_webview_backdrop`] and
+/// [`count_effect_views`] find the webview by matching its class name, and a subclass named
+/// anything else would make the notch window's backdrop silently stop being cleared.
+#[cfg(target_os = "macos")]
+const FIRST_MOUSE_WEBVIEW_CLASS: &str = "GitManagerFirstMouseWebView";
+
+/// A registered Objective-C class, held in a `static`.
+///
+/// A class object is immortal and immutable once registered, and the runtime is what serialises
+/// registration — but objc2 does not mark `&AnyClass` `Send`/`Sync`, so it needs saying. Same
+/// wrapper tao uses for its own window class, for the same reason.
+#[cfg(target_os = "macos")]
+struct StaticClass(&'static objc2::runtime::AnyClass);
+#[cfg(target_os = "macos")]
+unsafe impl Send for StaticClass {}
+#[cfg(target_os = "macos")]
+unsafe impl Sync for StaticClass {}
+
+/// `canBecomeKeyWindow` / `canBecomeMainWindow`, reading the same `focusable` ivar tao's own window
+/// class does — see [`notch_panel_class`] for why this has to be re-implemented rather than
+/// inherited.
+#[cfg(target_os = "macos")]
+extern "C" fn is_focusable(
+    this: &objc2::runtime::AnyObject,
+    _: objc2::runtime::Sel,
+) -> objc2::runtime::Bool {
+    // SAFETY: only ever installed on `NOTCH_PANEL_CLASS`, which declares this ivar itself.
+    #[allow(deprecated)]
+    unsafe {
+        *this.get_ivar::<objc2::runtime::Bool>("focusable")
+    }
+}
+
+/// `acceptsFirstMouse:` — yes, always. See [`make_window_nonactivating`].
+#[cfg(target_os = "macos")]
+extern "C" fn accepts_first_mouse(
+    _this: &objc2::runtime::AnyObject,
+    _: objc2::runtime::Sel,
+    _event: *mut objc2::runtime::AnyObject,
+) -> objc2::runtime::Bool {
+    objc2::runtime::Bool::YES
+}
+
+/// The `NSPanel` subclass the notch window becomes, registered once.
+///
+/// It re-declares the `focusable` ivar and the two `canBecome…Window` overrides that tao's own
+/// `TaoWindow` class provides, because re-classing the window away from `TaoWindow` takes both with
+/// it — and `WebviewWindow::set_focusable` (which the notch calls per card) writes that ivar *by
+/// name*, so a class without it would not merely change behaviour, it would panic the process.
+#[cfg(target_os = "macos")]
+fn notch_panel_class() -> Option<&'static objc2::runtime::AnyClass> {
+    use objc2::runtime::{AnyClass, Bool, ClassBuilder};
+    use objc2::sel;
+    use std::sync::OnceLock;
+
+    static CLASS: OnceLock<Option<StaticClass>> = OnceLock::new();
+    CLASS
+        .get_or_init(|| {
+            if let Some(existing) = AnyClass::get(NOTCH_PANEL_CLASS) {
+                return Some(StaticClass(existing));
+            }
+            let superclass = AnyClass::get("NSPanel")?;
+            let mut builder = ClassBuilder::new(NOTCH_PANEL_CLASS, superclass)?;
+            builder.add_ivar::<Bool>("focusable");
+            // SAFETY: both selectors are declared by NSWindow with exactly this signature
+            // (`BOOL (id, SEL)`), which is what objc2 verifies these implementations against.
+            unsafe {
+                builder.add_method(
+                    sel!(canBecomeKeyWindow),
+                    is_focusable as extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(canBecomeMainWindow),
+                    is_focusable as extern "C" fn(_, _) -> _,
+                );
+            }
+            Some(StaticClass(builder.register()))
+        })
+        .as_ref()
+        .map(|held| held.0)
+}
+
+/// The subclass of wry's webview class that accepts the first click, registered once.
+///
+/// Subclassing the *live* class rather than a named one, and adding no ivars, is what makes the
+/// re-class below trivially safe: the subclass has exactly the instance size of the object already
+/// allocated.
+#[cfg(target_os = "macos")]
+fn first_mouse_webview_class(
+    superclass: &'static objc2::runtime::AnyClass,
+) -> Option<&'static objc2::runtime::AnyClass> {
+    use objc2::runtime::{AnyClass, ClassBuilder};
+    use objc2::sel;
+    use std::sync::OnceLock;
+
+    static CLASS: OnceLock<Option<StaticClass>> = OnceLock::new();
+    CLASS
+        .get_or_init(|| {
+            if let Some(existing) = AnyClass::get(FIRST_MOUSE_WEBVIEW_CLASS) {
+                return Some(StaticClass(existing));
+            }
+            let mut builder = ClassBuilder::new(FIRST_MOUSE_WEBVIEW_CLASS, superclass)?;
+            // SAFETY: `acceptsFirstMouse:` is declared by NSView as `BOOL (id, SEL, NSEvent *)`,
+            // which is the signature this implementation has.
+            unsafe {
+                builder.add_method(
+                    sel!(acceptsFirstMouse:),
+                    accepts_first_mouse as extern "C" fn(_, _, _) -> _,
+                );
+            }
+            Some(StaticClass(builder.register()))
+        })
+        .as_ref()
+        .map(|held| held.0)
+}
+
+/// Re-classes an Objective-C instance, refusing whenever the new class is larger than the one the
+/// object was allocated for.
+///
+/// That guard is the whole safety argument. `object_setClass` does not reallocate, so a class whose
+/// instances are bigger would put its own ivars past the end of the allocation — and, because the
+/// runtime lays a subclass's ivars out at its superclass's instance size, equal sizes are also
+/// exactly the condition under which an inherited ivar (`focusable`) keeps its offset and therefore
+/// its value.
+///
+/// Returns whether the swap happened; `false` is always safe to ignore — the window merely keeps
+/// the behaviour it had.
+#[cfg(target_os = "macos")]
+fn reclass(object: &objc2::runtime::AnyObject, class: &'static objc2::runtime::AnyClass) -> bool {
+    let current = object.class();
+    if current.name() == class.name() {
+        return true;
+    }
+    if class.instance_size() > current.instance_size() {
+        eprintln!(
+            "[notch] not re-classing {} into {}: {} bytes against {} — see `reclass`",
+            current.name(),
+            class.name(),
+            class.instance_size(),
+            current.instance_size()
+        );
+        return false;
+    }
+    // SAFETY: the size guard above is the precondition; both pointers are live for the call.
+    unsafe {
+        objc2::ffi::object_setClass(
+            (object as *const objc2::runtime::AnyObject as *mut objc2::runtime::AnyObject).cast(),
+            (class as *const objc2::runtime::AnyClass).cast(),
+        );
+    }
+    true
+}
+
+/// Makes the notch window one the user can click without losing what they were doing.
+///
+/// ## The bug this exists for
+///
+/// A card is by definition raised while the user is in another application, and **clicking any
+/// window of a background application activates that application** — before the click reaches
+/// anything inside it. So pressing the card's ✕ pulled the whole app in front of whatever the user
+/// was in, at the exact moment they said they were done with it; and pressing its *Cancel* button
+/// did nothing at all, because the click that activates an app is not delivered to the view under
+/// it (AppKit's "first mouse" rule) unless that view opts in. One click, two symptoms, one cause.
+///
+/// ## Two things that were tried first, and why neither could work
+///
+/// - **`focus: false` at creation.** That governs whether the window is made key when it is shown,
+///   which is a different question from whether a click activates the application.
+/// - **`focusable: false` / `setFocusable(false)`**, on the reasoning that a window which cannot
+///   become key cannot hand key status to the main window when it is ordered out. tao really does
+///   map that option onto `canBecomeKeyWindow` and `canBecomeMainWindow` (its `focusable` ivar), and
+///   the notch window really cannot become key — and the bug survived it in the real app. That is
+///   the measurement that rules the key-window path out entirely: the activation is the
+///   *application's*, not the window's, and no window-level flag addresses it.
+///
+/// ## What actually addresses it
+///
+/// `NSWindowStyleMaskNonactivatingPanel` is the documented "clicking this does not activate the
+/// owning app" bit, and only an `NSPanel` may carry it — hence the class swap, which is the same
+/// technique the `tauri-nspanel` crate is built on. Paired with `acceptsFirstMouse:` returning
+/// `YES` on the webview, so the click that no longer activates anything is delivered to the button
+/// the user aimed at. **Both halves are required**: the panel alone would leave a card whose
+/// buttons never respond (nothing activates, so every click stays a first-mouse click), and the
+/// first-mouse acceptance alone would leave a card that works but still yanks the app forward.
+///
+/// ## Why it is re-asserted per card rather than set at creation
+///
+/// The notch keeps **one** window for the life of the app (see `lib/notifications/notchWindow.ts`),
+/// so a creation-time option only ever describes the window a particular launch happened to build —
+/// a frontend reload leaves the previous one standing, which is precisely how the first attempt at
+/// this fix reached nobody. Saying it again on every card is what makes it true of the window that
+/// is actually on screen. Both halves are idempotent.
+///
+/// ## What the class swap costs, and why it is affordable here
+///
+/// Re-classing away from tao's `TaoWindow` drops its three overrides. Two —
+/// `canBecomeKeyWindow`/`canBecomeMainWindow` and the `focusable` ivar behind them — are
+/// re-declared by [`notch_panel_class`], so `setFocusable` goes on working exactly as it did. The
+/// third is `sendEvent:`, whose only content is dragging a window by its background
+/// (`performWindowDragWithEvent:` when `isMovableByWindowBackground`): **the notch card has no drag
+/// region and must never grow one**, because this is where that would stop working. Everything else
+/// tao and Tauri do to this window — `orderOut:`, `orderFrontRegardless`, `setFrame:`, `setLevel:`,
+/// `close`, its delegate — is `NSWindow` API an `NSPanel` inherits untouched.
+///
+/// Reports whether the window is now in that state, for the caller's log; every failure leaves the
+/// window exactly as it was, which is a card that is rude rather than no card at all.
+///
+/// NOT `async`, for the same reason as every other command in this file: AppKit window mutations
+/// must happen on the main thread, and Tauri runs async commands on a worker where they would
+/// silently do nothing.
+#[tauri::command]
+pub fn make_window_nonactivating(window: WebviewWindow) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::runtime::AnyObject;
+        use objc2_app_kit::NSWindow;
+
+        let Ok(ptr) = window.ns_window() else {
+            eprintln!(
+                "[notch] no ns_window handle; clicking the card will go on activating the app"
+            );
+            return false;
+        };
+        // SAFETY: `ns_window()` hands back the live NSWindow for this webview window, and the
+        // command is synchronous, which is what puts us on the main thread.
+        unsafe {
+            let ns_window: &NSWindow = &*(ptr as *mut NSWindow);
+            let object: &AnyObject = &*(ns_window as *const NSWindow as *const AnyObject);
+
+            let panelled = match notch_panel_class() {
+                Some(class) if reclass(object, class) => {
+                    let mask: usize = objc2::msg_send![object, styleMask];
+                    let _: () =
+                        objc2::msg_send![object, setStyleMask: mask | NONACTIVATING_PANEL_MASK];
+                    // A panel's own default is to disappear whenever its application is
+                    // deactivated, which for a card raised *because* the user is elsewhere would
+                    // mean never being seen at all. The flag lives on the instance and so did not
+                    // change under the class swap — this states it rather than relying on that.
+                    let _: () = objc2::msg_send![object, setHidesOnDeactivate: false];
+                    true
+                }
+                _ => {
+                    eprintln!("[notch] could not turn the card into a nonactivating panel");
+                    false
+                }
+            };
+
+            let clickable = accept_first_mouse_in_webviews(ns_window);
+            panelled && clickable
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Nothing to do, and nothing wrong: no other platform activates a whole application
+        // because one of its windows was clicked.
+        let _ = window;
+        true
+    }
+}
+
+/// Makes every webview in this window accept the click that would otherwise only activate the app.
+///
+/// wry's webview class implements `acceptsFirstMouse:` by reading an ivar it sets at creation from
+/// Tauri's `acceptFirstMouse` option — which is therefore unreachable afterwards. Re-classing the
+/// live view into a subclass that answers `YES` outright is what makes it assertable per card
+/// instead, on a window that outlives every card it shows.
+#[cfg(target_os = "macos")]
+unsafe fn accept_first_mouse_in_webviews(window: &objc2_app_kit::NSWindow) -> bool {
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+
+    let Some(content) = window.contentView() else {
+        return false;
+    };
+    let subviews = content.subviews();
+    let mut found = false;
+    for i in 0..subviews.count() {
+        let view = subviews.objectAtIndex(i);
+        let object: &AnyObject = &*(Retained::as_ptr(&view) as *const AnyObject);
+        let class = object.class();
+        if !class.name().contains("WebView") {
+            continue;
+        }
+        found = true;
+        if class.name() == FIRST_MOUSE_WEBVIEW_CLASS {
+            continue;
+        }
+        match first_mouse_webview_class(class) {
+            Some(subclass) => {
+                if !reclass(object, subclass) {
+                    return false;
+                }
+            }
+            None => return false,
+        }
+    }
+    found
 }
 
 /// Whether this application is the active (frontmost) one right now.

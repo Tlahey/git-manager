@@ -44,6 +44,14 @@ export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
 export const showWithoutActivating = () => invoke<void>('show_without_activating')
 
 /**
+ * Makes this window a nonactivating panel whose webview accepts the first click, so the user can
+ * press the card's buttons without macOS pulling the whole application in front of them — see
+ * `make_window_nonactivating` in `commands/window.rs`. Reports whether it took. `true` off macOS,
+ * where no window activates its app by being clicked.
+ */
+export const makeWindowNonactivating = () => invoke<boolean>('make_window_nonactivating')
+
+/**
  * Whether the *application* is frontmost — not whether this webview has focus, which is a different
  * question whenever a second window of ours is key. `true` off macOS.
  */

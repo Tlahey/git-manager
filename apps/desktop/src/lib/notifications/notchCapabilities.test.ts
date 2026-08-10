@@ -22,6 +22,11 @@ import { resolve } from 'node:path'
  * So the rule is: **every `core:*` command the notch calls has to be named here and in the
  * capability file.** Reading the real file is the only way to state it — anything mocked would
  * agree with itself.
+ *
+ * Only `core:*`. The notch's own Rust commands (`raise_above_menu_bar`,
+ * `make_window_nonactivating`, `show_without_activating`, …) are the app's, registered in
+ * `generate_handler!` and not ACL-gated at all — their equivalent of this test is that they fail to
+ * compile if they are not registered.
  */
 const CAPABILITIES = resolve(process.cwd(), 'src-tauri/capabilities/default.json')
 
@@ -39,8 +44,9 @@ const REQUIRED: Array<{ permission: string; usedBy: string }> = [
   {
     permission: 'core:window:allow-set-focusable',
     usedBy:
-      'notchWindow.ts, keeping the parked window unable to become key — without it, hiding a ' +
-      'dismissed card hands focus to the main window and pulls the app in front of the user',
+      'notchWindow.ts, keeping the parked window unable to become key so the card never takes ' +
+      'the keyboard. NOT what stops a click bringing the app forward, though it was once ' +
+      'believed to be — see `make_window_nonactivating`',
   },
   {
     permission: 'core:window:allow-hide',

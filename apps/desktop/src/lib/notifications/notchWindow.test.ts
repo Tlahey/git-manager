@@ -274,17 +274,32 @@ describe('openNotchWindow', () => {
     })
   })
 
-  it('can never become the key window, so closing a card cannot hand focus to the app', async () => {
-    // tao maps `focusable` onto both `canBecomeKeyWindow` and `canBecomeMainWindow`. Left at its
-    // default, clicking the ✕ made this window key — and hiding it is `orderOut:`, which hands key
-    // status to the next window of the same application rather than dropping it. That window is the
-    // main one, so dismissing a notification pulled the user out of whatever they were doing.
+  it('can never become the key window, so the card never takes the keyboard', async () => {
+    // tao maps `focusable` onto both `canBecomeKeyWindow` and `canBecomeMainWindow`, and nothing on
+    // the card wants a keyboard — it is two buttons and a progress bar. This was once believed to
+    // be what stopped a dismissal pulling the app forward too (`orderOut:` hands key status on
+    // rather than dropping it); it is not, and `acceptFirstMouse` below is the other half of what
+    // is.
     const promise = openNotchWindow(request)
     await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
     listeners.current.get('tauri://created')?.()
     await promise
 
     expect(creationOptions().focusable).toBe(false)
+  })
+
+  it('accepts the first click, so a button press is not spent activating the app', async () => {
+    // macOS does not deliver the mouse-down that activates a background application to the view
+    // under it unless that view opts in, and wry's webview reads this option to answer
+    // `acceptsFirstMouse:`. Without it the card's *Cancel* button did nothing at all while the user
+    // was in another app — the press went into the activation, which is the same click the panel
+    // conversion (`make_window_nonactivating`) now refuses to perform.
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    expect(creationOptions().acceptFirstMouse).toBe(true)
   })
 
   // ── the parked window ──────────────────────────────────────────────────────────────────────
@@ -320,9 +335,10 @@ describe('openNotchWindow', () => {
   it('re-asserts that the parked window cannot become key, on every card', async () => {
     // Not merely a creation option. This window is made once and reused for the life of the app, so
     // a creation-time setting only describes the window some particular launch built — a frontend
-    // reload leaves the old one standing, which is how the first attempt at this fix reached
-    // nobody. Without it, hiding a dismissed card hands key status to the main window and pulls the
-    // app in front of the user.
+    // reload leaves the old one standing, which is how the first attempt at keeping the card
+    // unfocusable reached nobody. The card taking the keyboard is what this prevents; the app being
+    // pulled forward by a click is `make_window_nonactivating`'s job, asserted per card from the
+    // notch window's own `prepare`.
     getByLabel.mockResolvedValue(parkedWindow())
 
     await openNotchWindow(request)

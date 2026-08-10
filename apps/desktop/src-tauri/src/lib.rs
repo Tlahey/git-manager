@@ -95,8 +95,8 @@ use commands::undo::{
     unpin_object,
 };
 use commands::window::{
-    clear_window_backdrop, get_notch_metrics, is_app_active, navigate_window, raise_above_menu_bar,
-    set_window_vibrancy, show_without_activating,
+    clear_window_backdrop, get_notch_metrics, is_app_active, make_window_nonactivating,
+    navigate_window, raise_above_menu_bar, set_window_vibrancy, show_without_activating,
 };
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
@@ -353,6 +353,7 @@ pub fn run() {
             raise_above_menu_bar,
             clear_window_backdrop,
             show_without_activating,
+            make_window_nonactivating,
             is_app_active,
             navigate_window,
             get_notch_metrics,

@@ -8,6 +8,7 @@ const {
   hideWindow,
   setPosition,
   raise,
+  nonactivating,
   clearBackdrop,
   playSound,
   calls,
@@ -41,6 +42,10 @@ const {
       calls.push('raise')
       return Promise.resolve()
     }),
+    nonactivating: vi.fn(() => {
+      calls.push('nonactivating')
+      return Promise.resolve()
+    }),
     clearBackdrop: vi.fn(() => {
       calls.push('clearBackdrop')
       return Promise.resolve()
@@ -55,6 +60,7 @@ vi.mock('@tauri-apps/api/window', () => ({
 
 vi.mock('../../api/notification.api', () => ({
   apiRaiseAboveMenuBar: raise,
+  apiMakeWindowNonactivating: nonactivating,
   apiClearWindowBackdrop: clearBackdrop,
   apiPlaySystemSound: playSound,
   apiShowWithoutActivating: showWithoutActivating,
@@ -73,10 +79,25 @@ function surfaceRef(): { current: HTMLElement | null } {
 describe('createTauriNotchHost', () => {
   it('raises above the menu bar before clearing the backdrop', async () => {
     // Order matters: the raise is what lets the card emerge from behind the bar during the slide,
-    // and it has to be in place before anything is painted.
+    // and it has to be in place before anything is painted. The panel conversion comes first of
+    // all, because it rewrites the window's style mask and the raise has to have the last word on
+    // the level.
     const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     await host.prepare?.()
-    expect(calls).toEqual(['raise', 'clearBackdrop'])
+    expect(calls).toEqual(['nonactivating', 'raise', 'clearBackdrop'])
+  })
+
+  // The bug this file's `prepare` gained a third call for: a card is raised while the user is in
+  // another application, and clicking any window of a background app activates that app — before
+  // the click reaches anything inside it. So the ✕ pulled the whole app in front of the user, and
+  // the Cancel button did nothing at all. Asserted on *every* card rather than once at creation,
+  // because the notch keeps one window for the life of the app and a creation-time option only
+  // describes the window a particular launch built.
+  it('asks for a window the user can click without it taking the app forward', async () => {
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
+    await host.prepare?.()
+    await host.prepare?.()
+    expect(nonactivating).toHaveBeenCalledTimes(2)
   })
 
   // The card moves inside a window that stays put. Animating the window itself is what the notch
