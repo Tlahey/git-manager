@@ -517,6 +517,7 @@
   "commitDetails.sha": "SHA",
   "commitDetails.parents": "Parents",
   "commitDetails.openPullRequest": "Ouvrir la pull request #{{number}}",
+  "commitDetails.openCommitOn": "Ouvrir le commit sur {{forge}}",
   "commitDetails.noParents": "Aucun parent",
   "commitDetails.fileCount_one": "{{count}} fichier",
   "commitDetails.fileCount_other": "{{count}} fichiers",

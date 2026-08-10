@@ -342,6 +342,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                   : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
               }`}
               title={t('footer.rewardsTooltip')}
+              aria-label={t('footer.rewardsTooltip')}
             >
               <Trophy
                 className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`}
@@ -392,6 +393,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
           <button
             onClick={() => onOpenSettings('changelog')}
             title={t('footer.viewChangelog')}
+            aria-label={t('footer.viewChangelog')}
             data-testid="footer-version-button"
             className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-xs transition-colors hover:border-primary/50 hover:text-primary"
           >

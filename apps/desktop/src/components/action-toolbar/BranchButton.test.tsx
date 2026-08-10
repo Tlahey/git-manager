@@ -32,9 +32,9 @@ describe('BranchButton', () => {
     const user = userEvent.setup()
     render(<BranchButton fromRef="main" onCreate={vi.fn()} />)
     await openPopover(user)
-    expect(screen.getByRole('button', { name: /toolbar.create/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'toolbar.create' })).toBeDisabled()
     await user.type(screen.getByPlaceholderText('toolbar.branchNamePlaceholder'), 'feature-x')
-    expect(screen.getByRole('button', { name: /toolbar.create/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'toolbar.create' })).toBeEnabled()
   })
 
   it('submits the trimmed name, then clears and closes on success', async () => {
@@ -43,7 +43,7 @@ describe('BranchButton', () => {
     render(<BranchButton fromRef="main" onCreate={onCreate} />)
     await openPopover(user)
     await user.type(screen.getByPlaceholderText('toolbar.branchNamePlaceholder'), '  feature-x  ')
-    await user.click(screen.getByRole('button', { name: /toolbar.create/ }))
+    await user.click(screen.getByRole('button', { name: 'toolbar.create' }))
 
     expect(onCreate).toHaveBeenCalledWith('feature-x')
     expect(screen.queryByPlaceholderText('toolbar.branchNamePlaceholder')).not.toBeInTheDocument()
@@ -68,9 +68,9 @@ describe('BranchButton', () => {
     render(<BranchButton fromRef="main" onCreate={onCreate} />)
     await openPopover(user)
     await user.type(screen.getByPlaceholderText('toolbar.branchNamePlaceholder'), 'feature-x')
-    await user.click(screen.getByRole('button', { name: /toolbar.create/ }))
+    await user.click(screen.getByRole('button', { name: 'toolbar.create' }))
 
-    expect(screen.getByRole('button', { name: /toolbar.create/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'toolbar.create' })).toBeDisabled()
     resolveCreate()
   })
 })

@@ -48,6 +48,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
         <button
           onClick={() => onTogglePin(issue.id)}
           title={pinned ? t('row.unpin') : t('row.pin')}
+          aria-label={pinned ? t('row.unpin') : t('row.pin')}
           className={`shrink-0 cursor-pointer transition-all ${
             pinned
               ? 'text-amber-400'
@@ -81,6 +82,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
               openUrl(issue.url)
             }}
             title={t('row.openOnGitHub')}
+            aria-label={t('row.openOnGitHub')}
             data-testid={`issue-number-link-${issue.id}`}
             className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >

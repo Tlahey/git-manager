@@ -70,6 +70,7 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           data-testid="pr-toggle-files"
           aria-pressed={prFilesVisible}
           title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
+          aria-label={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
           className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {prFilesVisible ? (

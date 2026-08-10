@@ -45,6 +45,7 @@ export function RepoSelector() {
           <button
             type="button"
             title={activeRepo ?? t('toolbar.selectRepo')}
+            aria-label={activeRepo ?? t('toolbar.selectRepo')}
             className="flex h-5 max-w-[200px] min-w-0 cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
           >
             <span className="min-w-0 flex-1 truncate text-left">{activeName}</span>

@@ -28,6 +28,9 @@ export function RunButton({ tasks, defaultTask, onRun }: RunButtonProps) {
         type="button"
         onClick={() => defaultTask && onRun(defaultTask)}
         title={defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')}
+        aria-label={
+          defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')
+        }
         data-testid="toolbar-run-button-primary"
         className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent"
       >

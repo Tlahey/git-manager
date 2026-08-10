@@ -155,6 +155,7 @@ export function FollowedPRsTab({
                   }}
                   className="absolute top-1/2 right-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-xs backdrop-blur-xs transition-all duration-150 group-hover/followed:opacity-100 hover:border-destructive/20 hover:text-destructive"
                   title={t('followed.unfollow')}
+                  aria-label={t('followed.unfollow')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

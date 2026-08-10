@@ -73,6 +73,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
             data-testid="pr-title-save"
             className="cursor-pointer rounded p-1.5 text-green-500 hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             title={t('pr.title.save')}
+            aria-label={t('pr.title.save')}
           >
             {pending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           </button>
@@ -81,6 +82,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
             disabled={pending}
             className="cursor-pointer rounded p-1.5 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             title={t('pr.title.cancel')}
+            aria-label={t('pr.title.cancel')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -90,6 +92,7 @@ export function PrTitle({ repoPath, prNumber, title }: PrTitleProps) {
           onClick={() => setEditing(true)}
           data-testid="pr-title"
           title={t('pr.title.editHint')}
+          aria-label={t('pr.title.editHint')}
           className="mt-0.5 cursor-text text-xl leading-tight font-semibold text-foreground hover:opacity-80"
         >
           {title}

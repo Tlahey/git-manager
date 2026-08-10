@@ -71,6 +71,9 @@ export function FileTreeFolderRow({ node, depth, ctx, children }: FileTreeFolder
                 : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
             )}
             title={allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')}
+            aria-label={
+              allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')
+            }
             data-testid={`file-tree-folder-checkbox-${node.path}`}
           >
             {someStaged ? '-' : '✓'}
@@ -126,6 +129,11 @@ export function FileTreeFolderRow({ node, depth, ctx, children }: FileTreeFolder
                 : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
             )}
             title={
+              ctx.hoverStage === 'add'
+                ? t('commitFileList.stageFolder')
+                : t('commitFileList.unstageFolder')
+            }
+            aria-label={
               ctx.hoverStage === 'add'
                 ? t('commitFileList.stageFolder')
                 : t('commitFileList.unstageFolder')

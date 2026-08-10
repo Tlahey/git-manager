@@ -94,6 +94,7 @@ export function TimelineStepsPanel({
               data-testid={`timeline-step-${step.index}`}
               aria-current={active}
               title={exactDate ?? undefined}
+              aria-label={exactDate ?? undefined}
               className={cn(
                 'flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors',
                 active ? 'bg-accent' : 'hover:bg-accent/40',

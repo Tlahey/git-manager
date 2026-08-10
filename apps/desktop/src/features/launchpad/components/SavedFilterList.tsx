@@ -47,6 +47,7 @@ export function SavedFilterList({
           data-testid="launchpad-new-filter-button"
           className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
           title={t('views.newFilter')}
+          aria-label={t('views.newFilter')}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -93,6 +94,7 @@ export function SavedFilterList({
                   }}
                   className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                   title={t('views.edit')}
+                  aria-label={t('views.edit')}
                 >
                   <Pencil className="h-2.5 w-2.5" />
                 </button>
@@ -115,6 +117,7 @@ export function SavedFilterList({
                     }}
                     className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     title={t('views.delete')}
+                    aria-label={t('views.delete')}
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                   </button>

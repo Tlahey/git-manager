@@ -281,6 +281,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                         data-testid="diff-version-sha"
                         onClick={handleCopySha}
                         title={t('fileHistory.copySha')}
+                        aria-label={t('fileHistory.copySha')}
                         className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
                       >
                         {shortOid(effectiveOid)}
@@ -297,6 +298,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                         className="h-6 shrink-0 gap-1 px-2 text-[10px]"
                         onClick={handleOpenOnGithub}
                         title={t('fileHistory.openOnGithub')}
+                        aria-label={t('fileHistory.openOnGithub')}
                       >
                         <GithubIcon className="h-3.5 w-3.5" />
                         <span>GitHub</span>
