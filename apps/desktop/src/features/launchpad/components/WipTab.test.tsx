@@ -77,6 +77,15 @@ describe('WipTab', () => {
     expect(useRepoUIStore.getState().openTabs).toContain('/repo-feat')
   })
 
+  /** The button used to carry its label as visible text. Now that it is an icon — matching the PR
+   * and issue rows — the name has to come from `aria-label`, or it is a button announced as
+   * nothing at all. */
+  it('keeps the open action named once it is only an icon', () => {
+    useLocalWipRepos.mockReturnValue({ entries: [entry()], loading: false })
+    render(<WipTab />)
+    expect(screen.getByRole('button', { name: 'Open repo' })).toBeInTheDocument()
+  })
+
   it('filters by name via the search box', async () => {
     useLocalWipRepos.mockReturnValue({
       entries: [

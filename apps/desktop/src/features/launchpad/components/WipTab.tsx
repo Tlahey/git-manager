@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { FolderGit2, GitBranch, AlertTriangle } from 'lucide-react'
+import { FolderGit2, FolderOpen, GitBranch, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { EmptyState, NoResults } from '@git-manager/components'
-import { Button, Tag } from '@git-manager/ui'
+import { Tag } from '@git-manager/ui'
 import { Toolbar } from './Toolbar'
 import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
@@ -68,17 +68,24 @@ function WipEntryRow({ entry }: { entry: LocalWipEntry }) {
           <span className="truncate font-mono">{entry.branch}</span>
         </span>
       </div>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={(e) => {
-          e.stopPropagation()
-          openTab(entry.worktreePath)
-        }}
-        data-testid={`wip-open-${entry.worktreePath}`}
-      >
-        {t('wip.openRepo')}
-      </Button>
+      {/* Same icon button as the PR and issue rows' "open in app": revealed on hover, since the
+          whole row already opens the worktree and this is the explicit form of that, not a second
+          action. `FolderOpen` rather than the row's own `FolderGit2`, which says *what* the row is
+          rather than what the button does. */}
+      <div className="flex w-[150px] shrink-0 items-center justify-end">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            openTab(entry.worktreePath)
+          }}
+          title={t('wip.openRepo')}
+          aria-label={t('wip.openRepo')}
+          data-testid={`wip-open-${entry.worktreePath}`}
+          className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/wip:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   )
 }
