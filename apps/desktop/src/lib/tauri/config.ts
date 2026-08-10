@@ -44,6 +44,19 @@ export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
 export const showWithoutActivating = () => invoke<void>('show_without_activating')
 
 /**
+ * Whether the *application* is frontmost — not whether this webview has focus, which is a different
+ * question whenever a second window of ours is key. `true` off macOS.
+ */
+export const isAppActive = () => invoke<boolean>('is_app_active')
+
+/**
+ * Hands back an activation the app never asked for. wry activates the whole application on every
+ * webview it creates, whatever the window's `focus`/`visible` options say — see
+ * `resign_app_activation` in `commands/window.rs`. A no-op off macOS.
+ */
+export const resignAppActivation = () => invoke<void>('resign_app_activation')
+
+/**
  * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
  * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
  */

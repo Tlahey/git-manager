@@ -527,10 +527,13 @@ pub fn show_without_activating(window: WebviewWindow) {
         use objc2_app_kit::NSWindow;
 
         let Ok(ptr) = window.ns_window() else {
-            // No native handle to be gentle with — better a card that shows (and takes focus) than
-            // one that never appears at all.
-            eprintln!("[notification-popover] no ns_window handle; falling back to show()");
-            let _ = window.show();
+            // Deliberately no `window.show()` fallback. It used to be one, on the reasoning that a
+            // card that appears rudely beats one that never appears — and that trade is wrong.
+            // `show()` is `makeKeyAndOrderFront:`, which pulls the whole application forward and
+            // takes the keyboard out of whatever the user is actually typing in. A card is a
+            // courtesy; one that costs the user their keystrokes costs more than it is worth. So
+            // the failure mode is silence (and this line in the log), not an interruption.
+            eprintln!("[notification-popover] no ns_window handle; card not shown");
             return;
         };
         // SAFETY: `ns_window()` hands back the live NSWindow for this webview window, and the
@@ -546,6 +549,102 @@ pub fn show_without_activating(window: WebviewWindow) {
         // behaviour this exists to avoid: the window was created with `focus: false`, and showing
         // it does not activate the application.
         let _ = window.show();
+    }
+}
+
+/// Whether this application is the active (frontmost) one right now.
+///
+/// Exists for exactly one caller: the notch window's opener, which has to know whether the app was
+/// already active *before* it created a window, because creating one activates it — see
+/// [`resign_app_activation`], which is the other half of the same fix.
+///
+/// Deliberately not read as `document.hasFocus()` in the frontend. That answers "does *this
+/// webview* have focus", which is false whenever another window of this same app is key — the
+/// merge editor, the fixup window, the action journal. Deactivating the application on the
+/// strength of that would throw the user out of a window they were working in. `NSApplication`'s
+/// own flag is about the *application*, which is the thing being activated and so the thing worth
+/// asking about.
+///
+/// `true` when there is nothing to ask (off macOS, or off the main thread) — the conservative
+/// answer, since a caller reads it as "the app was already active, leave it alone".
+///
+/// NOT `async`, for the same reason as `raise_above_menu_bar`: `NSApplication` is main-thread-only
+/// in AppKit's own terms, and Tauri runs async commands on a worker.
+#[tauri::command]
+pub fn is_app_active() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSApplication;
+        use objc2_foundation::MainThreadMarker;
+
+        let Some(mtm) = MainThreadMarker::new() else {
+            return true;
+        };
+        // SAFETY: a read-only property, on the main thread the marker proves this call is on.
+        unsafe { NSApplication::sharedApplication(mtm).isActive() }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        true
+    }
+}
+
+/// Gives back an activation the application never asked for.
+///
+/// ## The bug this exists for (measured in the dependency's own source, not guessed at)
+///
+/// wry activates the whole application every single time it creates a webview, unconditionally —
+/// `wkwebview/mod.rs`, right after the view is installed:
+///
+/// ```text
+/// // make sure the window is always on top when we create a new webview
+/// let app = NSApplication::sharedApplication(mtm);
+/// if os_major_version >= 14 { NSApplication::activate(&app) }
+/// else { NSApplication::activateIgnoringOtherApps(&app, true) }
+/// ```
+///
+/// Nothing gates it: not `focused: false`, not `visible: false`, not the window level. So a notch
+/// card — a window this app raises *on its own*, by definition while the user is somewhere else —
+/// pulled the whole application forward the moment it was created, long before
+/// [`show_without_activating`] ever ran. That is why the two `show()` fallbacks were innocent: the
+/// keyboard was already gone by the time either could have fired.
+///
+/// The symptom was worse than one rude card, because the card is gated on the app being
+/// *unfocused* (`AiCommitSearchPanel`): stealing focus disabled the card, which closed the window,
+/// so every time the user clicked away the app yanked them straight back and no card was ever
+/// seen. One bug, both halves of the report.
+///
+/// ## Why this shape
+///
+/// `NSApplication.deactivate` is AppKit's own answer to "I became active and I should not have" —
+/// its documentation describes exactly that case. Focus returns to the app the user was in.
+///
+/// It has to be called by whoever created the window, immediately after creation reports back, and
+/// only when the app was not active beforehand ([`is_app_active`]) — otherwise a card raised while
+/// the user *is* looking at the app would kick them out of it.
+///
+/// NOT `async`, for the same reason as [`is_app_active`], and here it is also what keeps the
+/// window of stolen focus down to one IPC round trip rather than a scheduling hop.
+///
+/// One assumption, written down because it is where to look first if a flash of the app ever comes
+/// back: this has to arrive *after* the activation has actually landed, since `deactivate` is only
+/// effective on an app that is already active. It does, because the call travels JS → IPC → main
+/// thread, which is several run-loop passes after wry's own activation request — but that is an
+/// ordering, not a guarantee, and it is the one thing between this and the bug returning.
+#[tauri::command]
+pub fn resign_app_activation() {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSApplication;
+        use objc2_foundation::MainThreadMarker;
+
+        let Some(mtm) = MainThreadMarker::new() else {
+            eprintln!("[notch] not on the main thread; activation left as-is");
+            return;
+        };
+        // SAFETY: on the main thread the marker proves this call is on, which is AppKit's own
+        // requirement for `NSApplication`.
+        unsafe { NSApplication::sharedApplication(mtm).deactivate() };
     }
 }
 

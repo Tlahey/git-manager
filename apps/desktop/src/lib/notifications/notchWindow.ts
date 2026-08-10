@@ -13,7 +13,11 @@
  */
 
 import { computeNotchPlacement, measureCardHeight } from '@git-manager/notch'
-import { apiGetTrayIconRect } from '../../api/notification.api'
+import {
+  apiGetTrayIconRect,
+  apiIsAppActive,
+  apiResignAppActivation,
+} from '../../api/notification.api'
 import { resolveNotchMetrics } from './notchMetrics'
 import type { NotchRequest } from './notchDelivery'
 
@@ -79,6 +83,13 @@ export async function openNotchWindow(
   const rect = await apiGetTrayIconRect()
   if (!rect) return false
 
+  // Read *before* anything is created, because creating it is what changes the answer — see the
+  // `apiResignAppActivation` call at the bottom of this function. The application's own flag, not
+  // this webview's focus: another window of ours (merge editor, fixup, action journal) being key
+  // is not the app being in the background, and deactivating on that would throw the user out of
+  // a window they are working in.
+  const appWasActive = await apiIsAppActive()
+
   const { importance: _importance, nativeFallback: _nativeFallback, ...payload } = request
 
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
@@ -132,16 +143,19 @@ export async function openNotchWindow(
     // renders as a grey blurred rectangle floating in the transparent margin, with a hard edge
     // where the window ends. The card's glow is the halo, and only the halo.
     shadow: false,
-    // Never takes focus. `focus: false` only covers creation — revealing the window is the other
-    // half, and it is the one that used to steal the keyboard, so the card is shown through
-    // `show_without_activating` rather than `show()` (see `tauriNotchHost`).
+    // Never takes focus — through three separate mechanisms, none of which covers the others:
+    // `focus: false` keeps the window itself from being made key; `show_without_activating`
+    // (rather than `show()`) is how it is revealed, since revealing is the other half and the one
+    // that used to steal the keyboard (see `tauriNotchHost`); and the `apiResignAppActivation`
+    // call below undoes the *application*-level activation wry performs at creation, which neither
+    // of the first two has any say over.
     focus: false,
     visible: false,
   })
 
   if (options.onDestroyed) win.once('tauri://destroyed', options.onDestroyed)
 
-  return new Promise((resolve) => {
+  const created = await new Promise<boolean>((resolve) => {
     let settled = false
     win.once('tauri://created', () => {
       if (settled) return
@@ -162,6 +176,20 @@ export async function openNotchWindow(
       resolve(true)
     }, 1000)
   })
+
+  // The window is created invisible, with `focus: false`, at a window level of its own — and none
+  // of that stops the application being pulled to the front, because wry calls `NSApplication`'s
+  // activate on *every* webview it creates and gates it on nothing (`wkwebview/mod.rs`, "make sure
+  // the window is always on top when we create a new webview"). A card the app raised on its own,
+  // by definition while the user is elsewhere, therefore stole the keyboard at creation — before
+  // `show_without_activating` had any say in it. So the activation is handed straight back.
+  //
+  // Only when the app was in the background to begin with: a card raised while the user *is*
+  // looking at the app must not kick them out of it. And as close to creation as this can be — one
+  // IPC round trip after the window reports in — because every millisecond in between is a
+  // keystroke that can land in the wrong app.
+  if (created && !appWasActive) await apiResignAppActivation()
+  return created
 }
 
 /**

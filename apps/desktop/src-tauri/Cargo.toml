@@ -75,6 +75,10 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   # housing geometry, read once at startup instead of guessed at with a hard-coded 32pt/100pt.
   # See get_notch_metrics in commands/window.rs.
   "NSScreen",
+  # NSApplication.isActive / .deactivate — undoing the activation wry performs on *every* webview
+  # it creates, which is what made a notch card steal the keyboard. See resign_app_activation in
+  # commands/window.rs.
+  "NSApplication",
 ] }
 # NSRect/NSEdgeInsets, the return types of the NSScreen geometry methods above. Same version
 # NSScreen's own "NSScreen" feature already pulls in transitively; declared directly because the

@@ -4,8 +4,10 @@ import {
   clearWindowBackdrop,
   getNotchMetrics,
   getTrayIconRect,
+  isAppActive,
   playSystemSound,
   raiseAboveMenuBar,
+  resignAppActivation,
   sendNativeNotification,
   showWithoutActivating,
   type NotchMetrics,
@@ -182,16 +184,52 @@ export async function apiClearWindowBackdrop(): Promise<void> {
  * A notification is not a request for attention the user made, so it must never interrupt what they
  * are doing: `WebviewWindow.show()` makes the window key on macOS and brings the whole application
  * forward, which pulled the keyboard out of the editor the user was typing in. The backend orders
- * the window front without activating instead. Failures fall back to the plain `show()` there, so
- * the worst case is a card that appears rudely rather than one that never appears.
+ * the window front without activating instead.
+ *
+ * A failure is swallowed, and there is deliberately **no** `show()` fallback any more. It used to
+ * be one, reasoning that a card that appears rudely beats one that never appears; that trade is
+ * wrong. A card is a courtesy, and one that takes the keyboard mid-keystroke costs the user far
+ * more than the card was ever worth — so the failure mode is silence and a line in the console.
+ * The backend half of `show_without_activating` dropped the same fallback for the same reason.
  */
 export async function apiShowWithoutActivating(): Promise<void> {
   try {
     await showWithoutActivating()
   } catch (e) {
     console.warn('Failed to show the notch window without activating:', e)
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().show()
+  }
+}
+
+/**
+ * Whether the *application* was frontmost — the question the notch opener has to answer before it
+ * creates a window, since creating one activates the app (see {@link apiResignAppActivation}).
+ *
+ * A failure answers `true`: the caller reads that as "it was already active, leave it alone", which
+ * is the one answer that can never deactivate the app behind the user's back.
+ */
+export async function apiIsAppActive(): Promise<boolean> {
+  try {
+    return await isAppActive()
+  } catch (e) {
+    console.warn('Failed to read whether the app is active:', e)
+    return true
+  }
+}
+
+/**
+ * Hands back an activation the app never asked for.
+ *
+ * wry activates the whole application on **every** webview it creates, unconditionally — nothing
+ * about `focus: false`, `visible: false` or the window's level gates it. So the notch window stole
+ * the keyboard at creation, before anything could show it politely. This is the undo, called by
+ * the opener the instant creation reports back, and only when the app was not already active.
+ * See `resign_app_activation` in `commands/window.rs` for the full reasoning.
+ */
+export async function apiResignAppActivation(): Promise<void> {
+  try {
+    await resignAppActivation()
+  } catch (e) {
+    console.warn('Failed to hand back the activation taken by opening a window:', e)
   }
 }
 

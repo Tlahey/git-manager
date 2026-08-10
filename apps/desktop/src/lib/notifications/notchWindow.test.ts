@@ -8,22 +8,37 @@ import {
 import { openNotchWindow, type NotchPayload } from './notchWindow'
 import type { NotchRequest } from './notchDelivery'
 
-const { trayRect, ctor, getByLabel, closeExisting, listeners, monitor, notchMetrics } = vi.hoisted(
-  () => ({
-    trayRect: { current: null as { x: number; y: number } | null },
-    ctor: vi.fn(),
-    getByLabel: vi.fn(),
-    closeExisting: vi.fn(),
-    listeners: { current: new Map<string, (payload?: unknown) => void>() },
-    monitor: { current: null as unknown },
-    notchMetrics: {
-      current: null as { safeAreaTop: number; housingHalfWidth: number } | null,
-    },
-  })
-)
+const {
+  trayRect,
+  ctor,
+  getByLabel,
+  closeExisting,
+  listeners,
+  monitor,
+  notchMetrics,
+  appWasActive,
+  resignActivation,
+} = vi.hoisted(() => ({
+  trayRect: { current: null as { x: number; y: number } | null },
+  ctor: vi.fn(),
+  getByLabel: vi.fn(),
+  closeExisting: vi.fn(),
+  listeners: { current: new Map<string, (payload?: unknown) => void>() },
+  monitor: { current: null as unknown },
+  notchMetrics: {
+    current: null as { safeAreaTop: number; housingHalfWidth: number } | null,
+  },
+  appWasActive: { current: false },
+  resignActivation: vi.fn(),
+}))
 
 vi.mock('../../api/notification.api', () => ({
   apiGetTrayIconRect: () => Promise.resolve(trayRect.current),
+  apiIsAppActive: () => Promise.resolve(appWasActive.current),
+  apiResignAppActivation: () => {
+    resignActivation()
+    return Promise.resolve()
+  },
 }))
 
 vi.mock('@tauri-apps/api/window', () => ({
@@ -79,6 +94,10 @@ beforeEach(() => {
   listeners.current.clear()
   ctor.mockClear()
   closeExisting.mockClear()
+  // The card's own reason to exist: the user is somewhere else. The opposite case is asserted on
+  // its own below.
+  appWasActive.current = false
+  resignActivation.mockClear()
 })
 
 afterEach(() => {
@@ -263,6 +282,41 @@ describe('openNotchWindow', () => {
     await promise
 
     expect(listeners.current.has('tauri://destroyed')).toBe(false)
+  })
+
+  it('hands back the activation that creating the window took from the user', async () => {
+    // wry activates the whole application on every webview it creates, whatever `focus: false` and
+    // `visible: false` say — so the card stole the keyboard at creation. This is the undo.
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    expect(resignActivation).not.toHaveBeenCalled()
+
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    expect(resignActivation).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the app alone when it was already frontmost', async () => {
+    // A card raised while the user *is* looking at the app must not kick them out of it.
+    appWasActive.current = true
+
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    expect(resignActivation).not.toHaveBeenCalled()
+  })
+
+  it('leaves the app alone when no window was created to activate it', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://error')?.('boom')
+    await promise
+
+    expect(resignActivation).not.toHaveBeenCalled()
   })
 
   it('stops waiting for an event that never arrives rather than blocking the fallback forever', async () => {
