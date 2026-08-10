@@ -42,6 +42,9 @@ export function HeaderDropdown<T extends string>({
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="flex h-6 items-center justify-between gap-1 rounded border border-border bg-secondary px-2.5 text-[11px] text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
         data-testid={testId}

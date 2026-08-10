@@ -96,6 +96,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         },
         changesLabel: (count) => t('mergeEditor.changesCount', { count }),
         conflictsLabel: (count) => t('mergeEditor.conflictsCount', { count }),
+        // Names for controls outside the toolbar — the gutter actions and the collapsed-region
+        // banner. The library ships English fallbacks for them, so leaving these out is silent:
+        // the panes would keep their own copy while the toolbar around them spoke French.
+        acceptIncomingLabel: t('conflictEditor.pullFromTheirs'),
+        acceptCurrentLabel: t('conflictEditor.pullFromOurs'),
+        ignoreChangeLabel: t('conflictEditor.rejectBlock'),
+        collapsedLinesLabel: (count) => t('mergeEditor.collapsedLines', { count }),
       }),
       [t]
     )

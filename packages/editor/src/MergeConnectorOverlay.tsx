@@ -37,6 +37,11 @@ interface MergeConnectorOverlayProps {
   side: 'left' | 'right'
   onAccept: (blockId: number) => void
   onReject: (blockId: number) => void
+  /* Accessible names for the two gutter actions. Required rather than defaulted here: these are
+   * the only user-facing strings the overlay renders, and a default would let a translated host
+   * ship them in English without anything failing. */
+  acceptLabel: string
+  rejectLabel: string
   scrollTopLeft?: number
   scrollTopRight?: number
   lineHeight?: number
@@ -79,6 +84,8 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
       side,
       onAccept,
       onReject,
+      acceptLabel,
+      rejectLabel,
       scrollTopLeft = 0,
       scrollTopRight = 0,
       lineHeight = DEFAULT_LINE_HEIGHT,
@@ -224,7 +231,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
                     ? 'merge-connector-action merge-connector-accept-from-left'
                     : 'merge-connector-action merge-connector-accept-from-right'
                 }
-                aria-label={side === 'left' ? 'Accept incoming change' : 'Accept current change'}
+                aria-label={acceptLabel}
                 data-testid={`merge-connector-accept-${side}-${seg.id}`}
                 onClick={() => onAccept(seg.id)}
               />
@@ -234,7 +241,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
                 key="reject"
                 type="button"
                 className="merge-connector-action merge-connector-reject"
-                aria-label="Ignore this change"
+                aria-label={rejectLabel}
                 data-testid={`merge-connector-reject-${side}-${seg.id}`}
                 onClick={() => onReject(seg.id)}
               />

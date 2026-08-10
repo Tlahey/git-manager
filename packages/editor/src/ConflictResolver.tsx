@@ -43,6 +43,15 @@ import { useMergeDecorations } from './conflict-resolver/hooks/useMergeDecoratio
 import { useMonacoBackgroundSync } from './conflict-resolver/hooks/useMonacoBackgroundSync'
 import { usePaneMount } from './conflict-resolver/hooks/usePaneMount'
 
+/* English fallbacks for the names of controls the resolver renders itself — the gutter actions
+ * and the collapsed-region banner. The header keeps its own defaults; these are here because
+ * these controls are. A host that translates the toolbar should pass all of them. */
+const DEFAULT_ACCEPT_INCOMING_LABEL = 'Accept incoming change'
+const DEFAULT_ACCEPT_CURRENT_LABEL = 'Accept current change'
+const DEFAULT_IGNORE_CHANGE_LABEL = 'Ignore this change'
+const defaultCollapsedLinesLabel = (count: number) =>
+  `${count} ${count === 1 ? 'line' : 'lines'} collapsed`
+
 // Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
 // type — see the comment in `useMergeScrollSync.ts` for why.
 type Monaco = typeof monaco
@@ -284,6 +293,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       placements,
       scheduleRecompute: stableScheduleRecompute,
       defaultCollapseUnchanged,
+      collapsedLinesLabel: labels?.collapsedLinesLabel ?? defaultCollapsedLinesLabel,
       editorsReady,
     })
 
@@ -669,6 +679,12 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                     }
                     lineHeight={currentLineHeight}
                     wavePhaseOffset={index === 0 ? gapPhaseOffsets.left : gapPhaseOffsets.right}
+                    acceptLabel={
+                      index === 0
+                        ? (labels?.acceptIncomingLabel ?? DEFAULT_ACCEPT_INCOMING_LABEL)
+                        : (labels?.acceptCurrentLabel ?? DEFAULT_ACCEPT_CURRENT_LABEL)
+                    }
+                    rejectLabel={labels?.ignoreChangeLabel ?? DEFAULT_IGNORE_CHANGE_LABEL}
                     onExpandBlock={expandBlock}
                   />
                 </div>

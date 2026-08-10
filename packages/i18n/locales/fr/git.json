@@ -551,6 +551,8 @@
   "mergeEditor.changesCount_other": "{{count}} modifications",
   "mergeEditor.conflictsCount_one": "{{count}} conflit",
   "mergeEditor.conflictsCount_other": "{{count}} conflits",
+  "mergeEditor.collapsedLines_one": "{{count}} ligne repliée",
+  "mergeEditor.collapsedLines_other": "{{count}} lignes repliées",
   "commitDetails.discardTitle": "Annuler les modifications",
   "commitDetails.discardPrompt": "Voulez-vous vraiment annuler toutes les modifications locales de ce fichier ? Cette action est irréversible.",
   "commitDetails.discardConfirm": "Annuler les modifications",
