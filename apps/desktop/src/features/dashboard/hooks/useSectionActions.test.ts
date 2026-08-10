@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { useSectionActions, type SectionActions } from './useSectionActions'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import type { DashboardSectionId } from '../../../stores/dashboard.store'
+import type { DashboardSectionId } from '../stores/dashboard.store'
 
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_REPO_UI = useRepoUIStore.getState()

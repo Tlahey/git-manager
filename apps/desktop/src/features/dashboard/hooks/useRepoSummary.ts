@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import type { GitRepoSummary } from '@git-manager/git-types'
-import { apiGetRepoSummary } from '../api/repo.api'
+import { apiGetRepoSummary } from '../../../api/repo.api'
 
 export function useRepoSummary(path: string | null) {
   return useSWR<GitRepoSummary, Error>(

@@ -3,7 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
-import type { DashboardSectionId } from '../../../stores/dashboard.store'
+import type { DashboardSectionId } from '../stores/dashboard.store'
 
 export interface SectionAction {
   /** Stable id, also used as the `data-testid` suffix so tests don't depend on copy. */

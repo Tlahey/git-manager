@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { createConfigStorage } from '../lib/appConfig/configStorage'
+import { createConfigStorage } from '../../../lib/appConfig/configStorage'
 
 /** The dashboard's four repository sections, in display order. */
 export const DASHBOARD_SECTION_IDS = ['open', 'favorites', 'recent', 'all'] as const

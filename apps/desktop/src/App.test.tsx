@@ -34,7 +34,7 @@ vi.mock('swr', () => ({ mutate: swrMutate }))
 
 vi.mock('@git-manager/ui', () => ({ Toaster: () => <div data-testid="fake-toaster" /> }))
 
-vi.mock('./app/dashboard/DashboardPage', () => ({
+vi.mock('./features/dashboard', () => ({
   DashboardPage: () => <div data-testid="fake-dashboard-page" />,
 }))
 vi.mock('./app/repo/RepoView', () => ({ RepoView: () => <div data-testid="fake-repo-view" /> }))

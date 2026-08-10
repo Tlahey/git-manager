@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
-import { DashboardPage } from './app/dashboard/DashboardPage'
+import { DashboardPage } from './features/dashboard'
 import {
   useRepoUIStore,
   isNewTab,

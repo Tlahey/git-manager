@@ -1,4 +1,4 @@
-import type { SectionColor } from '../../../stores/dashboard.store'
+import type { SectionColor } from '../stores/dashboard.store'
 
 // The colour lookup tables for a dashboard section, colocated as a `*.config.ts` per the repo
 // convention for keyed style maps — and kept out of `SectionColorPicker.tsx` so that file

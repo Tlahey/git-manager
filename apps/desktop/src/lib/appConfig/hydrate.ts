@@ -1,5 +1,5 @@
 import { useBoardStore } from '../../features/board/stores/board.store'
-import { useDashboardStore } from '../../stores/dashboard.store'
+import { useDashboardStore } from '../../features/dashboard/stores/dashboard.store'
 import { useGameStore } from '../../stores/game.store'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useLaunchpadStore } from '../../features/launchpad/stores/launchpad.store'

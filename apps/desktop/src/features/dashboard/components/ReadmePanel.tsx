@@ -3,7 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { BookOpen, X, RefreshCw, FileText, Code, Eye } from 'lucide-react'
 import { Button, GithubIcon, GitlabIcon, Tooltip } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
-import { useRepoReadme } from '../../../hooks/useRepoReadme'
+import { useRepoReadme } from '../hooks/useRepoReadme'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { apiOpenUrl } from '../../../api/shell.api'
 

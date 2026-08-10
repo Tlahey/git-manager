@@ -2,7 +2,7 @@
 // requests, issues, reviews, checks/mergeability, reviewers/assignees/labels, releases, the
 // contribution calendar, and device-flow auth). Split in 2026-08 into one file per domain under
 // `github/`, mirroring the earlier `git.api.ts` → `git/*.api.ts` split — this barrel keeps every
-// existing `from '../api/github.api'` import site working unchanged; migrate call sites to the
+// existing `from './github.api'` import site working unchanged; migrate call sites to the
 // specific domain file gradually rather than all at once.
 //
 // `GhUser`/`GhLabel` are re-exported explicitly (not via a wildcard) because they live in the

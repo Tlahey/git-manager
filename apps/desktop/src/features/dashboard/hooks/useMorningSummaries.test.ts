@@ -6,15 +6,15 @@ const { generateDailySummary, apiListDailySummaries, apiDeleteDailySummary } = v
   apiListDailySummaries: vi.fn(),
   apiDeleteDailySummary: vi.fn(),
 }))
-vi.mock('../lib/generateDailySummary', () => ({ generateDailySummary }))
-vi.mock('../api/dailySummary.api', () => ({ apiListDailySummaries, apiDeleteDailySummary }))
+vi.mock('../../../lib/generateDailySummary', () => ({ generateDailySummary }))
+vi.mock('../../../api/dailySummary.api', () => ({ apiListDailySummaries, apiDeleteDailySummary }))
 
 import { useMorningSummaries } from './useMorningSummaries'
-import { useDailySummaryStore, type StoredDailySummary } from '../stores/dailySummary.store'
-import { useAiActivityStore } from '../stores/aiActivity.store'
-import { useSettingsStore } from '../stores/settings.store'
-import { DEFAULT_TARGET_BRANCHES } from './useEffectiveRepoSettings'
-import { previousWorkingDayKey } from '../lib/dailySummaryWindow'
+import { useDailySummaryStore, type StoredDailySummary } from '../../../stores/dailySummary.store'
+import { useAiActivityStore } from '../../../stores/aiActivity.store'
+import { useSettingsStore } from '../../../stores/settings.store'
+import { DEFAULT_TARGET_BRANCHES } from '../../../hooks/useEffectiveRepoSettings'
+import { previousWorkingDayKey } from '../../../lib/dailySummaryWindow'
 import type { DailySummary } from '@git-manager/ai'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
