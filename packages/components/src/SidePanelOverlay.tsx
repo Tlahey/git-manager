@@ -20,6 +20,13 @@ export interface SidePanelOverlayProps {
    * accessible name.
    */
   children: ReactNode
+  /**
+   * Whether to render the ✕ in the top-right corner. On by default; turn it off when the content
+   * already fills that corner and offers its own way out — the Launchpad's PR panel wraps a screen
+   * whose toolbar sits exactly there, and the ✕ landed on top of its buttons. Escape and the
+   * backdrop still close the panel either way.
+   */
+  showCloseButton?: boolean
 }
 
 const DEFAULT_RATIOS = { initial: 0.6, min: 0.5, max: 0.95 }
@@ -44,6 +51,7 @@ export function SidePanelOverlay({
   testIdPrefix,
   widthRatios = DEFAULT_RATIOS,
   children,
+  showCloseButton = true,
 }: SidePanelOverlayProps) {
   const viewport = typeof window !== 'undefined' ? window.innerWidth : 1280
   const { width, resizeProps } = useHorizontalResize(
@@ -58,6 +66,7 @@ export function SidePanelOverlay({
         position="right"
         style={{ width }}
         className="gap-0 p-0"
+        showCloseButton={showCloseButton}
         data-testid={`${testIdPrefix}-panel`}
       >
         {/* Absolutely placed so the handle does not become a flex child and eat a strip of the

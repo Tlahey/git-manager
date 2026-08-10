@@ -41,26 +41,52 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 }
 
 describe('PrSidePanel', () => {
-  it('renders the PR view inside a right-hand overlay panel with a backdrop', () => {
+  it('renders the PR view inside a right-hand overlay panel', () => {
     render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.getByTestId('launchpad-pr-panel-overlay')).toBeInTheDocument()
-    expect(screen.getByTestId('launchpad-pr-panel-backdrop')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
     expect(screen.getByTestId('pr-view-stub')).toBeInTheDocument()
   })
 
   it('is resizable via a left-edge handle, opening at 65% of the viewport', () => {
-    // jsdom defaults window.innerWidth to 1024 → 65% = 666px.
+    // jsdom defaults window.innerWidth to 1024 → 65% = 666px. Wider than the shared 60% default
+    // because this panel can show the files list beside the conversation.
     render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.getByTestId('launchpad-pr-panel-resize')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-resize')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-panel')).toHaveStyle({ width: '666px' })
   })
 
-  it('closes when the backdrop is clicked', async () => {
+  /** The hand-rolled overlay this replaced had no key handling at all: the panel could only be
+   * dismissed by clicking, which is what adopting the shared modal surface fixed. */
+  it('closes on Escape', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<PrSidePanel pr={pr()} onClose={onClose} />)
-    await user.click(screen.getByTestId('launchpad-pr-panel-backdrop'))
+
+    await user.keyboard('{Escape}')
+
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes when the PR view asks it to (its own Back button)', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<PrSidePanel pr={pr()} onClose={onClose} />)
+
+    await user.click(screen.getByTestId('pr-view-stub'))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  /** `PrDetailCenter` puts its own toolbar in the top-right corner, where the dialog's ✕ lands. */
+  it('suppresses the dialog close button so it cannot sit on the PR toolbar', () => {
+    render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
+
+  /** A modal with no accessible name makes Radix warn, rightly — the visible heading is inside
+   * `PrDetailCenter`, so the panel carries a visually hidden one. */
+  it('names the modal for a screen reader', () => {
+    render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog', { name: 'Pull request' })).toBeInTheDocument()
   })
 })

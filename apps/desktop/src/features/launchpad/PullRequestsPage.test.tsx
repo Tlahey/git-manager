@@ -306,9 +306,10 @@ describe('PullRequestsPage — opening a PR in the in-app view', () => {
 
     await user.click(screen.getByTestId('pr-open-in-app-pr-1'))
     expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('launchpad-pr-panel-overlay')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
-    // The list stays mounted alongside the panel (no full-page takeover).
+    // The list stays mounted alongside the panel (no full-page takeover) — inert while the modal
+    // is up, but never unmounted, so closing returns to it in place.
     expect(screen.getByText('Openable PR')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('pr-detail-back'))

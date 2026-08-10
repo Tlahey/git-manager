@@ -1,4 +1,6 @@
-import { useHorizontalResize } from '@git-manager/components'
+import { SidePanelOverlay } from '@git-manager/components'
+import { DialogTitle } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { PrViewPanel } from './PrViewPanel'
 import type { MockPR } from '../../../lib/github/types'
 
@@ -8,41 +10,30 @@ interface PrSidePanelProps {
 }
 
 /**
- * The Launchpad PR view mounted as a right-hand overlay on top of the list. A dimmed backdrop covers
- * the list — clicking it closes the panel — and the panel is resizable via the handle on its left
- * edge, clamped between 50% and 95% of the viewport width. Bounds are derived from
- * `window.innerWidth` when the panel opens.
+ * The Launchpad PR view mounted as a right-hand overlay on top of the list.
+ *
+ * Wider than the shared default (65% rather than 60%) because this panel can show the files list
+ * beside the conversation, which the issue panel has no equivalent of. That was the one real
+ * difference between this and {@link IssueSidePanel}, which were otherwise the same forty lines
+ * of hand-rolled overlay twice — and neither trapped focus or closed on Escape.
+ *
+ * No ✕: `PrDetailCenter` fills the top-right corner with its own toolbar, and its Back button on
+ * the left already closes the panel. Escape and the backdrop still work.
  */
 export function PrSidePanel({ pr, onClose }: PrSidePanelProps) {
-  const viewport = typeof window !== 'undefined' ? window.innerWidth : 1280
-  const { width, resizeProps } = useHorizontalResize(
-    Math.round(viewport * 0.65),
-    Math.round(viewport * 0.5),
-    Math.round(viewport * 0.95)
-  )
+  const { t } = useTranslation('launchpad')
 
   return (
-    <div
-      className="absolute inset-0 z-panel flex justify-end"
-      data-testid="launchpad-pr-panel-overlay"
+    <SidePanelOverlay
+      open
+      onClose={onClose}
+      testIdPrefix="launchpad-pr"
+      widthRatios={{ initial: 0.65, min: 0.5, max: 0.95 }}
+      showCloseButton={false}
     >
-      <div
-        className="absolute inset-0 bg-background/70 backdrop-blur-xs"
-        onClick={onClose}
-        data-testid="launchpad-pr-panel-backdrop"
-      />
-      <div
-        {...resizeProps}
-        className="group relative z-10 w-1.5 shrink-0 cursor-col-resize bg-border/40 transition-colors select-none hover:bg-primary/40"
-        data-testid="launchpad-pr-panel-resize"
-      />
-      <div
-        style={{ width }}
-        className="relative z-10 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background shadow-2xl"
-        data-testid="launchpad-pr-panel"
-      >
-        <PrViewPanel pr={pr} onClose={onClose} />
-      </div>
-    </div>
+      {/* The visible heading is `PrDetailCenter`'s own; this names the modal for a screen reader. */}
+      <DialogTitle className="sr-only">{t('git:pr.view.title')}</DialogTitle>
+      <PrViewPanel pr={pr} onClose={onClose} />
+    </SidePanelOverlay>
   )
 }

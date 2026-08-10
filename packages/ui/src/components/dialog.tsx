@@ -53,6 +53,16 @@ export interface DialogContentProps extends React.ComponentPropsWithoutRef<
 > {
   position?: DialogContentPosition
   size?: DialogContentSize
+  /**
+   * Whether to render the ✕ in the top-right corner. On by default.
+   *
+   * Turn it off only when the content already owns that corner *and* offers its own way out — a
+   * side panel wrapping a screen that has its own toolbar there, for instance, where the ✕ would
+   * land on top of the toolbar's own buttons. Escape and the backdrop still close the dialog, so
+   * this removes a duplicate affordance rather than the only one; a dialog with no exit at all is
+   * not what this is for.
+   */
+  showCloseButton?: boolean
 }
 
 /**
@@ -87,11 +97,15 @@ DialogDragStrip.displayName = 'DialogDragStrip'
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, position = 'center', size = 'md', ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogDragStrip />
-    {/*
+>(
+  (
+    { className, children, position = 'center', size = 'md', showCloseButton = true, ...props },
+    ref
+  ) => (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogDragStrip />
+      {/*
       A side panel is the same modal surface as a centered dialog — focus trap, Escape, the
       backdrop, the portal — with different geometry, so it is a variant here rather than a
       hand-rolled overlay somewhere else.
@@ -124,28 +138,31 @@ const DialogContent = React.forwardRef<
       `--tw-animation-fill-mode: none` lets the specified value reapply — one combined offset
       again, matching the pre-v4 behavior this was tuned for.
     */}
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed z-popover border border-border bg-background shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:animate-duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:animate-duration-200',
-        position === 'center'
-          ? 'top-[50%] left-[50%] grid w-full transform-[translate(-50%,-50%)] gap-4 rounded-lg p-6 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]'
-          : 'inset-y-0 right-0 flex max-w-none flex-col border-y-0 border-r-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
-        // Between the position block and `className` so a caller's own `max-w-*` still wins —
-        // `BoardCardDialog` sets an exact pixel width and must keep it.
-        position === 'center' && DIALOG_SIZES[size],
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute top-4 right-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'fixed z-popover border border-border bg-background shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:animate-duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:animate-duration-200',
+          position === 'center'
+            ? 'top-[50%] left-[50%] grid w-full transform-[translate(-50%,-50%)] gap-4 rounded-lg p-6 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]'
+            : 'inset-y-0 right-0 flex max-w-none flex-col border-y-0 border-r-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+          // Between the position block and `className` so a caller's own `max-w-*` still wins —
+          // `BoardCardDialog` sets an exact pixel width and must keep it.
+          position === 'center' && DIALOG_SIZES[size],
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close className="absolute top-4 right-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+)
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

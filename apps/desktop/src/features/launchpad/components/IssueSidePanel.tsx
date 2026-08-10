@@ -1,4 +1,6 @@
-import { useHorizontalResize } from '@git-manager/components'
+import { SidePanelOverlay } from '@git-manager/components'
+import { DialogTitle } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { IssueViewPanel } from './IssueViewPanel'
 import type { MockIssue } from '../../../lib/github/types'
 
@@ -10,39 +12,20 @@ interface IssueSidePanelProps {
 
 /**
  * The Launchpad issue view mounted as a right-hand overlay on top of the list — the issue-side twin
- * of {@link PrSidePanel}. A dimmed backdrop closes it on click; the panel is resizable via the handle
- * on its left edge, clamped between 50% and 95% of the viewport width.
+ * of {@link PrSidePanel}. It takes the shared default width; the PR one is wider because it can
+ * show a files list, which is the only thing that ever justified two components here.
+ *
+ * No ✕, for the same reason as its twin: `IssueDetailCenter` owns the top-right corner and offers
+ * its own Back button.
  */
 export function IssueSidePanel({ issue, onClose, onChanged }: IssueSidePanelProps) {
-  const viewport = typeof window !== 'undefined' ? window.innerWidth : 1280
-  const { width, resizeProps } = useHorizontalResize(
-    Math.round(viewport * 0.6),
-    Math.round(viewport * 0.5),
-    Math.round(viewport * 0.95)
-  )
+  const { t } = useTranslation('launchpad')
 
   return (
-    <div
-      className="absolute inset-0 z-panel flex justify-end"
-      data-testid="launchpad-issue-panel-overlay"
-    >
-      <div
-        className="absolute inset-0 bg-background/70 backdrop-blur-xs"
-        onClick={onClose}
-        data-testid="launchpad-issue-panel-backdrop"
-      />
-      <div
-        {...resizeProps}
-        className="group relative z-10 w-1.5 shrink-0 cursor-col-resize bg-border/40 transition-colors select-none hover:bg-primary/40"
-        data-testid="launchpad-issue-panel-resize"
-      />
-      <div
-        style={{ width }}
-        className="relative z-10 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background shadow-2xl"
-        data-testid="launchpad-issue-panel"
-      >
-        <IssueViewPanel issue={issue} onClose={onClose} onChanged={onChanged} />
-      </div>
-    </div>
+    <SidePanelOverlay open onClose={onClose} testIdPrefix="launchpad-issue" showCloseButton={false}>
+      {/* The visible heading is `IssueDetailCenter`'s own; this names the modal for a screen reader. */}
+      <DialogTitle className="sr-only">{t('git:issue.view.title')}</DialogTitle>
+      <IssueViewPanel issue={issue} onClose={onClose} onChanged={onChanged} />
+    </SidePanelOverlay>
   )
 }
