@@ -133,8 +133,10 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
               />
             )}
 
-            {/* Global controls shared across every inner tab (search + collapse/expand all) —
-                every list they act on is GitHub's, save the WIP one, which carries its own. */}
+            {/* Global controls shared across every inner tab (search + collapse/expand all). The
+                search narrows every list tab on top of that tab's own box — including WIP, whose
+                rows are the only local ones; it matched on repository and branch already, it just
+                wasn't being handed the global query. */}
             {githubConnected && <LaunchpadToolbar />}
 
             {/* Inner Tab Bar */}

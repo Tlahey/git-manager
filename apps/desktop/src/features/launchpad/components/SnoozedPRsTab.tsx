@@ -8,6 +8,7 @@ import { usePRSort } from '../hooks/listHooks'
 import { useListToolbar } from '../hooks/useListToolbar'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
+import { matchesPrSearch } from '../lib/prSearch'
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import { timeUntil } from '../lib/launchpadUtils'
 import type { MockPR } from '../../../lib/github/types'
@@ -30,8 +31,16 @@ export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: S
   const statuses = useMemo(() => [...new Set(snoozedPRs.map((p) => p.status))].sort(), [snoozedPRs])
   const authors = useMemo(() => [...new Set(snoozedPRs.map((p) => p.author))].sort(), [snoozedPRs])
 
-  const { search, sortKey, sortDir, statusFilter, repoFilter, authorFilter, toolbarProps } =
-    useListToolbar({ repos, statuses, authors })
+  const {
+    search,
+    globalSearch,
+    sortKey,
+    sortDir,
+    statusFilter,
+    repoFilter,
+    authorFilter,
+    toolbarProps,
+  } = useListToolbar({ repos, statuses, authors })
 
   const filtered = useMemo(
     () =>
@@ -39,18 +48,10 @@ export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: S
         if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
         if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
         if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
-        if (search) {
-          const q = search.toLowerCase()
-          return (
-            pr.title.toLowerCase().includes(q) ||
-            pr.author.toLowerCase().includes(q) ||
-            pr.repo.toLowerCase().includes(q) ||
-            String(pr.number).includes(q)
-          )
-        }
-        return true
+        // The tab's own search box and the Launchpad-wide one both narrow the list.
+        return matchesPrSearch(pr, search) && matchesPrSearch(pr, globalSearch)
       }),
-    [snoozedPRs, search, statusFilter, repoFilter, authorFilter]
+    [snoozedPRs, search, globalSearch, statusFilter, repoFilter, authorFilter]
   )
 
   const sortedPRs = usePRSort(filtered, sortKey, sortDir)

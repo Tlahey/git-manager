@@ -9,6 +9,17 @@ import { PRRowSkeleton } from './RowSkeletons'
 import { useLocalWipRepos, type LocalWipEntry } from '../hooks/useLocalWipRepos'
 import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
 
+/**
+ * Whether a worktree matches a free-text query, across the repository name and the branch — the two
+ * things a row shows. An empty query matches everything, so it can be ANDed with the Launchpad-wide
+ * search without special-casing the empty state.
+ */
+function matchesWipSearch(entry: LocalWipEntry, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return entry.repoName.toLowerCase().includes(q) || entry.branch.toLowerCase().includes(q)
+}
+
 function WipEntryRow({ entry }: { entry: LocalWipEntry }) {
   const { t } = useTranslation('launchpad')
   const openTab = useOpenRepoTab()
@@ -100,7 +111,7 @@ export function WipTab() {
 
   const repos = useMemo(() => [...new Set(entries.map((e) => e.repoName))].sort(), [entries])
 
-  const { search, sortKey, sortDir, repoFilter, toolbarProps } = useListToolbar({
+  const { search, globalSearch, sortKey, sortDir, repoFilter, toolbarProps } = useListToolbar({
     initialSortKey: 'files',
     repos,
     statuses: [],
@@ -111,13 +122,10 @@ export function WipTab() {
     () =>
       entries.filter((e) => {
         if (repoFilter.size > 0 && !repoFilter.has(e.repoName)) return false
-        if (search) {
-          const q = search.toLowerCase()
-          return e.repoName.toLowerCase().includes(q) || e.branch.toLowerCase().includes(q)
-        }
-        return true
+        // The tab's own search box and the Launchpad-wide one both narrow the list.
+        return matchesWipSearch(e, search) && matchesWipSearch(e, globalSearch)
       }),
-    [entries, search, repoFilter]
+    [entries, search, globalSearch, repoFilter]
   )
 
   const sorted = useMemo(() => {

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { MockPR } from '../../../lib/github/types'
 import { SnoozedPRsTab } from './SnoozedPRsTab'
 import { useLaunchpadStore } from '../stores/launchpad.store'
+import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {
   return {
@@ -32,6 +33,7 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 
 beforeEach(() => {
   useLaunchpadStore.setState({ snoozed: {} })
+  useLaunchpadControlsStore.setState({ search: '' })
 })
 
 describe('SnoozedPRsTab', () => {
@@ -81,5 +83,20 @@ describe('SnoozedPRsTab', () => {
     )
     const trigger = screen.getByTestId('snooze-trigger-pr-1')
     expect(trigger).toHaveAttribute('aria-label', 'Unsnooze')
+  })
+
+  /** Same oversight as the WIP tab: the Launchpad-wide search left this list untouched. */
+  it('narrows the list from the Launchpad-wide search', () => {
+    useLaunchpadControlsStore.setState({ search: 'zzz' })
+    render(
+      <SnoozedPRsTab
+        snoozedPRs={[pr()]}
+        pinnedIds={new Set()}
+        onTogglePin={() => {}}
+        loading={false}
+      />
+    )
+
+    expect(screen.queryByText('Snoozed PR')).not.toBeInTheDocument()
   })
 })

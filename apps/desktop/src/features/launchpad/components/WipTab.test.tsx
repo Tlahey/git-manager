@@ -8,6 +8,7 @@ vi.mock('../hooks/useLocalWipRepos', () => ({ useLocalWipRepos }))
 
 import { WipTab } from './WipTab'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 
 function entry(overrides: Partial<LocalWipEntry> = {}): LocalWipEntry {
   return {
@@ -28,6 +29,9 @@ function entry(overrides: Partial<LocalWipEntry> = {}): LocalWipEntry {
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.setState({ openTabs: [], activeTab: 'pull-requests', activeRepo: null })
+  // The Launchpad-wide search persists across the app, so a test that sets it would otherwise
+  // silently narrow every test after it in this file.
+  useLaunchpadControlsStore.setState({ search: '' })
 })
 
 describe('WipTab', () => {
@@ -99,6 +103,62 @@ describe('WipTab', () => {
     await user.type(screen.getByPlaceholderText('Search…'), 'alph')
     expect(screen.getByText('WIP on alpha')).toBeInTheDocument()
     expect(screen.queryByText('WIP on beta')).not.toBeInTheDocument()
+  })
+
+  /**
+   * The Launchpad-wide box above the tab bar says it filters every list tab. This one ignored it —
+   * typing a query there left every worktree on screen while the other tabs narrowed, which is how
+   * it was reported.
+   */
+  describe('Launchpad-wide search', () => {
+    it('narrows the list like the tab own box does', () => {
+      useLocalWipRepos.mockReturnValue({
+        entries: [
+          entry({ worktreePath: '/a', repoName: 'alpha', isMainWorktree: true }),
+          entry({ worktreePath: '/b', repoName: 'beta', isMainWorktree: true }),
+        ],
+        loading: false,
+      })
+      useLaunchpadControlsStore.setState({ search: 'alph' })
+      render(<WipTab />)
+
+      expect(screen.getByText('WIP on alpha')).toBeInTheDocument()
+      expect(screen.queryByText('WIP on beta')).not.toBeInTheDocument()
+    })
+
+    /** A main worktree's row is labelled with the *repository* name, so matching on the branch is
+     * the case where the query hits something the row does not spell out. */
+    it('matches the branch as well as the repository name', () => {
+      useLocalWipRepos.mockReturnValue({
+        entries: [
+          entry({ worktreePath: '/a', repoName: 'alpha', branch: 'solo-mode' }),
+          entry({ worktreePath: '/b', repoName: 'beta', branch: 'main' }),
+        ],
+        loading: false,
+      })
+      useLaunchpadControlsStore.setState({ search: 'solo' })
+      render(<WipTab />)
+
+      expect(screen.getByText('WIP on alpha')).toBeInTheDocument()
+      expect(screen.queryByText('WIP on beta')).not.toBeInTheDocument()
+    })
+
+    it('and the tab own box both apply, so neither can widen the other', async () => {
+      useLocalWipRepos.mockReturnValue({
+        entries: [
+          entry({ worktreePath: '/a', repoName: 'alpha', isMainWorktree: true }),
+          entry({ worktreePath: '/b', repoName: 'beta', isMainWorktree: true }),
+        ],
+        loading: false,
+      })
+      useLaunchpadControlsStore.setState({ search: 'alph' })
+      const user = userEvent.setup()
+      render(<WipTab />)
+      await user.type(screen.getByPlaceholderText('Search…'), 'beta')
+
+      expect(screen.queryByText('WIP on alpha')).not.toBeInTheDocument()
+      expect(screen.queryByText('WIP on beta')).not.toBeInTheDocument()
+    })
   })
 
   it('shows a no-match empty state when the search matches nothing', async () => {
