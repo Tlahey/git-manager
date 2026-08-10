@@ -118,6 +118,7 @@
   "settings.github.title": "GitHub Accounts",
   "settings.github.connectedAs": "Connected as {{name}} ({{login}})",
   "settings.github.reposTitle": "Active Account Repositories",
+  "settings.github.connectedAs": "Connected as @{{login}}",
   "settings.github.noRepos": "No repositories found.",
   "settings.github.tokenHint": "Connect your GitHub accounts via OAuth to synchronize repositories and fetch PR/commit details.",
   "settings.github.connecting": "Connecting...",
