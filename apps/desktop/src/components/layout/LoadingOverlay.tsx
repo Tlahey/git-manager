@@ -18,6 +18,16 @@ const FADE_MS = 220
  *
  * The overlay fades in and out rather than popping: it stays mounted through the exit transition and
  * keeps its last caption while fading, so the disappearance isn't abrupt.
+ *
+ * It is itself a drag region, and that is not decoration. The app has no native title bar
+ * (`titleBarStyle: "Overlay"`), so the window is moved by grabbing the tab bar's
+ * `data-tauri-drag-region` — which this `fixed inset-0` scrim covers, pinning the window in place
+ * for as long as a repo (or the Launchpad) is loading. `"deep"` rather than a bare attribute: Tauri
+ * only drags from a bare region when the `mousedown` target *is* the element carrying it, and the
+ * mascot occupies the middle of the scrim. Safe because nothing in here is interactive — and Tauri
+ * still refuses to drag from a clickable descendant (button, link, `role`, `tabindex`) should one
+ * ever be added. Same fix as the startup splash's root in `index.html`; the modal case is solved
+ * differently, by `DialogDragStrip`, because a dialog's content *is* interactive.
  */
 export function LoadingOverlay() {
   const isLoading = useGlobalLoadingStore(selectIsGlobalLoading)
@@ -47,6 +57,7 @@ export function LoadingOverlay() {
   return (
     <div
       data-testid="loading-overlay"
+      data-tauri-drag-region="deep"
       role="status"
       aria-live="polite"
       className={cn(

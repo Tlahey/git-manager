@@ -848,7 +848,15 @@
     }
   </script>
   <div id="root"></div>
-  <div id="app-splash" role="presentation" aria-hidden="true">
+  <!-- `data-tauri-drag-region="deep"`, not a bare attribute: the window has no native title bar
+       (`titleBarStyle: "Overlay"`), so it is moved by grabbing the tab bar's drag region — which
+       this full-screen splash covers for the whole of a cold start, pinning the window in place
+       until the app has finished loading. A bare attribute only drags when the `mousedown` target
+       *is* the element carrying it, and every pixel here is covered by a decorative layer
+       (`.app-splash-content` alone is the full height); `deep` makes the whole subtree drag. Safe
+       because nothing in the splash is interactive — and Tauri still refuses to drag from a
+       clickable descendant (button, link, `role`, `tabindex`) if one is ever added. -->
+  <div id="app-splash" role="presentation" aria-hidden="true" data-tauri-drag-region="deep">
     <!-- The underwater scene, back to front: waterline glow, light shafts falling
          from it, the suspended particulate they light up, then the depth vignette
          and the halo the mascot floats in. All decorative and all CSS: this markup
