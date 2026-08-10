@@ -336,7 +336,7 @@ describe('PullRequestsPage — pin toggling forwarded to a tab', () => {
     const user = userEvent.setup()
     mockHook({ activeTab: 'prs', visiblePRs: [pr({ id: 'pr-1' })], togglePin })
     render(<PullRequestsPage />)
-    await user.click(screen.getByTitle('Pin'))
+    await user.click(screen.getByLabelText('Pin'))
     expect(togglePin).toHaveBeenCalledWith('pr-1')
   })
 })

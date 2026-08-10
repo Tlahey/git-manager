@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button } from '@git-manager/ui'
+import { Button, Tooltip } from '@git-manager/ui'
 import { Link2, Plus, X } from 'lucide-react'
 import type { Board, BoardCard } from '@git-manager/git-types'
 import { cardIdentifier } from '../lib/cardMeta'
@@ -75,17 +75,18 @@ export function CardLinksSection({
       testId="card-links-section"
       aside={
         readOnly ? undefined : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            aria-label={t('card.links.add')}
-            title={t('card.links.add')}
-            onClick={draft}
-            data-testid="card-links-add"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip content={t('card.links.add')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              aria-label={t('card.links.add')}
+              onClick={draft}
+              data-testid="card-links-add"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </Tooltip>
         )
       }
     >
@@ -230,16 +231,17 @@ function LinkRow({
       )}
 
       {!readOnly && (
-        <button
-          type="button"
-          aria-label={t('card.links.remove')}
-          title={t('card.links.remove')}
-          onClick={() => void onRemove(link)}
-          data-testid={`card-link-remove-${link.targetCardId}`}
-          className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        <Tooltip content={t('card.links.remove')}>
+          <button
+            type="button"
+            aria-label={t('card.links.remove')}
+            onClick={() => void onRemove(link)}
+            data-testid={`card-link-remove-${link.targetCardId}`}
+            className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Tooltip>
       )}
     </li>
   )

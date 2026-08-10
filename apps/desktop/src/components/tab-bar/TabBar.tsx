@@ -19,6 +19,7 @@ import {
   FlaskConical,
   Plus,
 } from 'lucide-react'
+import { Tooltip } from '@git-manager/ui'
 import { useGameStore } from '../../stores/game.store'
 import { UserProfile } from '../action-toolbar/UserProfile'
 import { NotificationDropdown } from '../notification/NotificationDropdown'
@@ -226,14 +227,15 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         {/* Settings & profile (far right) */}
         <div className="flex shrink-0 items-center gap-2 border-l border-sidebar-border px-3">
           <NotificationDropdown />
-          <button
-            onClick={() => onOpenSettings('general')}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            title={t('tabs.settings')}
-            aria-label={t('tabs.settings')}
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={t('tabs.settings')}>
+            <button
+              onClick={() => onOpenSettings('general')}
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              aria-label={t('tabs.settings')}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
           <UserProfile onOpenSettings={onOpenSettings} />
         </div>
       </div>

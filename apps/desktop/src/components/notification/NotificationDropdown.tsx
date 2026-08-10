@@ -5,7 +5,14 @@ import { Bell, CheckCheck, Trash2 } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { buildNotificationRoute } from '../../lib/notifications/notificationRoute'
 import { routeNotification } from '../../lib/notifications/notificationRouting'
-import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge } from '@git-manager/ui'
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  Badge,
+  NumberBadge,
+  Tooltip,
+} from '@git-manager/ui'
 import { formatRelativeTimestamp } from '../../lib/relativeDate'
 
 /**
@@ -34,23 +41,24 @@ export function NotificationDropdown() {
 
   return (
     <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-      <PopoverTrigger asChild>
-        <button
-          data-testid="notification-bell-button"
-          className={`relative flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            menuOpen ? 'bg-sidebar-accent text-sidebar-foreground' : ''
-          }`}
-          title={t('notifications.title')}
-          aria-label={t('notifications.title')}
-        >
-          <Bell className="h-3.5 w-3.5" />
-          <NumberBadge
-            count={unreadCount}
-            data-testid="notification-unread-badge"
-            className="absolute -top-1 -right-1 ring-2 ring-sidebar"
-          />
-        </button>
-      </PopoverTrigger>
+      <Tooltip content={t('notifications.title')}>
+        <PopoverTrigger asChild>
+          <button
+            data-testid="notification-bell-button"
+            className={`relative flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+              menuOpen ? 'bg-sidebar-accent text-sidebar-foreground' : ''
+            }`}
+            aria-label={t('notifications.title')}
+          >
+            <Bell className="h-3.5 w-3.5" />
+            <NumberBadge
+              count={unreadCount}
+              data-testid="notification-unread-badge"
+              className="absolute -top-1 -right-1 ring-2 ring-sidebar"
+            />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent
         align="end"
         data-testid="notification-dropdown"
@@ -69,24 +77,26 @@ export function NotificationDropdown() {
           <div className="flex items-center gap-1">
             {notifications.length > 0 && (
               <>
-                <button
-                  onClick={markAllAsRead}
-                  data-testid="notification-mark-all-read"
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title={t('notifications.markAllAsRead')}
-                  aria-label={t('notifications.markAllAsRead')}
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={clearNotifications}
-                  data-testid="notification-clear-all"
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
-                  title={t('notifications.clearAll')}
-                  aria-label={t('notifications.clearAll')}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content={t('notifications.markAllAsRead')}>
+                  <button
+                    onClick={markAllAsRead}
+                    data-testid="notification-mark-all-read"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    aria-label={t('notifications.markAllAsRead')}
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
+                <Tooltip content={t('notifications.clearAll')}>
+                  <button
+                    onClick={clearNotifications}
+                    data-testid="notification-clear-all"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+                    aria-label={t('notifications.clearAll')}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               </>
             )}
           </div>

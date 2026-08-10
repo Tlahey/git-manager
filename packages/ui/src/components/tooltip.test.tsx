@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
 import { createRef, type ButtonHTMLAttributes, type Ref } from 'react'
 import { Tooltip } from './tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { useImperativeTooltip } from './useImperativeTooltip'
 
 function stubRect(el: Element, rect: Partial<DOMRect>) {
@@ -367,6 +368,67 @@ function RefProbeTrigger({
     </button>
   )
 }
+
+/**
+ * A `Tooltip` around a Radix `*Trigger asChild` is the shape most icon-only controls in the app
+ * use, and it stacks two prop-mergers on one element: the Tooltip clones the trigger, and the
+ * trigger's Slot merges what it received onto the real `<button>`. Nothing here is ours to control,
+ * so the composition is pinned rather than assumed — the alternative (`Tooltip` *inside* the
+ * trigger) silently breaks, since `Slot` needs a single DOM child and `Tooltip` renders a fragment.
+ */
+describe('Tooltip — wrapping a Radix trigger that renders asChild', () => {
+  it('still shows on hover and on keyboard focus, and leaves the trigger operable', () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Popover onOpenChange={onOpenChange}>
+        <Tooltip content="Notifications">
+          <PopoverTrigger asChild>
+            <button aria-label="Notifications">Bell</button>
+          </PopoverTrigger>
+        </Tooltip>
+        <PopoverContent>Panel</PopoverContent>
+      </Popover>
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Notifications' })
+
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Notifications')
+
+    fireEvent.mouseLeave(trigger)
+    fireEvent.focus(trigger)
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Notifications')
+
+    // The trigger's own behaviour survives being cloned: the popover still opens.
+    fireEvent.click(trigger)
+    expect(onOpenChange).toHaveBeenCalledWith(true)
+  })
+
+  it('names the control from its own aria-label, and only describes it from the bubble', () => {
+    render(
+      <Popover>
+        <Tooltip content="Notifications">
+          <PopoverTrigger asChild>
+            <button aria-label="Notifications">Bell</button>
+          </PopoverTrigger>
+        </Tooltip>
+      </Popover>
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Notifications' })
+    expect(trigger).not.toHaveAttribute('aria-describedby')
+
+    fireEvent.focus(trigger)
+    act(() => vi.advanceTimersByTime(150))
+
+    // `aria-describedby` reaches the real button through the Slot, not just the trigger wrapper.
+    expect(trigger.getAttribute('aria-describedby')).toBe(screen.getByRole('tooltip').id)
+    // …and it describes: the accessible name is still the button's own label.
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBe(trigger)
+  })
+})
 
 describe('Tooltip — positioning', () => {
   it('places the bubble below the trigger and flips away from an edge that does not fit', () => {

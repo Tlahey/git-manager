@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Check, Copy, GitBranch, X } from 'lucide-react'
-import { ScrollArea } from '@git-manager/ui'
+import { ScrollArea, Tooltip } from '@git-manager/ui'
 import type { ActivityLogEntry } from '../../../stores/activityLog.store'
 import type { ActivityBlock } from '../../../lib/groupActivityLog'
 import { formatActivityDateTime, formatActivityTimestamp } from '../../../lib/formatActivityLog'
@@ -103,17 +103,18 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
           )}
           <Field label={t('activityLogs.detail.correlation')}>
             {traceableId ? (
-              <button
-                type="button"
-                onClick={() => onTrace(traceableId)}
-                title={t('activityLogs.detail.trace')}
-                aria-label={t('activityLogs.detail.trace')}
-                data-testid="activity-detail-trace"
-                className="inline-flex cursor-pointer items-center gap-1 text-primary hover:underline"
-              >
-                <GitBranch className="h-3 w-3" />
-                {correlationId}
-              </button>
+              <Tooltip content={t('activityLogs.detail.trace')}>
+                <button
+                  type="button"
+                  onClick={() => onTrace(traceableId)}
+                  aria-label={t('activityLogs.detail.trace')}
+                  data-testid="activity-detail-trace"
+                  className="inline-flex cursor-pointer items-center gap-1 text-primary hover:underline"
+                >
+                  <GitBranch className="h-3 w-3" />
+                  {correlationId}
+                </button>
+              </Tooltip>
             ) : (
               correlationId
             )}

@@ -11,13 +11,13 @@ describe('FetchButton', () => {
     const user = userEvent.setup()
     const onFetch = vi.fn()
     render(<FetchButton onFetch={onFetch} onFetchAll={vi.fn()} onFetchPrune={vi.fn()} />)
-    await user.click(screen.getByTitle('remote.fetch'))
+    await user.click(screen.getByLabelText('remote.fetch'))
     expect(onFetch).toHaveBeenCalledOnce()
   })
 
   it('disables both the main button and the dropdown trigger while loading', () => {
     render(<FetchButton loading onFetch={vi.fn()} onFetchAll={vi.fn()} onFetchPrune={vi.fn()} />)
-    expect(screen.getByTitle('remote.fetch')).toBeDisabled()
+    expect(screen.getByLabelText('remote.fetch')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'toolbar.fetchAll' })).toBeDisabled()
   })
 

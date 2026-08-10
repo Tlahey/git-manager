@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { X, GitPullRequest } from 'lucide-react'
+import { Tooltip } from '@git-manager/ui'
 import { usePrCreateFlow } from '../../../hooks/usePrCreateFlow'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { PrCreateForm } from './PrCreateForm'
@@ -27,16 +28,17 @@ export function PrCreateCenter({ repoPath }: PrCreateCenterProps) {
           <GitPullRequest className="h-4 w-4 text-primary" />
           {t('pr.create.title')}
         </div>
-        <button
-          onClick={flow.cancel}
-          disabled={flow.busy}
-          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          data-testid="pr-create-close"
-          title={t('pr.publish.cancel')}
-          aria-label={t('pr.publish.cancel')}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <Tooltip content={t('pr.publish.cancel')}>
+          <button
+            onClick={flow.cancel}
+            disabled={flow.busy}
+            className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="pr-create-close"
+            aria-label={t('pr.publish.cancel')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex-1 overflow-auto p-4">

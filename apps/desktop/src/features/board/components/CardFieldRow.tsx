@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '@git-manager/ui'
+import { Popover, PopoverContent, PopoverTrigger, Tooltip } from '@git-manager/ui'
 
 interface CardFieldRowProps {
   label: string
@@ -74,17 +74,19 @@ export function CardFieldRow({
         <span className="w-20 shrink-0 pt-0.5 text-[11px] text-muted-foreground">{label}</span>
         {editor ? (
           <Popover open={open} onOpenChange={onOpenChange}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                title={editTitle}
-                aria-label={editTitle}
-                data-testid={`${testId}-edit`}
-                className="-mx-1 min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left hover:bg-accent"
-              >
-                {value}
-              </button>
-            </PopoverTrigger>
+            {/* `editTitle` is optional, and an empty bubble is worse than none — hence the guard. */}
+            <Tooltip content={editTitle} disabled={!editTitle}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={editTitle}
+                  data-testid={`${testId}-edit`}
+                  className="-mx-1 min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left hover:bg-accent"
+                >
+                  {value}
+                </button>
+              </PopoverTrigger>
+            </Tooltip>
             <PopoverContent
               align="start"
               className={`p-1 ${editorClassName}`}

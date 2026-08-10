@@ -82,7 +82,7 @@ describe('FollowedPRsTab — unfollow', () => {
     const onRemoveFollowed = vi.fn()
     const user = userEvent.setup()
     renderTab({ followedPRs: [makePR({ id: 'pr-1' })], onRemoveFollowed })
-    await user.click(screen.getByTitle('Unfollow PR'))
+    await user.click(screen.getByLabelText('Unfollow PR'))
     expect(onRemoveFollowed).toHaveBeenCalledWith('pr-1')
   })
 })

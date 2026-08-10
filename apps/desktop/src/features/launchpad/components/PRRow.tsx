@@ -61,18 +61,19 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
     >
       {/* Pin + snooze */}
       <div className="flex w-7 shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => onTogglePin(pr.id)}
-          title={pinned ? t('row.unpin') : t('row.pin')}
-          aria-label={pinned ? t('row.unpin') : t('row.pin')}
-          className={`shrink-0 cursor-pointer transition-all ${
-            pinned
-              ? 'text-amber-400'
-              : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
-          }`}
-        >
-          <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
-        </button>
+        <Tooltip content={pinned ? t('row.unpin') : t('row.pin')}>
+          <button
+            onClick={() => onTogglePin(pr.id)}
+            aria-label={pinned ? t('row.unpin') : t('row.pin')}
+            className={`shrink-0 cursor-pointer transition-all ${
+              pinned
+                ? 'text-amber-400'
+                : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
+            }`}
+          >
+            <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
+          </button>
+        </Tooltip>
         <SnoozeControl prId={pr.id} />
       </div>
 
@@ -133,18 +134,19 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           <span className="text-xs font-medium wrap-anywhere text-foreground transition-colors group-hover/pr:text-primary">
             {pr.title}
           </span>{' '}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              openUrl(pr.url)
-            }}
-            title={t('row.openOnGitHub')}
-            aria-label={t('row.openOnGitHub')}
-            data-testid={`pr-number-link-${pr.id}`}
-            className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
-          >
-            #{pr.number}
-          </button>
+          <Tooltip content={t('row.openOnGitHub')}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openUrl(pr.url)
+              }}
+              aria-label={t('row.openOnGitHub')}
+              data-testid={`pr-number-link-${pr.id}`}
+              className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            >
+              #{pr.number}
+            </button>
+          </Tooltip>
         </div>
         <div className="mt-0.5 flex items-center gap-2">
           {pr.additions > 0 && (
@@ -219,18 +221,19 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
       >
         <PrQuickActions pr={pr} />
         {openPr && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              openPr(pr)
-            }}
-            title={t('row.openInApp')}
-            aria-label={t('row.openInApp')}
-            data-testid={`pr-open-in-app-${pr.id}`}
-            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
-          >
-            <PanelRight className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={t('row.openInApp')}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openPr(pr)
+              }}
+              aria-label={t('row.openInApp')}
+              data-testid={`pr-open-in-app-${pr.id}`}
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
+            >
+              <PanelRight className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

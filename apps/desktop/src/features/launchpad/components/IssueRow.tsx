@@ -7,7 +7,7 @@ import {
   PanelRight,
   Loader2,
 } from 'lucide-react'
-import { Tag } from '@git-manager/ui'
+import { Tag, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockIssue } from '../../../lib/github/types'
 import { StatusBadge } from './Badges'
@@ -45,18 +45,19 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
     >
       {/* Pin + snooze */}
       <div className="flex w-7 shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => onTogglePin(issue.id)}
-          title={pinned ? t('row.unpin') : t('row.pin')}
-          aria-label={pinned ? t('row.unpin') : t('row.pin')}
-          className={`shrink-0 cursor-pointer transition-all ${
-            pinned
-              ? 'text-amber-400'
-              : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
-          }`}
-        >
-          <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
-        </button>
+        <Tooltip content={pinned ? t('row.unpin') : t('row.pin')}>
+          <button
+            onClick={() => onTogglePin(issue.id)}
+            aria-label={pinned ? t('row.unpin') : t('row.pin')}
+            className={`shrink-0 cursor-pointer transition-all ${
+              pinned
+                ? 'text-amber-400'
+                : 'text-muted-foreground/30 opacity-0 group-hover/pr:opacity-100 hover:text-amber-400'
+            }`}
+          >
+            <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
+          </button>
+        </Tooltip>
         <SnoozeControl prId={issue.id} />
       </div>
 
@@ -76,18 +77,19 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
           <span className="text-xs font-medium wrap-anywhere text-foreground transition-colors group-hover/pr:text-primary">
             {issue.title}
           </span>{' '}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              openUrl(issue.url)
-            }}
-            title={t('row.openOnGitHub')}
-            aria-label={t('row.openOnGitHub')}
-            data-testid={`issue-number-link-${issue.id}`}
-            className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
-          >
-            #{issue.number}
-          </button>
+          <Tooltip content={t('row.openOnGitHub')}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openUrl(issue.url)
+              }}
+              aria-label={t('row.openOnGitHub')}
+              data-testid={`issue-number-link-${issue.id}`}
+              className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            >
+              #{issue.number}
+            </button>
+          </Tooltip>
         </div>
         <div className="mt-0.5 flex items-center gap-2">
           <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">
@@ -175,15 +177,16 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
           canClose={canClose}
         />
         {openIssue && (
-          <button
-            onClick={open}
-            title={t('row.openInApp')}
-            aria-label={t('row.openInApp')}
-            data-testid={`issue-open-in-app-${issue.id}`}
-            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
-          >
-            <PanelRight className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={t('row.openInApp')}>
+            <button
+              onClick={open}
+              aria-label={t('row.openInApp')}
+              data-testid={`issue-open-in-app-${issue.id}`}
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all group-hover/pr:opacity-100 hover:border-border hover:bg-accent hover:text-foreground"
+            >
+              <PanelRight className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

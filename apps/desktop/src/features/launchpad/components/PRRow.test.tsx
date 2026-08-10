@@ -216,20 +216,20 @@ describe('PRRow — status icons', () => {
 describe('PRRow — pin button', () => {
   it('shows an amber, filled pin icon when pinned', () => {
     const { container } = render(<PRRow pr={pr()} pinned onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Unpin')).toBeInTheDocument()
+    expect(screen.getByLabelText('Unpin')).toBeInTheDocument()
     expect(container.querySelector('.text-amber-400')).toBeTruthy()
   })
 
   it('shows a muted, unfilled pin icon when unpinned', () => {
     render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Pin')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pin')).toBeInTheDocument()
   })
 
   it('toggles pin without opening the PR', async () => {
     const onTogglePin = vi.fn()
     const user = userEvent.setup()
     render(<PRRow pr={pr({ id: 'pr-1' })} pinned={false} onTogglePin={onTogglePin} />)
-    await user.click(screen.getByTitle('Pin'))
+    await user.click(screen.getByLabelText('Pin'))
     expect(onTogglePin).toHaveBeenCalledWith('pr-1')
     expect(pluginOpen).not.toHaveBeenCalled()
   })

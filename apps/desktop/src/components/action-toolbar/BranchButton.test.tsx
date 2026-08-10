@@ -12,7 +12,7 @@ vi.mock('@git-manager/i18n', () => ({
 import { BranchButton } from './BranchButton'
 
 async function openPopover(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByTitle('toolbar.createBranch'))
+  await user.click(screen.getByLabelText('toolbar.createBranch'))
 }
 
 describe('BranchButton', () => {

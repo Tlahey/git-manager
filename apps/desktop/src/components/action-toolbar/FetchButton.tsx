@@ -5,6 +5,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Tooltip,
 } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
@@ -21,26 +22,27 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
 
   return (
     <div className="flex shrink-0 items-stretch">
-      <button
-        type="button"
-        onClick={onFetch}
-        disabled={loading}
-        title={t('remote.fetch')}
-        aria-label={t('remote.fetch')}
-        data-testid="toolbar-fetch-button"
-        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <span className="flex h-4 w-4 items-center justify-center">
-          {loading ? (
-            <Spinner className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ArrowDownToLine className="h-4 w-4 text-cyan-400" />
-          )}
-        </span>
-        <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
-          {t('remote.fetch')}
-        </span>
-      </button>
+      <Tooltip content={t('remote.fetch')}>
+        <button
+          type="button"
+          onClick={onFetch}
+          disabled={loading}
+          aria-label={t('remote.fetch')}
+          data-testid="toolbar-fetch-button"
+          className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span className="flex h-4 w-4 items-center justify-center">
+            {loading ? (
+              <Spinner className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ArrowDownToLine className="h-4 w-4 text-cyan-400" />
+            )}
+          </span>
+          <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
+            {t('remote.fetch')}
+          </span>
+        </button>
+      </Tooltip>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

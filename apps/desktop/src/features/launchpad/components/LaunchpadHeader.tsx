@@ -1,5 +1,5 @@
 import { Rocket, WifiOff, CheckCircle2, Clock, RefreshCw } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 
@@ -80,17 +80,18 @@ export function LaunchpadHeader({
                 {formatRelativeTimeCompact(lastRefreshed, i18n.language)}
               </span>
             )}
-            <button
-              onClick={onRefresh}
-              disabled={isValidating}
-              data-testid="manual-refresh-button"
-              className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              title={t('page.refreshNow')}
-              aria-label={t('page.refreshNow')}
-            >
-              <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
-              {t('page.refresh')}
-            </button>
+            <Tooltip content={t('page.refreshNow')}>
+              <button
+                onClick={onRefresh}
+                disabled={isValidating}
+                data-testid="manual-refresh-button"
+                className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={t('page.refreshNow')}
+              >
+                <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
+                {t('page.refresh')}
+              </button>
+            </Tooltip>
           </>
         )}
       </div>

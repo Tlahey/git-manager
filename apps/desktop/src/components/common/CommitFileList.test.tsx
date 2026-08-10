@@ -210,7 +210,7 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
     const onRefresh = vi.fn()
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: false })], isWip: true, onRefresh })
-    await user.click(screen.getByTitle('Stage'))
+    await user.click(screen.getByLabelText('Stage'))
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
     expect(onRefresh).toHaveBeenCalledOnce()
   })
@@ -218,20 +218,20 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
   it('unstages a staged file via its checkbox', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: true })], isWip: true })
-    await user.click(screen.getByTitle('Unstage'))
+    await user.click(screen.getByLabelText('Unstage'))
     expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 
   it('does not show a stage checkbox for a non-WIP list', () => {
     renderList({ processedFiles: [file('a.ts')], isWip: false })
-    expect(screen.queryByTitle('Stage')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Stage')).not.toBeInTheDocument()
   })
 
   it('discards a file after confirmation and refreshes', async () => {
     const onRefresh = vi.fn()
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, onRefresh })
-    await user.click(screen.getByTitle('Discard Changes'))
+    await user.click(screen.getByLabelText('Discard Changes'))
 
     expect(screen.getByTestId('discard-file-confirm-dialog')).toBeInTheDocument()
     expect(
@@ -248,7 +248,7 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
   it('does not discard when the confirmation is declined', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true })
-    await user.click(screen.getByTitle('Discard Changes'))
+    await user.click(screen.getByLabelText('Discard Changes'))
     await user.click(screen.getByTestId('confirm-dialog-cancel'))
     expect(mockedDiscard).not.toHaveBeenCalled()
   })
@@ -296,7 +296,7 @@ describe('CommitFileList — hoverStage mode', () => {
   it('hoverStage="add" file button stages the file', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, hoverStage: 'add' })
-    const stageButtons = screen.getAllByTitle('Stage')
+    const stageButtons = screen.getAllByLabelText('Stage')
     await user.click(stageButtons[0])
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
@@ -304,7 +304,7 @@ describe('CommitFileList — hoverStage mode', () => {
   it('hoverStage="remove" file button unstages the file', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts')], isWip: true, hoverStage: 'remove' })
-    await user.click(screen.getByTitle('Unstage'))
+    await user.click(screen.getByLabelText('Unstage'))
     expect(mockedUnstage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 
@@ -379,7 +379,7 @@ describe('CommitFileList — list view stage/discard wiring', () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: false })], isWip: true, onRefresh })
     await user.click(screen.getByRole('radio', { name: 'Flat list' }))
-    await user.click(screen.getByTitle('Stage'))
+    await user.click(screen.getByLabelText('Stage'))
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
 
