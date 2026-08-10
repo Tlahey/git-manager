@@ -50,13 +50,6 @@ export const showWithoutActivating = () => invoke<void>('show_without_activating
 export const isAppActive = () => invoke<boolean>('is_app_active')
 
 /**
- * Hands back an activation the app never asked for. wry activates the whole application on every
- * webview it creates, whatever the window's `focus`/`visible` options say — see
- * `resign_app_activation` in `commands/window.rs`. A no-op off macOS.
- */
-export const resignAppActivation = () => invoke<void>('resign_app_activation')
-
-/**
  * Points an existing window at a new URL. The notch reuses one window this way rather than opening
  * a fresh one per card, because *creating* a webview is what activates the app — see
  * `navigate_window` in `commands/window.rs`.

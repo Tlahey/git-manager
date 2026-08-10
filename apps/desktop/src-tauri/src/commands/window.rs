@@ -555,9 +555,10 @@ pub fn show_without_activating(window: WebviewWindow) {
 
 /// Whether this application is the active (frontmost) one right now.
 ///
-/// Exists for exactly one caller: the notch window's opener, which has to know whether the app was
-/// already active *before* it created a window, because creating one activates it — see
-/// [`resign_app_activation`], which is the other half of the same fix.
+/// Exists for exactly one caller: the notch window's opener, which refuses to *create* a window
+/// while the app is in the background — because creating one activates the whole application, and
+/// nothing can reliably undo that (handing the activation back afterwards was tried, shipped, and
+/// reported from the real app as still visibly stealing the window). See `notchWindow.ts`.
 ///
 /// Deliberately not read as `document.hasFocus()` in the frontend. That answers "does *this
 /// webview* have focus", which is false whenever another window of this same app is key — the
@@ -566,8 +567,8 @@ pub fn show_without_activating(window: WebviewWindow) {
 /// own flag is about the *application*, which is the thing being activated and so the thing worth
 /// asking about.
 ///
-/// `true` when there is nothing to ask (off macOS, or off the main thread) — the conservative
-/// answer, since a caller reads it as "the app was already active, leave it alone".
+/// `true` when there is nothing to ask (off macOS, or off the main thread) — the answer that keeps
+/// a platform with no such problem, and a call that could not be made, from silencing every card.
 ///
 /// NOT `async`, for the same reason as `raise_above_menu_bar`: `NSApplication` is main-thread-only
 /// in AppKit's own terms, and Tauri runs async commands on a worker.
@@ -590,70 +591,10 @@ pub fn is_app_active() -> bool {
     }
 }
 
-/// Gives back an activation the application never asked for.
-///
-/// ## The bug this exists for (measured in the dependency's own source, not guessed at)
-///
-/// wry activates the whole application every single time it creates a webview, unconditionally —
-/// `wkwebview/mod.rs`, right after the view is installed:
-///
-/// ```text
-/// // make sure the window is always on top when we create a new webview
-/// let app = NSApplication::sharedApplication(mtm);
-/// if os_major_version >= 14 { NSApplication::activate(&app) }
-/// else { NSApplication::activateIgnoringOtherApps(&app, true) }
-/// ```
-///
-/// Nothing gates it: not `focused: false`, not `visible: false`, not the window level. So a notch
-/// card — a window this app raises *on its own*, by definition while the user is somewhere else —
-/// pulled the whole application forward the moment it was created, long before
-/// [`show_without_activating`] ever ran. That is why the two `show()` fallbacks were innocent: the
-/// keyboard was already gone by the time either could have fired.
-///
-/// The symptom was worse than one rude card, because the card is gated on the app being
-/// *unfocused* (`AiCommitSearchPanel`): stealing focus disabled the card, which closed the window,
-/// so every time the user clicked away the app yanked them straight back and no card was ever
-/// seen. One bug, both halves of the report.
-///
-/// ## Why this shape
-///
-/// `NSApplication.deactivate` is AppKit's own answer to "I became active and I should not have" —
-/// its documentation describes exactly that case. Focus returns to the app the user was in.
-///
-/// It has to be called by whoever created the window, immediately after creation reports back, and
-/// only when the app was not active beforehand ([`is_app_active`]) — otherwise a card raised while
-/// the user *is* looking at the app would kick them out of it.
-///
-/// NOT `async`, for the same reason as [`is_app_active`], and here it is also what keeps the
-/// window of stolen focus down to one IPC round trip rather than a scheduling hop.
-///
-/// One assumption, written down because it is where to look first if a flash of the app ever comes
-/// back: this has to arrive *after* the activation has actually landed, since `deactivate` is only
-/// effective on an app that is already active. It does, because the call travels JS → IPC → main
-/// thread, which is several run-loop passes after wry's own activation request — but that is an
-/// ordering, not a guarantee, and it is the one thing between this and the bug returning.
-#[tauri::command]
-pub fn resign_app_activation() {
-    #[cfg(target_os = "macos")]
-    {
-        use objc2_app_kit::NSApplication;
-        use objc2_foundation::MainThreadMarker;
-
-        let Some(mtm) = MainThreadMarker::new() else {
-            eprintln!("[notch] not on the main thread; activation left as-is");
-            return;
-        };
-        // SAFETY: on the main thread the marker proves this call is on, which is AppKit's own
-        // requirement for `NSApplication`.
-        unsafe { NSApplication::sharedApplication(mtm).deactivate() };
-    }
-}
-
 /// Points an existing window at a new URL, instead of closing it and opening another.
 ///
 /// The notch's reason for existing: creating a webview activates the whole application (see
-/// [`resign_app_activation`]), and a card is by definition raised while the user is somewhere
-/// else. One window, created once while the app is legitimately frontmost and then *navigated*
+/// [`is_app_active`]), and a card is by definition raised while the user is somewhere else. One window, created once while the app is legitimately frontmost and then *navigated*
 /// per card, is the only shape that never pays that price — a navigation touches no
 /// `NSApplication` at all.
 ///

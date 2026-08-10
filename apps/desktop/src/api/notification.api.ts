@@ -8,7 +8,6 @@ import {
   navigateWindow,
   playSystemSound,
   raiseAboveMenuBar,
-  resignAppActivation,
   sendNativeNotification,
   showWithoutActivating,
   type NotchMetrics,
@@ -214,23 +213,6 @@ export async function apiIsAppActive(): Promise<boolean> {
   } catch (e) {
     console.warn('Failed to read whether the app is active:', e)
     return true
-  }
-}
-
-/**
- * Hands back an activation the app never asked for.
- *
- * wry activates the whole application on **every** webview it creates, unconditionally — nothing
- * about `focus: false`, `visible: false` or the window's level gates it. So the notch window stole
- * the keyboard at creation, before anything could show it politely. This is the undo, called by
- * the opener the instant creation reports back, and only when the app was not already active.
- * See `resign_app_activation` in `commands/window.rs` for the full reasoning.
- */
-export async function apiResignAppActivation(): Promise<void> {
-  try {
-    await resignAppActivation()
-  } catch (e) {
-    console.warn('Failed to hand back the activation taken by opening a window:', e)
   }
 }
 

@@ -33,12 +33,7 @@
 
 import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi'
 import { computeNotchPlacement, measureCardHeight } from '@git-manager/notch'
-import {
-  apiGetTrayIconRect,
-  apiIsAppActive,
-  apiNavigateWindow,
-  apiResignAppActivation,
-} from '../../api/notification.api'
+import { apiGetTrayIconRect, apiIsAppActive, apiNavigateWindow } from '../../api/notification.api'
 import { resolveNotchMetrics } from './notchMetrics'
 import type { NotchRequest } from './notchDelivery'
 
@@ -166,8 +161,8 @@ export async function openNotchWindow(
   // second takes, and the whole point of the file: no webview is created, so no `NSApplication` is
   // touched, so the user keeps their keyboard.
   const parked = await WebviewWindow.getByLabel(WINDOW_LABEL)
-  currentOnDestroyed = options.onDestroyed
   if (parked) {
+    currentOnDestroyed = options.onDestroyed
     try {
       // Sized and placed before the content arrives: the page measures its slide against the
       // `windowY` in its own payload, so it must find the window already where that says it is.
@@ -184,6 +179,11 @@ export async function openNotchWindow(
       // label that still exists fails outright — which would make this "fallback" no fallback at
       // all: `openNotchWindow` would report failure, and the queue's own last resort is a macOS
       // banner. That is how a user who chose the notch ends up with a system notification.
+      //
+      // Cleared first: the death notice of the window being closed here would otherwise reach the
+      // handler of the card being opened right now, whose guards would both pass, retiring it the
+      // instant it appeared.
+      currentOnDestroyed = undefined
       try {
         await parked.close()
       } catch (closeError) {
@@ -193,14 +193,27 @@ export async function openNotchWindow(
     }
   }
 
-  return createNotchWindow(cardUrl(full), rectangle)
+  const created = await createNotchWindow(cardUrl(full), rectangle)
+  if (created) currentOnDestroyed = options.onDestroyed
+  return created
 }
 
 /**
- * Opens a notch window from scratch — the fallback path, and the one that costs focus.
+ * Opens a notch window from scratch — the path that costs focus, and so the one with a veto on it.
  *
- * Shared with {@link warmUpNotchWindow}, which is the same creation at the one moment it is free:
- * startup, while the app is frontmost anyway.
+ * **Refuses outright unless the application is already frontmost.** Creating a webview activates
+ * the whole app on macOS, with nothing to gate it and no reliable way to undo it: handing the
+ * activation back afterwards was tried, shipped, and reported from the real app as still visibly
+ * stealing the window. So this does not create a window it knows will take the user's keyboard —
+ * a card is a courtesy, and the same trade already decided `apiShowWithoutActivating`'s missing
+ * fallback. The caller reports failure, and the queue decides what a lost card is worth.
+ *
+ * Asks the *application*'s flag rather than this webview's focus: another window of ours (merge
+ * editor, fixup, action journal) being key is not the app being in the background.
+ *
+ * The refusal is why {@link warmUpNotchWindow} exists and why it is retried whenever the app comes
+ * back to the front: the one window has to be made at a moment this permits, or there is nothing
+ * to navigate later.
  */
 async function createNotchWindow(
   url: string,
@@ -208,11 +221,13 @@ async function createNotchWindow(
 ): Promise<boolean> {
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
 
-  // Read *before* the window exists, because creating it is what changes the answer. The
-  // application's own flag, not this webview's focus: another window of ours (merge editor, fixup,
-  // action journal) being key is not the app being in the background, and deactivating on that
-  // would throw the user out of a window they are working in.
-  const appWasActive = await apiIsAppActive()
+  if (!(await apiIsAppActive())) {
+    console.warn(
+      'Notch window not created: the app is in the background and creating one would ' +
+        'take the keyboard from whatever the user is doing.'
+    )
+    return false
+  }
 
   const win = new WebviewWindow(WINDOW_LABEL, {
     url,
@@ -233,12 +248,10 @@ async function createNotchWindow(
     // renders as a grey blurred rectangle floating in the transparent margin, with a hard edge
     // where the window ends. The card's glow is the halo, and only the halo.
     shadow: false,
-    // Never takes focus — through mechanisms that each cover a different half and none of which
-    // covers the others: `focus: false` keeps the window itself from being made key,
-    // `show_without_activating` (rather than `show()`) is how it is revealed, and the resign below
-    // hands back the *application*-level activation wry performs at creation, which neither of the
-    // first two has any say over. The real answer to that last one is not to create a window at
-    // all — see this module's header, and `warmUpNotchWindow`.
+    // Never takes focus: `focus: false` keeps the window from being made key, and
+    // `show_without_activating` (rather than `show()`) is how it is revealed — the two halves are
+    // separate and neither covers the other. What neither covers at all is the *application*-level
+    // activation wry performs at creation, which is why getting here is gated above.
     focus: false,
     visible: false,
   })
@@ -270,22 +283,21 @@ async function createNotchWindow(
     }, 1000)
   })
 
-  // Only when the app was in the background to begin with: a window opened while the user *is*
-  // looking at the app must not kick them out of it.
-  if (created && !appWasActive) await apiResignAppActivation()
   return created
 }
 
 /**
- * Creates the parked window, once, at the one moment creating one is free.
+ * Creates the parked window at a moment creating one is free.
  *
- * Called from the main window's mount, i.e. at launch, when the app is frontmost anyway and the
- * activation wry performs on every new webview costs the user nothing. Every card after that
- * navigates this window instead of opening its own, which is what keeps a notification from
- * dragging the whole app in front of whatever the user was doing. See this module's header.
+ * Called from the main window's mount and again whenever the app comes back to the front. Both are
+ * moments the app is frontmost anyway, so the activation wry performs on every new webview costs
+ * the user nothing — and {@link createNotchWindow} refuses outright at any other moment, which is
+ * why this needs the second chance: an app launched into the background (a login item, a window
+ * restored behind another app) would otherwise have no window to navigate for the rest of the
+ * session, and therefore no cards at all.
  *
  * Idempotent and silent: a window already there is left exactly as it is, and a failure means the
- * next card falls back to opening its own.
+ * next card tries again.
  */
 export async function warmUpNotchWindow(): Promise<void> {
   try {

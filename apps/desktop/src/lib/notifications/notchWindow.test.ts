@@ -22,7 +22,6 @@ const {
   monitor,
   notchMetrics,
   appWasActive,
-  resignActivation,
   navigate,
   navigateFails,
   hideExisting,
@@ -38,8 +37,7 @@ const {
   notchMetrics: {
     current: null as { safeAreaTop: number; housingHalfWidth: number } | null,
   },
-  appWasActive: { current: false },
-  resignActivation: vi.fn(),
+  appWasActive: { current: true },
   navigate: vi.fn(),
   navigateFails: { current: false },
   hideExisting: vi.fn(),
@@ -50,10 +48,6 @@ const {
 vi.mock('../../api/notification.api', () => ({
   apiGetTrayIconRect: () => Promise.resolve(trayRect.current),
   apiIsAppActive: () => Promise.resolve(appWasActive.current),
-  apiResignAppActivation: () => {
-    resignActivation()
-    return Promise.resolve()
-  },
   apiNavigateWindow: (label: string, url: string) => {
     navigate(label, url)
     return navigateFails.current ? Promise.reject(new Error('boom')) : Promise.resolve()
@@ -113,10 +107,10 @@ beforeEach(() => {
   listeners.current.clear()
   ctor.mockClear()
   closeExisting.mockClear()
-  // The card's own reason to exist: the user is somewhere else. The opposite case is asserted on
-  // its own below.
-  appWasActive.current = false
-  resignActivation.mockClear()
+  // Creating a window is only permitted while the app is frontmost — it activates the whole
+  // application, which is the bug this module exists to avoid. The refusal is asserted on its own
+  // below; every other test here is about what creation does once it is allowed.
+  appWasActive.current = true
   navigate.mockClear()
   navigateFails.current = false
   hideExisting.mockClear()
@@ -293,15 +287,6 @@ describe('openNotchWindow', () => {
     expect(navigate.mock.calls[0]![1]).toContain('window=notch')
   })
 
-  it('never touches the app’s activation when it reuses the parked window', async () => {
-    getByLabel.mockResolvedValue(parkedWindow())
-
-    await openNotchWindow(request)
-
-    // Nothing was created, so nothing was activated, so there is nothing to hand back.
-    expect(resignActivation).not.toHaveBeenCalled()
-  })
-
   it('carries the same payload through the URL as a freshly created window would', async () => {
     getByLabel.mockResolvedValue(parkedWindow())
     notchMetrics.current = { safeAreaTop: 38, housingHalfWidth: 110 }
@@ -455,39 +440,26 @@ describe('openNotchWindow', () => {
     expect(first).not.toHaveBeenCalled()
   })
 
-  it('hands back the activation that creating the window took from the user', async () => {
-    // wry activates the whole application on every webview it creates, whatever `focus: false` and
-    // `visible: false` say — so the card stole the keyboard at creation. This is the undo.
-    const promise = openNotchWindow(request)
-    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
-    expect(resignActivation).not.toHaveBeenCalled()
-
-    listeners.current.get('tauri://created')?.()
-    await promise
-
-    expect(resignActivation).toHaveBeenCalledTimes(1)
-  })
-
-  it('leaves the app alone when it was already frontmost', async () => {
-    // A card raised while the user *is* looking at the app must not kick them out of it.
-    appWasActive.current = true
-
-    const promise = openNotchWindow(request)
-    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
-    listeners.current.get('tauri://created')?.()
-    await promise
-
-    expect(resignActivation).not.toHaveBeenCalled()
-  })
-
-  it('leaves the app alone when no window was created to activate it', async () => {
+  it('refuses to create a window while the app is in the background', async () => {
+    // Creating a webview activates the whole application, with nothing to gate it and no reliable
+    // way to undo it — handing the activation back afterwards was shipped and still visibly stole
+    // the window. So no card is created rather than one that takes the user's keyboard.
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const promise = openNotchWindow(request)
-    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
-    listeners.current.get('tauri://error')?.('boom')
-    await promise
+    appWasActive.current = false
 
-    expect(resignActivation).not.toHaveBeenCalled()
+    await expect(openNotchWindow(request)).resolves.toBe(false)
+    expect(ctor).not.toHaveBeenCalled()
+  })
+
+  it('still reuses the parked window while the app is in the background', async () => {
+    // Which is the whole point: navigating touches no NSApplication, so the one moment a card is
+    // actually wanted is the one moment it works.
+    appWasActive.current = false
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await expect(openNotchWindow(request)).resolves.toBe(true)
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(ctor).not.toHaveBeenCalled()
   })
 
   it('stops waiting for an event that never arrives rather than blocking the fallback forever', async () => {

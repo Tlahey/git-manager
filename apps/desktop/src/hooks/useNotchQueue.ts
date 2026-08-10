@@ -175,17 +175,31 @@ export function useNotchQueue() {
   // application on macOS, and at launch the app is frontmost anyway, so this is the one moment
   // that costs the user nothing. See `notchWindow.ts`'s header.
   useEffect(() => {
+    // Not in the e2e suite, whose driver handles a second WebviewWindow badly enough that one
+    // permanently present would break scenarios that never go near a notification. Cards there
+    // open their own window, exactly as they did before — and the suite already forces most of
+    // them to a surface of its choosing anyway (see the `forcedSurface` hatch above).
+    // Dead-code-eliminated from every real build.
+    const parkingAllowed = import.meta.env.VITE_E2E !== 'true'
+
     void (async () => {
       await closeNotchWindow()
-      // Not in the e2e suite, whose driver handles a second WebviewWindow badly enough that one
-      // permanently present would break scenarios that never go near a notification. Cards there
-      // fall back to opening their own window, exactly as they did before — and the suite already
-      // forces most of them to a surface of its choosing anyway (see the `forcedSurface` hatch
-      // above). Dead-code-eliminated from every real build.
-      if (import.meta.env.VITE_E2E === 'true') return
-      await warmUpNotchWindow()
+      if (parkingAllowed) await warmUpNotchWindow()
     })()
+
+    // A second chance, and not an optional one. The window can only be created while the app is
+    // frontmost, so an app that started in the background — a login item, a window restored behind
+    // something else — reaches the line above at the one moment it cannot succeed, and would then
+    // have nothing to navigate for the rest of the session, which means no cards at all. Coming to
+    // the front is exactly when creating one is free again. `warmUpNotchWindow` is idempotent, so
+    // every later focus is a no-op.
+    const parkOnFocus = () => {
+      if (parkingAllowed) void warmUpNotchWindow()
+    }
+    window.addEventListener('focus', parkOnFocus)
+
     return () => {
+      window.removeEventListener('focus', parkOnFocus)
       if (shownIdRef.current !== null) void closeNotchWindow()
     }
   }, [])

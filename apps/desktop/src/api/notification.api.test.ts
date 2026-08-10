@@ -5,7 +5,6 @@ vi.mock('../lib/tauri', () => ({
   getNotchMetrics: vi.fn(),
   showWithoutActivating: vi.fn(),
   isAppActive: vi.fn(),
-  resignAppActivation: vi.fn(),
 }))
 
 const listen = vi.hoisted(() => vi.fn())
@@ -20,7 +19,6 @@ import {
   apiOnNotificationActivated,
   apiGetNotchMetrics,
   apiIsAppActive,
-  apiResignAppActivation,
   apiShowWithoutActivating,
 } from './notification.api'
 
@@ -28,7 +26,6 @@ const sendNativeNotification = tauri.sendNativeNotification as unknown as Return
 const getNotchMetrics = tauri.getNotchMetrics as unknown as ReturnType<typeof vi.fn>
 const showWithoutActivating = tauri.showWithoutActivating as unknown as ReturnType<typeof vi.fn>
 const isAppActive = tauri.isAppActive as unknown as ReturnType<typeof vi.fn>
-const resignAppActivation = tauri.resignAppActivation as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -108,24 +105,6 @@ describe('apiIsAppActive', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(apiIsAppActive()).resolves.toBe(true)
-  })
-})
-
-describe('apiResignAppActivation', () => {
-  it('hands the activation back', async () => {
-    resignAppActivation.mockResolvedValue(undefined)
-
-    await apiResignAppActivation()
-
-    expect(resignAppActivation).toHaveBeenCalled()
-  })
-
-  it('swallows a failure — the card is already up, and there is nothing better to do', async () => {
-    resignAppActivation.mockRejectedValue(new Error('no tauri host'))
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    await expect(apiResignAppActivation()).resolves.toBeUndefined()
-    expect(warnSpy).toHaveBeenCalled()
   })
 })
 

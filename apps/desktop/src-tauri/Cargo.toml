@@ -75,8 +75,8 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   # housing geometry, read once at startup instead of guessed at with a hard-coded 32pt/100pt.
   # See get_notch_metrics in commands/window.rs.
   "NSScreen",
-  # NSApplication.isActive / .deactivate — undoing the activation wry performs on *every* webview
-  # it creates, which is what made a notch card steal the keyboard. See resign_app_activation in
+  # NSApplication.isActive — the veto on creating a webview while the app is in the background,
+  # which wry would turn into an activation and so into a stolen keyboard. See is_app_active in
   # commands/window.rs.
   "NSApplication",
 ] }
