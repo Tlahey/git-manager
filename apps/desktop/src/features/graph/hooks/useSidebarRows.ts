@@ -4,11 +4,6 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
 import { useGitStashes } from '../../../hooks/useGitStashes'
-import {
-  buildBranchTree,
-  type BranchTreeFolder,
-  type BranchTreeNode,
-} from '../../../lib/branchTree'
 import { usePullRequests } from '../../../hooks/usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'
@@ -17,10 +12,18 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useIssueFiltersStore } from '../stores/issueFilters.store'
 import { usePrFiltersStore } from '../stores/prFilters.store'
 import { buildPrSection, buildIssueSection } from '../lib/sidebarGithubSections'
+import {
+  buildLocalSection,
+  buildRemotesSection,
+  buildTagsSection,
+  buildStashesSection,
+  buildSubmodulesSection,
+  buildWorktreesSection,
+  remoteOf,
+} from '../lib/sidebarGitSections'
 import { apiGetTags, apiListSubmodules } from '../../../api/git.api'
 import { apiListWorktrees } from '../../../api/worktree.api'
 import {
-  type SidebarRow,
   type SidebarSection,
   type SectionKey,
   DEFAULT_SECTION_OPEN,
@@ -53,69 +56,6 @@ interface UseSidebarRowsResult {
   allLocalBranches: GitBranch[]
   /** Revalidate the repo's issue list — called after creating one from the sidebar. */
   refreshIssues: () => void
-}
-
-const TAGS_LIMIT = 100
-
-/**
- * The remote a branch belongs to.
- *
- * Read from `name`, never from `shortName`: the backend already strips the remote from the latter
- * (`origin/build/ci` arrives as `name: 'origin/build/ci'`, `shortName: 'build/ci'`), so splitting
- * the short name would name the remote after the branch's first *folder* — which is what put
- * `build` and `feat` beside `origin` instead of inside it.
- */
-function remoteOf(branch: GitBranch): string {
-  const slash = branch.name.indexOf('/')
-  return slash > 0 ? branch.name.slice(0, slash) : 'origin'
-}
-
-interface PushBranchTreeParams {
-  /** Row list being built, appended to in place. */
-  rows: SidebarRow[]
-  nodes: BranchTreeNode[]
-  /** Row id every folder id below is built from, keeping the two sections' ids apart. */
-  parentId: string
-  /** Depth the level starts at — 0 in the local section, 1 under a remote node. */
-  depth: number
-  subOpen: (id: string, def?: boolean) => boolean
-  branchRow: (branch: GitBranch, displayName: string, depth: number) => SidebarRow
-  folderRow: (node: BranchTreeFolder, id: string, depth: number) => SidebarRow
-}
-
-/**
- * Flattens a branch tree into rows, walking it rather than iterating a flat list: folders nest, and
- * a closed one has to take its whole subtree off screen, not just its own leaves. Shared by the
- * local and remote sections, which differ only in the rows they build.
- */
-function pushBranchTree({
-  rows,
-  nodes,
-  parentId,
-  depth,
-  subOpen,
-  branchRow,
-  folderRow,
-}: PushBranchTreeParams): void {
-  for (const node of nodes) {
-    if (node.kind === 'branch') {
-      rows.push(branchRow(node.branch, node.displayName, depth))
-      continue
-    }
-    const id = `${parentId}${parentId.endsWith(':') ? '' : '/'}${node.name}`
-    rows.push(folderRow(node, id, depth))
-    if (subOpen(id, true)) {
-      pushBranchTree({
-        rows,
-        nodes: node.children,
-        parentId: id,
-        depth: depth + 1,
-        subOpen,
-        branchRow,
-        folderRow,
-      })
-    }
-  }
 }
 
 export function useSidebarRows({
@@ -335,253 +275,48 @@ export function useSidebarRows({
   const remoteCount = remoteGroups.reduce((n, [, bs]) => n + bs.length, 0)
 
   // ── Building each section ───────────────────────────────────────────
+  // The order the sections appear in is this list's order, and it is the only thing about them the
+  // hook still decides — each builder lives in `lib/sidebarGitSections.ts` (git) or
+  // `lib/sidebarGithubSections.ts` (GitHub), and returns `null` when it has nothing to show.
   const sections = useMemo(() => {
-    const list: SidebarSection[] = []
-
     const sectionOpen = (key: SectionKey) =>
       openState[`section:${key}`] ?? DEFAULT_SECTION_OPEN[key]
     const subOpen = (id: string, def = true) => openState[id] ?? def
-
     const isSelected = (b: GitBranch) => selectedBranch === b.shortName || selectedBranch === b.name
+    const ctx = (key: SectionKey) => ({ t, q, isOpen: sectionOpen(key), subOpen })
 
-    // ----- Local -----
-    const localOpen = sectionOpen('local')
-    const localRows: SidebarRow[] = []
-    if (localOpen) {
-      for (const b of pinnedBranches) {
-        localRows.push({
-          kind: 'branch',
-          id: `local:${b.name}`,
-          branch: b,
-          displayName: b.shortName,
-          depth: 0,
-          isSelected: isSelected(b),
-          isPinned: true,
-        })
-      }
-      if (pinnedBranches.length > 0 && remainingBranches.length > 0) {
-        localRows.push({ kind: 'divider', id: 'div:pinned' })
-      }
-      pushBranchTree({
-        rows: localRows,
-        nodes: buildBranchTree(remainingBranches, (b) => b.shortName),
-        parentId: 'folder:',
-        depth: 0,
-        subOpen,
-        branchRow: (branch, displayName, depth) => ({
-          kind: 'branch',
-          id: `local:${branch.name}`,
-          branch,
-          displayName,
-          depth,
-          isSelected: isSelected(branch),
-          isPinned: false,
-        }),
-        folderRow: (node, id, depth) => ({
-          kind: 'folder',
-          id,
-          name: node.name,
-          count: node.branches.length,
-          isOpen: subOpen(id, true),
-          depth,
-          hasHead: node.branches.some((b) => b.isHead),
-        }),
-      })
-    }
-    // Hidden entirely when actively filtering down to zero matches — a non-empty repo always has
-    // a local section otherwise, so this only ever fires while `q` is set.
-    if (!(q && localBranches.length === 0)) {
-      list.push({
-        key: 'local',
-        title: 'Local',
+    return [
+      buildLocalSection(ctx('local'), {
+        pinnedBranches,
+        remainingBranches,
         count: localBranches.length,
-        isOpen: localOpen,
-        rows: localRows,
-      })
-    }
-
-    // ----- Remotes -----
-    if (remoteGroups.length > 0) {
-      const open = sectionOpen('remotes')
-      const remoteRows: SidebarRow[] = []
-      if (open) {
-        for (const [remoteName, branches] of remoteGroups) {
-          const gid = `remote:${remoteName}`
-          const gopen = subOpen(gid, true)
-          remoteRows.push({
-            kind: 'remote-group',
-            id: gid,
-            remoteName,
-            count: branches.length,
-            isOpen: gopen,
-            branchNames: branches.map((b) => b.name),
-          })
-          if (gopen) {
-            pushBranchTree({
-              rows: remoteRows,
-              // `shortName` already reads relative to the remote (the backend strips it), so it is
-              // exactly the name the folders below the remote node are cut from.
-              nodes: buildBranchTree(branches, (b) => b.shortName),
-              parentId: `remote-folder:${remoteName}`,
-              // The remote node itself occupies depth 0, so its own children start one in.
-              depth: 1,
-              subOpen,
-              branchRow: (branch, displayName, depth) => ({
-                kind: 'remote-branch',
-                id: `remote-branch:${branch.name}`,
-                branch,
-                remoteName,
-                displayName,
-                depth,
-                isSelected: isSelected(branch),
-              }),
-              folderRow: (node, id, depth) => ({
-                kind: 'folder',
-                id,
-                name: node.name,
-                count: node.branches.length,
-                isOpen: subOpen(id, true),
-                depth,
-                branchNames: node.branches.map((b) => b.name),
-              }),
-            })
-          }
-        }
-      }
-      list.push({
-        key: 'remotes',
-        title: 'Remotes',
+        isSelected,
+      }),
+      buildRemotesSection(ctx('remotes'), {
+        groups: remoteGroups,
         count: remoteCount,
-        isOpen: open,
-        rows: remoteRows,
-      })
-    }
-
-    // ----- Pull Requests / Issues -----
-    // The two sections that are GitHub rather than git, and the only ones with reachability states
-    // (no GitHub remote, no account, still loading) — see `lib/sidebarGithubSections.ts`.
-    const prSection = buildPrSection(
-      { t, q, isOpen: sectionOpen('prs'), subOpen },
-      {
+        isSelected,
+      }),
+      buildPrSection(ctx('prs'), {
         groups: filteredPrGroups,
         count: filteredPrCount,
         isGithub,
         isConnected,
         loading: prsLoading || prFiltersLoading,
         selectedBranch,
-      }
-    )
-    if (prSection) list.push(prSection)
-
-    const issueSection = buildIssueSection(
-      { t, q, isOpen: sectionOpen('issues'), subOpen },
-      {
+      }),
+      buildIssueSection(ctx('issues'), {
         groups: filteredIssueGroups,
         count: filteredIssueCount,
         isGithub: issuesIsGithub,
         isConnected: issuesIsConnected,
         loading: issuesLoading,
-      }
-    )
-    if (issueSection) list.push(issueSection)
-
-    // ----- Tags -----
-    if (filteredTags.length > 0) {
-      const open = sectionOpen('tags')
-      const tagRows: SidebarRow[] = []
-      if (open) {
-        for (const tag of filteredTags.slice(0, TAGS_LIMIT)) {
-          tagRows.push({
-            kind: 'tag',
-            id: `tag:${tag.name}`,
-            tag,
-            isSelected: !!selectedCommitOid && selectedCommitOid === tag.commitOid,
-          })
-        }
-        if (filteredTags.length > TAGS_LIMIT) {
-          tagRows.push({
-            kind: 'message',
-            id: 'tag:more',
-            text: t('sidebar.tags.more', { count: filteredTags.length - TAGS_LIMIT }),
-          })
-        }
-      }
-      list.push({
-        key: 'tags',
-        title: 'Tags',
-        count: filteredTags.length,
-        isOpen: open,
-        rows: tagRows,
-      })
-    }
-
-    // ----- Stashes -----
-    if (filteredStashes.length > 0) {
-      const open = sectionOpen('stashes')
-      const stashRows: SidebarRow[] = []
-      if (open) {
-        for (const stash of filteredStashes) {
-          stashRows.push({
-            kind: 'stash',
-            id: `stash:${stash.index}`,
-            stash,
-            isSelected: selectedBranch === stash.commitOid,
-          })
-        }
-      }
-      list.push({
-        key: 'stashes',
-        title: 'Stashes',
-        count: filteredStashes.length,
-        isOpen: open,
-        rows: stashRows,
-      })
-    }
-
-    // ----- Submodules -----
-    if (filteredSubmodules.length > 0) {
-      const open = sectionOpen('submodules')
-      const smRows: SidebarRow[] = []
-      if (open) {
-        for (const sm of filteredSubmodules) {
-          smRows.push({ kind: 'submodule', id: `sm:${sm.path}`, sm })
-        }
-      }
-      list.push({
-        key: 'submodules',
-        title: 'Submodules',
-        count: filteredSubmodules.length,
-        isOpen: open,
-        rows: smRows,
-      })
-    }
-
-    // ----- Worktrees -----
-    // Always shown when unfiltered (unlike Submodules/Tags/Stashes, which hide when empty) — this
-    // is the only section whose header carries an "add" action, so it must stay reachable with
-    // zero worktrees. It still hides while actively filtering down to zero matches.
-    if (!(q && filteredWorktrees.length === 0)) {
-      const open = sectionOpen('worktrees')
-      const wtRows: SidebarRow[] = []
-      if (open) {
-        if (filteredWorktrees.length === 0) {
-          wtRows.push({ kind: 'message', id: 'wt:empty', text: t('sidebar.worktrees.empty') })
-        } else {
-          for (const wt of filteredWorktrees) {
-            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
-          }
-        }
-      }
-      list.push({
-        key: 'worktrees',
-        title: 'Worktrees',
-        count: filteredWorktrees.length || undefined,
-        isOpen: open,
-        rows: wtRows,
-      })
-    }
-
-    return list
+      }),
+      buildTagsSection(ctx('tags'), { tags: filteredTags, selectedCommitOid }),
+      buildStashesSection(ctx('stashes'), { stashes: filteredStashes, selectedBranch }),
+      buildSubmodulesSection(ctx('submodules'), { submodules: filteredSubmodules }),
+      buildWorktreesSection(ctx('worktrees'), { worktrees: filteredWorktrees }),
+    ].filter((s): s is SidebarSection => s !== null)
   }, [
     q,
     t,
