@@ -31,7 +31,7 @@ vi.mock('./monaco/setup', () => ({
   MonacoEditor: FakeMonacoEditor,
   languageForFilePath: () => 'typescript',
 }))
-vi.mock('./monaco/themes', () => ({ registerAndApplyDynamicTheme }))
+vi.mock('./monaco/dynamicTheme', () => ({ registerAndApplyDynamicTheme }))
 
 import { CodeEditor } from './CodeEditor'
 
