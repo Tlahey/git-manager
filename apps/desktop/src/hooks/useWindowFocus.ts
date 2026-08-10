@@ -9,52 +9,30 @@ function readFocus(): boolean {
   return typeof document.hasFocus === 'function' ? document.hasFocus() : true
 }
 
-export interface UseWindowFocusOptions {
-  /**
-   * How long focus must *hold* before it is reported as regained. Losing it is always reported at
-   * once — this only distrusts the other direction.
-   *
-   * Defaults to `0`, which is the plain flag. Pass a few hundred milliseconds when a momentary
-   * activation would do real damage: the notch gates its cards on this being false
-   * (`useNotchOperation`'s `enabled`), and the app can activate *itself* as a side effect of
-   * raising a card — opening a webview does it on macOS, whatever the window options say. Reacting
-   * to that instantly switched the card off, took its window down, and put it back on the next
-   * tick, so a search that should have shown one card showed a flicker of nothing at all.
-   */
-  settleMs?: number
-}
-
 /**
- * Live "does the app window have focus?" flag, for background work that must only run while the
- * user is actually looking at the app (auto-fetch, see `useAutoFetch`).
+ * Live "does the app window have focus?" flag, for work that must only run while the user is
+ * actually looking at the app.
  *
  * Read from the DOM rather than from Tauri's `onFocusChanged`: the webview's own `focus`/`blur`
  * events already mirror the native window's focus state, they need no async setup (so there's no
  * window where the flag is stale right after mount), and they work unchanged in tests. The
  * `visibilitychange` listener covers minimizing / hiding the app, which doesn't always blur.
+ *
+ * It reports focus the instant it arrives, and there is deliberately no "settle" delay any more.
+ * One existed, for the notch: its cards were gated on the app being unfocused, and creating a
+ * webview activates the whole application on macOS — so raising a card switched off the very gate
+ * that had raised it. Both halves of that are gone. The notch keeps one window it only navigates
+ * (see `lib/notifications/notchWindow.ts`), and its cards are no longer gated on focus at all, so
+ * nothing is left that a momentary activation could damage. Don't reintroduce the option without
+ * the caller that needs it.
  */
-export function useWindowFocus({ settleMs = 0 }: UseWindowFocusOptions = {}): boolean {
+export function useWindowFocus(): boolean {
   const [focused, setFocused] = useState(readFocus)
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const clear = () => {
-      if (timer !== undefined) clearTimeout(timer)
-      timer = undefined
-    }
-    /** Focus is only believed once it has held; losing it is believed immediately. */
-    const apply = (next: boolean) => {
-      clear()
-      if (!next || settleMs <= 0) {
-        setFocused(next)
-        return
-      }
-      timer = setTimeout(() => setFocused(true), settleMs)
-    }
-
-    const sync = () => apply(readFocus())
-    const onFocus = () => apply(true)
-    const onBlur = () => apply(false)
+    const sync = () => setFocused(readFocus())
+    const onFocus = () => setFocused(true)
+    const onBlur = () => setFocused(false)
 
     window.addEventListener('focus', onFocus)
     window.addEventListener('blur', onBlur)
@@ -64,12 +42,11 @@ export function useWindowFocus({ settleMs = 0 }: UseWindowFocusOptions = {}): bo
     sync()
 
     return () => {
-      clear()
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('blur', onBlur)
       document.removeEventListener('visibilitychange', sync)
     }
-  }, [settleMs])
+  }, [])
 
   return focused
 }

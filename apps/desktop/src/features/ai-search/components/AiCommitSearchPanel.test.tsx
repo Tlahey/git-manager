@@ -39,7 +39,38 @@ vi.mock('../../../components/Markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
 }))
 
+// The one thing the real `useNotchOperation` reaches for that jsdom has no host for. Everything
+// else about it is left real, so the assertions below are about cards actually reaching the queue.
+vi.mock('../../../api/notification.api', () => ({
+  apiOnNotchDismissed: () => Promise.resolve(() => {}),
+}))
+
+/**
+ * What the panel asked the notch for, kept while the hook itself stays real.
+ *
+ * The run id is the panel's whole contribution to the card's lifetime and is invisible from the
+ * queue — it decides when a card the user closed is allowed back, and nothing else can be asserted
+ * from the outside.
+ */
+const notchOptions = vi.hoisted(() => ({
+  current: [] as { runId?: string; enabled?: boolean }[],
+}))
+vi.mock('../../../hooks/useNotchOperation', async () => {
+  const actual = await vi.importActual<typeof import('../../../hooks/useNotchOperation')>(
+    '../../../hooks/useNotchOperation'
+  )
+  return {
+    useNotchOperation: (options: NotchOperationOptions) => {
+      notchOptions.current.push(options)
+      return actual.useNotchOperation(options)
+    },
+  }
+})
+
+import { emptyNotchQueue } from '@git-manager/notch'
 import { AiCommitSearchPanel } from './AiCommitSearchPanel'
+import type { NotchOperationOptions } from '../../../hooks/useNotchOperation'
+import { useNotchQueueStore } from '../../../stores/notchQueue.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 function storedRun(overrides: Partial<StoredSearchRun> = {}): StoredSearchRun {
@@ -101,6 +132,8 @@ function renderPanel() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  notchOptions.current = []
+  useNotchQueueStore.setState({ queue: emptyNotchQueue })
   Object.assign(searchState, {
     phase: 'idle',
     isRunning: false,
@@ -416,5 +449,63 @@ describe('AiCommitSearchPanel', () => {
     const { onClose } = renderPanel()
     await user.click(screen.getByTestId('commit-search-close-panel'))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+/**
+ * A run takes minutes, so the card is what makes it visible from wherever the user went.
+ *
+ * It used to be gated on the app being unfocused, on the theory that a card duplicating the panel
+ * is noise. That gate was the bug: the card left every time the user came back to the app and
+ * returned the moment they switched away.
+ */
+describe('AiCommitSearchPanel — the run on the notch', () => {
+  it('shows the card while the user is looking straight at the app', () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.askedQuestion = 'Did the Button change?'
+    searchState.progress = { phase: 'scanning', completed: 7, total: 42 }
+    renderPanel()
+
+    expect(useNotchQueueStore.getState().queue.current?.model).toMatchObject({
+      kind: 'progress',
+      id: 'commit-search:/repo',
+      title: 'Did the Button change?',
+    })
+  })
+
+  it('never gates the card on anything, so nothing can take it down mid-run', () => {
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.askedQuestion = 'Did the Button change?'
+    renderPanel()
+
+    expect(notchOptions.current.at(-1)?.enabled).toBeUndefined()
+  })
+
+  it('leaves the outcome card behind when the run ends', () => {
+    // A `progress` card has no timer (`resolveNotchDurationMs`); the `status` card that replaces it
+    // does, which is how "it disappears when it is finished" actually happens.
+    searchState.phase = 'done'
+    searchState.answer = 'Yes.'
+    searchState.askedQuestion = 'Did the Button change?'
+    renderPanel()
+
+    expect(useNotchQueueStore.getState().queue.current?.model).toMatchObject({
+      kind: 'status',
+      tone: 'success',
+    })
+  })
+
+  it('counts each search as its own run, so a card the user closed comes back for the next one', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+    const before = notchOptions.current.at(-1)?.runId
+
+    await user.type(screen.getByTestId('commit-search-question'), 'Did the Button change?')
+    await user.click(screen.getByTestId('commit-search-submit'))
+
+    expect(notchOptions.current.at(-1)?.runId).not.toBe(before)
   })
 })

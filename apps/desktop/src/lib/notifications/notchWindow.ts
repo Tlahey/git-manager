@@ -19,9 +19,11 @@
  * Handing the activation straight back afterwards (`apiResignAppActivation`) was tried and is not
  * enough on its own: the app still visibly comes forward first, and `NSApplication.deactivate`
  * only bites once the activation has landed, which is a race rather than a guarantee. Worse, the
- * blip is self-amplifying — the cards that most want the notch are gated on the app being
- * unfocused (`useNotchOperation`'s `enabled`), so an activation the app caused itself switched the
- * card off, closed the window, and re-opened it on the next tick.
+ * blip was self-amplifying at the time — the cards that most want the notch were then gated on the
+ * app being unfocused, so an activation the app caused itself switched the card off, closed the
+ * window, and re-opened it on the next tick. That gate is gone (the AI cards now show focused or
+ * not), so the amplifier is gone with it; the activation itself is not, and a producer that ever
+ * reads focus again would bring the loop straight back.
  *
  * So the window is created **once, while the app is legitimately frontmost** (at startup, via
  * {@link warmUpNotchWindow}) and thereafter *navigated* per card. A navigation touches no

@@ -289,7 +289,8 @@ describe('useNotchQueue', () => {
 
   it('ignores a window death for a card that has since been re-opened under the same id', async () => {
     // The id is not enough on its own here: the *same* card can be dropped and shown again within
-    // a few hundred milliseconds (a producer gated on window focus, a focus blip), and the first
+    // a few hundred milliseconds (a producer that removes and re-enqueues in consecutive ticks —
+    // the focus gate that first showed this up is gone, the shape is not), and the first
     // window's death notice lands after the second window is already up. Applying it retired the
     // card that was on screen and left the queue quiet with a window nobody owned — one of the two
     // ways a running search ended up showing no card at all.

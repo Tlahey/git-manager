@@ -9,7 +9,6 @@ import {
   useAiCommitSearch,
 } from '../hooks/useAiCommitSearch'
 import { useNotchOperation } from '../../../hooks/useNotchOperation'
-import { useWindowFocus } from '../../../hooks/useWindowFocus'
 import { commitSearchNotchId, commitSearchNotchModel } from '../lib/commitSearchNotch'
 import type { StoredSearchMatch, StoredSearchRun } from '../stores/aiCommitSearch.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
@@ -59,16 +58,28 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   const [quick, setQuick] = useState(false)
   /** A saved run the user reopened, shown instead of the live one until they search again. */
   const [viewedRun, setViewedRun] = useState<StoredSearchRun | null>(null)
+  /**
+   * Which search this is, counted here because this is the only place one starts.
+   *
+   * It exists for the notch alone: the card's id is per *repository*, so two searches in a row are
+   * one card as far as the queue is concerned, and a run that goes straight from `done` to
+   * `scanning` gives `useNotchOperation` nothing to recognise a new run by. Nor does the model — the
+   * same question asked twice builds the same card byte for byte. This is what tells it, and what
+   * makes a card the user closed come back for the *next* search rather than never again.
+   */
+  const [runSeq, setRunSeq] = useState(0)
 
   // ── The run, on the notch ────────────────────────────────────────────────────────────────────
   // A deep search is one model call per file of every commit it opens, so a sixty-commit run is
   // minutes — and nobody watches a bar for minutes. They switch to their editor, and the run goes
-  // invisible. Only while the window is unfocused, though: this panel is a far better place to
-  // watch a search you are actually watching, and a card duplicating it would be pure noise.
-  // Settled rather than raw: the app can activate *itself* while raising a card (opening a webview
-  // does it on macOS), and a gate that believed that instantly took down the very card it had just
-  // put up — see `useWindowFocus`.
-  const windowFocused = useWindowFocus({ settleMs: 600 })
+  // invisible. This is what follows them out of the window.
+  //
+  // Shown for the whole run, focused or not. It used to be gated on the window being unfocused, on
+  // the theory that a card duplicating the panel in front of the user is noise — and in practice
+  // that gate *was* the noise: the card left every time they came back to the app and returned the
+  // moment they switched away, which reads as a bug however well-reasoned it is. A card leaves for
+  // one of two reasons now: the run ended, or the user closed it (`useNotchOperation`'s `runId`
+  // latches the second so a progress tick can't undo it).
   const repoName = useMemo(() => repoPath.split('/').filter(Boolean).pop() ?? repoPath, [repoPath])
   const notchModel = useMemo(
     () =>
@@ -94,7 +105,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   useNotchOperation({
     id: commitSearchNotchId(repoPath),
     model: notchModel,
-    enabled: !windowFocused,
+    runId: String(runSeq),
     actions: { cancel: () => void search.cancel() },
   })
 
@@ -105,6 +116,7 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
 
   const runSearch = useCallback(() => {
     setViewedRun(null)
+    setRunSeq((n) => n + 1)
     void search.search(question, { maxCommits, mode: quick ? 'quick' : 'deep' })
   }, [search, question, maxCommits, quick])
 
