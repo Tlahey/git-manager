@@ -15,6 +15,7 @@ import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
+import { useDevFlagsStore } from '../../../stores/devFlags.store'
 import { findEffectGate, isEffectUnlocked } from '../../../lib/rewards/effects'
 import { achievementI18nKey } from '../../../lib/rewards/achievementI18n'
 
@@ -25,6 +26,9 @@ export function AppearanceSection() {
 
   // Game/achievements statistics for theme locking
   const { achievements } = useGameStore()
+  // Dev-only override: `pnpm dev:themes` (or the footer's debug menu) opens every gated theme, so
+  // one can be styled and graded without first earning it. Off in any build that didn't ask for it.
+  const unlockThemes = useDevFlagsStore((s) => s.unlockThemes)
 
   // Which achievement (if any) gates a given theme id is declared in achievements.json
   // (`effects: [{ type: 'theme', id: ... }]`), not hardcoded here — a new locked theme only
@@ -79,7 +83,7 @@ export function AppearanceSection() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {BUILTIN_THEMES.map((theme) => {
-            const locked = !isEffectUnlocked(achievements, 'theme', theme.id)
+            const locked = !unlockThemes && !isEffectUnlocked(achievements, 'theme', theme.id)
             const gate = locked ? findEffectGate(achievements, 'theme', theme.id) : null
             return (
               <ThemeCard
