@@ -355,7 +355,7 @@ export function GitGraph({
     setActiveDiffFile(null)
   }, [primaryOid, repoPath, setActiveDiffFile])
 
-  // Stash index (same detection as `useGitGraphActions.ts`'s native stash-menu path) when the
+  // Stash index (same detection as `useGraphRowMenus.ts`'s native stash-menu path) when the
   // selection is a stash row, `null` otherwise. Derived via useMemo — rather than read directly
   // inside the publish effect below — so the effect's dependency is a stable primitive instead of
   // the raw `nodes` array: `nodes` (react-query's `data`, defaulted to `[]`) is a fresh reference

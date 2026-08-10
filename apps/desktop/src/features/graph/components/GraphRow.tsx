@@ -1,35 +1,18 @@
 import { memo } from 'react'
 import type { GitGraphNode, GitRef, WorktreeAgentActivity } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
-import { useTranslation } from '@git-manager/i18n'
-import { RefLabel } from './RefLabel'
-import { RefLabelGroup } from './RefLabelGroup'
-import { TagCreationInput } from './TagCreationInput'
 import { useTagMenuHandler } from '../hooks/useTagMenuHandler'
-import type { ColumnKey, ResolvedColumn } from '../lib/columns.config'
+import type { ResolvedColumn } from '../lib/columns.config'
 import type { BisectRowStatus } from '../lib/bisectStatus'
-import { BISECT_ROW_STYLES } from '../lib/bisectRow.config'
 import { getGraphColumnLayout, getMarkerPlacement } from '../lib/graphColumnSizing'
-import {
-  REF_CONNECTOR_LINE_OPACITY_HEX,
-  BAND_ALPHA_HEX,
-  BAND_ALPHA_SELECTED_HEX,
-} from '../lib/graphLayout'
-import { formatRelativeTimeCompact, formatExactDate } from '../../../lib/relativeDate'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { useGitStashes } from '../../../hooks/useGitStashes'
 import type { ConflictRowInfo } from '../hooks/useGitGraphNodes'
 import type { WorktreeWipStatus } from '../hooks/useWorktreeWipStatuses'
-import {
-  WipCommitInput,
-  WorktreeWipRow,
-  ConflictRowMessage,
-  type WipRef,
-} from './GraphMessageCells'
+import type { WipRef } from './GraphMessageCells'
 import { GraphCell } from './GraphCell'
-import { isSyntheticRow, worktreeWipPath } from '../lib/syntheticRows'
-import { AuthorAvatar } from './AuthorAvatar'
+import { GraphRowCell } from './GraphRowCell'
+import { GraphRowBackdrop } from './GraphRowBackdrop'
+import { worktreeWipPath } from '../lib/syntheticRows'
 
 export { GraphAvatarTooltip } from './GraphAvatarTooltip'
 
@@ -85,237 +68,6 @@ interface GraphRowProps {
   onCancelTag?: () => void
 }
 
-// ── Cells ─────────────────────────────────────────────────────────────────────
-
-function CellContent({
-  col,
-  node,
-  markerX,
-  wipStats,
-  wipRef,
-  onCommitWip,
-  conflictInfo,
-  dimmed,
-  worktreeWipStatuses,
-  onOpenWorktree,
-  isActive,
-  laneRef,
-  agentActivity,
-  hiddenTags = [],
-  hiddenBranches = [],
-  isTagDraft,
-  onSubmitTag,
-  onCancelTag,
-}: {
-  col: Exclude<ColumnKey, 'graph'>
-  node: GitGraphNode
-  /** Center x (cell-relative to the graph column) where this row's marker renders — the refs
-   * connector line extends up to it, clamped or not (see `graphColumnSizing.ts`). */
-  markerX: number
-  wipStats?: { added: number; modified: number; deleted: number }
-  wipRef?: WipRef
-  onCommitWip?: (message: string) => void
-  conflictInfo?: ConflictRowInfo | null
-  dimmed?: boolean
-  worktreeWipStatuses?: WorktreeWipStatus[]
-  onOpenWorktree?: (path: string) => void
-  isActive?: boolean
-  laneRef?: GitRef
-  /** AI agent working in this row's worktree (already resolved for WIP / WIP:<path> rows). */
-  agentActivity?: WorktreeAgentActivity
-  /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
-  hiddenTags?: string[]
-  /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
-  hiddenBranches?: string[]
-  isTagDraft?: boolean
-  onSubmitTag?: (name: string) => void
-  onCancelTag?: () => void
-}) {
-  const { i18n } = useTranslation('git')
-  const { commit } = node
-  const activeRepo = useRepoUIStore((s) => s.activeRepo)
-  const { data: stashes } = useGitStashes(activeRepo)
-  const isStashCommit = node.refs.some((r) => r.type === 'stash')
-  const stash = isStashCommit ? stashes?.find((s) => s.commitOid === commit.oid) : null
-
-  switch (col) {
-    case 'refs': {
-      if (isTagDraft && onSubmitTag && onCancelTag) {
-        return (
-          <div className="flex h-full w-full min-w-0 items-center">
-            <TagCreationInput variant="inline" onSubmit={onSubmitTag} onCancel={onCancelTag} />
-          </div>
-        )
-      }
-      if (isStashCommit) return null
-      // A hidden tag or branch loses its badge only — the commit keeps its row and its other refs,
-      // which is what separates this from a hidden stash (dropped from the log by the backend).
-      // `shortName` tells local from remote on its own (`main` vs `origin/main`), which is exactly
-      // how the hidden list names them.
-      const filteredRefs =
-        hiddenTags.length || hiddenBranches.length
-          ? node.refs.filter(
-              (r) =>
-                !(r.type === 'tag' && hiddenTags.includes(r.shortName)) &&
-                !(
-                  (r.type === 'remote' || r.type === 'branch') &&
-                  hiddenBranches.includes(r.shortName)
-                )
-            )
-          : node.refs
-      if (filteredRefs.length === 0) {
-        // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
-        // Never on the synthetic WIP / conflict rows.
-        const isRealCommit = !isSyntheticRow(commit.oid)
-        if (!isRealCommit || !laneRef) return null
-        return (
-          <div
-            className="pointer-events-none flex h-full w-full min-w-0 items-center overflow-hidden opacity-0 transition-opacity duration-150 group-hover:opacity-40"
-            data-testid="lane-branch-hint"
-          >
-            <RefLabel gitRef={laneRef} color={node.color} interactive={false} />
-          </div>
-        )
-      }
-      // Only the LOCAL main/master branch's row draws a solid, full-color connector — its mainline
-      // reads as the repo's primary line. Every other ref (origin/main included) gets the faint
-      // connector like the rest.
-      const hasLocalMain = filteredRefs.some(
-        (r) => r.type === 'branch' && (r.shortName === 'main' || r.shortName === 'master')
-      )
-      return (
-        <div className="flex h-full w-full min-w-0 items-center overflow-visible">
-          <RefLabelGroup refs={filteredRefs} color={node.color} />
-          <div
-            className="pointer-events-none ml-2 h-[2px] flex-1 transition-colors"
-            style={{
-              backgroundColor: hasLocalMain
-                ? node.color
-                : `${node.color}${REF_CONNECTOR_LINE_OPACITY_HEX}`,
-              marginRight: `-${markerX + 15}px`,
-            }}
-          />
-        </div>
-      )
-    }
-
-    case 'message': {
-      if (node.commit.oid === 'WIP') {
-        return (
-          <WipCommitInput
-            wipStats={wipStats ?? { added: 0, modified: 0, deleted: 0 }}
-            refInfo={wipRef}
-            onCommit={onCommitWip}
-            agentActivity={agentActivity}
-          />
-        )
-      }
-      const path = worktreeWipPath(node.commit.oid)
-      if (path !== null) {
-        const wip = worktreeWipStatuses?.find((w) => w.path === path)
-        return (
-          <WorktreeWipRow
-            wipStats={
-              wip
-                ? { added: wip.added, modified: wip.modified, deleted: wip.deleted }
-                : { added: 0, modified: 0, deleted: 0 }
-            }
-            refInfo={wip ? { name: wip.branch, isWorktree: true } : undefined}
-            onOpenWorktree={() => onOpenWorktree?.(path)}
-            showOpenButton={isActive}
-            agentActivity={agentActivity}
-          />
-        )
-      }
-      if (node.commit.oid === 'CONFLICT') {
-        return (
-          <ConflictRowMessage
-            count={conflictInfo?.count ?? 0}
-            branchName={conflictInfo?.branchName}
-            currentStep={conflictInfo?.currentStep}
-            totalSteps={conflictInfo?.totalSteps}
-          />
-        )
-      }
-      const body = commit.body?.replace(/\s+/g, ' ').trim()
-      const displaySubject = stash ? stash.message : commit.subject
-      const isFixup = displaySubject.startsWith('fixup!')
-      return (
-        <span
-          className={cn('min-w-0 flex-1 truncate text-[11px] leading-tight', dimmed && 'italic')}
-        >
-          <span className={dimmed ? 'text-muted-foreground/40' : 'text-foreground'}>
-            {isFixup ? (
-              <>
-                <span className={dimmed ? undefined : 'font-semibold text-orange-400'}>fixup!</span>
-                {displaySubject.slice('fixup!'.length)}
-              </>
-            ) : (
-              displaySubject
-            )}
-          </span>
-          {body && (
-            <span
-              className={dimmed ? 'ml-2 text-muted-foreground/40' : 'ml-2 text-muted-foreground/70'}
-            >
-              {body}
-            </span>
-          )}
-        </span>
-      )
-    }
-
-    case 'author': {
-      if (isSyntheticRow(node.commit.oid)) return null
-      return (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <AuthorAvatar
-            name={commit.author.name}
-            email={commit.author.email}
-            isStash={isStashCommit}
-          />
-          <span
-            className={cn(
-              'truncate text-[10px] text-muted-foreground',
-              dimmed && 'text-muted-foreground/40 italic'
-            )}
-          >
-            {commit.author.name}
-          </span>
-        </div>
-      )
-    }
-
-    case 'date':
-      if (isSyntheticRow(node.commit.oid)) return null
-      return (
-        <span
-          className={cn(
-            'truncate text-[10px] text-muted-foreground/70',
-            dimmed && 'text-muted-foreground/40 italic'
-          )}
-          title={formatExactDate(commit.author.timestamp, i18n.language)}
-        >
-          {formatRelativeTimeCompact(commit.author.timestamp, i18n.language)}
-        </span>
-      )
-
-    case 'sha':
-      if (isSyntheticRow(node.commit.oid)) return null
-      return (
-        <code
-          className={cn(
-            'truncate font-mono text-[10px] text-muted-foreground',
-            dimmed && 'text-muted-foreground/40 italic'
-          )}
-          title={commit.oid}
-        >
-          {commit.shortOid}
-        </code>
-      )
-  }
-}
-
 // ── GraphRow ──────────────────────────────────────────────────────────────────
 
 export const GraphRow = memo(function GraphRow({
@@ -345,7 +97,6 @@ export const GraphRow = memo(function GraphRow({
   onSubmitTag,
   onCancelTag,
 }: GraphRowProps) {
-  const { t } = useTranslation('git')
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight ?? 'small')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
@@ -408,80 +159,16 @@ export const GraphRow = memo(function GraphRow({
         rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
       )}
     >
-      {bisectStatus && (
-        <>
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute inset-0',
-              BISECT_ROW_STYLES[bisectStatus].rowBg
-            )}
-          />
-          <span
-            data-testid="bisect-row-marker"
-            aria-label={t(BISECT_ROW_STYLES[bisectStatus].labelKey)}
-            className={cn(
-              'pointer-events-none absolute inset-y-0 left-0 z-graph-row-hover w-[3px] rounded-r',
-              BISECT_ROW_STYLES[bisectStatus].stripe
-            )}
-          />
-        </>
-      )}
-
-      {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
-      <div
-        data-testid="graph-row-band"
-        className="pointer-events-none absolute inset-y-0 border-r-[3px] transition-colors"
-        style={{
-          left: startX,
-          width: Math.max(0, endX - startX),
-          // The band of a marker pulled into the overflow zone would live entirely under the fade
-          // zone — drop its tint (the colored border-right on the far edge stays), unless the row
-          // is selected: the vivid selection tint stays visible even under the zone.
-          backgroundColor:
-            marker.overflowed && !isActiveRow
-              ? 'transparent'
-              : `${node.color}${isActiveRow ? BAND_ALPHA_SELECTED_HEX : BAND_ALPHA_HEX}`,
-          borderRightColor: node.color,
-        }}
+      <GraphRowBackdrop
+        color={node.color}
+        startX={startX}
+        endX={endX}
+        isOverflowed={marker.overflowed}
+        isActive={isActiveRow}
+        isPrimary={isPrimary}
+        isConflictRow={node.commit.oid === 'CONFLICT'}
+        bisectStatus={bisectStatus}
       />
-
-      {/* Selection background starting from the end of the graph column to the right end of the row.
-          A light tint of the theme's primary (purple in the default theme) reads more clearly as a
-          selection than the neutral accent, while staying theme-aware and contrast-safe. */}
-      {isActiveRow && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-y-0 transition-colors',
-            isPrimary ? 'bg-primary/20' : 'bg-primary/10'
-          )}
-          style={{
-            left: endX,
-            right: 0,
-          }}
-        />
-      )}
-
-      {/* Hover background starting from the end of the graph column to the right end of the row */}
-      <div
-        className="pointer-events-none absolute inset-y-0 bg-accent/50 opacity-0 transition-opacity group-hover:opacity-100"
-        style={{
-          left: endX,
-          right: 0,
-        }}
-      />
-
-      {/* Conflict background starting from the end of the graph column to the right end of the row */}
-      {node.commit.oid === 'CONFLICT' && (
-        <div
-          className="pointer-events-none absolute inset-y-0"
-          style={{
-            left: endX,
-            right: 0,
-            backgroundColor: '#904538',
-          }}
-        />
-      )}
 
       {columns.map((col) => (
         <div
@@ -509,7 +196,7 @@ export const GraphRow = memo(function GraphRow({
               agentActivity={rowAgent}
             />
           ) : (
-            <CellContent
+            <GraphRowCell
               col={col.key}
               node={node}
               markerX={marker.x}

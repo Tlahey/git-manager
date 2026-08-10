@@ -1,93 +1,32 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { mutate } from 'swr'
 import { toast } from '@git-manager/ui'
 import type { GitGraphNode, GitRef, GitStatus } from '@git-manager/git-types'
 import { showNativeMenu } from '../../../api/nativeMenu.api'
 import {
-  apiStashApply,
-  apiStashPop,
-  apiStashDrop,
-  apiStashPush,
-  apiCreateCommit,
-  apiStageAll,
-  apiUnstageAll,
-  apiCopyCommitSha,
   apiCherryPickCommit,
   apiRebaseOntoCommit,
-  apiGetCommitWebUrl,
-  apiGetBranchWebUrl,
-  apiCreatePatch,
   apiCreateCommitsPatch,
-  apiPullBranch,
-  apiPushBranch,
-  apiFastForwardBranch,
-  apiMergeBranch,
-  apiDeleteBranch,
   apiCreateTag,
-  apiRebaseContinue,
-  apiRebaseAbort,
-  apiRebaseSkip,
-  apiSetBranchUpstream,
 } from '../../../api/git.api'
-import { apiAddWorktree } from '../../../api/worktree.api'
-import { apiRevealPathInFinder } from '../../../api/repo.api'
-import {
-  buildCommitMenuSpec,
-  buildWipMenuSpec,
-  buildOtherWorktreeMenuSpec,
-  buildStashMenuSpec,
-  remoteBranchTarget,
-  buildConflictMenuSpec,
-  type BranchMenuActions,
-} from '../../../lib/graphContextMenus'
-import { resolveExplanationBase } from '../../../lib/branchExplanationBase'
-import { resolveDefaultUpstream } from '../../../lib/branchUpstream'
+import { buildCommitMenuSpec } from '../../../lib/graphContextMenus'
 import { shortOid } from '../../../lib/shortOid'
-import { useRepoUIStore, type GraphCommitAction } from '../../../stores/repoUI.store'
-import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
-import { useSoloModeStore } from '../../../stores/soloMode.store'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { useBranches } from '../../../hooks/useBranches'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
-import { worktreeWipPath } from '../lib/syntheticRows'
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
-import { pickFolder } from '../../../lib/pickFolder'
+import { descendantsOnCurrentBranch } from '../lib/descendantsOnCurrentBranch'
+import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { useCommitRowActions } from './useCommitRowActions'
+import { useGraphRowMenus } from './useGraphRowMenus'
+import { useBranchMenuActions } from './useBranchMenuActions'
+import type { PendingAction } from './pendingAction'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
-/**
- * How many commits descend from `oid` on the current branch — the count the "recompose children"
- * menu entry names, and the number of commits that would be *rewritten* beyond the clicked one.
- *
- * Walks parents down from the branch tip rather than children up from the commit, because the graph
- * nodes only carry `parentOids`. First-parent only: that is the branch's own line, and it is exactly
- * the set an interactive rebase from this commit would replay.
- *
- * Returns 0 when the commit is the tip, is not on the branch's first-parent line, or when the tip is
- * outside the loaded page — all cases where offering to rewrite "N children" would be a guess.
- */
-export function descendantsOnCurrentBranch(
-  nodes: GitGraphNode[],
-  oid: string,
-  branchTipOid: string | undefined
-): number {
-  if (!branchTipOid || branchTipOid === oid) return 0
-
-  const byOid = new Map(nodes.map((n) => [n.commit.oid, n]))
-  let cursor = byOid.get(branchTipOid)
-  let count = 0
-
-  while (cursor && cursor.commit.oid !== oid) {
-    count += 1
-    const firstParent = cursor.commit.parentOids[0]
-    cursor = firstParent ? byOid.get(firstParent) : undefined
-  }
-
-  // Ran off the loaded page without meeting the commit: it is not on this line, as far as we know.
-  return cursor ? count : 0
-}
+export type { PendingAction }
 
 interface UseGitGraphActionsParams {
   repoPath: string
@@ -107,13 +46,19 @@ interface UseGitGraphActionsParams {
   t: TranslateFn
 }
 
-/** The graph's local pending-dialog action: the shared {@link GraphCommitAction} union, or `null`
- *  for "no dialog open". The store's `pendingGraphAction` bridge feeds straight into this. */
-export type PendingAction = GraphCommitAction | null
-
 /**
- * Encapsulates the imperative actions triggered from the graph: native context menu
- * (commit/stash), SHA copy, fixup, and WIP commit.
+ * The graph's context menu, and the dialogs it raises.
+ *
+ * What is left here after the 2026-08 split is the *commit* menu: resolving what the click targets
+ * (one row, or the whole selection when the clicked row is part of it), the multi-commit actions
+ * that only exist because of that selection, and the assembly of the spec. Everything the menu
+ * merely points at lives beside it — {@link useCommitRowActions} for the per-commit effects,
+ * {@link useGraphRowMenus} for the four rows that are not commits, {@link useBranchMenuActions} for
+ * the per-branch submenus.
+ *
+ * It also owns the two *bridges* at the bottom, which is why the composition stays a hook: both let
+ * out-of-tree UI (the command palette, the sidebar's tag rows) reach a menu that can only be built
+ * from the graph's own loaded page.
  */
 export function useGitGraphActions({
   repoPath,
@@ -130,25 +75,13 @@ export function useGitGraphActions({
   t,
 }: UseGitGraphActionsParams) {
   const queryClient = useQueryClient()
-  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
-  const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
-  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   // Bridges: let out-of-tree UI (the command palette, the sidebar's tag rows) request a
   // commit-scoped dialog/menu without rebuilding it — see the two effects below.
   const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
   const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
   const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
   const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
-  // The branch comparison dialog is mounted by `RepoView`, not by the graph's overlay manager: it
-  // is about two refs, not about the selected commit (see the store's `compareRefsTarget`).
-  const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
-  // Entering a linked worktree from the graph is a view switch, not a new tab — see
-  // `repoUI.store.ts`'s `activeWorkspacePath` doc comment. The `WIP:<path>` row's own "Open
-  // Worktree" button and the sidebar's worktree row already use this; the context menu's "Open
-  // worktree" item reuses it too, so there is exactly one meaning of "open" a worktree in the app.
-  const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
-  const setPin = usePinnedBranchesStore((s) => s.setPin)
-  const enableSolo = useSoloModeStore((s) => s.enable)
+  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
   // Branch-explanation inputs: the master AI switch gates the menu item, and the repo's merge
   // targets + known refs decide which branch the explanation is diffed against.
@@ -160,121 +93,38 @@ export function useGitGraphActions({
   // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
   // top bar when that column is hidden), plus whether the tag should be annotated. `null` = idle.
   const [tagDraft, setTagDraft] = useState<{ oid: string; annotated: boolean } | null>(null)
-  // Shared state, not `useState` — see `pendingRemoteBranchDelete` on the repoUI store: the graph
-  // opens this dialog but `RepoWorkspace` mounts it, so it survives the file explorer
-  // unmounting the graph.
-  const setPendingDeleteRemoteBranch = useRepoUIStore((s) => s.setPendingRemoteBranchDelete)
 
-  function refreshLogAndStatus() {
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-  }
+  const commitActions = useCommitRowActions({
+    repoPath,
+    nodes,
+    status,
+    checkoutBranchWithStashPrompt,
+    t,
+  })
+  const { openFixupWindow } = commitActions
 
-  async function handleCopySha(oid: string) {
-    await apiCopyCommitSha(oid)
-    toast.success(t('gitTree.contextMenu.shaCopied'))
-  }
+  const openRowMenu = useGraphRowMenus({
+    repoPath,
+    nodes,
+    status,
+    hiddenStashes,
+    toggleStashVisibility,
+    selectSingle,
+    aiEnabled,
+    t,
+  })
 
-  /** Opens the dedicated "Commit Changes" fixup window (same pattern as the merge window).
-   *  Memoized: the `pendingGraphAction` bridge effect below depends on it, and it must not
-   *  re-run on every render just because this function was recreated. */
-  const openFixupWindow = useCallback(
-    async (oid: string) => {
-      const node = nodes.find((n) => n.commit.oid === oid)
-      if (!node) return
-      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-      const safeLabel = `fixup-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${node.commit.shortOid}`
-      const url =
-        `/?window=fixup&repoPath=${encodeURIComponent(repoPath)}` +
-        `&oid=${encodeURIComponent(oid)}` +
-        `&shortOid=${encodeURIComponent(node.commit.shortOid)}` +
-        `&subject=${encodeURIComponent(node.commit.subject)}`
-
-      const existing = await WebviewWindow.getByLabel(safeLabel)
-      if (existing) {
-        await existing.show()
-        await existing.setFocus()
-      } else {
-        new WebviewWindow(safeLabel, {
-          url,
-          title: `Commit Changes - fixup! ${node.commit.subject}`,
-          width: 1200,
-          height: 850,
-          minWidth: 900,
-          minHeight: 600,
-          decorations: true,
-        })
-      }
-    },
-    [repoPath, nodes]
-  )
-
-  /** Detaches HEAD onto `oid`. The hook refreshes the graph queries itself on success, and falls
-   * back to the stash prompt when uncommitted changes block the checkout. */
-  async function handleCheckoutDetached(oid: string) {
-    await checkoutBranchWithStashPrompt(repoPath, oid)
-  }
-
-  async function handleCreateWorktree(oid: string) {
-    try {
-      const destPath = await pickFolder()
-      if (!destPath) return
-      await apiAddWorktree(repoPath, oid, destPath)
-      toast.success(t('gitTree.contextMenu.worktreeCreated'))
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
-
-  async function handleCherryPick(oid: string) {
-    try {
-      await apiCherryPickCommit(repoPath, oid)
-      refreshLogAndStatus()
-      toast.success(t('gitTree.contextMenu.cherryPicked'))
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
-
-  async function handleCopyWebLink(oid: string) {
-    try {
-      const url = await apiGetCommitWebUrl(repoPath, oid)
-      if (!url) {
-        toast.error(t('gitTree.contextMenu.noRemoteLink'))
-        return
-      }
-      await navigator.clipboard.writeText(url)
-      toast.success(t('gitTree.contextMenu.linkCopied'))
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
-
-  async function handleCreatePatch(oid: string) {
-    try {
-      const destPath = await pickSaveDestination(`${shortOid(oid)}.patch`)
-      if (!destPath) return
-      await apiCreatePatch(repoPath, oid, destPath)
-      toast.success(t('gitTree.contextMenu.patchCreated'))
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
-
-  async function handleCommitWip(message: string) {
-    if (!message.trim()) return
-    try {
-      const stagedCount = status?.staged?.length || 0
-      if (stagedCount === 0) {
-        await apiStageAll(repoPath)
-      }
-      await apiCreateCommit(repoPath, message)
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-    } catch (err) {
-      toast.error(String(err))
-    }
-  }
+  const branchActions = useBranchMenuActions({
+    repoPath,
+    currentBranch,
+    branches,
+    targetBranches,
+    setPendingAction,
+    createWorktree: (oid) => void commitActions.createWorktree(oid),
+    checkoutBranchWithStashPrompt,
+    checkoutRemoteBranchAsLocal,
+    t,
+  })
 
   /** Creates the tag currently being drafted inline (see {@link tagDraft}). Annotated tags are
    *  created with an empty message — the inline flow collects a name only. */
@@ -305,153 +155,11 @@ export function useGitGraphActions({
     e?.preventDefault()
     e?.stopPropagation()
 
-    // The local WIP row gets its own menu (stash / stage / unstage the work in progress), a
-    // worktree's `WIP:<path>` row gets a smaller one scoped to that other path, and the CONFLICT
-    // row gets a shortcut to the same Continue/Skip/Abort actions the conflict-resolution panel
-    // offers (both below).
-    if (oid === 'WIP') {
-      async function runWip(fn: () => Promise<unknown>, successMsg?: string) {
-        try {
-          await fn()
-          refreshLogAndStatus()
-          mutate(['git-stashes', repoPath])
-          if (successMsg) toast.success(successMsg)
-        } catch (err) {
-          toast.error(String(err))
-        }
-      }
-      void showNativeMenu(
-        buildWipMenuSpec(
-          {
-            hasStaged: (status?.staged.length ?? 0) > 0,
-            hasUnstaged: (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0,
-            aiEnabled,
-          },
-          {
-            onStash: (includeUntracked) =>
-              void runWip(
-                () => apiStashPush(repoPath, undefined, includeUntracked),
-                t('gitTree.wipMenu.stashed')
-              ),
-            onStageAll: () => void runWip(() => apiStageAll(repoPath)),
-            onUnstageAll: () => void runWip(() => apiUnstageAll(repoPath)),
-            onExplainChanges: () => setAiPanelTarget({ kind: 'working' }),
-            onReviewChanges: () => setAiPanelTarget({ kind: 'reviewWorking' }),
-          },
-          t
-        )
-      ).catch(console.error)
-      return
-    }
-    // A linked worktree's own uncommitted changes — every action here targets THAT worktree's path,
-    // never the active repo (see `buildOtherWorktreeMenuSpec`'s doc comment for why the menu stays
-    // smaller than the local WIP row's).
-    const otherPath = worktreeWipPath(oid)
-    if (otherPath !== null) {
-      // An arrow const rather than a hoisted `function`: TypeScript only keeps `otherPath` narrowed
-      // to a string across the closure for the former.
-      const runOtherWorktreeStash = async (includeUntracked: boolean) => {
-        try {
-          await apiStashPush(otherPath, undefined, includeUntracked)
-          // The pushed stash lands in the shared `refs/stash`, so it also shows up back in the
-          // active repo's own graph/stash list — refreshed here like the local WIP row's stash.
-          refreshLogAndStatus()
-          mutate(['git-stashes', repoPath])
-          mutate(['worktree-wip-statuses', repoPath])
-          toast.success(t('gitTree.otherWorktreeMenu.stashed'))
-        } catch (err) {
-          toast.error(String(err))
-        }
-      }
-      void showNativeMenu(
-        buildOtherWorktreeMenuSpec(
-          {
-            onOpenWorktree: () => setActiveWorkspacePath(otherPath),
-            onStash: (includeUntracked) => void runOtherWorktreeStash(includeUntracked),
-            onRevealInFinder: () =>
-              apiRevealPathInFinder(otherPath).catch((err) => toast.error(String(err))),
-          },
-          t
-        )
-      ).catch(console.error)
-      return
-    }
+    // The WIP row, a worktree's `WIP:<path>` row, the CONFLICT row and a stash each own their menu
+    // outright; only an ordinary commit falls through to the rest of this function.
+    if (openRowMenu(oid)) return
 
-    // The CONFLICT row (a paused rebase/merge) gets a shortcut to the same Continue/Skip/Abort
-    // actions the conflict-resolution panel offers, gated on the same conditions (see
-    // `ConflictResolutionPanel`'s `allResolved`/`noneResolved`, derived here from the same
-    // `status` this hook already receives — `status.conflicted` is the paused rebase's remaining
-    // conflicts, `status.staged` is what has already been resolved).
-    if (oid === 'CONFLICT') {
-      const conflictedCount = status?.conflicted.length ?? 0
-      const allResolved = conflictedCount === 0
-      const noneResolved = (status?.staged.length ?? 0) === 0 && conflictedCount > 0
-
-      async function runRebaseControl(fn: () => Promise<unknown>) {
-        try {
-          await fn()
-          queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-          refreshLogAndStatus()
-          mutate(['conflicted-files', repoPath])
-          mutate(['rebase-state', repoPath])
-        } catch (err) {
-          toast.error(String(err))
-        }
-      }
-
-      void showNativeMenu(
-        buildConflictMenuSpec(
-          { allResolved, noneResolved },
-          {
-            onContinue: () => void runRebaseControl(() => apiRebaseContinue(repoPath)),
-            onSkip: () => void runRebaseControl(() => apiRebaseSkip(repoPath)),
-            onAbort: () => void runRebaseControl(() => apiRebaseAbort(repoPath)),
-          },
-          t
-        )
-      ).catch(console.error)
-      return
-    }
-
-    // Check if this is a stash commit
     const clickedNode = nodes.find((n) => n.commit.oid === oid)
-    const stashRef = clickedNode?.refs.find((r) => r.type === 'stash')
-
-    if (stashRef) {
-      const stashMatch = stashRef.shortName.match(/stash@\{(\d+)\}/)
-      const index = stashMatch ? parseInt(stashMatch[1], 10) : 0
-
-      selectSingle(oid)
-
-      async function runStash(fn: () => Promise<unknown>) {
-        try {
-          await fn()
-          mutate(['git-stashes', repoPath])
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        } catch (err) {
-          toast.error(String(err))
-        }
-      }
-
-      void showNativeMenu(
-        buildStashMenuSpec(
-          { isHidden: hiddenStashes.includes(oid) },
-          {
-            onApply: () => void runStash(() => apiStashApply(repoPath, index)),
-            onPop: () => void runStash(() => apiStashPop(repoPath, index)),
-            onDelete: () => void runStash(() => apiStashDrop(repoPath, index)),
-            onEditMessage: () => {
-              selectSingle(oid)
-              setEditingOid(oid)
-            },
-            onToggleVisibility: () => toggleStashVisibility(repoPath, oid),
-          },
-          t
-        )
-      ).catch(console.error)
-      return
-    }
 
     let targets: string[]
     if (selected.has(oid)) {
@@ -475,7 +183,7 @@ export function useGitGraphActions({
         for (const target of selectedOldestFirst) {
           await apiCherryPickCommit(repoPath, target)
         }
-        refreshLogAndStatus()
+        refreshLogAndStatus(queryClient, repoPath)
         toast.success(t('gitTree.contextMenu.cherryPicked'))
       } catch (err) {
         toast.error(String(err))
@@ -498,162 +206,11 @@ export function useGitGraphActions({
     async function handleRebaseOntoCommit() {
       try {
         await apiRebaseOntoCommit(repoPath, oid)
-        refreshLogAndStatus()
+        refreshLogAndStatus(queryClient, repoPath)
         toast.success(t('gitTree.contextMenu.rebased'))
       } catch (err) {
         toast.error(String(err))
       }
-    }
-
-    // ── Per-branch submenu actions ────────────────────────────────────────────
-    // Which submenus exist and what they contain is decided by `buildCommitMenuSpec` (the
-    // configurable rules live in `lib/graphContextMenus.ts`); here we only wire the effects.
-
-    /** Runs a git action, refreshing the graph on success and surfacing failures as a toast. */
-    async function run(fn: () => Promise<unknown>, successMsg?: string) {
-      try {
-        await fn()
-        refreshLogAndStatus()
-        queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
-        if (successMsg) toast.success(successMsg)
-      } catch (err) {
-        toast.error(String(err))
-      }
-    }
-
-    async function handleCopyBranchName(name: string) {
-      await navigator.clipboard.writeText(name)
-      toast.success(t('gitTree.branchMenu.nameCopied'))
-    }
-
-    async function handleCopyBranchLink(ref: GitRef) {
-      try {
-        // The GitHub tree URL wants the branch name without the remote prefix (origin/x → x).
-        const name =
-          ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
-        const url = await apiGetBranchWebUrl(repoPath, name)
-        if (!url) {
-          toast.error(t('gitTree.contextMenu.noRemoteLink'))
-          return
-        }
-        await navigator.clipboard.writeText(url)
-        toast.success(t('gitTree.contextMenu.linkCopied'))
-      } catch (err) {
-        toast.error(String(err))
-      }
-    }
-
-    /**
-     * Opens one of the two branch-scoped AI right panels on `ref`, resolving the base it should be
-     * read against first.
-     *
-     * Shared by the explanation and the review because the base resolution is the whole subtlety and
-     * must not drift between them: it looks only at local refs (the panel has to work on a repo with
-     * no remote and no GitHub token), and a branch with no resolvable merge target opens nothing
-     * rather than silently comparing against something arbitrary.
-     */
-    function openBranchAiPanel(ref: GitRef, kind: 'branch' | 'reviewBranch') {
-      const baseRef = resolveExplanationBase(
-        ref.shortName,
-        targetBranches,
-        // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
-        // arrive as `main` and never match a configured `origin/*` merge target.
-        (branches ?? []).map((b) => b.name)
-      )
-      if (!baseRef) {
-        toast.error(t('gitTree.branchExplanation.noBase', { branch: ref.shortName }))
-        return
-      }
-      // Straight to the shared UI state rather than through `pendingAction`: this opens a right
-      // panel, not one of the overlay manager's dialogs, and the sidebar menu opens the same one.
-      setAiPanelTarget({ kind, branch: ref.shortName, baseRef })
-    }
-
-    const relParams = (ref: GitRef) => ({ branch: ref.shortName, current: currentBranch ?? '' })
-    const branchActions: BranchMenuActions = {
-      onPull: (ref) =>
-        void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', relParams(ref))),
-      onPush: (ref) =>
-        void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', relParams(ref))),
-      // An unambiguous origin/<name> match (see resolveDefaultUpstream) applies straight away;
-      // anything else opens the picker dialog so the user chooses instead of the app guessing.
-      onSetUpstream: (ref) => {
-        const target = resolveDefaultUpstream(ref.shortName, branches ?? [])
-        if (target) {
-          void run(
-            () => apiSetBranchUpstream(repoPath, ref.shortName, target),
-            t('gitTree.branchMenu.upstreamSet', { branch: ref.shortName, upstream: target })
-          )
-        } else {
-          setPendingAction({ kind: 'setUpstream', branch: ref.shortName })
-        }
-      },
-      onFastForward: (ref) =>
-        void run(
-          () => apiFastForwardBranch(repoPath, ref.shortName, currentBranch as string),
-          t('gitTree.branchMenu.fastForwarded', relParams(ref))
-        ),
-      onMergeInto: (ref) =>
-        void run(
-          () => apiMergeBranch(repoPath, ref.shortName, currentBranch as string),
-          t('gitTree.branchMenu.merged', relParams(ref))
-        ),
-      onRebaseOntoBranch: (ref) =>
-        void run(
-          () => apiRebaseOntoCommit(repoPath, ref.commitOid),
-          t('gitTree.branchMenu.rebased', relParams(ref))
-        ),
-      // A remote ref switches onto its LOCAL branch, creating it (tracking that remote) if it
-      // doesn't exist — `git switch x`, not the detached `git checkout origin/x`. See
-      // `checkoutRemoteBranchAsLocal`.
-      onCheckoutBranch: (ref) => {
-        if (ref.type === 'remote') {
-          void checkoutRemoteBranchAsLocal(repoPath, ref.shortName)
-          return
-        }
-        void checkoutBranchWithStashPrompt(
-          repoPath,
-          ref.type === 'branch' ? ref.shortName : ref.commitOid
-        )
-      },
-      onOpenWorktreeFrom: (ref) => void handleCreateWorktree(ref.commitOid),
-      // PR-create flow prefilled with head = current branch, base = the remote branch (without
-      // its remote prefix) — the flow itself handles pushing.
-      onStartPr: (ref) => {
-        const base =
-          ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
-        openPrCreateWith(currentBranch ?? '', base)
-      },
-      // Opens the branch-vs-branch diff from the clicked branch towards the checked-out one — the
-      // usual question ("what does my work change compared to that branch?"). Both sides stay
-      // re-pickable in the dialog, so a detached HEAD just starts on the same ref twice.
-      onCompareWithBranch: (ref) =>
-        setCompareRefsTarget({ baseRef: ref.shortName, headRef: currentBranch ?? ref.shortName }),
-      // Both branch-scoped AI panels read the branch against the repo's merge target, resolved from
-      // local refs only — they must open on a repo with no remote and no GitHub token.
-      onExplainBranch: (ref) => openBranchAiPanel(ref, 'branch'),
-      onReviewBranch: (ref) => openBranchAiPanel(ref, 'reviewBranch'),
-      onRenameBranch: (ref) => setPendingAction({ kind: 'renameBranch', branch: ref.shortName }),
-      // A remote ref is never deleted outright from the menu: it needs a real network push
-      // (`git push origin :refs/heads/<name>`), so it goes through a confirmation dialog instead —
-      // unlike a local branch, which stays instant (git itself already refuses an unmerged one).
-      onDeleteBranch: (ref) => {
-        if (ref.type === 'remote') {
-          setPendingDeleteRemoteBranch(remoteBranchTarget(ref))
-          return
-        }
-        void run(
-          () => apiDeleteBranch(repoPath, ref.shortName, { targetOid: ref.commitOid }),
-          t('gitTree.branchMenu.deleted', relParams(ref))
-        )
-      },
-      onCopyBranchName: (ref) => void handleCopyBranchName(ref.shortName),
-      onCopyBranchLink: (ref) => void handleCopyBranchLink(ref),
-      onPinToLeft: (ref) => {
-        setPin(repoPath, ref.shortName, true)
-        toast.success(t('gitTree.branchMenu.pinned', relParams(ref)))
-      },
-      onSolo: (ref) => enableSolo([ref.shortName]),
     }
 
     // The current branch as a ref pointing at its OWN tip (the node carrying that branch label),
@@ -688,15 +245,15 @@ export function useGitGraphActions({
           isOnProtectedBranch: currentBranch !== null && protectedBranches.includes(currentBranch),
         },
         {
-          onCheckout: () => handleCheckoutDetached(oid),
-          onCreateWorktree: () => handleCreateWorktree(oid),
+          onCheckout: () => commitActions.checkoutDetached(oid),
+          onCreateWorktree: () => commitActions.createWorktree(oid),
           onCreateBranch: () => setPendingAction({ kind: 'branch' }),
-          onCherryPick: () => handleCherryPick(oid),
+          onCherryPick: () => commitActions.cherryPick(oid),
           onReset: (mode) => setPendingAction({ kind: 'reset', mode }),
           onRevert: () => setPendingAction({ kind: 'revert' }),
-          onCopySha: () => void handleCopySha(oid),
-          onCopyLink: () => void handleCopyWebLink(oid),
-          onCreatePatch: () => void handleCreatePatch(oid),
+          onCopySha: () => void commitActions.copySha(oid),
+          onCopyLink: () => void commitActions.copyWebLink(oid),
+          onCreatePatch: () => void commitActions.createPatch(oid),
           onCreateTag: () => setTagDraft({ oid, annotated: false }),
           onCreateAnnotatedTag: () => setTagDraft({ oid, annotated: true }),
           onCherryPickSelection: () => void handleCherryPickSelection(),
@@ -781,7 +338,7 @@ export function useGitGraphActions({
     submitTagDraft,
     cancelTagDraft,
     openMenuAt,
-    handleCommitWip,
+    handleCommitWip: commitActions.commitWip,
     openFixupWindow,
   }
 }

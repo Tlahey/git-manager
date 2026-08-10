@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Focus, Search, X } from 'lucide-react'
-import { Input, toast } from '@git-manager/ui'
 import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../hooks/useSidebarResize'
 import { useSidebarRows } from '../hooks/useSidebarRows'
@@ -11,30 +9,19 @@ import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
 import { SidebarRail } from './SidebarRail'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
-import { SidebarRowView } from './SidebarRowView'
-import { SidebarSectionHeader } from './SidebarSectionHeader'
-import {
-  MIN_SECTION_BODY_HEIGHT,
-  MIN_SECTION_HEIGHT,
-  DEFAULT_PINNED,
-  type SectionKey,
-} from './types'
+import { SidebarSearchHeader } from './SidebarSearchHeader'
+import { SidebarSectionList, type SidebarRowHandlers } from './SidebarSectionList'
+import { useSidebarDialogs } from './useSidebarDialogs'
+import { DEFAULT_PINNED, type SectionKey } from './types'
+import type { SectionHeaderActionHandlers } from './sectionHeaderActions.config'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useRepoViewStore } from '../../../stores/repoView.store'
 import { BlameHistoryPanel } from '../../../components/diff-viewer/BlameHistoryPanel'
-import { useQueryClient } from '@tanstack/react-query'
-import { mutate } from 'swr'
-import { showNativeMenu } from '../../../api/nativeMenu.api'
-import { buildStashMenuSpec } from '../../../lib/graphContextMenus'
 import { shortOid } from '../../../lib/shortOid'
-import { apiStashApply, apiStashPop, apiStashDrop } from '../../../api/git.api'
 import { useWorktreeWipStatuses } from '../hooks/useWorktreeWipStatuses'
+import { useStashMenu } from '../hooks/useStashMenu'
 import { SidebarDialogsManager } from './SidebarDialogsManager'
-import {
-  resolveSectionHeaderActions,
-  type SectionHeaderActionHandlers,
-} from './sectionHeaderActions.config'
 import { useGithubAccount } from '../../../hooks/useGithubAccount'
 import { useSidebarIssueMenu } from '../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../hooks/useSidebarPrMenu'
@@ -98,8 +85,6 @@ export function RepositorySidebar({
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
   const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
-  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
-  const queryClient = useQueryClient()
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
 
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
@@ -119,27 +104,12 @@ export function RepositorySidebar({
     setActiveWorkspacePath(wt.path)
   }
 
-  const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
-  // Branch the worktree dialog opens on when it was raised from a pull request; null for the
-  // section header's "+", which falls back to the current branch.
-  const [worktreeBranch, setWorktreeBranch] = useState<string | null>(null)
-  const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
-  // Whether the pending removal should also delete the worktree's branch — the two menu entries
-  // share one dialog, which only differs by this flag.
-  const [removeWithBranch, setRemoveWithBranch] = useState(false)
-  const [pruneWorktreesOpen, setPruneWorktreesOpen] = useState(false)
-  // null = closed; 'all' / 'mine' = open, filtered to the current user's merged PRs when 'mine'.
-  const [removeMergedWorktrees, setRemoveMergedWorktrees] = useState<null | 'all' | 'mine'>(null)
-  const [removeMergedBranches, setRemoveMergedBranches] = useState<null | 'all' | 'mine'>(null)
-  const [pruneBranchesOpen, setPruneBranchesOpen] = useState(false)
-  const [createBranchOpen, setCreateBranchOpen] = useState(false)
-  const [createIssueOpen, setCreateIssueOpen] = useState(false)
-  // null = closed. `filter: null` opens the dialog on a new one; `kind` names the list it belongs
-  // to. A plain boolean couldn't tell "add" from "edit the first filter", nor issues from PRs.
-  const [filterDialog, setFilterDialog] = useState<{
-    kind: 'issues' | 'prs'
-    filter: SavedFilter | null
-  } | null>(null)
+  // Every dialog the headers and rows can raise — state and openers both (see `useSidebarDialogs`).
+  const dialogs = useSidebarDialogs()
+  // Destructured because the two menu hooks below keep these in their own dependency lists, and a
+  // property read off `dialogs.open` is a fresh expression on every render as far as the linter is
+  // concerned. The openers themselves are memoized in the hook.
+  const { addWorktree: openAddWorktreeDialog, savedFilter: openSavedFilterDialog } = dialogs.open
 
   // A branch row's two gestures: one click brings its tip into view in the graph, a double click
   // switches to it. A remote row switches onto its local counterpart, creating it if it doesn't
@@ -165,48 +135,34 @@ export function RepositorySidebar({
   const openPrMenu = useSidebarPrMenu({
     repoPath,
     onSelectBranch,
-    onCreateWorktree: useCallback((branch: string) => {
-      setWorktreeBranch(branch)
-      setAddWorktreeOpen(true)
-    }, []),
+    onCreateWorktree: openAddWorktreeDialog,
   })
   const openIssueFilterMenu = useSavedFilterMenu(
     useIssueFiltersStore,
-    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'issues', filter }), [])
+    useCallback(
+      (filter: SavedFilter) => openSavedFilterDialog('issues', filter),
+      [openSavedFilterDialog]
+    )
   )
   const openPrFilterMenu = useSavedFilterMenu(
     usePrFiltersStore,
-    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'prs', filter }), [])
+    useCallback(
+      (filter: SavedFilter) => openSavedFilterDialog('prs', filter),
+      [openSavedFilterDialog]
+    )
   )
 
-  const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
-    const runStash = async (fn: () => Promise<unknown>) => {
-      try {
-        await fn()
-        mutate(['git-stashes', repoPath])
-        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-      } catch (err) {
-        toast.error(String(err))
-      }
-    }
-    void showNativeMenu(
-      buildStashMenuSpec(
-        { isHidden: hiddenStashes.includes(stash.commitOid) },
-        {
-          onApply: () => void runStash(() => apiStashApply(repoPath, stash.index)),
-          onPop: () => void runStash(() => apiStashPop(repoPath, stash.index)),
-          onDelete: () => void runStash(() => apiStashDrop(repoPath, stash.index)),
-          onEditMessage: () => {
-            onSelectBranch(stash.commitOid)
-            setEditingOid(stash.commitOid)
-          },
-          onToggleVisibility: () => toggleStashVisibility(repoPath, stash.commitOid),
-        },
-        t
-      )
-    ).catch(console.error)
-  }
+  // The same menu the graph's stash rows open — see `useStashMenu`. Unlike the graph, a right-click
+  // here does not move the selection; only renaming needs the row selected.
+  const openStashMenu = useStashMenu({
+    repoPath,
+    hiddenStashes,
+    selectRow: onSelectBranch,
+    toggleStashVisibility,
+    t,
+  })
+  const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) =>
+    openStashMenu(stash.commitOid, stash.index)
 
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
@@ -283,25 +239,20 @@ export function RepositorySidebar({
   // opened anonymously — so the whole set goes, rather than offering four dead-ends beside the
   // "connect your account" row the section's body now shows.
   const sectionHeaderActionHandlers: SectionHeaderActionHandlers = {
-    onCreateBranch: onCreateBranch ?? (() => setCreateBranchOpen(true)),
-    onPruneBranches: () => setPruneBranchesOpen(true),
-    onRemoveMergedBranches: () => setRemoveMergedBranches('all'),
-    onRemoveMyMergedBranches: () => setRemoveMergedBranches('mine'),
-    onAddWorktree: () => {
-      setWorktreeBranch(null)
-      setAddWorktreeOpen(true)
-    },
-    onPruneWorktrees: () => setPruneWorktreesOpen(true),
-    onRemoveMergedWorktrees: () => setRemoveMergedWorktrees('all'),
-    onRemoveMyMergedWorktrees: () => setRemoveMergedWorktrees('mine'),
+    onCreateBranch: onCreateBranch ?? dialogs.open.createBranch,
+    onPruneBranches: dialogs.open.pruneBranches,
+    onRemoveMergedBranches: () => dialogs.open.removeMergedBranches('all'),
+    onRemoveMyMergedBranches: () => dialogs.open.removeMergedBranches('mine'),
+    // `null`: the section header's "+" has no branch in mind, so the dialog falls back to the
+    // current one — unlike the PR menu's own entry, which names the PR's head branch.
+    onAddWorktree: () => dialogs.open.addWorktree(null),
+    onPruneWorktrees: dialogs.open.pruneWorktrees,
+    onRemoveMergedWorktrees: () => dialogs.open.removeMergedWorktrees('all'),
+    onRemoveMyMergedWorktrees: () => dialogs.open.removeMergedWorktrees('mine'),
     onCreatePr: githubConnected ? () => setPrCreateOpen(true) : undefined,
-    onCreateIssue: githubConnected ? () => setCreateIssueOpen(true) : undefined,
-    onAddIssueFilter: githubConnected
-      ? () => setFilterDialog({ kind: 'issues', filter: null })
-      : undefined,
-    onAddPrFilter: githubConnected
-      ? () => setFilterDialog({ kind: 'prs', filter: null })
-      : undefined,
+    onCreateIssue: githubConnected ? dialogs.open.createIssue : undefined,
+    onAddIssueFilter: githubConnected ? () => dialogs.open.savedFilter('issues', null) : undefined,
+    onAddPrFilter: githubConnected ? () => dialogs.open.savedFilter('prs', null) : undefined,
   }
 
   const onTogglePin = (shortName: string) => {
@@ -332,6 +283,41 @@ export function RepositorySidebar({
     }
     return m
   }, [sections])
+
+  // Every row prop that is the same for every row on the panel, assembled once. The list is long
+  // because a sidebar row can be a branch, a tag, a stash, a worktree, a PR or an issue, and each
+  // kind brings its own gestures — but none of it varies per row, which is why it travels as one
+  // object rather than twenty-five lines of JSX repeated inside the map.
+  const rowHandlers: SidebarRowHandlers = {
+    repoPath,
+    filterQuery: branchQuery,
+    soloActive,
+    soloed,
+    onToggleSolo: toggleSolo,
+    onSelectBranch,
+    onFocusBranch: focusBranch,
+    onCheckoutBranch: checkoutBranch,
+    onSelectTag,
+    onTogglePin,
+    onContextMenu,
+    onRemoteBranchContextMenu,
+    onOpenPr,
+    onPrContextMenu: openPrMenu,
+    onIssueContextMenu: openIssueMenu,
+    onOpenIssue: setActiveIssue,
+    onStashContextMenu: handleStashContextMenu,
+    hiddenStashes,
+    onToggleStashVisibility: (oid) => toggleStashVisibility(repoPath, oid),
+    onTagContextMenu,
+    hiddenTags,
+    onToggleTagVisibility: (name) => toggleTagVisibility(repoPath, name),
+    hiddenBranches,
+    onToggleBranchesVisibility: (names, hidden) => setBranchesHidden(repoPath, names, hidden),
+    onRemoveWorktree: (wt) => dialogs.open.removeWorktree(wt, false),
+    onRemoveWorktreeAndBranch: (wt) => dialogs.open.removeWorktree(wt, true),
+    onOpenWorktree: handleOpenWorktree,
+    worktreeWipStatuses,
+  }
 
   // ── Focus shortcut (⌥⌘F) ────────────────────────────────────────────
   const focusToken = useSidebarSearchStore((s) => s.focusToken)
@@ -399,175 +385,29 @@ export function RepositorySidebar({
       className="relative flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
       style={{ width }}
     >
-      {/* Sidebar header */}
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
-        <span className="text-[10px] font-bold tracking-widest text-sidebar-muted-foreground/60 uppercase select-none">
-          Repository
-        </span>
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={onToggleSoloMode}
-            title={soloActive ? t('sidebar.solo.exit') : t('sidebar.solo.enable')}
-            aria-label={soloActive ? t('sidebar.solo.exit') : t('sidebar.solo.enable')}
-            aria-pressed={soloActive}
-            data-testid="sidebar-solo-toggle"
-            className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors ${
-              soloActive
-                ? 'bg-primary/15 text-primary hover:bg-primary/25'
-                : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-            }`}
-          >
-            <Focus className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <SidebarSearchHeader
+        query={branchQuery}
+        onQueryChange={setBranchQuery}
+        filterStats={filterStats}
+        soloActive={soloActive}
+        soloCount={soloCount}
+        onToggleSolo={onToggleSoloMode}
+        onClearSolo={clearSolo}
+        inputRef={searchInputRef}
+      />
 
-      {/* Branch search box — the primary ring signals that solo mode is active */}
-      <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
-        {isFilterActive && (
-          <div
-            className="mb-1 px-0.5 text-[10px] text-sidebar-muted-foreground"
-            data-testid="sidebar-filter-stats"
-          >
-            <span className="font-semibold text-primary">{filterStats.matched}</span>
-            {` / ${t('sidebar.filterResults', { count: filterStats.total })}`}
-          </div>
-        )}
-        <Input
-          ref={searchInputRef}
-          variant="chrome"
-          type="text"
-          value={branchQuery}
-          onChange={(e) => setBranchQuery(e.target.value)}
-          placeholder={t('sidebar.filterBranchesPlaceholder')}
-          aria-label={t('sidebar.filterBranches')}
-          className={`h-7 text-xs shadow-none ${
-            soloActive ? 'ring-1 ring-primary focus-visible:ring-primary' : ''
-          }`}
-          startIcon={
-            // No colour outside solo mode: the field's own graded pair applies (see `Input`'s
-            // ICON_CLASSES). `sidebar-muted-foreground` is graded against the sidebar background,
-            // not against the `sidebar-accent` fill this icon actually sits on.
-            <Search className={`h-3.5 w-3.5 ${soloActive ? 'text-primary' : ''}`} />
-          }
-          endIcon={
-            branchQuery ? (
-              <button
-                onClick={() => setBranchQuery('')}
-                aria-label={t('sidebar.clearFilter')}
-                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            ) : undefined
-          }
-        />
-        {soloActive && (
-          <div
-            className="mt-1.5 flex items-center gap-1.5 rounded bg-primary/10 px-1.5 py-1 text-[10px] text-primary"
-            data-testid="sidebar-solo-strip"
-          >
-            <Focus className="h-3 w-3 shrink-0" />
-            <span className="flex-1 truncate font-medium">
-              {t('sidebar.solo.active', { count: soloCount })}
-            </span>
-            <button
-              onClick={clearSolo}
-              className="flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 font-medium transition-colors hover:bg-primary/20"
-              data-testid="sidebar-solo-clear"
-            >
-              <X className="h-2.5 w-2.5" />
-              {t('sidebar.solo.clear')}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Collapsible sections — every open section is `flex-1` (equal weight, 0% basis): open
-          sections always split the available height in strictly equal shares, even a sparse
-          section (e.g. a single worktree) — that's intentional, so every open section lines up on
-          the same height. Each open section has a floor (min-height) set explicitly via inline
-          style rather than relying on the automatic minimum size derived from content (see the
-          `MIN_SECTION_HEIGHT` comment in types.ts for why — that's what caused unbounded growth
-          and then overlap with the following sections). If the sum of the open sections' floors
-          exceeds the panel's height, the whole section list becomes scrollable (a single global
-          scrollbar). Closed sections stay `flex-none` (never shrink below their header). */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
-        {sections.map((section) => (
-          <div
-            key={section.key}
-            ref={section.key === sectionToReveal ? revealSectionRef : undefined}
-            className={`flex flex-col border-b border-sidebar-border last:border-b-0 ${
-              section.isOpen ? 'flex-1' : 'flex-none'
-            }`}
-            style={section.isOpen ? { minHeight: MIN_SECTION_HEIGHT } : undefined}
-            data-testid={`sidebar-section-container-${section.key}`}
-          >
-            <SidebarSectionHeader
-              sectionKey={section.key}
-              title={section.title}
-              count={section.count}
-              isOpen={section.isOpen}
-              onToggle={() => toggleOpen(`section:${section.key}`, section.isOpen)}
-              {...resolveSectionHeaderActions(section.key, sectionHeaderActionHandlers)}
-              isFiltered={isFilterActive}
-            />
-            {section.isOpen && (
-              <div
-                className="flex-1 overflow-y-auto"
-                style={{ minHeight: MIN_SECTION_BODY_HEIGHT }}
-              >
-                {section.rows.map((row) => (
-                  <SidebarRowView
-                    key={row.id}
-                    row={row}
-                    repoPath={repoPath}
-                    filterQuery={branchQuery}
-                    soloActive={soloActive}
-                    soloed={soloed}
-                    onToggleSolo={toggleSolo}
-                    onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
-                    onSelectBranch={onSelectBranch}
-                    onFocusBranch={focusBranch}
-                    onCheckoutBranch={checkoutBranch}
-                    onSelectTag={onSelectTag}
-                    onTogglePin={onTogglePin}
-                    onContextMenu={onContextMenu}
-                    onRemoteBranchContextMenu={onRemoteBranchContextMenu}
-                    onOpenPr={onOpenPr}
-                    onPrContextMenu={openPrMenu}
-                    onIssueContextMenu={openIssueMenu}
-                    onOpenIssue={setActiveIssue}
-                    onIssueFilterMenu={
-                      section.key === 'prs' ? openPrFilterMenu : openIssueFilterMenu
-                    }
-                    onStashContextMenu={handleStashContextMenu}
-                    hiddenStashes={hiddenStashes}
-                    onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
-                    onTagContextMenu={onTagContextMenu}
-                    hiddenTags={hiddenTags}
-                    onToggleTagVisibility={(name) => toggleTagVisibility(repoPath, name)}
-                    hiddenBranches={hiddenBranches}
-                    onToggleBranchesVisibility={(names, hidden) =>
-                      setBranchesHidden(repoPath, names, hidden)
-                    }
-                    onRemoveWorktree={(wt) => {
-                      setRemoveWithBranch(false)
-                      setWorktreeToRemove(wt)
-                    }}
-                    onRemoveWorktreeAndBranch={(wt) => {
-                      setRemoveWithBranch(true)
-                      setWorktreeToRemove(wt)
-                    }}
-                    onOpenWorktree={handleOpenWorktree}
-                    worktreeWipStatuses={worktreeWipStatuses}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <SidebarSectionList
+        sections={sections}
+        openById={openById}
+        onToggleOpen={toggleOpen}
+        sectionToReveal={sectionToReveal}
+        revealSectionRef={revealSectionRef}
+        isFiltered={isFilterActive}
+        sectionHeaderActions={sectionHeaderActionHandlers}
+        rowHandlers={rowHandlers}
+        onPrFilterMenu={openPrFilterMenu}
+        onIssueFilterMenu={openIssueFilterMenu}
+      />
 
       {/* Resize handle */}
       <SidebarResizeHandle {...resizeHandleProps} />
@@ -581,28 +421,9 @@ export function RepositorySidebar({
         prunableWorktrees={prunableWorktrees}
         allLocalBranches={allLocalBranches}
         refreshIssues={refreshIssues}
-        addWorktreeOpen={addWorktreeOpen}
-        onCloseAddWorktree={() => setAddWorktreeOpen(false)}
-        worktreeBranch={worktreeBranch}
-        worktreeToRemove={worktreeToRemove}
-        onCloseRemoveWorktree={() => setWorktreeToRemove(null)}
-        removeWithBranch={removeWithBranch}
-        pruneWorktreesOpen={pruneWorktreesOpen}
-        onClosePruneWorktrees={() => setPruneWorktreesOpen(false)}
-        removeMergedWorktrees={removeMergedWorktrees}
-        onCloseRemoveMergedWorktrees={() => setRemoveMergedWorktrees(null)}
-        removeMergedBranches={removeMergedBranches}
-        onCloseRemoveMergedBranches={() => setRemoveMergedBranches(null)}
-        pruneBranchesOpen={pruneBranchesOpen}
-        onClosePruneBranches={() => setPruneBranchesOpen(false)}
-        createBranchOpen={createBranchOpen}
-        onCloseCreateBranch={() => setCreateBranchOpen(false)}
         createBranchOid={createBranchOid}
         createBranchShortOid={createBranchShortOid}
-        createIssueOpen={createIssueOpen}
-        onCloseCreateIssue={() => setCreateIssueOpen(false)}
-        filterDialog={filterDialog}
-        onCloseFilterDialog={() => setFilterDialog(null)}
+        {...dialogs.state}
       />
     </div>
   )

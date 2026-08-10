@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GitGraphNode } from '@git-manager/git-types'
-import { descendantsOnCurrentBranch } from './useGitGraphActions'
+import { descendantsOnCurrentBranch } from './descendantsOnCurrentBranch'
 
 /** A graph node carrying only what the descendant walk reads. */
 function node(oid: string, parents: string[] = []): GitGraphNode {
