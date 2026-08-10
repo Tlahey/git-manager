@@ -438,8 +438,7 @@ export function GithubSection() {
             </h4>
             {activeAccount && (
               <p className="text-xs text-muted-foreground">
-                Connected as{' '}
-                <span className="font-medium text-foreground">@{activeAccount.user.login}</span>
+                {t('settings.github.connectedAs', { login: activeAccount.user.login })}
               </p>
             )}
           </div>
