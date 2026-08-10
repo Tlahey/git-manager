@@ -37,6 +37,12 @@ const REQUIRED: Array<{ permission: string; usedBy: string }> = [
     usedBy: 'notchWindow.ts, placing the parked window before its card arrives',
   },
   {
+    permission: 'core:window:allow-set-focusable',
+    usedBy:
+      'notchWindow.ts, keeping the parked window unable to become key — without it, hiding a ' +
+      'dismissed card hands focus to the main window and pulls the app in front of the user',
+  },
+  {
     permission: 'core:window:allow-hide',
     usedBy: 'tauriNotchHost.ts (a card leaving) and notchWindow.ts (closeNotchWindow parking it)',
   },

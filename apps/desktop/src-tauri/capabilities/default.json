@@ -19,6 +19,7 @@
     "core:window:allow-set-focus",
     "core:window:allow-set-size",
     "core:window:allow-hide",
+    "core:window:allow-set-focusable",
     "updater:default",
     "process:allow-restart"
   ]

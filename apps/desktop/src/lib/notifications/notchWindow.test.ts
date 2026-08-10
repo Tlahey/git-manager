@@ -27,6 +27,7 @@ const {
   hideExisting,
   setSize,
   setPosition,
+  setFocusable,
 } = vi.hoisted(() => ({
   trayRect: { current: null as { x: number; y: number } | null },
   ctor: vi.fn(),
@@ -43,6 +44,7 @@ const {
   hideExisting: vi.fn(),
   setSize: vi.fn(),
   setPosition: vi.fn(),
+  setFocusable: vi.fn(),
 }))
 
 vi.mock('../../api/notification.api', () => ({
@@ -116,6 +118,7 @@ beforeEach(() => {
   hideExisting.mockClear()
   setSize.mockClear()
   setPosition.mockClear()
+  setFocusable.mockClear()
 })
 
 /** The parked notch window: what `getByLabel` hands back once one exists. */
@@ -123,6 +126,7 @@ function parkedWindow() {
   return {
     setSize,
     setPosition,
+    setFocusable,
     hide: hideExisting,
     close: closeExisting,
     once: (event: string, handler: (payload?: unknown) => void) => {
@@ -311,6 +315,19 @@ describe('openNotchWindow', () => {
     expect(decoded.iconId).toBe('pr_merged')
     expect(decoded.bandHeight).toBe(38)
     expect(decoded.windowY).toBe(-1 - HALO_MARGIN)
+  })
+
+  it('re-asserts that the parked window cannot become key, on every card', async () => {
+    // Not merely a creation option. This window is made once and reused for the life of the app, so
+    // a creation-time setting only describes the window some particular launch built — a frontend
+    // reload leaves the old one standing, which is how the first attempt at this fix reached
+    // nobody. Without it, hiding a dismissed card hands key status to the main window and pulls the
+    // app in front of the user.
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await openNotchWindow(request)
+
+    expect(setFocusable).toHaveBeenCalledWith(false)
   })
 
   it('places and sizes the parked window before its content arrives', async () => {

@@ -166,6 +166,14 @@ export async function openNotchWindow(
   if (parked) {
     currentOnDestroyed = options.onDestroyed
     try {
+      // Re-asserted per card, not merely set at creation, and that distinction is the whole point:
+      // this window is made **once** and reused for the life of the app, so a creation-time option
+      // only ever describes the window a *particular* launch happened to build. The window in front
+      // of us may have been created before this code existed — a frontend reload leaves it standing
+      // (`warmUpNotchWindow` finds it and returns), which is exactly how the first attempt at this
+      // fix reached nobody. Saying it again on every card is what makes it true of the window we
+      // actually have. `setFocusable` writes the same tao ivar the creation option does.
+      await parked.setFocusable(false)
       // Sized and placed before the content arrives: the page measures its slide against the
       // `windowY` in its own payload, so it must find the window already where that says it is.
       await parked.setSize(new LogicalSize(rectangle.width, rectangle.height))
