@@ -1,7 +1,13 @@
 import type { AiContext, AiContextFile } from '../config'
+import { AiCallTracker, type CancelCall } from './aiCallTracker'
+import { isCompletionCancelled } from './completionCancelled'
 import { splitDiffByFile } from './diffBudget'
 import type { FileSummary, FileSummaryInput, FileSummaryResult } from './fileSummary'
-import { DEFAULT_AI_CONCURRENCY, mapConcurrently } from './mapConcurrently'
+import {
+  DEFAULT_AI_CONCURRENCY,
+  mapConcurrently,
+  type MapConcurrentlyOutcome,
+} from './mapConcurrently'
 
 /**
  * Progress of a run that reads files one at a time.
@@ -18,12 +24,23 @@ export interface SummaryProgress {
 export interface SummarizeOptions {
   onProgress?(progress: SummaryProgress): void
   /**
-   * Polled before each call is dispatched. Cancellation is therefore **between** calls, not within
-   * one: the completion transport takes no request id, so a call already in flight runs to completion
-   * and its result is discarded. Acceptable only because each summary call is small — it is the
-   * reason this phase is one call per file rather than one per batch of files.
+   * Polled before each call is dispatched, and on a timer while one is in flight.
+   *
+   * Cancellation used to be **between** calls only, because the completion transport took no request
+   * id — a call already sent ran to completion and had its result discarded. It no longer does: pair
+   * this with {@link cancelCall} and the call in flight is aborted too, within roughly a tenth of a
+   * second (see {@link mapConcurrently}). Without a `cancelCall` the old behaviour is what remains,
+   * which is why every caller in the app supplies one.
    */
   shouldCancel?(): boolean
+  /**
+   * Stops one in-flight call, named by the id it was dispatched under.
+   *
+   * Supplied by the host (`fileSummaryService.cancel`), because reaching the backend is not this
+   * package's business. The ids are minted per call rather than per run — see {@link AiCallTracker}
+   * for why sharing one would make exactly one of the concurrent calls cancellable.
+   */
+  cancelCall?: CancelCall
   /**
    * How many files may be summarized at once. Defaults to {@link DEFAULT_AI_CONCURRENCY} (one).
    *
@@ -65,15 +82,21 @@ export class SummaryRunCancelled extends Error {
  *
  * A file whose call fails is kept with empty fields rather than dropped. Every consumer's
  * instruction has a rule for handling one, and losing a file here would be the exact failure the
- * two-phase path exists to avoid.
+ * two-phase path exists to avoid. **A file whose call was cancelled is not one of those**: the run
+ * is over, and recording the user's own stop as "this file could not be described" would put a gap
+ * into a summary that then gets written as if it were complete.
+ *
+ * `summarize` receives the request id its call must be dispatched under, so stopping the run can
+ * reach a call already sent. A host that ignores it keeps the old between-calls behaviour.
  */
 export async function summarizeFiles(
   context: AiContext,
-  summarize: (input: FileSummaryInput) => Promise<FileSummaryResult>,
+  summarize: (input: FileSummaryInput, requestId: string) => Promise<FileSummaryResult>,
   contextTokens?: number,
   options: SummarizeOptions = {}
 ): Promise<FileSummary[]> {
   const { onProgress, shouldCancel } = options
+  const calls = new AiCallTracker(options.cancelCall)
 
   // Each file's own slice of the diff. A diff with no recognizable file header yields no sections,
   // in which case every file is summarized from its path alone.
@@ -85,31 +108,52 @@ export async function summarizeFiles(
   const describeOne = async (file: AiContextFile): Promise<FileSummary> => {
     let result: FileSummaryResult = { intent: '', area: '' }
     try {
-      result = await summarize({
-        path: file.path,
-        status: file.status,
-        diff: sections.get(file.path) ?? '',
-        contextTokens,
-      })
-    } catch {
-      // Kept with empty fields — see the note above on why this file must not disappear.
+      result = await calls.track((requestId) =>
+        summarize(
+          {
+            path: file.path,
+            status: file.status,
+            diff: sections.get(file.path) ?? '',
+            contextTokens,
+          },
+          requestId
+        )
+      )
+    } catch (error) {
+      // A stop is not a failure: rethrown so this file is never recorded as one that could not be
+      // described. The pool awaits its siblings and rethrows, and the run ends as cancelled below.
+      if (isCompletionCancelled(error)) throw new SummaryRunCancelled()
+      // Anything else is kept with empty fields — see the note above on why this file must not
+      // disappear.
     }
     return { path: file.path, status: file.status, ...result }
   }
 
-  const { results, stopped } = await mapConcurrently(
-    context.files,
-    options.concurrency ?? DEFAULT_AI_CONCURRENCY,
-    describeOne,
-    {
-      onSettled: () => {
-        completed++
-        onProgress?.({ phase: 'summarizing', completed, total: context.files.length })
-      },
-      shouldStop: () => shouldCancel?.() ?? false,
+  let outcome: MapConcurrentlyOutcome<FileSummary>
+  try {
+    outcome = await mapConcurrently(
+      context.files,
+      options.concurrency ?? DEFAULT_AI_CONCURRENCY,
+      describeOne,
+      {
+        onSettled: () => {
+          completed++
+          onProgress?.({ phase: 'summarizing', completed, total: context.files.length })
+        },
+        shouldStop: () => shouldCancel?.() ?? false,
+        onStop: () => calls.cancelAll(),
+      }
+    )
+  } catch (error) {
+    // The aborted calls surface here as the pool's rethrown rejection. They mean exactly what
+    // `stopped` means below, so they end the run the same way rather than as a provider failure.
+    if (error instanceof SummaryRunCancelled || isCompletionCancelled(error)) {
+      throw new SummaryRunCancelled()
     }
-  )
+    throw error
+  }
 
+  const { results, stopped } = outcome
   if (stopped || shouldCancel?.()) throw new SummaryRunCancelled()
   return results
 }

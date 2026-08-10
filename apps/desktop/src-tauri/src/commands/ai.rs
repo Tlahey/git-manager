@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use crate::models::AiProviderStatus;
 use crate::services::ai_activity::{build_ai_activity, AiActivity};
 use crate::services::ai_commit_scan::{build_ai_commit_scan, AiCommitScan};
@@ -180,25 +181,78 @@ pub async fn ai_generate_stream(
 /// Generic non-streaming completion: relays a fully built system/user prompt and returns the full
 /// response as a string. Used by features that need a complete, parseable answer (e.g. file→commit
 /// grouping) rather than incremental tokens.
+///
+/// ## Why this takes a `request_id`, exactly like the streaming command
+///
+/// It did not, and that was the whole of "Cancel doesn't stop the model". A completion has no
+/// events to stop emitting, so it looked like there was nothing to cancel — but the *request* is
+/// what costs the user's time, and a run built out of completions is built out of many. The AI
+/// features that map over files or commits issue one completion each and only poll for cancellation
+/// **between** dispatches (`mapConcurrently`), because there was no way to reach into one already
+/// sent: pressing stop left everything in flight running to the end, up to the concurrency limit,
+/// at tens of seconds apiece. The user watched the model keep working after telling it not to.
+///
+/// So the flag is the same registry the streaming path uses, named by the same kind of id. Racing
+/// the provider against it and dropping the loser is what actually ends the HTTP request: a
+/// `reqwest` future cancels on drop, so nothing is left talking to the model.
+///
+/// [`CompletionCancelled`] is returned rather than an error string of its own, so a caller can tell
+/// "the user stopped this" from "the model failed" without matching on prose.
 #[tauri::command]
 pub async fn ai_complete(
     config: AiGenerateConfig,
     system_prompt: String,
     user_prompt: String,
     schema: Option<serde_json::Value>,
+    request_id: String,
+    state: State<'_, AppState>,
 ) -> Result<String, String> {
+    let cancel = state.generations.register(&request_id);
+
     let provider = provider_for(&config.protocol);
     let generate_config: GenerateConfig = config.into();
 
-    provider
-        .complete(
-            &generate_config,
-            &system_prompt,
-            &user_prompt,
-            schema.as_ref(),
-        )
-        .await
-        .map_err(Into::into)
+    let completion = provider.complete(
+        &generate_config,
+        &system_prompt,
+        &user_prompt,
+        schema.as_ref(),
+    );
+
+    let result = tokio::select! {
+        // Biased so a completion that finished in the same tick as the cancel is still delivered:
+        // throwing away an answer already paid for helps nobody, and the caller discards it anyway
+        // if it no longer wants it.
+        biased;
+        answer = completion => answer.map_err(Into::into),
+        () = wait_for_cancel(&cancel) => Err(String::from(AppError::AiProvider(
+            COMPLETION_CANCELLED.to_string(),
+        ))),
+    };
+
+    // On every exit path, including the cancelled one: an entry left behind would keep this id's
+    // flag alive, and a re-run reusing it would inherit a stale cancellation.
+    state.generations.finish(&request_id);
+
+    result
+}
+
+/// The marker a cancelled completion comes back with, so a caller can tell a user's stop from a
+/// model failure without matching on prose. Mirrored in `packages/ai`.
+pub const COMPLETION_CANCELLED: &str = "completion-cancelled";
+
+/// Resolves once the flag is raised.
+///
+/// Polled rather than notified because the flag is an `AtomicBool` shared with the streaming path,
+/// which polls it the same way between SSE chunks — adding a notifier for this one caller would
+/// mean two mechanisms for one piece of state. The interval bounds how long a cancelled request
+/// keeps its socket open, and 50 ms against calls measured in seconds is far below anything a user
+/// can perceive.
+async fn wait_for_cancel(flag: &std::sync::atomic::AtomicBool) {
+    use std::sync::atomic::Ordering;
+    while !flag.load(Ordering::SeqCst) {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
 }
 
 /// Cancels one streaming generation, named by the `request_id` its caller minted.

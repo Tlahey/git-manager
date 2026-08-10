@@ -172,13 +172,17 @@ calls already take twenty seconds is the difference between a budget that fits a
 timeouts — which is why this setting and `timeoutSeconds` have to move together. Returns also flatten
 early: 4 in flight bought 88% of what 8 did.
 
-Two things get worse, and neither is fixable here:
+Two things get worse:
 
-- **Cancellation gets coarser.** `shouldCancel` is polled before _dispatching_, never during a call,
-  because the completion transport takes no request id. At 1 in flight, stopping wastes one call. At
-  8 it wastes 8.
+- **Cancellation wastes more.** Stopping a run now aborts the calls already in flight as well as the
+  ones not yet dispatched (see [Cancellation](#cancellation)), so the _delay_ does not grow with the
+  setting — but a request the provider has already begun decoding has already cost its tokens, and at
+  8 in flight there are eight of those to throw away instead of one. This bullet used to say the
+  in-flight calls could not be stopped at all, "and neither is fixable here"; that was true of the
+  transport as it stood and is not true any more.
 - **The KV cache is shared.** Concurrent requests compete for it, and a server that shrinks the
-  effective window under pressure can undo the gain without reporting anything.
+  effective window under pressure can undo the gain without reporting anything — and that one is not
+  fixable here.
 
 Progress stays honest either way: `completed` counts items actually decided, not requests dispatched.
 Above 1 in flight the scan stops naming the commit it is on, because there is no longer one to name.
@@ -426,7 +430,7 @@ Every event carries the same payload, the Rust `AiStreamEvent`:
 > ignore any event whose id is not its own**. Before it existed, a commit message being written while
 > an explanation panel streamed interleaved both answers into both surfaces, and whichever finished
 > first ended the other. The id is minted frontend-side
-> ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) because the _listener_ has to know
+> ([`requestId.ts`](../../packages/ai/src/requestId.ts)) because the _listener_ has to know
 > it before the request starts; it is passed to `ai_generate_stream`, and providers emit through
 > [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so they cannot forget to
 > attach it.
@@ -484,10 +488,26 @@ that pairing is the one thing to check when adding such a feature.
 ### Cancellation
 
 `cancel_generation(requestId)` flips that request's flag in `AppState`'s
-[`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs); the provider checks it **between
-chunks** through `StreamHandle::is_cancelled`, emits `ai:cancelled` and returns. Cancellation is
-therefore cooperative: it lands within one chunk, it does not abort the HTTP request, and a model
-that has gone quiet won't notice until it emits again or the request times out.
+[`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). What happens next differs by kind
+of call, and both kinds are cancellable:
+
+- **A stream** — the provider checks the flag **between chunks** through
+  `StreamHandle::is_cancelled`, emits `ai:cancelled` and returns. Cooperative: it lands within one
+  chunk, it does not abort the HTTP request, and a model that has gone quiet won't notice until it
+  emits again or the request times out.
+- **A completion** — `ai_complete` races the provider call against the same flag (polled every
+  50 ms) with `tokio::select!`, biased toward an answer that already landed. Dropping the losing
+  future cancels the `reqwest` request, so this one _does_ abort the HTTP call. A cancelled
+  completion returns the marker `completion-cancelled`, mirrored in
+  [`completionCancelled.ts`](../../packages/ai/src/features/completionCancelled.ts), so a caller can
+  tell the user's stop from a model failure without matching on prose.
+
+Completions took no id at all until the AI search made the cost obvious: that feature is hundreds of
+completions, so "stop" could only stop the _next_ one and the model went on working for as long as
+the call in flight took. The map phases now poll while calls are outstanding
+([`mapConcurrently`](../../packages/ai/src/features/mapConcurrently.ts)) and hand their open ids back
+through [`AiCallTracker`](../../packages/ai/src/features/aiCallTracker.ts) — one id per call, never
+one per run, because the registry replaces an entry on re-registration and drops it on completion.
 
 One flag **per request id**, not one for the app: the flag used to be a single `Mutex<bool>`, so a
 stop button anywhere stopped every stream. An id that has already finished is a no-op rather than an
@@ -601,7 +621,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 
 | #   | Limitation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Impact                                                                                             | Fix sketch                                                                                                                                                                               |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id.                                                                                                                                                                | —                                                                                                  | —                                                                                                                                                                                        |
+| 1   | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`requestId.ts`](../../packages/ai/src/requestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id.                                                                                                                                                                         | —                                                                                                  | —                                                                                                                                                                                        |
 | 2   | ~~**`ai:error` is dead.**~~ **Resolved by removal.** Nothing ever emitted it and three hooks listened for it. The `invoke` promise is already this request's own error channel and already carries the message, so a parallel event would be a second source of truth for one condition — and the two would race. The listeners are gone and the reject path is documented on `AiProvider::generate` and `useAiStream`.                                                                                                                                                                                                                                                                           | —                                                                                                  | —                                                                                                                                                                                        |
 | 3   | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. The remaining judgement call — a generated file that genuinely matters — now has an escape hatch: `classifyDiffPath`/`budgetDiff` take a `DiffTierOverrides` map, carried on `DiffPromptSizing` so a feature's prompt and its coverage report cannot disagree about the order. The code review exposes it as `CodeReviewInput.tierOverrides`. | —                                                                                                  | —                                                                                                                                                                                        |
 | 4   | ~~**Two hooks still duplicate the streaming plumbing.**~~ **Resolved.** `useAiGeneration` and `usePrDescriptionGeneration` now run on [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts), which grew the `onToken` / `trackText` options they were missing — they stream into an input the caller owns, which is why they had forked in the first place. Both inherit the two fixes their copies never got: listeners are dropped on unmount, and a second run no longer stacks a listener set on the previous one.                                                                                                                                                                     | —                                                                                                  | —                                                                                                                                                                                        |
@@ -630,7 +650,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Connection + context types                                          | [packages/ai/src/config.ts](../../packages/ai/src/config.ts)                                                                                                                                                                                                                                                                                     |
 | Service assembly, transport, activity tracking                      | [apps/desktop/src/api/ai.api.ts](../../apps/desktop/src/api/ai.api.ts)                                                                                                                                                                                                                                                                           |
 | Shared streaming hook                                               | [apps/desktop/src/hooks/useAiStream.ts](../../apps/desktop/src/hooks/useAiStream.ts)                                                                                                                                                                                                                                                             |
-| Request id minting (one per generation)                             | [apps/desktop/src/lib/aiRequestId.ts](../../apps/desktop/src/lib/aiRequestId.ts)                                                                                                                                                                                                                                                                 |
+| Request id minting (one per call, stream or completion)             | [packages/ai/src/requestId.ts](../../packages/ai/src/requestId.ts)                                                                                                                                                                                                                                                                               |
 | Per-request cancel flags                                            | [src-tauri/src/state.rs](../../apps/desktop/src-tauri/src/state.rs) (`GenerationRegistry`)                                                                                                                                                                                                                                                       |
 | Error decoding                                                      | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts)                                                                                                                                                                                                                                                           |
 | Prompt sizing (budget from the context window)                      | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts)                                                                                                                                                                                                                                                                             |

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import type { ScanCommit } from '../config'
 import { AiCallTimedOut } from './aiCallTimedOut'
 import { CommitVerdictUnreadable, type CommitRelevanceResult } from './commitRelevance'
+import { COMPLETION_CANCELLED } from './completionCancelled'
 import { scanCommits, type CommitScanProgress, type ScannedCommit } from './scanCommits'
 import { SummaryRunCancelled } from './summarizeFiles'
 
@@ -57,7 +58,9 @@ describe('scanCommits', () => {
         language: 'fr',
         contextTokens: 8192,
         commit: expect.objectContaining({ shortOid: 'aaaaaaa' }),
-      })
+      }),
+      // Every call is dispatched under an id of its own, which is what a stop names.
+      expect.stringMatching(/^ai-/)
     )
   })
 
@@ -182,6 +185,94 @@ describe('scanCommits', () => {
     ).rejects.toThrow(SummaryRunCancelled)
 
     expect(judge).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * The bug the user actually reported: the panel said "cancelled" and the model went on working for
+   * another minute. A search is one call per *file* of every commit, each reading a whole diff, so
+   * stopping only between commits stopped almost nothing.
+   */
+  it('aborts the call already in flight, naming the id it was dispatched under', async () => {
+    const pending = new Map<string, (reason: unknown) => void>()
+    const judge = vi.fn(
+      (_input: unknown, requestId: string) =>
+        new Promise<CommitRelevanceResult>((_resolve, reject) => {
+          pending.set(requestId, reject)
+        })
+    )
+    let cancelled = false
+    const cancelledIds: string[] = []
+
+    const run = scanCommits(
+      [commit({ shortOid: 'c1' }), commit({ shortOid: 'c2' })],
+      () => Promise.resolve('d'),
+      judge,
+      params,
+      {
+        shouldCancel: () => cancelled,
+        cancelCall: (requestId) => {
+          cancelledIds.push(requestId)
+          pending.get(requestId)?.(new Error(`AI provider error: ${COMPLETION_CANCELLED}`))
+        },
+      }
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(judge).toHaveBeenCalledTimes(1)
+    expect(cancelledIds).toEqual([])
+
+    cancelled = true
+    await expect(run).rejects.toThrow(SummaryRunCancelled)
+    expect(cancelledIds).toEqual([...pending.keys()])
+  })
+
+  /**
+   * An unread commit is reported to the user with a cause and a fix to try, and it is excluded from
+   * the denominator of every claim the answer makes. The user's own stop is neither of those things.
+   */
+  it('does not record a cancelled commit as one that could not be read', async () => {
+    const seen: ScannedCommit[] = []
+    const judge = vi.fn(() =>
+      Promise.reject(new Error(`AI provider error: ${COMPLETION_CANCELLED}`))
+    )
+
+    await expect(
+      scanCommits(
+        [commit({ shortOid: 'c1' }), commit({ shortOid: 'c2' })],
+        () => Promise.resolve('d'),
+        judge as never,
+        params,
+        { onResult: (r) => seen.push(r) }
+      )
+    ).rejects.toThrow(SummaryRunCancelled)
+
+    expect(seen).toEqual([])
+  })
+
+  /**
+   * The registry replaces an entry when an id is registered twice and drops it when a call finishes,
+   * so calls sharing an id would leave exactly one of them cancellable — and the first to end would
+   * unregister the flag for the rest.
+   */
+  it('gives every concurrent call a request id of its own', async () => {
+    const commits = ['c1', 'c2', 'c3', 'c4'].map((shortOid) => commit({ shortOid }))
+    const ids: string[] = []
+    let release!: () => void
+    // Only released once all four are in flight, so the ids collected are genuinely simultaneous
+    // rather than four reuses of one slot.
+    const allDispatched = new Promise<void>((resolve) => (release = resolve))
+
+    const judge = vi.fn(async (_input: unknown, requestId: string) => {
+      ids.push(requestId)
+      if (ids.length === 4) release()
+      await allDispatched
+      return positive
+    })
+
+    await scanCommits(commits, () => Promise.resolve('d'), judge, params, { concurrency: 4 })
+
+    expect(ids).toHaveLength(4)
+    expect(new Set(ids).size).toBe(4)
   })
 
   it('reads several commits at once when told the provider can take them', async () => {
@@ -432,7 +523,11 @@ describe('scanCommits', () => {
           { selectFiles }
         )
 
-        expect(selectFiles).toHaveBeenCalledWith(threeFileCommit, ['a.ts', 'b.ts', 'c.ts'])
+        expect(selectFiles).toHaveBeenCalledWith(
+          threeFileCommit,
+          ['a.ts', 'b.ts', 'c.ts'],
+          expect.stringMatching(/^ai-/)
+        )
         expect(judge).toHaveBeenCalledTimes(1)
         expect(judge.mock.calls[0][0].files).toEqual([{ path: 'b.ts', status: 'modified' }])
         expect(result.filesRead).toBe(1)

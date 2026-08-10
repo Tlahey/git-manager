@@ -40,8 +40,8 @@ export function useWorkingExplanation(repoPath: string) {
    * the reading is still going rather than that it found one thing.
    */
   const [progress, setProgress] = useState<SummaryProgress | null>(null)
-  /** Set by `cancel`, polled by the map loop between calls — a ref, since that loop closed over the
-   * render that started it. */
+  /** Set by `cancel`, polled by the map loop before each call and while one is in flight — a ref,
+   * since that loop closed over the render that started it. */
   const cancelledRef = useRef(false)
 
   const explain = useCallback(
@@ -54,7 +54,8 @@ export function useWorkingExplanation(repoPath: string) {
         cancelledRef.current = false
         const summaries = await summarizeFiles(
           context,
-          (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+          (summaryInput, requestId) =>
+            fileSummaryService.run(aiConnection, summaryInput, requestId),
           contextTokens,
           {
             onProgress: trackAiProgress(
@@ -63,6 +64,7 @@ export function useWorkingExplanation(repoPath: string) {
               setProgress
             ),
             shouldCancel: () => cancelledRef.current,
+            cancelCall: fileSummaryService.cancel,
             concurrency: aiConnection.concurrency,
           }
         )
@@ -82,7 +84,7 @@ export function useWorkingExplanation(repoPath: string) {
     reset()
   }, [reset])
 
-  /** Stops the map phase at its next call boundary, then the stream. */
+  /** Stops the map phase — the call in flight included — then the stream. */
   const cancelRun = useCallback(async () => {
     cancelledRef.current = true
     setProgress(null)

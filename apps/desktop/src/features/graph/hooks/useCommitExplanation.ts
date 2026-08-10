@@ -63,8 +63,8 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
 
   /** Progress of the map phase: one call per file the commit touches, before the stream starts. */
   const [progress, setProgress] = useState<SummaryProgress | null>(null)
-  /** Set by `cancel`, polled by the map loop between calls — a ref, since the loop closed over the
-   * render that started it. */
+  /** Set by `cancel`, polled by the map loop before each call and while one is in flight — a ref,
+   * since the loop closed over the render that started it. */
   const cancelledRef = useRef(false)
 
   const explain = useCallback(
@@ -90,7 +90,8 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
               repoName: repoPath.split('/').filter(Boolean).pop() ?? repoPath,
               branch: '',
             },
-            (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+            (summaryInput, requestId) =>
+              fileSummaryService.run(aiConnection, summaryInput, requestId),
             contextTokens,
             {
               onProgress: trackAiProgress(
@@ -99,6 +100,7 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
                 setProgress
               ),
               shouldCancel: () => cancelledRef.current,
+              cancelCall: fileSummaryService.cancel,
               concurrency: aiConnection.concurrency,
             }
           )
@@ -148,7 +150,7 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
     reset()
   }, [forget, repoPath, commit.oid, reset])
 
-  /** Stops the map phase at its next call boundary, then the stream. */
+  /** Stops the map phase — the call in flight included — then the stream. */
   const cancelRun = useCallback(async () => {
     cancelledRef.current = true
     setProgress(null)

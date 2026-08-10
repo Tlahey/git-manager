@@ -30,6 +30,9 @@ export {
   RESERVED_OUTPUT_TOKENS,
 } from './promptSize'
 
+// Request ids — what names one call to the backend, and therefore what cancels it.
+export { newAiRequestId } from './requestId'
+
 // The extensibility runtime: describe a feature once, wrap it into a typed service.
 export type {
   AiFeature,
@@ -81,6 +84,10 @@ export {
   mapConcurrently,
   DEFAULT_AI_CONCURRENCY,
   MAX_AI_CONCURRENCY,
+  STOP_POLL_INTERVAL_MS,
+  AiCallTracker,
+  COMPLETION_CANCELLED,
+  isCompletionCancelled,
   planCommitsFromSummaries,
   summaryCommitMessageFeature,
   SUMMARY_COMMIT_MESSAGE_INSTRUCTION,
@@ -186,6 +193,7 @@ export type {
   SummarizeOptions,
   MapConcurrentlyOptions,
   MapConcurrentlyOutcome,
+  CancelCall,
   CommitPlanRunners,
   SummaryCommitMessageInput,
   CommitMessageRunners,

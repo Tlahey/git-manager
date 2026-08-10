@@ -86,7 +86,8 @@ export function useCommitBatchReview(
    * it is one call, and the spinner already says so). */
   const [progress, setProgress] = useState<SummaryProgress | null>(null)
   /**
-   * Set when the user closes the panel mid-run, and polled between calls by the planner.
+   * Set when the user closes the panel mid-run, and polled by the planner — before each call and
+   * on a timer while one is in flight, so the request already sent is called off too.
    *
    * A ref, not state: the planner reads it from inside an async loop that closed over the render it
    * started in, so a state value would be frozen at `false` for the whole run.
@@ -136,7 +137,8 @@ export function useCommitBatchReview(
       const commits = await planCommitsFromSummaries(
         groupingInput,
         {
-          summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+          summarize: (summaryInput, requestId) =>
+            fileSummaryService.run(aiConnection, summaryInput, requestId),
           group: (reduceInput) => summaryGroupingService.run(aiConnection, reduceInput),
         },
         {
@@ -146,6 +148,7 @@ export function useCommitBatchReview(
             setProgress
           ),
           shouldCancel: () => cancelledRef.current,
+          cancelCall: fileSummaryService.cancel,
           concurrency: aiConnection.concurrency,
         }
       )
@@ -318,8 +321,9 @@ export function useCommitBatchReview(
 
   function close() {
     if (isApplying) return
-    // Stops a two-phase run at its next call boundary. The call already in flight still completes —
-    // the completion transport takes no request id — but its result is dropped.
+    // Stops a two-phase run, the summary call already in flight included: the completion transport
+    // takes a request id now, and `cancelCall` above names it. The single grouping call that
+    // follows the map phase is still only abandoned.
     cancelledRef.current = true
     setIsOpen(false)
   }

@@ -216,7 +216,8 @@ describe('createCompletionService', () => {
       expect.objectContaining({ temperature: 0.2 }),
       summaryGroupingFeature.instruction,
       summaryGroupingFeature.buildPrompt(input),
-      summaryGroupingFeature.schema
+      summaryGroupingFeature.schema,
+      expect.stringMatching(/^ai-/)
     )
     expect(commits).toEqual([{ commitMessage: 'feat: x', files: ['src/a.ts'] }])
   })
@@ -249,7 +250,8 @@ describe('createStatusService.probe', () => {
       expect.objectContaining({ model: 'llama3.2', temperature: 0 }),
       MODEL_PROBE_INSTRUCTION,
       MODEL_PROBE_PROMPT,
-      MODEL_PROBE_SCHEMA
+      MODEL_PROBE_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
     expect(result).toMatchObject({ ok: true, reply: '{"ok": true}', structured: true })
     expect(result.durationMs).toBeTypeOf('number')
@@ -263,7 +265,8 @@ describe('createStatusService.probe', () => {
       expect.objectContaining({ timeoutSeconds: MODEL_PROBE_MAX_TIMEOUT_SECONDS }),
       expect.any(String),
       expect.any(String),
-      MODEL_PROBE_SCHEMA
+      MODEL_PROBE_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
   })
 
@@ -275,7 +278,8 @@ describe('createStatusService.probe', () => {
       expect.objectContaining({ timeoutSeconds: 5 }),
       expect.any(String),
       expect.any(String),
-      MODEL_PROBE_SCHEMA
+      MODEL_PROBE_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
   })
 
@@ -289,7 +293,8 @@ describe('createStatusService.probe', () => {
       expect.objectContaining({ maxTokens: MODEL_PROBE_MAX_OUTPUT_TOKENS }),
       expect.any(String),
       expect.any(String),
-      MODEL_PROBE_SCHEMA
+      MODEL_PROBE_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
     expect(MODEL_PROBE_MAX_OUTPUT_TOKENS).toBeLessThan(RESERVED_OUTPUT_TOKENS)
   })
@@ -318,7 +323,8 @@ describe('createStatusService.probe', () => {
       expect.objectContaining({ model: 'tiny-model' }),
       expect.any(String),
       expect.any(String),
-      MODEL_PROBE_SCHEMA
+      MODEL_PROBE_SCHEMA,
+      expect.stringMatching(/^ai-/)
     )
   })
 

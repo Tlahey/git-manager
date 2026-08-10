@@ -5,7 +5,7 @@ import { summarizeFiles, type SummarizeOptions } from './summarizeFiles'
 
 /** The two model calls, injected so the orchestration can be tested without a transport. */
 export interface DailySummaryRunners {
-  summarize(input: FileSummaryInput): Promise<FileSummaryResult>
+  summarize(input: FileSummaryInput, requestId: string): Promise<FileSummaryResult>
   compose(input: DailySummaryInput): Promise<DailySummary>
 }
 
@@ -47,7 +47,7 @@ export async function composeDailySummaryFromSummaries(
   // `summarizeFiles`, so the commit-writing paths that share it keep their language-neutral prompt.
   const summaries = await summarizeFiles(
     context,
-    (fileInput) => runners.summarize({ ...fileInput, language }),
+    (fileInput, requestId) => runners.summarize({ ...fileInput, language }, requestId),
     contextTokens,
     options
   )

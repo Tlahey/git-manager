@@ -379,8 +379,9 @@ describe('useCommitBatchReview', () => {
     })
 
     /**
-     * Closing the panel sets a ref the planner polls between calls. It has to be a ref: the planner
-     * loop closed over the render that started it, so a state value would read `false` forever.
+     * Closing the panel sets a ref the planner polls — before each call and on a timer while one is
+     * in flight. It has to be a ref: the planner loop closed over the render that started it, so a
+     * state value would read `false` forever.
      */
     it('stops summarizing mid-run when the user closes the panel, and reports no error', async () => {
       let started = 0

@@ -100,14 +100,19 @@ export const aiGenerateStream = (
   requestId: string
 ) => invoke<void>('ai_generate_stream', { config, systemPrompt, userPrompt, requestId })
 
+/** `requestId` names this completion in the backend's generation registry, and is what
+ * {@link cancelGeneration} targets — the same registry and the same kind of id as a stream's. It is
+ * required, not optional: a completion with no id could not be stopped, which is what let a
+ * cancelled AI search go on talking to the model for another minute. See `commands/ai.rs`. */
 export const aiComplete = (
   config: AiGenerateConfig,
   systemPrompt: string,
   userPrompt: string,
-  schema?: JsonSchema
-) => invoke<string>('ai_complete', { config, systemPrompt, userPrompt, schema })
+  schema: JsonSchema | undefined,
+  requestId: string
+) => invoke<string>('ai_complete', { config, systemPrompt, userPrompt, schema, requestId })
 
-/** Cancels one generation by the id its caller minted. An id that has already finished is a no-op
- * on the Rust side — hitting stop as the last token lands is a normal race. */
+/** Cancels one call — streaming or completion — by the id its caller minted. An id that has already
+ * finished is a no-op on the Rust side — hitting stop as the last token lands is a normal race. */
 export const cancelGeneration = (requestId: string) =>
   invoke<void>('cancel_generation', { requestId })

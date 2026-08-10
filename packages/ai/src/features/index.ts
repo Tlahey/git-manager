@@ -28,8 +28,16 @@ export {
 export type { SummaryGroupingInput } from './summaryGrouping'
 export { summarizeFiles, SummaryRunCancelled } from './summarizeFiles'
 export type { SummaryProgress, SummarizeOptions } from './summarizeFiles'
-export { mapConcurrently, DEFAULT_AI_CONCURRENCY, MAX_AI_CONCURRENCY } from './mapConcurrently'
+export {
+  mapConcurrently,
+  DEFAULT_AI_CONCURRENCY,
+  MAX_AI_CONCURRENCY,
+  STOP_POLL_INTERVAL_MS,
+} from './mapConcurrently'
 export type { MapConcurrentlyOptions, MapConcurrentlyOutcome } from './mapConcurrently'
+export { AiCallTracker } from './aiCallTracker'
+export type { CancelCall } from './aiCallTracker'
+export { COMPLETION_CANCELLED, isCompletionCancelled } from './completionCancelled'
 export { planCommitsFromSummaries } from './planCommits'
 export type { CommitPlanRunners } from './planCommits'
 export {

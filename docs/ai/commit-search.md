@@ -114,11 +114,16 @@ The commit count is still the control — next to the button, with a line saying
 than a constant buried in the code. The backend clamps it (default 60, ceiling 500) so a mistyped
 value cannot turn one search into thousands of calls.
 
-Cancellation is checked **between** commits, not within one: the completion transport takes no
-request id, so a commit's remaining files are abandoned but the call in flight finishes and its
-result is discarded. Acceptable only because each call is small — which is itself the consequence of
-reading one file at a time. Raising _Calls in flight_ multiplies that waste by however many calls
-were in flight.
+Cancellation reaches **into** a call, which it did not use to. This feature is where that mattered
+most: a search is hundreds of completions, so checking only between commits meant pressing Stop
+flipped the panel to "cancelled" while the model went on working for tens of seconds. `ai_complete`
+takes a request id now and races the provider against its cancel flag, so the run polls while calls
+are outstanding and hands its open ids back to be aborted (see
+[Cancellation](./README.md#cancellation)). Residual latency is one poll interval (100 ms) plus the
+backend's own 50 ms, against calls measured in seconds. A cancelled call is **not** recorded as a
+commit that could not be read — the user's stop is not a provider failure, and reporting it as one
+would put a fabricated gap in the panel. Raising _Calls in flight_ no longer costs delay, only waste:
+eight requests thrown away mid-decode instead of one.
 
 ---
 

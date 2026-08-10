@@ -6,7 +6,7 @@ import type { SummaryCommitMessageInput } from './summaryCommitMessage'
 
 /** The two model calls, injected so the orchestration can be tested without a transport. */
 export interface CommitMessageRunners {
-  summarize(input: FileSummaryInput): Promise<FileSummaryResult>
+  summarize(input: FileSummaryInput, requestId: string): Promise<FileSummaryResult>
   compose(input: SummaryCommitMessageInput): Promise<CommitMessageDraft>
 }
 

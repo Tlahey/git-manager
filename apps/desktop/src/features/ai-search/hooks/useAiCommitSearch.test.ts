@@ -16,9 +16,9 @@ vi.mock('@tauri-apps/api/event', () => ({ listen }))
 
 vi.mock('../../../api/ai.api', () => ({
   apiGetAiCommitScan: vi.fn(),
-  commitFileScanService: { run: vi.fn() },
-  commitQuickScanService: { run: vi.fn() },
-  commitRelevanceService: { run: vi.fn() },
+  commitFileScanService: { run: vi.fn(), cancel: vi.fn() },
+  commitQuickScanService: { run: vi.fn(), cancel: vi.fn() },
+  commitRelevanceService: { run: vi.fn(), cancel: vi.fn() },
   commitSearchAnswerService: { run: vi.fn(), cancel: vi.fn() },
 }))
 vi.mock('../../../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
@@ -40,6 +40,8 @@ const mockedAnswer = commitSearchAnswerService.run as unknown as ReturnType<type
 const mockedDiff = apiGetCommitDiff as unknown as ReturnType<typeof vi.fn>
 const mockedQuick = commitQuickScanService.run as unknown as ReturnType<typeof vi.fn>
 const mockedFileScan = commitFileScanService.run as unknown as ReturnType<typeof vi.fn>
+const mockedJudgeCancel = commitRelevanceService.cancel as unknown as ReturnType<typeof vi.fn>
+const mockedQuickCancel = commitQuickScanService.cancel as unknown as ReturnType<typeof vi.fn>
 
 /** The request id the hook minted for the answer in flight, read back off the mocked service. */
 function currentRequestId(): string {
@@ -492,6 +494,76 @@ describe('useAiCommitSearch', () => {
     expect(result.current.phase).toBe('cancelled')
     expect(mockedJudge).toHaveBeenCalledTimes(1)
     expect(mockedAnswer).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The bug the user reported: the panel flipped to "cancelled" and the model went on working for
+   * tens of seconds. Stopping the scan only ever stopped the *next* commit; the call in flight —
+   * one per file of the commit being read — ran to the end because nothing could name it.
+   */
+  it('calls off the verdict already in flight, by the id it was dispatched under', async () => {
+    mockedScan.mockResolvedValue(scan([commit({ shortOid: 'c1' })]))
+    // The verdict never answers on its own: the only thing that can end it is the cancel, which is
+    // what makes this a test of reaching into a call rather than of skipping the next one.
+    const pending = new Map<string, (reason: unknown) => void>()
+    mockedJudge.mockImplementation(
+      (_connection: unknown, _input: unknown, id: string) =>
+        new Promise((_resolve, reject) => pending.set(id, reject))
+    )
+    mockedJudgeCancel.mockImplementation((id: string) => {
+      // The abort arrives as the backend's marker, which must read as a stop and not as a commit
+      // that could not be read.
+      pending.get(id)?.(new Error('AI provider error: completion-cancelled'))
+      return Promise.resolve()
+    })
+
+    const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+    let searching!: Promise<void>
+    await act(async () => {
+      searching = result.current.search('Did the Button change?', options)
+      await waitFor(() => expect(mockedJudge).toHaveBeenCalled())
+    })
+
+    await act(async () => {
+      await result.current.cancel()
+      await searching
+    })
+
+    const dispatchedId = mockedJudge.mock.calls[0][2] as string
+    expect(mockedJudgeCancel).toHaveBeenCalledWith(dispatchedId)
+    expect(result.current.phase).toBe('cancelled')
+    // Not recorded as unread: the user's own stop is not a commit the provider failed on.
+    expect(result.current.unread).toEqual([])
+  })
+
+  it('calls off the quick mode’s triage pass, which the scan does not own', async () => {
+    mockedScan.mockResolvedValue(scan([commit({ shortOid: 'c1' })]))
+    const pending = new Map<string, (reason: unknown) => void>()
+    mockedQuick.mockImplementation(
+      (_connection: unknown, _input: unknown, id: string) =>
+        new Promise((_resolve, reject) => pending.set(id, reject))
+    )
+    mockedQuickCancel.mockImplementation((id: string) => {
+      pending.get(id)?.(new Error('AI provider error: completion-cancelled'))
+      return Promise.resolve()
+    })
+
+    const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+    let searching!: Promise<void>
+    await act(async () => {
+      searching = result.current.search('Did the Button change?', { ...options, mode: 'quick' })
+      await waitFor(() => expect(mockedQuick).toHaveBeenCalled())
+    })
+
+    await act(async () => {
+      await result.current.cancel()
+      await searching
+    })
+
+    // One completion carrying a month of subjects: the longest request of the run, the one most
+    // likely to be underway when the user gives up, and the one `scanCommits` cannot see.
+    expect(mockedQuickCancel).toHaveBeenCalledWith(mockedQuick.mock.calls[0][2] as string)
+    expect(result.current.phase).toBe('cancelled')
   })
 
   it('clears the visible run without touching the saved history', async () => {

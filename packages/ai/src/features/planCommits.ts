@@ -7,7 +7,7 @@ import type { SummaryGroupingInput } from './summaryGrouping'
 /** The two model calls, injected rather than imported: this package holds no transport, and it is
  * what lets the orchestration be tested without one. */
 export interface CommitPlanRunners {
-  summarize(input: FileSummaryInput): Promise<FileSummaryResult>
+  summarize(input: FileSummaryInput, requestId: string): Promise<FileSummaryResult>
   group(input: SummaryGroupingInput): Promise<ProposedCommit[]>
 }
 
