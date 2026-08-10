@@ -25,7 +25,6 @@
 .merge-vivid-conflict {
   background-color: rgba(239, 68, 68, 0.42) !important;
 }
-.merge-vivid-resolved,
 .merge-vivid-addition.merge-resolved,
 .merge-vivid-deletion.merge-resolved,
 .merge-vivid-modification.merge-resolved,
@@ -45,7 +44,6 @@
 .merge-text-conflict {
   background-color: rgba(239, 68, 68, 0.16) !important;
 }
-.merge-text-resolved,
 .merge-text-addition.merge-resolved,
 .merge-text-deletion.merge-resolved,
 .merge-text-modification.merge-resolved,
@@ -75,7 +73,6 @@
   border-radius: 2px;
   border-bottom: 1px dashed rgba(239, 68, 68, 0.9);
 }
-.merge-inline-resolved,
 .merge-inline-addition.merge-resolved,
 .merge-inline-deletion.merge-resolved,
 .merge-inline-modification.merge-resolved,
@@ -115,9 +112,9 @@
    its own independent, absolutely-positioned overlay div in Monaco's rendering, not clipped by
    its neighbors, so nudging it 1px into the adjacent line's slot renders cleanly. */
 /* Only ever reached for a pure-addition block (see `centerEmptyRendering` in
-   mergeDecorations.ts) — its token is therefore always 'addition' (untouched) or 'resolved'
-   (touched); deletion/modification/conflict never produce a center accent marker, so those
-   token variants aren't defined here. */
+   mergeDecorations.ts) — its token is therefore always 'addition', with `.merge-resolved`
+   layered on once decided; deletion/modification/conflict never produce a CENTER accent marker,
+   so those token variants exist only for the side panes. */
 .merge-marker-top-addition {
   background-image: linear-gradient(
     to bottom,
@@ -127,8 +124,7 @@
   ) !important;
   transform: translateY(-1px);
 }
-.merge-marker-top-deletion,
-.merge-marker-top-resolved {
+.merge-marker-top-deletion {
   background-image: linear-gradient(
     to bottom,
     rgba(148, 163, 184, 0.6) 0,
@@ -146,8 +142,7 @@
   ) !important;
   transform: translateY(1px);
 }
-.merge-marker-bottom-deletion,
-.merge-marker-bottom-resolved {
+.merge-marker-bottom-deletion {
   background-image: linear-gradient(
     to top,
     rgba(148, 163, 184, 0.6) 0,
@@ -174,9 +169,6 @@
 .merge-border-top-conflict {
   border-top: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
-.merge-border-top-resolved {
-  border-top: 2px dotted rgba(148, 163, 184, 0.8) !important;
-}
 .merge-border-bottom-addition {
   border-bottom: 2px solid rgba(34, 197, 94, 0.8) !important;
 }
@@ -188,9 +180,6 @@
 }
 .merge-border-bottom-conflict {
   border-bottom: 2px solid rgba(239, 68, 68, 0.8) !important;
-}
-.merge-border-bottom-resolved {
-  border-bottom: 2px dotted rgba(148, 163, 184, 0.8) !important;
 }
 
 /* Resolved border styles (keep original semantic color, but styled as dotted) */
@@ -291,8 +280,7 @@
     rgba(128, 128, 128, 0.03) 12px
   );
 }
-.merge-view-zone-deletion,
-.merge-view-zone-resolved {
+.merge-view-zone-deletion {
   background: repeating-linear-gradient(
     45deg,
     rgba(148, 163, 184, 0.28),
@@ -383,9 +371,6 @@
 .merge-connector-conflict {
   fill: rgba(239, 68, 68, 0.42);
 }
-.merge-connector-resolved {
-  fill: rgba(148, 163, 184, 0.42);
-}
 
 /* Degenerate (zero-height at both ends) segments — the gap a pure insertion crosses in the
    pane it's absent from: drawn as an open stroked hairline instead of a filled ribbon, so the
@@ -410,9 +395,6 @@
 }
 .merge-connector-conflict.merge-connector-flat {
   stroke: rgba(239, 68, 68, 0.6);
-}
-.merge-connector-resolved.merge-connector-flat {
-  stroke: rgba(148, 163, 184, 0.6);
 }
 
 /* Resolved connector styles: keep original color, set fill to none and dotted stroke */

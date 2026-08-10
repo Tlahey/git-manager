@@ -475,7 +475,12 @@ export function changeKindForBlock(block: MergeBlock): ChangeKind {
   return 'modification'
 }
 
-export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' | 'resolved'
+/** What a block's change is colored by. Strictly the *kind* of change — whether the user has
+ * decided about it yet rides along as the separate `merge-resolved` class, never as a token.
+ * There used to be a `'resolved'` member here, left over from when the two were folded together;
+ * nothing produced it, so every `merge-*-resolved` selector built from a token was unreachable
+ * CSS. Adding it back would silently resurrect them. */
+export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict'
 
 /** The color a block's change is drawn in, from the *kind* of change alone: green for a pure
  * addition; gray for a pure deletion (nothing to decide *about* new content here, just whether to

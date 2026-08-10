@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from './types'
+import type { ColorToken } from './mergeBlockLayout'
 import { computeInitialPlacements, updatePlacementAfterToggle } from './mergeBlockLayout'
 import { MARKER_NUDGE_PX, blockDecorationSpecs, computeMergeVisuals } from './mergeDecorations'
 
@@ -19,6 +20,43 @@ function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'ki
   }
 }
 
+/* Read off disk rather than imported: vitest stubs CSS imports to an empty string (`?raw`
+ * included), and Vite rewrites the `new URL('./x', import.meta.url)` shorthand into an asset
+ * URL — hence the dirname/join detour. Comments are stripped because they carry no braces, so a
+ * selector capture swallows the whole doc block above a rule and buries the assertion message. */
+const styleSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'styles.css'),
+  'utf8'
+).replace(/\/\*[\s\S]*?\*\//g, '')
+
+/* Every whole-line fill class is built as `merge-<family>-${token}`, so a token with no rule
+ * paints nothing and a rule with no token is unreachable CSS. Both have happened: `'resolved'`
+ * was a member of ColorToken that nothing produced, and its stylesheet rules sat there looking
+ * load-bearing. This pins the two sets to each other in both directions. */
+describe('ColorToken ↔ styles.css coverage', () => {
+  const COLOR_TOKENS = ['addition', 'deletion', 'modification', 'conflict'] as const
+
+  // Compile-time half: this fails to typecheck the moment ColorToken gains or loses a member
+  // without this list following, which is what makes the runtime half below exhaustive.
+  type AssertSameUnion<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never
+  const tokensAreExhaustive: AssertSameUnion<ColorToken, (typeof COLOR_TOKENS)[number]> = true
+
+  /** The families whose every member is a token — `merge-connector-*` is excluded on purpose,
+   * since it also carries non-token modifiers (`-flat`, `-edge`, `-collapsed`). */
+  const TOKEN_FAMILIES = ['merge-vivid', 'merge-text', 'merge-inline'] as const
+
+  it('keeps the token list in step with the type', () => {
+    expect(tokensAreExhaustive).toBe(true)
+  })
+
+  it.each(TOKEN_FAMILIES)('defines %s-* for exactly the ColorToken members', (family) => {
+    const suffixes = new Set(
+      Array.from(styleSource.matchAll(new RegExp(`\\.${family}-([a-z-]+)`, 'g')), (m) => m[1])
+    )
+    expect([...suffixes].sort()).toEqual([...COLOR_TOKENS].sort())
+  })
+})
+
 /* The marker nudge is shared by three places and only two of them can import a constant: the
  * decoration classes below, the connector geometry that must terminate on them
  * (conflict-resolver/connectorSegments.ts, which multiplies MARKER_NUDGE_PX), and the stylesheet
@@ -26,17 +64,6 @@ function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'ki
  * bumping the constant moves the ribbon and leaves the marker where it was, which is a 1px seam
  * nobody notices in review. */
 describe('MARKER_NUDGE_PX ↔ styles.css lockstep', () => {
-  /* Read off disk rather than imported: vitest stubs CSS imports to an empty string (`?raw`
-   * included), and Vite rewrites the `new URL('./x', import.meta.url)` shorthand into an asset
-   * URL — hence the dirname/join detour. */
-  const styleSource = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), 'styles.css'),
-    'utf8'
-  )
-    // Comments carry no braces, so a selector capture swallows the whole doc block above a rule
-    // and buries the assertion message in it. Drop them before matching.
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-
   /** Every `.merge-marker-{top,bottom}-*` rule body in styles.css, with its selector. */
   function markerRules(): { selector: string; body: string }[] {
     const rules: { selector: string; body: string }[] = []
