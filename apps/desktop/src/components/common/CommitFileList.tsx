@@ -6,8 +6,6 @@ import { Input, Tag, ToggleGroup, cn } from '@git-manager/ui'
 import {
   ChevronDown,
   ChevronRight,
-  FolderOpen,
-  Folder,
   FileText,
   RotateCcw,
   FolderTree,
@@ -21,7 +19,15 @@ import {
   Check,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../api/git.api'
-import { useFileTree, getSortedNodes, useConfirm, type TreeNode } from '@git-manager/components'
+import {
+  useFileTree,
+  getSortedNodes,
+  collectDescendantFiles,
+  useConfirm,
+  type TreeNode,
+} from '@git-manager/components'
+import { FileTreeNode } from './FileTreeNode'
+import type { FileTreeRowContext } from './fileTreeRowContext'
 
 export interface ProcessedFileItem {
   path: string
@@ -160,18 +166,6 @@ export function CommitFileList({
     }
   }
 
-  // Letters and colours are shared (see `lib/fileStatusStyle.ts`); the size is this list's own.
-  const statusIcons: Record<string, string> = Object.fromEntries(
-    Object.entries(FILE_STATUS_COLOR).map(([k, color]) => [k, `${color} font-bold text-xs`])
-  )
-  const statusLetters = FILE_STATUS_LETTER
-
-  function collectDescendantFiles(node: TreeNode): TreeNode[] {
-    if (!node.isFolder) return [node]
-    if (!node.children) return []
-    return Object.values(node.children).flatMap(collectDescendantFiles)
-  }
-
   async function handleToggleFolder(node: TreeNode, allStaged: boolean) {
     const paths = collectDescendantFiles(node).map((f) => f.path)
     if (allStaged) {
@@ -192,248 +186,19 @@ export function CommitFileList({
     onRefresh?.()
   }
 
-  function renderTreeNode(node: TreeNode, depth = 0) {
-    const isExpanded = expandedFolders.has(node.path)
-
-    if (node.isFolder) {
-      const totalFiles = node.stats
-        ? node.stats.added + node.stats.modified + node.stats.deleted + node.stats.renamed
-        : 0
-      const showFolderCheckbox = folderCheckboxes && isWip
-      const descendantFiles = showFolderCheckbox ? collectDescendantFiles(node) : []
-      const stagedCount = descendantFiles.filter((f) => f.staged).length
-      const allStaged = descendantFiles.length > 0 && stagedCount === descendantFiles.length
-      const someStaged = stagedCount > 0 && !allStaged
-
-      return (
-        <div key={node.path} className="flex flex-col">
-          <div
-            onClick={() => toggleFolder(node.path)}
-            className="group/folder flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-left text-xs font-medium transition-colors hover:bg-accent/40"
-            role="button"
-            tabIndex={0}
-            data-testid={`file-tree-folder-${node.path}`}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                toggleFolder(node.path)
-              }
-            }}
-            style={{ paddingLeft: `${depth * 12 + 8}px` }}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-            )}
-            {showFolderCheckbox && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleToggleFolder(node, allStaged)
-                }}
-                className={cn(
-                  'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-                  allStaged || someStaged
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-                )}
-                title={
-                  allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')
-                }
-                data-testid={`file-tree-folder-checkbox-${node.path}`}
-              >
-                {someStaged ? '-' : '✓'}
-              </button>
-            )}
-            {isExpanded ? (
-              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-            ) : (
-              <Folder className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-            )}
-            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-              <span className="truncate text-foreground/90">{node.name}</span>
-              {folderCheckboxes && (
-                <span className="shrink-0 text-[10px] font-normal text-muted-foreground/60">
-                  {t('commitDetails.fileCount', { count: totalFiles })}
-                </span>
-              )}
-            </div>
-            {node.stats && (
-              <div className="ml-2 flex shrink-0 items-center gap-1 text-[9px] font-bold select-none">
-                {node.stats.added > 0 && (
-                  <Tag tone="success" className="px-1 py-0 text-[9px]">
-                    +{node.stats.added}
-                  </Tag>
-                )}
-                {node.stats.modified > 0 && (
-                  <Tag tone="warning" className="px-1 py-0 text-[9px]">
-                    ~{node.stats.modified}
-                  </Tag>
-                )}
-                {node.stats.deleted > 0 && (
-                  <Tag tone="danger" className="px-1 py-0 text-[9px]">
-                    -{node.stats.deleted}
-                  </Tag>
-                )}
-                {node.stats.renamed > 0 && (
-                  <Tag tone="info" className="px-1 py-0 text-[9px]">
-                    →{node.stats.renamed}
-                  </Tag>
-                )}
-              </div>
-            )}
-            {hoverStage && isWip && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleHoverStageFolder(node)
-                }}
-                className={cn(
-                  'ml-2 shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
-                  hoverStage === 'add'
-                    ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                    : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                )}
-                title={
-                  hoverStage === 'add'
-                    ? t('commitFileList.stageFolder')
-                    : t('commitFileList.unstageFolder')
-                }
-                data-testid={`file-tree-folder-hover-stage-${node.path}`}
-              >
-                {hoverStage === 'add' ? (
-                  <Plus className="h-2.5 w-2.5" />
-                ) : (
-                  <Minus className="h-2.5 w-2.5" />
-                )}
-              </button>
-            )}
-          </div>
-          {isExpanded && node.children && (
-            <div className="flex flex-col">
-              {getSortedNodes(node.children).map((child) => renderTreeNode(child, depth + 1))}
-            </div>
-          )}
-        </div>
-      )
-    }
-
-    const fileStatus = node.status ?? 'modified'
-    // Folder rows gain a checkbox (+ its leading gap) when `folderCheckboxes` is on, pushing
-    // their name further right — files need the same extra indent per level to stay aligned
-    // under their parent folder's name instead of under its checkbox.
-    const indentStep = folderCheckboxes ? 36 : 12
-    return (
-      <div
-        key={node.path}
-        className="group/file flex w-full min-w-0 cursor-pointer items-center justify-between rounded px-2 py-1 text-xs transition-colors hover:bg-accent"
-        style={{ paddingLeft: `${depth * indentStep + 8}px` }}
-        onClick={() =>
-          onSelectFileDiff?.({
-            path: node.path,
-            staged: node.staged ?? false,
-            oid: isWip ? undefined : commitOid,
-          })
-        }
-        role="button"
-        tabIndex={0}
-        data-testid={`file-tree-file-${node.path}`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onSelectFileDiff?.({
-              path: node.path,
-              staged: node.staged ?? false,
-              oid: isWip ? undefined : commitOid,
-            })
-          }
-        }}
-      >
-        {/* Left: Stage checkbox (WIP), File Icon and Filename */}
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          {!hoverStage && isWip ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (node.staged) handleUnstage(node.path)
-                else handleStage(node.path)
-              }}
-              className={cn(
-                'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-                node.staged
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-              )}
-              title={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
-            >
-              ✓
-            </button>
-          ) : !hoverStage ? (
-            <div className="w-3 shrink-0" />
-          ) : null}
-          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-          {node.viewed && (
-            <Check
-              className="h-3 w-3 shrink-0 text-emerald-500"
-              data-testid={`file-tree-viewed-${node.path}`}
-            />
-          )}
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-tight font-semibold text-foreground">
-            {node.name}
-          </span>
-        </div>
-
-        {/* Right: Stats, Status, WIP Actions */}
-        <div className="ml-2 flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {node.additions !== undefined && node.deletions !== undefined && (
-            <span className="flex shrink-0 scale-90 items-center gap-0.5 text-[10px] text-muted-foreground/70 select-none">
-              <span className="text-green-500">+{node.additions}</span>
-              <span className="text-red-500">-{node.deletions}</span>
-            </span>
-          )}
-
-          <span
-            className={cn(statusIcons[fileStatus], 'min-w-[12px] shrink-0 text-center select-none')}
-          >
-            {statusLetters[fileStatus]}
-          </span>
-
-          {isWip && (
-            <button
-              onClick={() => handleDiscard(node.path)}
-              data-testid={`file-discard-${node.path}`}
-              className={cn(
-                'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
-                hoverStage && 'opacity-0 group-hover/file:opacity-100'
-              )}
-              title={t('actions.discardChanges')}
-            >
-              <RotateCcw className="h-2.5 w-2.5" />
-            </button>
-          )}
-
-          {hoverStage && isWip && (
-            <button
-              onClick={() =>
-                hoverStage === 'add' ? handleStage(node.path) : handleUnstage(node.path)
-              }
-              className={cn(
-                'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
-                hoverStage === 'add'
-                  ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                  : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-              )}
-              title={hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')}
-            >
-              {hoverStage === 'add' ? (
-                <Plus className="h-2.5 w-2.5" />
-              ) : (
-                <Minus className="h-2.5 w-2.5" />
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    )
+  const rowContext: FileTreeRowContext = {
+    isWip,
+    commitOid,
+    folderCheckboxes,
+    hoverStage,
+    expandedFolders,
+    toggleFolder,
+    onSelectFileDiff,
+    onStage: handleStage,
+    onUnstage: handleUnstage,
+    onDiscard: handleDiscard,
+    onToggleFolderStage: handleToggleFolder,
+    onHoverStageFolder: handleHoverStageFolder,
   }
 
   return (
@@ -623,7 +388,9 @@ export function CommitFileList({
                 {noChangesLabel}
               </p>
             ) : (
-              getSortedNodes(fileTreeRoot).map((node) => renderTreeNode(node))
+              getSortedNodes(fileTreeRoot).map((node) => (
+                <FileTreeNode key={node.path} node={node} ctx={rowContext} />
+              ))
             )}
           </div>
         )}
@@ -709,11 +476,11 @@ export function CommitFileList({
 
                     <span
                       className={cn(
-                        statusIcons[file.status],
-                        'min-w-[12px] shrink-0 text-center select-none'
+                        FILE_STATUS_COLOR[file.status],
+                        'min-w-[12px] shrink-0 text-center text-xs font-bold select-none'
                       )}
                     >
-                      {statusLetters[file.status]}
+                      {FILE_STATUS_LETTER[file.status]}
                     </span>
 
                     {isWip && (

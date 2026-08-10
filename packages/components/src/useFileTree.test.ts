@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useFileTree, getSortedNodes, type FileTreeInputFile, type TreeNode } from './useFileTree'
+import {
+  useFileTree,
+  getSortedNodes,
+  collectDescendantFiles,
+  type FileTreeInputFile,
+  type TreeNode,
+} from './useFileTree'
 
 function file(
   path: string,
@@ -198,5 +204,39 @@ describe('useFileTree — resetKey', () => {
     rerender({ files, key: 'key2' })
     expect(result.current.expandedFolders).toEqual(new Set(['src', 'lib']))
     expect(result.current.buttonState).toBe('collapse')
+  })
+})
+
+describe('collectDescendantFiles', () => {
+  /** A folder-level action acts on the files under it, at whatever depth they sit. */
+  it('collects every file below a folder, however deeply nested', () => {
+    const { result } = renderHook(() =>
+      useFileTree([file('src/a.ts'), file('src/lib/b.ts'), file('src/lib/deep/c.ts')], 'key')
+    )
+    const src = result.current.treeRoot.src
+    expect(collectDescendantFiles(src).map((n) => n.path)).toEqual([
+      'src/a.ts',
+      'src/lib/b.ts',
+      'src/lib/deep/c.ts',
+    ])
+  })
+
+  /** A file is its own only descendant — the caller passes whichever node it has in hand. */
+  it('returns a file itself', () => {
+    const { result } = renderHook(() => useFileTree([file('README.md')], 'key'))
+    const node = result.current.treeRoot['README.md']
+    expect(collectDescendantFiles(node)).toEqual([node])
+  })
+
+  /** Folders never contain other folders' files, so a sibling's contents must not leak in. */
+  it('stays within the folder it was given', () => {
+    const { result } = renderHook(() => useFileTree([file('src/a.ts'), file('docs/b.md')], 'key'))
+    expect(collectDescendantFiles(result.current.treeRoot.docs).map((n) => n.path)).toEqual([
+      'docs/b.md',
+    ])
+  })
+
+  it('reports nothing for a folder with no children', () => {
+    expect(collectDescendantFiles({ name: 'x', path: 'x', isFolder: true })).toEqual([])
   })
 })
