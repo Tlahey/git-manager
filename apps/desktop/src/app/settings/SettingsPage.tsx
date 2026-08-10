@@ -1,68 +1,21 @@
-import { useState, type ComponentType } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, ScrollArea, LlmIcon } from '@git-manager/ui'
-import {
-  ArrowLeft,
-  Bell,
-  FolderTree,
-  GitBranch,
-  GitCommitHorizontal,
-  Kanban,
-  Sparkles,
-  Heart,
-  KeyRound,
-  Palette,
-  Play,
-  Puzzle,
-  ScrollText,
-  Search,
-  Settings2,
-  Trophy,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react'
-import { GeneralSection } from './components/GeneralSection'
+import { Button } from '@git-manager/ui'
+import { ArrowLeft, Search } from 'lucide-react'
 import { RepositorySection } from './components/RepositorySection'
-import { AiFeaturesSection } from './components/AiFeaturesSection'
-import { SshSection } from './components/SshSection'
-import { IntegrationSection } from './components/IntegrationSection'
-import { AiSection } from './components/AiSection'
-import { ExternalToolsSection } from './components/ExternalToolsSection'
-import { NotificationSection } from './components/NotificationSection'
-import { BoardSection } from './components/BoardSection'
-import { AppearanceSection } from './components/AppearanceSection'
-import { RewardsSection } from './components/RewardsSection'
-import { ChangelogSection } from './components/ChangelogSection'
-import { SupportSection } from './components/SupportSection'
 import { SidebarUpdater } from './components/SidebarUpdater'
-import { ResetToDefaultButton } from './components/ResetToDefaultButton'
-import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
+import { SettingsNavItem } from './components/SettingsNavItem'
+import { buildSettingsTabs, buildLocalTabs, scrolled, withReset } from './settingsTabs.config'
+import { createTabMatcher, normalizeQuery, LOCAL_KEYWORD_ID } from './lib/settingsSearch'
+import { renderActiveTab } from '../../lib/navigation/tabRegistry'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCanonicalRepoPath } from '../../hooks/useCanonicalRepoPath'
-import { highlightMatch, normalizeForSearch } from '../../lib/highlightMatch'
+import { highlightMatch } from '../../lib/highlightMatch'
 import { SettingsSearchProvider } from './components/settingsSearch'
+import type { Section, Scope, LocalSection } from './sections'
 
-export type Section =
-  | 'general'
-  | 'ssh'
-  | 'integrations'
-  | 'local_ai'
-  | 'ai_features'
-  | 'external_tools'
-  | 'notifications'
-  | 'board'
-  | 'ui_customization'
-  | 'rewards'
-  | 'changelog'
-  | 'support'
-
-/** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
-export type Scope = 'general' | 'local'
-
-/** The Repository scope's own side-menu pages. `gitflow`, `worktree` and `run` are repo-only (no
- * global counterpart); `appearance` and `ai_commit` mirror the matching global sections. */
-type LocalSection = 'gitflow' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
+export type { Section, Scope } from './sections'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -73,60 +26,6 @@ interface SettingsPageProps {
 }
 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
-
-/** Scrollable, centered layout shared by every section except `integrations` (full-bleed). */
-function scrolled(node: React.ReactNode) {
-  return (
-    <ScrollArea className="flex-1">
-      <div className="mx-auto max-w-xl px-8 py-6">{node}</div>
-    </ScrollArea>
-  )
-}
-
-/** Prepends a right-aligned per-page "reset to default" button above a section's content. */
-function withReset(node: React.ReactNode, onReset: () => void) {
-  return (
-    <>
-      <div className="mb-4 flex justify-end">
-        <ResetToDefaultButton onReset={onReset} />
-      </div>
-      {node}
-    </>
-  )
-}
-
-/** One side-panel nav entry (icon + label), shared by the Global, Repository, and pinned Support
- * groups so they stay visually identical. */
-function NavItem({
-  testId,
-  icon: Icon,
-  label,
-  active,
-  onClick,
-  iconClassName,
-}: {
-  testId: string
-  icon?: ComponentType<{ className?: string }>
-  label: React.ReactNode
-  active: boolean
-  onClick: () => void
-  iconClassName?: string
-}) {
-  return (
-    <button
-      data-testid={testId}
-      onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-2 rounded py-2 pr-3 pl-5 text-left text-xs transition-colors ${
-        active
-          ? 'bg-accent font-medium text-foreground'
-          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-      }`}
-    >
-      {Icon && <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClassName ?? ''}`} />}
-      {label}
-    </button>
-  )
-}
 
 export function SettingsPage({ onClose, initialSection, initialScope }: SettingsPageProps) {
   const { t } = useTranslation('settings')
@@ -165,132 +64,41 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     }
   }
 
-  const SETTINGS_TABS: TabDef<Section>[] = defineTabs([
-    {
-      id: 'general',
-      icon: Settings2,
+  const SETTINGS_TABS = buildSettingsTabs({
+    t,
+    aiEnabled,
+    reset: {
       // Commit style lives on its own AI-commit page, so General resets only its own fields.
-      render: () =>
-        scrolled(
-          withReset(<GeneralSection />, () => {
-            resetSettingsFields('git', [
-              'defaultAuthorName',
-              'defaultAuthorEmail',
-              'initialGraphCommits',
-              'lazyLoadGraphCommits',
-              'autoPrune',
-              'autoFetchIntervalMinutes',
-            ])
-            resetSettingsGroups(['advanced'])
-          })
-        ),
-      label: t('settings.sections.general'),
+      general: () => {
+        resetSettingsFields('git', [
+          'defaultAuthorName',
+          'defaultAuthorEmail',
+          'initialGraphCommits',
+          'lazyLoadGraphCommits',
+          'autoPrune',
+          'autoFetchIntervalMinutes',
+        ])
+        resetSettingsGroups(['advanced'])
+      },
+      ssh: () => resetSettingsGroups(['ssh']),
+      ai: () => resetSettingsGroups(['ai']),
+      aiFeatures: () => {
+        // Both halves of the page: the commit guidance and the briefing toggles.
+        resetSettingsFields('git', ['commitInstructions', 'commitPattern'])
+        resetSettingsGroups(['dailySummary'])
+      },
+      externalTools: () => resetSettingsGroups(['externalTools']),
+      notifications: () => resetSettingsGroups(['notifications']),
+      board: () => resetSettingsGroups(['board']),
+      appearance: () => resetSettingsGroups(['appearance']),
     },
-    {
-      id: 'ssh',
-      icon: KeyRound,
-      label: t('settings.sections.ssh'),
-      render: () => scrolled(withReset(<SshSection />, () => resetSettingsGroups(['ssh']))),
-    },
-    {
-      id: 'integrations',
-      icon: Puzzle,
-      label: t('settings.sections.integrations'),
-      render: () => (
-        <div className="h-full flex-1 overflow-hidden">
-          <IntegrationSection />
-        </div>
-      ),
-    },
-    {
-      id: 'local_ai',
-      icon: LlmIcon,
-      label: t('settings.sections.local_ai'),
-      render: () => scrolled(withReset(<AiSection />, () => resetSettingsGroups(['ai']))),
-    },
-    ...(aiEnabled
-      ? [
-          {
-            id: 'ai_features' as const,
-            icon: Sparkles,
-            label: t('settings.sections.ai_features'),
-            render: () =>
-              scrolled(
-                withReset(<AiFeaturesSection />, () => {
-                  // Both halves of the page: the commit guidance and the briefing toggles.
-                  resetSettingsFields('git', ['commitInstructions', 'commitPattern'])
-                  resetSettingsGroups(['dailySummary'])
-                })
-              ),
-          },
-        ]
-      : []),
-    {
-      id: 'external_tools',
-      icon: Wrench,
-      label: t('settings.sections.external_tools'),
-      render: () =>
-        scrolled(withReset(<ExternalToolsSection />, () => resetSettingsGroups(['externalTools']))),
-    },
-    {
-      id: 'notifications',
-      icon: Bell,
-      label: t('settings.sections.notifications'),
-      render: () =>
-        scrolled(withReset(<NotificationSection />, () => resetSettingsGroups(['notifications']))),
-    },
-    {
-      id: 'board',
-      icon: Kanban,
-      label: t('settings.sections.board'),
-      render: () => scrolled(withReset(<BoardSection />, () => resetSettingsGroups(['board']))),
-    },
-    {
-      id: 'ui_customization',
-      icon: Palette,
-      label: t('settings.sections.ui_customization'),
-      render: () =>
-        scrolled(withReset(<AppearanceSection />, () => resetSettingsGroups(['appearance']))),
-    },
-    {
-      id: 'rewards',
-      icon: Trophy,
-      label: t('settings.sections.rewards'),
-      render: () => scrolled(<RewardsSection />),
-    },
-    {
-      id: 'changelog',
-      icon: ScrollText,
-      label: t('settings.sections.changelog'),
-      render: () => scrolled(<ChangelogSection />),
-    },
-    {
-      id: 'support',
-      label: t('settings.sections.support'),
-      icon: Heart,
-      render: () => scrolled(<SupportSection />),
-    },
-  ])
+  })
 
   // Support is pinned to the bottom of the panel, so it's rendered apart from the scrolling group.
   const supportTab = SETTINGS_TABS.find((tab) => tab.id === 'support')
   const globalTabs = SETTINGS_TABS.filter((tab) => tab.id !== 'support')
 
-  const LOCAL_TABS: { id: LocalSection; label: string; icon: LucideIcon }[] = [
-    { id: 'gitflow', label: t('settings.sections.gitflow'), icon: GitBranch },
-    { id: 'appearance', label: t('settings.sections.ui_customization'), icon: Palette },
-    ...(aiEnabled
-      ? [
-          {
-            id: 'ai_commit' as const,
-            label: t('settings.sections.ai_commit'),
-            icon: GitCommitHorizontal,
-          },
-        ]
-      : []),
-    { id: 'worktree', label: t('settings.sections.worktree'), icon: FolderTree },
-    { id: 'run', label: t('settings.sections.run'), icon: Play },
-  ]
+  const LOCAL_TABS = buildLocalTabs({ t, aiEnabled })
 
   // The Repository group only makes sense with a workspace open; without one, the side panel shows
   // only the Global group.
@@ -301,34 +109,21 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
   const projectName = activeRepo?.split('/').filter(Boolean).pop() ?? ''
 
   // ── Settings search ──────────────────────────────────────────────────────────
-  // Filters the side-nav entries by the query, matched against each page's label plus a set of
-  // localized synonym keywords (`settings.search.keywords.<id>`) so e.g. "terminal" or "couleur"
-  // surfaces the Personnalisation page. Accent-insensitive to keep FR search forgiving.
-  const searchQuery = normalizeForSearch(query.trim())
-  const tabMatches = (label: string, keywordsKey: string) =>
-    searchQuery === '' || normalizeForSearch(`${label} ${t(keywordsKey)}`).includes(searchQuery)
-
-  // Local pages reuse the global keyword keys where they mirror one (appearance, ai_commit); the
-  // repo-only pages (gitflow, worktree, run) have their own.
-  const localKeywordId: Record<LocalSection, string> = {
-    gitflow: 'gitflow',
-    appearance: 'ui_customization',
-    ai_commit: 'ai_commit',
-    worktree: 'worktree',
-    run: 'run',
-  }
+  const tabMatches = createTabMatcher(query, t)
+  const searchQuery = normalizeQuery(query)
+  const isSearching = query.trim() !== ''
 
   const visibleGlobalTabs = globalTabs.filter((tab) =>
     tabMatches(tab.label, `settings.search.keywords.${tab.id}`)
   )
   const visibleLocalTabs = LOCAL_TABS.filter((tab) =>
-    tabMatches(tab.label, `settings.search.keywords.${localKeywordId[tab.id]}`)
+    tabMatches(tab.label, `settings.search.keywords.${LOCAL_KEYWORD_ID[tab.id]}`)
   )
   const supportMatches = supportTab
     ? tabMatches(supportTab.label, 'settings.search.keywords.support')
     : false
   const noResults =
-    searchQuery !== '' &&
+    isSearching &&
     visibleGlobalTabs.length === 0 &&
     visibleLocalTabs.length === 0 &&
     !supportMatches
@@ -387,7 +182,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
               </p>
             )}
             {visibleGlobalTabs.map((tab) => (
-              <NavItem
+              <SettingsNavItem
                 key={tab.id}
                 testId={`settings-tab-${tab.id}`}
                 icon={tab.icon}
@@ -416,7 +211,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
                   )}
                 </p>
                 {visibleLocalTabs.map((tab) => (
-                  <NavItem
+                  <SettingsNavItem
                     key={tab.id}
                     testId={`settings-local-tab-${tab.id}`}
                     icon={tab.icon}
@@ -444,7 +239,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
           {/* Support — pinned to the bottom of the panel, visually separated from the groups. */}
           {supportTab && supportMatches && (
             <div className="mt-2 shrink-0 border-t border-border pt-2">
-              <NavItem
+              <SettingsNavItem
                 testId={`settings-tab-${supportTab.id}`}
                 icon={supportTab.icon}
                 iconClassName="text-red-500"

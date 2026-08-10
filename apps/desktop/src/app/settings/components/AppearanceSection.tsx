@@ -4,12 +4,12 @@ import {
   NativeSelect,
   Slider,
   ToggleGroup,
-  Tooltip,
   type ToggleGroupOption,
 } from '@git-manager/ui'
-import { Monitor, Check, Lock } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
+import { ThemeCard } from './appearance/ThemeCard'
+import { TerminalColorsSetting } from './appearance/TerminalColorsSetting'
 import { SettingInfo } from './SettingInfo'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
@@ -17,100 +17,6 @@ import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '..
 import { useGameStore } from '../../../stores/game.store'
 import { findEffectGate, isEffectUnlocked } from '../../../lib/rewards/effects'
 import { achievementI18nKey } from '../../../lib/rewards/achievementI18n'
-
-interface ThemeCardProps {
-  id: string
-  label: string
-  colors: { bg: string; fg: string; primary: string; accent: string } | null
-  isSystem?: boolean
-  isActive: boolean
-  isCustom?: boolean
-  locked?: boolean
-  lockedLabel?: string
-  unlockHint?: string
-  onClick: () => void
-}
-
-function ThemeCard({
-  id,
-  label,
-  colors,
-  isSystem,
-  isActive,
-  isCustom,
-  locked,
-  lockedLabel,
-  unlockHint,
-  onClick,
-}: ThemeCardProps) {
-  const card = (
-    <button
-      type="button"
-      onClick={locked ? undefined : onClick}
-      data-testid={`theme-card-${id}`}
-      className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
-        locked
-          ? 'cursor-default border-border/60 opacity-60'
-          : 'cursor-pointer border-border hover:border-muted-foreground/40 hover:bg-accent/50'
-      } ${isActive && !locked ? 'border-primary bg-primary/10 ring-1 ring-primary' : ''}`}
-    >
-      {/* Swatch preview */}
-      {isSystem ? (
-        <div className="flex h-12 w-full items-center justify-center rounded-md border border-border bg-linear-to-br from-muted to-background">
-          <Monitor className="h-5 w-5 text-muted-foreground" />
-        </div>
-      ) : colors ? (
-        <div
-          className={`relative h-12 w-full overflow-hidden rounded-md border border-black/10 ${locked ? 'grayscale' : ''}`}
-          style={{ background: colors.bg }}
-        >
-          <div className="flex h-full gap-0.5 p-1.5">
-            <div className="flex-1 rounded-sm" style={{ background: colors.primary }} />
-            <div className="flex-1 rounded-sm" style={{ background: colors.accent }} />
-            <div className="flex-1 rounded-sm opacity-60" style={{ background: colors.fg }} />
-          </div>
-          {locked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <Lock className="h-4 w-4 text-white" />
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="relative flex h-12 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
-          <span className="text-[10px] text-muted-foreground">CSS</span>
-        </div>
-      )}
-
-      {/* Name + badges */}
-      <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
-        <span className="flex items-center gap-1 truncate text-xs font-medium text-foreground">
-          {label}
-        </span>
-        <div className="flex shrink-0 items-center gap-1">
-          {isCustom && (
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground">
-              custom
-            </span>
-          )}
-          {locked && (
-            <span
-              data-testid={`theme-locked-badge-${id}`}
-              className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
-            >
-              <Lock className="h-2.5 w-2.5" />
-              {lockedLabel}
-            </span>
-          )}
-          {isActive && !locked && <Check className="h-3.5 w-3.5 text-primary" />}
-        </div>
-      </div>
-    </button>
-  )
-
-  if (!locked || !unlockHint) return card
-
-  return <Tooltip content={unlockHint}>{card}</Tooltip>
-}
 
 export function AppearanceSection() {
   const { t } = useTranslation('settings')
@@ -253,65 +159,11 @@ export function AppearanceSection() {
         </FilterableSetting>
       )}
 
-      {/* Integrated terminal colours */}
-      <FilterableSetting
-        className="space-y-2"
-        testId="setting-terminal-colors"
-        match={`${t('settings.appearance.terminalColors')} terminal background foreground text colours couleurs fond texte shell zsh console`}
-      >
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-foreground">
-            <Highlight text={t('settings.appearance.terminalColors')} />
-          </p>
-          <OverriddenBadge field="terminalBackground" />
-          <OverriddenBadge field="terminalForeground" />
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          {t('settings.appearance.terminalColorsHelp')}
-        </p>
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-            {t('settings.appearance.terminalBackground')}
-            <input
-              type="color"
-              value={appearance.terminalBackground ?? '#000000'}
-              onChange={(e) => updateAppearance({ terminalBackground: e.target.value })}
-              data-testid="appearance-terminal-bg"
-              className="h-8 w-16 cursor-pointer rounded border border-input bg-background"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-            {t('settings.appearance.terminalForeground')}
-            <input
-              type="color"
-              value={appearance.terminalForeground ?? '#e4e4e7'}
-              onChange={(e) => updateAppearance({ terminalForeground: e.target.value })}
-              data-testid="appearance-terminal-fg"
-              className="h-8 w-16 cursor-pointer rounded border border-input bg-background"
-            />
-          </label>
-          <div
-            className="flex h-8 items-center rounded border border-input px-3 font-mono text-xs"
-            style={{
-              backgroundColor: appearance.terminalBackground ?? '#000000',
-              color: appearance.terminalForeground ?? '#e4e4e7',
-            }}
-            data-testid="appearance-terminal-preview"
-          >
-            $ git status
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              updateAppearance({ terminalBackground: '#000000', terminalForeground: '#e4e4e7' })
-            }
-            data-testid="appearance-terminal-reset"
-            className="h-7 cursor-pointer rounded border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            {t('settings.appearance.resetTerminalColors')}
-          </button>
-        </div>
-      </FilterableSetting>
+      <TerminalColorsSetting
+        background={appearance.terminalBackground}
+        foreground={appearance.terminalForeground}
+        onChange={updateAppearance}
+      />
 
       {/* Font size */}
       <FilterableSetting
