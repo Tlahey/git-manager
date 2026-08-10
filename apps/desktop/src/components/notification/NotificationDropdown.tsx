@@ -41,6 +41,7 @@ export function NotificationDropdown() {
             menuOpen ? 'bg-sidebar-accent text-sidebar-foreground' : ''
           }`}
           title={t('notifications.title')}
+          aria-label={t('notifications.title')}
         >
           <Bell className="h-3.5 w-3.5" />
           <NumberBadge
@@ -73,6 +74,7 @@ export function NotificationDropdown() {
                   data-testid="notification-mark-all-read"
                   className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   title={t('notifications.markAllAsRead')}
+                  aria-label={t('notifications.markAllAsRead')}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                 </button>
@@ -81,6 +83,7 @@ export function NotificationDropdown() {
                   data-testid="notification-clear-all"
                   className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
                   title={t('notifications.clearAll')}
+                  aria-label={t('notifications.clearAll')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

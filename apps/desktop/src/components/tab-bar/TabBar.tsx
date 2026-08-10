@@ -194,6 +194,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
               <button
                 key={fixture.path}
                 title={fixture.description}
+                aria-label={fixture.description}
                 onClick={() => setActiveRepo(fixture.path)}
                 className={`group relative flex h-7 max-w-[200px] min-w-[120px] shrink-0 cursor-pointer items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
                   isActive
@@ -229,6 +230,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
             onClick={() => onOpenSettings('general')}
             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             title={t('tabs.settings')}
+            aria-label={t('tabs.settings')}
           >
             <Settings className="h-3.5 w-3.5" />
           </button>

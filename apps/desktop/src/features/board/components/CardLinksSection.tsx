@@ -193,6 +193,7 @@ function LinkRow({
             type="button"
             onClick={() => onOpenCard?.(target.id)}
             title={target.title}
+            aria-label={target.title}
             data-testid={`card-link-open-${link.targetCardId}`}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           >

@@ -330,6 +330,9 @@ export function CommitFileList({
                 title={
                   hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
                 }
+                aria-label={
+                  hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
+                }
                 data-testid={bulkStageTestId}
               >
                 {hoverStage === 'add' ? (
@@ -446,6 +449,9 @@ export function CommitFileList({
                         title={
                           file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
                         }
+                        aria-label={
+                          file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
+                        }
                       >
                         ✓
                       </button>
@@ -492,6 +498,7 @@ export function CommitFileList({
                           hoverStage && 'opacity-0 group-hover/file:opacity-100'
                         )}
                         title={t('actions.discardChanges')}
+                        aria-label={t('actions.discardChanges')}
                       >
                         <RotateCcw className="h-2.5 w-2.5" />
                       </button>
@@ -509,6 +516,11 @@ export function CommitFileList({
                             : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                         )}
                         title={
+                          hoverStage === 'add'
+                            ? t('commitFileList.stage')
+                            : t('commitFileList.unstage')
+                        }
+                        aria-label={
                           hoverStage === 'add'
                             ? t('commitFileList.stage')
                             : t('commitFileList.unstage')

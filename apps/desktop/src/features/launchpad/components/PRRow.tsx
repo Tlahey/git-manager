@@ -64,6 +64,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         <button
           onClick={() => onTogglePin(pr.id)}
           title={pinned ? t('row.unpin') : t('row.pin')}
+          aria-label={pinned ? t('row.unpin') : t('row.pin')}
           className={`shrink-0 cursor-pointer transition-all ${
             pinned
               ? 'text-amber-400'
@@ -138,6 +139,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
               openUrl(pr.url)
             }}
             title={t('row.openOnGitHub')}
+            aria-label={t('row.openOnGitHub')}
             data-testid={`pr-number-link-${pr.id}`}
             className="cursor-pointer font-mono text-[10px] whitespace-nowrap text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >

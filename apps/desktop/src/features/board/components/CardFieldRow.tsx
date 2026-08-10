@@ -78,6 +78,7 @@ export function CardFieldRow({
               <button
                 type="button"
                 title={editTitle}
+                aria-label={editTitle}
                 data-testid={`${testId}-edit`}
                 className="-mx-1 min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left hover:bg-accent"
               >

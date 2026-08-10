@@ -122,6 +122,7 @@ export function PrComposerExpander({
           className="ml-1 cursor-pointer rounded px-1 py-0.5 text-primary hover:bg-accent"
           data-testid="pr-composer-change-base"
           title={t('pr.publish.changeBase')}
+          aria-label={t('pr.publish.changeBase')}
         >
           {t('pr.publish.changeBase')}
         </button>

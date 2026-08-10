@@ -107,6 +107,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                 type="button"
                 onClick={() => onTrace(traceableId)}
                 title={t('activityLogs.detail.trace')}
+                aria-label={t('activityLogs.detail.trace')}
                 data-testid="activity-detail-trace"
                 className="inline-flex cursor-pointer items-center gap-1 text-primary hover:underline"
               >

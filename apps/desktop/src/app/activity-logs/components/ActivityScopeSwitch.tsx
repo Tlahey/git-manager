@@ -46,6 +46,7 @@ export function ActivityScopeSwitch({
         onClick={() => onScopeChange('repository')}
         disabled={!repositoryEnabled}
         title={repositoryEnabled ? undefined : t('activityLogs.repositoryScopeDisabled')}
+        aria-label={repositoryEnabled ? undefined : t('activityLogs.repositoryScopeDisabled')}
         data-testid="activity-scope-repository"
         aria-pressed={scope === 'repository'}
       >

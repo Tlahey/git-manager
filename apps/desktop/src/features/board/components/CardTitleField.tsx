@@ -62,6 +62,7 @@ export function CardTitleField({ title, onSave, readOnly }: CardTitleFieldProps)
         disabled={readOnly}
         onClick={() => setEditing(true)}
         title={readOnly ? undefined : t('card.title.edit')}
+        aria-label={readOnly ? undefined : t('card.title.edit')}
         data-testid="card-title-display"
         className="min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left text-base font-semibold text-foreground transition-colors hover:enabled:bg-accent disabled:cursor-default"
       >

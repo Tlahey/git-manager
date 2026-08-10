@@ -72,6 +72,7 @@ export function CardBreadcrumb({
             onClick={() => onOpenCard?.(parentCard.id)}
             disabled={!onOpenCard}
             title={parentCard.title}
+            aria-label={parentCard.title}
             data-testid="card-breadcrumb-parent"
             className="flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 hover:bg-accent hover:text-foreground disabled:cursor-default disabled:hover:bg-transparent"
           >

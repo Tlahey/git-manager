@@ -68,6 +68,7 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
           data-testid="issue-title-save"
           className="cursor-pointer rounded p-1 text-green-500 hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           title={t('pr.title.save')}
+          aria-label={t('pr.title.save')}
         >
           {pending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
         </button>
@@ -76,6 +77,7 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
           disabled={pending}
           className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           title={t('pr.title.cancel')}
+          aria-label={t('pr.title.cancel')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -88,6 +90,7 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
       onClick={canEdit ? () => setEditing(true) : undefined}
       data-testid="issue-title"
       title={canEdit ? t('pr.title.editHint') : undefined}
+      aria-label={canEdit ? t('pr.title.editHint') : undefined}
       className={`text-sm font-semibold wrap-anywhere ${canEdit ? 'cursor-text hover:opacity-80' : ''}`}
     >
       <span className="text-foreground">{title}</span>{' '}

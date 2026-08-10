@@ -47,6 +47,7 @@ export function UserProfile({ onOpenSettings }: UserProfileProps) {
         <button
           type="button"
           title={name}
+          aria-label={name}
           className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-secondary text-[10px] font-semibold text-secondary-foreground transition-colors hover:bg-sidebar-accent"
         >
           {avatarUrl ? (

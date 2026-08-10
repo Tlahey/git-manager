@@ -44,6 +44,7 @@ export function TerminalButton() {
         type="button"
         onClick={() => void toggle()}
         title={t('terminal.open')}
+        aria-label={t('terminal.open')}
         disabled={!path}
         data-testid="toolbar-terminal-button-primary"
         className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"

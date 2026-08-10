@@ -63,6 +63,7 @@ export function FileTreeFileRow({ node, depth, ctx }: FileTreeFileRowProps) {
                 : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
             )}
             title={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
+            aria-label={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
           >
             ✓
           </button>
@@ -109,6 +110,7 @@ export function FileTreeFileRow({ node, depth, ctx }: FileTreeFileRowProps) {
               ctx.hoverStage && 'opacity-0 group-hover/file:opacity-100'
             )}
             title={t('actions.discardChanges')}
+            aria-label={t('actions.discardChanges')}
           >
             <RotateCcw className="h-2.5 w-2.5" />
           </button>
@@ -126,6 +128,9 @@ export function FileTreeFileRow({ node, depth, ctx }: FileTreeFileRowProps) {
                 : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
             )}
             title={
+              ctx.hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')
+            }
+            aria-label={
               ctx.hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')
             }
           >

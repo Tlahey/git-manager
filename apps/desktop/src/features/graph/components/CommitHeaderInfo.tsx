@@ -355,11 +355,14 @@ export function CommitHeaderInfo({
                   size="sm"
                   className="flex h-7 shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   onClick={() => apiOpenUrl(`${remoteUrl}/commit/${commit.oid}`)}
-                  title={
-                    remoteUrl.includes('gitlab.com')
-                      ? 'Open commit on GitLab'
-                      : 'Open commit on GitHub'
-                  }
+                  // The forge name is a proper noun and stays untranslated; the sentence around
+                  // it does not, which is what this key is for.
+                  title={t('commitDetails.openCommitOn', {
+                    forge: remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub',
+                  })}
+                  aria-label={t('commitDetails.openCommitOn', {
+                    forge: remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub',
+                  })}
                   data-testid="github-commit-link"
                 >
                   {remoteUrl.includes('gitlab.com') ? (

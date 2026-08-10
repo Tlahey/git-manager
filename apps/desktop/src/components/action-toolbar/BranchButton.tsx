@@ -36,6 +36,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
         <button
           type="button"
           title={t('toolbar.createBranch')}
+          aria-label={t('toolbar.createBranch')}
           data-testid="toolbar-branch-button"
           className="group flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
         >
