@@ -27,12 +27,12 @@ import { useConflictMergeWindow } from './hooks/useConflictMergeWindow'
 import { useSearchNavigation } from './hooks/useSearchNavigation'
 import { useCommitReorderDrag } from './hooks/useCommitReorderDrag'
 import { useCommitReorderFocus } from './hooks/useCommitReorderFocus'
-import { GraphRow } from './components/GraphRow'
+import type { GitGraphNode } from '@git-manager/git-types'
+import { GraphRowList } from './components/GraphRowList'
 import { TagCreationInput } from './components/TagCreationInput'
 import { RefDropProvider } from './components/RefDropContext'
 import { CommitDragProvider } from './components/CommitDragProvider'
 import { CommitReorderDialog } from './components/CommitReorderDialog'
-import { CommitDragSlot } from './components/CommitDragSlot'
 import { TagMenuProvider } from './components/TagMenuContext'
 import { GraphHeader } from './components/GraphHeader'
 import { CommitSearchPanel } from './components/CommitSearchPanel'
@@ -41,7 +41,6 @@ import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { isSyntheticRow } from './lib/syntheticRows'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
-import { Waterline } from './components/Waterline'
 import { GraphCenterPane } from './components/GraphCenterPane'
 import { GraphSidePanelSlot } from './components/GraphSidePanelSlot'
 import { collectGraphAuthors } from './lib/graphAuthors'
@@ -424,6 +423,34 @@ export function GitGraph({
     [primaryNode, nodes, headBranchName]
   )
 
+  /**
+   * What clicking a row does, which is three different things.
+   *
+   * While a bisect is being set up from the graph, a click *fills a slot* instead of selecting —
+   * the user is answering "which commit is good", not navigating. The CONFLICT row brings both
+   * rebase panels back and must **set** them visible rather than toggle: `handleRowSelect` clears
+   * the selection when the row is already primary (which it normally is during a pause), and that
+   * closed the very panel the user had just asked to see. Everything else is an ordinary selection.
+   */
+  function handleGraphRowSelect(e: React.MouseEvent, node: GitGraphNode, index: number) {
+    scrollToColumn(node.column)
+    const oid = node.commit.oid
+
+    if (bisectSettingUp) {
+      e.preventDefault()
+      e.stopPropagation()
+      handleBisectPick(oid)
+      return
+    }
+    if (oid === 'CONFLICT') {
+      showRebaseProgress(repoPath)
+      showRebaseFiles(repoPath)
+      selectSingle('CONFLICT')
+      return
+    }
+    handleRowSelect(e, index)
+  }
+
   return (
     <RefDropProvider repoPath={repoPath}>
       <TagMenuProvider handler={openTagMenu}>
@@ -502,144 +529,45 @@ export function GitGraph({
                     <>
                       <GraphHeader columns={visibleColumns} authorOptions={authorOptions} />
 
-                      <div
-                        ref={parentRef}
-                        data-testid="commit-graph"
-                        className="flex-1 overflow-x-hidden overflow-y-auto"
-                      >
-                        <div
-                          style={{
-                            height: virtualizer.getTotalSize(),
-                            width: '100%',
-                            position: 'relative',
-                          }}
-                        >
-                          {virtualizer.getVirtualItems().map((virtualItem) => {
-                            const node = renderNodes[virtualItem.index]
-                            const oid = node.commit.oid
-
-                            // Dim rows the active filters exclude. Search and the author filter combine
-                            // with OR: a row stays fully visible if it matches EITHER active filter, and
-                            // is dimmed only when both are active-and-unmatched (or the single active one
-                            // is unmatched). With neither filter active, nothing is dimmed.
-                            const searchActive = matchSet !== null
-                            const authorActive = authorMatchSet !== null
-                            // A drag-hovered ref takes over the dimming: only its commits stay lit.
-                            const dimmed = dragHighlightSet
-                              ? !dragHighlightSet.has(oid)
-                              : (searchActive || authorActive) &&
-                                !(searchActive && matchSet.has(oid)) &&
-                                !(authorActive && authorMatchSet.has(oid))
-
-                            // Only the drafted row shows the inline tag input; wiring the callbacks
-                            // solely on that row keeps every other (memoized) row from re-rendering.
-                            const isTagDraftRow = tagDraft?.oid === oid
-
-                            return (
-                              <CommitDragSlot
-                                key={virtualItem.key}
-                                oid={oid}
-                                testId={`graph-row-${oid}`}
-                                selected={oid === primaryOid || selected.has(oid)}
-                                className="hover:z-graph-row-hover"
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  width: '100%',
-                                  height: rowHeight,
-                                  transform: `translateY(${virtualItem.start}px)`,
-                                }}
-                              >
-                                <GraphRow
-                                  node={node}
-                                  columns={visibleColumns}
-                                  isSelected={selected.has(oid)}
-                                  isPrimary={oid === primaryOid}
-                                  onSelect={(e) => {
-                                    scrollToColumn(node.column)
-                                    if (bisectSettingUp) {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      handleBisectPick(oid)
-                                      return
-                                    }
-                                    // The CONFLICT row is the paused rebase's banner: clicking it
-                                    // brings both rebase panels back. It must *set* them visible, never
-                                    // toggle — `handleRowSelect` clears the selection when the row is
-                                    // already the primary one (which it normally is during a pause), and
-                                    // that closed the files panel the user had just asked to see.
-                                    if (oid === 'CONFLICT') {
-                                      showRebaseProgress(repoPath)
-                                      showRebaseFiles(repoPath)
-                                      selectSingle('CONFLICT')
-                                      return
-                                    }
-                                    handleRowSelect(e, virtualItem.index)
-                                  }}
-                                  // The previewed graph is a history the repository does not have
-                                  // yet; a commit action fired from it would target the wrong thing.
-                                  onContextMenu={(e) => {
-                                    if (!timelinePreviewOpen) openMenuAt(e, oid)
-                                  }}
-                                  wipStats={wipStats}
-                                  onCommitWip={handleCommitWip}
-                                  isFirst={virtualItem.index === 0}
-                                  conflictInfo={conflictInfo}
-                                  dimmed={dimmed}
-                                  bisectStatus={bisectStatusMap.get(oid)}
-                                  worktreeWipStatuses={worktreeWipStatuses}
-                                  onOpenWorktree={setActiveWorkspacePath}
-                                  worktreeAgentActivity={worktreeAgentActivity}
-                                  wipAgentActivity={wipAgentActivity}
-                                  wipRef={wipRef}
-                                  laneRef={laneRefByOid.get(oid)}
-                                  graphMaxColumn={graphMaxColumn}
-                                  graphScrollX={graphScrollX}
-                                  hiddenTags={hiddenTags}
-                                  hiddenBranches={hiddenBranches}
-                                  isTagDraft={isTagDraftRow}
-                                  onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
-                                  onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
-                                />
-                              </CommitDragSlot>
-                            )
-                          })}
-
-                          {/* Overflow zone: full height, above the colored bands (z-graph-overflow) but
-                        below the cells (z-content) — markers stay visible. */}
-                          {graphOverflowZone && (
-                            <div
-                              data-testid="graph-overflow-zone"
-                              className="pointer-events-none absolute inset-y-0 z-graph-overflow"
-                              style={{
-                                left: graphOverflowZone.left,
-                                width: graphOverflowZone.width,
-                                opacity: graphOverflowZone.opacity,
-                                // The zone is a transparent "card": its content keeps its own colors,
-                                // only an outer shadow on its left edge detaches it from the rest of
-                                // the graph.
-                                boxShadow: '-8px 0 12px -4px rgb(0 0 0 / 0.35)',
-                              }}
-                            />
-                          )}
-
-                          {/* Waterlines: full-width overlays on the boundaries, out of flow */}
-                          {waterlines.map((wl) => (
-                            <div
-                              key={wl.id}
-                              className="pointer-events-none absolute left-0 z-content w-full"
-                              style={{
-                                top: 0,
-                                height: rowHeight,
-                                transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
-                              }}
-                            >
-                              <Waterline label={wl.label} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <GraphRowList
+                        scrollRef={parentRef}
+                        virtualizer={virtualizer}
+                        nodes={renderNodes}
+                        rowHeight={rowHeight}
+                        columns={visibleColumns}
+                        primaryOid={primaryOid}
+                        selected={selected}
+                        matchSet={matchSet}
+                        authorMatchSet={authorMatchSet}
+                        dragHighlightSet={dragHighlightSet}
+                        bisectStatusFor={(oid) => bisectStatusMap.get(oid)}
+                        laneRefFor={(oid) => laneRefByOid.get(oid)}
+                        tagDraftOid={tagDraft?.oid ?? null}
+                        onSubmitTag={submitTagDraft}
+                        onCancelTag={cancelTagDraft}
+                        onSelectRow={handleGraphRowSelect}
+                        // The previewed graph is a history the repository does not have yet; a
+                        // commit action fired from it would target the wrong thing.
+                        onContextMenu={(e, oid) => {
+                          if (!timelinePreviewOpen) openMenuAt(e, oid)
+                        }}
+                        rowProps={{
+                          wipStats,
+                          onCommitWip: handleCommitWip,
+                          conflictInfo,
+                          worktreeWipStatuses,
+                          onOpenWorktree: setActiveWorkspacePath,
+                          worktreeAgentActivity,
+                          wipAgentActivity,
+                          wipRef,
+                          graphMaxColumn,
+                          graphScrollX,
+                          hiddenTags,
+                          hiddenBranches,
+                        }}
+                        overflowZone={graphOverflowZone}
+                        waterlines={waterlines}
+                      />
                     </>
                   )}
                 </>
