@@ -142,6 +142,87 @@ describe('startOAuthLogin', () => {
     expect(result.current.deviceFlowData).toBeNull()
   })
 
+  /**
+   * The bug this guards: GitHub answers `slow_down` when polled too often, and RFC 8628 §3.5 says
+   * the client must add 5s to its interval each time. A fixed interval never does, so GitHub keeps
+   * answering `slow_down` and the token never arrives — however many times the user approves.
+   */
+  it('widens the gap between polls when GitHub says slow_down', async () => {
+    mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
+    mockedPollToken.mockResolvedValue({
+      access_token: null,
+      error: 'slow_down',
+      error_description: null,
+    })
+    vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess: vi.fn() }))
+    await act(async () => result.current.startOAuthLogin())
+
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(mockedPollToken).toHaveBeenCalledTimes(1)
+
+    // Where the un-backed-off version would have polled again.
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(mockedPollToken).toHaveBeenCalledTimes(1)
+
+    // 5s + 5s of backoff after the first poll.
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(mockedPollToken).toHaveBeenCalledTimes(2)
+
+    // Each `slow_down` widens it again: the third poll is 15s after the second, not 10s.
+    await act(async () => vi.advanceTimersByTimeAsync(10_000))
+    expect(mockedPollToken).toHaveBeenCalledTimes(2)
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(mockedPollToken).toHaveBeenCalledTimes(3)
+
+    // Still waiting, never wedged into an error.
+    expect(result.current.error).toBeNull()
+  })
+
+  /** A device code dies after ~15 minutes. Polling a dead one is how a spinner outlives the thing
+   * it is waiting for, so the flow ends and says so instead. */
+  it('gives up with a message once the device code has expired', async () => {
+    mockedDeviceCode.mockResolvedValue({ ...deviceCodeResponse, expires_in: 10 })
+    mockedPollToken.mockResolvedValue({
+      access_token: null,
+      error: 'authorization_pending',
+      error_description: null,
+    })
+    vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess: vi.fn() }))
+    await act(async () => result.current.startOAuthLogin())
+
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(result.current.deviceFlowData).not.toBeNull()
+
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+
+    expect(result.current.deviceFlowData).toBeNull()
+    expect(result.current.connecting).toBe(false)
+    expect(result.current.error).toBe(
+      'The GitHub device code expired. Start the login again to get a new one.'
+    )
+    // The expiry is checked before the request, so no poll went out against a dead code.
+    expect(mockedPollToken).toHaveBeenCalledTimes(1)
+  })
+
+  /** A response with neither a token nor an error is not a failure — keep waiting. */
+  it('keeps polling when the response carries neither a token nor an error', async () => {
+    mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
+    mockedPollToken.mockResolvedValue({ access_token: null, error: null, error_description: null })
+    vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess: vi.fn() }))
+    await act(async () => result.current.startOAuthLogin())
+
+    await act(async () => vi.advanceTimersByTimeAsync(15_000))
+
+    expect(mockedPollToken).toHaveBeenCalledTimes(3)
+    expect(result.current.error).toBeNull()
+  })
+
   it('surfaces an OAuth error from the poll response and stops polling', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
