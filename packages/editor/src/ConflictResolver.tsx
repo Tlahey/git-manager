@@ -40,6 +40,8 @@ import { useMergeHistory } from './conflict-resolver/hooks/useMergeHistory'
 import { useMergeActions } from './conflict-resolver/hooks/useMergeActions'
 import { useConflictNavigation } from './conflict-resolver/hooks/useConflictNavigation'
 import { useMergeDecorations } from './conflict-resolver/hooks/useMergeDecorations'
+import { useMonacoBackgroundSync } from './conflict-resolver/hooks/useMonacoBackgroundSync'
+import { usePaneMount } from './conflict-resolver/hooks/usePaneMount'
 
 // Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
 // type — see the comment in `useMergeScrollSync.ts` for why.
@@ -136,7 +138,10 @@ export interface ConflictResolverRef {
  * This file is the orchestrator: state ownership, pane mounting, and JSX. The behavior lives in
  * the focused modules under `conflict-resolver/` (pure geometry/text helpers) and
  * `conflict-resolver/hooks/` (resize, scroll preservation, 2-way diff, collapse, connectors,
- * undo/redo history, merge actions, navigation, decorations). */
+ * undo/redo history, merge actions, navigation, decorations, pane mount). What remains here is
+ * state ownership and the wiring between those hooks: several of them need each other's output,
+ * and the order they are called in is the one order that resolves — which is why they are read
+ * from top to bottom rather than grouped by subject. */
 export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolverProps>(
   (
     {
@@ -476,167 +481,28 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       restoreSavedScrollTops,
     })
 
-    // Read through a ref for the same reason `scheduleRecomputeRef` exists: the scroll listener
-    // below is registered once at pane mount and Monaco never re-subscribes it.
-    const refreshIntraHighlightsRef = useRef(refreshIntraHighlights)
-    refreshIntraHighlightsRef.current = refreshIntraHighlights
+    const syncPaneBackground = useMonacoBackgroundSync({ rootRef, leftPaneWrapperRef })
 
-    // Host mount hook kept in a ref so pane mount callbacks don't re-wire when the host passes
-    // a new inline function on every render.
-    const onEditorMountRef = useRef(editorConfig?.onEditorMount)
-    onEditorMountRef.current = editorConfig?.onEditorMount
+    const handleEditorsReady = useCallback(() => setEditorsReady(true), [])
 
-    // Pending follow-up recompute timers (see the belt-and-suspenders block in handlePaneMount).
-    // Tracked so unmounting before they fire clears them — otherwise a leaked timeout runs
-    // `scheduleRecompute` (→ `requestAnimationFrame`) after teardown, which throws under jsdom.
-    const followUpTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
-    useEffect(() => {
-      const timers = followUpTimersRef.current
-      return () => timers.forEach(clearTimeout)
-    }, [])
-
-    const handlePaneMount = useCallback(
-      (pane: 'ours' | 'center' | 'theirs') =>
-        (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
-          editors.monacoRef.current = monacoInstance
-          setMonaco(monacoInstance)
-          if (pane === 'ours') editors.oursEditorRef.current = editorInstance
-          if (pane === 'center') editors.centerEditorRef.current = editorInstance
-          if (pane === 'theirs') editors.theirsEditorRef.current = editorInstance
-
-          // Two collections per pane: whole-line block fills, and the word-level highlights that
-          // refresh on scroll (see useMergeDecorations for why they must not share one).
-          if (pane === 'ours') {
-            editors.oursDecorationsRef.current = editorInstance.createDecorationsCollection([])
-            editors.oursIntraDecorationsRef.current = editorInstance.createDecorationsCollection([])
-          }
-          if (pane === 'center') {
-            editors.centerDecorationsRef.current = editorInstance.createDecorationsCollection([])
-            editors.centerIntraDecorationsRef.current = editorInstance.createDecorationsCollection(
-              []
-            )
-          }
-          if (pane === 'theirs') {
-            editors.theirsDecorationsRef.current = editorInstance.createDecorationsCollection([])
-            editors.theirsIntraDecorationsRef.current = editorInstance.createDecorationsCollection(
-              []
-            )
-          }
-
-          // Standalone monaco-editor (unlike a real VS Code webview) never exposes its resolved
-          // theme colors as CSS custom properties, and `monaco.editor` has no theme-change event
-          // to hook — so the only reliable way to keep the chrome around the panes matching
-          // whatever theme is active (built-in or a host's dynamically-generated one) is to read
-          // Monaco's own computed background directly and re-read it whenever the editor's
-          // class/style attributes change (which is exactly what `setTheme` mutates). The value
-          // goes onto the left pane's padding wrapper AND onto the root as
-          // `--merge-editor-background`, which the inter-pane gaps paint themselves with.
-          if (pane === 'theirs') {
-            const domNode = editorInstance.getDomNode()
-            if (domNode) {
-              const syncBackground = () => {
-                const background = getComputedStyle(domNode).backgroundColor
-                if (leftPaneWrapperRef.current) {
-                  leftPaneWrapperRef.current.style.backgroundColor = background
-                }
-                rootRef.current?.style.setProperty('--merge-editor-background', background)
-              }
-              syncBackground()
-              const observer = new MutationObserver(syncBackground)
-              observer.observe(domNode, { attributes: true, attributeFilter: ['class', 'style'] })
-              editorInstance.onDidDispose(() => observer.disconnect())
-            }
-          }
-
-          // `PaneIndex` is theirs=0 / center=1 / ours=2 — the order `useMergeScrollSync`'s own
-          // `getPaneLineRange`/`paneIndexToSide` decode, NOT the visual left-to-right order (which
-          // happens to be the same). Registering a pane under the wrong index hands the sync the
-          // *other* side's line ranges for it: in 2-panel mode the original pane was being scrolled
-          // to the modified pane's block positions, so the two panes drifted apart past the first
-          // hunk (invisible while a file is short enough to need no scrolling at all).
-          const paneIndex = pane === 'theirs' ? 0 : pane === 'center' ? 1 : 2
-          attachScrollSync(editorInstance, paneIndex)
-          editorInstance.onDidScrollChange(() => {
-            applyScrollOffset()
-            applyStickyBanners()
-            if (pane === 'center') {
-              updateActiveBlockIndex()
-              // Word-level highlights are computed for the visible range only, so scrolling is
-              // what brings the next screenful's into existence (coalesced to one frame).
-              refreshIntraHighlightsRef.current()
-            }
-          })
-          // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
-          // on this editor's real dimensions — a more reliable connector-recompute trigger than
-          // our own outer-container ResizeObserver, since it directly reflects when
-          // `getTopForLineNumber` results become trustworthy for *this* editor specifically.
-          // Reads through scheduleRecomputeRef, not the closed-over scheduleRecompute directly —
-          // this handler is registered once at mount and Monaco never re-subscribes it, so a
-          // direct closure would permanently use whatever expandedBlocks existed at mount time.
-          editorInstance.onDidLayoutChange(() => scheduleRecomputeRef.current())
-
-          if (pane === 'center') {
-            editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
-
-            // Register undo/redo keybindings to intercept them and handle gutter actions that don't change text
-            editorInstance.addCommand(
-              monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyZ,
-              () => {
-                triggerUndo()
-              }
-            )
-            editorInstance.addCommand(
-              monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyY,
-              () => {
-                triggerRedo()
-              }
-            )
-            editorInstance.addCommand(
-              monacoInstance.KeyMod.CtrlCmd |
-                monacoInstance.KeyMod.Shift |
-                monacoInstance.KeyCode.KeyZ,
-              () => {
-                triggerRedo()
-              }
-            )
-          }
-
-          onEditorMountRef.current?.(editorInstance, monacoInstance, pane)
-
-          if (
-            editors.theirsEditorRef.current &&
-            editors.centerEditorRef.current &&
-            (isTwoWay || editors.oursEditorRef.current)
-          ) {
-            setEditorsReady(true)
-            // Panes normally mount already scrolled to the top, but seed the paths from
-            // whatever the panes actually report rather than assuming 0.
-            applyScrollOffset()
-            applyStickyBanners()
-            updateActiveBlockIndex()
-            // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
-            // three editors report ready, in case the very first layout pass (and thus the very
-            // first `getTopForLineNumber` reads) happened before the browser's first paint.
-            followUpTimersRef.current.push(
-              setTimeout(() => scheduleRecompute(), 50),
-              setTimeout(() => scheduleRecompute(), 250)
-            )
-          }
-        },
-      [
-        editors,
-        attachScrollSync,
-        scheduleRecompute,
-        scheduleRecomputeRef,
-        handleCenterContentEvent,
-        applyScrollOffset,
-        applyStickyBanners,
-        updateActiveBlockIndex,
-        triggerUndo,
-        triggerRedo,
-        isTwoWay,
-      ]
-    )
+    const handlePaneMount = usePaneMount({
+      editors,
+      isTwoWay,
+      syncPaneBackground,
+      attachScrollSync,
+      scheduleRecompute,
+      scheduleRecomputeRef,
+      applyScrollOffset,
+      applyStickyBanners,
+      updateActiveBlockIndex,
+      refreshIntraHighlights,
+      handleCenterContentEvent,
+      triggerUndo,
+      triggerRedo,
+      onEditorMount: editorConfig?.onEditorMount,
+      onMonacoReady: setMonaco,
+      onEditorsReady: handleEditorsReady,
+    })
 
     useImperativeHandle(
       ref,
