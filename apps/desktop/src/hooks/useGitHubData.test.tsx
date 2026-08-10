@@ -26,7 +26,7 @@ import { useNotificationStore } from '../stores/notification.store'
 import { DEV_FLAG_DEFAULTS, useDevFlagsStore } from '../stores/devFlags.store'
 import { useDevFixturesStore, resetDevFixturesLoad } from '../stores/devFixtures.store'
 import { useGitHubData } from './useGitHubData'
-import type { MockPR } from '../app/pull-requests/types'
+import type { MockPR } from '../lib/github/types'
 
 const mocked = {
   fetchGitHubPRs: fetchGitHubPRs as unknown as ReturnType<typeof vi.fn>,

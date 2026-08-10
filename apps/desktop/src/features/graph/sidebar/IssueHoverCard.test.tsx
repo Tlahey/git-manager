@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 import { IssueHoverCard } from './IssueHoverCard'
 
 function issue(overrides: Partial<MockIssue> = {}): MockIssue {

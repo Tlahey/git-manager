@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react'
 import type { AppNotification, PreviousPRSnapshot } from '../../stores/notification.store'
 import type { NotificationSettings } from '@git-manager/git-types'
-import type { MockPR, PRStatus, ReviewStatus } from '../../app/pull-requests/types'
+import type { MockPR, PRStatus, ReviewStatus } from '../github/types'
 import {
   ReviewRequestedIcon,
   PrGreenIcon,

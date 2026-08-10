@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createConfigStorage } from '../lib/appConfig/configStorage'
-import type { MockIssue } from '../app/pull-requests/types'
+import type { MockIssue } from '../lib/github/types'
 import type { PendingDeleteRemoteBranch } from '../lib/graphContextMenus'
 import { appEventBus } from '../lib/appEventBus'
 import { closeRepoScopedPanels } from './repoScopedPanels'

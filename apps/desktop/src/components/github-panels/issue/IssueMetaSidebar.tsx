@@ -23,7 +23,7 @@ import {
 import { PrSidebarSection } from '../pr/PrSidebarSection'
 import { PrUserList } from '../pr/PrUserList'
 import { PrEditPopover, type PrEditOption } from '../pr/PrEditPopover'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 interface IssueMetaSidebarProps {
   repoPath: string

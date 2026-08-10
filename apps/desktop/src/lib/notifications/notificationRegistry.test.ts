@@ -6,7 +6,7 @@ import {
   isNotificationTypeEnabled,
   type PreviousPRSnapshot,
 } from './notificationRegistry'
-import type { MockPR } from '../../app/pull-requests/types'
+import type { MockPR } from '../github/types'
 import type { NotificationSettings } from '@git-manager/git-types'
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {

@@ -37,15 +37,13 @@ vi.mock('@git-manager/ui', () => ({ Toaster: () => <div data-testid="fake-toaste
 vi.mock('./app/dashboard/DashboardPage', () => ({
   DashboardPage: () => <div data-testid="fake-dashboard-page" />,
 }))
-vi.mock('./app/pull-requests/components/RewardsTab', () => ({
-  RewardsTab: () => <div data-testid="fake-rewards-tab" />,
-}))
 vi.mock('./app/repo/RepoView', () => ({ RepoView: () => <div data-testid="fake-repo-view" /> }))
 vi.mock('./app/new-tab/NewTabPage', () => ({
   NewTabPage: () => <div data-testid="fake-new-tab-page" />,
 }))
-vi.mock('./app/pull-requests/PullRequestsPage', () => ({
+vi.mock('./features/launchpad', () => ({
   PullRequestsPage: () => <div data-testid="fake-pr-page" />,
+  RewardsTab: () => <div data-testid="fake-rewards-tab" />,
 }))
 vi.mock('./app/settings/SettingsPage', () => ({
   SettingsPage: (props: { initialSection: string; onClose: () => void }) => (

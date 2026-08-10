@@ -39,6 +39,29 @@ export function formatRelativeDate(timestamp: number): string {
 }
 
 /**
+ * Coarse relative time from a `Date`, e.g. `12s ago`, `5m ago`, `3d ago`, `2mo ago`.
+ *
+ * The GitHub-side variant: it takes a `Date` (what the GitHub API layer builds) rather than an
+ * epoch, and counts seconds instead of collapsing the first minute to "just now". Read by the
+ * Launchpad rows and by the graph sidebar's issue hover card, which is why it sits here rather
+ * than inside either feature.
+ *
+ * It is a near-duplicate of `formatRelativeDate` above and neither is localized — both should
+ * fold into `formatRelativeTime`, which is. Kept as-is for now so this move changed no wording.
+ */
+export function timeAgo(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (s < 60) return `${s}s ago`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d}d ago`
+  return `${Math.floor(d / 30)}mo ago`
+}
+
+/**
  * Locale-formatted absolute date/time, for tooltips.
  *
  * `locale` is the app's own language (`i18n.language`), and every caller must pass it. Omitting

@@ -6,7 +6,7 @@ import type {
   PullRequest,
   GitStash,
 } from '@git-manager/git-types'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 import type { SavedFilter } from '../stores/savedFilters'
 
 /** Stable section identifiers (open state + scroll). */

@@ -1,13 +1,53 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   formatRelativeDate,
   formatExactDate,
   formatRelativeTime,
   formatShortDate,
   formatDateTimeLong,
+  timeAgo,
 } from './relativeDate'
 
 const nowSec = () => Math.floor(Date.now() / 1000)
+
+describe('timeAgo', () => {
+  const NOW = new Date('2024-06-15T12:00:00.000Z')
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('formats seconds for very recent dates', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 30_000))).toBe('30s ago')
+  })
+
+  it('formats minutes once past 60 seconds', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 5 * 60_000))).toBe('5m ago')
+  })
+
+  it('formats hours once past 60 minutes', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 3 * 3_600_000))).toBe('3h ago')
+  })
+
+  it('formats days once past 24 hours', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 5 * 86_400_000))).toBe('5d ago')
+  })
+
+  it('formats months once past 30 days', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 90 * 86_400_000))).toBe('3mo ago')
+  })
+
+  it('formats a date at exactly the boundary as the next larger unit', () => {
+    expect(timeAgo(new Date(NOW.getTime() - 60_000))).toBe('1m ago')
+    expect(timeAgo(new Date(NOW.getTime() - 3_600_000))).toBe('1h ago')
+    expect(timeAgo(new Date(NOW.getTime() - 86_400_000))).toBe('1d ago')
+  })
+})
 
 describe('formatRelativeDate', () => {
   it('reports very recent timestamps as "just now"', () => {

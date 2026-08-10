@@ -4,7 +4,7 @@ import { useGithubAccount } from '../../../hooks/useGithubAccount'
 import { fetchIssuesByQuery } from '../../../api/github.api'
 import { firstGitHubOwnerRepo } from '../../../lib/githubRemote'
 import type { IssueFilter } from '../stores/issueFilters.store'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 export interface UseRepoIssuesOptions {
   remoteUrls: string[]

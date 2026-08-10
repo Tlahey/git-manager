@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { fetchRepoIssues } from '../api/github.api'
-import type { MockIssue } from '../app/pull-requests/types'
+import type { MockIssue } from '../lib/github/types'
 import { useRepoGitHub } from './useRepoGitHub'
 
 /**

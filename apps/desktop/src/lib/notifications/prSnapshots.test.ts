@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildPRSnapshot, buildPRSnapshotMap, snapshotMapsEqual } from './prSnapshots'
-import type { MockPR } from '../../app/pull-requests/types'
+import type { MockPR } from '../github/types'
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {
   return {

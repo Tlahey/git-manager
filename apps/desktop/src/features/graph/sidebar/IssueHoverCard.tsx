@@ -2,8 +2,8 @@ import { CircleDot, CircleCheck, MessageSquare, ThumbsUp } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { PrSidebarSection } from '../../../components/github-panels/pr/PrSidebarSection'
 import { PrUserList } from '../../../components/github-panels/pr/PrUserList'
-import type { MockIssue } from '../../../app/pull-requests/types'
-import { timeAgo } from '../../../app/pull-requests/utils'
+import type { MockIssue } from '../../../lib/github/types'
+import { timeAgo } from '../../../lib/relativeDate'
 import { issueExcerpt } from './issueExcerpt'
 
 interface IssueHoverCardProps {

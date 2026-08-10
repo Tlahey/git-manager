@@ -1,7 +1,7 @@
 // ─── Constants & Styles ───────────────────────────────────────────────────────
 // One colour-tinted box per notification type, wrapping a real lucide-react glyph — the same one
 // each concept already uses elsewhere in the app (`CheckCircle2`/`XCircle` for CI in
-// `app/pull-requests/components/Badges.tsx`, `GitMerge` for a merge in `PrMergeButton.tsx`, `Eye`
+// `features/launchpad/components/Badges.tsx`, `GitMerge` for a merge in `PrMergeButton.tsx`, `Eye`
 // for a review in `PrQuickActions.tsx`), so the notch/bell icon for an event and the in-app icon
 // for the same event are never two different pictures.
 

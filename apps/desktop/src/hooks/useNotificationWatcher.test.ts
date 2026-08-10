@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import type { MockPR } from '../app/pull-requests/types'
+import type { MockPR } from '../lib/github/types'
 import { i18next, type TFunction } from '@git-manager/i18n'
 
 const useGitHubData = vi.fn()
@@ -24,7 +24,7 @@ vi.mock('../lib/notifications/notificationRouting', () => ({
 import { useNotificationStore } from '../stores/notification.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useRepoUIStore, DASHBOARD_TAB } from '../stores/repoUI.store'
-import { useLaunchpadStore } from '../stores/launchpad.store'
+import { useLaunchpadStore } from '../features/launchpad/stores/launchpad.store'
 import { useNotificationWatcher, showNativeNotification } from './useNotificationWatcher'
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings

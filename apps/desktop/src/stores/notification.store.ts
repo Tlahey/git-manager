@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { MockPR, PRStatus, ReviewStatus, CiStatus } from '../app/pull-requests/types'
+import type { MockPR, PRStatus, ReviewStatus, CiStatus } from '../lib/github/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

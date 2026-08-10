@@ -3,7 +3,7 @@ import useSWR from 'swr'
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
 import { useDevFlagsStore } from '../stores/devFlags.store'
-import type { MockPR, DayCommit } from '../app/pull-requests/types'
+import type { MockPR, DayCommit } from '../lib/github/types'
 import { useDevFixtures } from './useDevFixtures'
 import {
   fetchGitHubPRs,

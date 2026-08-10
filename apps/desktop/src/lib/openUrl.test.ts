@@ -30,4 +30,18 @@ describe('openUrl', () => {
 
     expect(windowOpen).toHaveBeenCalledWith('https://example.test/releases', '_blank')
   })
+
+  /** The plugin can be there and still refuse (no shell permission in the capability set); the
+   * `catch` has to cover the rejected call, not just the failed import. */
+  it('falls back to window.open when the plugin call itself rejects', async () => {
+    vi.doMock('@tauri-apps/plugin-shell', () => ({
+      open: vi.fn().mockRejectedValue(new Error('denied')),
+    }))
+    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { openUrl } = await import('./openUrl')
+
+    await openUrl('https://example.test/releases')
+
+    expect(windowOpen).toHaveBeenCalledWith('https://example.test/releases', '_blank')
+  })
 })

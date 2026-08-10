@@ -5,9 +5,10 @@ import { useTranslation } from '@git-manager/i18n'
 import { showNativeMenu } from '../../../api/nativeMenu.api'
 import { apiCreateAndCheckoutBranch } from '../../../api/git.api'
 import { buildIssueMenuSpec } from '../../../lib/issueContextMenus'
-import { branchMatchesIssue, issueBranchName, openUrl } from '../../../app/pull-requests/utils'
+import { branchMatchesIssue, issueBranchName } from '../../../lib/github/issueBranch'
+import { openUrl } from '../../../lib/openUrl'
 import { useBranches } from '../../../hooks/useBranches'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 
 /**
  * The action menu behind a right-click on an issue row in the sidebar.

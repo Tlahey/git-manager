@@ -1,4 +1,4 @@
-import { useLaunchpadStore } from '../../stores/launchpad.store'
+import { useLaunchpadStore } from '../../features/launchpad/stores/launchpad.store'
 import { useNotificationStore } from '../../stores/notification.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB, REWARDS_TAB } from '../../stores/repoUI.store'

@@ -2,7 +2,7 @@ import { CircleDot, CircleCheck, MessageSquare, MoreVertical } from 'lucide-reac
 import { Tooltip } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
-import type { MockIssue } from '../../../app/pull-requests/types'
+import type { MockIssue } from '../../../lib/github/types'
 import { IssueHoverCard } from './IssueHoverCard'
 
 interface IssueItemProps {

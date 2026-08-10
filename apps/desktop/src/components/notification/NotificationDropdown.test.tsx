@@ -11,7 +11,7 @@ vi.mock('../../hooks/useNotificationWatcher', () => ({ notifyUser }))
 import { NotificationDropdown } from './NotificationDropdown'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
-import { useLaunchpadStore } from '../../stores/launchpad.store'
+import { useLaunchpadStore } from '../../features/launchpad/stores/launchpad.store'
 import { useSettingsStore } from '../../stores/settings.store'
 
 const INITIAL_NOTIF = useNotificationStore.getState()

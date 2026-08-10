@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useNotificationStore } from './notification.store'
-import type { MockPR } from '../app/pull-requests/types'
+import type { MockPR } from '../lib/github/types'
 
 /**
  * The store no longer seeds itself with the development fixtures — they are behind a dynamic

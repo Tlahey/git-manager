@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import type { MockIssue } from '../app/pull-requests/types'
+import type { MockIssue } from '../lib/github/types'
 
 const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
 vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))

@@ -3,8 +3,8 @@ import useSWR from 'swr'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { apiGetRemotes, apiGetBranches } from '../api/git.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
-import { branchMatchesIssue } from '../app/pull-requests/utils'
-import type { MockIssue } from '../app/pull-requests/types'
+import { branchMatchesIssue } from '../lib/github/issueBranch'
+import type { MockIssue } from '../lib/github/types'
 
 /**
  * Resolves `owner/repo` → local path for every added repo, once, shared across all issue rows (SWR

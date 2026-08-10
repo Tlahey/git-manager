@@ -5,9 +5,10 @@ import { useSettingsStore } from '../stores/settings.store'
 import { useOpenRepoTab } from './useOpenRepoTab'
 import { apiCreateAndCheckoutBranch } from '../api/git.api'
 import { setIssueState } from '../api/github.api'
-import { openUrl, issueBranchName } from '../app/pull-requests/utils'
+import { issueBranchName } from '../lib/github/issueBranch'
+import { openUrl } from '../lib/openUrl'
 import { useIssueRepoLink } from './useIssueRepoLink'
-import type { MockIssue } from '../app/pull-requests/types'
+import type { MockIssue } from '../lib/github/types'
 
 export interface IssueActions {
   /** Local path of the added repo, or `null` when the issue's repo isn't added. */
