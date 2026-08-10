@@ -3,9 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/git.api', () => ({ apiGetRemotes: vi.fn() }))
+vi.mock('../../../api/git.api', () => ({ apiGetRemotes: vi.fn() }))
 
-import { apiGetRemotes } from '../api/git.api'
+import { apiGetRemotes } from '../../../api/git.api'
 import { useRepoOwner } from './useRepoOwner'
 
 const mockedApi = apiGetRemotes as unknown as ReturnType<typeof vi.fn>

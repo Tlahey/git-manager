@@ -3,9 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/repo.api', () => ({ apiGetRepoReadme: vi.fn() }))
+vi.mock('../../../api/repo.api', () => ({ apiGetRepoReadme: vi.fn() }))
 
-import { apiGetRepoReadme } from '../api/repo.api'
+import { apiGetRepoReadme } from '../../../api/repo.api'
 import { useRepoReadme } from './useRepoReadme'
 
 const mockedApi = apiGetRepoReadme as unknown as ReturnType<typeof vi.fn>

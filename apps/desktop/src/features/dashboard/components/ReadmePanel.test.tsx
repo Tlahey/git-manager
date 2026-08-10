@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { renderWithLanguage } from '../../../test/i18n'
 
 const { useRepoReadme } = vi.hoisted(() => ({ useRepoReadme: vi.fn() }))
-vi.mock('../../../hooks/useRepoReadme', () => ({ useRepoReadme }))
+vi.mock('../hooks/useRepoReadme', () => ({ useRepoReadme }))
 vi.mock('../../../components/Markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
 }))

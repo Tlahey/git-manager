@@ -1,7 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Check, Ban } from 'lucide-react'
-import { SECTION_COLORS, type SectionColor } from '../../../stores/dashboard.store'
-import { SECTION_COLOR_SWATCH } from './sectionColor.config'
+import { SECTION_COLORS, type SectionColor } from '../stores/dashboard.store'
+import { SECTION_COLOR_SWATCH } from '../lib/sectionColor.config'
 
 interface SectionColorPickerProps {
   sectionId: string

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { RepoSectionHeader } from './RepoSectionHeader'
 import type { RepoSelection } from '../hooks/useRepoSelection'
 import type { SectionAction } from '../hooks/useSectionActions'
-import { useDashboardStore } from '../../../stores/dashboard.store'
+import { useDashboardStore } from '../stores/dashboard.store'
 
 const ALL_PATHS = ['/repo/a', '/repo/b']
 

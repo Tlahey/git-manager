@@ -6,8 +6,8 @@ const { useRepoSummary, useRepoOwner } = vi.hoisted(() => ({
   useRepoSummary: vi.fn(),
   useRepoOwner: vi.fn(),
 }))
-vi.mock('../../../hooks/useRepoSummary', () => ({ useRepoSummary }))
-vi.mock('../../../hooks/useRepoOwner', () => ({ useRepoOwner }))
+vi.mock('../hooks/useRepoSummary', () => ({ useRepoSummary }))
+vi.mock('../hooks/useRepoOwner', () => ({ useRepoOwner }))
 vi.mock('../../../api/repo.api', () => ({ apiOpenInEditor: vi.fn() }))
 
 import { apiOpenInEditor } from '../../../api/repo.api'

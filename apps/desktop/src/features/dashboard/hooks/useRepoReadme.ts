@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { apiGetRepoReadme } from '../api/repo.api'
+import { apiGetRepoReadme } from '../../../api/repo.api'
 
 export function useRepoReadme(path: string | null) {
   return useSWR<string, Error>(

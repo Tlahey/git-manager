@@ -44,7 +44,7 @@ import { apiOpenRepo, apiScanRepos } from '../../api/repo.api'
 import { DashboardPage } from './DashboardPage'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useDashboardStore } from '../../stores/dashboard.store'
+import { useDashboardStore } from './stores/dashboard.store'
 
 const mockedOpenRepo = apiOpenRepo as unknown as ReturnType<typeof vi.fn>
 const mockedScanRepos = apiScanRepos as unknown as ReturnType<typeof vi.fn>

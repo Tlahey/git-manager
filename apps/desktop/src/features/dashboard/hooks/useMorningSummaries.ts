@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { dailySummaryFeature, fileSummaryFeature } from '@git-manager/ai'
-import { useDailySummaryStore, selectSummariesFor } from '../stores/dailySummary.store'
-import { trackAiProgress } from '../stores/aiActivity.store'
-import { useSettingsStore } from '../stores/settings.store'
-import { isSummaryStale, previousWorkingDayKey } from '../lib/dailySummaryWindow'
-import { generateDailySummary } from '../lib/generateDailySummary'
-import { DEFAULT_TARGET_BRANCHES } from './useEffectiveRepoSettings'
+import { useDailySummaryStore, selectSummariesFor } from '../../../stores/dailySummary.store'
+import { trackAiProgress } from '../../../stores/aiActivity.store'
+import { useSettingsStore } from '../../../stores/settings.store'
+import { isSummaryStale, previousWorkingDayKey } from '../../../lib/dailySummaryWindow'
+import { generateDailySummary } from '../../../lib/generateDailySummary'
+import { DEFAULT_TARGET_BRANCHES } from '../../../hooks/useEffectiveRepoSettings'
 
 /**
  * The "every morning" trigger. When the daily-summary feature is enabled with auto-generation on,

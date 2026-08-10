@@ -3,9 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/repo.api', () => ({ apiGetRepoSummary: vi.fn() }))
+vi.mock('../../../api/repo.api', () => ({ apiGetRepoSummary: vi.fn() }))
 
-import { apiGetRepoSummary } from '../api/repo.api'
+import { apiGetRepoSummary } from '../../../api/repo.api'
 import { useRepoSummary } from './useRepoSummary'
 
 const mockedApi = apiGetRepoSummary as unknown as ReturnType<typeof vi.fn>

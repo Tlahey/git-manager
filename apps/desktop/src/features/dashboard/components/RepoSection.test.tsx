@@ -30,7 +30,7 @@ import { apiFetchRemote, apiPullBranch } from '../../../api/git.api'
 import { RepoSection } from './RepoSection'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { useDashboardStore } from '../../../stores/dashboard.store'
+import { useDashboardStore } from '../stores/dashboard.store'
 
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_REPO_UI = useRepoUIStore.getState()

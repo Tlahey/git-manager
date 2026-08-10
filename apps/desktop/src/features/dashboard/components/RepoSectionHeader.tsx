@@ -26,9 +26,9 @@ import {
   useDashboardStore,
   type SectionColor,
   type DashboardSectionId,
-} from '../../../stores/dashboard.store'
+} from '../stores/dashboard.store'
 import { SectionColorPicker } from './SectionColorPicker'
-import { SECTION_COLOR_HEADER } from './sectionColor.config'
+import { SECTION_COLOR_HEADER } from '../lib/sectionColor.config'
 
 interface RepoSectionHeaderProps {
   sectionId: DashboardSectionId

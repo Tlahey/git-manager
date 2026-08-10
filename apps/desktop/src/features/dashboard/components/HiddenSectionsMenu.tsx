@@ -12,7 +12,7 @@ import {
   useDashboardStore,
   DASHBOARD_SECTION_IDS,
   type DashboardSectionId,
-} from '../../../stores/dashboard.store'
+} from '../stores/dashboard.store'
 
 interface HiddenSectionsMenuProps {
   /** Display title per section id, so this component stays free of copy decisions. */

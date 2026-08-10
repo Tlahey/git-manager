@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SectionColorPicker } from './SectionColorPicker'
-import { SECTION_COLOR_HEADER } from './sectionColor.config'
-import { SECTION_COLORS } from '../../../stores/dashboard.store'
+import { SECTION_COLOR_HEADER } from '../lib/sectionColor.config'
+import { SECTION_COLORS } from '../stores/dashboard.store'
 
 beforeEach(() => {
   vi.clearAllMocks()

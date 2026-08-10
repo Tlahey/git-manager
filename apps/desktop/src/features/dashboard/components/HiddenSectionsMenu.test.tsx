@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HiddenSectionsMenu } from './HiddenSectionsMenu'
-import { useDashboardStore } from '../../../stores/dashboard.store'
+import { useDashboardStore } from '../stores/dashboard.store'
 
 const TITLES = {
   open: 'Open repositories',

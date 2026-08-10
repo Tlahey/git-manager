@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { apiGetRemotes } from '../api/git.api'
+import { apiGetRemotes } from '../../../api/git.api'
 import { firstParsedRemote, type ParsedRemote } from '../lib/remoteOwner'
 
 /**
