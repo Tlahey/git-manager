@@ -39,8 +39,8 @@ import type { PaletteCommand } from './types'
  * synthetic commit). The dialog-based ones (reset/revert/branch/tag) dispatch through the
  * `pendingGraphAction` store bridge, which `GitGraph.tsx` forwards to the graph's own dialogs — the
  * same result as the native context menu, but reachable from the keyboard. Copy-SHA and cherry-pick
- * have no dialog, so they call the API layer directly (mirroring `handleCopySha`/`handleCherryPick`
- * in `useGitGraphActions.ts`) instead of round-tripping through the bridge.
+ * have no dialog, so they call the API layer directly (mirroring `copySha`/`cherryPick` in
+ * `useCommitRowActions.ts`) instead of round-tripping through the bridge.
  */
 export function useCommitCommands(): PaletteCommand[] {
   const { t } = useTranslation('common')

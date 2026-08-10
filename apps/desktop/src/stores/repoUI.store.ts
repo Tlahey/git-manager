@@ -301,7 +301,7 @@ interface RepoUIState {
    * Stash index (parsed from `stash@{N}`) when the selected row is a stash entry, `null` otherwise —
    * published alongside `selectedCommitOid` so out-of-tree UI can offer stash-scoped actions
    * (apply/pop/drop) without duplicating the stash-detection logic already in
-   * `useGitGraphActions.ts`'s native-menu path.
+   * `useGraphRowMenus.ts`'s native-menu path.
    */
   selectedStashIndex: number | null
   setSelectedStashIndex: (index: number | null) => void

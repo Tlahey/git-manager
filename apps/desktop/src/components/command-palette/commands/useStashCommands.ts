@@ -12,7 +12,7 @@ import type { PaletteCommand } from './types'
 /**
  * Stash-scoped palette commands, gated on the selected row being a stash entry
  * (`selectedStashIndex`, published by `GitGraph.tsx` alongside `selectedCommitOid`). Mirrors
- * `useGitGraphActions.ts`'s native stash-menu handlers (`onApply`/`onPop`/`onDelete`) exactly —
+ * `useGraphRowMenus.ts`'s native stash-menu handlers (`onApply`/`onPop`/`onDelete`) exactly —
  * same API calls, same `mutate`/`invalidateQueries` follow-up — since apply/pop/drop have no
  * dialog and were otherwise reachable only through the native stash context menu.
  */
