@@ -22,8 +22,8 @@ import {
   type OtherWorktreeMenuActions,
   type SidebarBranchMenuContext,
   type WipMenuActions,
-} from './graphContextMenus'
-import { normalizeMenuSpec, type MenuSpecNode } from './nativeMenuSpec'
+} from './index'
+import { normalizeMenuSpec, type MenuSpecNode } from '../nativeMenuSpec'
 
 // vitest.setup.ts boots real i18n in English — builders receive `t`, so assert real visible copy.
 const t = (key: string, opts?: Record<string, unknown>) => i18next.t(key, { ns: 'git', ...opts })
