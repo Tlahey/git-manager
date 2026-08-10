@@ -1,5 +1,4 @@
 import type { Board, BoardCard, BoardComment } from '@git-manager/git-types'
-import { readBoardConfig, writeBoardConfig } from '../../../lib/tauri'
 import {
   fetchRepoIssues,
   fetchIssueDetail,
@@ -32,6 +31,7 @@ import {
   type RawIssueForCard,
 } from './remoteCardMapping'
 import type { BoardBackend } from './boardBackend'
+import { readConfigFile, writeConfigFile, generateBoardId } from './remoteBoardConfigFile'
 
 /**
  * Remote (GitHub-backed) board — a card *is* a GitHub issue, a column is a `board:<id>:status:<col>`
@@ -48,55 +48,6 @@ import type { BoardBackend } from './boardBackend'
  *
  * Label arithmetic and the read mapping are in `remoteCardMapping.ts`, kept pure and tested.
  */
-
-interface RemoteBoardConfigFile {
-  boards: Board[]
-}
-
-async function readConfigFile(path: string): Promise<RemoteBoardConfigFile> {
-  const raw = await readBoardConfig(path)
-  if (!raw) return { boards: [] }
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    const boards = (parsed as Partial<RemoteBoardConfigFile> | null)?.boards
-    // Boards written before tags/DOD templates existed lack those keys; default them on read so the
-    // rest of the app can treat every board as the current shape.
-    return {
-      boards: Array.isArray(boards)
-        ? boards.map((b) => ({
-            ...b,
-            tags: b.tags ?? [],
-            dodTemplate: b.dodTemplate ?? '',
-            // A config written before per-card prefixes carries a single `cardPrefix`.
-            cardPrefixes:
-              b.cardPrefixes ??
-              ('cardPrefix' in b && typeof b.cardPrefix === 'string' && b.cardPrefix
-                ? [b.cardPrefix]
-                : []),
-            nextCardNumbers: b.nextCardNumbers ?? {},
-          }))
-        : [],
-    }
-  } catch {
-    return { boards: [] }
-  }
-}
-
-async function writeConfigFile(path: string, config: RemoteBoardConfigFile): Promise<void> {
-  await writeBoardConfig(path, JSON.stringify(config, null, 2))
-}
-
-/** Short, label-safe id — no uuid dependency, mirrors `git_board.rs`'s dependency-free id
- * generation. Must stay short: it's embedded in every card's label (`board:<id>:status:<col>`),
- * which has to fit under GitHub's 50-character label limit alongside the column id. */
-function generateBoardId(): string {
-  let hash = 0
-  const seed = `${Date.now()}-${Math.random()}`
-  for (let i = 0; i < seed.length; i++) {
-    hash = (Math.imul(31, hash) + seed.charCodeAt(i)) | 0
-  }
-  return (hash >>> 0).toString(16)
-}
 
 function rawToIssueForCard(raw: GhRawIssue): RawIssueForCard {
   return {
