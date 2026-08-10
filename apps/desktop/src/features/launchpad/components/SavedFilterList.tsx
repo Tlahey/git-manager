@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Layers, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import { Tooltip } from '@git-manager/ui'
 import type { SavedFilter } from '../stores/launchpad.store'
 
 interface SavedFilterListProps {
@@ -42,15 +43,16 @@ export function SavedFilterList({
         <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
           {t('views.savedFilters')}
         </span>
-        <button
-          onClick={onCreate}
-          data-testid="launchpad-new-filter-button"
-          className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
-          title={t('views.newFilter')}
-          aria-label={t('views.newFilter')}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip content={t('views.newFilter')}>
+          <button
+            onClick={onCreate}
+            data-testid="launchpad-new-filter-button"
+            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+            aria-label={t('views.newFilter')}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex-1 overflow-y-auto py-1">
@@ -87,17 +89,18 @@ export function SavedFilterList({
                 {countFor(f)}
               </span>
               <div className="absolute right-1 hidden items-center gap-0.5 group-hover/filter:flex">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEdit(f)
-                  }}
-                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-                  title={t('views.edit')}
-                  aria-label={t('views.edit')}
-                >
-                  <Pencil className="h-2.5 w-2.5" />
-                </button>
+                <Tooltip content={t('views.edit')}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit(f)
+                    }}
+                    className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                    aria-label={t('views.edit')}
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                  </button>
+                </Tooltip>
                 {confirmDeleteId === f.id ? (
                   <button
                     onClick={(e) => {
@@ -110,17 +113,18 @@ export function SavedFilterList({
                     {t('views.confirm')}
                   </button>
                 ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setConfirmDeleteId(f.id)
-                    }}
-                    className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    title={t('views.delete')}
-                    aria-label={t('views.delete')}
-                  >
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
+                  <Tooltip content={t('views.delete')}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmDeleteId(f.id)
+                      }}
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={t('views.delete')}
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  </Tooltip>
                 )}
               </div>
             </div>

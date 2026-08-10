@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, Spinner } from '@git-manager/ui'
+import { Input, Spinner, Tooltip } from '@git-manager/ui'
 import { Check, X } from 'lucide-react'
 import { useIssueEdit } from '../../../hooks/useIssueEdit'
 
@@ -62,25 +62,27 @@ export function IssueTitle({ repoPath, issueNumber, title }: IssueTitleProps) {
             if (e.key === 'Escape') cancel()
           }}
         />
-        <button
-          onClick={() => void save()}
-          disabled={pending}
-          data-testid="issue-title-save"
-          className="cursor-pointer rounded p-1 text-green-500 hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          title={t('pr.title.save')}
-          aria-label={t('pr.title.save')}
-        >
-          {pending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-        </button>
-        <button
-          onClick={cancel}
-          disabled={pending}
-          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          title={t('pr.title.cancel')}
-          aria-label={t('pr.title.cancel')}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <Tooltip content={t('pr.title.save')}>
+          <button
+            onClick={() => void save()}
+            disabled={pending}
+            data-testid="issue-title-save"
+            className="cursor-pointer rounded p-1 text-green-500 hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t('pr.title.save')}
+          >
+            {pending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          </button>
+        </Tooltip>
+        <Tooltip content={t('pr.title.cancel')}>
+          <button
+            onClick={cancel}
+            disabled={pending}
+            className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t('pr.title.cancel')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </Tooltip>
       </div>
     )
   }

@@ -200,8 +200,8 @@ describe('WaitingForReviewTab — pin toggling', () => {
         loading={false}
       />
     )
-    expect(screen.getByTitle('Unpin')).toBeInTheDocument()
-    await user.click(screen.getByTitle('Unpin'))
+    expect(screen.getByLabelText('Unpin')).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Unpin'))
     expect(onTogglePin).toHaveBeenCalledWith('pr-1')
   })
 })

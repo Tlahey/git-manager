@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pencil } from 'lucide-react'
+import { Tooltip } from '@git-manager/ui'
 
 interface PrSidebarSectionProps {
   title: string
@@ -29,15 +30,17 @@ export function PrSidebarSection({
           {title}
         </span>
         {onEdit && (
-          <button
-            onClick={onEdit}
-            data-testid={testId ? `${testId}-edit` : undefined}
-            title={editTitle}
-            aria-label={editTitle}
-            className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
+          // `editTitle` is optional, and an empty bubble is worse than none — hence the guard.
+          <Tooltip content={editTitle} disabled={!editTitle}>
+            <button
+              onClick={onEdit}
+              data-testid={testId ? `${testId}-edit` : undefined}
+              aria-label={editTitle}
+              className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </Tooltip>
         )}
       </div>
       {children}

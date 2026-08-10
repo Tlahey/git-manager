@@ -5,6 +5,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Tooltip,
 } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
@@ -24,21 +25,24 @@ export function RunButton({ tasks, defaultTask, onRun }: RunButtonProps) {
 
   return (
     <div className="flex shrink-0 items-stretch" data-testid="toolbar-run-button">
-      <button
-        type="button"
-        onClick={() => defaultTask && onRun(defaultTask)}
-        title={defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')}
-        aria-label={
-          defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')
-        }
-        data-testid="toolbar-run-button-primary"
-        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent"
+      <Tooltip
+        content={defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')}
       >
-        <Play className="h-4 w-4 text-orange-400" />
-        <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
-          {t('toolbar.run')}
-        </span>
-      </button>
+        <button
+          type="button"
+          onClick={() => defaultTask && onRun(defaultTask)}
+          aria-label={
+            defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')
+          }
+          data-testid="toolbar-run-button-primary"
+          className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent"
+        >
+          <Play className="h-4 w-4 text-orange-400" />
+          <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
+            {t('toolbar.run')}
+          </span>
+        </button>
+      </Tooltip>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

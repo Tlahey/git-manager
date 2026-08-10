@@ -1,5 +1,5 @@
 import { Check, FileText, Plus, Minus, RotateCcw } from 'lucide-react'
-import { cn } from '@git-manager/ui'
+import { Tooltip, cn } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { TreeNode } from '@git-manager/components'
 import { FILE_STATUS_LETTER, FILE_STATUS_COLOR } from '../../lib/fileStatusStyle'
@@ -50,23 +50,24 @@ export function FileTreeFileRow({ node, depth, ctx }: FileTreeFileRowProps) {
       {/* Left: Stage checkbox (WIP), File Icon and Filename */}
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         {!ctx.hoverStage && ctx.isWip ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (node.staged) ctx.onUnstage(node.path)
-              else ctx.onStage(node.path)
-            }}
-            className={cn(
-              'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-              node.staged
-                ? 'border-primary bg-primary text-white'
-                : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-            )}
-            title={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
-            aria-label={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
-          >
-            ✓
-          </button>
+          <Tooltip content={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (node.staged) ctx.onUnstage(node.path)
+                else ctx.onStage(node.path)
+              }}
+              className={cn(
+                'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                node.staged
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
+              )}
+              aria-label={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
+            >
+              ✓
+            </button>
+          </Tooltip>
         ) : !ctx.hoverStage ? (
           // Keeps a file's name aligned with the ones that do carry a checkbox.
           <div className="w-3 shrink-0" />
@@ -102,44 +103,48 @@ export function FileTreeFileRow({ node, depth, ctx }: FileTreeFileRowProps) {
         </span>
 
         {ctx.isWip && (
-          <button
-            onClick={() => ctx.onDiscard(node.path)}
-            data-testid={`file-discard-${node.path}`}
-            className={cn(
-              'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
-              ctx.hoverStage && 'opacity-0 group-hover/file:opacity-100'
-            )}
-            title={t('actions.discardChanges')}
-            aria-label={t('actions.discardChanges')}
-          >
-            <RotateCcw className="h-2.5 w-2.5" />
-          </button>
+          <Tooltip content={t('actions.discardChanges')}>
+            <button
+              onClick={() => ctx.onDiscard(node.path)}
+              data-testid={`file-discard-${node.path}`}
+              className={cn(
+                'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                ctx.hoverStage && 'opacity-0 group-hover/file:opacity-100'
+              )}
+              aria-label={t('actions.discardChanges')}
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          </Tooltip>
         )}
 
         {ctx.hoverStage && ctx.isWip && (
-          <button
-            onClick={() =>
-              ctx.hoverStage === 'add' ? ctx.onStage(node.path) : ctx.onUnstage(node.path)
-            }
-            className={cn(
-              'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
-              ctx.hoverStage === 'add'
-                ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-            )}
-            title={
-              ctx.hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')
-            }
-            aria-label={
+          <Tooltip
+            content={
               ctx.hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')
             }
           >
-            {ctx.hoverStage === 'add' ? (
-              <Plus className="h-2.5 w-2.5" />
-            ) : (
-              <Minus className="h-2.5 w-2.5" />
-            )}
-          </button>
+            <button
+              onClick={() =>
+                ctx.hoverStage === 'add' ? ctx.onStage(node.path) : ctx.onUnstage(node.path)
+              }
+              className={cn(
+                'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
+                ctx.hoverStage === 'add'
+                  ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                  : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
+              )}
+              aria-label={
+                ctx.hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')
+              }
+            >
+              {ctx.hoverStage === 'add' ? (
+                <Plus className="h-2.5 w-2.5" />
+              ) : (
+                <Minus className="h-2.5 w-2.5" />
+              )}
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

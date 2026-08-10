@@ -61,7 +61,7 @@ describe('NotificationDropdown — list', () => {
   it('shows an empty state when there are no notifications', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByLabelText('Notifications'))
     expect(screen.getByText('No notifications yet')).toBeInTheDocument()
   })
 
@@ -70,7 +70,7 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: notifs })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByLabelText('Notifications'))
     expect(screen.getAllByText(/PR #\d+ Merged/)).toHaveLength(5)
   })
 
@@ -80,7 +80,7 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: [notification({ targetTab: 'waiting' })] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByLabelText('Notifications'))
     await user.click(screen.getByText(/PR #\d+ Merged/))
 
     expect(useNotificationStore.getState().notifications[0].read).toBe(true)
@@ -97,8 +97,8 @@ describe('NotificationDropdown — list', () => {
     })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
-    await user.click(screen.getByTitle('Mark all as read'))
+    await user.click(screen.getByLabelText('Notifications'))
+    await user.click(screen.getByLabelText('Mark all as read'))
     expect(useNotificationStore.getState().notifications.every((n) => n.read)).toBe(true)
   })
 
@@ -106,8 +106,8 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: [notification()] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
-    await user.click(screen.getByTitle('Clear all'))
+    await user.click(screen.getByLabelText('Notifications'))
+    await user.click(screen.getByLabelText('Clear all'))
     expect(useNotificationStore.getState().notifications).toEqual([])
   })
 })
@@ -120,7 +120,7 @@ describe('NotificationDropdown — no test affordances', () => {
     vi.stubEnv('DEV', true)
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByLabelText('Notifications'))
 
     expect(screen.queryByText('Simulate Change')).not.toBeInTheDocument()
     expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
@@ -135,7 +135,7 @@ describe('NotificationDropdown — no test affordances', () => {
     })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('Notifications'))
+    await user.click(screen.getByLabelText('Notifications'))
 
     expect(screen.queryByText('Simulate Change')).not.toBeInTheDocument()
   })

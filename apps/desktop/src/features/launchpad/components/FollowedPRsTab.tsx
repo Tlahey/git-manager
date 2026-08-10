@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Plus, Trash2, BookOpen, GitPullRequest } from 'lucide-react'
-import { Button } from '@git-manager/ui'
+import { Button, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { EmptyState, NoResults } from '@git-manager/components'
 import { Toolbar } from './Toolbar'
@@ -148,17 +148,18 @@ export function FollowedPRsTab({
             {sortedPRs.slice(0, shown).map((pr) => (
               <div key={pr.id} className="group/followed relative">
                 <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveFollowed(pr.id)
-                  }}
-                  className="absolute top-1/2 right-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-xs backdrop-blur-xs transition-all duration-150 group-hover/followed:opacity-100 hover:border-destructive/20 hover:text-destructive"
-                  title={t('followed.unfollow')}
-                  aria-label={t('followed.unfollow')}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content={t('followed.unfollow')}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveFollowed(pr.id)
+                    }}
+                    className="absolute top-1/2 right-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-xs backdrop-blur-xs transition-all duration-150 group-hover/followed:opacity-100 hover:border-destructive/20 hover:text-destructive"
+                    aria-label={t('followed.unfollow')}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               </div>
             ))}
             <LoadMore

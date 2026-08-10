@@ -230,7 +230,7 @@ describe('PullRequestsTab — pin toggling', () => {
         loading={false}
       />
     )
-    await user.click(screen.getByTitle('Pin'))
+    await user.click(screen.getByLabelText('Pin'))
     expect(onTogglePin).toHaveBeenCalledWith('pr-1')
   })
 })

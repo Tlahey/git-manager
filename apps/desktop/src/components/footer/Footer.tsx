@@ -332,23 +332,24 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         {/* Game/Rewards Status Link */}
         {rewardsEnabled && (
           <>
-            <button
-              onClick={() => setActiveTab(REWARDS_TAB)}
-              className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-0.5 transition-all duration-150 ${
-                activeTab === REWARDS_TAB
-                  ? // Light-violet pill + near-black label (button component tokens): the old
-                    // text-primary violet sat at ~4.4:1 on the dark chrome footer (below AA).
-                    'border-button bg-button font-bold text-button-foreground shadow-xs'
-                  : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
-              }`}
-              title={t('footer.rewardsTooltip')}
-              aria-label={t('footer.rewardsTooltip')}
-            >
-              <Trophy
-                className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`}
-              />
-              <span>{t('footer.level', { level })}</span>
-            </button>
+            <Tooltip content={t('footer.rewardsTooltip')}>
+              <button
+                onClick={() => setActiveTab(REWARDS_TAB)}
+                className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-0.5 transition-all duration-150 ${
+                  activeTab === REWARDS_TAB
+                    ? // Light-violet pill + near-black label (button component tokens): the old
+                      // text-primary violet sat at ~4.4:1 on the dark chrome footer (below AA).
+                      'border-button bg-button font-bold text-button-foreground shadow-xs'
+                    : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
+                }`}
+                aria-label={t('footer.rewardsTooltip')}
+              >
+                <Trophy
+                  className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`}
+                />
+                <span>{t('footer.level', { level })}</span>
+              </button>
+            </Tooltip>
             <span className="text-border">|</span>
           </>
         )}
@@ -390,15 +391,16 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
 
         {/* App version — click opens the in-app changelog */}
         {appVersion && (
-          <button
-            onClick={() => onOpenSettings('changelog')}
-            title={t('footer.viewChangelog')}
-            aria-label={t('footer.viewChangelog')}
-            data-testid="footer-version-button"
-            className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-xs transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <span>{t('footer.version', { version: appVersion })}</span>
-          </button>
+          <Tooltip content={t('footer.viewChangelog')}>
+            <button
+              onClick={() => onOpenSettings('changelog')}
+              aria-label={t('footer.viewChangelog')}
+              data-testid="footer-version-button"
+              className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-xs transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              <span>{t('footer.version', { version: appVersion })}</span>
+            </button>
+          </Tooltip>
         )}
       </div>
     </footer>

@@ -1,5 +1,5 @@
 import { AlertCircle, ExternalLink, Lock, RefreshCw, Unlock } from 'lucide-react'
-import { ScrollArea } from '@git-manager/ui'
+import { ScrollArea, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitHubAccount } from '@git-manager/git-types'
 import type { GitHubRepoInfo } from '../../../../lib/tauri'
@@ -104,16 +104,17 @@ export function GithubReposPanel({ account, repos, isLoading }: GithubReposPanel
                     </p>
                   </div>
 
-                  <a
-                    href={repo.htmlUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    title={t('settings.github.openOnGitHub')}
-                    aria-label={t('settings.github.openOnGitHub')}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                  <Tooltip content={t('settings.github.openOnGitHub')}>
+                    <a
+                      href={repo.htmlUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      aria-label={t('settings.github.openOnGitHub')}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Tooltip>
                 </div>
               ))}
             </div>

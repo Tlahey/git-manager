@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { FILE_STATUS_LETTER, FILE_STATUS_COLOR } from '../../lib/fileStatusStyle'
 import { FilePathLabel } from './FilePathLabel'
-import { Input, Tag, ToggleGroup, cn } from '@git-manager/ui'
+import { Input, Tag, ToggleGroup, Tooltip, cn } from '@git-manager/ui'
 import {
   ChevronDown,
   ChevronRight,
@@ -316,31 +316,34 @@ export function CommitFileList({
               {title ?? t('commitFileList.modifications')}
             </span>
             {onBulkStage && hoverStage && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onBulkStage()
-                }}
-                className={cn(
-                  'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border transition-colors',
-                  hoverStage === 'add'
-                    ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                    : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                )}
-                title={
+              <Tooltip
+                content={
                   hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
                 }
-                aria-label={
-                  hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
-                }
-                data-testid={bulkStageTestId}
               >
-                {hoverStage === 'add' ? (
-                  <Plus className="h-2.5 w-2.5" />
-                ) : (
-                  <Minus className="h-2.5 w-2.5" />
-                )}
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onBulkStage()
+                  }}
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border transition-colors',
+                    hoverStage === 'add'
+                      ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                      : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
+                  )}
+                  aria-label={
+                    hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
+                  }
+                  data-testid={bulkStageTestId}
+                >
+                  {hoverStage === 'add' ? (
+                    <Plus className="h-2.5 w-2.5" />
+                  ) : (
+                    <Minus className="h-2.5 w-2.5" />
+                  )}
+                </button>
+              </Tooltip>
             )}
             {bodyVisible && viewMode === 'tree' && allFolderPaths.size > 0 && (
               <>
@@ -434,27 +437,30 @@ export function CommitFileList({
                   {/* Left: Stage checkbox (WIP), File Icon and Consecutive Path Display */}
                   <div className="mr-4 flex min-w-0 flex-1 items-center">
                     {!hoverStage && isWip && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (file.staged) handleUnstage(file.path)
-                          else handleStage(file.path)
-                        }}
-                        className={cn(
-                          'mr-1.5 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-                          file.staged
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-                        )}
-                        title={
-                          file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
-                        }
-                        aria-label={
+                      <Tooltip
+                        content={
                           file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
                         }
                       >
-                        ✓
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (file.staged) handleUnstage(file.path)
+                            else handleStage(file.path)
+                          }}
+                          className={cn(
+                            'mr-1.5 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                            file.staged
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
+                          )}
+                          aria-label={
+                            file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
+                          }
+                        >
+                          ✓
+                        </button>
+                      </Tooltip>
                     )}
                     <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                     {file.viewed && (
@@ -490,48 +496,52 @@ export function CommitFileList({
                     </span>
 
                     {isWip && (
-                      <button
-                        onClick={() => handleDiscard(file.path)}
-                        data-testid={`file-discard-${file.path}`}
-                        className={cn(
-                          'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
-                          hoverStage && 'opacity-0 group-hover/file:opacity-100'
-                        )}
-                        title={t('actions.discardChanges')}
-                        aria-label={t('actions.discardChanges')}
-                      >
-                        <RotateCcw className="h-2.5 w-2.5" />
-                      </button>
+                      <Tooltip content={t('actions.discardChanges')}>
+                        <button
+                          onClick={() => handleDiscard(file.path)}
+                          data-testid={`file-discard-${file.path}`}
+                          className={cn(
+                            'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                            hoverStage && 'opacity-0 group-hover/file:opacity-100'
+                          )}
+                          aria-label={t('actions.discardChanges')}
+                        >
+                          <RotateCcw className="h-2.5 w-2.5" />
+                        </button>
+                      </Tooltip>
                     )}
 
                     {hoverStage && isWip && (
-                      <button
-                        onClick={() =>
-                          hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path)
-                        }
-                        className={cn(
-                          'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
-                          hoverStage === 'add'
-                            ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                            : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                        )}
-                        title={
-                          hoverStage === 'add'
-                            ? t('commitFileList.stage')
-                            : t('commitFileList.unstage')
-                        }
-                        aria-label={
+                      <Tooltip
+                        content={
                           hoverStage === 'add'
                             ? t('commitFileList.stage')
                             : t('commitFileList.unstage')
                         }
                       >
-                        {hoverStage === 'add' ? (
-                          <Plus className="h-2.5 w-2.5" />
-                        ) : (
-                          <Minus className="h-2.5 w-2.5" />
-                        )}
-                      </button>
+                        <button
+                          onClick={() =>
+                            hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path)
+                          }
+                          className={cn(
+                            'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
+                            hoverStage === 'add'
+                              ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                              : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
+                          )}
+                          aria-label={
+                            hoverStage === 'add'
+                              ? t('commitFileList.stage')
+                              : t('commitFileList.unstage')
+                          }
+                        >
+                          {hoverStage === 'add' ? (
+                            <Plus className="h-2.5 w-2.5" />
+                          ) : (
+                            <Minus className="h-2.5 w-2.5" />
+                          )}
+                        </button>
+                      </Tooltip>
                     )}
                   </div>
                 </div>

@@ -270,7 +270,9 @@ describe('Footer — rewards link', () => {
   it('hides the rewards link when rewards are disabled', () => {
     useGameStore.setState({ rewardsEnabled: false })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.queryByTitle('View your Git achievements and rewards')).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('View your Git achievements and rewards')
+    ).not.toBeInTheDocument()
   })
 
   it('shows the current level and navigates to the rewards tab when clicked', async () => {
@@ -279,7 +281,7 @@ describe('Footer — rewards link', () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
     expect(screen.getByText('Lvl 2')).toBeInTheDocument()
 
-    await user.click(screen.getByTitle('View your Git achievements and rewards'))
+    await user.click(screen.getByLabelText('View your Git achievements and rewards'))
     expect(useRepoUIStore.getState().activeTab).toBe(REWARDS_TAB)
   })
 })

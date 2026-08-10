@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { X, GitPullRequest } from 'lucide-react'
+import { Tooltip } from '@git-manager/ui'
 import { usePrPublishFlow } from '../../../hooks/usePrPublishFlow'
 import { PrComposerExpander } from './PrComposerExpander'
 
@@ -27,16 +28,17 @@ export function PrComposerCenter({ repoPath }: PrComposerCenterProps) {
           <GitPullRequest className="h-4 w-4 text-primary" />
           {t('pr.publish.composerTitle')}
         </div>
-        <button
-          onClick={flow.cancel}
-          disabled={flow.busy}
-          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          data-testid="pr-composer-close"
-          title={t('pr.publish.cancel')}
-          aria-label={t('pr.publish.cancel')}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <Tooltip content={t('pr.publish.cancel')}>
+          <button
+            onClick={flow.cancel}
+            disabled={flow.busy}
+            className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="pr-composer-close"
+            aria-label={t('pr.publish.cancel')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex-1 overflow-auto p-4">

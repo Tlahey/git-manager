@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, Spinner } from '@git-manager/ui'
+import { Input, Spinner, Tooltip } from '@git-manager/ui'
 import { Check, X } from 'lucide-react'
 
 interface CardTitleFieldProps {
@@ -57,17 +57,18 @@ export function CardTitleField({ title, onSave, readOnly }: CardTitleFieldProps)
 
   if (!editing) {
     return (
-      <button
-        type="button"
-        disabled={readOnly}
-        onClick={() => setEditing(true)}
-        title={readOnly ? undefined : t('card.title.edit')}
-        aria-label={readOnly ? undefined : t('card.title.edit')}
-        data-testid="card-title-display"
-        className="min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left text-base font-semibold text-foreground transition-colors hover:enabled:bg-accent disabled:cursor-default"
-      >
-        {title}
-      </button>
+      <Tooltip content={t('card.title.edit')} disabled={readOnly}>
+        <button
+          type="button"
+          disabled={readOnly}
+          onClick={() => setEditing(true)}
+          aria-label={readOnly ? undefined : t('card.title.edit')}
+          data-testid="card-title-display"
+          className="min-w-0 flex-1 cursor-pointer rounded px-1 py-0.5 text-left text-base font-semibold text-foreground transition-colors hover:enabled:bg-accent disabled:cursor-default"
+        >
+          {title}
+        </button>
+      </Tooltip>
     )
   }
 
@@ -85,28 +86,30 @@ export function CardTitleField({ title, onSave, readOnly }: CardTitleFieldProps)
         className="h-8 text-sm"
         data-testid="card-title-input"
       />
-      <button
-        type="button"
-        onClick={() => void save()}
-        disabled={pending}
-        title={t('card.description.save')}
-        aria-label={t('card.description.save')}
-        data-testid="card-title-save"
-        className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent hover:enabled:text-foreground disabled:opacity-50"
-      >
-        {pending ? <Spinner className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
-      </button>
-      <button
-        type="button"
-        onClick={cancel}
-        disabled={pending}
-        title={t('card.description.cancel')}
-        aria-label={t('card.description.cancel')}
-        data-testid="card-title-cancel"
-        className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent hover:enabled:text-foreground disabled:opacity-50"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      <Tooltip content={t('card.description.save')}>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={pending}
+          aria-label={t('card.description.save')}
+          data-testid="card-title-save"
+          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent hover:enabled:text-foreground disabled:opacity-50"
+        >
+          {pending ? <Spinner className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+        </button>
+      </Tooltip>
+      <Tooltip content={t('card.description.cancel')}>
+        <button
+          type="button"
+          onClick={cancel}
+          disabled={pending}
+          aria-label={t('card.description.cancel')}
+          data-testid="card-title-cancel"
+          className="cursor-pointer rounded p-1 text-muted-foreground hover:enabled:bg-accent hover:enabled:text-foreground disabled:opacity-50"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </Tooltip>
     </div>
   )
 }

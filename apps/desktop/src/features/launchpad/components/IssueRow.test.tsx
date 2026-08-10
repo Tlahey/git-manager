@@ -126,7 +126,7 @@ describe('IssueRow — actions', () => {
   it('toggles the pin', () => {
     const onTogglePin = vi.fn()
     renderRow({ onTogglePin })
-    fireEvent.click(screen.getByTitle('Pin'))
+    fireEvent.click(screen.getByLabelText('Pin'))
     expect(onTogglePin).toHaveBeenCalledWith('1')
   })
 

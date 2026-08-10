@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, Tooltip } from '@git-manager/ui'
 import {
   ChevronLeft,
   ExternalLink,
@@ -65,20 +65,21 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
           <span>{t('pr.view.openOnGitHub')}</span>
         </button>
 
-        <button
-          onClick={togglePrFiles}
-          data-testid="pr-toggle-files"
-          aria-pressed={prFilesVisible}
-          title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
-          aria-label={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          {prFilesVisible ? (
-            <PanelRightClose className="h-3.5 w-3.5" />
-          ) : (
-            <PanelRightOpen className="h-3.5 w-3.5" />
-          )}
-        </button>
+        <Tooltip content={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}>
+          <button
+            onClick={togglePrFiles}
+            data-testid="pr-toggle-files"
+            aria-pressed={prFilesVisible}
+            aria-label={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
+            className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {prFilesVisible ? (
+              <PanelRightClose className="h-3.5 w-3.5" />
+            ) : (
+              <PanelRightOpen className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </Tooltip>
       </div>
 
       {isLoading || !pr ? (

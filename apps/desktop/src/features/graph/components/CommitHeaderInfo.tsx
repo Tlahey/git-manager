@@ -350,28 +350,31 @@ export function CommitHeaderInfo({
               </div>
 
               {remoteUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex h-7 shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  onClick={() => apiOpenUrl(`${remoteUrl}/commit/${commit.oid}`)}
-                  // The forge name is a proper noun and stays untranslated; the sentence around
-                  // it does not, which is what this key is for.
-                  title={t('commitDetails.openCommitOn', {
+                // The forge name is a proper noun and stays untranslated; the sentence around
+                // it does not, which is what this key is for.
+                <Tooltip
+                  content={t('commitDetails.openCommitOn', {
                     forge: remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub',
                   })}
-                  aria-label={t('commitDetails.openCommitOn', {
-                    forge: remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub',
-                  })}
-                  data-testid="github-commit-link"
                 >
-                  {remoteUrl.includes('gitlab.com') ? (
-                    <GitlabIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : (
-                    <GithubIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <span>{remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}</span>
-                </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex h-7 shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={() => apiOpenUrl(`${remoteUrl}/commit/${commit.oid}`)}
+                    aria-label={t('commitDetails.openCommitOn', {
+                      forge: remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub',
+                    })}
+                    data-testid="github-commit-link"
+                  >
+                    {remoteUrl.includes('gitlab.com') ? (
+                      <GitlabIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <GithubIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span>{remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}</span>
+                  </Button>
+                </Tooltip>
               )}
             </div>
 

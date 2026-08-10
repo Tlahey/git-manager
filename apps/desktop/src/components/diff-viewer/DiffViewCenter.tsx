@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Button, toast, GithubIcon, cn } from '@git-manager/ui'
+import { Spinner, Button, toast, GithubIcon, Tooltip, cn } from '@git-manager/ui'
 import { Copy, Check as CheckIcon, GitPullRequest, Tags } from 'lucide-react'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useFileRawContents } from '../../hooks/useFileRawContents'
@@ -277,32 +277,34 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
                           {t('fileHistory.viewingVersion')}
                         </span>
                       )}
-                      <button
-                        data-testid="diff-version-sha"
-                        onClick={handleCopySha}
-                        title={t('fileHistory.copySha')}
-                        aria-label={t('fileHistory.copySha')}
-                        className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
-                      >
-                        {shortOid(effectiveOid)}
-                        {shaCopied ? (
-                          <CheckIcon className="h-3 w-3 text-green-400" />
-                        ) : (
-                          <Copy className="h-3 w-3 opacity-70" />
-                        )}
-                      </button>
-                      <Button
-                        data-testid="diff-version-github"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 shrink-0 gap-1 px-2 text-[10px]"
-                        onClick={handleOpenOnGithub}
-                        title={t('fileHistory.openOnGithub')}
-                        aria-label={t('fileHistory.openOnGithub')}
-                      >
-                        <GithubIcon className="h-3.5 w-3.5" />
-                        <span>GitHub</span>
-                      </Button>
+                      <Tooltip content={t('fileHistory.copySha')}>
+                        <button
+                          data-testid="diff-version-sha"
+                          onClick={handleCopySha}
+                          aria-label={t('fileHistory.copySha')}
+                          className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
+                        >
+                          {shortOid(effectiveOid)}
+                          {shaCopied ? (
+                            <CheckIcon className="h-3 w-3 text-green-400" />
+                          ) : (
+                            <Copy className="h-3 w-3 opacity-70" />
+                          )}
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={t('fileHistory.openOnGithub')}>
+                        <Button
+                          data-testid="diff-version-github"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 shrink-0 gap-1 px-2 text-[10px]"
+                          onClick={handleOpenOnGithub}
+                          aria-label={t('fileHistory.openOnGithub')}
+                        >
+                          <GithubIcon className="h-3.5 w-3.5" />
+                          <span>GitHub</span>
+                        </Button>
+                      </Tooltip>
                       {commitPr && (
                         <Button
                           data-testid="diff-version-pr"

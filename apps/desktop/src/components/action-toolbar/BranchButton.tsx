@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { GitBranch } from 'lucide-react'
-import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
+import { Spinner, Popover, PopoverTrigger, PopoverContent, Input, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
 interface BranchButtonProps {
@@ -32,22 +32,23 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title={t('toolbar.createBranch')}
-          aria-label={t('toolbar.createBranch')}
-          data-testid="toolbar-branch-button"
-          className="group flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
-        >
-          <span className="flex h-4 w-4 items-center justify-center">
-            <GitBranch className="h-4 w-4 text-amber-400" />
-          </span>
-          <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
-            {t('toolbar.branch')}
-          </span>
-        </button>
-      </PopoverTrigger>
+      <Tooltip content={t('toolbar.createBranch')}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={t('toolbar.createBranch')}
+            data-testid="toolbar-branch-button"
+            className="group flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
+          >
+            <span className="flex h-4 w-4 items-center justify-center">
+              <GitBranch className="h-4 w-4 text-amber-400" />
+            </span>
+            <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
+              {t('toolbar.branch')}
+            </span>
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent align="start" className="w-64 p-2.5">
         <form onSubmit={handleSubmit}>
           <label className="mb-1 block text-[11px] font-semibold text-foreground">

@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Tooltip,
 } from '@git-manager/ui'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -40,20 +41,21 @@ export function TerminalButton() {
 
   return (
     <div className="flex shrink-0 items-stretch" data-testid="toolbar-terminal-button">
-      <button
-        type="button"
-        onClick={() => void toggle()}
-        title={t('terminal.open')}
-        aria-label={t('terminal.open')}
-        disabled={!path}
-        data-testid="toolbar-terminal-button-primary"
-        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <TerminalIcon className="h-4 w-4 text-emerald-400" />
-        <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
-          {t('terminal.title')}
-        </span>
-      </button>
+      <Tooltip content={t('terminal.open')}>
+        <button
+          type="button"
+          onClick={() => void toggle()}
+          aria-label={t('terminal.open')}
+          disabled={!path}
+          data-testid="toolbar-terminal-button-primary"
+          className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <TerminalIcon className="h-4 w-4 text-emerald-400" />
+          <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
+            {t('terminal.title')}
+          </span>
+        </button>
+      </Tooltip>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, Minus } from 'lucide-react'
-import { cn, Tag } from '@git-manager/ui'
+import { cn, Tag, Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { collectDescendantFiles, type TreeNode } from '@git-manager/components'
 import type { FileTreeRowContext } from './fileTreeRowContext'
@@ -59,25 +59,30 @@ export function FileTreeFolderRow({ node, depth, ctx, children }: FileTreeFolder
           <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
         )}
         {showCheckbox && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              ctx.onToggleFolderStage(node, allStaged)
-            }}
-            className={cn(
-              'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-              allStaged || someStaged
-                ? 'border-primary bg-primary text-white'
-                : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-            )}
-            title={allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')}
-            aria-label={
+          <Tooltip
+            content={
               allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')
             }
-            data-testid={`file-tree-folder-checkbox-${node.path}`}
           >
-            {someStaged ? '-' : '✓'}
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.onToggleFolderStage(node, allStaged)
+              }}
+              className={cn(
+                'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                allStaged || someStaged
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
+              )}
+              aria-label={
+                allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')
+              }
+              data-testid={`file-tree-folder-checkbox-${node.path}`}
+            >
+              {someStaged ? '-' : '✓'}
+            </button>
+          </Tooltip>
         )}
         {isExpanded ? (
           <FolderOpen className="h-3.5 w-3.5 shrink-0 text-blue-400" />
@@ -117,35 +122,38 @@ export function FileTreeFolderRow({ node, depth, ctx, children }: FileTreeFolder
           </div>
         )}
         {ctx.hoverStage && ctx.isWip && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              ctx.onHoverStageFolder(node)
-            }}
-            className={cn(
-              'ml-2 shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
-              ctx.hoverStage === 'add'
-                ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-            )}
-            title={
+          <Tooltip
+            content={
               ctx.hoverStage === 'add'
                 ? t('commitFileList.stageFolder')
                 : t('commitFileList.unstageFolder')
             }
-            aria-label={
-              ctx.hoverStage === 'add'
-                ? t('commitFileList.stageFolder')
-                : t('commitFileList.unstageFolder')
-            }
-            data-testid={`file-tree-folder-hover-stage-${node.path}`}
           >
-            {ctx.hoverStage === 'add' ? (
-              <Plus className="h-2.5 w-2.5" />
-            ) : (
-              <Minus className="h-2.5 w-2.5" />
-            )}
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.onHoverStageFolder(node)
+              }}
+              className={cn(
+                'ml-2 shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
+                ctx.hoverStage === 'add'
+                  ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                  : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
+              )}
+              aria-label={
+                ctx.hoverStage === 'add'
+                  ? t('commitFileList.stageFolder')
+                  : t('commitFileList.unstageFolder')
+              }
+              data-testid={`file-tree-folder-hover-stage-${node.path}`}
+            >
+              {ctx.hoverStage === 'add' ? (
+                <Plus className="h-2.5 w-2.5" />
+              ) : (
+                <Minus className="h-2.5 w-2.5" />
+              )}
+            </button>
+          </Tooltip>
         )}
       </div>
       {isExpanded && children && <div className="flex flex-col">{children}</div>}
