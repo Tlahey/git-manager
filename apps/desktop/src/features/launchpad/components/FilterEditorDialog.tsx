@@ -10,59 +10,42 @@ import {
   Input,
 } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
+import {
+  ALL_STATUSES,
+  EMOJI_OPTIONS,
+  STATUS_CONFIG,
+  TEXT_CRITERIA,
+} from '../lib/filterEditor.config'
 import type { SavedFilter, FilterType, FilterStatus } from '../stores/launchpad.store'
 
-const ALL_STATUSES: FilterStatus[] = [
-  'open',
-  'draft',
-  'approved',
-  'changes_requested',
-  'merged',
-  'closed',
-]
-const EMOJI_OPTIONS = [
-  '👀',
-  '🐛',
-  '✨',
-  '🚀',
-  '🔥',
-  '🔒',
-  '⚡',
-  '📦',
-  '🎯',
-  '🛠',
-  '📋',
-  '🧪',
-  '💡',
-  '🔍',
-  '⭐',
-]
-
-const STATUS_CONFIG: Record<FilterStatus, { labelKey: string; className: string }> = {
-  open: {
-    labelKey: 'status.open',
-    className: 'bg-green-500/15 text-green-400 border-green-500/30',
-  },
-  draft: { labelKey: 'status.draft', className: 'bg-muted text-muted-foreground border-border' },
-  approved: {
-    labelKey: 'status.approved',
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  },
-  changes_requested: {
-    labelKey: 'status.changes',
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  },
-  merged: {
-    labelKey: 'status.merged',
-    className: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-  },
-  closed: {
-    labelKey: 'status.closed',
-    className: 'bg-destructive/15 text-destructive border-destructive/30',
-  },
-}
-
 export type FilterDraft = Omit<SavedFilter, 'id' | 'createdAt'>
+
+/** One criterion row: a fixed-width label and the field it names. Four of these were written out
+ * verbatim, which is four chances for one of them to drift out of alignment with the others. */
+function CriterionField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string
+  value: string
+  placeholder: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <label className="w-32 shrink-0 text-xs text-muted-foreground">{label}</label>
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
+      />
+    </div>
+  )
+}
 
 interface FilterEditorDialogProps {
   initial?: FilterDraft
@@ -185,58 +168,15 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
               <span className="font-normal normal-case">{t('filterEditor.criteriaHint')}</span>
             </p>
             <div className="space-y-3">
-              {/* Title contains */}
-              <div className="flex items-center gap-3">
-                <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  {t('filterEditor.titleContains')}
-                </label>
-                <Input
-                  type="text"
-                  value={form.titleContains ?? ''}
-                  onChange={(e) => set('titleContains', e.target.value)}
-                  placeholder={t('filterEditor.titlePlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
+              {TEXT_CRITERIA.map((criterion) => (
+                <CriterionField
+                  key={criterion.key}
+                  label={t(criterion.labelKey)}
+                  value={form[criterion.key] ?? ''}
+                  placeholder={t(criterion.placeholderKey)}
+                  onChange={(v) => set(criterion.key, v)}
                 />
-              </div>
-              {/* Author contains */}
-              <div className="flex items-center gap-3">
-                <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  {t('filterEditor.authorContains')}
-                </label>
-                <Input
-                  type="text"
-                  value={form.authorContains ?? ''}
-                  onChange={(e) => set('authorContains', e.target.value)}
-                  placeholder={t('filterEditor.authorPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
-                />
-              </div>
-              {/* Repo */}
-              <div className="flex items-center gap-3">
-                <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  {t('filterEditor.repository')}
-                </label>
-                <Input
-                  type="text"
-                  value={form.repo ?? ''}
-                  onChange={(e) => set('repo', e.target.value)}
-                  placeholder={t('filterEditor.repoPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
-                />
-              </div>
-              {/* Label contains */}
-              <div className="flex items-center gap-3">
-                <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  {t('filterEditor.labelContains')}
-                </label>
-                <Input
-                  type="text"
-                  value={form.labelContains ?? ''}
-                  onChange={(e) => set('labelContains', e.target.value)}
-                  placeholder={t('filterEditor.labelPlaceholder')}
-                  className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40 focus:outline-hidden"
-                />
-              </div>
+              ))}
 
               {/* Status — PRs only */}
               {(form.type === 'prs' || form.type === 'both') && (
