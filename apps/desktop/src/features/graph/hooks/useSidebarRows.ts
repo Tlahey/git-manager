@@ -14,8 +14,9 @@ import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { issueFilterLabel, useIssueFiltersStore } from '../stores/issueFilters.store'
-import { prFilterLabel, usePrFiltersStore } from '../stores/prFilters.store'
+import { useIssueFiltersStore } from '../stores/issueFilters.store'
+import { usePrFiltersStore } from '../stores/prFilters.store'
+import { buildPrSection, buildIssueSection } from '../lib/sidebarGithubSections'
 import { apiGetTags, apiListSubmodules } from '../../../api/git.api'
 import { apiListWorktrees } from '../../../api/worktree.api'
 import {
@@ -456,194 +457,33 @@ export function useSidebarRows({
       })
     }
 
-    // ----- Pull Requests -----
-    // Hidden while actively filtering down to zero matches; the "loading"/"connect GitHub" states
-    // stay visible regardless of the filter since they aren't about matching, just reachability.
-    {
-      const open = sectionOpen('prs')
-      const prRows: SidebarRow[] = []
-      if (open) {
-        if (!isGithub) {
-          prRows.push({
-            kind: 'message',
-            id: 'pr:nogithub',
-            text: t('sidebar.prs.noGithub'),
-          })
-        } else if (!isConnected) {
-          // Signed out: say so, and say where to fix it. Checked before everything below because
-          // nothing below can happen — no request is made without a token (see `usePullRequests`),
-          // so the saved views would otherwise sit here empty, or, back when the request *was*
-          // attempted, each report GitHub's transport error as if its own query were at fault.
-          prRows.push({
-            kind: 'message',
-            id: 'pr:noaccount',
-            text: t('sidebar.prs.noAccount'),
-          })
-        } else if (prsLoading || prFiltersLoading) {
-          prRows.push({
-            kind: 'message',
-            id: 'pr:loading',
-            text: t('sidebar.prs.loading'),
-            loading: true,
-          })
-        } else if (filteredPrGroups.length === 0) {
-          prRows.push({ kind: 'message', id: 'pr:nofilters', text: t('sidebar.prFilters.none') })
-        } else {
-          // The user's saved filters, every one of them rendered — empty included: a saved view that
-          // vanished when it matched nothing would read as a bug, and its header is the only way
-          // back to editing or deleting it.
-          filteredPrGroups.forEach((group, index) => {
-            const gid = `pr-filter:${group.filter.id}`
-            // Only the first saved view is expanded by default: the others are one click away and
-            // each costs a screenful in a section that shares the panel's height with the rest.
-            const gopen = subOpen(gid, index === 0)
-            prRows.push({
-              kind: 'subgroup',
-              id: gid,
-              label: prFilterLabel(group.filter, t),
-              count: group.prs.length,
-              isOpen: gopen,
-              filter: group.filter,
-              canMoveUp: index > 0,
-              canMoveDown: index < filteredPrGroups.length - 1,
-            })
-            if (!gopen) return
-            if (group.error) {
-              // GitHub rejected this one query (a typo'd qualifier, a rate limit) — say so on the
-              // group itself rather than leaving it silently empty next to working ones.
-              prRows.push({
-                kind: 'message',
-                id: `${gid}:error`,
-                text: t('sidebar.prFilters.queryError', { error: group.error }),
-              })
-              return
-            }
-            if (group.prs.length === 0) {
-              prRows.push({ kind: 'message', id: `${gid}:empty`, text: t('sidebar.prs.empty') })
-              return
-            }
-            for (const pr of group.prs) {
-              prRows.push({
-                // The same PR can appear under several filters, so the row id has to carry the
-                // filter — ids are React keys and must stay unique across the section.
-                kind: 'pr',
-                id: `pr:${group.filter.id}:${pr.number}`,
-                pr,
-                isSelected: !!pr.headRef && selectedBranch === pr.headRef,
-                depth: 1,
-              })
-            }
-          })
-        }
+    // ----- Pull Requests / Issues -----
+    // The two sections that are GitHub rather than git, and the only ones with reachability states
+    // (no GitHub remote, no account, still loading) — see `lib/sidebarGithubSections.ts`.
+    const prSection = buildPrSection(
+      { t, q, isOpen: sectionOpen('prs'), subOpen },
+      {
+        groups: filteredPrGroups,
+        count: filteredPrCount,
+        isGithub,
+        isConnected,
+        loading: prsLoading || prFiltersLoading,
+        selectedBranch,
       }
-      const hideForFilter =
-        q && isGithub && isConnected && !prsLoading && !prFiltersLoading && filteredPrCount === 0
-      if (!hideForFilter) {
-        list.push({
-          key: 'prs',
-          title: 'Pull Requests',
-          count: filteredPrCount || undefined,
-          isOpen: open,
-          rows: prRows,
-        })
-      }
-    }
+    )
+    if (prSection) list.push(prSection)
 
-    // ----- Issues -----
-    // Mirrors the PR section: the loading / "connect GitHub" states ignore the filter (they aren't
-    // about matching), and the section only disappears when a filter matches nothing. It stays
-    // visible when the repo simply has no issues, because its header carries the "new issue" action.
-    //
-    // Unlike the PR section, whose four groups are fixed, the sub-groups here are the user's saved
-    // filters (see `features/graph/stores/issueFilters.store.ts`) — so every one of them is rendered, empty
-    // included: a saved view that vanished when it matched nothing would read as a bug, and its
-    // header is the only way back to editing or deleting it.
-    {
-      const open = sectionOpen('issues')
-      const issueRows: SidebarRow[] = []
-      if (open) {
-        if (!issuesIsGithub) {
-          issueRows.push({
-            kind: 'message',
-            id: 'issue:nogithub',
-            text: t('sidebar.issues.noGithub'),
-          })
-        } else if (!issuesIsConnected) {
-          // Same order and same reason as the PR section above: signed out is checked first,
-          // because with no token nothing is fetched and every state below would be a lie.
-          issueRows.push({
-            kind: 'message',
-            id: 'issue:noaccount',
-            text: t('sidebar.issues.noAccount'),
-          })
-        } else if (issuesLoading) {
-          issueRows.push({
-            kind: 'message',
-            id: 'issue:loading',
-            text: t('sidebar.issues.loading'),
-            loading: true,
-          })
-        } else if (filteredIssueGroups.length === 0) {
-          issueRows.push({
-            kind: 'message',
-            id: 'issue:nofilters',
-            text: t('sidebar.issueFilters.none'),
-          })
-        } else {
-          filteredIssueGroups.forEach((group, index) => {
-            const gid = `issue-filter:${group.filter.id}`
-            // Only the first saved view is expanded by default: the others are one click away and
-            // each costs a screenful in a section that shares the panel's height with the rest.
-            const gopen = subOpen(gid, index === 0)
-            issueRows.push({
-              kind: 'subgroup',
-              id: gid,
-              label: issueFilterLabel(group.filter, t),
-              count: group.issues.length,
-              isOpen: gopen,
-              filter: group.filter,
-              canMoveUp: index > 0,
-              canMoveDown: index < filteredIssueGroups.length - 1,
-            })
-            if (!gopen) return
-            if (group.error) {
-              // GitHub rejected this one query (a typo'd qualifier, a rate limit) — say so on the
-              // group itself rather than leaving it silently empty next to working ones.
-              issueRows.push({
-                kind: 'message',
-                id: `${gid}:error`,
-                text: t('sidebar.issueFilters.queryError', { error: group.error }),
-              })
-              return
-            }
-            if (group.issues.length === 0) {
-              issueRows.push({
-                kind: 'message',
-                id: `${gid}:empty`,
-                text: t('sidebar.issues.empty'),
-              })
-              return
-            }
-            for (const issue of group.issues) {
-              // The same issue can match several filters, so the row id has to carry the filter —
-              // ids are React keys and must stay unique across the section.
-              issueRows.push({ kind: 'issue', id: `issue:${group.filter.id}:${issue.id}`, issue })
-            }
-          })
-        }
+    const issueSection = buildIssueSection(
+      { t, q, isOpen: sectionOpen('issues'), subOpen },
+      {
+        groups: filteredIssueGroups,
+        count: filteredIssueCount,
+        isGithub: issuesIsGithub,
+        isConnected: issuesIsConnected,
+        loading: issuesLoading,
       }
-      const hideForFilter =
-        q && issuesIsGithub && issuesIsConnected && !issuesLoading && filteredIssueCount === 0
-      if (!hideForFilter) {
-        list.push({
-          key: 'issues',
-          title: 'Issues',
-          count: filteredIssueCount || undefined,
-          isOpen: open,
-          rows: issueRows,
-        })
-      }
-    }
+    )
+    if (issueSection) list.push(issueSection)
 
     // ----- Tags -----
     if (filteredTags.length > 0) {
