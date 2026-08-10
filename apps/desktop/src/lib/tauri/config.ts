@@ -55,9 +55,9 @@ export const isAppActive = () => invoke<boolean>('is_app_active')
  * `navigate_window` in `commands/window.rs`.
  */
 /**
- * EXPERIMENTAL, opt-in behind `GIT_MANAGER_NOTCH_PANEL`: turns the notch window into a nonactivating
- * `NSPanel` so clicking its card does not drag the app in front of the user. Answers whether it did
- * — `false` is the ordinary answer. See `make_notch_window_nonactivating` in `commands/window.rs`.
+ * Turns the notch window into a nonactivating `NSPanel`, so clicking its card does not drag the app
+ * in front of the user. Answers whether it is one now — `false` off macOS, or when
+ * `GIT_MANAGER_NOTCH_PANEL=0` switches it off. See `make_notch_window_nonactivating`.
  */
 export const makeNotchWindowNonactivating = (label: string) =>
   invoke<boolean>('make_notch_window_nonactivating', { label })

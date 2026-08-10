@@ -591,12 +591,30 @@ pub fn is_app_active() -> bool {
     }
 }
 
-/// The environment variable that turns the experiment below on. Unset means off.
+/// The escape hatch for the panel conversion below. Set it to `0` (or `false`/`off`) to switch the
+/// conversion off; anything else, including leaving it unset, leaves it on.
+///
+/// It is a *disable* switch rather than an enable one, and the direction is the point: this ships
+/// on, but an earlier form of the same mechanism aborted the process, so a user who meets a crash
+/// has to be able to get a working app back without waiting for a release. An environment variable
+/// is the only lever that works when the crash happens before any setting can be read.
 #[cfg(target_os = "macos")]
 pub const NOTCH_PANEL_ENV: &str = "GIT_MANAGER_NOTCH_PANEL";
 
-/// **EXPERIMENTAL, opt-in.** Turns the notch window into a nonactivating `NSPanel`, so that
-/// clicking the card does not drag the whole application in front of the user.
+/// Whether the panel conversion is switched on — true unless [`NOTCH_PANEL_ENV`] says otherwise.
+#[cfg(target_os = "macos")]
+fn notch_panel_enabled() -> bool {
+    match std::env::var(NOTCH_PANEL_ENV) {
+        Ok(value) => !matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "0" | "false" | "off" | "no"
+        ),
+        Err(_) => true,
+    }
+}
+
+/// Turns the notch window into a nonactivating `NSPanel`, so that clicking the card does not drag
+/// the whole application in front of the user.
 ///
 /// ## What it is trying to settle
 ///
@@ -644,7 +662,7 @@ pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> 
         // reason the class has to change at all.
         const NONACTIVATING_PANEL: i32 = 1 << 7;
 
-        if std::env::var_os(NOTCH_PANEL_ENV).is_none() {
+        if !notch_panel_enabled() {
             return false;
         }
 

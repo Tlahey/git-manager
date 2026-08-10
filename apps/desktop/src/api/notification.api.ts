@@ -226,8 +226,8 @@ export async function apiIsAppActive(): Promise<boolean> {
  * if it is told.
  */
 /**
- * Asks for the notch window to become a nonactivating panel — experimental, and a no-op unless
- * `GIT_MANAGER_NOTCH_PANEL` is set in the app's environment.
+ * Asks for the notch window to become a nonactivating panel, so clicking the card does not bring
+ * the app forward. A no-op off macOS, or when `GIT_MANAGER_NOTCH_PANEL=0` switches it off.
  *
  * Answers whether it is one now. That answer is load-bearing rather than informational: a converted
  * window has no `focusable` ivar, and `setFocusable` writes that ivar by name, so calling it on one
