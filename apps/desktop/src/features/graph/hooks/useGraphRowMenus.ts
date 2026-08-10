@@ -4,9 +4,6 @@ import { toast } from '@git-manager/ui'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 import { showNativeMenu } from '../../../api/nativeMenu.api'
 import {
-  apiStashApply,
-  apiStashPop,
-  apiStashDrop,
   apiStashPush,
   apiStageAll,
   apiUnstageAll,
@@ -18,12 +15,12 @@ import { apiRevealPathInFinder } from '../../../api/repo.api'
 import {
   buildWipMenuSpec,
   buildOtherWorktreeMenuSpec,
-  buildStashMenuSpec,
   buildConflictMenuSpec,
 } from '../../../lib/graphContextMenus'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { worktreeWipPath } from '../lib/syntheticRows'
 import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { useStashMenu } from './useStashMenu'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -62,13 +59,19 @@ export function useGraphRowMenus({
   t,
 }: UseGraphRowMenusParams) {
   const queryClient = useQueryClient()
-  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   // Entering a linked worktree from the graph is a view switch, not a new tab — see
   // `repoUI.store.ts`'s `activeWorkspacePath` doc comment. The `WIP:<path>` row's own "Open
   // Worktree" button and the sidebar's worktree row already use this; the context menu's "Open
   // worktree" item reuses it too, so there is exactly one meaning of "open" a worktree in the app.
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
+  const openStashMenu = useStashMenu({
+    repoPath,
+    hiddenStashes,
+    selectRow: selectSingle,
+    toggleStashVisibility,
+    t,
+  })
 
   const refresh = () => refreshLogAndStatus(queryClient, repoPath)
 
@@ -176,37 +179,6 @@ export function useGraphRowMenus({
     ).catch(console.error)
   }
 
-  function openStashMenu(oid: string, index: number) {
-    selectSingle(oid)
-
-    async function runStash(fn: () => Promise<unknown>) {
-      try {
-        await fn()
-        mutate(['git-stashes', repoPath])
-        refresh()
-      } catch (err) {
-        toast.error(String(err))
-      }
-    }
-
-    void showNativeMenu(
-      buildStashMenuSpec(
-        { isHidden: hiddenStashes.includes(oid) },
-        {
-          onApply: () => void runStash(() => apiStashApply(repoPath, index)),
-          onPop: () => void runStash(() => apiStashPop(repoPath, index)),
-          onDelete: () => void runStash(() => apiStashDrop(repoPath, index)),
-          onEditMessage: () => {
-            selectSingle(oid)
-            setEditingOid(oid)
-          },
-          onToggleVisibility: () => toggleStashVisibility(repoPath, oid),
-        },
-        t
-      )
-    ).catch(console.error)
-  }
-
   /**
    * Opens whichever of the four menus owns `oid`, and reports it. `false` means the row is an
    * ordinary commit and the caller should build the commit menu instead.
@@ -230,6 +202,9 @@ export function useGraphRowMenus({
 
     const stashRef = nodes.find((n) => n.commit.oid === oid)?.refs.find((r) => r.type === 'stash')
     if (stashRef) {
+      // The graph selects the stash row on right-click, before its menu opens — unlike the
+      // sidebar's copy of this menu, which leaves the selection alone.
+      selectSingle(oid)
       const stashMatch = stashRef.shortName.match(/stash@\{(\d+)\}/)
       openStashMenu(oid, stashMatch ? parseInt(stashMatch[1], 10) : 0)
       return true
