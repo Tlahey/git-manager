@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { ChevronDown, Plus, Terminal as TerminalIcon, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { cn } from '@git-manager/ui'
+import { Button, cn } from '@git-manager/ui'
 import { useTerminalStore } from '../../stores/terminal.store'
 import { useIntegratedTerminal } from '../../hooks/useIntegratedTerminal'
 import { XtermView } from './XtermView'
@@ -93,38 +93,38 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             </button>
           </div>
         ))}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="iconSm"
           onClick={() => void addSession()}
           aria-label={t('terminal.newTab')}
           title={t('terminal.newTab')}
           data-testid="terminal-new-tab"
-          className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Plus className="h-3.5 w-3.5" />
-        </button>
+        </Button>
 
         <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="iconSm"
             onClick={closePanel}
             aria-label={t('terminal.hidePanel')}
             title={t('terminal.hidePanel')}
             data-testid="terminal-hide"
-            className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ChevronDown className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
+            size="iconSm"
             onClick={closeAllSessions}
             aria-label={t('terminal.closePanel')}
             title={t('terminal.closePanel')}
             data-testid="terminal-close"
-            className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 

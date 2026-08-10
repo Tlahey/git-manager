@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { formatShortDate } from '../../../lib/relativeDate'
-import { Progress, ScrollArea, Spinner } from '@git-manager/ui'
+import { Button, Progress, ScrollArea, Spinner } from '@git-manager/ui'
 import { Search, X } from 'lucide-react'
 import {
   DEFAULT_MAX_SCANNED_COMMITS,
@@ -166,14 +166,16 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
             <Search className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{t('gitTree.commitSearch.panelTitle')}</span>
           </h3>
-          <button
+          <Button
+            variant="ghost"
+            size="iconSm"
+            className="shrink-0"
             onClick={onClose}
-            className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label={t('actions.close')}
             data-testid="commit-search-close-panel"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
 
         <CommitSearchForm

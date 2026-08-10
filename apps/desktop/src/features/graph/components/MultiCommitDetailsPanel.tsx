@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { ScrollArea } from '@git-manager/ui'
+import { Button, ScrollArea, Tooltip } from '@git-manager/ui'
 import { GitCommit, Layers, X } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { useCommitsMergedDiff } from '../hooks/useCommitsMergedDiff'
@@ -68,14 +68,17 @@ export function MultiCommitDetailsPanel({
             {t('multiCommit.selectedCount', { count })}
           </h3>
           {onClose && (
-            <button
-              onClick={onClose}
-              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title={t('actions.close')}
-              data-testid="multi-commit-panel-close-button"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip content={t('actions.close')}>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={onClose}
+                aria-label={t('actions.close')}
+                data-testid="multi-commit-panel-close-button"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </Tooltip>
           )}
         </div>
         <p

@@ -1,6 +1,16 @@
 import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Textarea, Spinner, Tag, cn, GithubIcon, GitlabIcon } from '@git-manager/ui'
+import {
+  Button,
+  GithubIcon,
+  GitlabIcon,
+  Input,
+  Spinner,
+  Tag,
+  Textarea,
+  Tooltip,
+  cn,
+} from '@git-manager/ui'
 import { Copy, Check, GitCommit, Layers, Pencil, X, GitMerge, GitPullRequest } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { apiOpenUrl } from '../../../api/shell.api'
@@ -114,14 +124,17 @@ export function CommitHeaderInfo({
           </h3>
           <div className="flex shrink-0 items-center gap-1.5">
             {onClose && (
-              <button
-                onClick={onClose}
-                className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                title={t('actions.close')}
-                data-testid="commit-details-close-button"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip content={t('actions.close')}>
+                <Button
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={onClose}
+                  aria-label={t('actions.close')}
+                  data-testid="commit-details-close-button"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </Tooltip>
             )}
           </div>
         </div>

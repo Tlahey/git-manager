@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, ScrollArea, Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
+import { Button, LlmIcon, ScrollArea, Spinner, Tooltip } from '@git-manager/ui'
 import { X, RefreshCw, Square, Copy, Check as CheckIcon, Trash2 } from 'lucide-react'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { formatRelativeTime } from '../../../lib/relativeDate'
@@ -106,14 +106,18 @@ export function ExplanationPanelShell({
             <LlmIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{title}</span>
           </h3>
-          <button
-            onClick={onClose}
-            className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t('actions.close')}
-            data-testid="explanation-close"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={t('actions.close')}>
+            <Button
+              variant="ghost"
+              size="iconSm"
+              className="shrink-0"
+              onClick={onClose}
+              aria-label={t('actions.close')}
+              data-testid="explanation-close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </Tooltip>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">

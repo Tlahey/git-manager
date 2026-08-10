@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { GitGraphNode, GitDiff } from '@git-manager/git-types'
 
 const { useCommitsMergedDiff, fileListCalls } = vi.hoisted(() => ({
@@ -68,6 +69,20 @@ describe('MultiCommitDetailsPanel', () => {
     render(<MultiCommitDetailsPanel nodes={NODES} repoPath="/repo" />)
     expect(screen.getByText('2 commits selected')).toBeInTheDocument()
     expect(screen.getByText('Viewing merged diff of 2 commits')).toBeInTheDocument()
+  })
+
+  /**
+   * The close button was an icon with a `title` and no `aria-label`, so a screen reader had only
+   * the tooltip attribute to fall back on. It rides the shared `Button` now, named properly.
+   */
+  it('names its close button rather than leaving an icon with only a title', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<MultiCommitDetailsPanel nodes={NODES} repoPath="/repo" onClose={onClose} />)
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('fetches the merged diff spanning oldest→newest (baseOid = oldest, headOid = newest)', () => {

@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { X, RefreshCw, CalendarClock, CheckCircle2, AlertTriangle } from 'lucide-react'
-import { Button, Alert, Tooltip, LlmIcon } from '@git-manager/ui'
+import { Alert, Button, LlmIcon, Tooltip } from '@git-manager/ui'
 import { useDailySummary } from '../../../hooks/useDailySummary'
 
 interface DailySummaryPanelProps {
@@ -58,15 +58,15 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
             </Button>
           </Tooltip>
           <Tooltip content={t('dashboard.summary.close')}>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="iconSm"
               onClick={onClose}
-              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label={t('dashboard.summary.close')}
               data-testid="daily-summary-close-button"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </Tooltip>
         </div>
       </div>

@@ -43,6 +43,22 @@ describe('Button', () => {
     expect(button.className).toBe(cn(buttonVariants({ variant: 'destructive', size: 'lg' })))
   })
 
+  /**
+   * `icon` is a 36px square, which is taller than the heading it sits beside in a panel header —
+   * the reason six of those headers hand-rolled a `rounded p-1` button instead of using one.
+   */
+  it('offers a compact icon size for a panel header, smaller than the default icon square', () => {
+    render(
+      <Button size="iconSm" aria-label="Close">
+        <span aria-hidden>x</span>
+      </Button>
+    )
+
+    const button = screen.getByRole('button', { name: 'Close' })
+    expect(button).toHaveClass('h-6', 'w-6')
+    expect(button).not.toHaveClass('h-9', 'w-9')
+  })
+
   it('merges a custom className without dropping variant classes', () => {
     render(<Button className="my-extra-class">Go</Button>)
     const button = screen.getByRole('button')
