@@ -35,7 +35,12 @@
 
 import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi'
 import { computeNotchPlacement, measureCardHeight } from '@git-manager/notch'
-import { apiGetTrayIconRect, apiIsAppActive, apiNavigateWindow } from '../../api/notification.api'
+import {
+  apiGetTrayIconRect,
+  apiIsAppActive,
+  apiMakeNotchWindowNonactivating,
+  apiNavigateWindow,
+} from '../../api/notification.api'
 import { resolveNotchMetrics } from './notchMetrics'
 import type { NotchRequest } from './notchDelivery'
 
@@ -173,7 +178,13 @@ export async function openNotchWindow(
       // (`warmUpNotchWindow` finds it and returns), which is exactly how the first attempt at this
       // fix reached nobody. Saying it again on every card is what makes it true of the window we
       // actually have. `setFocusable` writes the same tao ivar the creation option does.
-      await parked.setFocusable(false)
+      //
+      // Unless the window is a nonactivating panel, in which case it must NOT be called at all: a
+      // panel's class has no `focusable` ivar, and `setFocusable` writes that ivar *by name*, so it
+      // would abort the process rather than misbehave. The experiment answers that question first,
+      // and answers `false` in every ordinary build — see `make_notch_window_nonactivating`.
+      const panelled = await apiMakeNotchWindowNonactivating(WINDOW_LABEL)
+      if (!panelled) await parked.setFocusable(false)
       // Sized and placed before the content arrives: the page measures its slide against the
       // `windowY` in its own payload, so it must find the window already where that says it is.
       await parked.setSize(new LogicalSize(rectangle.width, rectangle.height))

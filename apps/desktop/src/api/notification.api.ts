@@ -5,6 +5,7 @@ import {
   getNotchMetrics,
   getTrayIconRect,
   isAppActive,
+  makeNotchWindowNonactivating,
   navigateWindow,
   playSystemSound,
   raiseAboveMenuBar,
@@ -224,6 +225,23 @@ export async function apiIsAppActive(): Promise<boolean> {
  * swallowing — the caller's fallback is to open a window the old way, and it can only choose that
  * if it is told.
  */
+/**
+ * Asks for the notch window to become a nonactivating panel — experimental, and a no-op unless
+ * `GIT_MANAGER_NOTCH_PANEL` is set in the app's environment.
+ *
+ * Answers whether it is one now. That answer is load-bearing rather than informational: a converted
+ * window has no `focusable` ivar, and `setFocusable` writes that ivar by name, so calling it on one
+ * would abort the process. A failure answers `false`, which keeps the caller on the old path.
+ */
+export async function apiMakeNotchWindowNonactivating(label: string): Promise<boolean> {
+  try {
+    return await makeNotchWindowNonactivating(label)
+  } catch (e) {
+    console.warn('Failed to ask for a nonactivating notch panel:', e)
+    return false
+  }
+}
+
 export async function apiNavigateWindow(label: string, url: string): Promise<void> {
   await navigateWindow(label, url)
 }

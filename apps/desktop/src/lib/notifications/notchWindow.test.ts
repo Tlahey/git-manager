@@ -28,6 +28,7 @@ const {
   setSize,
   setPosition,
   setFocusable,
+  panelled,
 } = vi.hoisted(() => ({
   trayRect: { current: null as { x: number; y: number } | null },
   ctor: vi.fn(),
@@ -45,11 +46,13 @@ const {
   setSize: vi.fn(),
   setPosition: vi.fn(),
   setFocusable: vi.fn(),
+  panelled: { current: false },
 }))
 
 vi.mock('../../api/notification.api', () => ({
   apiGetTrayIconRect: () => Promise.resolve(trayRect.current),
   apiIsAppActive: () => Promise.resolve(appWasActive.current),
+  apiMakeNotchWindowNonactivating: () => Promise.resolve(panelled.current),
   apiNavigateWindow: (label: string, url: string) => {
     navigate(label, url)
     return navigateFails.current ? Promise.reject(new Error('boom')) : Promise.resolve()
@@ -119,6 +122,8 @@ beforeEach(() => {
   setSize.mockClear()
   setPosition.mockClear()
   setFocusable.mockClear()
+  // The experiment is off in every ordinary build; the opt-in case is asserted on its own.
+  panelled.current = false
 })
 
 /** The parked notch window: what `getByLabel` hands back once one exists. */
@@ -340,6 +345,18 @@ describe('openNotchWindow', () => {
     await openNotchWindow(request)
 
     expect(setFocusable).toHaveBeenCalledWith(false)
+  })
+
+  it('never calls setFocusable on a window that became a nonactivating panel', async () => {
+    // Not a preference: a panel's class has no `focusable` ivar, and `setFocusable` writes that
+    // ivar by name — so calling it there would abort the process rather than misbehave.
+    panelled.current = true
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await openNotchWindow(request)
+
+    expect(setFocusable).not.toHaveBeenCalled()
+    expect(navigate).toHaveBeenCalledTimes(1)
   })
 
   it('places and sizes the parked window before its content arrives', async () => {

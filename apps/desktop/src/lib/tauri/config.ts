@@ -54,6 +54,14 @@ export const isAppActive = () => invoke<boolean>('is_app_active')
  * a fresh one per card, because *creating* a webview is what activates the app — see
  * `navigate_window` in `commands/window.rs`.
  */
+/**
+ * EXPERIMENTAL, opt-in behind `GIT_MANAGER_NOTCH_PANEL`: turns the notch window into a nonactivating
+ * `NSPanel` so clicking its card does not drag the app in front of the user. Answers whether it did
+ * — `false` is the ordinary answer. See `make_notch_window_nonactivating` in `commands/window.rs`.
+ */
+export const makeNotchWindowNonactivating = (label: string) =>
+  invoke<boolean>('make_notch_window_nonactivating', { label })
+
 export const navigateWindow = (label: string, url: string) =>
   invoke<void>('navigate_window', { label, url })
 

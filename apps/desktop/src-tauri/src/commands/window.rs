@@ -591,6 +591,99 @@ pub fn is_app_active() -> bool {
     }
 }
 
+/// The environment variable that turns the experiment below on. Unset means off.
+#[cfg(target_os = "macos")]
+pub const NOTCH_PANEL_ENV: &str = "GIT_MANAGER_NOTCH_PANEL";
+
+/// **EXPERIMENTAL, opt-in.** Turns the notch window into a nonactivating `NSPanel`, so that
+/// clicking the card does not drag the whole application in front of the user.
+///
+/// ## What it is trying to settle
+///
+/// Clicking any window of a *background* macOS application activates that application. A notch card
+/// is only ever raised while the user is in another app, so pressing its ✕ takes them out of
+/// whatever they were doing. `NSWindowStyleMaskNonactivatingPanel` is the one documented way to opt
+/// out — and only an `NSPanel` may carry it, which is why the window's class has to change.
+///
+/// Two things already tried and ruled out, so nobody repeats them: `focus: false` at creation and
+/// `setFocusable(false)` per card. Both govern whether a *window* becomes key; both were plumbed
+/// end to end and the bug survived. The activation is the *application's*, and no window-level flag
+/// reaches it.
+///
+/// ## Why it is opt-in, and why the class swap is not hand-rolled this time
+///
+/// A hand-written version of this shipped and **crashed the app** (`EXC_CRASH`/`SIGABRT`) — an
+/// AppKit assertion inside `-[NSView(NSSafeAreas) safeAreaRect]`, reached from tracking-area
+/// routing on a mouse-enter over the card. That version re-classed the *view* as well as the
+/// window; this one never touches a view, which is the single largest difference between them.
+/// Whether the remaining half is also unsafe is exactly what this experiment exists to find out, so
+/// it is off unless `GIT_MANAGER_NOTCH_PANEL` is set: a crash then costs the user unsetting a
+/// variable rather than a rebuild, and a default build cannot regress.
+///
+/// ## The one integration trap
+///
+/// The plugin's panel class re-implements `canBecomeKeyWindow` but declares **no `focusable` ivar**,
+/// where tao's window class has one. `WebviewWindow::set_focusable` writes that ivar *by name*, so
+/// calling it on a converted window would not merely misbehave — it would abort the process. The
+/// frontend therefore asks this first and skips `setFocusable` whenever it answers `true`
+/// (`notchWindow.ts`). Nothing else may call `set_focusable` on this window.
+///
+/// Returns whether the window is now a nonactivating panel. `false` is the ordinary answer, and the
+/// caller's cue that the old, key-window-based handling still applies.
+///
+/// NOT `async`, for the same reason as every other command here: AppKit window mutations must be on
+/// the main thread, and Tauri runs async commands on a worker.
+#[tauri::command]
+pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::Manager;
+        use tauri_nspanel::{ManagerExt, WebviewWindowExt};
+
+        // `NSWindowStyleMaskNonactivatingPanel`. Only a panel may carry it, which is the entire
+        // reason the class has to change at all.
+        const NONACTIVATING_PANEL: i32 = 1 << 7;
+
+        if std::env::var_os(NOTCH_PANEL_ENV).is_none() {
+            return false;
+        }
+
+        // Already converted: re-assert the mask and stop. `to_panel` a second time would re-class a
+        // window that is already the panel class, and the plugin keeps its own registry.
+        let panel = match app.get_webview_panel(&label) {
+            Ok(panel) => panel,
+            Err(_) => {
+                let Some(window) = app.get_webview_window(&label) else {
+                    eprintln!("[notch] no window labelled {label} to turn into a panel");
+                    return false;
+                };
+                match window.to_panel() {
+                    Ok(panel) => panel,
+                    Err(e) => {
+                        eprintln!("[notch] could not turn the card into a panel: {e:?}");
+                        return false;
+                    }
+                }
+            }
+        };
+
+        panel.set_style_mask(NONACTIVATING_PANEL);
+        // A panel's own default is to disappear whenever its application is deactivated — which for
+        // a card raised *because* the user is elsewhere would mean never being seen at all.
+        panel.set_hides_on_deactivate(false);
+        // The level and the collection behaviour are deliberately left alone: `raise_above_menu_bar`
+        // runs later, from the card's own `prepare()`, and must keep the last word on both.
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Nothing to do, and nothing wrong: no other platform activates a whole application because
+        // one of its windows was clicked.
+        let _ = (app, label);
+        false
+    }
+}
+
 /// Points an existing window at a new URL, instead of closing it and opening another.
 ///
 /// The notch's reason for existing: creating a webview activates the whole application (see
