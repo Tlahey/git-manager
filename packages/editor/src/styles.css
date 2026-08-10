@@ -269,8 +269,9 @@
   transform: translateY(1px);
 }
 
-/* Alignment filler zones (Monaco IViewZone dom nodes, injected by ThreeWayMergeEditor's
-   applyViewZones): hatched "this content doesn't exist in this pane" space, WebStorm-style,
+/* Alignment filler zones (Monaco IViewZone dom nodes, injected by conflict-resolver/
+   monacoInterop.ts's applyViewZones): hatched "this content doesn't exist in this pane" space,
+   WebStorm-style,
    sized so the three panes stay line-for-line aligned. Translucent stripes rather than
    hard-coded solids so both light and dark editor themes keep readable contrast.
 
@@ -389,10 +390,11 @@
 /* Degenerate (zero-height at both ends) segments — the gap a pure insertion crosses in the
    pane it's absent from: drawn as an open stroked hairline instead of a filled ribbon, so the
    insertion's boundary marker continues unbroken through the gap. Same rgba (hue AND opacity)
-   as the `merge-marker-*`/`merge-marker-passive-*` lines it connects to on either side — this
-   stroke is the middle segment of that one continuous line across the whole screen, so any
-   opacity mismatch here would show up as a visible color seam right where the gap meets the
-   pane, same reasoning as the accent/passive marker unification above. */
+   as the `merge-marker-*` lines it connects to on either side — this stroke is the middle
+   segment of that one continuous line across the whole screen, so any opacity mismatch here
+   would show up as a visible color seam right where the gap meets the pane. (There was once a
+   separate `merge-marker-passive-*` family for the mirror pane; that pane now renders no
+   decoration at all for a pure addition, so only the one family is left to match.) */
 .merge-connector-flat {
   fill: none !important;
   stroke-width: 1.5;

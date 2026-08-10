@@ -8,7 +8,7 @@ import {
   connectorClassForSide,
   isChangeSource,
 } from '../mergeBlockLayout'
-import { computePaneTotalLines, markerEdge } from '../mergeDecorations'
+import { MARKER_NUDGE_PX, computePaneTotalLines, markerEdge } from '../mergeDecorations'
 import { COLLAPSED_BANNER_HEIGHT_LINES } from '../mergeViewConfig'
 import { type PaneSide, collapsedRegionForRange } from './collapsedRegions'
 
@@ -113,11 +113,11 @@ export function buildTwoWaySegments(
       const y = geometry.getTop('theirs', afterLine + 1)
       const edge = markerEdge(afterLine, paneTotals.theirs)
       if (edge === 'top') {
-        paneY0 = y - 1
+        paneY0 = y - MARKER_NUDGE_PX
         paneY1 = y
       } else {
         paneY0 = y
-        paneY1 = y + 1
+        paneY1 = y + MARKER_NUDGE_PX
       }
     } else {
       paneY0 = geometry.getTop('theirs', originalStartLine)
@@ -131,11 +131,11 @@ export function buildTwoWaySegments(
       const y = geometry.getTop('center', afterLine + 1)
       const edge = markerEdge(afterLine, paneTotals.center)
       if (edge === 'top') {
-        centerY0 = y - 1
+        centerY0 = y - MARKER_NUDGE_PX
         centerY1 = y
       } else {
         centerY0 = y
-        centerY1 = y + 1
+        centerY1 = y + MARKER_NUDGE_PX
       }
     } else {
       centerY0 = geometry.getTop('center', modifiedStartLine)
@@ -206,7 +206,7 @@ export function buildThreeWaySegments(
 
     for (const side of ['ours', 'theirs'] as MergeSide[]) {
       const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
-      const colorClass = connectorClassForSide(block, touched, side)
+      const colorClass = connectorClassForSide(block, side)
       if (!colorClass) continue
 
       const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
@@ -227,10 +227,10 @@ export function buildThreeWaySegments(
           if (changeKindForBlock(block) === 'deletion') {
             const edge = markerEdge(paneStart - 1, paneTotals[side])
             if (edge === 'top') {
-              paneY0 = paneY1 - 1
+              paneY0 = paneY1 - MARKER_NUDGE_PX
             } else {
               paneY0 = paneY1
-              paneY1 = paneY1 + 1
+              paneY1 = paneY1 + MARKER_NUDGE_PX
             }
           }
         }
@@ -241,10 +241,10 @@ export function buildThreeWaySegments(
       if (count === 0 && changeKindForBlock(block) === 'addition') {
         const edge = markerEdge(start - 1, paneTotals.center)
         if (edge === 'top') {
-          centerY0 = centerY1 - 1
+          centerY0 = centerY1 - MARKER_NUDGE_PX
         } else {
           centerY0 = centerY1
-          centerY1 = centerY1 + 1
+          centerY1 = centerY1 + MARKER_NUDGE_PX
         }
       }
 

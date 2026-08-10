@@ -477,23 +477,25 @@ export function changeKindForBlock(block: MergeBlock): ChangeKind {
 
 export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' | 'resolved'
 
-/** Gray once a side has been explicitly decided (touched) — regardless of whether it ended up
- * included or excluded, since "excluded" is still a decision, not a limbo state. Otherwise:
- * green for a pure addition; gray for a pure deletion (nothing to decide *about* new content
- * here, just whether to keep or drop what's already there — visually identical to "resolved"
- * since there's no real distinction to draw); blue for a one-sided modification (only one side
- * actually changed the value — the other side still mirrors the unchanged ancestor); red for a
- * genuine two-sided conflict (both sides changed the *same* spot to *different* values — the
- * one case that needs the most attention). Side-independent: for addition/deletion only one
- * side ever has content to color in the first place (callers already gate on that side's own
- * line count being > 0), so which literal side is passed in doesn't change the outcome.
- * Exported for mergeDecorations.ts, which derives border/view-zone classes from the same token
- * rather than re-deriving the state→color mapping. */
-export function sideColorToken(
-  block: MergeBlock,
-  _touched: boolean,
-  side?: MergeSide
-): ColorToken | undefined {
+/** The color a block's change is drawn in, from the *kind* of change alone: green for a pure
+ * addition; gray for a pure deletion (nothing to decide *about* new content here, just whether to
+ * keep or drop what's already there); blue for a one-sided modification (only one side actually
+ * changed the value — the other still mirrors the unchanged ancestor); red for a genuine
+ * two-sided conflict (both sides changed the *same* spot to *different* values — the one case
+ * that needs the most attention).
+ *
+ * Deliberately says nothing about whether the user has decided yet. That used to live here — an
+ * earlier version grayed a side out once touched, and took a `touched` argument to do it — but
+ * "settled" is now a *modifier* on top of the color, not a replacement for it: callers pair this
+ * token with the `merge-resolved` class (see `blockDecorationSpecs`), so a resolved conflict
+ * still reads as the conflict it was. The parameter went with the behavior; the `'resolved'`
+ * member of `ColorToken` is what remains of it and is no longer produced by anything here.
+ *
+ * Side-independent for addition/deletion: only one side ever has content to color in the first
+ * place (callers already gate on that side's own line count being > 0), so which literal side is
+ * passed in doesn't change the outcome. Exported for mergeDecorations.ts, which derives
+ * border/view-zone classes from the same token rather than re-deriving the state→color mapping. */
+export function sideColorToken(block: MergeBlock, side?: MergeSide): ColorToken | undefined {
   if (isAutoMerged(block)) return undefined
 
   if (side !== undefined && !isChangeSource(block, side)) {
@@ -507,12 +509,10 @@ export function sideColorToken(
   return 'modification' // one-sided modification only, from here on
 }
 
-export function connectorClassForSide(
-  block: MergeBlock,
-  touched: boolean,
-  side: MergeSide
-): string | undefined {
-  const token = sideColorToken(block, touched, side)
+/** The ribbon's color class for one side. Carries no notion of "settled" either — the segment's
+ * own `resolved` flag adds `merge-resolved` on top (see MergeConnectorOverlay). */
+export function connectorClassForSide(block: MergeBlock, side: MergeSide): string | undefined {
+  const token = sideColorToken(block, side)
   return token && `merge-connector-${token}`
 }
 

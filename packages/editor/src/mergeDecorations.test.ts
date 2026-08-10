@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from './types'
 import { computeInitialPlacements, updatePlacementAfterToggle } from './mergeBlockLayout'
-import { blockDecorationSpecs, computeMergeVisuals } from './mergeDecorations'
+import { MARKER_NUDGE_PX, blockDecorationSpecs, computeMergeVisuals } from './mergeDecorations'
 
 function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>): MergeBlock {
   return {
@@ -15,6 +18,57 @@ function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'ki
     ...overrides,
   }
 }
+
+/* The marker nudge is shared by three places and only two of them can import a constant: the
+ * decoration classes below, the connector geometry that must terminate on them
+ * (conflict-resolver/connectorSegments.ts, which multiplies MARKER_NUDGE_PX), and the stylesheet
+ * that actually performs the shift. This is the stylesheet half of that lockstep — without it,
+ * bumping the constant moves the ribbon and leaves the marker where it was, which is a 1px seam
+ * nobody notices in review. */
+describe('MARKER_NUDGE_PX ↔ styles.css lockstep', () => {
+  /* Read off disk rather than imported: vitest stubs CSS imports to an empty string (`?raw`
+   * included), and Vite rewrites the `new URL('./x', import.meta.url)` shorthand into an asset
+   * URL — hence the dirname/join detour. */
+  const styleSource = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'styles.css'),
+    'utf8'
+  )
+    // Comments carry no braces, so a selector capture swallows the whole doc block above a rule
+    // and buries the assertion message in it. Drop them before matching.
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  /** Every `.merge-marker-{top,bottom}-*` rule body in styles.css, with its selector. */
+  function markerRules(): { selector: string; body: string }[] {
+    const rules: { selector: string; body: string }[] = []
+    const pattern = /([^{}]*\.merge-marker-(?:top|bottom)-[^{}]*)\{([^}]*)\}/g
+    for (const match of styleSource.matchAll(pattern)) {
+      rules.push({ selector: match[1].trim().replace(/\s+/g, ' '), body: match[2] })
+    }
+    return rules
+  }
+
+  it('finds the marker rules at all — a rename must fail here, not silently pass', () => {
+    const rules = markerRules()
+    expect(rules.length).toBeGreaterThan(0)
+    expect(rules.every((rule) => rule.body.includes('translateY('))).toBe(true)
+  })
+
+  it.each(['top', 'bottom'])('nudges every %s marker by exactly MARKER_NUDGE_PX', (edge) => {
+    const rules = markerRules().filter((rule) => rule.selector.includes(`.merge-marker-${edge}-`))
+    expect(rules.length).toBeGreaterThan(0)
+
+    for (const rule of rules) {
+      const translate = /translateY\((-?[\d.]+)px\)/.exec(rule.body)
+      expect(translate, `no translateY in ${rule.selector}`).not.toBeNull()
+
+      // Top markers sit on the line *below* the boundary and shift up; bottom markers sit on the
+      // line above and shift down. Only the magnitude is the shared constant.
+      const px = Number(translate![1])
+      expect(Math.abs(px), `${rule.selector} nudges ${px}px`).toBe(MARKER_NUDGE_PX)
+      expect(Math.sign(px)).toBe(edge === 'top' ? -1 : 1)
+    }
+  })
+})
 
 describe('blockDecorationSpecs — hermetic border splitting', () => {
   it('gives a single-line block both borders on its one decoration', () => {
