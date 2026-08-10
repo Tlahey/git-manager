@@ -5,18 +5,15 @@ import { goToRepoDiff } from '../../../stores/repoView.store'
 import { useTrackedFiles } from '../../../hooks/useTrackedFiles'
 import { apiGetFileHistory } from '../../../api/git.api'
 import type { PaletteCommand } from './types'
+import { dirName, fileName } from '../../../lib/filePath'
 
 /** Below this many characters the query is too broad to be a useful file search. */
 const MIN_QUERY_LENGTH = 2
 /** Cap the number of file results so the palette stays snappy on large repos. */
 const MAX_RESULTS = 20
 
-/** Splits a repo-relative path into `{ dir, name }` (dir keeps no trailing slash). */
-function splitPath(path: string): { dir: string; name: string } {
-  const lastSlash = path.lastIndexOf('/')
-  if (lastSlash === -1) return { dir: '', name: path }
-  return { dir: path.slice(0, lastSlash), name: path.slice(lastSlash + 1) }
-}
+/** This list renders the directory and the name apart, so it wants `dir` without its slash. */
+const splitPathNoSlash = (path: string) => ({ dir: dirName(path), name: fileName(path) })
 
 /**
  * Ranks a path against a lowercased query: basename hits beat path-only hits, a basename that starts
@@ -24,7 +21,7 @@ function splitPath(path: string): { dir: string; name: string } {
  * better; `null` means no match. Kept pure and exported for unit testing.
  */
 export function scoreFileMatch(path: string, query: string): number | null {
-  const name = splitPath(path).name.toLowerCase()
+  const name = splitPathNoSlash(path).name.toLowerCase()
   const lowerPath = path.toLowerCase()
   if (name.startsWith(query)) return path.length
   if (name.includes(query)) return 1000 + path.length
@@ -63,7 +60,7 @@ export function useFileLookupCommands(query: string): PaletteCommand[] {
 
   const repo = activeRepo
   return rankFileMatches(files, normalized).map((path) => {
-    const { dir, name } = splitPath(path)
+    const { dir, name } = splitPathNoSlash(path)
     return {
       id: `file-lookup-${path}`,
       group: 'files',

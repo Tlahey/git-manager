@@ -8,6 +8,7 @@ import { pickFile } from '../../lib/pickFile'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { parseUnifiedDiff, reconstructDiffSides } from '../../lib/parseUnifiedDiff'
 import { CommitFileList, type ProcessedFileItem } from '../common/CommitFileList'
+import { fileName } from '../../lib/filePath'
 
 const displayPath = (f: GitDiffFile) => (f.status === 'deleted' ? f.oldPath : f.newPath)
 
@@ -82,7 +83,7 @@ export function ApplyPatchPanel({ repoPath }: { repoPath: string }) {
     }
   }
 
-  const fileName = patchPath ? patchPath.slice(patchPath.lastIndexOf('/') + 1) : null
+  const patchFileName = patchPath ? fileName(patchPath) : null
   const canApply = !!patchPath && !checkError && !checking
 
   return (
@@ -99,9 +100,9 @@ export function ApplyPatchPanel({ repoPath }: { repoPath: string }) {
           <FileUp className="mr-2 h-4 w-4" />
           {t('patch.apply.choose')}
         </Button>
-        {fileName && (
+        {patchFileName && (
           <p className="truncate font-mono text-[11px] text-muted-foreground" title={patchPath!}>
-            {fileName}
+            {patchFileName}
           </p>
         )}
         {checkError && (

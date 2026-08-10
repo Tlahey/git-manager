@@ -2,22 +2,8 @@ import { Button, Textarea, Badge, Spinner, cn, LlmIcon } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { Check } from 'lucide-react'
 import type { ProcessedFileItem } from '../../../components/common/CommitFileList'
-
-/** The one-letter status marker, and its colour. Keyed by `ProcessedFileItem['status']`. */
-const STATUS_STYLES: Record<string, { letter: string; className: string }> = {
-  added: { letter: 'A', className: 'text-green-500 font-bold text-[10px]' },
-  modified: { letter: 'M', className: 'text-yellow-500 font-bold text-[10px]' },
-  deleted: { letter: 'D', className: 'text-red-500 font-bold text-[10px]' },
-  renamed: { letter: 'R', className: 'text-blue-500 font-bold text-[10px]' },
-  untracked: { letter: '?', className: 'text-muted-foreground font-bold text-[10px]' },
-}
-
-/** Splits a path into its directory (trailing slash kept) and its file name. */
-function splitPath(path: string): { dir: string | null; name: string } {
-  const lastSlash = path.lastIndexOf('/')
-  if (lastSlash === -1) return { dir: null, name: path }
-  return { dir: path.substring(0, lastSlash + 1), name: path.substring(lastSlash + 1) }
-}
+import { splitPath } from '../../../lib/filePath'
+import { FILE_STATUS_LETTER, FILE_STATUS_COLOR } from '../../../lib/fileStatusStyle'
 
 interface WipBatchGroupProps {
   /** Directory the group is named after — shown as `/<name>`. */
@@ -71,7 +57,6 @@ export function WipBatchGroup({
       <div className="max-h-24 space-y-0.5 overflow-y-auto rounded border border-border/30 bg-card p-1.5">
         {files.map((file) => {
           const { dir, name } = splitPath(file.path)
-          const status = STATUS_STYLES[file.status]
           return (
             <div
               key={file.path}
@@ -79,9 +64,12 @@ export function WipBatchGroup({
             >
               <div className="mr-4 flex min-w-0 flex-1 items-center gap-1.5">
                 <span
-                  className={cn(status?.className, 'min-w-[12px] shrink-0 text-center select-none')}
+                  className={cn(
+                    FILE_STATUS_COLOR[file.status],
+                    'min-w-[12px] shrink-0 text-center text-[10px] font-bold select-none'
+                  )}
                 >
-                  {status?.letter}
+                  {FILE_STATUS_LETTER[file.status]}
                 </span>
                 {dir && (
                   <span className="min-w-0 shrink truncate pr-0.5 text-[9px] leading-tight text-muted-foreground/45 select-text">
