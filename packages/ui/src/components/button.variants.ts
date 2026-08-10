@@ -42,6 +42,10 @@ export const buttonVariants = cva(
         sm: 'h-8 px-3 text-xs',
         lg: 'h-10 px-8',
         icon: 'h-9 w-9',
+        // For an icon sitting in a panel header or a dense row, where `icon`'s 36px square is
+        // taller than the heading beside it. Sized to the ~22px the hand-rolled `rounded p-1`
+        // buttons it replaces already were, so adopting it moved nothing on screen.
+        iconSm: 'h-6 w-6',
       },
     },
     defaultVariants: {

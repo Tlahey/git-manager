@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { BookOpen, X, RefreshCw, FileText, Code, Eye } from 'lucide-react'
-import { Button, Tooltip, GithubIcon, GitlabIcon } from '@git-manager/ui'
+import { Button, GithubIcon, GitlabIcon, Tooltip } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
 import { useRepoDataStore } from '../../../stores/repoData.store'
@@ -91,15 +91,15 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
             </Tooltip>
           )}
           <Tooltip content={t('git:actions.close')}>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="iconSm"
               onClick={onClose}
-              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label={t('git:actions.close')}
               data-testid="readme-panel-close-button"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </Tooltip>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { Button } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { CreatePatchPanel } from './CreatePatchPanel'
@@ -29,15 +30,16 @@ export function PatchWorkspacePanel({ repoPath }: { repoPath: string }) {
         >
           {title}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="iconSm"
+          className="shrink-0"
           onClick={close}
-          className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label={t('patch.cancel')}
           data-testid="patch-workspace-close"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden">

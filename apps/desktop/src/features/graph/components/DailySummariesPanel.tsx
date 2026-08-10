@@ -151,15 +151,15 @@ export function DailySummariesPanel({ repoPath, onClose }: DailySummariesPanelPr
             </Button>
           </Tooltip>
           <Tooltip content={t('dashboard.summary.close')}>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="iconSm"
               onClick={onClose}
-              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label={t('dashboard.summary.close')}
               data-testid="summaries-close"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </Tooltip>
         </div>
       </div>

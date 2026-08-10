@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, AlertTriangle, Check } from 'lucide-react'
-import { ScrollArea, Button, Spinner, Textarea, cn } from '@git-manager/ui'
+import { Button, ScrollArea, Spinner, Textarea, Tooltip, cn } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery } from '@tanstack/react-query'
 import { useConflictedFiles } from '../../../hooks/useConflictedFiles'
@@ -97,14 +97,17 @@ export function ConflictResolutionPanel({
                 })}
               </span>
             )}
-            <button
-              onClick={onClose}
-              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title={t('actions.close')}
-              data-testid="conflict-panel-close-button"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip content={t('actions.close')}>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={onClose}
+                aria-label={t('actions.close')}
+                data-testid="conflict-panel-close-button"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </Tooltip>
           </div>
         </div>
       </div>
