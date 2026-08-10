@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithLanguage } from '../../../test/i18n'
 import type { MockPR } from '../../../lib/github/types'
 
 const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
@@ -148,6 +149,45 @@ describe('PRRow — content', () => {
       />
     )
     expect(screen.getAllByText('—')).toHaveLength(1)
+  })
+})
+
+describe('PRRow — last-updated column', () => {
+  const NOW = new Date('2024-06-15T12:00:00.000Z')
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('shows the compact relative time', () => {
+    render(
+      <PRRow
+        pr={pr({ updatedAt: new Date(NOW.getTime() - 3 * 3_600_000) })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
+    expect(screen.getByText('3h ago')).toBeInTheDocument()
+  })
+
+  /**
+   * The row has to hand the app's language to the formatter, not just call a localized one — the
+   * bug this replaced was a formatter that hardcoded English, and forgetting the second argument
+   * would silently fall back to the *system* locale, which is not the app's.
+   */
+  it('follows the app language rather than the system one', () => {
+    renderWithLanguage(
+      <PRRow
+        pr={pr({ updatedAt: new Date(NOW.getTime() - 3 * 3_600_000) })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />,
+      'fr'
+    )
+    expect(screen.getByText('-3 h')).toBeInTheDocument()
+    expect(screen.queryByText('3h ago')).not.toBeInTheDocument()
   })
 })
 

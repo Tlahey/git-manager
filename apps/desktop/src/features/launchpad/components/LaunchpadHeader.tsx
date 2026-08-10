@@ -1,7 +1,7 @@
 import { Rocket, WifiOff, CheckCircle2, Clock, RefreshCw } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { timeAgo } from '../../../lib/relativeDate'
+import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 
 interface LaunchpadHeaderProps {
   hasToken: boolean
@@ -36,7 +36,7 @@ export function LaunchpadHeader({
   lastRefreshed,
   onRefresh,
 }: LaunchpadHeaderProps) {
-  const { t } = useTranslation('launchpad')
+  const { t, i18n } = useTranslation('launchpad')
 
   return (
     <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-xs">
@@ -76,7 +76,8 @@ export function LaunchpadHeader({
           <>
             {lastRefreshed && (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                <Clock className="h-3 w-3" /> {timeAgo(lastRefreshed)}
+                <Clock className="h-3 w-3" />{' '}
+                {formatRelativeTimeCompact(lastRefreshed, i18n.language)}
               </span>
             )}
             <button

@@ -17,7 +17,7 @@ import { CommitAvatar } from '../../../components/common/CommitAvatar'
 import { PrQuickActions } from './PrQuickActions'
 import { SnoozeControl } from './SnoozeControl'
 import { openUrl } from '../../../lib/openUrl'
-import { timeAgo } from '../../../lib/relativeDate'
+import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 import { useOpenPr } from './OpenPrContext'
 
 interface PRRowProps {
@@ -27,7 +27,7 @@ interface PRRowProps {
 }
 
 export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
-  const { t } = useTranslation('launchpad')
+  const { t, i18n } = useTranslation('launchpad')
   const openPr = useOpenPr()
 
   const statusLabel =
@@ -77,7 +77,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
 
       {/* Last update */}
       <div className="min-w-[52px] shrink-0 text-right text-[10px] text-muted-foreground">
-        {timeAgo(pr.updatedAt)}
+        {formatRelativeTimeCompact(pr.updatedAt, i18n.language)}
       </div>
 
       {/* Status */}

@@ -16,7 +16,7 @@ import { CommitAvatar } from '../../../components/common/CommitAvatar'
 import { SnoozeControl } from './SnoozeControl'
 import { IssueQuickActions } from './IssueQuickActions'
 import { openUrl } from '../../../lib/openUrl'
-import { timeAgo } from '../../../lib/relativeDate'
+import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 import { useOpenIssue } from './OpenIssueContext'
 import { useIssueActions } from '../../../hooks/useIssueActions'
 
@@ -29,7 +29,7 @@ interface IssueRowProps {
 }
 
 export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProps) {
-  const { t } = useTranslation('launchpad')
+  const { t, i18n } = useTranslation('launchpad')
   const openIssue = useOpenIssue()
   const { repoPath, branch, viewRepo, createBranch, creatingBranch, close, closing, canClose } =
     useIssueActions(issue, onChanged)
@@ -61,7 +61,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
 
       {/* Last update */}
       <div className="min-w-[52px] shrink-0 text-right text-[10px] text-muted-foreground">
-        {timeAgo(issue.updatedAt)}
+        {formatRelativeTimeCompact(issue.updatedAt, i18n.language)}
       </div>
 
       {/* Status */}

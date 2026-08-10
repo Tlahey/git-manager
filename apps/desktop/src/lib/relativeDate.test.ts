@@ -1,17 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
-  formatRelativeDate,
   formatExactDate,
   formatRelativeTime,
+  formatRelativeTimeCompact,
   formatShortDate,
   formatDateTimeLong,
-  timeAgo,
 } from './relativeDate'
 
-const nowSec = () => Math.floor(Date.now() / 1000)
-
-describe('timeAgo', () => {
+describe('formatRelativeTimeCompact', () => {
   const NOW = new Date('2024-06-15T12:00:00.000Z')
+  const ago = (ms: number) => new Date(NOW.getTime() - ms)
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -22,52 +20,43 @@ describe('timeAgo', () => {
     vi.useRealTimers()
   })
 
-  it('formats seconds for very recent dates', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 30_000))).toBe('30s ago')
+  // These are the exact strings the two hand-rolled formatters this replaced used to produce.
+  // They are asserted so a future style change (`narrow` → `short`) cannot silently widen the
+  // 52px "updated" column in the Launchpad and the 60px-minimum date column in the graph.
+  it('keeps the compact English wording the columns were sized for', () => {
+    expect(formatRelativeTimeCompact(ago(30_000), 'en')).toBe('30s ago')
+    expect(formatRelativeTimeCompact(ago(5 * 60_000), 'en')).toBe('5m ago')
+    expect(formatRelativeTimeCompact(ago(3 * 3_600_000), 'en')).toBe('3h ago')
+    expect(formatRelativeTimeCompact(ago(5 * 86_400_000), 'en')).toBe('5d ago')
+    expect(formatRelativeTimeCompact(ago(90 * 86_400_000), 'en')).toBe('3mo ago')
+    expect(formatRelativeTimeCompact(ago(2 * 365 * 86_400_000), 'en')).toBe('2y ago')
   })
 
-  it('formats minutes once past 60 seconds', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 5 * 60_000))).toBe('5m ago')
+  it('crosses to the next unit at each boundary', () => {
+    expect(formatRelativeTimeCompact(ago(60_000), 'en')).toBe('1m ago')
+    expect(formatRelativeTimeCompact(ago(3_600_000), 'en')).toBe('1h ago')
   })
 
-  it('formats hours once past 60 minutes', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 3 * 3_600_000))).toBe('3h ago')
+  /** The whole reason the hand-rolled versions had to go: they printed English in a French UI. */
+  it('speaks French when the app does', () => {
+    expect(formatRelativeTimeCompact(ago(5 * 60_000), 'fr')).toBe('-5 min')
+    expect(formatRelativeTimeCompact(ago(3 * 3_600_000), 'fr')).toBe('-3 h')
+    expect(formatRelativeTimeCompact(ago(5 * 86_400_000), 'fr')).toBe('-5 j')
   })
 
-  it('formats days once past 24 hours', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 5 * 86_400_000))).toBe('5d ago')
+  /** `numeric: 'auto'` — the two places the CLDR wording differs from the old hand-rolled one. */
+  it('uses the idiomatic word where the locale has one', () => {
+    expect(formatRelativeTimeCompact(NOW, 'en')).toBe('now')
+    expect(formatRelativeTimeCompact(NOW, 'fr')).toBe('maintenant')
+    expect(formatRelativeTimeCompact(ago(86_400_000), 'en')).toBe('yesterday')
+    expect(formatRelativeTimeCompact(ago(86_400_000), 'fr')).toBe('hier')
   })
 
-  it('formats months once past 30 days', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 90 * 86_400_000))).toBe('3mo ago')
-  })
-
-  it('formats a date at exactly the boundary as the next larger unit', () => {
-    expect(timeAgo(new Date(NOW.getTime() - 60_000))).toBe('1m ago')
-    expect(timeAgo(new Date(NOW.getTime() - 3_600_000))).toBe('1h ago')
-    expect(timeAgo(new Date(NOW.getTime() - 86_400_000))).toBe('1d ago')
-  })
-})
-
-describe('formatRelativeDate', () => {
-  it('reports very recent timestamps as "just now"', () => {
-    expect(formatRelativeDate(nowSec())).toBe('just now')
-  })
-
-  it('reports minutes', () => {
-    expect(formatRelativeDate(nowSec() - 5 * 60)).toBe('5m ago')
-  })
-
-  it('reports hours', () => {
-    expect(formatRelativeDate(nowSec() - 3 * 3600)).toBe('3h ago')
-  })
-
-  it('reports days', () => {
-    expect(formatRelativeDate(nowSec() - 2 * 86400)).toBe('2d ago')
-  })
-
-  it('reports years', () => {
-    expect(formatRelativeDate(nowSec() - 2 * 365 * 86400)).toBe('2y ago')
+  /** Git hands us epoch seconds, the GitHub API layer hands us `Date`s; both have to work, and a
+   * number must stay seconds — reading it as milliseconds would put every commit in 1970. */
+  it('accepts epoch seconds as well as a Date', () => {
+    const fiveMinutesAgoSec = Math.floor(NOW.getTime() / 1000) - 5 * 60
+    expect(formatRelativeTimeCompact(fiveMinutesAgoSec, 'en')).toBe('5m ago')
   })
 })
 
@@ -129,5 +118,10 @@ describe('formatRelativeTime', () => {
 
   it('uses the "now" wording for the current instant', () => {
     expect(formatRelativeTime(frozenNowSec(), 'en')).toBe('now')
+  })
+
+  it('accepts a Date as well as epoch seconds', () => {
+    const now = frozenNowSec()
+    expect(formatRelativeTime(new Date((now - 5 * 86400) * 1000), 'en')).toBe('5 days ago')
   })
 })

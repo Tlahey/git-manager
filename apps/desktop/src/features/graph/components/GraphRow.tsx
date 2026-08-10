@@ -15,7 +15,7 @@ import {
   BAND_ALPHA_HEX,
   BAND_ALPHA_SELECTED_HEX,
 } from '../lib/graphLayout'
-import { formatRelativeDate, formatExactDate } from '../../../lib/relativeDate'
+import { formatRelativeTimeCompact, formatExactDate } from '../../../lib/relativeDate'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useGitStashes } from '../../../hooks/useGitStashes'
@@ -296,7 +296,7 @@ function CellContent({
           )}
           title={formatExactDate(commit.author.timestamp, i18n.language)}
         >
-          {formatRelativeDate(commit.author.timestamp)}
+          {formatRelativeTimeCompact(commit.author.timestamp, i18n.language)}
         </span>
       )
 

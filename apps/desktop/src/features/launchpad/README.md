@@ -56,9 +56,9 @@ features/launchpad/
 - **The PR and issue detail panels** (`components/github-panels/`) and the ~20 `usePr*`/`useIssue*`
   hooks behind them. The graph view mounts the same panels in its centre, so neither screen owns
   them — see that folder's own README.
-- **`issueBranchName` / `branchMatchesIssue`** (`lib/github/issueBranch.ts`) and **`timeAgo`**
-  (`lib/relativeDate.ts`) — the graph's sidebar reads the branch↔issue link and formats issue dates
-  the same way, so those left with the types.
+- **`issueBranchName` / `branchMatchesIssue`** (`lib/github/issueBranch.ts`) and the relative-date
+  formatting (`lib/relativeDate.ts`'s `formatRelativeTimeCompact`) — the graph's sidebar reads the
+  branch↔issue link and formats issue dates the same way, so those left with the types.
 - **The mock PRs and issues** (`lib/devFixtures/mockData.ts`) — they feed the dev-fixture loader,
   not this page; the page only ever sees them through it.
 - **The copy** (`packages/i18n`, `launchpad` namespace) and the **rewards engine** (`lib/rewards/`,
