@@ -854,47 +854,58 @@ describe('isChangeSource', () => {
 })
 
 describe('sideColorToken / connectorClassForSide', () => {
-  it('never colors an auto-merged block, touched or not', () => {
-    const unchanged = block({ blockId: 1, kind: 'unchanged' })
-    expect(sideColorToken(unchanged, false)).toBeUndefined()
-    expect(sideColorToken(unchanged, true)).toBeUndefined()
+  it('never colors an auto-merged block', () => {
+    expect(sideColorToken(block({ blockId: 1, kind: 'unchanged' }))).toBeUndefined()
+    expect(sideColorToken(block({ blockId: 2, kind: 'both-same' }))).toBeUndefined()
   })
 
   it('tokens a pure addition green', () => {
     const addition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
-    expect(sideColorToken(addition, false)).toBe('addition')
+    expect(sideColorToken(addition)).toBe('addition')
   })
 
   it('tokens a pure deletion gray — same weight as already-settled', () => {
     const deletion = block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 1 })
-    expect(sideColorToken(deletion, false)).toBe('deletion')
+    expect(sideColorToken(deletion)).toBe('deletion')
   })
 
-  it('tokens a one-sided modification blue while untouched', () => {
+  it('tokens a one-sided modification blue, and only from the side that authored it', () => {
     const modification = block({
       blockId: 1,
       kind: 'ours-only',
       oursLineCount: 1,
       theirsLineCount: 1,
     })
-    expect(sideColorToken(modification, false)).toBe('modification')
-    expect(sideColorToken(modification, false, 'ours')).toBe('modification')
-    expect(sideColorToken(modification, false, 'theirs')).toBeUndefined()
+    expect(sideColorToken(modification)).toBe('modification')
+    expect(sideColorToken(modification, 'ours')).toBe('modification')
+    expect(sideColorToken(modification, 'theirs')).toBeUndefined()
   })
 
-  it('tokens a genuine two-sided conflict red while untouched', () => {
+  it('tokens a genuine two-sided conflict red', () => {
     const conflict = block({
       blockId: 1,
       kind: 'both-different',
       oursLineCount: 1,
       theirsLineCount: 1,
     })
-    expect(sideColorToken(conflict, false)).toBe('conflict')
+    expect(sideColorToken(conflict)).toBe('conflict')
   })
 
-  it('turns original token color even once a side is touched, regardless of change kind', () => {
-    const addition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
-    expect(sideColorToken(addition, true)).toBe('addition')
+  /* The color says what KIND of change this is; whether the user has decided about it yet is a
+   * separate `merge-resolved` class layered on top. An earlier version folded the two together
+   * and took a `touched` argument to do it — the argument outlived the behavior by long enough
+   * for the doc comment to still describe it. There is no parameter left to pass, so this pins
+   * the replacement rule: a settled conflict is still drawn as a conflict. */
+  it('never returns the settled token — resolution is a modifier, not a color', () => {
+    const kinds = [
+      block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 }),
+      block({ blockId: 2, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 1 }),
+      block({ blockId: 3, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 1 }),
+      block({ blockId: 4, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 }),
+    ]
+    for (const candidate of kinds) {
+      expect(sideColorToken(candidate)).not.toBe('resolved')
+    }
   })
 
   it('mirrors the block color as a connector class with the merge-connector- prefix', () => {
@@ -904,10 +915,9 @@ describe('sideColorToken / connectorClassForSide', () => {
       oursLineCount: 1,
       theirsLineCount: 1,
     })
-    expect(connectorClassForSide(conflict, false, 'ours')).toBe('merge-connector-conflict')
-    expect(connectorClassForSide(conflict, true, 'ours')).toBe('merge-connector-conflict')
+    expect(connectorClassForSide(conflict, 'ours')).toBe('merge-connector-conflict')
 
     const unchanged = block({ blockId: 2, kind: 'unchanged' })
-    expect(connectorClassForSide(unchanged, false, 'ours')).toBeUndefined()
+    expect(connectorClassForSide(unchanged, 'ours')).toBeUndefined()
   })
 })

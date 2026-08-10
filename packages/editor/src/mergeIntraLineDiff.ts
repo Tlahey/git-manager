@@ -153,8 +153,7 @@ export function computeIntraLineHighlights(
     for (const side of ['ours', 'theirs'] as MergeSide[]) {
       if (!isChangeSource(block, side)) continue
 
-      const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
-      const token = sideColorToken(block, touched)
+      const token = sideColorToken(block)
       if (!token) continue // auto-merged blocks never highlight
 
       const sideLines = side === 'ours' ? block.oursLines : block.theirsLines

@@ -42,20 +42,29 @@ export interface ViewZoneSpec {
  * completely untouched, undecorated code). */
 type EmptyPaneRendering = 'accent-marker' | 'zone' | 'none'
 
-/** How far the `merge-marker-*`/`merge-marker-passive-*` CSS classes (see index.css) nudge a
- * boundary marker off the real line it's decorating and onto the true inter-line boundary —
- * `ThreeWayMergeEditor.tsx`'s connector-ribbon geometry applies this exact same pixel offset to
- * whichever endpoint of a segment lands on a marker line, so the SVG ribbon's tip/flat-stroke
- * still terminates precisely on the (CSS-shifted) marker instead of drifting 1px away from it.
- * The two must stay in lockstep: bumping this constant means bumping the matching `translateY`
- * values in index.css too. */
+/** How far the `merge-marker-*` CSS classes (see styles.css) nudge a boundary marker off the real
+ * line it's decorating and onto the true inter-line boundary. The connector-ribbon geometry
+ * (`conflict-resolver/connectorSegments.ts`) applies this exact same pixel offset to whichever
+ * endpoint of a segment lands on a marker line, so the SVG ribbon's tip/flat-stroke still
+ * terminates precisely on the (CSS-shifted) marker instead of drifting away from it.
+ * (`twoWayView.ts` also calls `markerEdge`, but only to pick a class name — it emits no pixel
+ * geometry of its own and so has nothing to keep in step.)
+ *
+ * Three places have to agree, and only two of them can import a constant. The geometry module
+ * does — it references this value rather than repeating a literal, which is what a previous
+ * version only *claimed*: the constant sat here unread while four branches each hardcoded their
+ * own `1`, so bumping it moved nothing. The CSS can't read it, so `mergeDecorations.test.ts` parses
+ * styles.css and asserts every `.merge-marker-{top,bottom}-*` rule's `translateY` magnitude
+ * equals this number. Bumping it therefore fails a test until the stylesheet follows, instead of
+ * silently desyncing the ribbon from the marker it points at. */
 export const MARKER_NUDGE_PX = 1
 
 /** Every pane's own total line count, as of the last block's placement — a boundary marker past
  * the last real line needs this to know there's no "next line" to anchor a top edge to (falls
- * back to the last line's bottom edge instead). Exposed so `ThreeWayMergeEditor.tsx`'s connector
- * geometry can determine the same top/bottom edge a marker decoration would use, without
- * duplicating the "which is the tallest/last block" walk. */
+ * back to the last line's bottom edge instead). Exposed so the connector geometry
+ * (`conflict-resolver/connectorSegments.ts`, `conflict-resolver/twoWayView.ts`) can determine the
+ * same top/bottom edge a marker decoration would use, without duplicating the "which is the
+ * tallest/last block" walk. */
 export interface PaneTotalLines {
   ours: number
   center: number
@@ -78,9 +87,9 @@ export function computePaneTotalLines(
 /** Whether a boundary marker anchored right after `afterLine` (0 if there's nothing before it)
  * lands on a real "next line" (`top` — the common case) or falls past the end of the pane's
  * content entirely (`bottom` — anchors to the last line's bottom edge instead, since there's no
- * next line to carry a top edge). Shared by `addPaneBlock`'s own marker decoration and
- * `ThreeWayMergeEditor.tsx`'s connector geometry so they agree on which edge (and therefore
- * which nudge direction) applies to the exact same marker. */
+ * next line to carry a top edge). Shared by `addPaneBlock`'s own marker decoration and the
+ * connector geometry (`conflict-resolver/connectorSegments.ts`) so they agree on which edge (and
+ * therefore which nudge direction) applies to the exact same marker. */
 export function markerEdge(afterLine: number, paneTotalLines: number): 'top' | 'bottom' {
   const markerLine = afterLine + 1
   const total = Math.max(1, paneTotalLines)
@@ -255,7 +264,7 @@ function addPaneBlock(
     const classes = ['merge-view-zone']
     // Semantic hatching, WebStorm-style: the stripes themselves say what kind of hole this is —
     // thick, widely-spaced gray for a plain deletion, thin dense red for a conflict where one
-    // side removed text (see the merge-view-zone-* variants in index.css).
+    // side removed text (see the merge-view-zone-* variants in styles.css).
     if (zone.token) {
       classes.push(`merge-view-zone-${zone.token}`)
       if (zone.resolved) {
@@ -276,6 +285,14 @@ function addPaneBlock(
   }
 }
 
+/** Whether every side that could still be decided has been. A one-sided block is settled by its
+ * authoring side alone; a genuine conflict needs both. */
+function isBlockResolved(block: MergeBlock, placement: BlockPlacement): boolean {
+  if (block.kind === 'ours-only') return placement.oursTouched
+  if (block.kind === 'theirs-only') return placement.theirsTouched
+  return placement.oursTouched && placement.theirsTouched
+}
+
 /** Derives every pane's decorations and alignment view zones from the current placements — the
  * single visual source of truth the editor re-applies wholesale after each placement change
  * (gutter action, wand, undo/redo, manual typing), mirroring how placements themselves are
@@ -294,12 +311,6 @@ function addPaneBlock(
  * `withBlockBorders` (off by default) adds the hermetic 2px top/bottom edges around each block
  * (and the matching closing edges on filler zones) — purely additive: fills and zones are
  * identical either way. */
-function isBlockResolved(block: MergeBlock, placement: BlockPlacement): boolean {
-  if (block.kind === 'ours-only') return placement.oursTouched
-  if (block.kind === 'theirs-only') return placement.theirsTouched
-  return placement.oursTouched && placement.theirsTouched
-}
-
 export function computeMergeVisuals(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>,
@@ -324,11 +335,9 @@ export function computeMergeVisuals(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    const oursToken = isChangeSource(block, 'ours')
-      ? sideColorToken(block, placement.oursTouched, 'ours')
-      : undefined
+    const oursToken = isChangeSource(block, 'ours') ? sideColorToken(block, 'ours') : undefined
     const theirsToken = isChangeSource(block, 'theirs')
-      ? sideColorToken(block, placement.theirsTouched, 'theirs')
+      ? sideColorToken(block, 'theirs')
       : undefined
     const centerCount = placement.centerLineCount
     const maxCount = Math.max(block.oursLineCount, block.theirsLineCount, centerCount)
@@ -337,7 +346,8 @@ export function computeMergeVisuals(
     // insertion consumes no space anywhere it's absent — the center (the target the content
     // would land in) gets the intense colored boundary line, and the opposite/mirror pane gets
     // NO decoration at all (per spec: untouched code, nothing in its own gap either — see the
-    // matching skip in ThreeWayMergeEditor.tsx's `recomputeConnectors`). Everything else
+    // matching skip in `conflict-resolver/connectorSegments.ts`'s `buildThreeWaySegments`, which
+    // drops a zero-line side of a pure addition instead of emitting a ribbon). Everything else
     // (deletions, one-side-deleted conflicts, a center whose sides were both rejected) keeps
     // the hatched filler zone: that space existed in the base and should still read as occupied.
     const isPureInsertion = changeKindForBlock(block) === 'addition'
@@ -410,40 +420,39 @@ export function computeMergeVisuals(
       useVividText
     )
 
-    const baseOursToken = sideColorToken(block, placement.oursTouched)
-    const baseTheirsToken = sideColorToken(block, placement.theirsTouched)
+    // One token for the whole block: the center shows the block's change, and which side's copy
+    // it currently holds doesn't change what kind of change it is. (This was two separately
+    // computed side tokens back when the color depended on that side's `touched` flag; both
+    // expressions now evaluate identically, so keeping two names only implied a distinction that
+    // isn't there.)
+    const baseToken = sideColorToken(block)
 
     const centerParts: ColoredRange[] = []
-    if (placement.oursIncluded && baseOursToken) {
+    if (placement.oursIncluded && baseToken) {
       const { start, count } = subRangeForSide(placement, block, 'ours')
       if (count > 0)
         centerParts.push({
           startLine: start,
           lineCount: count,
-          token: baseOursToken,
+          token: baseToken,
           resolved: placement.oursTouched,
         })
     }
-    if (placement.theirsIncluded && baseTheirsToken) {
+    if (placement.theirsIncluded && baseToken) {
       const { start, count } = subRangeForSide(placement, block, 'theirs')
       if (count > 0)
         centerParts.push({
           startLine: start,
           lineCount: count,
-          token: baseTheirsToken,
+          token: baseToken,
           resolved: placement.theirsTouched,
         })
     }
-    if (
-      !placement.oursIncluded &&
-      !placement.theirsIncluded &&
-      (baseOursToken || baseTheirsToken)
-    ) {
+    if (!placement.oursIncluded && !placement.theirsIncluded && baseToken) {
       const start = placement.centerStartLine
       const count = placement.centerLineCount // baseLines.length
-      const token = baseOursToken ?? baseTheirsToken ?? 'conflict'
       if (count > 0) {
-        centerParts.push({ startLine: start, lineCount: count, token, resolved: true })
+        centerParts.push({ startLine: start, lineCount: count, token: baseToken, resolved: true })
       }
     }
     const changeKind = changeKindForBlock(block)
@@ -473,7 +482,7 @@ export function computeMergeVisuals(
       {
         deficit: centerDeficit,
         afterLine: placement.centerStartLine + centerCount - 1,
-        token: sideColorToken(block, placement.oursTouched && placement.theirsTouched),
+        token: sideColorToken(block),
         paneLineCount: centerCount,
         paneTotalLines: centerTotalLines,
         emptyRendering: resolvedCenterEmptyRendering,
