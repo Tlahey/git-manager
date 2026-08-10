@@ -5,7 +5,6 @@ import {
   getNotchMetrics,
   getTrayIconRect,
   isAppActive,
-  makeWindowNonactivating,
   navigateWindow,
   playSystemSound,
   raiseAboveMenuBar,
@@ -198,35 +197,6 @@ export async function apiShowWithoutActivating(): Promise<void> {
     await showWithoutActivating()
   } catch (e) {
     console.warn('Failed to show the notch window without activating:', e)
-  }
-}
-
-/**
- * Makes the notch window one the user can click without it costing them what they were doing.
- *
- * The other half of {@link apiShowWithoutActivating}, and the one that was missing: showing the
- * card without activating the app is worth nothing if *clicking* it activates the app anyway — and
- * on macOS, clicking any window of a background application does exactly that, before the click
- * reaches whatever is inside it. So the ✕ pulled the app forward, and the Cancel button did nothing
- * at all (the click that activates an app is not delivered to the view under it). The backend turns
- * the window into a nonactivating panel and makes its webview accept that first click.
- *
- * Called on every card rather than once at creation, because the notch keeps one window for the
- * life of the app — see `notchWindow.ts`'s header, and `make_window_nonactivating`'s own.
- *
- * A failure is swallowed and logged: a card that is rude is still better than no card at all, which
- * is the opposite of the trade {@link apiShowWithoutActivating} makes — nothing here can take the
- * user's keyboard mid-keystroke, it can only fail to give them back a click.
- */
-export async function apiMakeWindowNonactivating(): Promise<void> {
-  try {
-    if (await makeWindowNonactivating()) return
-    console.warn(
-      'The notch window could not be made nonactivating; clicking the card will bring the app ' +
-        'forward and its buttons may not respond.'
-    )
-  } catch (e) {
-    console.warn('Failed to make the notch window nonactivating:', e)
   }
 }
 

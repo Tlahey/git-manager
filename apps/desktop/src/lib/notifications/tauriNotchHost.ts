@@ -27,7 +27,6 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { NotchHost } from '@git-manager/notch'
 import {
   apiClearWindowBackdrop,
-  apiMakeWindowNonactivating,
   apiPlaySystemSound,
   apiRaiseAboveMenuBar,
   apiShowWithoutActivating,
@@ -55,15 +54,6 @@ export function createTauriNotchHost({
 }: TauriNotchHostOptions): NotchHost {
   const host: NotchHost = {
     async prepare() {
-      // First, and before the raise: turning the window into a panel rewrites its style mask, and
-      // the level this window needs is anything but ordinary — asserting it afterwards is what
-      // keeps the card over the menu bar whatever `setStyleMask:` does on the way.
-      //
-      // Here rather than in `notchWindow.ts` for the same reason the two calls below are here:
-      // this runs *in* the notch window, once per card, on a window that outlives every card it
-      // shows. Without it, clicking the card activates the whole application — and the click never
-      // reaches the button the user aimed at. See `apiMakeWindowNonactivating`.
-      await apiMakeWindowNonactivating()
       // Above the menu bar's own native z-order, so the card visually emerges from behind it
       // during the slide rather than sliding out from underneath the bar's icons.
       await apiRaiseAboveMenuBar()

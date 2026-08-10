@@ -136,12 +136,6 @@ export function NotchWindow({
    * Surfacing the window is unconditional, and that is not incidental. A card with no route is
    * still about something the user left running in the app — a finished search, a dev server that
    * came up — and "bring me back to it" is the only thing clicking it could reasonably mean.
-   *
-   * It is also now the **only** thing on the card that brings the app forward. The window is a
-   * nonactivating panel (`make_window_nonactivating`), so a press on the ✕ or on an action button
-   * no longer activates the application as a side effect of being a click — which is what it used
-   * to do, and what users reported. `setFocus` activates explicitly (tao's `set_focus` ends in
-   * `activateIgnoringOtherApps:`), so this path is unaffected.
    */
   async function activate() {
     if (route) await emit(NOTIFICATION_ACTIVATED_EVENT, route)

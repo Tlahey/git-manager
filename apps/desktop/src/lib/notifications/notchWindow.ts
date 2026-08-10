@@ -31,12 +31,6 @@
  * about the design is unchanged: same fixed label, same payload-in-the-URL, same fresh mount per
  * card. Creating one on demand survives as the fallback for when there is no parked window to
  * navigate — the app was launched into the background, the window crashed, the e2e suite.
- *
- * **Creating a webview is not the only way a card can steal the app.** Clicking any window of a
- * background application activates that application, whatever the window's flags say — which is a
- * separate mechanism, addressed separately, and by the time this file is involved it has already
- * been dealt with: the card asks for a nonactivating panel from inside its own window, once per
- * card (`tauriNotchHost`'s `prepare` → `make_window_nonactivating`).
  */
 
 import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi'
@@ -176,17 +170,9 @@ export async function openNotchWindow(
       // this window is made **once** and reused for the life of the app, so a creation-time option
       // only ever describes the window a *particular* launch happened to build. The window in front
       // of us may have been created before this code existed — a frontend reload leaves it standing
-      // (`warmUpNotchWindow` finds it and returns), which is exactly how the first attempt at
-      // keeping the card unfocusable reached nobody. `setFocusable` writes the same tao ivar the
-      // creation option does.
-      //
-      // It is **not** what stops a click on the card bringing the app forward, though it was
-      // shipped believing it was. tao maps it onto `canBecomeKeyWindow`/`canBecomeMainWindow`, and
-      // the reasoning — a window that cannot become key cannot hand key status to the main window
-      // when it is ordered out — is sound and was falsified anyway: the bug survived it in the real
-      // app. The activation is the *application's*, and only a nonactivating panel refuses it (see
-      // `make_window_nonactivating`, asserted per card from the notch window's own `prepare`).
-      // What this still buys is the card never taking the keyboard: nothing on it wants one.
+      // (`warmUpNotchWindow` finds it and returns), which is exactly how the first attempt at this
+      // fix reached nobody. Saying it again on every card is what makes it true of the window we
+      // actually have. `setFocusable` writes the same tao ivar the creation option does.
       await parked.setFocusable(false)
       // Sized and placed before the content arrives: the page measures its slide against the
       // `windowY` in its own payload, so it must find the window already where that says it is.
@@ -277,25 +263,30 @@ async function createNotchWindow(
     // separate and neither covers the other. What neither covers at all is the *application*-level
     // activation wry performs at creation, which is why getting here is gated above.
     focus: false,
-    // And it can never *become* key either, which is a third, separate thing.
+    // And it can never *become* key either, which is a third, separate thing and the one that made
+    // closing a card jump the app in front of the user.
     //
     // tao maps this option onto `canBecomeKeyWindow` **and** `canBecomeMainWindow`
-    // (`platform_impl/macos/window.rs`, the `focusable` ivar behind both selectors). Nothing on the
-    // card wants keyboard focus — it is two buttons and a progress bar, and mouse events reach a
-    // window whether or not it is key.
+    // (`platform_impl/macos/window.rs`, the `focusable` ivar behind both selectors). Left at its
+    // default of `true`, clicking the card's ✕ made this window key — and hiding it is
+    // `orderOut:`, which does not drop key status but hands it to the next window of the same
+    // application. That is the main window. So dismissing a notification pulled the user out of
+    // whatever they were in, at the exact moment they said they were done with it.
     //
-    // This was once believed to be what stopped closing a card from jumping the app in front of
-    // the user, on the reasoning that `orderOut:` hands key status to the next window of the same
-    // application. It is not: the bug survived it in the real app, because the activation is the
-    // *application's* and no window-level flag reaches it. `make_window_nonactivating` is what
-    // does, and the notch window asserts it on every card.
+    // Nothing on the card wants keyboard focus — it is two buttons and a progress bar, and mouse
+    // events reach a window whether or not it is key. Clicking the card *body* still brings the app
+    // forward, because that path asks for it explicitly (`NotchWindow.activate`) instead of
+    // inheriting it from a window manager's idea of what a click means.
     focusable: false,
-    // The click that activates a background application is not delivered to the view under it —
-    // AppKit's "first mouse" rule — unless the view opts in, and wry's webview reads this option
-    // to answer `acceptsFirstMouse:`. That is why the card's *Cancel* button did nothing while the
-    // user was in another app: the press was spent activating the app instead. The declarative
-    // half of the fix; `make_window_nonactivating` re-asserts it on the live window per card,
-    // because a window created before this line existed would otherwise never gain it.
+    // The click that reaches a *background* application's window is spent activating that
+    // application and never delivered to the view under it — AppKit's "first mouse" rule — unless
+    // the view opts in. A notch card is only ever raised while the user is in another app, so
+    // without this its Cancel button did nothing at all: the press was consumed.
+    //
+    // Declared here rather than asserted per card, unlike everything else about this window, and
+    // that is a limitation rather than a choice: wry reads the option once, into an ivar it sets at
+    // creation (`wkwebview/class/wry_web_view.rs`), so there is no runtime call for it. A parked
+    // window built before this line existed keeps the old answer until the app is restarted.
     acceptFirstMouse: true,
     visible: false,
   })
