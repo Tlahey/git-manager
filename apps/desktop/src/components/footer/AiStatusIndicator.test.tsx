@@ -53,18 +53,22 @@ describe('AiStatusIndicator', () => {
     expect(pill).not.toHaveTextContent('llama3.2')
   })
 
-  it('names the model on hover, and both of them when a fast one is set', () => {
+  // The tooltip is stacked — the sentence, then one line per model — and the accessible name is
+  // those same lines joined by a space. Asserting the joined form is what checks both at once:
+  // a line dropped from the stack disappears from the name too.
+  it('names the model on hover, and both of them on their own lines when a fast one is set', () => {
     render(<AiStatusIndicator onOpenSettings={vi.fn()} />)
     setStatus('connected')
     expect(screen.getByTestId('footer-ai-status')).toHaveAccessibleName(
-      /Ollama connected — model llama3\.2\./
+      /Ollama connected\. Click to open the AI settings\. model llama3\.2/
     )
 
     const { settings, updateSettings } = useSettingsStore.getState()
     act(() => updateSettings({ ai: { ...settings.ai, fastModel: 'qwen3:8b' } }))
 
+    // No comma between them any more: they are two lines, not one clause.
     expect(screen.getByTestId('footer-ai-status')).toHaveAccessibleName(
-      /model llama3\.2, fast model qwen3:8b/
+      /model llama3\.2 fast model qwen3:8b/
     )
   })
 
@@ -102,7 +106,7 @@ describe('AiStatusIndicator', () => {
     expect(screen.getByTestId('footer-ai-spinner')).toBeInTheDocument()
     expect(pill).toHaveTextContent('Writing the PR description…')
     expect(pill).toHaveAccessibleName(
-      /Ollama is working — Writing the PR description… \(model llama3\.2\)/
+      /Ollama is working — Writing the PR description…\. model llama3\.2/
     )
   })
 

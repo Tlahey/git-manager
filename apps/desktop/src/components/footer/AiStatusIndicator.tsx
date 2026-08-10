@@ -58,13 +58,16 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
   const activeRun = runs.length > 0 ? runs[runs.length - 1] : null
   const providerLabel = getAiPreset(preset).label
 
-  // Both slots in one clause, on hover only. The pill used to print the model name, which stopped
-  // working the day a setup could name two: neither one alone is the answer to "what is configured",
-  // and the pair does not fit a footer. What the pill is *for* — is it up, is it busy — never needed
-  // the name anyway.
-  const models = fastModel
-    ? t('aiStatus.modelPair', { model, fastModel })
-    : t('aiStatus.modelSingle', { model })
+  // One line each, under the sentence, on hover only. The pill used to print the model name, which
+  // stopped working the day a setup could name two: neither one alone is the answer to "what is
+  // configured", and the pair does not fit a footer. What the pill is *for* — is it up, is it busy —
+  // never needed the name anyway. The two got their own lines because a comma between two model
+  // identifiers reads as one long name; a line break is the only separator they can't be mistaken
+  // through.
+  const modelLines = [
+    t('aiStatus.modelSingle', { model }),
+    ...(fastModel ? [t('aiStatus.fastModelLine', { fastModel })] : []),
+  ]
 
   if (activeRun) {
     // The action the user asked for, which for most of a two-phase run is not the small call
@@ -83,11 +86,12 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
         // A busy pill promises a different thing from an idle one, so it must say so: clicking takes
         // you to the work, not to Settings. Only when the run has nowhere to return to does it keep
         // the old promise.
-        tooltip={
+        tooltipLines={[
           origin
-            ? t('aiStatus.tooltipGoToWork', { provider: providerLabel, models, task: label })
-            : t('aiStatus.tooltipWorking', { provider: providerLabel, models, task: label })
-        }
+            ? t('aiStatus.tooltipGoToWork', { provider: providerLabel, task: label })
+            : t('aiStatus.tooltipWorking', { provider: providerLabel, task: label }),
+          ...modelLines,
+        ]}
         state="working"
         onClick={origin ? () => goToAiRun(origin) : onOpenSettings}
         icon={<Spinner className="h-3.5 w-3.5 text-primary" data-testid="footer-ai-spinner" />}
@@ -100,13 +104,17 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
 
   return (
     <Pill
-      tooltip={
+      tooltipLines={
         state === 'connected'
-          ? t('aiStatus.tooltipConnected', { provider: providerLabel, models })
-          : t('aiStatus.tooltipOther', {
-              provider: providerLabel,
-              state: t(STATE_LABEL_KEYS[state]),
-            })
+          ? [t('aiStatus.tooltipConnected', { provider: providerLabel }), ...modelLines]
+          : // An unreachable provider has no configured pair worth naming — the problem is that
+            // nothing answered, not which model would have.
+            [
+              t('aiStatus.tooltipOther', {
+                provider: providerLabel,
+                state: t(STATE_LABEL_KEYS[state]),
+              }),
+            ]
       }
       state={state}
       onClick={onOpenSettings}
@@ -121,7 +129,7 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
  * drift apart. The label folds away on narrow footers; the tooltip always carries the full story,
  * and doubles as the accessible name. */
 function Pill({
-  tooltip,
+  tooltipLines,
   state,
   onClick,
   icon,
@@ -129,7 +137,8 @@ function Pill({
   labelClassName,
   steps,
 }: {
-  tooltip: string
+  /** One line each, in order. Rendered stacked, and joined into the accessible name. */
+  tooltipLines: string[]
   state: AiConnectionState | 'working'
   onClick: () => void
   icon: React.ReactNode
@@ -138,11 +147,24 @@ function Pill({
   /** `7/42` while a map phase runs, else null. */
   steps?: string | null
 }) {
+  // The lines are the single source for both surfaces: stacked on screen, joined for the
+  // accessible name. A screen reader announcing a name is not reading a layout, and keeping the two
+  // derived from one array is what stops them drifting the next time a line is added.
+  const accessibleName = tooltipLines.join(' ')
+
   return (
-    <Tooltip content={tooltip}>
+    <Tooltip
+      content={
+        <span className="flex flex-col gap-0.5">
+          {tooltipLines.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </span>
+      }
+    >
       <button
         onClick={onClick}
-        aria-label={tooltip}
+        aria-label={accessibleName}
         data-testid="footer-ai-status"
         data-state={state}
         className="flex cursor-pointer items-center gap-1.5 rounded border border-transparent px-2 py-0.5 transition-all duration-150 hover:border-border hover:bg-accent"
