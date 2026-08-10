@@ -115,12 +115,15 @@ export function GithubSection() {
                 data-testid="github-device-flow-card"
                 className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4"
               >
-                <div className="flex items-center justify-between">
+                {/* Stacked rather than title-left / status-right: side by side, each got half a
+                    340px pane, which wrapped the title onto two lines and the status onto two more.
+                    The status is a caption for the title anyway, not a peer of it. */}
+                <div className="space-y-1">
                   <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
-                    GitHub Authorization
+                    {t('settings.github.authorizationTitle')}
                   </h4>
                   <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                    <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-primary" />
                     {t('settings.github.waitingAuth')}
                   </span>
                 </div>

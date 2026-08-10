@@ -124,6 +124,8 @@
   "settings.github.connectionError": "Connexion échouée. Veuillez vérifier votre connexion Internet et réessayer.",
   "settings.github.loginButton": "Se connecter avec GitHub",
   "settings.github.deviceCodeInstructions": "Allez sur la page d'activation de GitHub et saisissez le code ci-dessous pour autoriser cette application :",
+  "settings.github.deviceCodeExpired": "Le code d'activation GitHub a expiré. Relancez la connexion pour en obtenir un nouveau.",
+  "settings.github.authorizationTitle": "Autorisation GitHub",
   "settings.github.copyCode": "Copier le code",
   "settings.github.codeCopied": "Code copié !",
   "settings.github.openActivationPage": "Ouvrir la page d'activation",
