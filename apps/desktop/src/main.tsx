@@ -124,17 +124,24 @@ e2eSetup
       // No parameter: the journal is app-wide, reading the activity log rather than a repository.
       content = <ActionJournalWindow />
     } else if (windowKind === 'notch') {
-      // A card whose content cannot be read is a card with nothing to draw. The window is closed
-      // rather than left blank, since nothing else would ever retire it: an empty card never
+      // No payload is the *parked* state, not a failure: the notch window is created once at
+      // startup and navigated per card, because creating a webview activates the whole application
+      // (see lib/notifications/notchWindow.ts). A parked window renders nothing, stays hidden, and
+      // waits — closing it here would put the app right back to opening one card at a time.
+      //
+      // A payload that will not parse is a different thing, and still closes: that window was told
+      // to draw a card and cannot, and nothing would ever retire it — an empty card never
       // announces a dismissal.
       let parsed: NotchPayload | null = null
+      let unparseable = false
       try {
         parsed = payload ? (JSON.parse(payload) as NotchPayload) : null
       } catch (e) {
         console.error('Invalid notch payload:', e)
+        unparseable = true
       }
       content = parsed ? <NotchWindow {...parsed} /> : null
-      if (!parsed) closeUnrenderableWindow('its payload is missing or unparseable')
+      if (unparseable) closeUnrenderableWindow('its payload is unparseable')
     } else if (windowKind) {
       // A named window whose parameters didn't survive (a reload that dropped the query string, a
       // navigation into an existing window, a malformed URL). See `closeUnrenderableWindow`.

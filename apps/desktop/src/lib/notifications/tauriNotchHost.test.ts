@@ -5,6 +5,7 @@ const {
   showWindow,
   showWithoutActivating,
   closeWindow,
+  hideWindow,
   setPosition,
   raise,
   clearBackdrop,
@@ -26,6 +27,10 @@ const {
       calls.push('close')
       return Promise.resolve()
     }),
+    hideWindow: vi.fn(() => {
+      calls.push('hide')
+      return Promise.resolve()
+    }),
     // Typed parameter on purpose: an untyped `vi.fn(() => …)` gives `mock.calls` an empty tuple
     // type, so reading the position back out fails to compile.
     setPosition: vi.fn((_position: { x: number; y: number }) => {
@@ -45,7 +50,7 @@ const {
 })
 
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({ show: showWindow, close: closeWindow, setPosition }),
+  getCurrentWindow: () => ({ show: showWindow, close: closeWindow, hide: hideWindow, setPosition }),
 }))
 
 vi.mock('../../api/notification.api', () => ({
@@ -101,10 +106,13 @@ describe('createTauriNotchHost', () => {
     await expect(host.setY(40)).resolves.toBeUndefined()
   })
 
-  it('delegates close to the window itself', async () => {
+  // Hidden, never closed: the window outlives every card, because *creating* a webview activates
+  // the whole application on macOS and the next card would pay for it.
+  it('hides the window on the way out rather than destroying it', async () => {
     const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     await host.close()
-    expect(closeWindow).toHaveBeenCalled()
+    expect(hideWindow).toHaveBeenCalled()
+    expect(closeWindow).not.toHaveBeenCalled()
   })
 
   // The whole point of the card: it can arrive while the user is typing in another app and must

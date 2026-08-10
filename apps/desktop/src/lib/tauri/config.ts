@@ -57,6 +57,14 @@ export const isAppActive = () => invoke<boolean>('is_app_active')
 export const resignAppActivation = () => invoke<void>('resign_app_activation')
 
 /**
+ * Points an existing window at a new URL. The notch reuses one window this way rather than opening
+ * a fresh one per card, because *creating* a webview is what activates the app — see
+ * `navigate_window` in `commands/window.rs`.
+ */
+export const navigateWindow = (label: string, url: string) =>
+  invoke<void>('navigate_window', { label, url })
+
+/**
  * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
  * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
  */

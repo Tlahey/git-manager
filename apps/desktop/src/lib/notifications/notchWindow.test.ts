@@ -5,7 +5,12 @@ import {
   NOTCH_CARD_WIDTH,
   type NotchModel,
 } from '@git-manager/notch'
-import { openNotchWindow, type NotchPayload } from './notchWindow'
+import {
+  closeNotchWindow,
+  openNotchWindow,
+  warmUpNotchWindow,
+  type NotchPayload,
+} from './notchWindow'
 import type { NotchRequest } from './notchDelivery'
 
 const {
@@ -18,6 +23,11 @@ const {
   notchMetrics,
   appWasActive,
   resignActivation,
+  navigate,
+  navigateFails,
+  hideExisting,
+  setSize,
+  setPosition,
 } = vi.hoisted(() => ({
   trayRect: { current: null as { x: number; y: number } | null },
   ctor: vi.fn(),
@@ -30,6 +40,11 @@ const {
   },
   appWasActive: { current: false },
   resignActivation: vi.fn(),
+  navigate: vi.fn(),
+  navigateFails: { current: false },
+  hideExisting: vi.fn(),
+  setSize: vi.fn(),
+  setPosition: vi.fn(),
 }))
 
 vi.mock('../../api/notification.api', () => ({
@@ -38,6 +53,10 @@ vi.mock('../../api/notification.api', () => ({
   apiResignAppActivation: () => {
     resignActivation()
     return Promise.resolve()
+  },
+  apiNavigateWindow: (label: string, url: string) => {
+    navigate(label, url)
+    return navigateFails.current ? Promise.reject(new Error('boom')) : Promise.resolve()
   },
 }))
 
@@ -98,7 +117,31 @@ beforeEach(() => {
   // its own below.
   appWasActive.current = false
   resignActivation.mockClear()
+  navigate.mockClear()
+  navigateFails.current = false
+  hideExisting.mockClear()
+  setSize.mockClear()
+  setPosition.mockClear()
 })
+
+/** The parked notch window: what `getByLabel` hands back once one exists. */
+function parkedWindow() {
+  return {
+    setSize,
+    setPosition,
+    hide: hideExisting,
+    close: closeExisting,
+    once: (event: string, handler: (payload?: unknown) => void) => {
+      listeners.current.set(event, handler)
+    },
+  }
+}
+
+/** The `payload` of the URL the parked window was navigated to. */
+function navigatedPayload(): NotchPayload {
+  const url = navigate.mock.calls[0]![1] as string
+  return JSON.parse(new URL(url).searchParams.get('payload')!) as NotchPayload
+}
 
 afterEach(() => {
   vi.useRealTimers()
@@ -233,14 +276,98 @@ describe('openNotchWindow', () => {
     })
   })
 
-  it('replaces the card already showing rather than stacking a second window', async () => {
-    getByLabel.mockResolvedValue({ close: closeExisting })
+  // ── the parked window ──────────────────────────────────────────────────────────────────────
+  // Creating a webview activates the whole application on macOS, whatever the window options say,
+  // so a card must never be the thing that creates one. These are the assertions that keep it that
+  // way; each of them is the bug coming back if it flips.
+
+  it('navigates the parked window instead of creating a second one', async () => {
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await expect(openNotchWindow(request)).resolves.toBe(true)
+
+    expect(ctor).not.toHaveBeenCalled()
+    expect(closeExisting).not.toHaveBeenCalled()
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(navigate.mock.calls[0]![0]).toBe('notch')
+    expect(navigate.mock.calls[0]![1]).toContain('window=notch')
+  })
+
+  it('never touches the app’s activation when it reuses the parked window', async () => {
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await openNotchWindow(request)
+
+    // Nothing was created, so nothing was activated, so there is nothing to hand back.
+    expect(resignActivation).not.toHaveBeenCalled()
+  })
+
+  it('carries the same payload through the URL as a freshly created window would', async () => {
+    getByLabel.mockResolvedValue(parkedWindow())
+    notchMetrics.current = { safeAreaTop: 38, housingHalfWidth: 110 }
+
+    await openNotchWindow(request)
+
+    const decoded = navigatedPayload()
+    expect(decoded.model).toEqual(model)
+    expect(decoded.iconId).toBe('pr_merged')
+    expect(decoded.bandHeight).toBe(38)
+    expect(decoded.windowY).toBe(-1 - HALO_MARGIN)
+  })
+
+  it('places and sizes the parked window before its content arrives', async () => {
+    // The page measures its own slide against the `windowY` in its payload, so it has to find the
+    // window already where that says it is.
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await openNotchWindow(request)
+
+    expect(setSize).toHaveBeenCalled()
+    expect(setPosition).toHaveBeenCalled()
+    const sizeCall = setSize.mock.invocationCallOrder[0]!
+    const navigateCall = navigate.mock.invocationCallOrder[0]!
+    expect(sizeCall).toBeLessThan(navigateCall)
+  })
+
+  it('falls back to opening a window when the parked one cannot be reused', async () => {
+    // A card shown rudely still beats no card — and unlike the `show()` fallbacks this one only
+    // costs focus once the cheap path is already broken.
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    getByLabel.mockResolvedValue(parkedWindow())
+    navigateFails.current = true
+
     const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+
+    await expect(promise).resolves.toBe(true)
+  })
+
+  it('parks the window on the way out rather than destroying it', async () => {
+    getByLabel.mockResolvedValue(parkedWindow())
+
+    await closeNotchWindow()
+
+    expect(hideExisting).toHaveBeenCalled()
+    expect(closeExisting).not.toHaveBeenCalled()
+    // Navigated back to the empty card, so the last one isn't left mounted answering updates.
+    expect(navigate.mock.calls[0]![1]).not.toContain('payload=')
+  })
+
+  it('warms up one window at startup, and only one', async () => {
+    const promise = warmUpNotchWindow()
     await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
     listeners.current.get('tauri://created')?.()
     await promise
 
-    expect(closeExisting).toHaveBeenCalled()
+    // Parked, i.e. no card in it: `main.tsx` renders nothing for this and leaves it alone.
+    expect(creationOptions().url).toBe('/?window=notch')
+    expect(creationOptions().visible).toBe(false)
+
+    ctor.mockClear()
+    getByLabel.mockResolvedValue(parkedWindow())
+    await warmUpNotchWindow()
+    expect(ctor).not.toHaveBeenCalled()
   })
 
   it('falls back to a sane screen width when the monitor cannot be read', async () => {
@@ -275,13 +402,37 @@ describe('openNotchWindow', () => {
     expect(onDestroyed).toHaveBeenCalledTimes(1)
   })
 
-  it('registers no death watch when the caller wants none', async () => {
-    const promise = openNotchWindow(request)
+  it('does not tell a caller that wanted no backstop', async () => {
+    // The watch itself is registered once for the window's whole life — one per card would pile up
+    // a never-firing IPC listener per notification, now that the window outlives them all. What is
+    // per-card is who it reports to.
+    const onDestroyed = vi.fn()
+    const first = openNotchWindow(request, { onDestroyed })
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await first
+
+    getByLabel.mockResolvedValue(parkedWindow())
+    await openNotchWindow(request)
+
+    listeners.current.get('tauri://destroyed')?.()
+    expect(onDestroyed).not.toHaveBeenCalled()
+  })
+
+  it('reports a death to the card that is on the window now, not the one that created it', async () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const promise = openNotchWindow(request, { onDestroyed: first })
     await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
     listeners.current.get('tauri://created')?.()
     await promise
 
-    expect(listeners.current.has('tauri://destroyed')).toBe(false)
+    getByLabel.mockResolvedValue(parkedWindow())
+    await openNotchWindow(request, { onDestroyed: second })
+
+    listeners.current.get('tauri://destroyed')?.()
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
   })
 
   it('hands back the activation that creating the window took from the user', async () => {

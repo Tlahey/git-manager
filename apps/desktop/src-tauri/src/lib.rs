@@ -95,7 +95,7 @@ use commands::undo::{
     unpin_object,
 };
 use commands::window::{
-    clear_window_backdrop, get_notch_metrics, is_app_active, raise_above_menu_bar,
+    clear_window_backdrop, get_notch_metrics, is_app_active, navigate_window, raise_above_menu_bar,
     resign_app_activation, set_window_vibrancy, show_without_activating,
 };
 use commands::worktree::{
@@ -355,6 +355,7 @@ pub fn run() {
             show_without_activating,
             is_app_active,
             resign_app_activation,
+            navigate_window,
             get_notch_metrics,
             // Native notifications (clickable — see commands/notification.rs)
             send_native_notification,

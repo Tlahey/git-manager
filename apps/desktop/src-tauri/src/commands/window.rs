@@ -36,6 +36,7 @@
 //! API, which bars the app from the Mac App Store — not a constraint here, since
 //! git-manager ships through GitHub releases and its own updater.
 
+use crate::error::AppError;
 use tauri::{Theme, WebviewWindow};
 
 /// Applies (or removes) the native window material behind the webview.
@@ -646,6 +647,37 @@ pub fn resign_app_activation() {
         // requirement for `NSApplication`.
         unsafe { NSApplication::sharedApplication(mtm).deactivate() };
     }
+}
+
+/// Points an existing window at a new URL, instead of closing it and opening another.
+///
+/// The notch's reason for existing: creating a webview activates the whole application (see
+/// [`resign_app_activation`]), and a card is by definition raised while the user is somewhere
+/// else. One window, created once while the app is legitimately frontmost and then *navigated*
+/// per card, is the only shape that never pays that price — a navigation touches no
+/// `NSApplication` at all.
+///
+/// It also keeps what made the per-card window worth having: the card's content still travels in
+/// the URL, so the page still mounts with everything it needs and there is still no race between a
+/// window appearing and its content arriving.
+///
+/// NOT `async`: `navigate` posts a message to the event loop, and `send_user_message` runs it
+/// inline when it is already on the main thread — which a synchronous command is. From a worker it
+/// would take the long way round for no reason.
+#[tauri::command]
+pub fn navigate_window(app: tauri::AppHandle, label: String, url: String) -> Result<(), String> {
+    use tauri::Manager;
+
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| AppError::InvalidInput(format!("no window labelled {label}")))?;
+    let parsed: tauri::Url = url
+        .parse()
+        .map_err(|e| AppError::InvalidInput(format!("unusable window URL {url}: {e}")))?;
+    window
+        .navigate(parsed)
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(())
 }
 
 /// The real per-machine notch/camera-housing geometry, read from AppKit instead of guessed at.

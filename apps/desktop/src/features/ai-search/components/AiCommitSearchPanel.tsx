@@ -65,7 +65,10 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   // minutes — and nobody watches a bar for minutes. They switch to their editor, and the run goes
   // invisible. Only while the window is unfocused, though: this panel is a far better place to
   // watch a search you are actually watching, and a card duplicating it would be pure noise.
-  const windowFocused = useWindowFocus()
+  // Settled rather than raw: the app can activate *itself* while raising a card (opening a webview
+  // does it on macOS), and a gate that believed that instantly took down the very card it had just
+  // put up — see `useWindowFocus`.
+  const windowFocused = useWindowFocus({ settleMs: 600 })
   const repoName = useMemo(() => repoPath.split('/').filter(Boolean).pop() ?? repoPath, [repoPath])
   const notchModel = useMemo(
     () =>

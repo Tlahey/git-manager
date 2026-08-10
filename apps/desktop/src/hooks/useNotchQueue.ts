@@ -5,7 +5,11 @@ import {
   apiOnNotchDismissed,
   apiSendNativeNotification,
 } from '../api/notification.api'
-import { closeNotchWindow, openNotchWindow } from '../lib/notifications/notchWindow'
+import {
+  closeNotchWindow,
+  openNotchWindow,
+  warmUpNotchWindow,
+} from '../lib/notifications/notchWindow'
 import {
   nativeSpecFor,
   resolveNotchFallbackSurface,
@@ -24,11 +28,16 @@ import { useSettingsStore } from '../stores/settings.store'
  * The protocol with the window is deliberately small and id-guarded, because events broadcast to
  * every webview and a card that has already been replaced can still have one in flight:
  *
- * - `current` becomes a *different* card → open a window for it (which closes the previous one).
+ * - `current` becomes a *different* card → point the notch window at it (which replaces whatever it
+ *   was showing).
  * - `current` keeps its id and changes content → push it in place, so a progress tick doesn't tear
  *   the card down and replay its entrance animation forty times.
- * - `current` becomes `null` → close the window.
+ * - `current` becomes `null` → park the window, empty and hidden.
  * - the window reports it dismissed itself → retire that card and promote the next.
+ *
+ * "Park" rather than "close" throughout, and the window is created here at mount rather than by the
+ * first card: creating a webview activates the whole application on macOS, so the one window is
+ * made once, at launch, while the app is frontmost anyway. See `notchWindow.ts`'s header.
  */
 export function useNotchQueue() {
   const current = useNotchQueueStore((s) => s.queue.current)
@@ -37,6 +46,13 @@ export function useNotchQueue() {
   // The card the window is actually showing, which is not the same thing as `current`: opening is
   // async, and this is what tells "a new card arrived" apart from "the same card changed".
   const shownIdRef = useRef<string | null>(null)
+  // Which *opening* is the live one. Not the same question as which card is current: the same card
+  // id can be shown, dropped and shown again within a few hundred milliseconds, and the first
+  // window's death notice arrives after the second window is already up. Matching on the id alone
+  // let that stale notice retire the card that had replaced it — the queue then went quiet with a
+  // window on screen nobody owned, which is one of the two ways a live search ended up showing no
+  // card at all.
+  const openSeqRef = useRef(0)
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
@@ -77,9 +93,14 @@ export function useNotchQueue() {
 
     shownIdRef.current = current.model.id
     const request = current
+    const seq = ++openSeqRef.current
 
     /** Retires a card that will never be on screen, so the queue doesn't stall on it. */
     const moveOn = () => {
+      // The sequence check first, and it is the one that matters: this fires from a window's death
+      // notice, which can arrive long after that window was superseded. Without it a dead window
+      // retires the card its replacement is currently showing.
+      if (openSeqRef.current !== seq) return
       if (useNotchQueueStore.getState().queue.current?.model.id !== request.model.id) return
       shownIdRef.current = null
       dismissCurrent()
@@ -140,16 +161,30 @@ export function useNotchQueue() {
     })()
   }, [current, dismissCurrent])
 
-  // Leave no orphan window behind if the app tears the main window down while a card is up.
+  // Leave no orphan card behind if the app tears the main window down while one is up.
   //
   // The unmount half only covers an orderly teardown. A *reload* of the main window runs no React
   // cleanup at all, and the notch is a separate OS window that survives it — so a card that was up
   // at that moment stays on screen forever, owned by nobody: the fresh mount starts with an empty
-  // queue and a null `shownIdRef`, so the effect above never recognises it as something to close.
-  // Closing whatever is there on mount is the only thing that can reclaim it, and it is always
-  // safe: a card is only ever legitimate while the window that produced it is alive.
+  // queue and a null `shownIdRef`, so the effect above never recognises it as something to take
+  // down. Parking whatever is there on mount is the only thing that can reclaim it, and it is
+  // always safe: a card is only ever legitimate while the window that produced it is alive.
+  //
+  // The same mount is also where the notch window is *created*, once, and this is the reason it
+  // happens here rather than lazily on the first card: creating a webview activates the whole
+  // application on macOS, and at launch the app is frontmost anyway, so this is the one moment
+  // that costs the user nothing. See `notchWindow.ts`'s header.
   useEffect(() => {
-    void closeNotchWindow()
+    void (async () => {
+      await closeNotchWindow()
+      // Not in the e2e suite, whose driver handles a second WebviewWindow badly enough that one
+      // permanently present would break scenarios that never go near a notification. Cards there
+      // fall back to opening their own window, exactly as they did before — and the suite already
+      // forces most of them to a surface of its choosing anyway (see the `forcedSurface` hatch
+      // above). Dead-code-eliminated from every real build.
+      if (import.meta.env.VITE_E2E === 'true') return
+      await warmUpNotchWindow()
+    })()
     return () => {
       if (shownIdRef.current !== null) void closeNotchWindow()
     }

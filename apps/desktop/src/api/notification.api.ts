@@ -5,6 +5,7 @@ import {
   getNotchMetrics,
   getTrayIconRect,
   isAppActive,
+  navigateWindow,
   playSystemSound,
   raiseAboveMenuBar,
   resignAppActivation,
@@ -231,6 +232,18 @@ export async function apiResignAppActivation(): Promise<void> {
   } catch (e) {
     console.warn('Failed to hand back the activation taken by opening a window:', e)
   }
+}
+
+/**
+ * Points a window that already exists at a new URL.
+ *
+ * How the notch shows every card after the first: navigating touches no `NSApplication`, where
+ * *creating* a webview activates the whole app whatever the window options say. Rejects rather than
+ * swallowing — the caller's fallback is to open a window the old way, and it can only choose that
+ * if it is told.
+ */
+export async function apiNavigateWindow(label: string, url: string): Promise<void> {
+  await navigateWindow(label, url)
 }
 
 /**
