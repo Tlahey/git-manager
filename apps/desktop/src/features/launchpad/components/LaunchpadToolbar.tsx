@@ -1,5 +1,5 @@
-import { Search, X, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
-import { Input } from '@git-manager/ui'
+import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { SearchInput } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 
@@ -21,26 +21,14 @@ export function LaunchpadToolbar() {
       className="flex shrink-0 items-center gap-2 border-b border-border bg-card/40 px-4 py-2"
       data-testid="launchpad-toolbar"
     >
-      <div className="relative max-w-sm flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('toolbar.globalSearchPlaceholder')}
-          className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
-          data-testid="launchpad-global-search"
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-            title={t('toolbar.searchPlaceholder')}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        )}
-      </div>
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder={t('toolbar.globalSearchPlaceholder')}
+        clearLabel={t('toolbar.clearSearch')}
+        className="max-w-sm flex-1"
+        data-testid="launchpad-global-search"
+      />
 
       <div className="ml-auto flex items-center gap-1">
         <button

@@ -1,6 +1,5 @@
-import { Search, X, Layers, Circle, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
-import { Input } from '@git-manager/ui'
-import { MultiSelectDropdown } from '@git-manager/components'
+import { X, Layers, Circle, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
+import { MultiSelectDropdown, SearchInput } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import type { SortKey, SortDir } from '../lib/launchpadTypes'
 
@@ -62,24 +61,13 @@ export function Toolbar({
   return (
     <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
       {/* Search */}
-      <div className="relative max-w-xs flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="text"
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          placeholder={t('toolbar.searchPlaceholder')}
-          className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
-        />
-        {search && (
-          <button
-            onClick={() => onSearch('')}
-            className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        )}
-      </div>
+      <SearchInput
+        value={search}
+        onChange={onSearch}
+        placeholder={t('toolbar.searchPlaceholder')}
+        clearLabel={t('toolbar.clearSearch')}
+        className="max-w-xs flex-1"
+      />
 
       {/* Separator */}
       <div className="mx-0.5 h-4 w-px bg-border/60" />

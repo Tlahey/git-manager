@@ -16,11 +16,13 @@ describe('LaunchpadToolbar', () => {
     expect(useLaunchpadControlsStore.getState().search).toBe('bug')
   })
 
+  /** The button used to be titled with the *placeholder* ("Search…"), which is what this test
+   * asserted; the shared `SearchInput` names it for what it does. */
   it('clears the search with the clear button', async () => {
     const user = userEvent.setup()
     useLaunchpadControlsStore.setState({ search: 'bug' })
     render(<LaunchpadToolbar />)
-    await user.click(screen.getByTitle('Search…'))
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(useLaunchpadControlsStore.getState().search).toBe('')
   })
 

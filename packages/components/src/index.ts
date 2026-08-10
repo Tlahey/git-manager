@@ -17,6 +17,9 @@ export type { KpiCardProps } from './KpiCard'
 export { EmptyState, NoResults } from './EmptyState'
 export type { EmptyStateProps, NoResultsProps } from './EmptyState'
 
+export { SearchInput } from './SearchInput'
+export type { SearchInputProps } from './SearchInput'
+
 export { InnerTab } from './InnerTab'
 export type { InnerTabProps } from './InnerTab'
 

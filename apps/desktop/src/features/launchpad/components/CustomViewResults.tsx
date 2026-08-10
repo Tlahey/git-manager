@@ -1,8 +1,7 @@
 import { useState, useMemo, type ReactNode } from 'react'
-import { Search, X, GitPullRequest, AlertCircle } from 'lucide-react'
-import { Input } from '@git-manager/ui'
+import { GitPullRequest, AlertCircle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { NoResults } from '@git-manager/components'
+import { NoResults, SearchInput } from '@git-manager/components'
 import type { SavedFilter } from '../stores/launchpad.store'
 import { useLaunchpadControlsStore } from '../stores/launchpadControls.store'
 import { prMatchesSavedFilter, issueMatchesSavedFilter } from '../lib/savedFilterMatch'
@@ -105,24 +104,13 @@ export function CustomViewResults({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
-        <div className="relative max-w-xs flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('views.searchPlaceholder')}
-            className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t('views.searchPlaceholder')}
+          clearLabel={t('toolbar.clearSearch')}
+          className="max-w-xs flex-1"
+        />
         <span className="text-[10px] text-muted-foreground">
           {t('views.results', { count: total })}
         </span>

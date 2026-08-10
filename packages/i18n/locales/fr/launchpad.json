@@ -26,6 +26,7 @@
   "filter.selected": "{{count}} sélectionné(s)",
   "toolbar.searchPlaceholder": "Rechercher…",
   "toolbar.clearAllCount": "Tout effacer ({{count}})",
+  "toolbar.clearSearch": "Effacer la recherche",
   "sort.date": "Date",
   "sort.files": "Fichiers",
   "row.pin": "Épingler",

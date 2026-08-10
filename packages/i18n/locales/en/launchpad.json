@@ -26,6 +26,7 @@
   "filter.selected": "{{count}} selected",
   "toolbar.searchPlaceholder": "Search…",
   "toolbar.clearAllCount": "Clear all ({{count}})",
+  "toolbar.clearSearch": "Clear search",
   "sort.date": "Date",
   "sort.files": "Files",
   "row.pin": "Pin",
