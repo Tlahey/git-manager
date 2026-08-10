@@ -35,39 +35,17 @@ import { CommitDragSlot } from './components/CommitDragSlot'
 import { TagMenuProvider } from './components/TagMenuContext'
 import { GraphHeader } from './components/GraphHeader'
 import { CommitSearchPanel } from './components/CommitSearchPanel'
-import { CommitDetailsPanel } from './components/CommitDetailsPanel'
-import { MultiCommitDetailsPanel } from './components/MultiCommitDetailsPanel'
-import { DiffViewCenter } from '../../components/diff-viewer/DiffViewCenter'
-import { PrDetailCenter } from '../../components/github-panels/pr/PrDetailCenter'
-import { IssueDetailCenter } from '../../components/github-panels/issue/IssueDetailCenter'
-import { PrComposerCenter } from '../../components/github-panels/pr/PrComposerCenter'
-import { PrCreateCenter } from '../../components/github-panels/pr/PrCreateCenter'
-import { PrFileDiffCenter } from '../../components/github-panels/pr/PrFileDiffCenter'
-import { PrFilesPanel } from '../../components/github-panels/pr/PrFilesPanel'
 import { EmptyRepoPanel } from './components/EmptyRepoPanel'
-import { PatchWorkspaceCenter } from '../../components/patch/PatchWorkspaceCenter'
-import { PatchWorkspacePanel } from '../../components/patch/PatchWorkspacePanel'
-import { PackageHealthPanel } from '../../components/package-health/PackageHealthPanel'
-import { PackageHealthCenter } from '../../components/package-health/PackageHealthCenter'
-import { usePackageHealthStore } from '../../stores/packageHealth.store'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
-import { BisectPanel } from '../../components/bisect/BisectPanel'
-import { BranchExplanationPanel } from './components/BranchExplanationPanel'
-import { AiCommitSearchPanel } from './components/AiCommitSearchPanel'
-import { CodeReviewPanel } from './components/CodeReviewPanel'
-import { DailySummariesPanel } from './components/DailySummariesPanel'
-import { CommitExplanationPanel } from './components/CommitExplanationPanel'
-import { WorkingExplanationPanel } from './components/WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
 import { buildBisectStatusMap } from './lib/bisectStatus'
 import { isSyntheticRow } from './lib/syntheticRows'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
-import { ConflictResolutionPanel } from './components/ConflictResolutionPanel'
-import { RebaseProgressCenter } from '../../components/rebase-progress/RebaseProgressCenter'
 import { Waterline } from './components/Waterline'
-import { GraphSidePanel } from './components/GraphSidePanel'
+import { GraphCenterPane } from './components/GraphCenterPane'
+import { GraphSidePanelSlot } from './components/GraphSidePanelSlot'
 import { collectGraphAuthors } from './lib/graphAuthors'
 import { useGraphAuthorFilterStore } from './stores/graphAuthorFilter.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
@@ -120,26 +98,12 @@ export function GitGraph({
   // ── Sizing / Resizing details panel hook ───────────────────────────────────
   const { width: panelWidthState, resizeProps } = useHorizontalResize(400)
 
-  const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
-  const activePrNumber = useRepoUIStore((s) => s.activePrNumber)
-  const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
-  const activeIssue = useRepoUIStore((s) => s.activeIssue)
-  const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
-  const activePrFile = useRepoUIStore((s) => s.activePrFile)
-  const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
-  const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
-  const prComposer = useRepoUIStore((s) => s.prComposer)
-  const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
-  const aiPanelTarget = useRepoUIStore((s) => s.aiPanelTarget)
-  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
 
   // Patch workspace (create / apply / dependency) claims both the center and the
   // right panel, taking precedence over the commit/diff/PR views below.
-  const patchMode = usePatchWorkspaceStore((s) => s.mode)
-  const healthOpen = usePackageHealthStore((s) => s.open)
   const closePatch = usePatchWorkspaceStore((s) => s.close)
   // Switching repo/tab abandons any in-progress patch workspace.
   useEffect(() => {
@@ -593,55 +557,16 @@ export function GitGraph({
           <div className="flex h-full overflow-hidden select-none">
             {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
             <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
-              {patchMode ? (
-                <PatchWorkspaceCenter repoPath={repoPath} />
-              ) : healthOpen ? (
-                <PackageHealthCenter repoPath={repoPath} />
-              ) : activePrNumber != null ? (
-                activePrFile != null ? (
-                  <PrFileDiffCenter
-                    repoPath={repoPath}
-                    prNumber={activePrNumber}
-                    filename={activePrFile}
-                    onClose={() => setActivePrFile(null)}
-                  />
-                ) : (
-                  <PrDetailCenter
-                    repoPath={repoPath}
-                    prNumber={activePrNumber}
-                    onClose={() => setActivePrNumber(null)}
-                  />
-                )
-              ) : activeIssue != null ? (
-                // The repo's own path, not the `owner/repo` the Launchpad passes: `useRepoGitHub` resolves
-                // GitHub from the repo's remotes, which is exactly what the sidebar's issues came from.
-                <IssueDetailCenter
-                  repoPath={repoPath}
-                  issueNumber={activeIssue.number}
-                  issue={activeIssue}
-                  onClose={() => setActiveIssue(null)}
-                />
-              ) : prCreateOpen ? (
-                <PrCreateCenter repoPath={repoPath} />
-              ) : prComposer != null ? (
-                <PrComposerCenter repoPath={repoPath} />
-              ) : activeDiffFile ? (
-                <DiffViewCenter
-                  repoPath={repoPath}
-                  file={activeDiffFile}
-                  onClose={() => setActiveDiffFile(null)}
-                />
-              ) : rebaseViewOpen && rebaseState ? (
-                <RebaseProgressCenter
-                  repoPath={repoPath}
-                  rebaseState={rebaseState}
-                  onSelectStep={handleSelectRebaseStep}
-                  isStepSelectable={isRebaseStepLoaded}
-                  selectedOid={primaryOid}
-                  filesPanelOpen={isConflictPanelOpen}
-                  onToggleFilesPanel={handleToggleConflictFiles}
-                />
-              ) : (
+              <GraphCenterPane
+                repoPath={repoPath}
+                rebaseViewOpen={rebaseViewOpen}
+                rebaseState={rebaseState}
+                onSelectRebaseStep={handleSelectRebaseStep}
+                isRebaseStepSelectable={isRebaseStepLoaded}
+                selectedOid={primaryOid}
+                filesPanelOpen={isConflictPanelOpen}
+                onToggleFilesPanel={handleToggleConflictFiles}
+              >
                 <>
                   <CommitSearchPanel
                     resultCount={totalMatches}
@@ -844,7 +769,7 @@ export function GitGraph({
                     </>
                   )}
                 </>
-              )}
+              </GraphCenterPane>
 
               {terminalOpen ? (
                 <TerminalPanel path={repoPath} />
@@ -855,96 +780,23 @@ export function GitGraph({
 
             {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
           resolution, or commit details */}
-            {bisectActive ? (
-              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                <BisectPanel repoPath={repoPath} />
-              </GraphSidePanel>
-            ) : aiPanelTarget ? (
-              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                {/* Keyed on the subject so switching remounts with that subject's remembered
-              explanation instead of the previous one's. */}
-                {aiPanelTarget.kind === 'search' ? (
-                  <AiCommitSearchPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
-                ) : aiPanelTarget.kind === 'working' ? (
-                  <WorkingExplanationPanel
-                    repoPath={repoPath}
-                    onClose={() => setAiPanelTarget(null)}
-                  />
-                ) : aiPanelTarget.kind === 'branch' ? (
-                  <BranchExplanationPanel
-                    key={`branch:${aiPanelTarget.branch}`}
-                    repoPath={repoPath}
-                    branch={aiPanelTarget.branch}
-                    baseRef={aiPanelTarget.baseRef}
-                    onClose={() => setAiPanelTarget(null)}
-                  />
-                ) : aiPanelTarget.kind === 'summaries' ? (
-                  <DailySummariesPanel repoPath={repoPath} onClose={() => setAiPanelTarget(null)} />
-                ) : aiPanelTarget.kind === 'reviewWorking' ? (
-                  <CodeReviewPanel
-                    repoPath={repoPath}
-                    target={{ scope: 'working' }}
-                    onClose={() => setAiPanelTarget(null)}
-                  />
-                ) : aiPanelTarget.kind === 'reviewBranch' ? (
-                  <CodeReviewPanel
-                    key={`review:${aiPanelTarget.branch}`}
-                    repoPath={repoPath}
-                    target={{ scope: 'branch', branch: aiPanelTarget.branch }}
-                    baseRef={aiPanelTarget.baseRef}
-                    onClose={() => setAiPanelTarget(null)}
-                  />
-                ) : (
-                  <CommitExplanationPanel
-                    key={`commit:${aiPanelTarget.oid}`}
-                    repoPath={repoPath}
-                    commit={aiPanelTarget}
-                    onClose={() => setAiPanelTarget(null)}
-                  />
-                )}
-              </GraphSidePanel>
-            ) : patchMode ? (
-              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                <PatchWorkspacePanel repoPath={repoPath} />
-              </GraphSidePanel>
-            ) : healthOpen ? (
-              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                <PackageHealthPanel repoPath={repoPath} />
-              </GraphSidePanel>
-            ) : activePrNumber != null ? (
-              prFilesVisible ? (
-                <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                  <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
-                </GraphSidePanel>
-              ) : null
-            ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
-              <GraphSidePanel resizeProps={resizeProps} width={panelWidthState}>
-                {isConflictPanelOpen ? (
-                  <ConflictResolutionPanel
-                    repoPath={repoPath}
-                    activeFile={conflictFilePath}
-                    onSelectFile={setConflictFilePath}
-                    onClose={closeConflictPanel}
-                  />
-                ) : isMultiSelect ? (
-                  <MultiCommitDetailsPanel
-                    nodes={selectedCommitNodes}
-                    repoPath={repoPath}
-                    onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                    onClose={clearSelection}
-                  />
-                ) : (
-                  <CommitDetailsPanel
-                    node={primaryNode}
-                    repoPath={repoPath}
-                    isHead={isSelectedCommitHead}
-                    onSelectCommit={selectSingle}
-                    onSelectFileDiff={(file) => setActiveDiffFile(file)}
-                    onClose={clearSelection}
-                  />
-                )}
-              </GraphSidePanel>
-            ) : null}
+            <GraphSidePanelSlot
+              repoPath={repoPath}
+              resizeProps={resizeProps}
+              width={panelWidthState}
+              bisectActive={bisectActive}
+              timelinePreviewOpen={timelinePreviewOpen}
+              isDismissedConflictRow={isDismissedConflictRow}
+              primaryNode={primaryNode}
+              isConflictPanelOpen={isConflictPanelOpen}
+              onCloseConflictPanel={closeConflictPanel}
+              isMultiSelect={isMultiSelect}
+              selectedCommitNodes={selectedCommitNodes}
+              isSelectedCommitHead={isSelectedCommitHead}
+              onSelectCommit={selectSingle}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClearSelection={clearSelection}
+            />
 
             {/* Overlays (dialogs triggered by the native menu) */}
             <GitGraphOverlayManager
