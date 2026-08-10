@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ScanFailure, ScannedCommit } from '@git-manager/ai'
-import type { StoredSearchRun } from '../../../stores/aiCommitSearch.store'
+import type { StoredSearchRun } from '../stores/aiCommitSearch.store'
 
 const searchState = vi.hoisted(() => ({
   search: vi.fn(),
@@ -29,9 +29,9 @@ const searchState = vi.hoisted(() => ({
   clearHistory: vi.fn(),
 }))
 
-vi.mock('../../../hooks/useAiCommitSearch', async () => {
-  const actual = await vi.importActual<typeof import('../../../hooks/useAiCommitSearch')>(
-    '../../../hooks/useAiCommitSearch'
+vi.mock('../hooks/useAiCommitSearch', async () => {
+  const actual = await vi.importActual<typeof import('../hooks/useAiCommitSearch')>(
+    '../hooks/useAiCommitSearch'
   )
   return { ...actual, useAiCommitSearch: () => searchState }
 })

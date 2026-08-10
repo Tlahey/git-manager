@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { FileText } from 'lucide-react'
-import type { StoredSearchMatch } from '../../../stores/aiCommitSearch.store'
+import type { StoredSearchMatch } from '../stores/aiCommitSearch.store'
 import { formatRelativeTime } from '../../../lib/relativeDate'
 
 interface CommitSearchMatchListProps {

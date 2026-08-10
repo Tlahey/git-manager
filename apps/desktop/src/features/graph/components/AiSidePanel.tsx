@@ -1,4 +1,4 @@
-import { AiCommitSearchPanel } from './AiCommitSearchPanel'
+import { AiCommitSearchPanel } from '../../ai-search'
 import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { BranchExplanationPanel } from './BranchExplanationPanel'
 import { DailySummariesPanel } from './DailySummariesPanel'

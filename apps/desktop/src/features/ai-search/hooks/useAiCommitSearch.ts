@@ -19,14 +19,14 @@ import {
   commitQuickScanService,
   commitRelevanceService,
   commitSearchAnswerService,
-} from '../api/ai.api'
-import { apiGetCommitDiff } from '../api/git.api'
-import { formatUnifiedPatch } from '../lib/formatUnifiedPatch'
-import { isAiTimeout } from '../lib/aiErrorMessage'
-import { trackAiProgress } from '../stores/aiActivity.store'
+} from '../../../api/ai.api'
+import { apiGetCommitDiff } from '../../../api/git.api'
+import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
+import { isAiTimeout } from '../../../lib/aiErrorMessage'
+import { trackAiProgress } from '../../../stores/aiActivity.store'
 import { useAiCommitSearchStore, type StoredSearchRun } from '../stores/aiCommitSearch.store'
-import { useSettingsStore } from '../stores/settings.store'
-import { useAiStream } from './useAiStream'
+import { useSettingsStore } from '../../../stores/settings.store'
+import { useAiStream } from '../../../hooks/useAiStream'
 
 /**
  * Default ceiling on commits read in one search — and the search's only control.

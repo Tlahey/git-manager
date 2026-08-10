@@ -3,7 +3,7 @@ import { i18next } from '@git-manager/i18n'
 import type { CommitScanProgress } from '@git-manager/ai'
 import type { NotchProgressModel, NotchStatusModel } from '@git-manager/notch'
 import { commitSearchNotchId, commitSearchNotchModel } from './commitSearchNotch'
-import type { AiCommitSearchPhase } from '../../hooks/useAiCommitSearch'
+import type { AiCommitSearchPhase } from '../hooks/useAiCommitSearch'
 
 // The setup file initialises i18n in English, so these are the real strings the user reads.
 const t = i18next.getFixedT('en', 'git')
