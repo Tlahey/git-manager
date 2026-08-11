@@ -5,10 +5,10 @@ Feature: Browse the repository's files
   I want to browse its files without leaving the app
   So that I can look something up without switching to an editor or a terminal
 
-  The Files tab swaps the commit graph for a file browser on the same repository: the working tree
-  in the panel on the left, the current directory's contents in the middle, and a file search in
-  the toolbar. It is a view of the working tree as it is on disk right now, not of a commit, and
-  the Graph tab puts the graph back exactly where it was.
+  The Files tab swaps the commit graph for a file browser on the same repository: the file tree in
+  the panel on the left, the current directory's contents in the middle, and a file search in the
+  toolbar. It lists the files git tracks — the same set the repository shows on its forge — as they
+  are on disk right now, and the Graph tab puts the graph back exactly where it was.
 
   Background:
     Given the app language is English
@@ -17,12 +17,14 @@ Feature: Browse the repository's files
   @doc @screenshots
   Scenario: Opening the file explorer lists the working tree
     The Files tab swaps the commit graph for a browser over the same
-    repository: the working tree in the left panel, where the branches sit on
-    the graph, and the current folder's contents in the middle. The toolbar
-    changes with it — a file search replaces the git actions, which have
-    nothing to act on here. It shows the working tree as it is on disk right
-    now, not a commit, and the Graph tab puts the graph back exactly where it
-    was.
+    repository: the file tree in the left panel, where the branches sit on the
+    graph, and the current folder's contents in the middle. The toolbar changes
+    with it — a file search replaces the git actions, which have nothing to act
+    on here. What it lists is the files git tracks, as they are on disk right
+    now: the same set the repository shows on GitHub, rather than whatever your
+    working directory happens to hold. A file you have created but not yet
+    staged belongs to the working-tree panel on the Graph tab, not here — and
+    the Graph tab puts the graph back exactly where it was.
     When I open the file explorer
     Then the file explorer is shown
     And the file tree sidebar is shown

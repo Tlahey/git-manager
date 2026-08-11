@@ -115,7 +115,7 @@ function TreeNode({
 }
 
 /**
- * The files view's left panel: the repository's working tree, and the field that filters it.
+ * The files view's left panel: the repository's tracked files, and the field that filters it.
  *
  * It sits on the **left**, where the graph view's branch sidebar sits — a repo tab has one panel
  * slot and each view fills it with its own navigation, rather than the files view adding a second

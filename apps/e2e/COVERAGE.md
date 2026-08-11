@@ -130,17 +130,20 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
 
 ## File explorer ✅
 
-The toolbar's view switcher (`repo-view-files`) swapping the graph for `FilesPage` — the working
-tree (`FileTreeSidebar`) in the left panel slot, the current directory in the middle, and a file
+The toolbar's view switcher (`repo-view-files`) swapping the graph for `FilesPage` — the tracked
+files (`FileTreeSidebar`) in the left panel slot, the current directory in the middle, and a file
 search in the toolbar.
 
-- Setup: **`fixture:feature-branches`**. On `main` its working tree holds exactly one file
-  (`app.txt`; `login.txt` only exists on `feature/login`), which is what makes "the filter excluded
-  it" distinguishable from "it was never there".
-- Covered (`file-explorer.feature`): opening lists the working tree (`file-row-app.txt`), the Graph
+- Setup: **`fixture:feature-branches`**. On `main` it tracks exactly one file (`app.txt`;
+  `login.txt` only exists on `feature/login`), which is what makes "the filter excluded it"
+  distinguishable from "it was never there".
+- Covered (`file-explorer.feature`): opening lists the tracked files (`file-row-app.txt`), the Graph
   segment puts the graph back, the tree filter (`file-tree-search-input`, at the top of the panel) narrows the
   tree, and hiding the panel leaves `toolbar-toggle-panel` behind — asserted explicitly,
   since a hide with no way back would make the tree unreachable for the rest of the session.
+- Not covered here: that an untracked file stays out of the listing. The invariant is enforced in
+  `services/git_files.rs` and tested there, where a repository with one staged and one unstaged file
+  is three lines of setup rather than a fixture mutated mid-run.
 - No window juggling: the explorer replaces the graph in the main window, unlike the merge editor.
 
 ---

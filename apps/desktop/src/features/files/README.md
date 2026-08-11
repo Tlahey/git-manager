@@ -1,7 +1,13 @@
 # `features/files`
 
 The project files view — one of a repo tab's three views, alongside the commit graph and the Kanban
-board. It browses the working tree, and opens a file into the shared diff/blame viewer.
+board. It browses the repository's tracked files, and opens one into the shared diff/blame viewer.
+
+**Tracked, not "everything on disk".** The listing is the index, minus entries whose file is gone —
+so the app agrees with the same repository on GitHub, rather than showing whatever build output or
+scratch file nobody had thought to add to `.gitignore`. Untracked files belong to the working-tree
+panel, where they can be staged, and appear here the moment they are. The reasoning lives beside
+the code that enforces it, in `services/git_files.rs`'s `list_tracked_files_on_disk`.
 
 ## Layout
 
@@ -12,7 +18,7 @@ features/files/
   components/
     FileTreeSidebar.tsx        the left panel while this view is on screen — the tree and its filter
   hooks/
-    useRepoFiles.ts            the working tree listing (SWR)
+    useRepoFiles.ts            the tracked-file listing (SWR)
   lib/
     fileTree.ts                path list → tree, and the search filter over it — pure, no React
   stores/
