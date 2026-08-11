@@ -650,7 +650,12 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       isTwoWay,
       displayedOriginal,
       displayedModified,
+      // Both: 3-panel mode names its models from the prop, 2-panel from the deferred one. Missing
+      // the deferred one here would mean a file whose text is byte-identical to the previous one
+      // (two copies of the same file, a rename) never swapping models at all, since nothing else in
+      // this list would have changed.
       modelPathPrefix,
+      displayedPrefix,
       staticView,
       initialCenterText,
     ])
