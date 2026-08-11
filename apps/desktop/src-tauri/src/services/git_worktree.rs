@@ -137,8 +137,13 @@ fn match_default_files(repo_root: &Path, pattern: &str) -> Vec<String> {
     out
 }
 
-/// Lists all worktrees for the repository via `git worktree list --porcelain`.
-pub fn list_worktrees(repo_path: &str) -> Result<Vec<GitWorktree>, AppError> {
+/// The repository's worktrees exactly as `git worktree list --porcelain` reports them — paths,
+/// branches and flags, with `is_dirty` left at its `false` default.
+///
+/// Split out from [`list_worktrees`] because that one goes on to open every linked worktree and
+/// walk its status, which is far more than a caller that only needs to know *which branch lives
+/// where* should pay. See [`worktree_holding_branch`].
+fn read_worktree_porcelain(repo_path: &str) -> Result<Vec<GitWorktree>, AppError> {
     #[cfg(target_os = "windows")]
     let mut cmd = std::process::Command::new("cmd");
     #[cfg(target_os = "windows")]
@@ -161,7 +166,35 @@ pub fn list_worktrees(repo_path: &str) -> Result<Vec<GitWorktree>, AppError> {
         )));
     }
 
-    let mut worktrees = parse_worktree_porcelain(&String::from_utf8_lossy(&output.stdout));
+    Ok(parse_worktree_porcelain(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
+
+/// Whether two paths name the same directory, compared through `canonicalize` so a symlinked root
+/// doesn't read as two different worktrees — on macOS `/tmp` and `/var` are symlinks into
+/// `/private`, so the porcelain's path and a `Repository::workdir()` routinely disagree
+/// character-for-character about the same directory. Falls back to the literal paths when a side
+/// can't be resolved (it no longer exists), which is the conservative answer: "not the same".
+fn same_dir(a: &str, b: &str) -> bool {
+    let resolve =
+        |p: &str| std::fs::canonicalize(p).unwrap_or_else(|_| std::path::PathBuf::from(p));
+    resolve(a) == resolve(b)
+}
+
+/// The path of the worktree that has `branch` checked out, when that is a worktree *other* than the
+/// one at `repo_path` — the question [`crate::services::git_branch::checkout_branch`] has to ask
+/// before it moves a HEAD. `None` means no other worktree holds it, and the checkout may proceed.
+pub fn worktree_holding_branch(repo_path: &str, branch: &str) -> Result<Option<String>, AppError> {
+    Ok(read_worktree_porcelain(repo_path)?
+        .into_iter()
+        .find(|wt| wt.branch == branch && !same_dir(&wt.path, repo_path))
+        .map(|wt| wt.path))
+}
+
+/// Lists all worktrees for the repository via `git worktree list --porcelain`.
+pub fn list_worktrees(repo_path: &str) -> Result<Vec<GitWorktree>, AppError> {
+    let mut worktrees = read_worktree_porcelain(repo_path)?;
     for wt in worktrees.iter_mut().filter(|wt| !wt.is_main) {
         wt.is_dirty = match Repository::open(&wt.path) {
             Ok(repo) => {
