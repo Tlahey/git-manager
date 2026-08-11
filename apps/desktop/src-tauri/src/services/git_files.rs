@@ -6,8 +6,10 @@
 //! additions/removals. It powers the command palette's "open a file" lookup, which fuzzy-matches a
 //! query against these paths to jump straight to a file's contents and history.
 //!
-//! `list_working_tree_files` answers the other question — "what is on disk right now?" — for the
-//! project files explorer, which browses the repository like a file manager.
+//! `list_tracked_files_on_disk` answers the narrower question the project files explorer asks —
+//! "which of the repository's files can I open right now?" — and deliberately stops at the tracked
+//! ones, so that browsing a repository in the app shows the same set of files as browsing it on its
+//! forge.
 
 use crate::error::AppError;
 use git2::{Repository, Status, StatusOptions};
@@ -28,24 +30,33 @@ pub fn list_tracked_files(repo: &Repository) -> Result<Vec<String>, AppError> {
     Ok(paths.into_iter().collect())
 }
 
-/// Returns every file present in the working tree — tracked *and* untracked — minus what
-/// `.gitignore` excludes, sorted and de-duplicated.
+/// Returns the tracked files that still exist on disk, sorted and de-duplicated. This is
+/// `git ls-files -c` minus the entries git would show as deleted, done through libgit2 rather than
+/// by spawning `git`: the rest of the app has no dependency on a `git` binary being installed and
+/// on `PATH`, and on a machine without Xcode's command line tools `/usr/bin/git` is a shim that
+/// pops up an installer dialog.
 ///
-/// This is `git ls-files -co --exclude-standard`, done through libgit2 rather than by spawning
-/// `git`: the rest of the app has no dependency on a `git` binary being installed and on `PATH`,
-/// and on a machine without Xcode's command line tools `/usr/bin/git` is a shim that pops up an
-/// installer dialog.
+/// **Untracked files are deliberately absent, and that is the whole point of the function.** The
+/// explorer used to list them (`git ls-files -co --exclude-standard`), which made an app-side
+/// browse of a repository disagree with the same repository on GitHub: build output nobody had
+/// thought to ignore, a scratch file, a directory of test logs. `.gitignore` was never the fix —
+/// it only ever covered what someone had remembered to write down, and the honest boundary is the
+/// one git itself draws. A file that isn't in the index isn't part of the repository yet; it shows
+/// up in the working-tree panel, where it can be staged, and joins this listing the moment it is.
 ///
-/// It differs from `list_tracked_files` in both directions, which is why it isn't a filter over it:
-/// untracked files are added, and tracked files that have been deleted from disk are left out — the
-/// explorer would otherwise list entries that open on nothing.
-pub fn list_working_tree_files(repo: &Repository) -> Result<Vec<String>, AppError> {
+/// It is still not a plain call to `list_tracked_files`: a tracked file deleted from disk (or
+/// staged for deletion) is left out, because the explorer would otherwise list entries that open
+/// on nothing.
+pub fn list_tracked_files_on_disk(repo: &Repository) -> Result<Vec<String>, AppError> {
     let mut paths: BTreeSet<String> = list_tracked_files(repo)?.into_iter().collect();
 
     let mut options = StatusOptions::new();
     options
-        .include_untracked(true)
-        .recurse_untracked_dirs(true)
+        // Only the deletions below are read out of this walk, and both are tracked-file statuses.
+        // Leaving untracked scanning off also spares the recursive walk of every untracked
+        // directory — on a repository with an unignored `node_modules`, that walk *was* the cost of
+        // opening the view.
+        .include_untracked(false)
         .include_ignored(false)
         // Directories are listed through their files; the explorer builds the tree itself.
         .include_unmodified(false);
@@ -58,9 +69,6 @@ pub fn list_working_tree_files(repo: &Repository) -> Result<Vec<String>, AppErro
         let Some(path) = entry.path() else { continue };
         let status = entry.status();
 
-        if status.contains(Status::WT_NEW) {
-            paths.insert(path.to_string());
-        }
         // Staged-then-deleted, or deleted on disk: tracked, but there is nothing to open.
         if status.contains(Status::WT_DELETED) || status.contains(Status::INDEX_DELETED) {
             paths.remove(path);
@@ -72,7 +80,7 @@ pub fn list_working_tree_files(repo: &Repository) -> Result<Vec<String>, AppErro
 
 #[cfg(test)]
 mod tests {
-    use super::{list_tracked_files, list_working_tree_files};
+    use super::{list_tracked_files, list_tracked_files_on_disk};
     use git2::Repository;
     use std::fs;
 
@@ -129,30 +137,51 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The explorer needs what's on disk: staged files *and* files never added to git.
+    /// The explorer lists what git tracks, and nothing else — so that browsing a repository in the
+    /// app and browsing it on its forge show the same files. `untracked.rs` here is covered by no
+    /// `.gitignore` at all: being unignored is not what earns a file a place in this listing, being
+    /// in the index is.
     #[test]
-    fn working_tree_lists_tracked_and_untracked_files() {
+    fn explorer_lists_tracked_files_only() {
         let (dir, repo) = init_repo("wt-files");
         fs::create_dir_all(dir.join("src")).unwrap();
         fs::write(dir.join("tracked.txt"), "t").unwrap();
         fs::write(dir.join("src/untracked.rs"), "u").unwrap();
         stage(&repo, "tracked.txt");
 
-        let files = list_working_tree_files(&repo).unwrap();
+        let files = list_tracked_files_on_disk(&repo).unwrap();
 
-        assert_eq!(files, vec!["src/untracked.rs", "tracked.txt"]);
+        assert_eq!(files, vec!["tracked.txt"]);
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Ignored files are absent — browsing a repo shouldn't mean browsing `node_modules`.
+    /// Staging is what a file crosses to become part of the repository, and the listing follows it
+    /// there — the explorer isn't a view of the last commit, it's a view of the index.
     #[test]
-    fn working_tree_skips_ignored_files() {
+    fn explorer_picks_a_file_up_once_it_is_staged() {
+        let (dir, repo) = init_repo("wt-staged");
+        fs::write(dir.join("new.txt"), "n").unwrap();
+
+        assert!(list_tracked_files_on_disk(&repo).unwrap().is_empty());
+
+        stage(&repo, "new.txt");
+
+        assert_eq!(list_tracked_files_on_disk(&repo).unwrap(), vec!["new.txt"]);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Ignored files are absent — browsing a repo shouldn't mean browsing `node_modules`. Redundant
+    /// with the untracked rule above as long as nothing is both ignored and staged, and kept anyway
+    /// because it is the case a reader checks first.
+    #[test]
+    fn explorer_skips_ignored_files() {
         let (dir, repo) = init_repo("wt-ignored");
         fs::write(dir.join(".gitignore"), "ignored.log\n").unwrap();
         fs::write(dir.join("ignored.log"), "noise").unwrap();
         fs::write(dir.join("kept.txt"), "k").unwrap();
+        stage(&repo, "kept.txt");
 
-        let files = list_working_tree_files(&repo).unwrap();
+        let files = list_tracked_files_on_disk(&repo).unwrap();
 
         assert!(files.contains(&"kept.txt".to_string()));
         assert!(!files.contains(&"ignored.log".to_string()));
@@ -160,9 +189,9 @@ mod tests {
     }
 
     /// A tracked file deleted from disk is gone from the listing: the explorer only shows what it
-    /// can actually open (this is where `git ls-files -c` was wrong).
+    /// can actually open (this is where a plain `git ls-files -c` was wrong).
     #[test]
-    fn working_tree_drops_files_deleted_from_disk() {
+    fn explorer_drops_files_deleted_from_disk() {
         let (dir, repo) = init_repo("wt-deleted");
         fs::write(dir.join("gone.txt"), "g").unwrap();
         fs::write(dir.join("here.txt"), "h").unwrap();
@@ -170,7 +199,7 @@ mod tests {
         stage(&repo, "here.txt");
         fs::remove_file(dir.join("gone.txt")).unwrap();
 
-        let files = list_working_tree_files(&repo).unwrap();
+        let files = list_tracked_files_on_disk(&repo).unwrap();
 
         assert_eq!(files, vec!["here.txt"]);
         fs::remove_dir_all(&dir).ok();
@@ -178,10 +207,10 @@ mod tests {
 
     /// An empty repository lists nothing rather than erroring.
     #[test]
-    fn working_tree_of_empty_repo_lists_nothing() {
+    fn explorer_of_empty_repo_lists_nothing() {
         let (dir, repo) = init_repo("wt-empty");
 
-        assert!(list_working_tree_files(&repo).unwrap().is_empty());
+        assert!(list_tracked_files_on_disk(&repo).unwrap().is_empty());
         fs::remove_dir_all(&dir).ok();
     }
 }
