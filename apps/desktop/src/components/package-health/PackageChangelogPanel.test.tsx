@@ -34,7 +34,7 @@ const onClose = vi.fn()
 
 const renderPanel = () =>
   renderIsolated(
-    <PackageChangelogPanel entry={ENTRY} repoPath="/repo" token="ghp_x" onClose={onClose} />
+    <PackageChangelogPanel entry={ENTRY} repoPath="/repo" accountId="octocat" onClose={onClose} />
   )
 
 describe('PackageChangelogPanel', () => {
@@ -76,7 +76,7 @@ describe('PackageChangelogPanel', () => {
       'react',
       '18.2.0',
       '19.0.0',
-      'ghp_x'
+      'octocat'
     )
   })
 

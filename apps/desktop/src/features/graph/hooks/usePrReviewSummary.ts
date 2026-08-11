@@ -22,11 +22,11 @@ export function usePrReviewSummary(
   prNumber: number | null,
   enabled: boolean
 ): UsePrReviewSummaryResult {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error } = useSWR(
-    enabled && prNumber != null && ownerRepo && token
-      ? ['pr-review-summary', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    enabled && prNumber != null && ownerRepo && accountId
+      ? ['pr-review-summary', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
     ([, owner, repo, number, tok]) => fetchPrReviewSummary(owner, repo, number, tok),
     {

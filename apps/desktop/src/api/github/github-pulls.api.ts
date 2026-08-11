@@ -8,6 +8,7 @@ import {
   ghRequest,
   ghGraphQL,
 } from './githubApiShared'
+import { githubApiRequest } from '../../lib/tauri'
 import type { GhRawIssue } from './github-issues.api'
 
 export interface GhRawPR {
@@ -189,21 +190,21 @@ export function rawToMockPR(raw: GhRawPR, currentUser: string): MockPR {
   }
 }
 
-export async function fetchGitHubPRs(username: string, token: string): Promise<MockPR[]> {
+export async function fetchGitHubPRs(username: string, accountId: string): Promise<MockPR[]> {
   const data = await ghFetch<GhSearchResult<GhRawPR>>(
     `https://api.github.com/search/issues?q=is:pr+author:${username}+is:open&per_page=50&sort=updated`,
-    token
+    accountId
   )
   return (data.items ?? []).map((item) => rawToMockPR(item, username))
 }
 
 export async function fetchGitHubReviewRequestedPRs(
   username: string,
-  token: string
+  accountId: string
 ): Promise<MockPR[]> {
   const data = await ghFetch<GhSearchResult<GhRawPR>>(
     `https://api.github.com/search/issues?q=is:pr+review-requested:${username}+is:open&per_page=50&sort=updated`,
-    token
+    accountId
   )
   return (data.items ?? []).map((item) => {
     const pr = rawToMockPR(item, username)
@@ -225,29 +226,29 @@ export async function fetchPullRequestsByQuery(
   owner: string,
   repo: string,
   query: string,
-  token?: string
+  accountId?: string
 ): Promise<PullRequest[]> {
   const q = `repo:${owner}/${repo} is:pr ${query}`.trim()
   const data = await ghFetch<GhSearchResult<GhRawPR>>(
     `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&sort=updated&order=desc`,
-    token
+    accountId
   )
   return (data.items ?? []).map(rawToPullRequest)
 }
 
-export async function fetchGitHubPRDetails(prApiUrl: string, token: string): Promise<GhRawPR> {
-  return ghFetch<GhRawPR>(prApiUrl, token)
+export async function fetchGitHubPRDetails(prApiUrl: string, accountId: string): Promise<GhRawPR> {
+  return ghFetch<GhRawPR>(prApiUrl, accountId)
 }
 
 // For usePullRequests.ts
 export async function fetchRepoPRs(
   owner: string,
   repo: string,
-  token?: string
+  accountId?: string
 ): Promise<GhRawPR[]> {
   return ghFetch<GhRawPR[]>(
     `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -275,11 +276,11 @@ export interface CommitPrRef {
 export async function fetchClosedPullRequests(
   owner: string,
   repo: string,
-  token?: string
+  accountId?: string
 ): Promise<GhRawPR[]> {
   return ghFetch<GhRawPR[]>(
     `https://api.github.com/repos/${owner}/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100`,
-    token
+    accountId
   ).catch(() => [] as GhRawPR[])
 }
 
@@ -288,11 +289,11 @@ export async function fetchCommitPullRequest(
   owner: string,
   repo: string,
   sha: string,
-  token?: string
+  accountId?: string
 ): Promise<CommitPrRef | null> {
   const items = await ghFetch<GhRawPR[]>(
     `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`,
-    token
+    accountId
   ).catch(() => [] as GhRawPR[])
   if (!items || items.length === 0) return null
   // Prefer a merged PR (the one that actually shipped the commit), else the first association.
@@ -320,11 +321,11 @@ export async function fetchCommitMergedPullRequestForBranch(
   repo: string,
   sha: string,
   branch: string,
-  token?: string
+  accountId?: string
 ): Promise<{ number: number; title: string; author?: string } | null> {
   const items = await ghFetch<GhRawPR[]>(
     `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`,
-    token
+    accountId
   ).catch(() => [] as GhRawPR[])
   const match = items?.find((p) => p.head?.ref === branch && p.merged_at)
   return match ? { number: match.number, title: match.title, author: match.user?.login } : null
@@ -356,12 +357,12 @@ export async function createPullRequest(
   owner: string,
   repo: string,
   input: CreatePrInput,
-  token: string
+  accountId: string
 ): Promise<GhRawPR> {
   return ghRequest<GhRawPR>(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
     method: 'POST',
     body: input,
-    token,
+    accountId,
   })
 }
 
@@ -370,11 +371,11 @@ export async function fetchPrFiles(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<GhPrFile[]> {
   return ghFetch<GhPrFile[]>(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -388,16 +389,19 @@ export async function fetchFileContentAtRef(
   repo: string,
   path: string,
   ref: string,
-  token: string
+  accountId: string
 ): Promise<string | null> {
   const encodedPath = path.split('/').map(encodeURIComponent).join('/')
-  const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
-    { headers: { Accept: 'application/vnd.github.raw', Authorization: `token ${token}` } }
-  )
+  const res = await githubApiRequest({
+    accountId,
+    url: `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+    accept: 'application/vnd.github.raw',
+  })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-  return res.text()
+  // The `raw` media type answers with the file itself, not JSON — so the body is the content, and
+  // this is the one call in the file that must not be parsed.
+  return res.body
 }
 
 export type MergeMethod = 'merge' | 'squash' | 'rebase'
@@ -408,7 +412,7 @@ export async function mergePullRequest(
   repo: string,
   prNumber: number,
   input: { mergeMethod: MergeMethod; commitTitle?: string; commitMessage?: string },
-  token: string
+  accountId: string
 ): Promise<{ sha: string; merged: boolean; message: string }> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
     method: 'PUT',
@@ -417,7 +421,7 @@ export async function mergePullRequest(
       commit_title: input.commitTitle,
       commit_message: input.commitMessage,
     },
-    token,
+    accountId,
   })
 }
 
@@ -428,12 +432,12 @@ export async function updatePullRequest(
   repo: string,
   prNumber: number,
   patch: { title?: string; body?: string; state?: 'open' | 'closed'; base?: string },
-  token: string
+  accountId: string
 ): Promise<GhRawPR> {
   return ghRequest<GhRawPR>(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
     method: 'PATCH',
     body: patch,
-    token,
+    accountId,
   })
 }
 
@@ -445,7 +449,7 @@ export async function updatePullRequest(
 export async function setPullRequestDraft(
   nodeId: string,
   draft: boolean,
-  token: string
+  accountId: string
 ): Promise<boolean> {
   const mutation = draft
     ? `mutation($id:ID!){convertPullRequestToDraft(input:{pullRequestId:$id}){pullRequest{isDraft}}}`
@@ -453,7 +457,7 @@ export async function setPullRequestDraft(
   const data = await ghGraphQL<{
     convertPullRequestToDraft?: { pullRequest?: { isDraft: boolean } }
     markPullRequestReadyForReview?: { pullRequest?: { isDraft: boolean } }
-  }>(mutation, { id: nodeId }, token)
+  }>(mutation, { id: nodeId }, accountId)
   const pr =
     data.convertPullRequestToDraft?.pullRequest ?? data.markPullRequestReadyForReview?.pullRequest
   return pr?.isDraft ?? draft
@@ -464,12 +468,12 @@ export async function updatePrBranch(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<void> {
   await ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/update-branch`, {
     method: 'PUT',
     body: {},
-    token,
+    accountId,
   })
 }
 
@@ -477,11 +481,11 @@ export async function updatePrBranch(
 export async function fetchRepoDefaultBranch(
   owner: string,
   repo: string,
-  token?: string
+  accountId?: string
 ): Promise<string> {
   const data = await ghFetch<{ default_branch?: string }>(
     `https://api.github.com/repos/${owner}/${repo}`,
-    token
+    accountId
   )
   return data.default_branch ?? 'main'
 }

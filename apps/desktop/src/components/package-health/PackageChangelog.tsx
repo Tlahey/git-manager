@@ -18,16 +18,16 @@ export function PackageChangelog({
   name,
   from,
   to,
-  token,
+  accountId,
 }: {
   repoPath: string
   name: string
   from: string
   to: string
-  token?: string
+  accountId?: string
 }) {
   const { t } = useTranslation('git')
-  const { data, error, isLoading } = usePackageChangelog(repoPath, name, from, to, token)
+  const { data, error, isLoading } = usePackageChangelog(repoPath, name, from, to, accountId)
 
   if (isLoading) {
     return (

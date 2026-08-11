@@ -28,16 +28,16 @@ export async function fetchGitHubCommitCiStatus(
   owner: string,
   repo: string,
   sha: string,
-  token: string
+  accountId: string
 ): Promise<{ checkRunsRes: GhCheckRunsResponse | null; statusRes: GhCommitStatusResponse | null }> {
   const [checkRunsRes, statusRes] = await Promise.all([
     ghFetch<GhCheckRunsResponse>(
       `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`,
-      token
+      accountId
     ).catch(() => null),
     ghFetch<GhCommitStatusResponse>(
       `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/status`,
-      token
+      accountId
     ).catch(() => null),
   ])
   return { checkRunsRes, statusRes }
@@ -144,7 +144,7 @@ export async function fetchPrMergeability(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<PrMergeability> {
   const query = `query($owner:String!,$repo:String!,$number:Int!){
     repository(owner:$owner,name:$repo){
@@ -178,7 +178,7 @@ export async function fetchPrMergeability(
   }>(
     query,
     { owner, repo, number: prNumber },
-    token,
+    accountId,
     'application/vnd.github.merge-info-preview+json'
   )
 

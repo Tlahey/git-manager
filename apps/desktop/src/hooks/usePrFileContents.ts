@@ -26,7 +26,7 @@ export function usePrFileContents(
   prNumber: number | null,
   filename: string | null
 ): PrFileContents {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { pr } = usePrDetail(repoPath, prNumber)
   const { files, isLoading: filesLoading } = usePrFiles(repoPath, prNumber)
 
@@ -35,8 +35,16 @@ export function usePrFileContents(
   const headSha = pr?.head?.sha ?? null
 
   const { data, isLoading } = useSWR(
-    file && ownerRepo && token && baseSha && headSha
-      ? ['pr-file-content', ownerRepo.owner, ownerRepo.repo, baseSha, headSha, file.filename, token]
+    file && ownerRepo && accountId && baseSha && headSha
+      ? [
+          'pr-file-content',
+          ownerRepo.owner,
+          ownerRepo.repo,
+          baseSha,
+          headSha,
+          file.filename,
+          accountId,
+        ]
       : null,
     async () => {
       const status = file!.status
@@ -46,7 +54,7 @@ export function usePrFileContents(
       const needHead = status !== 'removed'
       const [original, modified] = await Promise.all([
         needBase
-          ? fetchFileContentAtRef(ownerRepo!.owner, ownerRepo!.repo, oldPath, baseSha!, token!)
+          ? fetchFileContentAtRef(ownerRepo!.owner, ownerRepo!.repo, oldPath, baseSha!, accountId!)
           : Promise.resolve(''),
         needHead
           ? fetchFileContentAtRef(
@@ -54,7 +62,7 @@ export function usePrFileContents(
               ownerRepo!.repo,
               file!.filename,
               headSha!,
-              token!
+              accountId!
             )
           : Promise.resolve(''),
       ])

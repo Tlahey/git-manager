@@ -8,21 +8,21 @@ import { useRepoGitHub } from './useRepoGitHub'
  * for everything when there's no token / non-GitHub remote) — callers fall back to initials.
  */
 export function useCommitAvatars(repoPath: string | null, shas: string[]): Record<string, string> {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   // Stable, deduplicated key so unrelated re-renders don't refetch.
   const uniqueShas = Array.from(new Set(shas)).sort()
 
   const swrKey =
-    token && ownerRepo && uniqueShas.length > 0
-      ? ['commit-avatars', ownerRepo.owner, ownerRepo.repo, token, uniqueShas.join(',')]
+    accountId && ownerRepo && uniqueShas.length > 0
+      ? ['commit-avatars', ownerRepo.owner, ownerRepo.repo, accountId, uniqueShas.join(',')]
       : null
 
   const { data } = useSWR(
     swrKey,
     () =>
       apiGithubCommitAvatars(
-        token as string,
+        accountId as string,
         (ownerRepo as { owner: string; repo: string }).owner,
         (ownerRepo as { owner: string; repo: string }).repo,
         uniqueShas

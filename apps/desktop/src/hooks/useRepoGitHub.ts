@@ -28,13 +28,13 @@ export const RepoGitHubOverrideContext = createContext<OwnerRepo | null>(null)
  */
 export function useRepoGitHub(repoPath: string | null): {
   ownerRepo: OwnerRepo | null
-  token: string | null
+  accountId: string | null
 } {
   const override = useContext(RepoGitHubOverrideContext)
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
-  const token = activeAccount?.token ?? null
+  const accountId = activeAccount?.id ?? null
 
   const { data: remotes } = useSWR(
     !override && repoPath ? ['repo-remotes', repoPath] : null,
@@ -43,5 +43,5 @@ export function useRepoGitHub(repoPath: string | null): {
   )
 
   const ownerRepo = override ?? (remotes ? firstGitHubOwnerRepo(remotes.map((r) => r.url)) : null)
-  return { ownerRepo, token }
+  return { ownerRepo, accountId }
 }

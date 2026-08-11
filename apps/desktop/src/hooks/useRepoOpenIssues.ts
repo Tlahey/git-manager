@@ -17,12 +17,12 @@ export function useRepoOpenIssues(
   repoPath: string | null,
   enabled: boolean
 ): { issues: MockIssue[]; isLoading: boolean } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { data, isLoading } = useSWR(
-    enabled && ownerRepo && token
-      ? ['repo-open-issues', ownerRepo.owner, ownerRepo.repo, token]
+    enabled && ownerRepo && accountId
+      ? ['repo-open-issues', ownerRepo.owner, ownerRepo.repo, accountId]
       : null,
-    () => fetchRepoIssues(ownerRepo!.owner, ownerRepo!.repo, token as string),
+    () => fetchRepoIssues(ownerRepo!.owner, ownerRepo!.repo, accountId as string),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
   return { issues: data ?? [], isLoading }

@@ -42,11 +42,17 @@ beforeEach(() => {
 })
 
 describe('AiContextWindowCheck', () => {
+  /**
+   * Two arguments, not three: the API key used to be passed from here, and there was a test that it
+   * was — a server like omlx reports no window at all without one. It is now read from the OS
+   * keychain by `commands/ai.rs`, on the far side of the IPC boundary, so there is nothing in this
+   * component left to get wrong about it and nothing here that could assert it.
+   */
   it('asks the provider about the configured model', async () => {
     reportsLimits({ architectureMax: 32768 })
     render(<AiContextWindowCheck />)
     await clickCheck()
-    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2', undefined)
+    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2')
   })
 
   it("reports the model's ceiling, and calls an unloaded model's value plausible — not verified", async () => {
@@ -153,16 +159,6 @@ describe('AiContextWindowCheck', () => {
     }))
     render(<AiContextWindowCheck />)
     expect(screen.getByTestId('ai-context-check-button')).toBeDisabled()
-  })
-
-  it('sends the API key, without which a server like omlx reports no window at all', async () => {
-    useSettingsStore.setState((st) => ({
-      settings: { ...st.settings, ai: { ...st.settings.ai, apiKey: 'sk-local' } },
-    }))
-    reportsLimits({ servedMaxModelLen: 128000 })
-    render(<AiContextWindowCheck />)
-    await clickCheck()
-    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2', 'sk-local')
   })
 
   it('reports a window an OpenAI-compatible provider declares, where Ollama tells us nothing', async () => {

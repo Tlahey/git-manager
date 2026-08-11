@@ -27,7 +27,6 @@ const connection: AiConnectionConfig = {
   preset: 'ollama', // resolves to the 'openai-compatible' protocol
   url: 'http://localhost:11434',
   model: 'llama3.2',
-  apiKey: undefined,
   timeoutSeconds: 30,
 }
 
@@ -48,17 +47,17 @@ describe('resolveGenerateConfig', () => {
       protocol: 'openai-compatible',
       url: 'http://localhost:11434',
       model: 'llama3.2',
-      apiKey: undefined,
       temperature: 0.7,
       timeoutSeconds: 30,
       maxTokens: RESERVED_OUTPUT_TOKENS,
     })
   })
 
-  it('resolves the generic preset too, carrying its API key through', () => {
+  /** No key travels in this config: it lives in the OS keychain and the backend attaches it. */
+  it('resolves the generic preset too', () => {
     expect(
-      resolveGenerateConfig({ ...connection, preset: 'openai-compatible', apiKey: 'sk-test' }, 0.3)
-    ).toMatchObject({ protocol: 'openai-compatible', apiKey: 'sk-test', temperature: 0.3 })
+      resolveGenerateConfig({ ...connection, preset: 'openai-compatible' }, 0.3)
+    ).toMatchObject({ protocol: 'openai-compatible', temperature: 0.3 })
   })
 
   it('caps the answer at the same reserve the prompt budgets subtract', () => {
@@ -85,17 +84,11 @@ describe('resolveGenerateConfig', () => {
   })
 
   it('sends a fast-tier feature to the second model, keeping the same endpoint', () => {
-    const config = resolveGenerateConfig(
-      { ...connection, fastModel: 'tiny', apiKey: 'sk-test' },
-      0.1,
-      160,
-      'fast'
-    )
+    const config = resolveGenerateConfig({ ...connection, fastModel: 'tiny' }, 0.1, 160, 'fast')
     expect(config).toMatchObject({
       model: 'tiny',
       // A model swap and nothing else: a second provider would be a different feature entirely.
       url: connection.url,
-      apiKey: 'sk-test',
     })
   })
 
@@ -362,15 +355,16 @@ describe('createStatusService.probe', () => {
 })
 
 describe('createStatusService', () => {
-  it('sends only protocol/url/apiKey', async () => {
+  /** Protocol and URL, and deliberately nothing else — above all no key, which the backend reads
+   * from the OS keychain rather than being handed. */
+  it('sends only protocol and url', async () => {
     const transport = mockTransport()
     const service = createStatusService(transport)
-    await service.check({ ...connection, preset: 'openai-compatible', apiKey: 'sk-test' })
+    await service.check({ ...connection, preset: 'openai-compatible' })
 
     expect(transport.checkStatus).toHaveBeenCalledWith({
       protocol: 'openai-compatible',
       url: 'http://localhost:11434',
-      apiKey: 'sk-test',
     })
   })
 })

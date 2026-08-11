@@ -37,7 +37,7 @@ export function useBoardDetail(
   repoPath: string,
   activeBoard: Board | null,
   backendFor: (source: BoardSource) => BoardBackend,
-  token: string | null
+  accountId: string | null
 ): BoardDetail {
   const { t } = useTranslation('board')
   const { mutate: globalMutate } = useSWRConfig()
@@ -51,13 +51,13 @@ export function useBoardDetail(
     // or disconnected: without a token the tracked cards below can't be merged, and the difference
     // is visible on screen.
     activeBoard
-      ? ['board-detail', activeBoard.source, repoPath, activeBoard.id, Boolean(token)]
+      ? ['board-detail', activeBoard.source, repoPath, activeBoard.id, Boolean(accountId)]
       : null,
     async () => {
       const detail = await backendFor(activeBoard!.source).getBoard(repoPath, activeBoard!.id)
       // Only a local board can hold tracked cards — a remote card already *is* an issue.
-      if (activeBoard!.source !== 'local' || !token) return detail
-      return { ...detail, cards: await mergeTrackedIssues(detail.board, detail.cards, token) }
+      if (activeBoard!.source !== 'local' || !accountId) return detail
+      return { ...detail, cards: await mergeTrackedIssues(detail.board, detail.cards, accountId) }
     },
     { revalidateOnFocus: false }
   )

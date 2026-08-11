@@ -91,7 +91,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
 
   // GitHub associations for the version on screen: the PR that introduced it and the tag/release it
   // shipped in. Buttons appear only once resolved (and only for GitHub repos).
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const commitPr = useCommitPullRequest(repoPath, effectiveOid ?? null)
   const commitTag = useCommitTag(repoPath, effectiveOid ?? null)
 
@@ -201,7 +201,7 @@ export function DiffViewCenter({ repoPath, file, onClose }: DiffViewCenterProps)
         ownerRepo.owner,
         ownerRepo.repo,
         commitTag,
-        token ?? undefined
+        accountId ?? undefined
       )
       await apiOpenUrl(url)
     } catch (err) {

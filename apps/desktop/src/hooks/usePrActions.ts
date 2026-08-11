@@ -21,7 +21,7 @@ import { useRepoGitHub } from './useRepoGitHub'
 /** Interactive PR actions (comment, review, merge). Each awaits the GitHub write then revalidates
  * every open PR-related SWR key so the view (details, CI, list) reflects the change. */
 export function usePrActions(repoPath: string | null, prNumber: number | null) {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { mutate } = useSWRConfig()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +38,7 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
 
   const run = useCallback(
     async <T>(op: () => Promise<T>): Promise<T | undefined> => {
-      if (!ownerRepo || !token || prNumber == null) return
+      if (!ownerRepo || !accountId || prNumber == null) return
       setPending(true)
       setError(null)
       try {
@@ -52,82 +52,84 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
         setPending(false)
       }
     },
-    [ownerRepo, token, prNumber, refreshPrData]
+    [ownerRepo, accountId, prNumber, refreshPrData]
   )
 
   const comment = useCallback(
     (body: string) =>
-      run(() => postPrComment(ownerRepo!.owner, ownerRepo!.repo, prNumber!, body, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => postPrComment(ownerRepo!.owner, ownerRepo!.repo, prNumber!, body, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   const submitReview = useCallback(
     (input: { event: PrReviewEvent; body?: string }) =>
-      run(() => submitPrReview(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => submitPrReview(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   const merge = useCallback(
     (input: { mergeMethod: MergeMethod; commitTitle?: string; commitMessage?: string }) =>
-      run(() => mergePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => mergePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   /** Edit the PR's title and/or body (GitHub `PATCH /pulls/{n}`). */
   const updatePr = useCallback(
     (patch: { title?: string; body?: string }) =>
-      run(() => updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, patch, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, patch, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   /** Close or reopen the PR. */
   const setState = useCallback(
     (state: 'open' | 'closed') =>
-      run(() => updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, { state }, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() =>
+        updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, { state }, accountId!)
+      ),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   /** Toggle the draft flag (GraphQL — REST can't). Needs the PR's global `node_id`. */
   const toggleDraft = useCallback(
-    (nodeId: string, draft: boolean) => run(() => setPullRequestDraft(nodeId, draft, token!)),
-    [run, token]
+    (nodeId: string, draft: boolean) => run(() => setPullRequestDraft(nodeId, draft, accountId!)),
+    [run, accountId]
   )
 
   /** Merge the base branch into the PR branch (the "Update branch" action when it's behind). */
   const updateBranch = useCallback(
-    () => run(() => updatePrBranch(ownerRepo!.owner, ownerRepo!.repo, prNumber!, token!)),
-    [run, ownerRepo, prNumber, token]
+    () => run(() => updatePrBranch(ownerRepo!.owner, ownerRepo!.repo, prNumber!, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   const requestReviewer = useCallback(
     (login: string) =>
-      run(() => addReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => addReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
   const unrequestReviewer = useCallback(
     (login: string) =>
-      run(() => removeReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => removeReviewers(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
   const assign = useCallback(
     (login: string) =>
-      run(() => addAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => addAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
   const unassign = useCallback(
     (login: string) =>
-      run(() => removeAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => removeAssignees(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [login], accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
   const addLabel = useCallback(
     (name: string) =>
-      run(() => addLabels(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [name], token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => addLabels(ownerRepo!.owner, ownerRepo!.repo, prNumber!, [name], accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
   const deleteLabel = useCallback(
     (name: string) =>
-      run(() => removeLabel(ownerRepo!.owner, ownerRepo!.repo, prNumber!, name, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(() => removeLabel(ownerRepo!.owner, ownerRepo!.repo, prNumber!, name, accountId!)),
+    [run, ownerRepo, prNumber, accountId]
   )
 
   return {

@@ -1,15 +1,19 @@
 import type { AiProtocol } from './presets'
 
 /** Persisted shape of `AppSettings.ai`. Deliberately connection-only: the provider preset, its
- * URL/model/key and a request timeout. Everything that shapes *what the model is asked to do* —
+ * URL/model and a request timeout. Everything that shapes *what the model is asked to do* —
  * the instruction (system prompt), the temperature, how the prompt is built — is owned per-feature
  * inside this package (see `features/`), NOT exposed in the app's Settings. Adding a knob here
- * should only ever be about *reaching* a provider, never about tuning a feature. */
+ * should only ever be about *reaching* a provider, never about tuning a feature.
+ *
+ * The provider's **API key is deliberately not here**. It is a secret, so it lives in the OS
+ * keychain and is attached to the request by Rust; nothing that reaches this object can read it.
+ * Settings still edits it — through the write-only credential commands — and asks a boolean
+ * ("is one stored?") rather than reading the value back. */
 export interface AiConnectionConfig {
   preset: import('./presets').AiPresetId
   url: string
   model: string
-  apiKey?: string
   timeoutSeconds: number
   /**
    * The model's context window, in tokens. A property of the model you are reaching — like the
@@ -38,8 +42,8 @@ export interface AiConnectionConfig {
    * confident wrong answers about your own history. Which calls may use this is a property of the
    * feature, declared next to its instruction and temperature, never assigned by the user.
    *
-   * Same URL, same API key: this only swaps the model name, so the fast model has to be served by
-   * the same provider. Unset (the default) means every feature uses {@link model}.
+   * Same URL, same credential: this only swaps the model name, so the fast model has to be served
+   * by the same provider. Unset (the default) means every feature uses {@link model}.
    */
   fastModel?: string
   /**
@@ -88,11 +92,11 @@ export interface AiProviderStatus {
   detail?: string | null
 }
 
-/** Wire shape for the `check_ai_status` Tauri command — just enough to open a connection. */
+/** Wire shape for the `check_ai_status` Tauri command — just enough to open a connection. No key:
+ * the backend reads it from the keychain, the same way it does for a generation. */
 export interface AiCheckConfig {
   protocol: AiProtocol
   url: string
-  apiKey?: string
 }
 
 /** Wire shape for the generic `ai_generate_stream` / `ai_complete` Tauri commands' `config`
@@ -102,7 +106,6 @@ export interface AiGenerateConfig {
   protocol: AiProtocol
   url: string
   model: string
-  apiKey?: string
   temperature: number
   timeoutSeconds: number
   /**

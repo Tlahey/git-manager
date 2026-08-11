@@ -38,7 +38,7 @@ interface RepositorySidebarProps {
   /** Clicking a tag scrolls to / selects its commit in the graph rather than re-filtering the log. */
   onSelectTag?: (commitOid: string) => void
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   onCreateBranch?: () => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   /** Opens a remote branch row's own (wider) action menu. */
@@ -57,7 +57,7 @@ export function RepositorySidebar({
   onSelectBranch,
   onSelectTag,
   currentUser,
-  githubToken,
+  githubAccountId,
   onCreateBranch,
   onContextMenu,
   onRemoteBranchContextMenu,
@@ -65,10 +65,10 @@ export function RepositorySidebar({
   onOpenPr,
 }: RepositorySidebarProps) {
   const { t } = useTranslation('git')
-  // The `githubToken` prop is the caller's own copy of the active account's token; fall back to the
+  // The `githubAccountId` prop is the caller's own copy of the active account's token; fall back to the
   // account itself so a caller that doesn't pass one still gets the signed-in behaviour.
   const { isConnected } = useGithubAccount()
-  const githubConnected = !!githubToken || isConnected
+  const githubConnected = !!githubAccountId || isConnected
   const { width, resizeHandleProps } = useSidebarResize()
   /**
    * The shell's panel flag (⌘S, or the toolbar's button). On this view "off" is not *gone*: the
@@ -183,7 +183,7 @@ export function RepositorySidebar({
     repoPath,
     remoteUrls,
     currentUser,
-    githubToken,
+    githubAccountId,
     selectedBranch,
     filter: branchQuery,
     openState,
@@ -371,7 +371,7 @@ export function RepositorySidebar({
           repoPath={repoPath}
           remoteUrls={remoteUrls}
           currentUser={currentUser}
-          githubToken={githubToken}
+          githubAccountId={githubAccountId}
           onOpenSection={openSectionFromRail}
         />
       </div>
@@ -416,7 +416,7 @@ export function RepositorySidebar({
         repoPath={repoPath}
         remoteUrls={remoteUrls}
         currentUser={currentUser}
-        githubToken={githubToken}
+        githubAccountId={githubAccountId}
         worktrees={worktrees}
         prunableWorktrees={prunableWorktrees}
         allLocalBranches={allLocalBranches}

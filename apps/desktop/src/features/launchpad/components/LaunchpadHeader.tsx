@@ -4,7 +4,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { formatRelativeTimeCompact } from '../../../lib/relativeDate'
 
 interface LaunchpadHeaderProps {
-  hasToken: boolean
+  hasAccount: boolean
   isMocked: boolean
   githubConnected: boolean
   loading: boolean
@@ -26,7 +26,7 @@ interface LaunchpadHeaderProps {
  * requests are a different matter and keep their amber strip.
  */
 export function LaunchpadHeader({
-  hasToken,
+  hasAccount,
   isMocked,
   githubConnected,
   loading,
@@ -44,8 +44,8 @@ export function LaunchpadHeader({
         <Rocket className="h-4 w-4 text-primary" />
         <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
       </div>
-      {(hasToken || isMocked) && <div className="h-4 w-px bg-border" />}
-      {hasToken ? (
+      {(hasAccount || isMocked) && <div className="h-4 w-px bg-border" />}
+      {hasAccount ? (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
           {loading || isValidating ? (
             <>

@@ -18,7 +18,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 
 beforeEach(() => {
   fetchGitHubPRDetails.mockReset()
-  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
 })
 
 describe('usePrDetail', () => {
@@ -33,7 +33,7 @@ describe('usePrDetail', () => {
     await waitFor(() => expect(result.current.pr).toEqual({ number: 7, title: 'T' }))
     expect(fetchGitHubPRDetails).toHaveBeenCalledWith(
       'https://api.github.com/repos/org/repo/pulls/7',
-      'tok'
+      'acct'
     )
   })
 })

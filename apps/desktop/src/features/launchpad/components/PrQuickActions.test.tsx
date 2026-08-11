@@ -48,10 +48,8 @@ function signIn() {
     settings: {
       ...s.settings,
       github: {
-        accounts: [
-          { id: 'a', token: 'tok', user: { login: 'me', name: null, email: null, avatarUrl: '' } },
-        ],
-        activeAccountId: 'a',
+        accounts: [{ id: 'acct', user: { login: 'me', name: null, email: null, avatarUrl: '' } }],
+        activeAccountId: 'acct',
       },
     },
   }))
@@ -85,7 +83,7 @@ describe('PrQuickActions', () => {
         'git-manager',
         42,
         { mergeMethod: 'squash' },
-        'tok'
+        'acct'
       )
     )
   })
@@ -127,7 +125,13 @@ describe('PrQuickActions', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Close PR' }))
 
     await waitFor(() =>
-      expect(mockedUpdate).toHaveBeenCalledWith('me', 'git-manager', 42, { state: 'closed' }, 'tok')
+      expect(mockedUpdate).toHaveBeenCalledWith(
+        'me',
+        'git-manager',
+        42,
+        { state: 'closed' },
+        'acct'
+      )
     )
   })
 })

@@ -19,7 +19,7 @@ interface SidebarRailProps {
   repoPath: string
   remoteUrls: string[]
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   /**
    * Reopens the sidebar *on* a section: an icon stands for one section, so clicking it should land
    * on that section's content rather than on whatever the sidebar happened to be showing.
@@ -55,14 +55,14 @@ export function SidebarRail({
   repoPath,
   remoteUrls,
   currentUser,
-  githubToken,
+  githubAccountId,
   onOpenSection,
 }: SidebarRailProps) {
   const { data: branches = [] } = useBranches(repoPath)
   const localCount = branches.filter((b) => !b.isRemote).length
   const remoteCount = branches.filter((b) => b.isRemote).length
 
-  const { allPrs } = usePullRequests({ remoteUrls, currentUser, githubToken })
+  const { allPrs } = usePullRequests({ remoteUrls, currentUser, githubAccountId })
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],

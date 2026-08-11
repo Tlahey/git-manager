@@ -29,23 +29,29 @@ beforeEach(() => {
 
 describe('useIssueEdit', () => {
   it('is not editable when signed out', () => {
-    m.useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+    m.useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
     const { result } = renderHook(() => useIssueEdit('org/repo', 7), { wrapper })
     expect(result.current.canEdit).toBe(false)
   })
 
   it('patches the issue when editable', async () => {
-    m.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+    m.useRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      accountId: 'acct',
+    })
     const { result } = renderHook(() => useIssueEdit('org/repo', 7), { wrapper })
     expect(result.current.canEdit).toBe(true)
     await act(async () => {
       await result.current.update({ title: 'New title' })
     })
-    expect(m.updateIssue).toHaveBeenCalledWith('org', 'repo', 7, { title: 'New title' }, 'tok')
+    expect(m.updateIssue).toHaveBeenCalledWith('org', 'repo', 7, { title: 'New title' }, 'acct')
   })
 
   it('surfaces a failure as an error toast and rethrows', async () => {
-    m.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+    m.useRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      accountId: 'acct',
+    })
     m.updateIssue.mockRejectedValue(new Error('boom'))
     const { result } = renderHook(() => useIssueEdit('org/repo', 7), { wrapper })
     await expect(

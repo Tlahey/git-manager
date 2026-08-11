@@ -41,7 +41,7 @@ export function rawToIssueForCard(raw: GhRawIssue): RawIssueForCard {
 export interface RemoteBoardContext {
   owner: string
   repo: string
-  token: string
+  accountId: string
   loadBoard(path: string, boardId: string): Promise<Board>
   /** Rewrites the board entry in the config file under a compare-and-swap on its `revision`. */
   patchBoardInConfig(
@@ -58,7 +58,7 @@ export interface RemoteBoardContext {
 export function createRemoteBoardContext(
   owner: string,
   repo: string,
-  token: string
+  accountId: string
 ): RemoteBoardContext {
   async function loadBoard(path: string, boardId: string): Promise<Board> {
     const config = await readConfigFile(path)
@@ -93,10 +93,10 @@ export function createRemoteBoardContext(
   async function syncLabels(board: Board, card: BoardCard, currentLabels: string[]): Promise<void> {
     const { toAdd, toRemove } = reconcileLabels(board, currentLabels, managedLabelsFor(board, card))
     for (const label of toRemove) {
-      await removeLabel(owner, repo, Number(card.id), label, token)
+      await removeLabel(owner, repo, Number(card.id), label, accountId)
     }
     if (toAdd.length > 0) {
-      await addLabels(owner, repo, Number(card.id), toAdd, token)
+      await addLabels(owner, repo, Number(card.id), toAdd, accountId)
     }
   }
 
@@ -107,17 +107,26 @@ export function createRemoteBoardContext(
     next: string | undefined
   ): Promise<void> {
     const stale = current.filter((login) => login !== next)
-    if (stale.length > 0) await removeAssignees(owner, repo, issueNumber, stale, token)
+    if (stale.length > 0) await removeAssignees(owner, repo, issueNumber, stale, accountId)
     if (next && !current.includes(next)) {
-      await addAssignees(owner, repo, issueNumber, [next], token)
+      await addAssignees(owner, repo, issueNumber, [next], accountId)
     }
   }
 
   async function readCard(board: Board, issueNumber: number): Promise<BoardCard> {
-    const raw = await fetchIssueDetail(owner, repo, issueNumber, token)
+    const raw = await fetchIssueDetail(owner, repo, issueNumber, accountId)
     const card = cardFromIssue(board, rawToIssueForCard(raw))
     if (!card) throw new Error('Card no longer carries a column label for this board')
     return card
   }
-  return { owner, repo, token, loadBoard, patchBoardInConfig, syncLabels, syncAssignee, readCard }
+  return {
+    owner,
+    repo,
+    accountId,
+    loadBoard,
+    patchBoardInConfig,
+    syncLabels,
+    syncAssignee,
+    readCard,
+  }
 }

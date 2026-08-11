@@ -37,6 +37,12 @@ async-trait = "0.1"
 glob = "0.3"
 # Real PTY for the integrated terminal (spawns the user's login shell so ~/.zshrc is sourced).
 portable-pty = "0.8"
+# The OS keychain, and the only place a provider token or an AI key is stored — see
+# services/credential_store.rs. `default-features = false` drops the Linux Secret Service and
+# Windows backends this macOS-only app cannot use; `apple-native` is the Keychain itself. Deliberately
+# NOT the `keyring` Tauri plugin: a plugin would expose a *read* to JavaScript, which is the one thing
+# this whole arrangement exists to prevent.
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
 
 # WebdriverIO E2E testing support (behind the "e2e" feature, see docs/architecture — this
 # embeds a WebDriver server in the binary, so it must never be compiled into a real build).

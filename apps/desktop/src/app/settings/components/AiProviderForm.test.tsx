@@ -6,6 +6,15 @@ vi.mock('../../../api/ai.api', () => ({
   aiStatusService: { check: vi.fn(), probe: vi.fn() },
 }))
 
+// The API key field talks to the OS keychain, which a jsdom run has none of. Mocked here rather
+// than exercised: `AiApiKeyField` has its own suite, and what this one asserts is when the field is
+// *offered*, which is a property of the preset.
+vi.mock('../../../api/credentials.api', () => ({
+  apiHasCredential: vi.fn().mockResolvedValue(false),
+  apiStoreCredential: vi.fn().mockResolvedValue(undefined),
+  apiDeleteCredential: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { MAX_AI_CONCURRENCY } from '@git-manager/ai'
 import { aiStatusService } from '../../../api/ai.api'
 import { AiProviderForm } from './AiProviderForm'
@@ -265,7 +274,10 @@ describe('AiProviderForm — model & API key', () => {
     expect(useSettingsStore.getState().settings.ai.model).toBe('qwen2.5-coder')
   })
 
-  it('offers an API key only on the generic preset, and drops it when leaving that preset', async () => {
+  // The key itself is not a setting any more — it lives in the OS keychain, so there is nothing on
+  // `settings.ai` to assert against and nothing for a preset change to drop. What is still this
+  // form's business is *whether the field is offered*, which follows the preset.
+  it('offers an API key field only on the generic preset', async () => {
     seedChecked()
     const user = userEvent.setup()
     render(<AiProviderForm />)
@@ -273,14 +285,11 @@ describe('AiProviderForm — model & API key', () => {
 
     await user.click(screen.getByTestId('ai-provider-select'))
     await user.click(screen.getByTestId('ai-provider-option-openai-compatible'))
-    const keyInput = await screen.findByTestId('ai-api-key-input')
-    await user.type(keyInput, 'sk-test')
-    expect(useSettingsStore.getState().settings.ai.apiKey).toBe('sk-test')
+    expect(await screen.findByTestId('ai-api-key-input')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('ai-provider-select'))
     await user.click(screen.getByTestId('ai-provider-option-ollama'))
     expect(screen.queryByTestId('ai-api-key-input')).not.toBeInTheDocument()
-    expect(useSettingsStore.getState().settings.ai.apiKey).toBeUndefined()
   })
 
   /**

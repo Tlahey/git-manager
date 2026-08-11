@@ -83,7 +83,7 @@ function renderActions(
       remoteBackend: remoteBackend,
       revalidateLists: vi.fn(),
       trackedRef,
-      token: 'tok',
+      accountId: 'acct',
     })
   )
   return { result, mutateDetail, revalidateAllDetails }
@@ -227,7 +227,7 @@ describe('useBoardCardActions — tracked cards', () => {
     const { result } = renderActions(local, [local], () => ref)
 
     await result.current.addComment(makeCard(), 'Looks good')
-    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'tok')
+    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'acct')
     expect(localBackend.addComment).not.toHaveBeenCalled()
   })
 })
@@ -329,7 +329,7 @@ describe('useBoardCardActions — createCard', () => {
         remoteBackend: remoteBackend,
         revalidateLists,
         trackedRef: () => null,
-        token: 'tok',
+        accountId: 'acct',
       })
     )
 
@@ -406,7 +406,7 @@ describe('useBoardCardActions — moveCard (the optimistic one)', () => {
         remoteBackend: remoteBackend,
         revalidateLists: vi.fn(),
         trackedRef: () => null,
-        token: 'tok',
+        accountId: 'acct',
       })
     )
 

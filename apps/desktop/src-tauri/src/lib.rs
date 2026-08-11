@@ -41,6 +41,7 @@ use commands::conflict::{
     auto_merge_conflict_view, get_merge_view, list_conflicted_files, resolve_conflict,
     resolve_conflict_binary,
 };
+use commands::credentials::{delete_credential, has_credential, store_credential};
 use commands::daily_summary::{
     delete_daily_summary, list_daily_summaries, open_daily_summaries_dir, save_daily_summary,
 };
@@ -48,8 +49,8 @@ use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
 use commands::github::{
-    get_pr_template, github_commit_avatars, github_device_code, github_get_user, github_list_repos,
-    github_poll_token,
+    get_pr_template, github_api_request, github_commit_avatars, github_connect_token,
+    github_device_code, github_disconnect_account, github_list_repos, github_poll_token,
 };
 use commands::gitlab::{gitlab_device_code, gitlab_get_user, gitlab_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
@@ -372,10 +373,17 @@ pub fn run() {
             play_system_sound,
             // Submodules
             list_submodules,
+            // Keychain — write-only on purpose, there is no `get_credential`
+            // (see commands/credentials.rs)
+            store_credential,
+            delete_credential,
+            has_credential,
             // GitHub OAuth
             github_device_code,
             github_poll_token,
-            github_get_user,
+            github_connect_token,
+            github_disconnect_account,
+            github_api_request,
             gitlab_device_code,
             gitlab_poll_token,
             gitlab_get_user,

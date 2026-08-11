@@ -43,6 +43,24 @@ export function disableAppConfigFile(): void {
 }
 
 /**
+ * Turns the OS keychain off for the run: with `GIT_MANAGER_NO_KEYCHAIN` set, every credential the
+ * app stores goes into a process-local map that dies with it (see
+ * `src-tauri/src/services/credential_store.rs`).
+ *
+ * The same reasoning as {@link disableAppConfigFile}, applied to the one piece of state that is
+ * *not* under the scratch `$HOME`: the login keychain is per-user, not per-home, so isolating `HOME`
+ * does nothing for it. Without this a scenario that connects a GitHub account would write into the
+ * **developer's own keychain** — and it would not even take a deliberate sign-in, since the app
+ * migrates any token it finds in a seeded `localStorage` snapshot on the next load.
+ *
+ * A test run must not be able to touch, overwrite or leave anything in the credentials a person
+ * actually uses. Inherited by the app because it is spawned as a child of this process.
+ */
+export function disableKeychain(): void {
+  process.env.GIT_MANAGER_NO_KEYCHAIN = '1'
+}
+
+/**
  * Runs the suite against a copy of the built binary under a different name, and returns its path.
  *
  * This is what isolates **localStorage** — every persisted zustand slice: the theme, saved

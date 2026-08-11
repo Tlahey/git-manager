@@ -1,4 +1,16 @@
+//! The GitHub commands.
+//!
+//! Thin on purpose: the HTTP itself, the URL allowlist and the keychain lookup all live in
+//! `services/github_api.rs`, and every command here either drives the OAuth device flow (which talks
+//! to `github.com`, not the API) or hands a request to that service.
+//!
+//! **No command returns a token.** `github_poll_token` used to hand the access token to JavaScript,
+//! which then persisted it; it now stores the token itself and answers with the profile it belongs
+//! to. That is the whole shape of this change — see `services/credential_store.rs`.
+
 use crate::error::AppError;
+use crate::services::credential_store::{self, CredentialKind};
+use crate::services::github_api::{self, GitHubUserInfo, GithubApiResponse};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -54,17 +66,30 @@ pub async fn github_device_code(scope: String) -> Result<DeviceCodeResponse, Str
 
 // ─── Device Flow: Poll for Token ─────────────────────────────────────────────
 
+/// What GitHub itself answers a poll with.
+#[derive(Debug, Deserialize)]
+struct RawPollTokenResponse {
+    access_token: Option<String>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
+/// What the frontend gets — the *account*, never the token behind it.
+///
+/// Where this used to carry `access_token` straight through to JavaScript (which then wrote it into
+/// `settings.json`), an authorized poll now connects the account inside Rust and reports only the
+/// public profile. There is deliberately no field a caller could read a credential out of.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PollTokenResponse {
-    /// Present when authorization is complete
-    pub access_token: Option<String>,
+    /// Present once the user has approved *and* the account has been stored in the keychain.
+    pub user: Option<GitHubUserInfo>,
     /// Present while waiting or on error: "authorization_pending", "slow_down", "expired_token", "access_denied"
     pub error: Option<String>,
     pub error_description: Option<String>,
 }
 
-/// Polls GitHub for an access token using the device_code.
-/// Returns the token when ready, or an error status if still pending.
+/// Polls GitHub for the access token behind a `device_code` and, once it arrives, connects the
+/// account: the token goes to the keychain and the caller is told who signed in.
 #[tauri::command]
 pub async fn github_poll_token(device_code: String) -> Result<PollTokenResponse, String> {
     let client = Client::builder()
@@ -96,95 +121,67 @@ pub async fn github_poll_token(device_code: String) -> Result<PollTokenResponse,
         .into());
     }
 
-    let data: PollTokenResponse = res.json().await.map_err(AppError::Http)?;
-    Ok(data)
-}
+    let data: RawPollTokenResponse = res.json().await.map_err(AppError::Http)?;
 
-// ─── Fetch User Profile ──────────────────────────────────────────────────────
+    // The token is consumed here and never travels further: `connect_account` validates it, files it
+    // in the keychain under the login it names, and gives back the profile.
+    let user = match data.access_token.as_deref() {
+        Some(token) if !token.is_empty() => Some(github_api::connect_account(token).await?),
+        _ => None,
+    };
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubUserInfo {
-    pub login: String,
-    pub name: Option<String>,
-    pub email: Option<String>,
-    pub avatar_url: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct GitHubEmailEntry {
-    email: String,
-    primary: bool,
-    verified: bool,
-}
-
-/// Fetches the authenticated user's profile and primary email from GitHub.
-#[tauri::command]
-pub async fn github_get_user(token: String) -> Result<GitHubUserInfo, String> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(AppError::Http)?;
-
-    // Fetch user profile
-    let user_res = client
-        .get("https://api.github.com/user")
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("User-Agent", "git-manager-desktop")
-        .send()
-        .await
-        .map_err(AppError::Http)?;
-
-    if !user_res.status().is_success() {
-        let status = user_res.status();
-        eprintln!("[GitHub API] User profile request failed: HTTP {status}");
-        return Err(AppError::Unknown(format!(
-            "Failed to fetch GitHub user profile (HTTP {})",
-            status
-        ))
-        .into());
-    }
-
-    let user_data: serde_json::Value = user_res.json().await.map_err(AppError::Http)?;
-
-    let login = user_data["login"].as_str().unwrap_or_default().to_string();
-    let name = user_data["name"].as_str().map(|s| s.to_string());
-    let avatar_url = user_data["avatar_url"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-    let mut email = user_data["email"].as_str().map(|s| s.to_string());
-
-    // Fetch primary email (may not be public on profile)
-    let emails_res = client
-        .get("https://api.github.com/user/emails")
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("User-Agent", "git-manager-desktop")
-        .send()
-        .await;
-
-    if let Ok(res) = emails_res {
-        if res.status().is_success() {
-            if let Ok(emails) = res.json::<Vec<GitHubEmailEntry>>().await {
-                let primary = emails
-                    .iter()
-                    .find(|e| e.primary && e.verified)
-                    .or_else(|| emails.first());
-                if let Some(entry) = primary {
-                    email = Some(entry.email.clone());
-                }
-            }
-        }
-    }
-
-    Ok(GitHubUserInfo {
-        login,
-        name,
-        email,
-        avatar_url,
+    Ok(PollTokenResponse {
+        user,
+        error: data.error,
+        error_description: data.error_description,
     })
+}
+
+// ─── Connecting an account ───────────────────────────────────────────────────
+
+/// Validates a personal access token, stores it in the keychain, and returns the profile it belongs
+/// to — the "Add with a token" path, and the counterpart of what `github_poll_token` does for OAuth.
+///
+/// Replaces the former `github_get_user(token)`, which handed the profile back and left the caller
+/// holding the token. The token still arrives from the webview (the user pastes it there, so it has
+/// to), but this is where that trip ends.
+#[tauri::command]
+pub async fn github_connect_token(token: String) -> Result<GitHubUserInfo, String> {
+    Ok(github_api::connect_account(&token).await?)
+}
+
+/// Forgets an account's token. The account's public half is removed from the settings by the
+/// frontend; this is the half it cannot reach.
+#[tauri::command]
+pub fn github_disconnect_account(account_id: String) -> Result<(), String> {
+    credential_store::delete_secret(CredentialKind::GitHub, &account_id)?;
+    Ok(())
+}
+
+// ─── The API proxy ───────────────────────────────────────────────────────────
+
+/// Performs one GitHub API call on behalf of `account_id`, injecting its token from the keychain.
+///
+/// The single door every `api/github/*.api.ts` file goes through, replacing the six `fetch` sites
+/// that used to sign their own requests in the webview. It returns the status alongside the body
+/// because callers judge it themselves — a 404 from the releases endpoint means "no release for
+/// this tag", not a failure — exactly as they did when they held a `Response`.
+#[tauri::command]
+pub async fn github_api_request(
+    account_id: Option<String>,
+    url: String,
+    method: Option<String>,
+    body: Option<serde_json::Value>,
+    accept: Option<String>,
+) -> Result<GithubApiResponse, String> {
+    Ok(github_api::request(
+        account_id.as_deref(),
+        &url,
+        method.as_deref().unwrap_or("GET"),
+        body,
+        accept.as_deref(),
+    )
+    .await?)
 }
 
 // ─── List User Repositories ──────────────────────────────────────────────────
@@ -204,50 +201,31 @@ pub struct GitHubRepoInfo {
     pub updated_at: String,
 }
 
-/// Fetches the authenticated user's repositories from GitHub.
+/// Fetches the authenticated user's repositories — the list Settings shows next to the account.
 #[tauri::command]
-pub async fn github_list_repos(token: String) -> Result<Vec<GitHubRepoInfo>, String> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(AppError::Http)?;
+pub async fn github_list_repos(account_id: String) -> Result<Vec<GitHubRepoInfo>, String> {
+    let res = github_api::request(
+        Some(&account_id),
+        "https://api.github.com/user/repos?per_page=100&sort=updated",
+        "GET",
+        None,
+        None,
+    )
+    .await?;
 
-    let res_result = client
-        .get("https://api.github.com/user/repos?per_page=100&sort=updated")
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("User-Agent", "git-manager-desktop")
-        .send()
-        .await;
-
-    let res = match res_result {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[GitHub API] Listing repos request failed: {e}");
-            return Err(AppError::Http(e).into());
-        }
-    };
-
-    if !res.status().is_success() {
-        let status = res.status();
-        eprintln!("[GitHub API] Repos request failed: HTTP {status}");
+    if !res.ok {
+        eprintln!("[GitHub API] Repos request failed: HTTP {}", res.status);
         return Err(AppError::Unknown(format!(
             "Failed to fetch GitHub repositories (HTTP {})",
-            status
+            res.status
         ))
         .into());
     }
 
-    let repos_result = res.json::<Vec<GitHubRepoInfo>>().await;
-    let repos = match repos_result {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[GitHub API] Failed to parse repos response: {e}");
-            return Err(AppError::Http(e).into());
-        }
-    };
-
-    Ok(repos)
+    serde_json::from_str::<Vec<GitHubRepoInfo>>(&res.body).map_err(|e| {
+        eprintln!("[GitHub API] Failed to parse repos response: {e}");
+        AppError::Unknown(format!("Unreadable GitHub repositories response: {e}")).into()
+    })
 }
 
 // ─── Commit Author Avatars ────────────────────────────────────────────────────
@@ -256,18 +234,20 @@ pub async fn github_list_repos(token: String) -> Result<Vec<GitHubRepoInfo>, Str
 /// `GET /repos/{owner}/{repo}/commits/{sha}`. Best-effort: SHAs whose author can't be resolved
 /// (404, non-GitHub author, request error) are simply absent from the returned map, and the
 /// frontend falls back to initials for those. Used by the diff viewer's blame gutter and history
-/// panel to show real author photos when the repo lives on GitHub and a token is available.
+/// panel to show real author photos when the repo lives on GitHub and an account is connected.
+///
+/// Keeps its own loop rather than calling the proxy once per SHA: the token is read from the
+/// keychain once and one client serves every request, where the proxy would build both per call —
+/// and on macOS a keychain read is not free.
 #[tauri::command]
 pub async fn github_commit_avatars(
-    token: String,
+    account_id: String,
     owner: String,
     repo: String,
     shas: Vec<String>,
 ) -> Result<HashMap<String, String>, String> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(AppError::Http)?;
+    let token = credential_store::require_secret(CredentialKind::GitHub, &account_id)?;
+    let client = github_api::http_client(15)?;
 
     let mut avatars: HashMap<String, String> = HashMap::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -281,7 +261,7 @@ pub async fn github_commit_avatars(
         let res = client
             .get(&url)
             .header("Accept", "application/vnd.github.v3+json")
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("User-Agent", "git-manager-desktop")
             .send()
             .await;

@@ -120,6 +120,7 @@ export function IntegrationSection() {
         {activeProvider === 'bitbucket' && (
           <TokenProviderPanel
             provider="bitbucket"
+            credentialKind="bitbucket"
             label="Bitbucket"
             hintKey="settings.integrations.bitbucket.hint"
             tokenLabelKey="settings.integrations.bitbucket.tokenLabel"

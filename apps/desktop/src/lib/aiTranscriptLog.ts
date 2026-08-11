@@ -48,8 +48,9 @@ function inTauri(): boolean {
 /**
  * Writes one call's transcript. Never throws.
  *
- * `config` carries the user's API key, so the entry is built field by field from it rather than
- * spread — a spread would put the key on disk the day someone adds a field to `AiGenerateConfig`.
+ * `config` carries the provider's URL — the API key itself no longer travels on it at all, living in
+ * the OS keychain and being attached in Rust — so the entry is built field by field from it rather
+ * than spread. A spread would put whatever gets added to `AiGenerateConfig` next straight on disk.
  */
 export function recordAiTranscript(entry: {
   featureId: string

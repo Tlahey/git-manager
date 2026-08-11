@@ -11,6 +11,7 @@ import {
   useIsolatedHome,
   isolatedAppBinary,
   disableAppConfigFile,
+  disableKeychain,
 } from './support/isolatedAppState.js'
 import {
   resetRunReport,
@@ -88,6 +89,10 @@ export const config: WebdriverIO.Config = {
     // …and no configuration file at all, so the suite's localStorage seeds are the app's only
     // persisted state and no run can read or write the developer's `~/.git-manager/settings.json`.
     disableAppConfigFile()
+    // …and no OS keychain either. The login keychain is per-*user*, not per-home, so the isolated
+    // $HOME above does nothing for it: without this, connecting an account in a scenario would write
+    // into the developer's own credentials.
+    disableKeychain()
     // Drop the previous run's per-scenario timings; workers append to it as they go.
     resetRunReport()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })

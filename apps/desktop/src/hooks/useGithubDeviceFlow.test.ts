@@ -3,15 +3,17 @@ import { renderHook, act } from '@testing-library/react'
 
 vi.mock('../api/github.api', () => ({
   apiGithubDeviceCode: vi.fn(),
-  apiGithubGetUser: vi.fn(),
+  apiGithubConnectToken: vi.fn(),
   apiGithubPollToken: vi.fn(),
 }))
 
-import { apiGithubDeviceCode, apiGithubGetUser, apiGithubPollToken } from '../api/github.api'
+import { apiGithubConnectToken, apiGithubDeviceCode, apiGithubPollToken } from '../api/github.api'
 import { useGithubDeviceFlow } from './useGithubDeviceFlow'
 
 const mockedDeviceCode = apiGithubDeviceCode as unknown as ReturnType<typeof vi.fn>
-const mockedGetUser = apiGithubGetUser as unknown as ReturnType<typeof vi.fn>
+// Rust validates the token, files it in the keychain and answers with the profile — so this stands
+// in for the whole "connect an account" step, and `onLoginSuccess` never sees a credential.
+const mockedConnect = apiGithubConnectToken as unknown as ReturnType<typeof vi.fn>
 const mockedPollToken = apiGithubPollToken as unknown as ReturnType<typeof vi.fn>
 
 const deviceCodeResponse = {
@@ -33,7 +35,7 @@ afterEach(() => {
 
 describe('completeLoginWithToken', () => {
   it('fetches the user, maps it, and calls onLoginSuccess', async () => {
-    mockedGetUser.mockResolvedValue({
+    mockedConnect.mockResolvedValue({
       login: 'octocat',
       name: 'The Octocat',
       email: 'octo@x.com',
@@ -48,7 +50,8 @@ describe('completeLoginWithToken', () => {
     })
 
     expect(success).toBe(true)
-    expect(onLoginSuccess).toHaveBeenCalledWith('tok', {
+    // The account, and nothing else: the token stayed in Rust.
+    expect(onLoginSuccess).toHaveBeenCalledWith({
       login: 'octocat',
       name: 'The Octocat',
       email: 'octo@x.com',
@@ -58,15 +61,15 @@ describe('completeLoginWithToken', () => {
   })
 
   it('falls back the display name to the login when the user has no name', async () => {
-    mockedGetUser.mockResolvedValue({ login: 'octocat', name: null, email: null, avatarUrl: '' })
+    mockedConnect.mockResolvedValue({ login: 'octocat', name: null, email: null, avatarUrl: '' })
     const onLoginSuccess = vi.fn()
     const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess }))
     await act(async () => result.current.completeLoginWithToken('tok'))
-    expect(onLoginSuccess).toHaveBeenCalledWith('tok', expect.objectContaining({ name: 'octocat' }))
+    expect(onLoginSuccess).toHaveBeenCalledWith(expect.objectContaining({ name: 'octocat' }))
   })
 
   it('sets an error and returns false on failure', async () => {
-    mockedGetUser.mockRejectedValue(new Error('bad token'))
+    mockedConnect.mockRejectedValue(new Error('bad token'))
     const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess: vi.fn() }))
 
     let success: boolean | undefined
@@ -84,7 +87,7 @@ describe('startOAuthLogin', () => {
   it('fetches the device code, stores it, and opens the verification URL', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
@@ -100,7 +103,7 @@ describe('startOAuthLogin', () => {
   it('does not keep polling data (still connecting) while the user has not authorized yet', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
@@ -117,14 +120,19 @@ describe('startOAuthLogin', () => {
     expect(result.current.deviceFlowData).toEqual(deviceCodeResponse)
   })
 
-  it('completes login once the poll returns an access token', async () => {
+  /**
+   * The poll answers with the *account*, not a token: Rust exchanged the code, validated what came
+   * back and put it in the keychain before returning. So there is no second call to make here and
+   * nothing for the hook to hold — which is the whole point of the change, and worth a test that
+   * would fail if the token ever came back through this path again.
+   */
+  it('completes login once the poll returns the connected account', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: 'final-token',
+      user: { login: 'octocat', name: 'Octo', email: null, avatarUrl: '' },
       error: null,
       error_description: null,
     })
-    mockedGetUser.mockResolvedValue({ login: 'octocat', name: 'Octo', email: null, avatarUrl: '' })
     vi.spyOn(window, 'open').mockImplementation(() => null)
     const onLoginSuccess = vi.fn()
 
@@ -135,11 +143,11 @@ describe('startOAuthLogin', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(onLoginSuccess).toHaveBeenCalledWith(
-      'final-token',
-      expect.objectContaining({ login: 'octocat' })
-    )
+    expect(onLoginSuccess).toHaveBeenCalledWith(expect.objectContaining({ login: 'octocat' }))
+    // Nothing re-validates the token afterwards: the account arrived already connected.
+    expect(mockedConnect).not.toHaveBeenCalled()
     expect(result.current.deviceFlowData).toBeNull()
+    expect(result.current.connecting).toBe(false)
   })
 
   /**
@@ -150,7 +158,7 @@ describe('startOAuthLogin', () => {
   it('widens the gap between polls when GitHub says slow_down', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'slow_down',
       error_description: null,
     })
@@ -185,7 +193,7 @@ describe('startOAuthLogin', () => {
   it('gives up with a message once the device code has expired', async () => {
     mockedDeviceCode.mockResolvedValue({ ...deviceCodeResponse, expires_in: 10 })
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
@@ -208,10 +216,10 @@ describe('startOAuthLogin', () => {
     expect(mockedPollToken).toHaveBeenCalledTimes(1)
   })
 
-  /** A response with neither a token nor an error is not a failure — keep waiting. */
-  it('keeps polling when the response carries neither a token nor an error', async () => {
+  /** A response with neither an account nor an error is not a failure — keep waiting. */
+  it('keeps polling when the response carries neither an account nor an error', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
-    mockedPollToken.mockResolvedValue({ access_token: null, error: null, error_description: null })
+    mockedPollToken.mockResolvedValue({ user: null, error: null, error_description: null })
     vi.spyOn(window, 'open').mockImplementation(() => null)
 
     const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess: vi.fn() }))
@@ -226,7 +234,7 @@ describe('startOAuthLogin', () => {
   it('surfaces an OAuth error from the poll response and stops polling', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'access_denied',
       error_description: 'User denied access',
     })
@@ -279,7 +287,7 @@ describe('startOAuthLogin', () => {
   it('does not open a window when verification_uri is absent', async () => {
     mockedDeviceCode.mockResolvedValue({ ...deviceCodeResponse, verification_uri: '' })
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
@@ -294,7 +302,7 @@ describe('cancelFlow', () => {
   it('clears device flow state and stops polling', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
@@ -319,7 +327,7 @@ describe('cleanup', () => {
   it('clears the polling interval on unmount', async () => {
     mockedDeviceCode.mockResolvedValue(deviceCodeResponse)
     mockedPollToken.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })

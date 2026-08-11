@@ -8,7 +8,7 @@ import type { BoardBackend } from '../api/boardBackend'
 export interface BoardBackends {
   /** The repo's GitHub coordinates, or `null` when no account is connected to it. */
   ownerRepo: OwnerRepo | null
-  token: string | null
+  accountId: string | null
   /** `null` without a connected account — which is what gates offering a remote board at all. */
   remoteBackend: BoardBackend | null
   /** The implementation a board of that `source` is served by. */
@@ -24,12 +24,14 @@ export interface BoardBackends {
  * forever.
  */
 export function useBoardBackends(repoPath: string): BoardBackends {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const remoteBackend = useMemo(
     () =>
-      ownerRepo && token ? createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, token) : null,
-    [ownerRepo, token]
+      ownerRepo && accountId
+        ? createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, accountId)
+        : null,
+    [ownerRepo, accountId]
   )
 
   function backendFor(source: BoardSource): BoardBackend {
@@ -38,5 +40,5 @@ export function useBoardBackends(repoPath: string): BoardBackends {
     return remoteBackend
   }
 
-  return { ownerRepo, token, remoteBackend, backendFor }
+  return { ownerRepo, accountId, remoteBackend, backendFor }
 }

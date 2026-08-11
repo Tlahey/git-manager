@@ -12,7 +12,6 @@ import { getAvatarUrl } from './avatar'
 function account(overrides: Partial<GitHubAccount['user']> = {}): GitHubAccount {
   return {
     id: 'acc1',
-    token: 'tok',
     user: {
       login: 'octocat',
       name: 'The Octocat',

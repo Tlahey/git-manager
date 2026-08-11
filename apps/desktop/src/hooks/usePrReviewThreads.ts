@@ -8,14 +8,19 @@ export function usePrReviewThreads(
   repoPath: string | null,
   prNumber: number | null
 ): { threads: PrReviewThread[]; isLoading: boolean; refresh: () => void } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, mutate } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-review-threads', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-review-threads', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
     () =>
-      fetchPrReviewThreads(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+      fetchPrReviewThreads(
+        ownerRepo!.owner,
+        ownerRepo!.repo,
+        prNumber as number,
+        accountId as string
+      ),
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 

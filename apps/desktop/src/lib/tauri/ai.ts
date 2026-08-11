@@ -33,8 +33,9 @@ export interface ModelContextLimits {
   servedMaxModelLen: number | null
 }
 
-export const getModelContextLimits = (url: string, model: string, apiKey?: string) =>
-  invoke<ModelContextLimits>('get_model_context_limits', { url, model, apiKey })
+/** No API key argument: the backend reads it from the OS keychain, like every other AI call. */
+export const getModelContextLimits = (url: string, model: string) =>
+  invoke<ModelContextLimits>('get_model_context_limits', { url, model })
 
 export const getAiContext = (
   path: string,

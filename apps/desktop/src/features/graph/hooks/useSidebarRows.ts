@@ -34,7 +34,7 @@ interface UseSidebarRowsParams {
   repoPath: string
   remoteUrls: string[]
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   selectedBranch: string | null
   filter: string
   /** Explicit open-state overrides (id -> open). */
@@ -62,7 +62,7 @@ export function useSidebarRows({
   repoPath,
   remoteUrls,
   currentUser,
-  githubToken,
+  githubAccountId,
   selectedBranch,
   filter,
   openState,
@@ -86,7 +86,7 @@ export function useSidebarRows({
   } = usePullRequests({
     remoteUrls,
     currentUser,
-    githubToken,
+    githubAccountId,
   })
 
   // The user's saved pull request views — one sub-group each, in this order.
@@ -94,7 +94,7 @@ export function useSidebarRows({
 
   const { groups: prGroups, isLoading: prFiltersLoading } = useRepoPrFilters({
     remoteUrls,
-    githubToken,
+    githubAccountId,
     filters: prFilters,
     knownPrs: allPrs,
   })
@@ -111,7 +111,7 @@ export function useSidebarRows({
     isConnected: issuesIsConnected,
     isLoading: issuesLoading,
     refresh: refreshIssues,
-  } = useRepoIssues({ remoteUrls, githubToken, filters: issueFilters })
+  } = useRepoIssues({ remoteUrls, githubAccountId, filters: issueFilters })
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],

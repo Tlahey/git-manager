@@ -55,7 +55,7 @@ export function useCommitCommands(): PaletteCommand[] {
   // GitHub context + commit associations (PR / containing tag) for the selected commit — resolved
   // up front so the matching commands can show the sha/tag/PR as sub-info. Hooks run unconditionally
   // (before the gate below); they no-op when there's no commit/repo.
-  const { ownerRepo, token } = useRepoGitHub(activeRepo)
+  const { ownerRepo, accountId } = useRepoGitHub(activeRepo)
   const tag = useCommitTag(activeRepo, selectedStashIndex === null ? selectedCommitOid : null)
   const pr = useCommitPullRequest(
     activeRepo,
@@ -270,7 +270,7 @@ export function useCommitCommands(): PaletteCommand[] {
       keywords: [...shaKeyword, tag],
       icon: createElement(Tags),
       run: () => {
-        resolveTagOrReleaseUrl(ownerRepo.owner, ownerRepo.repo, tag, token ?? undefined)
+        resolveTagOrReleaseUrl(ownerRepo.owner, ownerRepo.repo, tag, accountId ?? undefined)
           .then(apiOpenUrl)
           .catch((err) => toast.error(String(err)))
       },

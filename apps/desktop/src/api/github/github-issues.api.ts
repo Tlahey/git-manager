@@ -54,13 +54,13 @@ export function rawToMockIssue(raw: GhRawIssue): MockIssue {
  */
 export async function fetchGitHubRepoIssues(
   repos: { owner: string; repo: string }[],
-  token: string
+  accountId: string
 ): Promise<MockIssue[]> {
   if (repos.length === 0) return []
   const repoQualifiers = repos.map((r) => `repo:${r.owner}/${r.repo}`).join('+')
   const data = await ghFetch<GhSearchResult<GhRawIssue>>(
     `https://api.github.com/search/issues?q=is:issue+${repoQualifiers}&per_page=100&sort=updated`,
-    token,
+    accountId,
     // The squirrel-girl preview makes the search include each item's `reactions` summary, so the row
     // can show a 👍 count without a follow-up request per issue.
     'application/vnd.github.squirrel-girl-preview+json'
@@ -77,11 +77,11 @@ export async function fetchGitHubRepoIssues(
 export async function fetchRepoIssues(
   owner: string,
   repo: string,
-  token?: string
+  accountId?: string
 ): Promise<MockIssue[]> {
   const raw = await ghFetch<Array<GhRawIssue & { pull_request?: unknown }>>(
     `https://api.github.com/repos/${owner}/${repo}/issues?state=open&sort=updated&direction=desc&per_page=100`,
-    token,
+    accountId,
     'application/vnd.github.squirrel-girl-preview+json'
   )
   return raw
@@ -113,12 +113,12 @@ export async function fetchIssuesByQuery(
   owner: string,
   repo: string,
   query: string,
-  token?: string
+  accountId?: string
 ): Promise<MockIssue[]> {
   const q = `repo:${owner}/${repo} is:issue ${query}`.trim()
   const data = await ghFetch<GhSearchResult<GhRawIssue>>(
     `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&sort=updated&order=desc`,
-    token,
+    accountId,
     'application/vnd.github.squirrel-girl-preview+json'
   )
   return (data.items ?? []).map((item) => ({
@@ -135,12 +135,12 @@ export async function createIssue(
   owner: string,
   repo: string,
   input: { title: string; body?: string },
-  token: string
+  accountId: string
 ): Promise<GhRawIssue> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues`, {
     method: 'POST',
     body: { title: input.title, body: input.body ?? '' },
-    token,
+    accountId,
   })
 }
 
@@ -149,11 +149,11 @@ export async function fetchIssueDetail(
   owner: string,
   repo: string,
   issueNumber: number,
-  token: string
+  accountId: string
 ): Promise<GhRawIssue> {
   return ghFetch<GhRawIssue>(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
-    token,
+    accountId,
     'application/vnd.github.squirrel-girl-preview+json'
   )
 }
@@ -165,12 +165,12 @@ export async function updateIssue(
   repo: string,
   issueNumber: number,
   patch: { title?: string; body?: string; state?: 'open' | 'closed' },
-  token: string
+  accountId: string
 ): Promise<GhRawIssue> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
     method: 'PATCH',
     body: patch,
-    token,
+    accountId,
   })
 }
 
@@ -193,11 +193,11 @@ export async function fetchIssueComments(
   owner: string,
   repo: string,
   issueNumber: number,
-  token: string
+  accountId: string
 ): Promise<GhIssueComment[]> {
   return ghFetch<GhIssueComment[]>(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -206,12 +206,12 @@ export async function createIssueComment(
   repo: string,
   issueNumber: number,
   body: string,
-  token: string
+  accountId: string
 ): Promise<GhIssueComment> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
     method: 'POST',
     body: { body },
-    token,
+    accountId,
   })
 }
 
@@ -222,11 +222,11 @@ export async function setIssueState(
   repo: string,
   issueNumber: number,
   state: 'open' | 'closed',
-  token: string
+  accountId: string
 ): Promise<{ number: number; state: string }> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
     method: 'PATCH',
     body: { state },
-    token,
+    accountId,
   })
 }
