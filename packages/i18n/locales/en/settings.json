@@ -2,6 +2,7 @@
   "settings.title": "Settings",
   "settings.back": "Back",
   "settings.search.placeholder": "Search settings…",
+  "settings.search.clear": "Clear search",
   "settings.search.noResults": "No matching settings",
   "settings.search.keywords.general": "general author name email graph fetch prune scan",
   "settings.search.keywords.ssh": "ssh key agent private public",

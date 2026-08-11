@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -52,5 +53,45 @@ describe('SearchInput', () => {
 
     expect(container.firstElementChild).toHaveClass('max-w-sm')
     expect(screen.getByTestId('global-search')).toBeInTheDocument()
+  })
+
+  /** The field is named for a screen reader even where the caller only gave a placeholder — which a
+   * placeholder does not do on its own, since it disappears the moment anything is typed. */
+  it('names the field from the placeholder, and lets a caller override it', () => {
+    const { rerender } = render(<SearchInput {...props} value="" />)
+    expect(screen.getByRole('textbox')).toHaveAccessibleName('Search pull requests…')
+
+    rerender(<SearchInput {...props} value="" ariaLabel="Filter branches" />)
+    expect(screen.getByRole('textbox')).toHaveAccessibleName('Filter branches')
+  })
+
+  /** ⌥⌘F focuses the sidebar filter, which means reaching the field itself, not its wrapper. */
+  it('forwards a ref to the field so a shortcut can focus it', () => {
+    const ref = createRef<HTMLInputElement>()
+    render(<SearchInput {...props} value="" inputRef={ref} />)
+
+    ref.current?.focus()
+
+    expect(screen.getByRole('textbox')).toHaveFocus()
+  })
+
+  it('forwards keystrokes so a caller can close on Escape', async () => {
+    const onKeyDown = vi.fn()
+    const user = userEvent.setup()
+    render(<SearchInput {...props} value="" onKeyDown={onKeyDown} />)
+
+    await user.type(screen.getByRole('textbox'), '{Escape}')
+
+    expect(onKeyDown).toHaveBeenCalled()
+  })
+
+  /** The sidebar filter signals solo mode with a ring on the field itself — the one thing a caller
+   * styles, as opposed to the size, which is the component's to fix. */
+  it('lets a caller mark state on the field without resizing it', () => {
+    render(<SearchInput {...props} value="" inputClassName="ring-1 ring-primary" />)
+
+    const field = screen.getByRole('textbox')
+    expect(field).toHaveClass('ring-primary')
+    expect(field).toHaveClass('h-7')
   })
 })
