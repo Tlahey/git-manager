@@ -61,18 +61,24 @@ beforeEach(() => {
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
 })
 
-describe('useMergedWorktrees — GitHub remote/token detection', () => {
+describe('useMergedWorktrees — GitHub remote/account detection', () => {
   it('reports isGithub false and never fetches when no remote matches GitHub', () => {
     const { result } = renderHook(
       () =>
-        useMergedWorktrees('/repo', [worktree()], ['https://gitlab.com/org/repo.git'], 'tok', true),
+        useMergedWorktrees(
+          '/repo',
+          [worktree()],
+          ['https://gitlab.com/org/repo.git'],
+          'acct',
+          true
+        ),
       { wrapper }
     )
     expect(result.current.isGithub).toBe(false)
     expect(mockedFetch).not.toHaveBeenCalled()
   })
 
-  it('reports hasToken false and never fetches when there is no token anywhere', () => {
+  it('reports hasAccount false and never fetches when there is no account anywhere', () => {
     const { result } = renderHook(
       () =>
         useMergedWorktrees(
@@ -85,23 +91,22 @@ describe('useMergedWorktrees — GitHub remote/token detection', () => {
       { wrapper }
     )
     expect(result.current.isGithub).toBe(true)
-    expect(result.current.hasToken).toBe(false)
+    expect(result.current.hasAccount).toBe(false)
     expect(mockedFetch).not.toHaveBeenCalled()
   })
 
-  it('resolves the token from the active GitHub account when not explicitly given', async () => {
+  it('resolves the account id from the active GitHub account when not explicitly given', async () => {
     useSettingsStore.setState({
       settings: {
         ...DEFAULT_SETTINGS,
         github: {
           accounts: [
             {
-              id: 'acc1',
-              token: 'account-tok',
+              id: 'acct',
               user: { login: 'account-user', name: null, email: null, avatarUrl: '' },
             },
           ],
-          activeAccountId: 'acc1',
+          activeAccountId: 'acct',
         },
       },
     })
@@ -117,7 +122,7 @@ describe('useMergedWorktrees — GitHub remote/token detection', () => {
         ),
       { wrapper }
     )
-    await waitFor(() => expect(mockedFetch).toHaveBeenCalledWith('org', 'repo', 'account-tok'))
+    await waitFor(() => expect(mockedFetch).toHaveBeenCalledWith('org', 'repo', 'acct'))
   })
 
   it('does not fetch when enabled is false', () => {
@@ -127,7 +132,7 @@ describe('useMergedWorktrees — GitHub remote/token detection', () => {
           '/repo',
           [worktree()],
           ['https://github.com/org/repo.git'],
-          'tok',
+          'acct',
           false
         ),
       { wrapper }
@@ -145,7 +150,7 @@ describe('useMergedWorktrees — filtering', () => {
     const a = worktree({ path: '/tmp/a', branch: 'feature/a' })
     const b = worktree({ path: '/tmp/b', branch: 'feature/b' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [a, b], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [a, b], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(2))
@@ -162,7 +167,7 @@ describe('useMergedWorktrees — filtering', () => {
           '/repo',
           [clean, dirty],
           ['https://github.com/org/repo.git'],
-          'tok',
+          'acct',
           true
         ),
       { wrapper }
@@ -181,7 +186,7 @@ describe('useMergedWorktrees — filtering', () => {
           '/repo',
           [onBranch, detached],
           ['https://github.com/org/repo.git'],
-          'tok',
+          'acct',
           true
         ),
       { wrapper }
@@ -194,7 +199,13 @@ describe('useMergedWorktrees — filtering', () => {
     mockedFetch.mockResolvedValue([closedPr({ head: { ref: 'feature/other' } })])
     const { result } = renderHook(
       () =>
-        useMergedWorktrees('/repo', [worktree()], ['https://github.com/org/repo.git'], 'tok', true),
+        useMergedWorktrees(
+          '/repo',
+          [worktree()],
+          ['https://github.com/org/repo.git'],
+          'acct',
+          true
+        ),
       { wrapper }
     )
     await waitFor(() => expect(mockedFetch).toHaveBeenCalled())
@@ -205,7 +216,13 @@ describe('useMergedWorktrees — filtering', () => {
     mockedFetch.mockResolvedValue([closedPr({ merged_at: null })])
     const { result } = renderHook(
       () =>
-        useMergedWorktrees('/repo', [worktree()], ['https://github.com/org/repo.git'], 'tok', true),
+        useMergedWorktrees(
+          '/repo',
+          [worktree()],
+          ['https://github.com/org/repo.git'],
+          'acct',
+          true
+        ),
       { wrapper }
     )
     await waitFor(() => expect(mockedFetch).toHaveBeenCalled())
@@ -216,7 +233,13 @@ describe('useMergedWorktrees — filtering', () => {
     mockedFetch.mockResolvedValue([closedPr()])
     const { result } = renderHook(
       () =>
-        useMergedWorktrees('/repo', [worktree()], ['https://github.com/org/repo.git'], 'tok', true),
+        useMergedWorktrees(
+          '/repo',
+          [worktree()],
+          ['https://github.com/org/repo.git'],
+          'acct',
+          true
+        ),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(1))
@@ -227,7 +250,13 @@ describe('useMergedWorktrees — filtering', () => {
     mockedFetch.mockReturnValue(new Promise((resolve) => (resolveFetch = resolve)))
     const { result } = renderHook(
       () =>
-        useMergedWorktrees('/repo', [worktree()], ['https://github.com/org/repo.git'], 'tok', true),
+        useMergedWorktrees(
+          '/repo',
+          [worktree()],
+          ['https://github.com/org/repo.git'],
+          'acct',
+          true
+        ),
       { wrapper }
     )
     expect(result.current.isLoading).toBe(true)
@@ -237,7 +266,7 @@ describe('useMergedWorktrees — filtering', () => {
 
   it('is never loading when there are no worktrees to check', () => {
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     expect(result.current.isLoading).toBe(false)
@@ -258,7 +287,7 @@ describe('useMergedWorktrees — per-worktree checks', () => {
           '/repo',
           [merged, dirty, detached, noMatch],
           ['https://github.com/org/repo.git'],
-          'tok',
+          'acct',
           true
         ),
       { wrapper }
@@ -278,7 +307,7 @@ describe('useMergedWorktrees — per-worktree checks', () => {
     mockedFetch.mockReturnValue(new Promise(() => {}))
     const wt = worktree()
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     expect(result.current.checks).toEqual([{ worktree: wt, status: 'checking' }])
@@ -291,7 +320,7 @@ describe('useMergedWorktrees — gone-upstream local signal', () => {
     mockedGone.mockResolvedValue(['feature/local'])
     const wt = worktree({ path: '/tmp/local', branch: 'feature/local' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(1))
@@ -299,7 +328,7 @@ describe('useMergedWorktrees — gone-upstream local signal', () => {
     expect(mockedGone).toHaveBeenCalledWith('/repo')
   })
 
-  it('detects a gone-upstream worktree even without a GitHub token (no PR fetch)', async () => {
+  it('detects a gone-upstream worktree even without a GitHub account (no PR fetch)', async () => {
     mockedGone.mockResolvedValue(['feature/login'])
     const wt = worktree({ branch: 'feature/login' })
     const { result } = renderHook(
@@ -316,7 +345,7 @@ describe('useMergedWorktrees — gone-upstream local signal', () => {
     mockedGone.mockResolvedValue(['some/other-branch'])
     const wt = worktree({ branch: 'feature/login' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -329,7 +358,7 @@ describe('useMergedWorktrees — gone-upstream local signal', () => {
     mockedGone.mockResolvedValue(['feature/login']) // also gone upstream
     const wt = worktree({ branch: 'feature/login' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(1))
@@ -346,7 +375,7 @@ describe('useMergedWorktrees — commit → pull request signal', () => {
     mockedCommitPr.mockResolvedValue({ number: 42, title: 'feat: thing' })
     const wt = worktree({ branch: 'feature/x', commitOid: 'sha-abc' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(1))
@@ -354,7 +383,7 @@ describe('useMergedWorktrees — commit → pull request signal', () => {
       merged: { number: 42, title: 'feat: thing' },
     })
     // The worktree's own branch is passed so the API can reject other branches' PRs.
-    expect(mockedCommitPr).toHaveBeenCalledWith('org', 'repo', 'sha-abc', 'feature/x', 'tok')
+    expect(mockedCommitPr).toHaveBeenCalledWith('org', 'repo', 'sha-abc', 'feature/x', 'acct')
   })
 
   it('does not flag a worktree when no merged PR matches its branch (fork-point commit case)', async () => {
@@ -363,7 +392,7 @@ describe('useMergedWorktrees — commit → pull request signal', () => {
     mockedCommitPr.mockResolvedValue(null)
     const wt = worktree()
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -377,7 +406,7 @@ describe('useMergedWorktrees — commit → pull request signal', () => {
     mockedCommitPr.mockResolvedValue({ number: 7, title: 'fix: y' })
     const wt = worktree({ branch: 'feature/x' })
     const { result } = renderHook(
-      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'tok', true),
+      () => useMergedWorktrees('/repo', [wt], ['https://github.com/org/repo.git'], 'acct', true),
       { wrapper }
     )
     await waitFor(() => expect(result.current.mergedWorktrees).toHaveLength(1))

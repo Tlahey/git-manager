@@ -33,6 +33,11 @@ Choose the **OpenAI-compatible** preset in Settings → AI and fill in the base 
 name, and an API key if the endpoint wants one. This covers LM Studio, llama.cpp's server, vLLM,
 a team gateway, or a commercial API — anything speaking `/v1/chat/completions`.
 
+The key is saved to your macOS Keychain rather than to a settings file, so the field shows
+"a key is saved in your keychain" instead of the key itself — there is nothing to read back, which
+is the point. Type a new one to replace it, or use **Remove** to delete it. See
+[Private by design](/docs/privacy).
+
 ::: warning Remote endpoints see your diffs
 With a non-local URL, AI requests leave your machine. The rest of the app stays fully local
 either way — only the AI features use this endpoint.

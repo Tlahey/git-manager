@@ -3,16 +3,26 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ProviderAccount } from '@git-manager/git-types'
 
-const { apiGitlabDeviceCode, apiGitlabPollToken, apiGitlabGetUser } = vi.hoisted(() => ({
+const {
+  apiGitlabDeviceCode,
+  apiGitlabPollToken,
+  apiGitlabGetUser,
+  apiStoreCredential,
+  apiDeleteCredential,
+} = vi.hoisted(() => ({
   apiGitlabDeviceCode: vi.fn(),
   apiGitlabPollToken: vi.fn(),
   apiGitlabGetUser: vi.fn(),
+  apiStoreCredential: vi.fn().mockResolvedValue(undefined),
+  apiDeleteCredential: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../../../api/integrations.api', () => ({
   apiGitlabDeviceCode,
   apiGitlabPollToken,
   apiGitlabGetUser,
 }))
+// The token goes to the OS keychain, which a jsdom run has none of.
+vi.mock('../../../api/credentials.api', () => ({ apiStoreCredential, apiDeleteCredential }))
 
 import { GitlabPanel } from './GitlabPanel'
 
@@ -137,7 +147,6 @@ describe('GitlabPanel — accounts', () => {
           id: 'someone@gitlab.com',
           host: 'https://gitlab.com',
           username: 'someone',
-          token: 't',
           displayName: 'Some One',
           authMethod: 'oauth',
         },
@@ -151,11 +160,13 @@ describe('GitlabPanel — accounts', () => {
   it('removing the active account clears the active id', async () => {
     const user = userEvent.setup()
     const { onChange } = renderPanel(
-      [{ id: 'a@gitlab.com', host: 'https://gitlab.com', username: 'a', token: 't' }],
+      [{ id: 'a@gitlab.com', host: 'https://gitlab.com', username: 'a' }],
       'a@gitlab.com'
     )
     await user.click(screen.getByTestId('integration-gitlab-remove-a@gitlab.com'))
     expect(onChange).toHaveBeenCalledWith({ accounts: [], activeAccountId: null })
+    // …and the credential goes with it, or the keychain keeps an entry nothing can revoke.
+    expect(apiDeleteCredential).toHaveBeenCalledWith('gitlab', 'a@gitlab.com')
   })
 
   it('surfaces a failed device-code request instead of waiting silently', async () => {

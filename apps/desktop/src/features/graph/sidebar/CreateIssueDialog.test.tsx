@@ -17,7 +17,7 @@ const OWNER_REPO = { owner: 'owner', repo: 'repo' }
 
 beforeEach(() => {
   createIssue.mockReset().mockResolvedValue({ number: 99 })
-  useRepoGitHub.mockReturnValue({ ownerRepo: OWNER_REPO, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: OWNER_REPO, accountId: 'acct' })
   openUrl.mockReset()
 })
 
@@ -79,7 +79,7 @@ describe('CreateIssueDialog — submission', () => {
         'owner',
         'repo',
         { title: 'Something broke', body: 'Steps to reproduce' },
-        'tok'
+        'acct'
       )
     )
     expect(onCreated).toHaveBeenCalled()
@@ -102,19 +102,19 @@ describe('CreateIssueDialog — submission', () => {
 
 describe('CreateIssueDialog — unavailable states', () => {
   it('explains that the repo is not on GitHub and blocks the form', () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: null, token: 'tok' })
+    useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: 'acct' })
     renderDialog()
     expect(screen.getByTestId('issue-create-no-github')).toBeInTheDocument()
     expect(screen.getByTestId('issue-create-title-input')).toBeDisabled()
     expect(screen.getByTestId('issue-create-confirm-button')).toBeDisabled()
   })
 
-  it('asks the user to sign in when there is no token', async () => {
+  it('asks the user to sign in when there is no accountId', async () => {
     const user = userEvent.setup()
-    useRepoGitHub.mockReturnValue({ ownerRepo: OWNER_REPO, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: OWNER_REPO, accountId: null })
     renderDialog()
 
-    expect(screen.getByTestId('issue-create-no-token')).toBeInTheDocument()
+    expect(screen.getByTestId('issue-create-no-accountId')).toBeInTheDocument()
     await user.type(screen.getByTestId('issue-create-title-input'), 'Something broke')
     expect(screen.getByTestId('issue-create-confirm-button')).toBeDisabled()
   })

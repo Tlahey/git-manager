@@ -24,7 +24,7 @@ export function useActiveBranchPr(): PullRequest | undefined {
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo ?? ''
   // Remotes are repo-global (shared by every worktree), so they key off the repo tab, not the path.
   const remoteUrls = activeRepo ? (repoCache[activeRepo]?.remotes ?? []) : []
-  const githubToken = activeAccount?.token ?? undefined
+  const githubAccountId = activeAccount?.id ?? undefined
   const currentUser = activeAccount?.user?.login
 
   const { data: branches = [] } = useBranches(effectiveRepoPath)
@@ -33,8 +33,8 @@ export function useActiveBranchPr(): PullRequest | undefined {
     [branches]
   )
 
-  const { allPrs } = usePullRequests({ remoteUrls, currentUser, githubToken })
-  const mergedByBranch = useMergedPrsByBranch({ remoteUrls, githubToken })
+  const { allPrs } = usePullRequests({ remoteUrls, currentUser, githubAccountId })
+  const mergedByBranch = useMergedPrsByBranch({ remoteUrls, githubAccountId })
 
   return useMemo(() => {
     if (!currentBranch) return undefined

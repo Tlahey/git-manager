@@ -45,7 +45,10 @@ function setBranch(head: string, isDetached = false) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoGitHubMock.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHubMock.mockReturnValue({
+    ownerRepo: { owner: 'org', repo: 'repo' },
+    accountId: 'acct',
+  })
   m.createPr.mockResolvedValue({ number: 99, html_url: 'https://github.com/org/repo/pull/99' })
   setBranch('feature-x')
   useRepoUIStore.setState({ activePrNumber: null, prComposer: null })
@@ -65,7 +68,10 @@ describe('usePrPublishFlow — mode detection', () => {
   })
 
   it('is "unavailable" when signed out', () => {
-    useRepoGitHubMock.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+    useRepoGitHubMock.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      accountId: null,
+    })
     const { result } = renderHook(() => usePrPublishFlow(REPO))
     expect(result.current.mode).toBe('unavailable')
   })
@@ -141,7 +147,7 @@ describe('usePrPublishFlow — createPr', () => {
       'org',
       'repo',
       { title: 'T', head: 'feature-x', base: 'main', body: 'B' },
-      'tok'
+      'acct'
     )
     expect(useRepoUIStore.getState().activePrNumber).toBe(99)
     // The composer is dismissed once the PR exists (the PR view takes over).

@@ -37,7 +37,6 @@ function repo(overrides: Partial<GitRepo> = {}): GitRepo {
 function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
   return {
     id: 'acc1',
-    token: 'tok',
     user: { login: 'antoine', name: 'Antoine', email: null, avatarUrl: '' },
     ...overrides,
   }
@@ -292,7 +291,7 @@ describe('Footer — GitHub account link', () => {
     expect(screen.getByText('GitHub disconnected')).toBeInTheDocument()
   })
 
-  it('shows the connected account name once a token is active', () => {
+  it('shows the connected account name once an account is active', () => {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,

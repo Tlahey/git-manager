@@ -4,6 +4,7 @@ import { Button, Input, ScrollArea, Tag, Alert, GitlabIcon } from '@git-manager/
 import { Check, Trash2, Globe, RefreshCw, Copy, Key } from 'lucide-react'
 import type { ProviderAccount } from '@git-manager/git-types'
 import { useGitlabDeviceFlow } from '../../../hooks/useGitlabDeviceFlow'
+import { apiDeleteCredential, apiStoreCredential } from '../../../api/credentials.api'
 
 const GITLAB_COM = 'https://gitlab.com'
 
@@ -35,18 +36,21 @@ export function GitlabPanel({ accounts, activeAccountId, onChange }: GitlabPanel
   const { connecting, error, deviceFlowData, startOAuthLogin, cancelFlow } = useGitlabDeviceFlow({
     instanceUrl: normalisedHost || GITLAB_COM,
     clientId: isSelfHosted ? clientId.trim() || null : null,
-    onLoginSuccess: (token, user) => {
+    onLoginSuccess: async (token, user) => {
       const id = `${user.username}@${(normalisedHost || GITLAB_COM).replace(/^https?:\/\//, '')}`
       const account: ProviderAccount = {
         id,
         host: normalisedHost || GITLAB_COM,
         username: user.username,
-        token,
         displayName: user.name ?? undefined,
         avatarUrl: user.avatarUrl ?? undefined,
         authMethod: 'oauth',
         clientId: isSelfHosted ? clientId.trim() || undefined : undefined,
       }
+      // The token goes to the OS keychain and nowhere else — `settings.json` records who is
+      // connected, never what would let something act as them. Stored before the account is
+      // announced, so a keychain failure cannot leave an account listed with nothing behind it.
+      await apiStoreCredential('gitlab', token, id)
       onChange({
         accounts: [...accounts.filter((a) => a.id !== id), account],
         activeAccountId: id,
@@ -55,6 +59,11 @@ export function GitlabPanel({ accounts, activeAccountId, onChange }: GitlabPanel
   })
 
   function handleRemove(id: string) {
+    // Forget the credential too: dropping the account here while its token stayed in the keychain
+    // would leave an entry nothing in the app can reach — or revoke. Best effort.
+    void apiDeleteCredential('gitlab', id).catch((e) => {
+      console.error('Failed to remove the stored GitLab token:', e)
+    })
     const next = accounts.filter((a) => a.id !== id)
     const stillActive = activeAccountId === id ? (next[0]?.id ?? null) : activeAccountId
     onChange({ accounts: next, activeAccountId: stillActive })

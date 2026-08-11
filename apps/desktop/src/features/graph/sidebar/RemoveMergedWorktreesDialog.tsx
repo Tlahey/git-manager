@@ -22,7 +22,7 @@ interface RemoveMergedWorktreesDialogProps {
   /** All non-main worktrees — merge-status filtering happens inside via useMergedWorktrees. */
   worktrees: GitWorktree[]
   remoteUrls: string[]
-  githubToken?: string
+  githubAccountId?: string
   /** When set, only worktrees whose merged PR was authored by `currentUser` are offered. */
   mineOnly?: boolean
   currentUser?: string
@@ -92,7 +92,7 @@ export function RemoveMergedWorktreesDialog({
   repoPath,
   worktrees,
   remoteUrls,
-  githubToken,
+  githubAccountId,
   mineOnly = false,
   currentUser,
   open,
@@ -108,8 +108,8 @@ export function RemoveMergedWorktreesDialog({
     checks,
     isLoading: isChecking,
     isGithub,
-    hasToken,
-  } = useMergedWorktrees(repoPath, worktrees, remoteUrls, githubToken, open)
+    hasAccount,
+  } = useMergedWorktrees(repoPath, worktrees, remoteUrls, githubAccountId, open)
 
   // "Mine" = the merged PR was authored by the signed-in GitHub user. Only PR-detected worktrees
   // carry an author, so in mine-mode gone-upstream-only ones (no PR) are never offered.
@@ -182,7 +182,7 @@ export function RemoveMergedWorktreesDialog({
 
         {/* GitHub is optional — the local "merged into main" signal works without it. When it's
             unavailable we just note that PR detection is off, rather than blocking the whole flow. */}
-        {(!isGithub || !hasToken) && (
+        {(!isGithub || !hasAccount) && (
           <p
             className="text-[11px] text-muted-foreground/70"
             data-testid="worktree-remove-merged-github-hint"

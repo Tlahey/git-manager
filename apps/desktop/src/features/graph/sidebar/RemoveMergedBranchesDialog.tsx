@@ -25,7 +25,7 @@ interface RemoveMergedBranchesDialogProps {
   /** Branch names currently checked out in a linked worktree (git refuses to delete those). */
   worktreeBranches: string[]
   remoteUrls: string[]
-  githubToken?: string
+  githubAccountId?: string
   /** When set, only branches whose merged PR was authored by `currentUser` are offered. */
   mineOnly?: boolean
   currentUser?: string
@@ -87,7 +87,7 @@ export function RemoveMergedBranchesDialog({
   branches,
   worktreeBranches,
   remoteUrls,
-  githubToken,
+  githubAccountId,
   mineOnly = false,
   currentUser,
   open,
@@ -103,8 +103,8 @@ export function RemoveMergedBranchesDialog({
     checks,
     isLoading: isChecking,
     isGithub,
-    hasToken,
-  } = useMergedBranches(repoPath, branches, worktreeBranches, remoteUrls, githubToken, open)
+    hasAccount,
+  } = useMergedBranches(repoPath, branches, worktreeBranches, remoteUrls, githubAccountId, open)
 
   // "Mine" = the merged PR was authored by the signed-in GitHub user. Only PR-detected branches
   // carry an author, so in mine-mode gone-upstream-only ones (no PR) are never offered.
@@ -178,7 +178,7 @@ export function RemoveMergedBranchesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {(!isGithub || !hasToken) && (
+        {(!isGithub || !hasAccount) && (
           <p
             className="text-[11px] text-muted-foreground/70"
             data-testid="branch-remove-merged-github-hint"

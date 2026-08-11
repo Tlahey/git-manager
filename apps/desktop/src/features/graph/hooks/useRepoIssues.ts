@@ -8,7 +8,7 @@ import type { MockIssue } from '../../../lib/github/types'
 
 export interface UseRepoIssuesOptions {
   remoteUrls: string[]
-  githubToken?: string
+  githubAccountId?: string
   /** The saved filters to resolve, in display order — one sub-group each. */
   filters: IssueFilter[]
   enabled?: boolean
@@ -28,7 +28,7 @@ export interface UseRepoIssuesResult {
   /** Every issue matched by any filter, de-duplicated (the filters overlap by design). */
   allIssues: MockIssue[]
   isGithub: boolean
-  /** Whether a GitHub account (or an explicit `githubToken`) backs the queries — see below. */
+  /** Whether a GitHub account (or an explicit `githubAccountId`) backs the queries — see below. */
   isConnected: boolean
   isLoading: boolean
   error: Error | null
@@ -57,13 +57,13 @@ export interface UseRepoIssuesResult {
  */
 export function useRepoIssues({
   remoteUrls,
-  githubToken,
+  githubAccountId,
   filters,
   enabled = true,
 }: UseRepoIssuesOptions): UseRepoIssuesResult {
   const account = useGithubAccount()
-  const resolvedToken = githubToken || account.token || undefined
-  const isConnected = !!resolvedToken
+  const resolvedAccountId = githubAccountId || account.accountId || undefined
+  const isConnected = !!resolvedAccountId
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
@@ -78,7 +78,7 @@ export function useRepoIssues({
           'repo-issue-filters',
           ownerRepo.owner,
           ownerRepo.repo,
-          resolvedToken,
+          resolvedAccountId,
           queriesKey,
         ] as const)
       : null
@@ -90,7 +90,7 @@ export function useRepoIssues({
       return Promise.all(
         filters.map(async (filter) => {
           try {
-            const issues = await fetchIssuesByQuery(owner, repo, filter.query, resolvedToken)
+            const issues = await fetchIssuesByQuery(owner, repo, filter.query, resolvedAccountId)
             return { filter, issues, error: null }
           } catch (err) {
             return { filter, issues: [], error: String(err) }

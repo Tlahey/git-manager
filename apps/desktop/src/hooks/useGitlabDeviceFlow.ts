@@ -16,7 +16,16 @@ interface UseGitlabDeviceFlowOptions {
    * id is unknown to it.
    */
   clientId: string | null
-  onLoginSuccess: (token: string, user: GitLabUserInfo) => void
+  /**
+   * Called with the freshly issued token and the profile it belongs to.
+   *
+   * Still carries the token, unlike GitHub's equivalent, and the difference is not an oversight: a
+   * GitLab account's id is built from the *instance* the caller chose, which only the caller knows,
+   * so it is the caller that files the credential in the keychain (`apiStoreCredential('gitlab', …)`)
+   * under that id. May be async, and is awaited, so the account is not announced before its token
+   * is stored.
+   */
+  onLoginSuccess: (token: string, user: GitLabUserInfo) => void | Promise<void>
 }
 
 /**
@@ -50,7 +59,7 @@ export function useGitlabDeviceFlow({
     setError(null)
     try {
       const user = await apiGitlabGetUser(instanceUrl, tokenVal)
-      onLoginSuccess(tokenVal, user)
+      await onLoginSuccess(tokenVal, user)
       return true
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : '') || String(err))

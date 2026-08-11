@@ -29,7 +29,7 @@ export type PrPublishMode = 'protected' | 'feature' | 'unavailable'
  */
 export function usePrPublishFlow(repoPath: string) {
   const queryClient = useQueryClient()
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const repo = useRepoDataStore((s) => s.repoCache[repoPath])
   const { protectedBranches } = useEffectiveRepoSettings(repoPath)
   const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
@@ -41,7 +41,7 @@ export function usePrPublishFlow(repoPath: string) {
   const isProtected = currentBranch != null && protectedBranches.includes(currentBranch)
 
   const mode: PrPublishMode =
-    !ownerRepo || !token || !currentBranch || isDetached
+    !ownerRepo || !accountId || !currentBranch || isDetached
       ? 'unavailable'
       : isProtected
         ? 'protected'
@@ -50,10 +50,10 @@ export function usePrPublishFlow(repoPath: string) {
   // The GitHub default branch is the base for a feature-branch PR; a protected-branch PR targets the
   // branch you were on. Fetched lazily and cached (only needed in `feature` mode).
   const { data: ghDefaultBranch } = useSWR(
-    mode === 'feature' && ownerRepo && token
+    mode === 'feature' && ownerRepo && accountId
       ? ['repo-default-branch', ownerRepo.owner, ownerRepo.repo]
       : null,
-    () => fetchRepoDefaultBranch(ownerRepo!.owner, ownerRepo!.repo, token!),
+    () => fetchRepoDefaultBranch(ownerRepo!.owner, ownerRepo!.repo, accountId!),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
 
@@ -120,7 +120,7 @@ export function usePrPublishFlow(repoPath: string) {
       body: string
       baseRef: string
     }): Promise<GhRawPR | undefined> => {
-      if (!ownerRepo || !token || !composer) return
+      if (!ownerRepo || !accountId || !composer) return
       setError(null)
       setBusy(true)
       try {
@@ -129,7 +129,7 @@ export function usePrPublishFlow(repoPath: string) {
           ownerRepo.owner,
           ownerRepo.repo,
           { title, head: composer.head, base: baseRef, body },
-          token
+          accountId
         )
         setPrComposer(null)
         setActivePrNumber(pr.number)
@@ -141,7 +141,7 @@ export function usePrPublishFlow(repoPath: string) {
         setBusy(false)
       }
     },
-    [ownerRepo, token, composer, repoPath, setActivePrNumber, setPrComposer]
+    [ownerRepo, accountId, composer, repoPath, setActivePrNumber, setPrComposer]
   )
 
   const cancel = useCallback(() => {

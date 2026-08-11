@@ -7,7 +7,7 @@ import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 
 export interface UseMergedPrsByBranchOptions {
   remoteUrls: string[]
-  githubToken?: string
+  githubAccountId?: string
   enabled?: boolean
 }
 
@@ -22,20 +22,20 @@ export interface UseMergedPrsByBranchOptions {
  */
 export function useMergedPrsByBranch({
   remoteUrls,
-  githubToken,
+  githubAccountId,
   enabled = true,
 }: UseMergedPrsByBranchOptions): Map<string, PullRequest> {
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const token = githubToken || (activeAccount?.token ?? undefined)
+  const accountId = githubAccountId || (activeAccount?.id ?? undefined)
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
 
   const swrKey =
-    enabled && isGithub && ownerRepo && token
-      ? ['sidebar-closed-prs', ownerRepo.owner, ownerRepo.repo, token]
+    enabled && isGithub && ownerRepo && accountId
+      ? ['sidebar-closed-prs', ownerRepo.owner, ownerRepo.repo, accountId]
       : null
 
   const { data } = useSWR(

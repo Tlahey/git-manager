@@ -36,15 +36,15 @@ export function useGitHubRepoIssues(): RepoIssuesData {
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
-  const token = activeAccount?.token ?? null
+  const accountId = activeAccount?.id ?? null
   const username = activeAccount?.user?.login ?? null
-  const hasToken = !!token && !!username
+  const hasAccount = !!accountId && !!username
 
   const savedRepos = useRepoDataStore((s) => s.savedRepos)
   const paths = savedRepos.map((r) => r.path)
 
   const { data, error, isValidating, mutate } = useSWR(
-    hasToken && paths.length > 0 ? ['github-repo-issues', token, paths.join('\n')] : null,
+    hasAccount && paths.length > 0 ? ['github-repo-issues', accountId, paths.join('\n')] : null,
     async ([, tok]) => {
       const ownerRepos = (
         await Promise.all(
@@ -70,7 +70,7 @@ export function useGitHubRepoIssues(): RepoIssuesData {
     }
   )
 
-  if (!hasToken) {
+  if (!hasAccount) {
     // Empty unless a development build asked for the fixtures — `useDevFixtures` gates on the flag.
     return {
       issues: fixtureIssues,

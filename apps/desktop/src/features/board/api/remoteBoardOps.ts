@@ -27,14 +27,14 @@ export type RemoteBoardOps = Pick<
 >
 
 export function createBoardOps(ctx: RemoteBoardContext): RemoteBoardOps {
-  const { owner, repo, token, loadBoard, patchBoardInConfig } = ctx
+  const { owner, repo, accountId, loadBoard, patchBoardInConfig } = ctx
 
   return {
     listBoards: async (path) => (await readConfigFile(path)).boards,
 
     getBoard: async (path, boardId) => {
       const board = await loadBoard(path, boardId)
-      const issues = await fetchRepoIssues(owner, repo, token)
+      const issues = await fetchRepoIssues(owner, repo, accountId)
       const cards: BoardCard[] = []
       for (const issue of issues) {
         const card = cardFromIssue(board, {
@@ -92,7 +92,7 @@ export function createBoardOps(ctx: RemoteBoardContext): RemoteBoardOps {
       // config is rewritten — otherwise a tag would show the user's colour in-app and a random one
       // on github.com.
       for (const tag of tags) {
-        await createOrUpdateLabel(owner, repo, tag.name, tag.color, token)
+        await createOrUpdateLabel(owner, repo, tag.name, tag.color, accountId)
       }
       return patchBoardInConfig(path, boardId, expectedRevision, (board) => ({
         ...board,

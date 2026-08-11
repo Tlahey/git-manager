@@ -483,16 +483,16 @@ describe('RepositorySidebar — sections', () => {
     expect(screen.getByTestId('create-branch-dialog-stub')).toHaveAttribute('data-open', 'true')
   })
 
-  it('forwards onCreatePr to the prs section header only when a githubToken is set', () => {
+  it('forwards onCreatePr to the prs section header only when a githubAccountId is set', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'prs', title: 'Pull Requests' })],
     })
-    renderSidebar({ githubToken: 'token' })
+    renderSidebar({ githubAccountId: 'token' })
     expect(lastHeaderCalls.current[0]).toMatchObject({ sectionKey: 'prs' })
     expect(lastHeaderCalls.current[0].onCreatePr).toBeInstanceOf(Function)
   })
 
-  it('omits onCreatePr on the prs section header when there is no githubToken', () => {
+  it('omits onCreatePr on the prs section header when there is no githubAccountId', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'prs', title: 'Pull Requests' })],
     })
@@ -526,7 +526,7 @@ describe('RepositorySidebar — sections', () => {
         section({ key: 'issues', title: 'Issues' }),
       ],
     })
-    renderSidebar({ githubToken: 'token' })
+    renderSidebar({ githubAccountId: 'token' })
     const prs = lastHeaderCalls.current.find((p) => p.sectionKey === 'prs')!
     const issues = lastHeaderCalls.current.find((p) => p.sectionKey === 'issues')!
     expect(prs.onAddPrFilter).toBeInstanceOf(Function)

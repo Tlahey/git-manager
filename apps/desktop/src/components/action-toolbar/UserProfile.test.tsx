@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
   return {
     id: 'acc1',
-    token: 'tok',
     user: {
       login: 'octocat',
       name: 'The Octocat',

@@ -21,14 +21,16 @@ import { appSettingsSchema } from './settingsSchema'
  * data, so where a value is an open set (a theme name, an achievement definition) it is accepted as
  * given and left to the store's own merge.
  *
- * ⚠️ **The `settings` section still holds secrets in clear text** — `github.accounts[].token`,
- * `integrations.*Accounts[].token` and `ai.apiKey`. The frontend signs its own GitHub requests
- * (`api/github/*.api.ts` calls `fetch` directly), so it needs the token in hand, and that is why it
- * is persisted at all. It predates this file — the same tokens were in `localStorage` — but a
- * readable JSON in `$HOME` is much easier to leak by accident, so the file is written owner-only
- * (`0600`, see `services/app_config.rs`). That is a floor, not the fix: the tokens belong in the OS
- * keychain with the network calls moved behind Rust, so the frontend never sees them. Until then,
- * treat this file as secret — do not commit it, and do not paste it into an issue.
+ * **No secret belongs in this file, and none is written to it.** Provider tokens and the AI API key
+ * live in the OS keychain (`lib/tauri/credentials.ts`, `services/credential_store.rs`), reachable
+ * only from Rust; what an account keeps here is its id, its login and its avatar. The schemas below
+ * name no `token` and no `apiKey`, so adding one back would show up in a diff — and a settings file
+ * written by an older build is repaired on the first launch that reads it (`secretsMigration.ts`
+ * moves whatever it finds into the keychain and rewrites the section without it).
+ *
+ * The file is still written owner-only (`0600`, see `services/app_config.rs`). That is no longer
+ * what stands between a token and a backup, but it costs nothing and the configuration remains the
+ * user's own business.
  */
 
 const columnStateSchema = z.object({ visible: z.boolean(), width: z.number() })

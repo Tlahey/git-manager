@@ -10,7 +10,6 @@ const config: AiGenerateConfig = {
   protocol: 'openai-compatible',
   url: 'http://localhost:8000',
   model: 'demo-model',
-  apiKey: 'sk-super-secret',
   temperature: 0.2,
   timeoutSeconds: 30,
   maxTokens: 975,
@@ -61,12 +60,17 @@ describe('recordAiTranscript', () => {
     expect(entry.temperature).toBe(0.2)
   })
 
-  /** The config carries the user's key; the entry is built field by field so a future field added
-   * to `AiGenerateConfig` cannot ride along onto disk. */
-  it('never writes the API key or the provider URL', () => {
+  /**
+   * The entry is built field by field so a future field added to `AiGenerateConfig` cannot ride
+   * along onto disk. The API key no longer travels on that config at all — it lives in the OS
+   * keychain and is attached in Rust — but the URL still does, and the discipline that keeps it off
+   * the transcript is the same one that used to keep the key off it.
+   */
+  it('never writes the provider URL, and has no key to leak', () => {
     recordAiTranscript(call)
-    expect(JSON.stringify(written())).not.toContain('sk-super-secret')
+    expect(JSON.stringify(written())).not.toContain('localhost:8000')
     expect(written()).not.toHaveProperty('apiKey')
+    expect(written()).not.toHaveProperty('url')
   })
 
   it('records a failed call too — the one most worth having', () => {

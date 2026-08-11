@@ -32,7 +32,7 @@ interface CreateIssueDialogProps {
  */
 export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: CreateIssueDialogProps) {
   const { t } = useTranslation('git')
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const newIssueUrl = ownerRepo
     ? `https://github.com/${ownerRepo.owner}/${ownerRepo.repo}/issues/new`
     : null
@@ -43,7 +43,7 @@ export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: Create
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canSubmit = title.trim().length > 0 && !!ownerRepo && !!token && !isSubmitting
+  const canSubmit = title.trim().length > 0 && !!ownerRepo && !!accountId && !isSubmitting
 
   function reset() {
     setTitle('')
@@ -59,11 +59,11 @@ export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: Create
   }
 
   async function handleSubmit() {
-    if (!canSubmit || !ownerRepo || !token) return
+    if (!canSubmit || !ownerRepo || !accountId) return
     setIsSubmitting(true)
     setError(null)
     try {
-      await createIssue(ownerRepo.owner, ownerRepo.repo, { title: title.trim(), body }, token)
+      await createIssue(ownerRepo.owner, ownerRepo.repo, { title: title.trim(), body }, accountId)
       onCreated?.()
       reset()
       onClose()
@@ -126,8 +126,8 @@ export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: Create
             />
           </div>
 
-          {!token && ownerRepo && (
-            <p className="text-xs text-destructive" data-testid="issue-create-no-token">
+          {!accountId && ownerRepo && (
+            <p className="text-xs text-destructive" data-testid="issue-create-no-accountId">
               {t('sidebar.createIssue.noToken')}
             </p>
           )}

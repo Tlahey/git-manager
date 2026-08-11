@@ -12,16 +12,16 @@ import { useRepoGitHub } from './useRepoGitHub'
  */
 export function useIssueEdit(repoPath: string | null, issueNumber: number | null) {
   const { t } = useTranslation('git')
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { mutate } = useSWRConfig()
   const [pending, setPending] = useState(false)
 
   const update = useCallback(
     async (patch: { title?: string; body?: string }) => {
-      if (!ownerRepo || !token || issueNumber == null) return
+      if (!ownerRepo || !accountId || issueNumber == null) return
       setPending(true)
       try {
-        await updateIssue(ownerRepo.owner, ownerRepo.repo, issueNumber, patch, token)
+        await updateIssue(ownerRepo.owner, ownerRepo.repo, issueNumber, patch, accountId)
         await mutate((key) => Array.isArray(key) && key[0] === 'issue-detail')
       } catch (e) {
         toast.error(t('issue.view.editFailed'), { description: String(e) })
@@ -30,8 +30,8 @@ export function useIssueEdit(repoPath: string | null, issueNumber: number | null
         setPending(false)
       }
     },
-    [ownerRepo, token, issueNumber, mutate, t]
+    [ownerRepo, accountId, issueNumber, mutate, t]
   )
 
-  return { update, pending, canEdit: !!ownerRepo && !!token }
+  return { update, pending, canEdit: !!ownerRepo && !!accountId }
 }

@@ -28,11 +28,11 @@ const RISK_BADGE: Record<
 export function UpgradeRiskReport({
   entry,
   repoPath,
-  token,
+  accountId,
 }: {
   entry: OutdatedPackage
   repoPath: string
-  token?: string
+  accountId?: string
 }) {
   const { t } = useTranslation('git')
   const aiEnabled = useAiEnabled()
@@ -42,7 +42,7 @@ export function UpgradeRiskReport({
     entry.name,
     entry.current,
     entry.latest,
-    token
+    accountId
   )
   const { result, running, phase, elapsedSeconds, fileCount, error, assess } =
     useUpgradeRisk(repoPath)

@@ -34,14 +34,14 @@ function mergedCheck(wt: GitWorktree, prNumber = 1): WorktreeMergeCheck {
 
 function hookResult(
   checks: WorktreeMergeCheck[],
-  overrides: { isLoading?: boolean; isGithub?: boolean; hasToken?: boolean } = {}
+  overrides: { isLoading?: boolean; isGithub?: boolean; hasAccount?: boolean } = {}
 ) {
   return {
     checks,
     mergedWorktrees: checks.filter((c) => typeof c.status === 'object').map((c) => c.worktree),
     isLoading: false,
     isGithub: true,
-    hasToken: true,
+    hasAccount: true,
     ...overrides,
   }
 }
@@ -57,7 +57,7 @@ function renderDialog(
         repoPath="/repo"
         worktrees={[worktree()]}
         remoteUrls={['https://github.com/org/repo.git']}
-        githubToken="tok"
+        githubAccountId="tok"
         open
         onClose={vi.fn()}
         {...props}
@@ -85,7 +85,7 @@ describe('RemoveMergedWorktreesDialog — body states', () => {
   })
 
   it('shows a no-token message and disables confirm', () => {
-    useMergedWorktreesMock.mockReturnValue(hookResult([], { hasToken: false }))
+    useMergedWorktreesMock.mockReturnValue(hookResult([], { hasAccount: false }))
     renderDialog()
     expect(
       screen.getByText(

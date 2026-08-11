@@ -41,13 +41,13 @@ function rawPR(overrides: Partial<GhRawPR> & Record<string, unknown> = {}) {
 }
 
 /** The connected-account state: nothing is fetched without one (see the hook's doc comment). */
-function signIn(login = 'account-user', token = 'account-tok') {
+function signIn(login = 'account-user', accountId = 'acc1') {
   useSettingsStore.setState({
     settings: {
       ...DEFAULT_SETTINGS,
       github: {
-        accounts: [{ id: 'acc1', token, user: { login, name: null, email: null, avatarUrl: '' } }],
-        activeAccountId: 'acc1',
+        accounts: [{ id: accountId, user: { login, name: null, email: null, avatarUrl: '' } }],
+        activeAccountId: accountId,
       },
     },
   })
@@ -99,7 +99,10 @@ describe('usePullRequests — fetching and mapping', () => {
     mockedFetch.mockResolvedValue([rawPR()])
     const { result } = renderHook(
       () =>
-        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
+        usePullRequests({
+          remoteUrls: ['https://github.com/org/repo.git'],
+          githubAccountId: 'tok',
+        }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
@@ -119,7 +122,10 @@ describe('usePullRequests — fetching and mapping', () => {
     mockedFetch.mockResolvedValue([rawPR({ draft: true })])
     const { result } = renderHook(
       () =>
-        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
+        usePullRequests({
+          remoteUrls: ['https://github.com/org/repo.git'],
+          githubAccountId: 'tok',
+        }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
@@ -136,7 +142,7 @@ describe('usePullRequests — fetching and mapping', () => {
         usePullRequests({
           remoteUrls: ['https://github.com/org/repo.git'],
           currentUser: 'me',
-          githubToken: 'tok',
+          githubAccountId: 'tok',
         }),
       { wrapper }
     )
@@ -149,20 +155,23 @@ describe('usePullRequests — fetching and mapping', () => {
     mockedFetch.mockResolvedValue([rawPR()])
     const { result } = renderHook(
       () =>
-        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
+        usePullRequests({
+          remoteUrls: ['https://github.com/org/repo.git'],
+          githubAccountId: 'tok',
+        }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
     expect(result.current.myPrs).toEqual([])
   })
 
-  it('resolves user/token from the active GitHub account when not explicitly given', async () => {
+  it('resolves user/account id from the active GitHub account when not explicitly given', async () => {
     signIn()
     mockedFetch.mockResolvedValue([])
     renderHook(() => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }), {
       wrapper,
     })
-    await waitFor(() => expect(mockedFetch).toHaveBeenCalledWith('org', 'repo', 'account-tok'))
+    await waitFor(() => expect(mockedFetch).toHaveBeenCalledWith('org', 'repo', 'acc1'))
   })
 
   it('does not fetch when enabled is false', () => {
@@ -193,7 +202,10 @@ describe('usePullRequests — fetching and mapping', () => {
     mockedFetch.mockRejectedValue(new Error('rate limited'))
     const { result } = renderHook(
       () =>
-        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
+        usePullRequests({
+          remoteUrls: ['https://github.com/org/repo.git'],
+          githubAccountId: 'tok',
+        }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.error).not.toBeNull())

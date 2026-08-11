@@ -36,8 +36,16 @@ export function createCardOps(
   ctx: RemoteBoardContext,
   deps: Pick<BoardBackend, 'getBoard'>
 ): RemoteCardOps {
-  const { owner, repo, token, loadBoard, patchBoardInConfig, syncLabels, syncAssignee, readCard } =
-    ctx
+  const {
+    owner,
+    repo,
+    accountId,
+    loadBoard,
+    patchBoardInConfig,
+    syncLabels,
+    syncAssignee,
+    readCard,
+  } = ctx
 
   async function updateCard(
     path: string,
@@ -48,7 +56,7 @@ export function createCardOps(
   ): Promise<BoardCard> {
     const board = await loadBoard(path, boardId)
     const issueNumber = Number(cardId)
-    const raw = await fetchIssueDetail(owner, repo, issueNumber, token)
+    const raw = await fetchIssueDetail(owner, repo, issueNumber, accountId)
     if (raw.updated_at !== expectedRevision) {
       throw boardConflictError('This card changed since it was last read')
     }
@@ -100,7 +108,7 @@ export function createCardOps(
     const bodyChanged =
       body !== composeCardBody({ ...existingBody, description: existingBody.description })
     if (next.title !== current.title || bodyChanged) {
-      await updateIssue(owner, repo, issueNumber, { title: next.title, body }, token)
+      await updateIssue(owner, repo, issueNumber, { title: next.title, body }, accountId)
     }
 
     await syncLabels(
@@ -144,15 +152,15 @@ export function createCardOps(
             meta: { prefix: card.prefix || undefined },
           }),
         },
-        token
+        accountId
       )
       const labels = [boardColumnLabel(boardId, columnId)]
       if (card.kind === 'bug' || card.kind === 'epic') {
         const label = KIND_LABELS[card.kind]
-        await createOrUpdateLabel(owner, repo, label.name, label.color, token)
+        await createOrUpdateLabel(owner, repo, label.name, label.color, accountId)
         labels.push(label.name)
       }
-      await addLabels(owner, repo, created.number, labels, token)
+      await addLabels(owner, repo, created.number, labels, accountId)
       return readCard(board, created.number)
     },
 
@@ -160,7 +168,7 @@ export function createCardOps(
 
     addComment: async (path, boardId, cardId, body) => {
       const board = await loadBoard(path, boardId)
-      await createIssueComment(owner, repo, Number(cardId), body, token)
+      await createIssueComment(owner, repo, Number(cardId), body, accountId)
       return readCard(board, Number(cardId))
     },
 
@@ -186,7 +194,7 @@ export function createCardOps(
 
       for (const cardId of cardIds) {
         const issueNumber = Number(cardId)
-        const raw = await fetchIssueDetail(owner, repo, issueNumber, token)
+        const raw = await fetchIssueDetail(owner, repo, issueNumber, accountId)
         const labels = (raw.labels ?? []).map((l) => l.name)
         const oldLabel = labels.find((l) => l.startsWith(boardLabelPrefix(from.id)))
         const columnId = oldLabel ? oldLabel.slice(boardLabelPrefix(from.id).length) : null
@@ -194,13 +202,19 @@ export function createCardOps(
           toColumnId ??
           (to.columns.some((c) => c.id === columnId) ? (columnId as string) : fallbackColumn.id)
 
-        if (oldLabel) await removeLabel(owner, repo, issueNumber, oldLabel, token)
-        await addLabels(owner, repo, issueNumber, [boardColumnLabel(to.id, targetColumn)], token)
+        if (oldLabel) await removeLabel(owner, repo, issueNumber, oldLabel, accountId)
+        await addLabels(
+          owner,
+          repo,
+          issueNumber,
+          [boardColumnLabel(to.id, targetColumn)],
+          accountId
+        )
       }
     },
 
     deleteCard: async (_path, _boardId, cardId) => {
-      await setIssueState(owner, repo, Number(cardId), 'closed', token)
+      await setIssueState(owner, repo, Number(cardId), 'closed', accountId)
     },
 
     /**
@@ -271,7 +285,7 @@ export function createCardOps(
               },
             }),
           },
-          token
+          accountId
         )
       }
       return missing.length

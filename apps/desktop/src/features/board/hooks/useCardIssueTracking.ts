@@ -14,7 +14,7 @@ interface CardIssueTrackingDeps {
   activeBoard: Board | null
   cards: BoardCard[]
   ownerRepo: OwnerRepo | null
-  token: string | null
+  accountId: string | null
   mutateDetail: () => void
 }
 
@@ -32,7 +32,7 @@ export function useCardIssueTracking({
   activeBoard,
   cards,
   ownerRepo,
-  token,
+  accountId,
   mutateDetail,
 }: CardIssueTrackingDeps) {
   const { t } = useTranslation('board')
@@ -50,7 +50,7 @@ export function useCardIssueTracking({
   /** The issue a card tracks, or `null` — tracking needs a local board and a usable token. */
   function trackedRef(card: BoardCard): BoardCardSourceIssue | null {
     if (activeBoard?.source !== 'local') return null
-    if (!card.sourceIssue || !token) return null
+    if (!card.sourceIssue || !accountId) return null
     return card.sourceIssue
   }
 
@@ -61,10 +61,10 @@ export function useCardIssueTracking({
    */
   async function loadComments(card: BoardCard): Promise<BoardComment[]> {
     const ref = trackedRef(card)
-    if (ref) return fetchRemoteCardComments(ref.owner, ref.repo, token!, String(ref.number))
+    if (ref) return fetchRemoteCardComments(ref.owner, ref.repo, accountId!, String(ref.number))
     if (!activeBoard || activeBoard.source === 'local') return card.comments
-    if (!ownerRepo || !token) return []
-    return fetchRemoteCardComments(ownerRepo.owner, ownerRepo.repo, token, card.id)
+    if (!ownerRepo || !accountId) return []
+    return fetchRemoteCardComments(ownerRepo.owner, ownerRepo.repo, accountId, card.id)
   }
 
   /**
@@ -82,14 +82,14 @@ export function useCardIssueTracking({
    */
   async function addIssueToBoard(issueNumber: number, columnId: string): Promise<void> {
     if (!activeBoard) return
-    if (!ownerRepo || !token) throw new Error('This repository has no connected GitHub account')
+    if (!ownerRepo || !accountId) throw new Error('This repository has no connected GitHub account')
     if (activeBoard.source === 'local') {
       if (trackedIssueNumbers.includes(issueNumber)) {
         toast.error(t('addIssue.alreadyOnBoard', { number: issueNumber }))
         return
       }
       const ref = { owner: ownerRepo.owner, repo: ownerRepo.repo, number: issueNumber }
-      const issue = await fetchIssueForTracking(ref, token)
+      const issue = await fetchIssueForTracking(ref, accountId)
       // The parsed description, not the raw body: the cache should hold what the merge would show,
       // so a card looks the same before and after its first refresh.
       const { description } = parseCardBody(issue.body)
@@ -107,7 +107,7 @@ export function useCardIssueTracking({
       await addExistingIssueToColumn(
         ownerRepo.owner,
         ownerRepo.repo,
-        token,
+        accountId,
         activeBoard.id,
         issueNumber,
         columnId
