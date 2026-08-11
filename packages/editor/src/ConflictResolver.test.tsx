@@ -1227,6 +1227,28 @@ describe('ConflictResolver — nothing paints before it is whole', () => {
     expect(fakeEditors.get(originalPath)!.hiddenAreas.length).toBeGreaterThan(0)
   })
 
+  it('says it is loading over that deliberately empty pane, when the host gave it something to say', async () => {
+    renderDiff(longOriginal, longModified, {
+      editor: { component: FakeMonacoEditor, loadingFallback: <span>Loading the diff…</span> },
+    })
+
+    expect(screen.getByTestId('merge-panes-loading')).toBeInTheDocument()
+    expect(screen.getByText('Loading the diff…')).toBeInTheDocument()
+
+    await waitFor(() => expect(screen.queryByTestId('merge-panes-loading')).not.toBeInTheDocument())
+  })
+
+  it('reports no change counts while there is nothing to count, rather than zero', async () => {
+    renderDiff(longOriginal, longModified)
+
+    // "0 changes" is a claim about the file. Making it before the diff exists means the toolbar says
+    // something false and then corrects itself — the panes' own flicker, one row up.
+    expect(screen.queryByTestId('merge-stats')).not.toBeInTheDocument()
+
+    await waitFor(() => expect(screen.getByTestId('merge-stats')).toBeInTheDocument())
+    expect(screen.getByTestId('merge-stats').textContent).toContain('1 change')
+  })
+
   it('still paints the file when the host’s diff never answers', async () => {
     // An unlaid-out host (this package's Storybook) leaves Monaco's detached diff editor silent
     // forever. Waiting for geometry must not turn that into a file that never shows.

@@ -94,6 +94,22 @@ export function setHiddenAreas(
   ;(editorInstance as EditorWithHiddenAreas | null)?.setHiddenAreas?.(ranges)
 }
 
+/** Forces a pane to paint, in this same task, everything just handed to it — hidden areas, view
+ * zones, decorations, overlay-widget positions.
+ *
+ * The point is that Monaco would otherwise do it on an animation frame of its own, leaving the
+ * browser free to paint the pane in between: the file uncollapsed, its blocks uncolored, the
+ * alignment zones absent (which the connector builder then measures as zero-height, since it reads
+ * them out of the DOM). Every one of those was a real flicker, and each was previously papered over
+ * by re-running the same work again on a timer.
+ *
+ * Guarded on the method's presence for the same reason `useMergeDecorations` guards
+ * `updateOptions`: the suites' fake panes implement only the Monaco surface the resolver actually
+ * exercises, and a real pane can be mid-teardown. */
+export function renderPane(paneEditor: editor.IStandaloneCodeEditor | null): void {
+  if (paneEditor && typeof paneEditor.render === 'function') paneEditor.render(true)
+}
+
 /** The minimal slice of `editor.ITextModel` the line-based edit helpers below read — narrow on
  * purpose so unit tests can hand in a plain array-backed fake instead of a real Monaco model. */
 export interface LineTextModel {

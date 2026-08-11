@@ -82,6 +82,10 @@ export interface ConflictResolverEditorConfig {
   language?: string
   /** Monaco theme name; register custom themes from `onEditorMount`. */
   theme?: string
+  /** Shown while the editor has nothing to display: as each pane's Suspense fallback (the Monaco
+   * chunk still loading) and, in 2-panel mode, over the panes while they wait for the geometry that
+   * describes their text — the two moments a reader would otherwise face a blank rectangle. Host
+   * provided because the strings in it need translating. */
   loadingFallback?: ReactNode
   /** Extra Monaco options merged underneath every pane's own required options (readOnly,
    * glyphMargin, minimap, etc. always win) — e.g. `{ stickyScroll: { enabled: false } }`. */
@@ -420,6 +424,12 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       return { changesCount: changes, conflictsCount: conflicts }
     }, [viewToUse.blocks, placements])
 
+    /* Withheld, not zeroed, while the panes are still waiting for the geometry that describes their
+     * text (see `geometryPending`): every block these are counted from arrives with it, so before
+     * that the honest answer is "not known yet" rather than "none". */
+    const reportedChangesCount = geometryPending ? null : changesCount
+    const reportedConflictsCount = geometryPending ? null : conflictsCount
+
     const { panelWidths, resetPanelWidths, handleLeftMouseDown, handleRightMouseDown } =
       usePanelResize(containerRef, isTwoWay)
 
@@ -683,8 +693,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             onApplyAuto={onAutoMerge ? applyAutoMerge : undefined}
             onReset={handleResetMerge}
             onRecalculate={onRecalculate}
-            changesCount={changesCount}
-            conflictsCount={conflictsCount}
+            changesCount={reportedChangesCount}
+            conflictsCount={reportedConflictsCount}
             statuses={[
               panelsInput[0]?.status ?? null,
               panelsInput[1]?.status ?? null,
@@ -694,7 +704,20 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             gapWidth={GAP_WIDTH}
           />
         )}
-        <div ref={containerRef} className="flex min-h-0 w-full flex-1 overflow-hidden">
+        <div ref={containerRef} className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+          {/* The panes are mounted and empty on purpose while their geometry is being computed (see
+              `geometryPending`) — Monaco has to be laid out to measure itself, so it can't be left
+              out, but it has nothing to show yet. Saying so beats an unexplained blank rectangle.
+              `relative` on the container above is only here to anchor this. */}
+          {geometryPending && editorConfig?.loadingFallback && (
+            <div
+              data-testid="merge-panes-loading"
+              className="absolute inset-0 z-10 flex items-center justify-center"
+              style={{ backgroundColor: 'var(--merge-editor-background, hsl(var(--background)))' }}
+            >
+              {editorConfig.loadingFallback}
+            </div>
+          )}
           {panes.map((pane, index) => (
             <Fragment key={pane.id}>
               <div

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock } from '../../types'
 import type { BlockPlacement } from '../../mergeBlockLayout'
-import { setHiddenAreas } from '../monacoInterop'
+import { renderPane, setHiddenAreas } from '../monacoInterop'
 import { collapsedRegionsForPane, setCollapsedBlockHover } from '../collapsedRegions'
 import {
   COLLAPSED_BANNER_HEIGHT_LINES,
@@ -63,15 +63,6 @@ interface UseCollapseUnchangedParams {
    * `placements`, only) run happens while the editor refs are still `null` and silently no-ops,
    * leaving the panes uncollapsed until some unrelated dependency change happens to re-run it. */
   editorsReady: boolean
-}
-
-/** Forces Monaco to paint, in this same task, everything an apply pass just handed it.
- *
- * Guarded on the method's presence for the same reason `useMergeDecorations` guards
- * `updateOptions`: the suites' fake panes implement only the Monaco surface the resolver actually
- * exercises, and a real pane can be mid-teardown. */
-function renderPane(paneEditor: editor.IStandaloneCodeEditor | null) {
-  if (paneEditor && typeof paneEditor.render === 'function') paneEditor.render(true)
 }
 
 /** The collapse-unchanged feature: hides the middle of long unchanged blocks in every pane via
@@ -368,17 +359,14 @@ export function useCollapseUnchanged({
     renderPane(theirsEditor)
     renderPane(centerEditor)
     renderPane(oursEditor)
-    const t1 = setTimeout(() => {
-      scheduleRecompute()
-      applyStickyBanners()
-    }, 50)
-    const t2 = setTimeout(() => {
-      scheduleRecompute()
-      applyStickyBanners()
-    }, 150)
+
+    /* This pass used to run itself again at 50ms and 150ms, to re-pin the banners and re-measure the
+     * connectors "once the settled layout was available". Both reasons are gone: the banners are
+     * placed from the resolver's own geometry (see `lineTop`), which never needed Monaco's layout,
+     * and the flush above means the view the connector recompute measures a moment later is already
+     * the final one. What remains of that safety net is in `usePaneMount`, where it covers the first
+     * layout of the panes themselves rather than this pass. */
     return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
       // Read `.current` HERE rather than reusing the `theirsEditor`/`centerEditor`/`oursEditor`
       // captured at the top of the effect — which is what `exhaustive-deps` asks for, and is
       // wrong in this one place. On unmount the pane refs are nulled *before* this cleanup runs,
