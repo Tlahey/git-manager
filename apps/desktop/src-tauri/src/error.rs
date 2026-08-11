@@ -11,6 +11,15 @@ pub enum AppError {
     RepoNotFound(String),
     #[error("Branch not found: {0}")]
     BranchNotFound(String),
+    /// A checkout was refused because another worktree of the same repository already has that
+    /// branch checked out.
+    ///
+    /// Its own variant because it is the one checkout refusal with a *place* to name — the user's
+    /// next move is to go to that worktree, not to retry — and because nothing below us produces
+    /// it: `git2` has no equivalent of the `git` CLI's one-worktree-per-branch rule, so there is no
+    /// `Git` error to map. See `services/git_branch.rs::checkout_branch`.
+    #[error("Branch '{branch}' is already checked out in the worktree at {path}")]
+    BranchCheckedOutElsewhere { branch: String, path: String },
     #[error("Commit not found: {0}")]
     CommitNotFound(String),
     #[error("Protected branch: {0}")]
@@ -75,6 +84,9 @@ impl From<AppError> for String {
             AppError::Io(_) => ("IO_ERROR", e.to_string()),
             AppError::RepoNotFound(_) => ("REPO_NOT_FOUND", e.to_string()),
             AppError::BranchNotFound(_) => ("BRANCH_NOT_FOUND", e.to_string()),
+            AppError::BranchCheckedOutElsewhere { .. } => {
+                ("BRANCH_CHECKED_OUT_ELSEWHERE", e.to_string())
+            }
             AppError::CommitNotFound(_) => ("COMMIT_NOT_FOUND", e.to_string()),
             AppError::ProtectedBranch(_) => ("PROTECTED_BRANCH", e.to_string()),
             AppError::TagAlreadyExists(_) => ("TAG_ALREADY_EXISTS", e.to_string()),

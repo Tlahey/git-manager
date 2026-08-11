@@ -48,11 +48,22 @@ const aiEnabledMock = vi.fn()
 vi.mock('../../../hooks/useAiEnabled', () => ({ useAiEnabled: () => aiEnabledMock() }))
 
 const checkoutBranchWithStashPrompt = vi.fn()
-const checkoutRemoteBranchAsLocal = vi.fn()
 vi.mock('../../../hooks/useBranchCheckout', () => ({
   useBranchCheckout: () => ({
     checkoutBranchWithStashPrompt: (...a: unknown[]) => checkoutBranchWithStashPrompt(...a),
-    checkoutRemoteBranchAsLocal: (...a: unknown[]) => checkoutRemoteBranchAsLocal(...a),
+  }),
+}))
+
+// Branch switching is base-project-scoped and takes no path — *where* it lands is
+// `useSwitchBranch`'s own concern, and its own test file's. What matters here is which of the two
+// the menu item picks, and under what name.
+const switchBranch = vi.fn()
+const switchRemoteBranch = vi.fn()
+vi.mock('../../../hooks/useSwitchBranch', () => ({
+  useSwitchBranch: () => ({
+    switchBranch: (...a: unknown[]) => switchBranch(...a),
+    switchRemoteBranch: (...a: unknown[]) => switchRemoteBranch(...a),
+    basePath: '/repo',
   }),
 }))
 
@@ -406,10 +417,12 @@ describe('useSidebarBranchMenu — pull / push / set upstream', () => {
 })
 
 describe('useSidebarBranchMenu — checkout', () => {
-  it('checks out a local branch by name through the shared stash-prompt flow', async () => {
+  it('switches onto a local branch by name, on the base project', async () => {
     const { spec } = openMenu(localBranch('feat'))
     await act(async () => getItem(spec, 'Checkout feat').action!())
-    expect(checkoutBranchWithStashPrompt).toHaveBeenCalledWith(REPO, 'feat')
+    expect(switchBranch).toHaveBeenCalledWith('feat')
+    // Never the path-scoped checkout: that one would target the *viewed* worktree.
+    expect(checkoutBranchWithStashPrompt).not.toHaveBeenCalled()
   })
 
   // A remote ref goes through the local-branch flow, never through the plain checkout: handing
@@ -418,7 +431,8 @@ describe('useSidebarBranchMenu — checkout', () => {
   it('checks out a remote branch through its local counterpart, not its tip commit oid', async () => {
     const { spec } = openMenu(remoteBranch('feat'))
     await act(async () => getItem(spec, 'Checkout origin/feat').action!())
-    expect(checkoutRemoteBranchAsLocal).toHaveBeenCalledWith(REPO, 'origin/feat')
+    expect(switchRemoteBranch).toHaveBeenCalledWith('origin/feat')
+    expect(switchBranch).not.toHaveBeenCalled()
     expect(checkoutBranchWithStashPrompt).not.toHaveBeenCalled()
   })
 

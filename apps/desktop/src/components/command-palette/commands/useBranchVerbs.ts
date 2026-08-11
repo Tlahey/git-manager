@@ -13,7 +13,7 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { goToRepoContent } from '../../../stores/repoView.store'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useBranches } from '../../../hooks/useBranches'
-import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import {
   apiMergeBranch,
   apiFastForwardBranch,
@@ -41,8 +41,10 @@ export function useBranchVerbs(): RefVerb[] {
   const setPendingBranchRename = useRepoUIStore((s) => s.setPendingBranchRename)
   const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
   // The same entry point the sidebar's menu uses, so a checkout blocked by uncommitted work opens
-  // the shared stash prompt here too (mounted by `RepoView`, hence reachable from any view).
-  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
+  // the shared stash prompt here too (mounted by `RepoView`, hence reachable from any view), and
+  // the switch lands on the base project rather than on `activeRepo` — which is itself a linked
+  // worktree whenever the tab was opened on one.
+  const { switchBranch, switchRemoteBranch } = useSwitchBranch()
   const repo = useRepoDataStore((s) => (activeRepo ? s.repoCache[activeRepo] : undefined))
   const { data: branches } = useBranches(activeRepo || '')
   const run = useRefRunner(activeRepo)
@@ -100,8 +102,8 @@ export function useBranchVerbs(): RefVerb[] {
       // A remote row switches onto the LOCAL branch of that name, creating it as a tracking branch
       // when it doesn't exist — what `git switch feat` does, never the detached form. See
       // `checkoutRemoteBranchAsLocal`.
-      if (b.isRemote) void checkoutRemoteBranchAsLocal(activeRepo, b.name)
-      else void checkoutBranchWithStashPrompt(activeRepo, b.shortName)
+      if (b.isRemote) void switchRemoteBranch(b.name)
+      else void switchBranch(b.shortName)
     }),
   })
 

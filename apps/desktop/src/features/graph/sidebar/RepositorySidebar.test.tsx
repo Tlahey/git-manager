@@ -605,6 +605,9 @@ describe('RepositorySidebar — sections', () => {
   // A remote row switches onto the LOCAL branch of the same name, creating it (tracking the remote)
   // when it doesn't exist yet — never onto the remote tip's commit, which would detach HEAD.
   it('checks out a local branch by name, and a remote one through a local tracking branch', async () => {
+    // The switch targets the *tab's* base project, not the `repoPath` prop — see `useSwitchBranch`.
+    // Here the two coincide; `useSwitchBranch.test.tsx` covers the case where they don't.
+    useRepoUIStore.setState({ activeRepo: '/repo' })
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     const checkout = lastRowViewCalls.current[0].onCheckoutBranch as (b: GitBranch) => void
@@ -617,7 +620,12 @@ describe('RepositorySidebar — sections', () => {
         commitOid: 'abc',
       } as GitBranch)
     )
-    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'feature-x', undefined)
+    // With a starting point, which this gesture used to go without: `useSwitchBranch` reads the
+    // base project's HEAD, so a double-click checkout is now something ⌘Z can take back.
+    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'feature-x', {
+      fromRef: 'main',
+      fromDetached: false,
+    })
 
     await act(async () =>
       checkout({

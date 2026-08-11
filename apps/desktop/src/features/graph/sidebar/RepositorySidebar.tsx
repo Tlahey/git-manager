@@ -6,7 +6,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
-import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import { SidebarRail } from './SidebarRail'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarSearchHeader } from './SidebarSearchHeader'
@@ -114,8 +114,12 @@ export function RepositorySidebar({
   // A branch row's two gestures: one click brings its tip into view in the graph, a double click
   // switches to it. A remote row switches onto its local counterpart, creating it if it doesn't
   // exist yet (see `checkoutRemoteBranchAsLocal`) — the same thing the menu's own Checkout does.
+  //
+  // The switch goes through `useSwitchBranch`, so it lands on the base project rather than on
+  // `repoPath` — which is the *viewed* path and therefore a linked worktree whenever a workspace is
+  // open. Focusing a commit stays on `repoPath`: that one really is about what is on screen.
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
-  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
+  const { switchBranch, switchRemoteBranch } = useSwitchBranch()
   const focusBranch = useCallback(
     (branch: GitBranch) => setPendingGraphSelection(branch.commitOid),
     [setPendingGraphSelection]
@@ -124,10 +128,10 @@ export function RepositorySidebar({
     (branch: GitBranch) => {
       // `name`, not `shortName`: the backend strips the remote prefix from a remote branch's
       // `shortName`, and the remote-qualified name is what identifies the ref to track.
-      if (branch.isRemote) void checkoutRemoteBranchAsLocal(repoPath, branch.name)
-      else void checkoutBranchWithStashPrompt(repoPath, branch.shortName)
+      if (branch.isRemote) void switchRemoteBranch(branch.name)
+      else void switchBranch(branch.shortName)
     },
-    [checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal, repoPath]
+    [switchBranch, switchRemoteBranch]
   )
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)

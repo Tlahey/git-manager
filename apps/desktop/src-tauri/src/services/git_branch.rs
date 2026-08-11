@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::models::GitBranch;
+use crate::services::git_worktree::worktree_holding_branch;
 use crate::utils::get_git_signature;
 use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
@@ -275,6 +276,19 @@ pub fn delete_tag(repo: &Repository, name: &str) -> Result<(), AppError> {
 
 /// Checks out a local branch by name, or a raw commit by OID (detached HEAD). The OID fallback
 /// lets a checkout undo restore a detached HEAD.
+///
+/// **A branch already checked out in another worktree is refused** ([`AppError::BranchCheckedOutElsewhere`]).
+/// That rule belongs to the `git` CLI, not to libgit2: the `checkout_tree` + `set_head` pair below
+/// is perfectly willing to point a second working directory at a branch another one is sitting on,
+/// leaving two trees committing to the same ref with neither aware of the other. Nothing underneath
+/// this function reports it, so this is the only place it can be caught — do not drop the check when
+/// refactoring the checkout, and note that no UI gesture is expected to reach it: the pickers route
+/// a branch to the worktree that may have it (see the frontend's `useSwitchBranch`), which makes
+/// this the backstop for callers that don't, not the mechanism.
+///
+/// The check **fails open**: `worktree_holding_branch` shells out to `git`, and a checkout that is
+/// pure libgit2 today must not start failing outright on a machine where that binary is missing.
+/// A guard that can't run lets the checkout through rather than blocking the app.
 pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result<(), AppError> {
     let mut checkout_opts = git2::build::CheckoutBuilder::new();
     if force {
@@ -284,6 +298,15 @@ pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result
     }
 
     if let Ok(branch) = repo.find_branch(ref_name, git2::BranchType::Local) {
+        if let Some(workdir) = repo.workdir().and_then(|p| p.to_str()) {
+            if let Ok(Some(other)) = worktree_holding_branch(workdir, ref_name) {
+                return Err(AppError::BranchCheckedOutElsewhere {
+                    branch: ref_name.to_string(),
+                    path: other,
+                });
+            }
+        }
+
         let reference = branch.into_reference();
         let commit = reference.peel_to_commit().map_err(AppError::Git)?;
         repo.checkout_tree(commit.as_object(), Some(&mut checkout_opts))
@@ -622,5 +645,71 @@ mod tests {
         assert!(set_branch_upstream(&repo, "does-not-exist", "origin/main").is_err());
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The rule `git2` doesn't know about: a branch a linked worktree already has checked out is
+    /// refused here, naming the worktree that holds it. Without the guard `checkout_tree` +
+    /// `set_head` succeed and both working directories end up on `feature`.
+    #[test]
+    fn checkout_branch_refuses_a_branch_another_worktree_holds() {
+        let (dir, repo) = init_repo_with_commit("checkout-held-elsewhere");
+        let wt_dir = std::env::temp_dir().join(format!(
+            "gm-test-branch-checkout-held-linked-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&wt_dir).ok();
+        create_branch(&repo, "feature", "HEAD").unwrap();
+        // Read rather than hardcoded: a machine with `init.defaultBranch` set doesn't call it
+        // `master`.
+        let head_before = repo.head().unwrap().shorthand().unwrap().to_string();
+        crate::services::git_worktree::add_worktree(
+            dir.to_str().unwrap(),
+            wt_dir.to_str().unwrap(),
+            "feature",
+        )
+        .unwrap();
+
+        let err = checkout_branch(&repo, "feature", false).unwrap_err();
+        match err {
+            AppError::BranchCheckedOutElsewhere { branch, path } => {
+                assert_eq!(branch, "feature");
+                // The path the user has to go to, not just "some worktree".
+                assert!(
+                    same_path(&path, &wt_dir),
+                    "expected the linked worktree's path, got {path}"
+                );
+            }
+            other => panic!("expected BranchCheckedOutElsewhere, got {other:?}"),
+        }
+        // HEAD stayed where it was — the refusal happens before anything is written.
+        assert_eq!(repo.head().unwrap().shorthand().unwrap(), head_before);
+
+        std::fs::remove_dir_all(&wt_dir).ok();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The control: a branch no other worktree holds still checks out normally, and so does the
+    /// one this worktree is already on (the guard must not mistake *itself* for another worktree).
+    #[test]
+    fn checkout_branch_allows_a_free_branch_and_the_current_one() {
+        let (dir, repo) = init_repo_with_commit("checkout-free-branch");
+        create_branch(&repo, "feature", "HEAD").unwrap();
+
+        checkout_branch(&repo, "feature", false).unwrap();
+        assert_eq!(repo.head().unwrap().shorthand().unwrap(), "feature");
+
+        // Re-checking out the branch we are standing on is a no-op, not a self-collision.
+        checkout_branch(&repo, "feature", false).unwrap();
+        assert_eq!(repo.head().unwrap().shorthand().unwrap(), "feature");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// `git worktree list --porcelain` and `Repository::workdir()` disagree character-for-character
+    /// under `/tmp` on macOS (a symlink into `/private`), so the comparison has to resolve both.
+    fn same_path(a: &str, b: &std::path::Path) -> bool {
+        let resolve =
+            |p: &std::path::Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+        resolve(std::path::Path::new(a)) == resolve(b)
     }
 }
