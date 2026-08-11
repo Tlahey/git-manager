@@ -6,16 +6,29 @@ use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
 use crate::services::ai_model_info::{fetch_model_context_limits, ModelContextLimits};
 use crate::services::ai_provider::{GenerateConfig, StreamHandle};
 use crate::services::ai_registry::provider_for;
+use crate::services::credential_store::{self, CredentialKind, AI_CREDENTIAL_ID};
 use crate::state::AppState;
 use serde::Deserialize;
 use tauri::{AppHandle, State};
+
+/// The provider's API key, read from the OS keychain.
+///
+/// **Never taken from the caller.** It used to arrive in each of the wire configs below, which meant
+/// it had to be persisted where the webview could read it; it is now a secret this side of the IPC
+/// boundary owns outright (see `services/credential_store.rs`). A provider that needs no key simply
+/// has none stored, and `None` is the normal answer — hence the fallback rather than an error.
+fn provider_api_key() -> Option<String> {
+    credential_store::get_secret(CredentialKind::Ai, AI_CREDENTIAL_ID).unwrap_or_else(|e| {
+        eprintln!("[AI] Could not read the provider key from the keychain: {e}");
+        None
+    })
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AiCheckConfig {
     pub protocol: String,
     pub url: String,
-    pub api_key: Option<String>,
 }
 
 /// Wire config for the generic `ai_generate_stream` / `ai_complete` commands. Connection-only plus
@@ -28,7 +41,6 @@ pub struct AiGenerateConfig {
     pub protocol: String,
     pub url: String,
     pub model: String,
-    pub api_key: Option<String>,
     pub temperature: f32,
     pub timeout_seconds: u64,
     /// Cap on the model's answer, in tokens. Chosen by `@git-manager/ai` from the same reserve its
@@ -45,7 +57,7 @@ impl From<AiGenerateConfig> for GenerateConfig {
         GenerateConfig {
             url: c.url,
             model: c.model,
-            api_key: c.api_key,
+            api_key: provider_api_key(),
             temperature: c.temperature,
             timeout_seconds: c.timeout_seconds,
             max_tokens: c.max_tokens,
@@ -64,7 +76,7 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
     let generate_config = GenerateConfig {
         url: config.url,
         model: String::new(),
-        api_key: config.api_key,
+        api_key: provider_api_key(),
         temperature: 0.0,
         timeout_seconds: 5,
         max_tokens: None,
@@ -85,9 +97,8 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
 pub async fn get_model_context_limits(
     url: String,
     model: String,
-    api_key: Option<String>,
 ) -> Result<ModelContextLimits, String> {
-    fetch_model_context_limits(&url, &model, api_key.as_deref())
+    fetch_model_context_limits(&url, &model, provider_api_key().as_deref())
         .await
         .map_err(Into::into)
 }

@@ -69,7 +69,7 @@ export interface ActionExplanationInput {
   repoName?: string
   /** The operations, oldest first. */
   commands: ActionExplanationCommand[]
-  /** BCP-47-ish tag (`'fr'` / `'en'`) the explanation should be written in, from app Settings. */
+  /** BCP-47-ish tag (`'fr'` / `'en'` / `'es'`) the explanation should be written in, from app Settings. */
   language?: string
   /** The model's context window, from the connection settings. Sizes the command list — see
    * {@link buildActionExplanationPrompt}. */

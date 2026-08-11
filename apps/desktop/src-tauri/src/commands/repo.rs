@@ -643,12 +643,13 @@ pub async fn list_tracked_files(path: String) -> Result<Vec<String>, String> {
     crate::services::git_files::list_tracked_files(&repo).map_err(Into::into)
 }
 
-/// Returns every file in the working tree, tracked or not, minus what `.gitignore` excludes.
-/// Powers the project files explorer.
+/// Returns the repository's tracked files that still exist on disk. Powers the project files
+/// explorer, whose listing is deliberately the set of files git tracks rather than the contents of
+/// the working directory — see `list_tracked_files_on_disk` for why.
 #[tauri::command]
 pub async fn get_repo_files(path: String) -> Result<Vec<String>, String> {
     let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path))?;
-    crate::services::git_files::list_working_tree_files(&repo).map_err(Into::into)
+    crate::services::git_files::list_tracked_files_on_disk(&repo).map_err(Into::into)
 }
 
 #[cfg(all(test, target_os = "macos"))]

@@ -27,18 +27,21 @@ beforeEach(() => {
 })
 
 describe('useIssueDetail', () => {
-  it('fetches when owner/repo + token + number are known', async () => {
+  it('fetches when owner/repo + accountId + number are known', async () => {
     mocked.useRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'org', repo: 'repo' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const { result } = renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     await waitFor(() => expect(result.current.issue?.body).toBe('hi'))
-    expect(mocked.fetchIssueDetail).toHaveBeenCalledWith('org', 'repo', 7, 'tok')
+    expect(mocked.fetchIssueDetail).toHaveBeenCalledWith('org', 'repo', 7, 'acct')
   })
 
-  it('does not fetch without a token', () => {
-    mocked.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+  it('does not fetch without a accountId', () => {
+    mocked.useRepoGitHub.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      accountId: null,
+    })
     renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
   })

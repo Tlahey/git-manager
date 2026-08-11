@@ -35,12 +35,14 @@ export interface AllBoardCards {
  * not read.
  */
 export function useAllBoardCards(repoPath: string, enabled: boolean): AllBoardCards {
-  const { remoteBackend, backendFor, token } = useBoardBackends(repoPath)
+  const { remoteBackend, backendFor, accountId } = useBoardBackends(repoPath)
   const { boards, boardsLoading } = useBoardCatalog(repoPath, remoteBackend)
 
   const boardKey = boards.map((b) => `${b.source}:${b.id}`).join(',')
   const { data, isLoading } = useSWR(
-    enabled && boards.length > 0 ? ['board-cards-all', repoPath, boardKey, Boolean(token)] : null,
+    enabled && boards.length > 0
+      ? ['board-cards-all', repoPath, boardKey, Boolean(accountId)]
+      : null,
     async () => {
       const cards: CardOnBoard[] = []
       const unreadable: Board[] = []

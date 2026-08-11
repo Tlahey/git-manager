@@ -39,6 +39,19 @@ describe('useDevFlagsStore', () => {
     expect(useDevFlagsStore.getState().mockGitHub).toBe(false)
   })
 
+  // Same contract as mock GitHub data, for a sharper reason: this flag hands out the achievement
+  // rewards. A build that didn't ask for it must ship the gate intact.
+  it('defaults theme unlocking to off, even while developing', () => {
+    expect(DEV_FLAG_DEFAULTS.unlockThemes).toBe(false)
+  })
+
+  it('flips theme unlocking for the rest of the session', () => {
+    useDevFlagsStore.getState().setUnlockThemes(true)
+    expect(useDevFlagsStore.getState().unlockThemes).toBe(true)
+    useDevFlagsStore.getState().setUnlockThemes(false)
+    expect(useDevFlagsStore.getState().unlockThemes).toBe(false)
+  })
+
   it('is not persisted — a flag that survived a restart would be a setting', () => {
     expect('persist' in useDevFlagsStore).toBe(false)
   })

@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea } from '@git-manager/ui'
 import type { GitHubUser } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { apiGithubDisconnectAccount } from '../../../api/github.api'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
 import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
 import { GithubDeviceFlowCard } from './github/GithubDeviceFlowCard'
@@ -27,16 +28,18 @@ export function GithubSection() {
   const [patToken, setPatToken] = useState('')
 
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
-  const { data: reposData, isLoading: loadingRepos } = useGitHubRepos(activeAccount?.token ?? null)
+  const { data: reposData, isLoading: loadingRepos } = useGitHubRepos(activeAccount?.id ?? null)
   const repos = reposData ?? []
 
   const { connecting, error, deviceFlowData, startOAuthLogin, completeLoginWithToken, cancelFlow } =
     useGithubDeviceFlow({
-      onLoginSuccess: (token, user: GitHubUser) => {
+      // The token is already in the keychain by the time this runs — Rust stored it. What is
+      // recorded here is the account's public half, which is all `settings.json` holds now.
+      onLoginSuccess: (user: GitHubUser) => {
         // Logging in as someone already connected replaces that entry rather than adding a second:
-        // the account id *is* the login.
+        // the account id *is* the login, and it is the key the keychain entry is filed under.
         const updatedAccounts = github.accounts.filter((a) => a.id !== user.login)
-        updatedAccounts.push({ id: user.login, token, user })
+        updatedAccounts.push({ id: user.login, user })
         updateSettings({
           github: { ...github, accounts: updatedAccounts, activeAccountId: user.login },
         })
@@ -63,6 +66,12 @@ export function GithubSection() {
   }
 
   function handleRemoveAccount(id: string) {
+    // Forget the credential first: dropping the account from the settings while its token stayed in
+    // the keychain would leave an entry the user can see in Keychain Access and no longer revoke
+    // from here. Best effort — a keychain that refuses must not strand the account on screen.
+    void apiGithubDisconnectAccount(id).catch((err) => {
+      console.error('Failed to remove the stored GitHub token:', err)
+    })
     const updatedAccounts = github.accounts.filter((a) => a.id !== id)
     // Removing the active account promotes the first one left rather than leaving the app pointing
     // at an id that no longer exists.

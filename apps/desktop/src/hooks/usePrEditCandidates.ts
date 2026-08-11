@@ -8,12 +8,12 @@ export function useAssignableUsers(
   repoPath: string | null,
   enabled: boolean
 ): { users: GhUser[]; isLoading: boolean } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { data, isLoading } = useSWR(
-    enabled && ownerRepo && token
-      ? ['repo-assignable-users', ownerRepo.owner, ownerRepo.repo, token]
+    enabled && ownerRepo && accountId
+      ? ['repo-assignable-users', ownerRepo.owner, ownerRepo.repo, accountId]
       : null,
-    () => fetchAssignableUsers(ownerRepo!.owner, ownerRepo!.repo, token as string),
+    () => fetchAssignableUsers(ownerRepo!.owner, ownerRepo!.repo, accountId as string),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
   return { users: data ?? [], isLoading }
@@ -24,10 +24,12 @@ export function useRepoLabels(
   repoPath: string | null,
   enabled: boolean
 ): { labels: GhLabel[]; isLoading: boolean } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const { data, isLoading } = useSWR(
-    enabled && ownerRepo && token ? ['repo-labels', ownerRepo.owner, ownerRepo.repo, token] : null,
-    () => fetchRepoLabels(ownerRepo!.owner, ownerRepo!.repo, token as string),
+    enabled && ownerRepo && accountId
+      ? ['repo-labels', ownerRepo.owner, ownerRepo.repo, accountId]
+      : null,
+    () => fetchRepoLabels(ownerRepo!.owner, ownerRepo!.repo, accountId as string),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
   return { labels: data ?? [], isLoading }

@@ -15,6 +15,7 @@ import { ProviderCombobox } from './ProviderCombobox'
 import { AiModelProbe } from './AiModelProbe'
 import { SettingsGroup } from './SettingsGroup'
 import { AiContextWindowCheck } from './AiContextWindowCheck'
+import { AiApiKeyField } from './AiApiKeyField'
 import { parseExtraBody } from './parseExtraBody'
 
 /**
@@ -74,14 +75,12 @@ export function AiProviderForm() {
 
   function handlePresetChange(presetId: AiPresetId) {
     const preset = getAiPreset(presetId)
-    // A preset is mostly "a default URL", so switching moves the URL with it. The API key is
-    // dropped when the new preset has no field for one, so a key can't linger invisibly in the
-    // persisted settings after a move to Ollama.
-    updateAi({
-      preset: presetId,
-      url: preset.defaultUrl,
-      apiKey: preset.supportsApiKey ? ai.apiKey : undefined,
-    })
+    // A preset is mostly "a default URL", so switching moves the URL with it. A stored API key is
+    // left alone: it is in the keychain, not in the settings, so it cannot "linger invisibly" the
+    // way it could when it was a persisted field — and silently deleting a credential because the
+    // user tried Ollama for a minute would be a worse surprise than an unused keychain entry. The
+    // field below disappears with the preset; `AiApiKeyField` is where it is removed on purpose.
+    updateAi({ preset: presetId, url: preset.defaultUrl })
     useAiStatusStore.getState().reset()
   }
 
@@ -157,19 +156,7 @@ export function AiProviderForm() {
         </div>
 
         {/* API key — only the generic OpenAI-compatible entry can talk to an authenticated endpoint */}
-        {activePreset.supportsApiKey && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground">{t('settings.ai.apiKey')}</label>
-            <Input
-              type="password"
-              value={ai.apiKey ?? ''}
-              onChange={(e) => updateAi({ apiKey: e.target.value })}
-              className="h-8 text-xs"
-              data-testid="ai-api-key-input"
-            />
-            <p className="text-[10px] text-muted-foreground">{t('settings.ai.apiKeyHint')}</p>
-          </div>
-        )}
+        {activePreset.supportsApiKey && <AiApiKeyField />}
       </SettingsGroup>
 
       <SettingsGroup

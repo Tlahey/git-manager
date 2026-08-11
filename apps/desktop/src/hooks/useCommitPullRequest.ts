@@ -7,16 +7,16 @@ export function useCommitPullRequest(
   repoPath: string | null,
   oid: string | null
 ): CommitPrRef | null {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data } = useSWR(
-    oid && ownerRepo ? ['commit-pr', ownerRepo.owner, ownerRepo.repo, oid, token] : null,
+    oid && ownerRepo ? ['commit-pr', ownerRepo.owner, ownerRepo.repo, oid, accountId] : null,
     () =>
       fetchCommitPullRequest(
         (ownerRepo as { owner: string; repo: string }).owner,
         (ownerRepo as { owner: string; repo: string }).repo,
         oid as string,
-        token ?? undefined
+        accountId ?? undefined
       ),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )

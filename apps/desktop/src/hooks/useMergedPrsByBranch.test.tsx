@@ -67,7 +67,7 @@ describe('useMergedPrsByBranch', () => {
       () =>
         useMergedPrsByBranch({
           remoteUrls: ['https://github.com/org/repo.git'],
-          githubToken: 'tok',
+          githubAccountId: 'tok',
         }),
       { wrapper }
     )
@@ -82,7 +82,7 @@ describe('useMergedPrsByBranch', () => {
       () =>
         useMergedPrsByBranch({
           remoteUrls: ['https://github.com/org/repo.git'],
-          githubToken: 'tok',
+          githubAccountId: 'tok',
         }),
       { wrapper }
     )
@@ -99,7 +99,7 @@ describe('useMergedPrsByBranch', () => {
       () =>
         useMergedPrsByBranch({
           remoteUrls: ['https://github.com/org/repo.git'],
-          githubToken: 'tok',
+          githubAccountId: 'tok',
         }),
       { wrapper }
     )

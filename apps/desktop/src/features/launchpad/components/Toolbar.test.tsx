@@ -46,17 +46,19 @@ describe('Toolbar — search', () => {
     expect(onSearch).toHaveBeenCalledWith('x')
   })
 
+  // Asked for by its accessible name rather than by the class that positions it: the ✕ moved into
+  // `SearchInput`'s icon slot when every search in the app was unified onto it, and a test that
+  // knows where a button is placed breaks on a change that a user cannot see.
   it('hides the clear button when search is empty', () => {
-    const { container } = renderToolbar({ search: '' })
-    expect(container.querySelector('.absolute.right-2')).not.toBeInTheDocument()
+    renderToolbar({ search: '' })
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
   })
 
   it('clears the search via the X button', async () => {
     const onSearch = vi.fn()
     const user = userEvent.setup()
-    const { container } = renderToolbar({ search: 'foo', onSearch })
-    const clearButton = container.querySelector('.absolute.right-2')!
-    await user.click(clearButton)
+    renderToolbar({ search: 'foo', onSearch })
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(onSearch).toHaveBeenCalledWith('')
   })
 })

@@ -19,7 +19,16 @@ import enErrors from '../locales/en/errors.json'
 import enLaunchpad from '../locales/en/launchpad.json'
 import enBoard from '../locales/en/board.json'
 
-export type SupportedLanguage = 'fr' | 'en'
+// ES
+import esCommon from '../locales/es/common.json'
+import esGit from '../locales/es/git.json'
+import esDashboard from '../locales/es/dashboard.json'
+import esSettings from '../locales/es/settings.json'
+import esErrors from '../locales/es/errors.json'
+import esLaunchpad from '../locales/es/launchpad.json'
+import esBoard from '../locales/es/board.json'
+
+export type SupportedLanguage = 'fr' | 'en' | 'es'
 
 export const defaultNS = 'common'
 export const resources = {
@@ -40,6 +49,15 @@ export const resources = {
     errors: enErrors,
     launchpad: enLaunchpad,
     board: enBoard,
+  },
+  es: {
+    common: esCommon,
+    git: esGit,
+    dashboard: esDashboard,
+    settings: esSettings,
+    errors: esErrors,
+    launchpad: esLaunchpad,
+    board: esBoard,
   },
 } as const
 

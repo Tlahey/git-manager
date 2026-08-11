@@ -14,7 +14,12 @@ const AI_CHECK_CONFIG = { protocol: 'openai-compatible', url: 'http://localhost:
 
 let githubPollMock: Awaited<ReturnType<typeof browser.tauri.mock>> | null = null
 let lastGithubPollResult: unknown
-const FAKE_GITHUB_TOKEN = 'gho_totally_fake_mock_token'
+const FAKE_GITHUB_USER = {
+  login: 'mock-octocat',
+  name: 'Mock Octocat',
+  email: null,
+  avatarUrl: 'https://example.invalid/avatar.png',
+}
 
 // Tear mocks down between scenarios so a mock set in one doesn't leak into the next. Harmless
 // for other features (restoring when nothing is mocked is a no-op).
@@ -99,34 +104,42 @@ Then(/^the fake value does not appear in the result$/, () => {
 // github_poll_token's response shape stays snake_case on the wire (DeviceCodeResponse/
 // PollTokenResponse in github.rs have no #[serde(rename_all = "camelCase")], unlike the rest of
 // this command's sibling responses) — mocked values below match that exactly.
+//
+// It carries the connected `user`, never an access token: an authorized poll is completed inside
+// Rust, which stores the credential in the OS keychain and reports only who signed in. There is
+// nothing to mock here that a token could come out of, which is the point — see
+// `src-tauri/src/services/credential_store.rs`.
 
 Given(
   /^the "([^"]*)" command is mocked to return authorization pending$/,
   async (command: string) => {
     githubPollMock = await browser.tauri.mock(command)
     await githubPollMock.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'authorization_pending',
       error_description: null,
     })
   }
 )
 
-Given(/^the "([^"]*)" command is mocked to return an access token$/, async (command: string) => {
-  githubPollMock = await browser.tauri.mock(command)
-  await githubPollMock.mockResolvedValue({
-    access_token: FAKE_GITHUB_TOKEN,
-    error: null,
-    error_description: null,
-  })
-})
+Given(
+  /^the "([^"]*)" command is mocked to return a connected account$/,
+  async (command: string) => {
+    githubPollMock = await browser.tauri.mock(command)
+    await githubPollMock.mockResolvedValue({
+      user: FAKE_GITHUB_USER,
+      error: null,
+      error_description: null,
+    })
+  }
+)
 
 Given(
   /^the "([^"]*)" command is mocked to return an expired device code$/,
   async (command: string) => {
     githubPollMock = await browser.tauri.mock(command)
     await githubPollMock.mockResolvedValue({
-      access_token: null,
+      user: null,
       error: 'expired_token',
       error_description: 'The device_code has expired.',
     })
@@ -148,16 +161,17 @@ When(/^the GitHub token poll is checked through the test bridge$/, async () => {
 
 Then(/^the poll result shows authorization pending$/, () => {
   expect(lastGithubPollResult).toEqual({
-    access_token: null,
+    user: null,
     error: 'authorization_pending',
     error_description: null,
   })
 })
 
-Then(/^the poll result contains an access token$/, () => {
-  expect((lastGithubPollResult as { access_token: string | null }).access_token).toBe(
-    FAKE_GITHUB_TOKEN
-  )
+Then(/^the poll result contains the connected account$/, () => {
+  const result = lastGithubPollResult as { user: { login: string } | null }
+  expect(result.user?.login).toBe(FAKE_GITHUB_USER.login)
+  // And no token: the credential stayed in Rust, on its way to the keychain.
+  expect(result).not.toHaveProperty('access_token')
 })
 
 Then(/^the poll result shows an expired device code$/, () => {

@@ -13,16 +13,16 @@ export function usePrDetail(
   error: unknown
   mutate: () => void
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-detail', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-detail', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
     () =>
       fetchGitHubPRDetails(
         `https://api.github.com/repos/${ownerRepo!.owner}/${ownerRepo!.repo}/pulls/${prNumber}`,
-        token as string
+        accountId as string
       ),
     { revalidateOnFocus: false, refreshInterval: 30_000 }
   )

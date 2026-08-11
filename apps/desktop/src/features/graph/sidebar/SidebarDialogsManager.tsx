@@ -16,7 +16,7 @@ interface SidebarDialogsManagerProps {
   repoPath: string
   remoteUrls: string[]
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   worktrees: GitWorktree[]
   prunableWorktrees: GitWorktree[]
   allLocalBranches: GitBranch[]
@@ -75,7 +75,7 @@ export function SidebarDialogsManager({
   repoPath,
   remoteUrls,
   currentUser,
-  githubToken,
+  githubAccountId,
   worktrees,
   prunableWorktrees,
   allLocalBranches,
@@ -127,7 +127,7 @@ export function SidebarDialogsManager({
         repoPath={repoPath}
         worktrees={worktrees}
         remoteUrls={remoteUrls}
-        githubToken={githubToken}
+        githubAccountId={githubAccountId}
         mineOnly={removeMergedWorktrees === 'mine'}
         currentUser={currentUser}
         open={removeMergedWorktrees !== null}
@@ -138,7 +138,7 @@ export function SidebarDialogsManager({
         branches={allLocalBranches}
         worktreeBranches={worktrees.map((w) => w.branch)}
         remoteUrls={remoteUrls}
-        githubToken={githubToken}
+        githubAccountId={githubAccountId}
         mineOnly={removeMergedBranches === 'mine'}
         currentUser={currentUser}
         open={removeMergedBranches !== null}

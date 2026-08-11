@@ -35,6 +35,19 @@ describe('LoadingOverlay', () => {
     expect(overlay).toHaveAttribute('aria-live', 'polite')
   })
 
+  /**
+   * The app has no native title bar, so the window is moved by grabbing a `data-tauri-drag-region`
+   * — the tab bar's, which this full-screen scrim covers, pinning the window for as long as a repo
+   * loads. `"deep"` and not a bare attribute: Tauri only drags from a bare region when the
+   * `mousedown` target *is* the element carrying it, and the mascot sits in the middle of it.
+   */
+  it('is a drag region, so the window can still be moved while loading', () => {
+    useGlobalLoadingStore.getState().begin('Loading...')
+    render(<LoadingOverlay />)
+
+    expect(screen.getByTestId('loading-overlay')).toHaveAttribute('data-tauri-drag-region', 'deep')
+  })
+
   it('fades out — stays briefly (transparent, caption kept) then unmounts after loading ends', async () => {
     const token = useGlobalLoadingStore.getState().begin('Loading...')
     render(<LoadingOverlay />)

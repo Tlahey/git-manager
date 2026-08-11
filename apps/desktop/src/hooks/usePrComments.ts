@@ -13,13 +13,14 @@ export function usePrComments(
   error: unknown
   refresh: () => void
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-comments', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-comments', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
-    () => fetchPrComments(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+    () =>
+      fetchPrComments(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, accountId as string),
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 

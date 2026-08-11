@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Every GitHub call goes through `githubApiRequest` now — a Tauri command that attaches the
+// account's token in Rust — so this suite mocks that instead of `fetch`. The assertions gained
+// rather than lost: where they used to check a header on an options bag, they now check the account
+// id the app asked to act as, and there is no token anywhere in this file because there is nowhere
+// in the frontend one could come from.
 vi.mock('../lib/tauri', () => ({
   githubDeviceCode: vi.fn(),
   githubPollToken: vi.fn(),
-  githubGetUser: vi.fn(),
+  githubConnectToken: vi.fn(),
+  githubDisconnectAccount: vi.fn(),
   githubListRepos: vi.fn(),
+  githubApiRequest: vi.fn(),
 }))
 
 import * as tauri from '../lib/tauri'
@@ -30,6 +37,7 @@ import {
   resolveTagOrReleaseUrl,
   createPullRequest,
   fetchPrFiles,
+  fetchFileContentAtRef,
   fetchPrFilesViewedState,
   markPrFileAsViewed,
   unmarkPrFileAsViewed,
@@ -45,7 +53,8 @@ import {
   fetchRepoDefaultBranch,
   apiGithubDeviceCode,
   apiGithubPollToken,
-  apiGithubGetUser,
+  apiGithubConnectToken,
+  apiGithubDisconnectAccount,
   apiGithubListRepos,
   type GhRawPR,
   type GhRawIssue,
@@ -67,8 +76,19 @@ function rawPR(overrides: Partial<GhRawPR> = {}): GhRawPR {
   }
 }
 
+/** What `githubApiRequest` resolves with: Rust hands back the status and the raw body text. */
 function jsonResponse(body: unknown, ok = true, status = 200) {
-  return { ok, status, json: async () => body }
+  return { ok, status, body: JSON.stringify(body) }
+}
+
+/** A raw (non-JSON) body — the contents API's `raw` media type, used by the PR diff viewer. */
+function textResponse(body: string, ok = true, status = 200) {
+  return { ok, status, body }
+}
+
+/** Installs `mock` as the GitHub transport, replacing what `stubGithub(…)` used to do. */
+function stubGithub(mock: unknown) {
+  mockedTauri.githubApiRequest = mock as ReturnType<typeof vi.fn>
 }
 
 beforeEach(() => {
@@ -317,13 +337,15 @@ describe('rawToMockIssue', () => {
 describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', () => {
   it('fetchGitHubPRs queries authored open PRs and maps them', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [rawPR()] }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const prs = await fetchGitHubPRs('me', 'tok')
+    const prs = await fetchGitHubPRs('me', 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('is:pr+author:me+is:open'),
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'token tok' }) })
+      expect.objectContaining({
+        url: expect.stringContaining('is:pr+author:me+is:open'),
+        accountId: 'acct',
+      })
     )
     expect(prs).toHaveLength(1)
     expect(prs[0].number).toBe(42)
@@ -335,113 +357,116 @@ describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', (
       .mockResolvedValue(
         jsonResponse({ items: [rawPR({ user: { login: 'me', avatar_url: '' } })] })
       )
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const prs = await fetchGitHubReviewRequestedPRs('me', 'tok')
+    const prs = await fetchGitHubReviewRequestedPRs('me', 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('review-requested:me'),
-      expect.anything()
+      expect.objectContaining({ url: expect.stringContaining('review-requested:me') })
     )
     expect(prs[0].needsMyReview).toBe(true) // forced true even though rawToMockPR would say false (author === me)
   })
 
   it('fetchGitHubRepoIssues queries issues across the given repos', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [] }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
     await fetchGitHubRepoIssues(
       [
         { owner: 'me', repo: 'git-manager' },
         { owner: 'org', repo: 'other' },
       ],
-      'tok'
+      'acct'
     )
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('is:issue+repo:me/git-manager+repo:org/other'),
-      expect.anything()
+      expect.objectContaining({
+        url: expect.stringContaining('is:issue+repo:me/git-manager+repo:org/other'),
+      })
     )
   })
 
   it('fetchGitHubRepoIssues short-circuits to [] for an empty repo list without fetching', async () => {
     const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    expect(await fetchGitHubRepoIssues([], 'tok')).toEqual([])
+    expect(await fetchGitHubRepoIssues([], 'acct')).toEqual([])
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('fetchIssueDetail GETs the issue resource', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7, body: 'hi' }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const issue = await fetchIssueDetail('org', 'repo', 7, 'tok')
+    const issue = await fetchIssueDetail('org', 'repo', 7, 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/issues/7',
-      expect.anything()
+      expect.objectContaining({ url: 'https://api.github.com/repos/org/repo/issues/7' })
     )
     expect(issue.body).toBe('hi')
   })
 
   it('updateIssue PATCHes the issue resource with title/body', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7 }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await updateIssue('org', 'repo', 7, { title: 'New', body: 'Body' }, 'tok')
+    await updateIssue('org', 'repo', 7, { title: 'New', body: 'Body' }, 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/issues/7',
       expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/issues/7',
         method: 'PATCH',
-        body: JSON.stringify({ title: 'New', body: 'Body' }),
+        body: { title: 'New', body: 'Body' },
       })
     )
   })
 
   it('setIssueState PATCHes the issue resource with the new state', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7, state: 'closed' }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await setIssueState('org', 'repo', 7, 'closed', 'tok')
+    await setIssueState('org', 'repo', 7, 'closed', 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/issues/7',
-      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ state: 'closed' }) })
+      expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/issues/7',
+        method: 'PATCH',
+        body: { state: 'closed' },
+      })
     )
   })
 
   it('returns an empty array when the search response has no items', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
-    expect(await fetchGitHubPRs('me', 'tok')).toEqual([])
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({})))
+    expect(await fetchGitHubPRs('me', 'acct')).toEqual([])
   })
 
   it('throws a descriptive error on a non-ok response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 403)))
-    await expect(fetchGitHubPRs('me', 'tok')).rejects.toThrow(Error)
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 403)))
+    await expect(fetchGitHubPRs('me', 'acct')).rejects.toThrow(Error)
   })
 })
 
 describe('fetchGitHubPRDetails / fetchRepoPRs', () => {
   it('fetchGitHubPRDetails fetches the given API URL directly', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(rawPR()))
-    vi.stubGlobal('fetch', fetchMock)
-    await fetchGitHubPRDetails('https://api.github.com/repos/org/repo/pulls/42', 'tok')
+    stubGithub(fetchMock)
+    await fetchGitHubPRDetails('https://api.github.com/repos/org/repo/pulls/42', 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls/42',
-      expect.anything()
+      expect.objectContaining({ url: 'https://api.github.com/repos/org/repo/pulls/42' })
     )
   })
 
   it('fetchRepoPRs builds the open-PRs listing URL and works without a token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
     await fetchRepoPRs('org', 'repo')
+    // No account named: Rust sends the request unauthenticated, which is what a public repo's
+    // listing needs and what the `accountId?` on these functions is for.
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100',
       expect.objectContaining({
-        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+        url: 'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100',
+        accountId: undefined,
       })
     )
   })
@@ -449,18 +474,17 @@ describe('fetchGitHubPRDetails / fetchRepoPRs', () => {
 
 describe('fetchCommitPullRequest', () => {
   it('returns null when no PR is associated with the commit', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse([])))
-    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')).toBeNull()
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse([])))
+    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'acct')).toBeNull()
   })
 
   it('returns null (not throw) when GitHub responds non-ok', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
-    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')).toBeNull()
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
+    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'acct')).toBeNull()
   })
 
   it('prefers a merged PR over other associations and maps its fields', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse([
           rawPR({ number: 1, merged_at: null }),
@@ -474,7 +498,7 @@ describe('fetchCommitPullRequest', () => {
         ])
       )
     )
-    const pr = await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')
+    const pr = await fetchCommitPullRequest('org', 'repo', 'sha1', 'acct')
     expect(pr).toEqual({
       number: 2,
       url: 'https://github.com/org/repo/pull/2',
@@ -487,8 +511,7 @@ describe('fetchCommitPullRequest', () => {
 
 describe('fetchCommitMergedPullRequestForBranch', () => {
   it('returns the merged PR (with its author) whose head.ref matches the branch', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse([
           rawPR({
@@ -502,15 +525,14 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
       )
     )
     expect(
-      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'acct')
     ).toEqual({ number: 3, title: 'Mine', author: 'alice' })
   })
 
   it('REGRESSION: ignores a merged PR from another branch (fork-point commit of a fresh worktree)', async () => {
     // A branch created from main with no unique commits: its HEAD commit belongs to whatever PR
     // shipped that commit — accepting it once bulk-deleted a never-merged worktree.
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
@@ -520,13 +542,12 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
         )
     )
     expect(
-      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'acct')
     ).toBeNull()
   })
 
   it('ignores an unmerged PR even when its head.ref matches the branch', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
@@ -534,14 +555,14 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
         )
     )
     expect(
-      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'acct')
     ).toBeNull()
   })
 
   it('returns null (not throw) when GitHub responds non-ok', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
     expect(
-      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'acct')
     ).toBeNull()
   })
 })
@@ -549,17 +570,17 @@ describe('fetchCommitMergedPullRequestForBranch', () => {
 describe('fetchClosedPullRequests', () => {
   it('builds the closed-PRs listing URL, sorted by most recently updated', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
-    vi.stubGlobal('fetch', fetchMock)
-    await fetchClosedPullRequests('org', 'repo', 'tok')
+    stubGithub(fetchMock)
+    await fetchClosedPullRequests('org', 'repo', 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls?state=closed&sort=updated&direction=desc&per_page=100',
-      expect.anything()
+      expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/pulls?state=closed&sort=updated&direction=desc&per_page=100',
+      })
     )
   })
 
   it('returns the raw list, including head.ref and merged_at for each item', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
@@ -568,7 +589,7 @@ describe('fetchClosedPullRequests', () => {
           ])
         )
     )
-    const prs = await fetchClosedPullRequests('org', 'repo', 'tok')
+    const prs = await fetchClosedPullRequests('org', 'repo', 'acct')
     expect(prs).toEqual([
       expect.objectContaining({
         number: 7,
@@ -579,29 +600,28 @@ describe('fetchClosedPullRequests', () => {
   })
 
   it('returns an empty list (not throw) when GitHub responds non-ok', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
-    expect(await fetchClosedPullRequests('org', 'repo', 'tok')).toEqual([])
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
+    expect(await fetchClosedPullRequests('org', 'repo', 'acct')).toEqual([])
   })
 })
 
 describe('resolveTagOrReleaseUrl', () => {
   it('returns the release page URL when a release exists for the tag', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
           jsonResponse({ html_url: 'https://github.com/org/repo/releases/tag/v1.0' })
         )
     )
-    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v1.0', 'tok')).toBe(
+    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v1.0', 'acct')).toBe(
       'https://github.com/org/repo/releases/tag/v1.0'
     )
   })
 
   it('falls back to the tag page URL when no release exists (404)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
-    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v9.9', 'tok')).toBe(
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
+    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v9.9', 'acct')).toBe(
       'https://github.com/org/repo/releases/tag/v9.9'
     )
   })
@@ -611,16 +631,16 @@ describe('fetchGitHubCommitCiStatus', () => {
   it('fetches check-runs and commit status in parallel', async () => {
     const fetchMock = vi
       .fn()
-      .mockImplementation((url: string) =>
+      .mockImplementation(({ url }: { url: string }) =>
         Promise.resolve(
           url.includes('check-runs')
             ? jsonResponse({ total_count: 1 })
             : jsonResponse({ state: 'success' })
         )
       )
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'tok')
+    const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'acct')
     expect(result.checkRunsRes).toEqual({ total_count: 1 })
     expect(result.statusRes).toEqual({ state: 'success' })
   })
@@ -628,14 +648,14 @@ describe('fetchGitHubCommitCiStatus', () => {
   it('resolves the other branch to null when one of the two requests fails', async () => {
     const fetchMock = vi
       .fn()
-      .mockImplementation((url: string) =>
+      .mockImplementation(({ url }: { url: string }) =>
         url.includes('check-runs')
           ? Promise.reject(new Error('boom'))
           : Promise.resolve(jsonResponse({ state: 'success' }))
       )
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'tok')
+    const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'acct')
     expect(result.checkRunsRes).toBeNull()
     expect(result.statusRes).toEqual({ state: 'success' })
   })
@@ -664,15 +684,15 @@ describe('fetchGitHubContributions', () => {
         },
       })
     )
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const days = await fetchGitHubContributions('me', 'tok')
+    const days = await fetchGitHubContributions('me', 'acct')
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/graphql',
       expect.objectContaining({
+        url: 'https://api.github.com/graphql',
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'bearer tok' }),
+        accountId: 'acct',
       })
     )
     expect(days).toEqual([
@@ -682,32 +702,30 @@ describe('fetchGitHubContributions', () => {
   })
 
   it('throws on a non-ok HTTP response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
-    await expect(fetchGitHubContributions('me', 'tok')).rejects.toThrow(Error)
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
+    await expect(fetchGitHubContributions('me', 'acct')).rejects.toThrow(Error)
   })
 
   it('throws with the joined GraphQL error messages when the response has errors', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
           jsonResponse({ errors: [{ message: 'bad token' }, { message: 'rate limited' }] })
         )
     )
-    await expect(fetchGitHubContributions('me', 'tok')).rejects.toThrow(Error)
+    await expect(fetchGitHubContributions('me', 'acct')).rejects.toThrow(Error)
   })
 
   it('returns an empty array when the calendar has no weeks', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ data: { user: null } })))
-    expect(await fetchGitHubContributions('me', 'tok')).toEqual([])
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({ data: { user: null } })))
+    expect(await fetchGitHubContributions('me', 'acct')).toEqual([])
   })
 })
 
 describe('fetchPrMergeability', () => {
   it('reports viewerCanMergeAsAdmin from the GraphQL response', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse({
           data: {
@@ -725,19 +743,18 @@ describe('fetchPrMergeability', () => {
       )
     )
 
-    const result = await fetchPrMergeability('org', 'repo', 42, 'tok')
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
 
     expect(result.mergeStateStatus).toBe('BLOCKED')
     expect(result.viewerCanMergeAsAdmin).toBe(true)
   })
 
   it('defaults viewerCanMergeAsAdmin to false when absent', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(jsonResponse({ data: { repository: { pullRequest: null } } }))
     )
 
-    const result = await fetchPrMergeability('org', 'repo', 42, 'tok')
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
 
     expect(result.viewerCanMergeAsAdmin).toBe(false)
   })
@@ -781,19 +798,18 @@ describe('fetchRepoIssues', () => {
         },
       ])
     )
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+    const issues = await fetchRepoIssues('org', 'repo', 'acct')
 
-    expect(fetchMock.mock.calls[0][0]).toContain('/repos/org/repo/issues?state=open')
+    expect(fetchMock.mock.calls[0][0].url).toContain('/repos/org/repo/issues?state=open')
     expect(issues).toHaveLength(1)
     expect(issues[0]).toMatchObject({ number: 12, title: 'Scroll lost', author: 'marie' })
   })
 
   // GitHub models pull requests as issues, so the endpoint returns them too.
   it('drops entries that are really pull requests', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse([
           {
@@ -817,15 +833,14 @@ describe('fetchRepoIssues', () => {
       )
     )
 
-    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+    const issues = await fetchRepoIssues('org', 'repo', 'acct')
 
     expect(issues.map((i) => i.number)).toEqual([2])
   })
 
   // The repo endpoint has no `repository_url`, so these can only come from the arguments.
   it('fills the repo name and full name from the requested owner/repo', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi
         .fn()
         .mockResolvedValue(
@@ -835,7 +850,7 @@ describe('fetchRepoIssues', () => {
         )
     )
 
-    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+    const issues = await fetchRepoIssues('org', 'repo', 'acct')
 
     expect(issues[0]).toMatchObject({ repo: 'repo', fullName: 'org/repo' })
   })
@@ -848,11 +863,11 @@ describe('fetchIssuesByQuery', () => {
 
   it('scopes the saved filter to the repo and to issues, and passes the rest through', async () => {
     const fetchMock = searchResponse([])
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await fetchIssuesByQuery('org', 'repo', 'is:open assignee:@me', 'tok')
+    await fetchIssuesByQuery('org', 'repo', 'is:open assignee:@me', 'acct')
 
-    const url = new URL(fetchMock.mock.calls[0][0])
+    const url = new URL(fetchMock.mock.calls[0][0].url)
     expect(url.pathname).toBe('/search/issues')
     expect(url.searchParams.get('q')).toBe('repo:org/repo is:issue is:open assignee:@me')
   })
@@ -860,11 +875,11 @@ describe('fetchIssuesByQuery', () => {
   // A query can carry anything the user typed, including characters that would break the URL.
   it('encodes the query rather than splicing it into the URL raw', async () => {
     const fetchMock = searchResponse([])
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await fetchIssuesByQuery('org', 'repo', 'label:"needs triage" -label:wontfix', 'tok')
+    await fetchIssuesByQuery('org', 'repo', 'label:"needs triage" -label:wontfix', 'acct')
 
-    const url = new URL(fetchMock.mock.calls[0][0])
+    const url = new URL(fetchMock.mock.calls[0][0].url)
     expect(url.searchParams.get('q')).toBe(
       'repo:org/repo is:issue label:"needs triage" -label:wontfix'
     )
@@ -872,16 +887,17 @@ describe('fetchIssuesByQuery', () => {
 
   it('still scopes correctly for an empty query', async () => {
     const fetchMock = searchResponse([])
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await fetchIssuesByQuery('org', 'repo', '', 'tok')
+    await fetchIssuesByQuery('org', 'repo', '', 'acct')
 
-    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('q')).toBe('repo:org/repo is:issue')
+    expect(new URL(fetchMock.mock.calls[0][0].url).searchParams.get('q')).toBe(
+      'repo:org/repo is:issue'
+    )
   })
 
   it('maps the search results and stamps them with the requested repo', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       searchResponse([
         {
           number: 12,
@@ -909,8 +925,7 @@ describe('fetchIssuesByQuery', () => {
 
   // The sidebar's hover card previews the description, so the body has to survive the mapping.
   it('carries the issue body through, normalizing a null one to undefined', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       searchResponse([
         {
           number: 1,
@@ -940,14 +955,13 @@ describe('fetchIssuesByQuery', () => {
   })
 
   it('returns an empty list when the search matches nothing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({})))
     await expect(fetchIssuesByQuery('org', 'repo', 'is:open')).resolves.toEqual([])
   })
 
   // A rejected query has to surface — the sidebar shows GitHub's own message on that filter.
   it("throws with GitHub's message when the query is invalid", async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))
     )
     await expect(fetchIssuesByQuery('org', 'repo', 'is:nonsense')).rejects.toThrow()
@@ -957,18 +971,17 @@ describe('fetchIssuesByQuery', () => {
 describe('fetchPullRequestsByQuery', () => {
   it('scopes the saved filter to the repo and to PRs, and passes the rest through', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [] }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await fetchPullRequestsByQuery('org', 'repo', 'is:open review-requested:@me', 'tok')
+    await fetchPullRequestsByQuery('org', 'repo', 'is:open review-requested:@me', 'acct')
 
-    const url = new URL(fetchMock.mock.calls[0][0])
+    const url = new URL(fetchMock.mock.calls[0][0].url)
     expect(url.pathname).toBe('/search/issues')
     expect(url.searchParams.get('q')).toBe('repo:org/repo is:pr is:open review-requested:@me')
   })
 
   it('maps the search results into pull requests', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse({
           items: [
@@ -997,8 +1010,7 @@ describe('fetchPullRequestsByQuery', () => {
   // Search returns the *issue* view of a PR, which carries no head/base — the caller swaps in the
   // full object from the repo's own PR list, so these coming back empty is expected, not a bug.
   it('leaves head and base empty, since search does not carry them', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse({
           items: [
@@ -1024,13 +1036,12 @@ describe('fetchPullRequestsByQuery', () => {
   })
 
   it('returns an empty list when the search matches nothing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({})))
     await expect(fetchPullRequestsByQuery('org', 'repo', 'is:open')).resolves.toEqual([])
   })
 
   it('throws when GitHub rejects the query', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))
     )
     await expect(fetchPullRequestsByQuery('org', 'repo', 'is:nonsense')).rejects.toThrow()
@@ -1040,23 +1051,23 @@ describe('fetchPullRequestsByQuery', () => {
 describe('createIssue', () => {
   it('POSTs the title and body to the repo issues endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 99 }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await createIssue('org', 'repo', { title: 'Broken', body: 'Steps' }, 'tok')
+    await createIssue('org', 'repo', { title: 'Broken', body: 'Steps' }, 'acct')
 
-    const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('https://api.github.com/repos/org/repo/issues')
-    expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({ title: 'Broken', body: 'Steps' })
+    const [request] = fetchMock.mock.calls[0]
+    expect(request.url).toBe('https://api.github.com/repos/org/repo/issues')
+    expect(request.method).toBe('POST')
+    expect(request.body).toEqual({ title: 'Broken', body: 'Steps' })
   })
 
   it('sends an empty body when none is given', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 99 }))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
 
-    await createIssue('org', 'repo', { title: 'Broken' }, 'tok')
+    await createIssue('org', 'repo', { title: 'Broken' }, 'acct')
 
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ title: 'Broken', body: '' })
+    expect(fetchMock.mock.calls[0][0].body).toEqual({ title: 'Broken', body: '' })
   })
 })
 
@@ -1066,8 +1077,7 @@ describe('fetchPrReviewSummary', () => {
   }
 
   it('maps the review decision, reviewers and checks rollup', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         graphqlResponse({
           reviewDecision: 'APPROVED',
@@ -1080,7 +1090,7 @@ describe('fetchPrReviewSummary', () => {
       )
     )
 
-    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'acct')
 
     expect(summary.reviewDecision).toBe('APPROVED')
     expect(summary.checksState).toBe('SUCCESS')
@@ -1089,8 +1099,7 @@ describe('fetchPrReviewSummary', () => {
 
   // A requested reviewer has left no review yet, so they only appear via reviewRequests.
   it('appends still-requested reviewers as pending', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         graphqlResponse({
           reviewDecision: 'REVIEW_REQUIRED',
@@ -1103,15 +1112,14 @@ describe('fetchPrReviewSummary', () => {
       )
     )
 
-    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'acct')
 
     expect(summary.reviewers).toEqual([{ login: 'bob', avatarUrl: 'b.png', state: 'PENDING' }])
   })
 
   // GitHub can re-request a review after one landed; the reviewer must not be listed twice.
   it('does not duplicate a reviewer who both reviewed and is re-requested', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         graphqlResponse({
           reviewDecision: 'REVIEW_REQUIRED',
@@ -1124,16 +1132,16 @@ describe('fetchPrReviewSummary', () => {
       )
     )
 
-    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'acct')
 
     expect(summary.reviewers).toHaveLength(1)
     expect(summary.reviewers[0].state).toBe('CHANGES_REQUESTED')
   })
 
   it('falls back to an empty summary when the PR is missing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(graphqlResponse(null)))
+    stubGithub(vi.fn().mockResolvedValue(graphqlResponse(null)))
 
-    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'acct')
 
     expect(summary).toEqual({ reviewDecision: null, reviewers: [], checksState: null })
   })
@@ -1147,54 +1155,94 @@ describe('Tauri GitHub integration pass-throughs', () => {
   })
 
   it('apiGithubPollToken delegates to githubPollToken', async () => {
-    mockedTauri.githubPollToken.mockResolvedValue({ access_token: 'tok' })
+    mockedTauri.githubPollToken.mockResolvedValue({ user: { login: 'me' } })
     await apiGithubPollToken('device-code')
     expect(mockedTauri.githubPollToken).toHaveBeenCalledWith('device-code')
   })
 
-  it('apiGithubGetUser delegates to githubGetUser', async () => {
-    mockedTauri.githubGetUser.mockResolvedValue({ login: 'me' })
-    await apiGithubGetUser('tok')
-    expect(mockedTauri.githubGetUser).toHaveBeenCalledWith('tok')
+  it('apiGithubConnectToken hands the token to Rust and gets back only the profile', async () => {
+    mockedTauri.githubConnectToken.mockResolvedValue({ login: 'me' })
+    await expect(apiGithubConnectToken('ghp_secret')).resolves.toEqual({ login: 'me' })
+    expect(mockedTauri.githubConnectToken).toHaveBeenCalledWith('ghp_secret')
+  })
+
+  it('apiGithubDisconnectAccount delegates to githubDisconnectAccount', async () => {
+    mockedTauri.githubDisconnectAccount.mockResolvedValue(undefined)
+    await apiGithubDisconnectAccount('octocat')
+    expect(mockedTauri.githubDisconnectAccount).toHaveBeenCalledWith('octocat')
   })
 
   it('apiGithubListRepos delegates to githubListRepos', async () => {
     mockedTauri.githubListRepos.mockResolvedValue([])
-    await apiGithubListRepos('tok')
-    expect(mockedTauri.githubListRepos).toHaveBeenCalledWith('tok')
+    await apiGithubListRepos('acct')
+    expect(mockedTauri.githubListRepos).toHaveBeenCalledWith('acct')
+  })
+})
+
+describe('fetchFileContentAtRef', () => {
+  /**
+   * The one call whose body is not JSON: the contents API's `raw` media type answers with the file
+   * itself. Rust hands the body back as text either way, so this asserts the caller does *not* parse
+   * it — a `JSON.parse` here would reject every source file that is not a JSON document.
+   */
+  it('returns the raw file text, unparsed', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(textResponse('export const answer = 42\n'))
+    stubGithub(fetchMock)
+
+    const content = await fetchFileContentAtRef('org', 'repo', 'src/a.ts', 'main', 'acct')
+
+    expect(content).toBe('export const answer = 42\n')
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/contents/src/a.ts?ref=main',
+        accept: 'application/vnd.github.raw',
+        accountId: 'acct',
+      })
+    )
+  })
+
+  /** An added file has no version on the base side, and the caller treats that as an empty diff. */
+  it('returns null when the file does not exist at that ref', async () => {
+    stubGithub(vi.fn().mockResolvedValue(textResponse('Not Found', false, 404)))
+    expect(await fetchFileContentAtRef('org', 'repo', 'new.ts', 'main', 'acct')).toBeNull()
+  })
+
+  it('throws on any other failure, rather than reporting an empty file', async () => {
+    stubGithub(vi.fn().mockResolvedValue(textResponse('boom', false, 500)))
+    await expect(fetchFileContentAtRef('org', 'repo', 'a.ts', 'main', 'acct')).rejects.toThrow(
+      Error
+    )
   })
 })
 
 describe('PR write operations', () => {
   it('createPullRequest POSTs the PR body with an auth header', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(rawPR()))
-    vi.stubGlobal('fetch', fetchMock)
+    stubGithub(fetchMock)
     await createPullRequest(
       'org',
       'repo',
       { title: 'T', head: 'feat', base: 'main', body: 'B' },
-      'tok'
+      'acct'
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls',
       expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/pulls',
         method: 'POST',
-        body: JSON.stringify({ title: 'T', head: 'feat', base: 'main', body: 'B' }),
-        headers: expect.objectContaining({
-          Authorization: 'token tok',
-          'Content-Type': 'application/json',
-        }),
+        body: { title: 'T', head: 'feat', base: 'main', body: 'B' },
+        accountId: 'acct',
       })
     )
   })
 
   it('fetchPrFiles builds the files listing URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
-    vi.stubGlobal('fetch', fetchMock)
-    await fetchPrFiles('org', 'repo', 42, 'tok')
+    stubGithub(fetchMock)
+    await fetchPrFiles('org', 'repo', 42, 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls/42/files?per_page=100',
-      expect.anything()
+      expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/pulls/42/files?per_page=100',
+      })
     )
   })
 
@@ -1216,11 +1264,10 @@ describe('PR write operations', () => {
         },
       })
     )
-    vi.stubGlobal('fetch', fetchMock)
-    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'tok')
+    stubGithub(fetchMock)
+    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/graphql',
-      expect.objectContaining({ method: 'POST' })
+      expect.objectContaining({ url: 'https://api.github.com/graphql', method: 'POST' })
     )
     expect(result).toEqual({
       pullRequestId: 'PR_kwABC',
@@ -1229,51 +1276,53 @@ describe('PR write operations', () => {
   })
 
   it('fetchPrFilesViewedState defaults to an empty id/map when the PR is missing', async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(jsonResponse({ data: { repository: { pullRequest: null } } }))
     )
-    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'tok')
+    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'acct')
     expect(result).toEqual({ pullRequestId: '', viewedByPath: {} })
   })
 
   it('markPrFileAsViewed sends the markFileAsViewed mutation with pullRequestId/path', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { markFileAsViewed: {} } }))
-    vi.stubGlobal('fetch', fetchMock)
-    await markPrFileAsViewed('PR_kwABC', 'a.ts', 'tok')
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    stubGithub(fetchMock)
+    await markPrFileAsViewed('PR_kwABC', 'a.ts', 'acct')
+    const body = fetchMock.mock.calls[0][0].body
     expect(body.query).toContain('markFileAsViewed')
     expect(body.variables).toEqual({ id: 'PR_kwABC', path: 'a.ts' })
   })
 
   it('unmarkPrFileAsViewed sends the unmarkFileAsViewed mutation with pullRequestId/path', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { unmarkFileAsViewed: {} } }))
-    vi.stubGlobal('fetch', fetchMock)
-    await unmarkPrFileAsViewed('PR_kwABC', 'a.ts', 'tok')
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    stubGithub(fetchMock)
+    await unmarkPrFileAsViewed('PR_kwABC', 'a.ts', 'acct')
+    const body = fetchMock.mock.calls[0][0].body
     expect(body.query).toContain('unmarkFileAsViewed')
     expect(body.variables).toEqual({ id: 'PR_kwABC', path: 'a.ts' })
   })
 
   it('postPrComment POSTs to the issues comments endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 1, html_url: 'u' }))
-    vi.stubGlobal('fetch', fetchMock)
-    await postPrComment('org', 'repo', 42, 'hello', 'tok')
+    stubGithub(fetchMock)
+    await postPrComment('org', 'repo', 42, 'hello', 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/issues/42/comments',
-      expect.objectContaining({ method: 'POST', body: JSON.stringify({ body: 'hello' }) })
+      expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/issues/42/comments',
+        method: 'POST',
+        body: { body: 'hello' },
+      })
     )
   })
 
   it('submitPrReview POSTs the review event', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 1, state: 'APPROVED' }))
-    vi.stubGlobal('fetch', fetchMock)
-    await submitPrReview('org', 'repo', 42, { event: 'APPROVE', body: 'lgtm' }, 'tok')
+    stubGithub(fetchMock)
+    await submitPrReview('org', 'repo', 42, { event: 'APPROVE', body: 'lgtm' }, 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls/42/reviews',
       expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/pulls/42/reviews',
         method: 'POST',
-        body: JSON.stringify({ event: 'APPROVE', body: 'lgtm' }),
+        body: { event: 'APPROVE', body: 'lgtm' },
       })
     )
   })
@@ -1282,38 +1331,33 @@ describe('PR write operations', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(jsonResponse({ sha: 'abc', merged: true, message: 'ok' }))
-    vi.stubGlobal('fetch', fetchMock)
-    await mergePullRequest('org', 'repo', 42, { mergeMethod: 'squash' }, 'tok')
+    stubGithub(fetchMock)
+    await mergePullRequest('org', 'repo', 42, { mergeMethod: 'squash' }, 'acct')
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.github.com/repos/org/repo/pulls/42/merge',
       expect.objectContaining({
+        url: 'https://api.github.com/repos/org/repo/pulls/42/merge',
         method: 'PUT',
-        body: JSON.stringify({
-          merge_method: 'squash',
-          commit_title: undefined,
-          commit_message: undefined,
-        }),
+        body: { merge_method: 'squash', commit_title: undefined, commit_message: undefined },
       })
     )
   })
 
   it('fetchRepoDefaultBranch returns the default branch, falling back to main', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ default_branch: 'develop' })))
-    expect(await fetchRepoDefaultBranch('org', 'repo', 'tok')).toBe('develop')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
-    expect(await fetchRepoDefaultBranch('org', 'repo', 'tok')).toBe('main')
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({ default_branch: 'develop' })))
+    expect(await fetchRepoDefaultBranch('org', 'repo', 'acct')).toBe('develop')
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({})))
+    expect(await fetchRepoDefaultBranch('org', 'repo', 'acct')).toBe('main')
   })
 
   it('propagates a non-2xx response as an error', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 422)))
+    stubGithub(vi.fn().mockResolvedValue(jsonResponse({}, false, 422)))
     await expect(
-      createPullRequest('org', 'repo', { title: 'T', head: 'h', base: 'b' }, 'tok')
+      createPullRequest('org', 'repo', { title: 'T', head: 'h', base: 'b' }, 'acct')
     ).rejects.toThrow()
   })
 
   it("includes GitHub's error message and field errors in the thrown error", async () => {
-    vi.stubGlobal(
-      'fetch',
+    stubGithub(
       vi.fn().mockResolvedValue(
         jsonResponse(
           {
@@ -1327,7 +1371,12 @@ describe('PR write operations', () => {
     )
     let err: unknown
     try {
-      await createPullRequest('org', 'repo', { title: 'T', head: 'feature-x', base: 'main' }, 'tok')
+      await createPullRequest(
+        'org',
+        'repo',
+        { title: 'T', head: 'feature-x', base: 'main' },
+        'acct'
+      )
     } catch (e) {
       err = e
     }

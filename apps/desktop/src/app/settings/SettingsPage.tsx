@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button } from '@git-manager/ui'
-import { ArrowLeft, Search } from 'lucide-react'
+import { SearchInput } from '@git-manager/components'
+import { ArrowLeft } from 'lucide-react'
 import { RepositorySection } from './components/RepositorySection'
 import { SidebarUpdater } from './components/SidebarUpdater'
 import { SettingsNavItem } from './components/SettingsNavItem'
@@ -159,17 +160,14 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
         {/* Left nav / side panel — groups scroll, the Support entry is pinned to the bottom. */}
         <nav className="chrome-surface flex w-44 shrink-0 flex-col border-r border-border bg-sidebar p-2">
           {/* Quick search across every settings page */}
-          <div className="relative mb-2 shrink-0">
-            <Search className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('settings.search.placeholder')}
-              data-testid="settings-search"
-              className="h-8 w-full rounded-md border border-input bg-background pr-2 pl-7 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden"
-            />
-          </div>
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={t('settings.search.placeholder')}
+            clearLabel={t('settings.search.clear')}
+            className="mb-2 shrink-0"
+            data-testid="settings-search"
+          />
 
           <div className="flex-1 overflow-y-auto">
             {/* Global configuration group */}

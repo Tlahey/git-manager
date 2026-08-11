@@ -1,13 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input } from '@git-manager/ui'
+import { Button } from '@git-manager/ui'
+import { SearchInput } from '@git-manager/components'
 import {
   FolderOpen,
   FolderSearch,
   GitMerge,
-  X,
   AlertTriangle,
-  Search,
   Folder,
   Terminal,
   Download,
@@ -196,26 +195,14 @@ export function DashboardPage() {
               {t('dashboard.expandAll')}
             </Button>
             <HiddenSectionsMenu titles={sectionTitles} />
-            <div className="relative flex flex-1 items-center">
-              <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('dashboard.searchPlaceholder')}
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="h-8 border-border bg-card pl-9 font-sans text-xs hover:border-border/80 focus-visible:ring-primary"
-              />
-              {filterText && (
-                <button
-                  type="button"
-                  aria-label={t('dashboard.clearSearch')}
-                  onClick={() => setFilterText('')}
-                  className="absolute right-2.5 cursor-pointer rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              value={filterText}
+              onChange={setFilterText}
+              placeholder={t('dashboard.searchPlaceholder')}
+              clearLabel={t('dashboard.clearSearch')}
+              className="flex-1"
+              data-testid="dashboard-search"
+            />
           </div>
         )}
 

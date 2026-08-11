@@ -106,7 +106,7 @@ export function RepoWorkspace({ repoPath, activeRepo }: RepoWorkspaceProps) {
               useRepoUIStore.getState().setActivePrNumber(pr.number)
             }}
             currentUser={activeAccount?.user?.login}
-            githubToken={activeAccount?.token ?? undefined}
+            githubAccountId={activeAccount?.id ?? undefined}
             onContextMenu={openBranchMenu}
             onRemoteBranchContextMenu={openBranchMenu}
             onTagContextMenu={openTagMenu}

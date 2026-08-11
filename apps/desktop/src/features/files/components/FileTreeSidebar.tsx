@@ -6,12 +6,10 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   PanelLeftClose,
-  Search,
-  X,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Tooltip, cn } from '@git-manager/ui'
-import { highlightMatch } from '@git-manager/components'
+import { Button, Tooltip, cn } from '@git-manager/ui'
+import { highlightMatch, SearchInput } from '@git-manager/components'
 import { useFileExplorerStore } from '../stores/fileExplorer.store'
 import { useRepoFiles } from '../hooks/useRepoFiles'
 import { buildFileTree, filterFileTree, type FileNode } from '../lib/fileTree'
@@ -115,7 +113,7 @@ function TreeNode({
 }
 
 /**
- * The files view's left panel: the repository's working tree, and the field that filters it.
+ * The files view's left panel: the repository's tracked files, and the field that filters it.
  *
  * It sits on the **left**, where the graph view's branch sidebar sits — a repo tab has one panel
  * slot and each view fills it with its own navigation, rather than the files view adding a second
@@ -180,29 +178,12 @@ export function FileTreeSidebar() {
       </div>
 
       <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
-        <Input
-          ref={searchInputRef}
-          variant="chrome"
-          type="text"
+        <SearchInput
+          inputRef={searchInputRef}
           value={treeSearchQuery}
-          onChange={(e) => setTreeSearchQuery(e.target.value)}
+          onChange={setTreeSearchQuery}
           placeholder={t('fileExplorer.searchPlaceholder')}
-          aria-label={t('fileExplorer.searchPlaceholder')}
-          className="h-7 text-xs shadow-none"
-          // No colour class: the icon takes the field's own graded pair (see `Input`'s
-          // ICON_CLASSES), so it always matches the text and placeholder beside it.
-          startIcon={<Search className="h-3.5 w-3.5" />}
-          endIcon={
-            treeSearchQuery ? (
-              <button
-                onClick={() => setTreeSearchQuery('')}
-                aria-label={t('sidebar.clearFilter')}
-                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            ) : undefined
-          }
+          clearLabel={t('sidebar.clearFilter')}
           data-testid="file-tree-search-input"
         />
       </div>

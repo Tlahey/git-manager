@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useSettingsStore } from '../stores/settings.store'
 import { useOpenRepoTab } from './useOpenRepoTab'
 import { apiCreateAndCheckoutBranch } from '../api/git.api'
 import { setIssueState } from '../api/github.api'
 import { issueBranchName } from '../lib/github/issueBranch'
 import { openUrl } from '../lib/openUrl'
 import { useIssueRepoLink } from './useIssueRepoLink'
+import { useGithubAccount } from './useGithubAccount'
 import type { MockIssue } from '../lib/github/types'
 
 export interface IssueActions {
@@ -34,12 +34,10 @@ export interface IssueActions {
  */
 export function useIssueActions(issue: MockIssue, onChanged?: () => void): IssueActions {
   const { t } = useTranslation('launchpad')
-  const githubSettings = useSettingsStore((s) => s.settings.github)
   const openRepoTab = useOpenRepoTab()
   const { repoPath, branch, refreshBranch } = useIssueRepoLink(issue)
 
-  const token =
-    githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId)?.token ?? null
+  const { accountId } = useGithubAccount()
   const ownerRepo = useMemo(() => {
     const [owner, repo] = (issue.fullName ?? '').split('/')
     return owner && repo ? { owner, repo } : null
@@ -69,10 +67,10 @@ export function useIssueActions(issue: MockIssue, onChanged?: () => void): Issue
   }
 
   const close = async () => {
-    if (!ownerRepo || !token || closing) return
+    if (!ownerRepo || !accountId || closing) return
     setClosing(true)
     try {
-      await setIssueState(ownerRepo.owner, ownerRepo.repo, issue.number, 'closed', token)
+      await setIssueState(ownerRepo.owner, ownerRepo.repo, issue.number, 'closed', accountId)
       onChanged?.()
       toast.success(t('issue.closed', { number: issue.number }))
     } catch (e) {
@@ -90,6 +88,6 @@ export function useIssueActions(issue: MockIssue, onChanged?: () => void): Issue
     creatingBranch,
     close,
     closing,
-    canClose: !!ownerRepo && !!token,
+    canClose: !!ownerRepo && !!accountId,
   }
 }

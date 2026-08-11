@@ -82,7 +82,10 @@ export function useGitGraphActions({
   const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
   const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
-  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
+  // Commit-scoped checkout only (the commit row's "Checkout commit", a tag's tip): those detach
+  // HEAD on `repoPath` and are right to. Branch switching lives in `useSwitchBranch`, which the
+  // menu hooks below reach on their own.
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // Branch-explanation inputs: the master AI switch gates the menu item, and the repo's merge
   // targets + known refs decide which branch the explanation is diffed against.
   const aiEnabled = useAiEnabled()
@@ -122,7 +125,6 @@ export function useGitGraphActions({
     setPendingAction,
     createWorktree: (oid) => void commitActions.createWorktree(oid),
     checkoutBranchWithStashPrompt,
-    checkoutRemoteBranchAsLocal,
     t,
   })
 

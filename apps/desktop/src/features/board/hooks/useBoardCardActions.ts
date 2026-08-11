@@ -27,7 +27,7 @@ interface BoardCardActionsDeps {
   revalidateLists: () => void
   /** The issue a card follows, or `null` — see `useCardIssueTracking`. */
   trackedRef: (card: BoardCard) => BoardCardSourceIssue | null
-  token: string | null
+  accountId: string | null
 }
 
 /**
@@ -46,7 +46,7 @@ export function useBoardCardActions({
   remoteBackend,
   revalidateLists,
   trackedRef,
-  token,
+  accountId,
 }: BoardCardActionsDeps) {
   const { t } = useTranslation('board')
   const { boardDetail, mutateDetail, revalidateAllDetails, withConflictToast } = detail
@@ -100,7 +100,7 @@ export function useBoardCardActions({
           boardDetail?.board ?? activeBoard,
           applyCardPatch(card, patch),
           ref,
-          token!
+          accountId!
         )
       }
     }
@@ -306,7 +306,7 @@ export function useBoardCardActions({
     // comment someone reads on github.com, or the two threads quietly diverge.
     const ref = trackedRef(card)
     if (ref) {
-      await createIssueComment(ref.owner, ref.repo, ref.number, body.trim(), token!)
+      await createIssueComment(ref.owner, ref.repo, ref.number, body.trim(), accountId!)
       void mutateDetail()
       return card
     }

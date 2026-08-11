@@ -2,7 +2,8 @@
 import {
   githubDeviceCode,
   githubPollToken,
-  githubGetUser,
+  githubConnectToken,
+  githubDisconnectAccount,
   githubListRepos,
   githubCommitAvatars,
 } from '../../lib/tauri'
@@ -15,20 +16,30 @@ export async function apiGithubPollToken(deviceCode: string) {
   return githubPollToken(deviceCode)
 }
 
-export async function apiGithubGetUser(token: string) {
-  return githubGetUser(token)
+/**
+ * Hands a personal access token to Rust, which validates it, stores it in the keychain and answers
+ * with the account it belongs to. Nothing comes back that could be used to sign a request — that is
+ * the point, and it is why this is a *connect* rather than the former `apiGithubGetUser(token)`.
+ */
+export async function apiGithubConnectToken(token: string) {
+  return githubConnectToken(token)
 }
 
-export async function apiGithubListRepos(token: string) {
-  return githubListRepos(token)
+/** Forgets an account's stored token, which is the half of "remove account" that lives in Rust. */
+export async function apiGithubDisconnectAccount(accountId: string) {
+  return githubDisconnectAccount(accountId)
+}
+
+export async function apiGithubListRepos(accountId: string) {
+  return githubListRepos(accountId)
 }
 
 /** Resolves `sha → avatar URL` for the given commit SHAs (unresolved SHAs are absent). */
 export async function apiGithubCommitAvatars(
-  token: string,
+  accountId: string,
   owner: string,
   repo: string,
   shas: string[]
 ): Promise<Record<string, string>> {
-  return githubCommitAvatars(token, owner, repo, shas)
+  return githubCommitAvatars(accountId, owner, repo, shas)
 }

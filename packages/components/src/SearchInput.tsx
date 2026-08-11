@@ -1,5 +1,6 @@
+import type { KeyboardEventHandler, Ref } from 'react'
 import { Search, X } from 'lucide-react'
-import { Input } from '@git-manager/ui'
+import { Input, type InputVariant } from '@git-manager/ui'
 
 export interface SearchInputProps {
   value: string
@@ -11,52 +12,84 @@ export interface SearchInputProps {
    * which is a button a screen reader announces as nothing at all.
    */
   clearLabel: string
-  /** Wrapper classes — in practice the width the surrounding toolbar wants (`max-w-xs`, `max-w-sm`). */
+  /**
+   * Which surface the field sits on. `chrome` — the default, and what every search in the app uses —
+   * is the filled field graded against `sidebar-accent`; `default` is the transparent content-surface
+   * field, for a search that lives inside a dialog or a form rather than in the app's chrome.
+   */
+  variant?: InputVariant
+  /** Accessible name for the field itself. Defaults to the placeholder. */
+  ariaLabel?: string
+  /** Wrapper classes — in practice the width the surrounding toolbar wants (`max-w-xs`, `flex-1`). */
   className?: string
+  /** Classes for the field itself — for state the caller signals on it, not for resizing it. */
+  inputClassName?: string
+  /** Forwarded to the field, so a keyboard shortcut can focus it. */
+  inputRef?: Ref<HTMLInputElement>
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>
   'data-testid'?: string
 }
 
 /**
- * A search field with a leading magnifier and a ✕ that appears once something is typed.
+ * **The search field of the app.** A leading magnifier, and a ✕ that appears once something is typed.
  *
- * The ✕ is the reason this is a component rather than an `<Input>` with a class: it has to be
- * absolutely placed over the field, shown conditionally, and labelled — three chances to get it
- * subtly different, taken three times over in the Launchpad alone.
+ * It exists because a search box is three things that go subtly wrong one at a time: the ✕ has to sit
+ * over the field, appear conditionally, and be *labelled*. The app had six different answers to that
+ * — three sidebars each re-deriving the same field from `<Input>`, three toolbars pairing an
+ * `<Input>` with a magnifier of their own, and two raw `<input>`s that dropped the primitive's graded
+ * colour pairs, its focus ring and its `autoCorrect`/`spellCheck` defaults entirely. Reach for this
+ * before an `<Input>` with a magnifier next to it.
  *
- * The field's own size is fixed here (`h-7`, `text-xs`): a toolbar filter is one control at one
- * size, and the callers that wanted a different one wanted a different width, which `className`
- * gives them.
+ * Both icons go through `Input`'s own `startIcon`/`endIcon` slots rather than being positioned here,
+ * so they inherit the field's graded colour pair (see `Input`'s `ICON_CLASSES`) instead of a hardcoded
+ * `muted-foreground` that only happens to read on a content surface.
+ *
+ * The size is fixed (`inputSize="sm"`): a search box is one control at one size, and the callers that
+ * wanted a different one wanted a different *width*, which `className` gives them.
  */
 export function SearchInput({
   value,
   onChange,
   placeholder,
   clearLabel,
+  variant = 'chrome',
+  ariaLabel,
   className = '',
+  inputClassName = '',
+  inputRef,
+  onKeyDown,
   'data-testid': testId,
 }: SearchInputProps) {
   return (
-    <div className={`relative ${className}`}>
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-7 w-full border-border bg-card pr-6 pl-7 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
-        data-testid={testId}
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange('')}
-          title={clearLabel}
-          aria-label={clearLabel}
-          className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <Input
+      ref={inputRef}
+      type="text"
+      variant={variant}
+      inputSize="sm"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      aria-label={ariaLabel ?? placeholder}
+      containerClassName={className}
+      className={inputClassName}
+      data-testid={testId}
+      startIcon={<Search className="h-3.5 w-3.5" />}
+      endIcon={
+        value ? (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            title={clearLabel}
+            aria-label={clearLabel}
+            // No colour class: the button inherits the field's graded pair from the icon slot, and
+            // signals hover with a tint behind it rather than with a colour that pair doesn't cover.
+            className="flex h-4 w-4 cursor-pointer items-center justify-center rounded transition-colors hover:bg-foreground/10"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        ) : undefined
+      }
+    />
   )
 }

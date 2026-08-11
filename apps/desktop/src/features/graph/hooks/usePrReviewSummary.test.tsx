@@ -24,7 +24,7 @@ beforeEach(() => {
     reviewers: [],
     checksState: null,
   })
-  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
 })
 
 describe('usePrReviewSummary — lazy gating', () => {
@@ -37,7 +37,7 @@ describe('usePrReviewSummary — lazy gating', () => {
 
   it('fetches once enabled', () => {
     renderHook(() => usePrReviewSummary('/repo', 42, true))
-    expect(lastKey()).toEqual(['pr-review-summary', 'org', 'repo', 42, 'tok'])
+    expect(lastKey()).toEqual(['pr-review-summary', 'org', 'repo', 42, 'acct'])
   })
 
   it('does not fetch without a PR number', () => {
@@ -46,13 +46,13 @@ describe('usePrReviewSummary — lazy gating', () => {
   })
 
   it('does not fetch when the repo has no GitHub remote', () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: null, token: 'tok' })
+    useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: 'acct' })
     renderHook(() => usePrReviewSummary('/repo', 42, true))
     expect(lastKey()).toBeNull()
   })
 
   it('does not fetch when signed out', () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: null })
     renderHook(() => usePrReviewSummary('/repo', 42, true))
     expect(lastKey()).toBeNull()
   })
@@ -72,8 +72,8 @@ describe('usePrReviewSummary — result', () => {
     renderHook(() => usePrReviewSummary('/repo', 42, true))
     const fetcher = useSWRMock.mock.calls.at(-1)![1]
 
-    await fetcher(['pr-review-summary', 'org', 'repo', 42, 'tok'])
+    await fetcher(['pr-review-summary', 'org', 'repo', 42, 'acct'])
 
-    expect(fetchPrReviewSummary).toHaveBeenCalledWith('org', 'repo', 42, 'tok')
+    expect(fetchPrReviewSummary).toHaveBeenCalledWith('org', 'repo', 42, 'acct')
   })
 })

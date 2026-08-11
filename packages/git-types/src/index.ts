@@ -859,9 +859,19 @@ export interface GitHubUser {
   avatarUrl: string
 }
 
+/**
+ * A connected GitHub account, as `settings.json` records it — **public information only**.
+ *
+ * The token used to live here, which is why `~/.git-manager/settings.json` was a file to treat as a
+ * secret. It is now in the OS keychain, filed under this account's `id`, and reachable only from
+ * Rust: see `src-tauri/src/services/credential_store.rs`. What is left is who is connected, which is
+ * all the UI ever needed to render the account list.
+ *
+ * The `id` *is* the GitHub login. That is what makes signing in twice as the same user replace the
+ * entry rather than add a second one, and it is the key the keychain entry is filed under.
+ */
 export interface GitHubAccount {
   id: string
-  token: string
   user: GitHubUser
 }
 
@@ -999,7 +1009,7 @@ export interface AppSettings {
   ai: AiConnectionConfig
   git: GitSettings
   appearance: AppearanceSettings
-  language: 'fr' | 'en'
+  language: 'fr' | 'en' | 'es'
   advanced: AdvancedSettings
   github?: GitHubSettings
   ssh?: SSHSettings
@@ -1013,10 +1023,13 @@ export interface AppSettings {
   repoOverrides: Record<string, RepoScopedSettings>
 }
 
+/**
+ * A connected GitLab/Bitbucket account. Like {@link GitHubAccount}, it holds no secret: the token is
+ * in the OS keychain under this `id`, and only Rust can read it.
+ */
 export interface ProviderAccount {
   id: string
   host: string
-  token: string
   username: string
   avatarUrl?: string
   /** Display name when the provider gives one distinct from `username` (Bitbucket, GitLab). */

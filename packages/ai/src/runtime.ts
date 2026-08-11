@@ -150,11 +150,10 @@ export function resolveGenerateConfig(
   return {
     protocol,
     url: connection.url,
-    // The fast lane is a model swap and nothing else — same URL, same key — so an unset or blank
-    // second model silently means "everything on the main one", which is the default setup.
+    // The fast lane is a model swap and nothing else — same URL, same credential — so an unset or
+    // blank second model silently means "everything on the main one", which is the default setup.
     model:
       tier === 'fast' && connection.fastModel?.trim() ? connection.fastModel : connection.model,
-    apiKey: connection.apiKey,
     temperature,
     // `?? ` not `||`: a feature's 0 means "no timeout" and must not fall back.
     timeoutSeconds: timeoutSeconds ?? connection.timeoutSeconds,
@@ -359,7 +358,8 @@ export function createStatusService(transport: AiTransport): AiStatusService {
   return {
     check(connection) {
       const { protocol } = getAiPreset(connection.preset)
-      return transport.checkStatus({ protocol, url: connection.url, apiKey: connection.apiKey })
+      // No key travels with this: the backend reads it from the OS keychain.
+      return transport.checkStatus({ protocol, url: connection.url })
     },
 
     async probe(connection, model) {

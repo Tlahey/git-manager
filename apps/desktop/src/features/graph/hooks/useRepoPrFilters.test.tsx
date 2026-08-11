@@ -63,7 +63,7 @@ beforeEach(() => {
   useSWRMock.mockReset().mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
   fetchPullRequestsByQuery.mockReset().mockResolvedValue([])
   useSettingsStoreMock.mockReturnValue({
-    settings: { github: { accounts: [{ id: 'a', token: 'tok' }], activeAccountId: 'a' } },
+    settings: { github: { accounts: [{ id: 'acct' }], activeAccountId: 'acct' } },
   })
 })
 
@@ -75,7 +75,7 @@ describe('useRepoPrFilters — GitHub resolution', () => {
       'repo-pr-filters',
       'org',
       'repo',
-      'tok',
+      'acct',
       'f1 is:open\nf2 is:open author:@me',
     ])
   })
@@ -102,8 +102,8 @@ describe('useRepoPrFilters — fetching', () => {
     render()
     await runFetcher()
     expect(fetchPullRequestsByQuery.mock.calls).toEqual([
-      ['org', 'repo', 'is:open', 'tok'],
-      ['org', 'repo', 'is:open author:@me', 'tok'],
+      ['org', 'repo', 'is:open', 'acct'],
+      ['org', 'repo', 'is:open author:@me', 'acct'],
     ])
   })
 

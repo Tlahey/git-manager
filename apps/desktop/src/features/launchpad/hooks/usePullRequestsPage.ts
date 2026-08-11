@@ -34,7 +34,7 @@ export function usePullRequestsPage() {
     loading,
     isValidating,
     error,
-    hasToken,
+    hasAccount,
     username,
     lastRefreshed,
     refresh,
@@ -48,7 +48,7 @@ export function usePullRequestsPage() {
   // precisely so a build with no account (a dev run, an e2e run, a documentation capture) still
   // renders the populated page, and hiding the tabs from it would empty the screenshots too.
   const mockGitHub = useDevFlagsStore((s) => s.mockGitHub)
-  const githubConnected = hasToken || mockGitHub
+  const githubConnected = hasAccount || mockGitHub
 
   // A dismissal silences the current signed-out spell, not every future one: connecting re-arms
   // the banner, so signing out again months later still explains itself. Same shape as
@@ -125,11 +125,11 @@ export function usePullRequestsPage() {
     loading,
     isValidating,
     error,
-    hasToken,
+    hasAccount,
     githubConnected,
     showConnectBanner,
     dismissConnectBanner,
-    isMocked: mockGitHub && !hasToken,
+    isMocked: mockGitHub && !hasAccount,
     username,
     lastRefreshed,
     refresh,

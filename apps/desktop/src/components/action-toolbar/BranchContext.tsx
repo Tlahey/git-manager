@@ -8,7 +8,7 @@ import type { GitWorktree } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
-import { useBranchCheckout } from '../../hooks/useBranchCheckout'
+import { useSwitchBranch } from '../../hooks/useSwitchBranch'
 import { apiListWorktrees } from '../../api/worktree.api'
 
 type ContextEntry =
@@ -16,15 +16,21 @@ type ContextEntry =
   | { kind: 'branch'; key: string; label: string; name: string }
 
 /** Selector merging the current branch/workspace context with both switch targets: pick a local
- * branch (checks it out, on `activeRepo`) or a linked worktree ("workspace" — a view switch onto
- * that worktree's own data, no tab change, no checkout — see repoUI.store.ts's
- * `activeWorkspacePath`). The list is ordered current → workspaces → branches, each icon-tagged. */
+ * branch (checked out on the base project — see `useSwitchBranch`) or a linked worktree
+ * ("workspace" — a view switch onto that worktree's own data, no tab change, no checkout — see
+ * repoUI.store.ts's `activeWorkspacePath`). The list is ordered current → workspaces → branches,
+ * each icon-tagged.
+ *
+ * The two kinds are mutually exclusive by construction: a branch held by a linked worktree is shown
+ * as that worktree and nothing else, so the branch rows are exactly those the base project may
+ * check out. That split is what the whole list is for — it is the difference between a gesture that
+ * moves HEAD and one that only changes what is on screen. */
 export function BranchContext() {
   const { t } = useTranslation('git')
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
   const repoCache = useRepoDataStore((s) => s.repoCache)
-  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const { switchBranch } = useSwitchBranch()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -58,11 +64,16 @@ export function BranchContext() {
   const q = query.trim().toLowerCase()
   const matchesQuery = (label: string) => !q || label.toLowerCase().includes(q)
 
+  // Neither the base project (`isMain`) nor whatever is already on screen is a place to switch
+  // *to*: `activeWorkspacePath` is the workspace being viewed, and `activeRepo` covers the case
+  // the tab itself is a linked worktree — offering that one listed the branch you are standing on
+  // as somewhere else to go, and hid it from the branch list on the way.
   const workspaceEntries = worktrees.filter(
     (wt) =>
       !wt.isMain &&
       wt.branch !== '(detached HEAD)' &&
       wt.path !== activeWorkspacePath &&
+      wt.path !== activeRepo &&
       matchesQuery(wt.branch)
   )
   // A branch already checked out in one of the listed worktrees is shown as its worktree only.
@@ -96,19 +107,13 @@ export function BranchContext() {
     setQuery('')
   }
 
+  /** The picker's only job here is the busy spinner and closing itself — where the switch lands,
+   * and the view following it there, belong to `useSwitchBranch`. */
   async function handleCheckout(name: string) {
     if (!activeRepo || busy) return
     setBusy(name)
     try {
-      const fromDetached = repo?.isDetached ?? false
-      const fromRef = fromDetached ? repo!.head : (headBranch?.shortName ?? repo?.head)
-      const ok = await checkoutBranchWithStashPrompt(
-        activeRepo,
-        name,
-        fromRef ? { fromRef, fromDetached } : undefined
-      )
-      if (ok) {
-        setActiveWorkspacePath(null)
+      if (await switchBranch(name)) {
         setOpen(false)
         setQuery('')
       }

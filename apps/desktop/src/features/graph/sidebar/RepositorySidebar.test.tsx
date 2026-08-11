@@ -483,16 +483,16 @@ describe('RepositorySidebar — sections', () => {
     expect(screen.getByTestId('create-branch-dialog-stub')).toHaveAttribute('data-open', 'true')
   })
 
-  it('forwards onCreatePr to the prs section header only when a githubToken is set', () => {
+  it('forwards onCreatePr to the prs section header only when a githubAccountId is set', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'prs', title: 'Pull Requests' })],
     })
-    renderSidebar({ githubToken: 'token' })
+    renderSidebar({ githubAccountId: 'token' })
     expect(lastHeaderCalls.current[0]).toMatchObject({ sectionKey: 'prs' })
     expect(lastHeaderCalls.current[0].onCreatePr).toBeInstanceOf(Function)
   })
 
-  it('omits onCreatePr on the prs section header when there is no githubToken', () => {
+  it('omits onCreatePr on the prs section header when there is no githubAccountId', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'prs', title: 'Pull Requests' })],
     })
@@ -526,7 +526,7 @@ describe('RepositorySidebar — sections', () => {
         section({ key: 'issues', title: 'Issues' }),
       ],
     })
-    renderSidebar({ githubToken: 'token' })
+    renderSidebar({ githubAccountId: 'token' })
     const prs = lastHeaderCalls.current.find((p) => p.sectionKey === 'prs')!
     const issues = lastHeaderCalls.current.find((p) => p.sectionKey === 'issues')!
     expect(prs.onAddPrFilter).toBeInstanceOf(Function)
@@ -605,6 +605,9 @@ describe('RepositorySidebar — sections', () => {
   // A remote row switches onto the LOCAL branch of the same name, creating it (tracking the remote)
   // when it doesn't exist yet — never onto the remote tip's commit, which would detach HEAD.
   it('checks out a local branch by name, and a remote one through a local tracking branch', async () => {
+    // The switch targets the *tab's* base project, not the `repoPath` prop — see `useSwitchBranch`.
+    // Here the two coincide; `useSwitchBranch.test.tsx` covers the case where they don't.
+    useRepoUIStore.setState({ activeRepo: '/repo' })
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     const checkout = lastRowViewCalls.current[0].onCheckoutBranch as (b: GitBranch) => void
@@ -617,7 +620,12 @@ describe('RepositorySidebar — sections', () => {
         commitOid: 'abc',
       } as GitBranch)
     )
-    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'feature-x', undefined)
+    // With a starting point, which this gesture used to go without: `useSwitchBranch` reads the
+    // base project's HEAD, so a double-click checkout is now something ⌘Z can take back.
+    expect(mockedCheckoutBranch).toHaveBeenLastCalledWith('/repo', 'feature-x', {
+      fromRef: 'main',
+      fromDetached: false,
+    })
 
     await act(async () =>
       checkout({

@@ -71,7 +71,7 @@ export interface ChangeExplanationInput {
   /** The file's current (post-change) content, when it is a readable text file — the context the
    * explanation is grounded in. Omitted for deleted or binary files. */
   fileContent?: string
-  /** BCP-47-ish language tag (`'fr'` / `'en'`) the explanation should be written in. Populated from
+  /** BCP-47-ish language tag (`'fr'` / `'en'` / `'es'`) the explanation should be written in. Populated from
    * app Settings so the prose matches the UI language. */
   language?: string
   /**

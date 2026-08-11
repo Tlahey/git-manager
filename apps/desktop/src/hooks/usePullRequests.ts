@@ -7,7 +7,7 @@ import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 export interface UsePullRequestsOptions {
   remoteUrls: string[]
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   enabled?: boolean
 }
 
@@ -15,7 +15,7 @@ export interface UsePullRequestsResult {
   myPrs: PullRequest[]
   allPrs: PullRequest[]
   isGithub: boolean
-  /** Whether a GitHub account (or an explicit `githubToken`) backs the request — see below. */
+  /** Whether a GitHub account (or an explicit `githubAccountId`) backs the request — see below. */
   isConnected: boolean
   isLoading: boolean
   error: Error | null
@@ -33,13 +33,13 @@ export interface UsePullRequestsResult {
 export function usePullRequests({
   remoteUrls,
   currentUser,
-  githubToken,
+  githubAccountId,
   enabled = true,
 }: UsePullRequestsOptions): UsePullRequestsResult {
   const account = useGithubAccount()
-  const resolvedToken = githubToken || account.token || undefined
+  const resolvedAccountId = githubAccountId || account.accountId || undefined
   const resolvedUser = currentUser || account.login || undefined
-  const isConnected = !!resolvedToken
+  const isConnected = !!resolvedAccountId
 
   // Find the first GitHub remote
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
@@ -48,7 +48,7 @@ export function usePullRequests({
 
   const swrKey =
     enabled && isGithub && isConnected && ownerRepo
-      ? ['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, resolvedToken]
+      ? ['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, resolvedAccountId]
       : null
 
   const { data, error } = useSWR<PullRequest[], Error>(

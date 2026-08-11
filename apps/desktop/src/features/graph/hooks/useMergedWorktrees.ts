@@ -33,7 +33,7 @@ export interface UseMergedWorktreesResult {
   mergedWorktrees: GitWorktree[]
   isLoading: boolean
   isGithub: boolean
-  hasToken: boolean
+  hasAccount: boolean
 }
 
 /**
@@ -63,17 +63,17 @@ export function useMergedWorktrees(
   repoPath: string,
   worktrees: GitWorktree[],
   remoteUrls: string[],
-  githubToken: string | undefined,
+  githubAccountId: string | undefined,
   enabled: boolean
 ): UseMergedWorktreesResult {
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const token = githubToken || (activeAccount?.token ?? undefined)
+  const accountId = githubAccountId || (activeAccount?.id ?? undefined)
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
-  const hasToken = !!token
+  const hasAccount = !!accountId
 
   // A detached-HEAD worktree has no branch to look up a PR for.
   const candidates = worktrees.filter((wt) => !wt.isDirty && wt.branch !== '(detached HEAD)')
@@ -94,13 +94,13 @@ export function useMergedWorktrees(
   // own branch name (see fetchCommitMergedPullRequestForBranch for why the filter is critical). ──
   const candidatePairs = candidates.map((wt) => ({ oid: wt.commitOid, branch: wt.branch }))
   const commitPrKey =
-    enabled && ownerRepo && token && candidatePairs.length > 0
+    enabled && ownerRepo && accountId && candidatePairs.length > 0
       ? [
           'commit-merged-prs',
           repoPath,
           ownerRepo.owner,
           ownerRepo.repo,
-          token,
+          accountId,
           candidatePairs
             .map((p) => `${p.oid}@${p.branch}`)
             .sort()
@@ -116,9 +116,13 @@ export function useMergedWorktrees(
           async ({ oid, branch }) =>
             [
               `${oid}@${branch}`,
-              await fetchCommitMergedPullRequestForBranch(owner, repo, oid, branch, token).catch(
-                () => null
-              ),
+              await fetchCommitMergedPullRequestForBranch(
+                owner,
+                repo,
+                oid,
+                branch,
+                accountId
+              ).catch(() => null),
             ] as const
         )
       )
@@ -129,14 +133,14 @@ export function useMergedWorktrees(
 
   // ── GitHub signal 2: closed pull requests, matched on head ref + merged_at. ──
   const prKey =
-    enabled && ownerRepo && token && candidates.length > 0
-      ? ['closed-pull-requests', repoPath, ownerRepo.owner, ownerRepo.repo, token]
+    enabled && ownerRepo && accountId && candidates.length > 0
+      ? ['closed-pull-requests', repoPath, ownerRepo.owner, ownerRepo.repo, accountId]
       : null
   const { data: prList } = useSWR(
     prKey,
     () => {
       const { owner, repo } = ownerRepo as { owner: string; repo: string }
-      return fetchClosedPullRequests(owner, repo, token)
+      return fetchClosedPullRequests(owner, repo, accountId)
     },
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
@@ -182,6 +186,6 @@ export function useMergedWorktrees(
     mergedWorktrees,
     isLoading: stillChecking,
     isGithub,
-    hasToken,
+    hasAccount,
   }
 }

@@ -40,7 +40,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
   postPrComment.mockResolvedValue({ id: 1 })
   submitPrReview.mockResolvedValue({ id: 2 })
   mergePullRequest.mockResolvedValue({ merged: true })
@@ -61,7 +61,7 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.comment('hi')
     })
-    expect(postPrComment).toHaveBeenCalledWith('org', 'repo', 7, 'hi', 'tok')
+    expect(postPrComment).toHaveBeenCalledWith('org', 'repo', 7, 'hi', 'acct')
   })
 
   it('submits a review', async () => {
@@ -74,7 +74,7 @@ describe('usePrActions', () => {
       'repo',
       7,
       { event: 'APPROVE', body: 'lgtm' },
-      'tok'
+      'acct'
     )
   })
 
@@ -88,7 +88,7 @@ describe('usePrActions', () => {
       'repo',
       7,
       { mergeMethod: 'squash' },
-      'tok'
+      'acct'
     )
   })
 
@@ -102,7 +102,7 @@ describe('usePrActions', () => {
       'repo',
       7,
       { title: 'New', body: 'B' },
-      'tok'
+      'acct'
     )
   })
 
@@ -111,7 +111,7 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.setState('closed')
     })
-    expect(updatePullRequest).toHaveBeenCalledWith('org', 'repo', 7, { state: 'closed' }, 'tok')
+    expect(updatePullRequest).toHaveBeenCalledWith('org', 'repo', 7, { state: 'closed' }, 'acct')
   })
 
   it('toggles draft via the GraphQL helper (by node id)', async () => {
@@ -119,7 +119,7 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.toggleDraft('PR_node', true)
     })
-    expect(setPullRequestDraft).toHaveBeenCalledWith('PR_node', true, 'tok')
+    expect(setPullRequestDraft).toHaveBeenCalledWith('PR_node', true, 'acct')
   })
 
   it('updates the branch (merges base in)', async () => {
@@ -127,7 +127,7 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.updateBranch()
     })
-    expect(updatePrBranch).toHaveBeenCalledWith('org', 'repo', 7, 'tok')
+    expect(updatePrBranch).toHaveBeenCalledWith('org', 'repo', 7, 'acct')
   })
 
   it('requests and un-requests a reviewer', async () => {
@@ -135,11 +135,11 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.requestReviewer('carol')
     })
-    expect(addReviewers).toHaveBeenCalledWith('org', 'repo', 7, ['carol'], 'tok')
+    expect(addReviewers).toHaveBeenCalledWith('org', 'repo', 7, ['carol'], 'acct')
     await act(async () => {
       await result.current.unrequestReviewer('carol')
     })
-    expect(removeReviewers).toHaveBeenCalledWith('org', 'repo', 7, ['carol'], 'tok')
+    expect(removeReviewers).toHaveBeenCalledWith('org', 'repo', 7, ['carol'], 'acct')
   })
 
   it('assigns and unassigns a user', async () => {
@@ -147,11 +147,11 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.assign('dave')
     })
-    expect(addAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['dave'], 'tok')
+    expect(addAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['dave'], 'acct')
     await act(async () => {
       await result.current.unassign('dave')
     })
-    expect(removeAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['dave'], 'tok')
+    expect(removeAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['dave'], 'acct')
   })
 
   it('adds and removes a label', async () => {
@@ -159,11 +159,11 @@ describe('usePrActions', () => {
     await act(async () => {
       await result.current.addLabel('bug')
     })
-    expect(addLabels).toHaveBeenCalledWith('org', 'repo', 7, ['bug'], 'tok')
+    expect(addLabels).toHaveBeenCalledWith('org', 'repo', 7, ['bug'], 'acct')
     await act(async () => {
       await result.current.deleteLabel('bug')
     })
-    expect(removeLabel).toHaveBeenCalledWith('org', 'repo', 7, 'bug', 'tok')
+    expect(removeLabel).toHaveBeenCalledWith('org', 'repo', 7, 'bug', 'acct')
   })
 
   it('records an error when an action fails', async () => {
@@ -176,7 +176,7 @@ describe('usePrActions', () => {
   })
 
   it('is a no-op when signed out', async () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
     const { result } = renderHook(() => usePrActions('/repo', 7), { wrapper })
     await act(async () => {
       await result.current.comment('x')

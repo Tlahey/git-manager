@@ -27,10 +27,10 @@ export type BoardData = ReturnType<typeof useBoardData>
 
 export function useBoardData(repoPath: string) {
   const { t } = useTranslation('board')
-  const { ownerRepo, token, remoteBackend, backendFor } = useBoardBackends(repoPath)
+  const { ownerRepo, accountId, remoteBackend, backendFor } = useBoardBackends(repoPath)
   const catalog = useBoardCatalog(repoPath, remoteBackend)
   const { activeBoard, revalidateLists } = catalog
-  const detail = useBoardDetail(repoPath, activeBoard, backendFor, token)
+  const detail = useBoardDetail(repoPath, activeBoard, backendFor, accountId)
   const cards = detail.boardDetail?.cards ?? []
 
   const boardActions = useBoardActions({ repoPath, catalog, detail, backendFor })
@@ -39,7 +39,7 @@ export function useBoardData(repoPath: string) {
     activeBoard,
     cards,
     ownerRepo,
-    token,
+    accountId,
     mutateDetail: () => void detail.mutateDetail(),
   })
   const cardActions = useBoardCardActions({
@@ -51,7 +51,7 @@ export function useBoardData(repoPath: string) {
     remoteBackend,
     revalidateLists,
     trackedRef: tracking.trackedRef,
-    token,
+    accountId,
   })
   const createTagAndAssign = useCardTagCreation({
     repoPath,

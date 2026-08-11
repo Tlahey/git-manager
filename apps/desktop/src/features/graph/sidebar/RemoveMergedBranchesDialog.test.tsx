@@ -39,7 +39,7 @@ function mergedCheck(b: GitBranch, prNumber = 1): BranchMergeCheck {
 
 function hookResult(
   checks: BranchMergeCheck[],
-  overrides: { isLoading?: boolean; isGithub?: boolean; hasToken?: boolean } = {}
+  overrides: { isLoading?: boolean; isGithub?: boolean; hasAccount?: boolean } = {}
 ) {
   return {
     checks,
@@ -48,7 +48,7 @@ function hookResult(
       .map((c) => c.branch),
     isLoading: false,
     isGithub: true,
-    hasToken: true,
+    hasAccount: true,
     ...overrides,
   }
 }
@@ -65,7 +65,7 @@ function renderDialog(
         branches={[branch()]}
         worktreeBranches={[]}
         remoteUrls={['https://github.com/org/repo.git']}
-        githubToken="tok"
+        githubAccountId="tok"
         open
         onClose={vi.fn()}
         {...props}

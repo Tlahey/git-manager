@@ -16,22 +16,22 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 
 beforeEach(() => {
   fetchPrFiles.mockReset()
-  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
 })
 
 describe('usePrFiles', () => {
   it('skips fetching when signed out', () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: null })
     renderHook(() => usePrFiles('/repo', 5), { wrapper })
     expect(fetchPrFiles).not.toHaveBeenCalled()
   })
 
-  it('fetches the PR files with owner/repo/number/token', async () => {
+  it('fetches the PR files with owner/repo/number/accountId', async () => {
     fetchPrFiles.mockResolvedValue([
       { filename: 'a.ts', status: 'modified', additions: 1, deletions: 0, changes: 1 },
     ])
     const { result } = renderHook(() => usePrFiles('/repo', 5), { wrapper })
     await waitFor(() => expect(result.current.files).toHaveLength(1))
-    expect(fetchPrFiles).toHaveBeenCalledWith('org', 'repo', 5, 'tok')
+    expect(fetchPrFiles).toHaveBeenCalledWith('org', 'repo', 5, 'acct')
   })
 })

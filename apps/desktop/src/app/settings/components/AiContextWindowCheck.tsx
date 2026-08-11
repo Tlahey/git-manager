@@ -64,7 +64,7 @@ export function AiContextWindowCheck() {
       // The key is needed because `/v1/models` is the source of `servedMaxModelLen`, and a server
       // like omlx rejects it unauthenticated — without it the one signal a non-Ollama provider
       // offers would always come back null.
-      const limits = await apiGetModelContextLimits(ai.url, ai.model, ai.apiKey)
+      const limits = await apiGetModelContextLimits(ai.url, ai.model)
       const answered =
         limits.architectureMax !== null ||
         limits.modelfileNumCtx !== null ||

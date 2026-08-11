@@ -37,10 +37,13 @@ Feature: Tauri command mocking
     When the GitHub token poll is checked through the test bridge
     Then the poll result shows authorization pending
 
+  # An authorized poll answers with the connected account, not a token: Rust exchanges the code,
+  # validates what comes back and files it in the OS keychain before returning, so there is no
+  # credential on this wire at all. See src-tauri/src/services/credential_store.rs.
   Scenario: Simulate a completed GitHub device-flow authorization
-    Given the "github_poll_token" command is mocked to return an access token
+    Given the "github_poll_token" command is mocked to return a connected account
     When the GitHub token poll is checked through the test bridge
-    Then the poll result contains an access token
+    Then the poll result contains the connected account
 
   Scenario: Simulate an expired GitHub device code
     Given the "github_poll_token" command is mocked to return an expired device code

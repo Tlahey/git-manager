@@ -3,10 +3,18 @@ import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, ScrollArea, Tag, Alert } from '@git-manager/ui'
 import { Check, Trash2, Key, Globe, User, Plus, RefreshCw } from 'lucide-react'
 import type { ProviderAccount } from '@git-manager/git-types'
+import {
+  apiDeleteCredential,
+  apiStoreCredential,
+  type CredentialKind,
+} from '../../../api/credentials.api'
 
 export interface TokenProviderPanelProps {
   /** Testid prefix and settings key stem — `gitlab`, `bitbucket`. Not user-facing. */
   provider: string
+  /** Which keychain namespace the token is filed under. Separate from `provider` because that one
+   * is a testid/i18n stem, and a credential's home should not move if a marker is renamed. */
+  credentialKind: CredentialKind
   /** The provider's proper name, interpolated into the copy. Deliberately untranslated. */
   label: string
   /** Namespaced i18n keys for the two strings that differ per provider. */
@@ -38,6 +46,7 @@ export interface TokenProviderPanelProps {
  */
 export function TokenProviderPanel({
   provider,
+  credentialKind,
   label,
   hintKey,
   tokenLabelKey,
@@ -65,10 +74,14 @@ export function TokenProviderPanel({
         id: `${username.trim()}@${host.replace('https://', '').replace('http://', '')}`,
         host: host.trim(),
         username: username.trim(),
-        token: token.trim(),
         displayName: identity.displayName,
         authMethod: 'token',
       }
+      // The token goes to the OS keychain, not onto the account: `settings.json` records who is
+      // connected and nothing that could act as them. Stored before the account is announced, so a
+      // keychain failure leaves no account listed with no credential behind it.
+      await apiStoreCredential(credentialKind, token.trim(), account.id)
+
       const next = accounts.filter((a) => a.id !== account.id)
       next.push(account)
 
@@ -83,6 +96,12 @@ export function TokenProviderPanel({
   }
 
   function handleRemove(id: string) {
+    // Forget the credential too, or removing the account here would leave its token in the keychain
+    // with nothing in the app able to reach — or revoke — it. Best effort: a keychain that refuses
+    // must not strand the account on screen.
+    void apiDeleteCredential(credentialKind, id).catch((e) => {
+      console.error(`Failed to remove the stored ${credentialKind} token:`, e)
+    })
     const next = accounts.filter((a) => a.id !== id)
     const stillActive =
       activeAccountId === id ? (next.length > 0 ? next[0].id : null) : activeAccountId

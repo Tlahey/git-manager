@@ -24,24 +24,24 @@ beforeEach(() => {
   fetchPrFilesViewedState.mockReset()
   markPrFileAsViewed.mockReset()
   unmarkPrFileAsViewed.mockReset()
-  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
 })
 
 describe('usePrFilesViewedState', () => {
   it('skips fetching when signed out', () => {
-    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: null })
     renderHook(() => usePrFilesViewedState('/repo', 5), { wrapper })
     expect(fetchPrFilesViewedState).not.toHaveBeenCalled()
   })
 
-  it('fetches with owner/repo/number/token and exposes the PR node id + per-path state', async () => {
+  it('fetches with owner/repo/number/accountId and exposes the PR node id + per-path state', async () => {
     fetchPrFilesViewedState.mockResolvedValue({
       pullRequestId: 'PR_kwABC',
       viewedByPath: { 'src/a.ts': 'VIEWED' },
     })
     const { result } = renderHook(() => usePrFilesViewedState('/repo', 5), { wrapper })
     await waitFor(() => expect(result.current.pullRequestId).toBe('PR_kwABC'))
-    expect(fetchPrFilesViewedState).toHaveBeenCalledWith('org', 'repo', 5, 'tok')
+    expect(fetchPrFilesViewedState).toHaveBeenCalledWith('org', 'repo', 5, 'acct')
     expect(result.current.viewedByPath).toEqual({ 'src/a.ts': 'VIEWED' })
   })
 
@@ -78,7 +78,7 @@ describe('usePrFilesViewedState — toggleViewed (optimistic)', () => {
     // Optimistic flip is visible before the network call settles.
     await waitFor(() => expect(result.current.viewedByPath['a.ts']).toBe('VIEWED'))
     expect(result.current.isToggling).toBe(true)
-    expect(markPrFileAsViewed).toHaveBeenCalledWith('PR_kwABC', 'a.ts', 'tok')
+    expect(markPrFileAsViewed).toHaveBeenCalledWith('PR_kwABC', 'a.ts', 'acct')
     expect(unmarkPrFileAsViewed).not.toHaveBeenCalled()
 
     resolveMark()
@@ -101,7 +101,7 @@ describe('usePrFilesViewedState — toggleViewed (optimistic)', () => {
     await act(async () => {
       await result.current.toggleViewed('a.ts')
     })
-    expect(unmarkPrFileAsViewed).toHaveBeenCalledWith('PR_kwABC', 'a.ts', 'tok')
+    expect(unmarkPrFileAsViewed).toHaveBeenCalledWith('PR_kwABC', 'a.ts', 'acct')
     expect(markPrFileAsViewed).not.toHaveBeenCalled()
     expect(result.current.viewedByPath['a.ts']).toBe('UNVIEWED')
   })

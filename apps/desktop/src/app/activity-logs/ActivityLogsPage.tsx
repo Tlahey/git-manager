@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { ArrowLeft, FolderOpen, GitBranch, Search, X } from 'lucide-react'
-import { Button, Input, NativeSelect, ScrollArea, Separator } from '@git-manager/ui'
+import { ArrowLeft, FolderOpen, GitBranch, X } from 'lucide-react'
+import { Button, NativeSelect, ScrollArea, Separator } from '@git-manager/ui'
+import { SearchInput } from '@git-manager/components'
 import { useActivityLogStore, type ActivityLogEntry } from '../../stores/activityLog.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { apiOpenActivityLogsDir, apiOpenAiLogsDir } from '../../api/activityLog.api'
@@ -135,17 +136,14 @@ export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
           <option value="all">{t('activityLogs.level.all')}</option>
           <option value="error">{t('activityLogs.level.errors')}</option>
         </NativeSelect>
-        <div className="relative min-w-[180px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-          <Input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder={t('activityLogs.filterPlaceholder')}
-            aria-label={t('activityLogs.filterPlaceholder')}
-            data-testid="activity-filter-input"
-            className="h-7 pl-8 text-[11px]"
-          />
-        </div>
+        <SearchInput
+          value={filter}
+          onChange={setFilter}
+          placeholder={t('activityLogs.filterPlaceholder')}
+          clearLabel={t('activityLogs.filterClear')}
+          className="min-w-[180px] flex-1"
+          data-testid="activity-filter-input"
+        />
         {traceId && (
           <span
             className="flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary"

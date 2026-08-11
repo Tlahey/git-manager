@@ -81,12 +81,11 @@ function withToken() {
       github: {
         accounts: [
           {
-            id: 'acc1',
-            token: 'tok',
+            id: 'acct',
             user: { login: 'me', name: null, email: null, avatarUrl: '' },
           },
         ],
-        activeAccountId: 'acc1',
+        activeAccountId: 'acct',
       },
     },
   })
@@ -106,7 +105,7 @@ beforeEach(() => {
   mocked.fetchGitHubContributions.mockResolvedValue([])
 })
 
-describe('useGitHubData — no GitHub token', () => {
+describe('useGitHubData — no GitHub account', () => {
   it('returns the fixtures while the mock flag is on, and never calls the GitHub API', () => {
     // Set explicitly: the flag now defaults to off in every build, so arming the fixtures is an
     // act (the env variable or the debug toggle) rather than something a dev build assumes.
@@ -115,7 +114,7 @@ describe('useGitHubData — no GitHub token', () => {
     useNotificationStore.setState({ mockPRs: [mockPr] })
     const { result } = renderHook(() => useGitHubData(), { wrapper })
 
-    expect(result.current.hasToken).toBe(false)
+    expect(result.current.hasAccount).toBe(false)
     expect(result.current.prs).toEqual([mockPr])
     expect(result.current.loading).toBe(false)
     expect(result.current.username).toBeNull()
@@ -123,7 +122,7 @@ describe('useGitHubData — no GitHub token', () => {
   })
 
   it('returns nothing at all with the flag off — which is what a real user gets', () => {
-    // The fixtures used to be handed over to anyone without a token, so a user who had simply not
+    // The fixtures used to be handed over to anyone without an account, so a user who had simply not
     // connected GitHub yet saw ten invented pull requests, with invented authors and titles,
     // rendered exactly like real ones. Fiction shown as fact is a worse first impression than the
     // empty list the Launchpad already knows how to draw.
@@ -132,7 +131,7 @@ describe('useGitHubData — no GitHub token', () => {
     const { result } = renderHook(() => useGitHubData(), { wrapper })
 
     expect(result.current.prs).toEqual([])
-    expect(result.current.hasToken).toBe(false)
+    expect(result.current.hasAccount).toBe(false)
     expect(mocked.fetchGitHubPRs).not.toHaveBeenCalled()
   })
 
@@ -157,7 +156,7 @@ describe('useGitHubData — no GitHub token', () => {
   })
 })
 
-describe('useGitHubData — with a token', () => {
+describe('useGitHubData — with a connected account', () => {
   it('fetches and merges PR search + review-requested search results', async () => {
     withToken()
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1', needsMyReview: false })])
@@ -170,7 +169,7 @@ describe('useGitHubData — with a token', () => {
 
     expect(result.current.prs.map((p) => p.id).sort()).toEqual(['pr-1', 'pr-2'])
     expect(result.current.prs.find((p) => p.id === 'pr-2')?.needsMyReview).toBe(true)
-    expect(mocked.fetchGitHubPRs).toHaveBeenCalledWith('me', 'tok')
+    expect(mocked.fetchGitHubPRs).toHaveBeenCalledWith('me', 'acct')
   })
 
   it('deduplicates a PR appearing in both searches, keeping needsMyReview forced true', async () => {
