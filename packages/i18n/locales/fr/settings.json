@@ -2,6 +2,7 @@
   "settings.title": "Paramètres",
   "settings.back": "Retour",
   "settings.search.placeholder": "Rechercher un paramètre…",
+  "settings.search.clear": "Effacer la recherche",
   "settings.search.noResults": "Aucun paramètre correspondant",
   "settings.search.keywords.general": "général auteur nom email graphe fetch élaguer scan",
   "settings.search.keywords.ssh": "ssh clé agent privée publique",

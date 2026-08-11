@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { GraduationCap, RefreshCw, Search } from 'lucide-react'
-import { Button, Input, ScrollArea, Spinner } from '@git-manager/ui'
+import { GraduationCap, RefreshCw } from 'lucide-react'
+import { Button, ScrollArea, Spinner } from '@git-manager/ui'
+import { SearchInput } from '@git-manager/components'
 import type { PooledAction } from '../../lib/actionPool'
 import { appErrorMessage } from '../../lib/aiErrorMessage'
 import { useAiEnabled } from '../../hooks/useAiEnabled'
@@ -88,17 +89,14 @@ function ActionJournalContent() {
       </header>
 
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-        <div className="relative min-w-[180px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-          <Input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder={t('actionJournal.filterPlaceholder')}
-            aria-label={t('actionJournal.filterPlaceholder')}
-            data-testid="action-journal-filter"
-            className="h-7 pl-8 text-[11px]"
-          />
-        </div>
+        <SearchInput
+          value={filter}
+          onChange={setFilter}
+          placeholder={t('actionJournal.filterPlaceholder')}
+          clearLabel={t('actionJournal.filterClear')}
+          className="min-w-[180px] flex-1"
+          data-testid="action-journal-filter"
+        />
         <Button
           variant="outline"
           size="sm"

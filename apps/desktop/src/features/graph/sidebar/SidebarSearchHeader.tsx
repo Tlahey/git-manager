@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import { Focus, Search, X } from 'lucide-react'
-import { Input } from '@git-manager/ui'
+import { Focus, X } from 'lucide-react'
+import { SearchInput } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 
 interface SidebarSearchHeaderProps {
@@ -76,34 +76,15 @@ export function SidebarSearchHeader({
             {` / ${t('sidebar.filterResults', { count: filterStats.total })}`}
           </div>
         )}
-        <Input
-          ref={inputRef}
-          variant="chrome"
-          type="text"
+        <SearchInput
+          inputRef={inputRef}
           value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
+          onChange={onQueryChange}
           placeholder={t('sidebar.filterBranchesPlaceholder')}
-          aria-label={t('sidebar.filterBranches')}
-          className={`h-7 text-xs shadow-none ${
-            soloActive ? 'ring-1 ring-primary focus-visible:ring-primary' : ''
-          }`}
-          startIcon={
-            // No colour outside solo mode: the field's own graded pair applies (see `Input`'s
-            // ICON_CLASSES). `sidebar-muted-foreground` is graded against the sidebar background,
-            // not against the `sidebar-accent` fill this icon actually sits on.
-            <Search className={`h-3.5 w-3.5 ${soloActive ? 'text-primary' : ''}`} />
-          }
-          endIcon={
-            query ? (
-              <button
-                onClick={() => onQueryChange('')}
-                aria-label={t('sidebar.clearFilter')}
-                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            ) : undefined
-          }
+          ariaLabel={t('sidebar.filterBranches')}
+          clearLabel={t('sidebar.clearFilter')}
+          inputClassName={soloActive ? 'ring-1 ring-primary focus-visible:ring-primary' : ''}
+          data-testid="sidebar-filter-input"
         />
         {soloActive && (
           <div

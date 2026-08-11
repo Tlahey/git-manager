@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Checkbox, Input } from '@git-manager/ui'
-import { Kanban, Plus, Search, X } from 'lucide-react'
+import { Button, Checkbox } from '@git-manager/ui'
+import { Kanban, Plus } from 'lucide-react'
 import type { Board } from '@git-manager/git-types'
-import { highlightMatch } from '@git-manager/components'
+import { highlightMatch, SearchInput } from '@git-manager/components'
 import { useBoardData } from '../hooks/useBoardData'
 import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
@@ -94,27 +94,12 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
           toolbar's search (⌘F), which looks across every board — so neither control narrows
           something it doesn't sit next to. */}
       <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
-        <Input
-          ref={searchInputRef}
-          variant="chrome"
-          type="text"
+        <SearchInput
+          inputRef={searchInputRef}
           value={boardFilter}
-          onChange={(e) => setBoardFilter(e.target.value)}
+          onChange={setBoardFilter}
           placeholder={t('sidebar.filterPlaceholder')}
-          aria-label={t('sidebar.filterPlaceholder')}
-          className="h-7 text-xs shadow-none"
-          startIcon={<Search className="h-3.5 w-3.5" />}
-          endIcon={
-            boardFilter ? (
-              <button
-                onClick={() => setBoardFilter('')}
-                aria-label={t('git:sidebar.clearFilter')}
-                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            ) : undefined
-          }
+          clearLabel={t('git:sidebar.clearFilter')}
           data-testid="board-filter-input"
         />
       </div>

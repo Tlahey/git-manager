@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Search, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { Input } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useCommitSearchStore } from '../../../stores/commitSearch.store'
 
@@ -56,8 +57,14 @@ export function CommitSearchPanel({
       data-testid="commit-search-panel"
     >
       <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <input
+      {/* `ghost` rather than the shared `SearchInput`: this field is one segment of a stepper, and
+          the ✕ that component exists to standardise would land beside the panel's own ✕ meaning
+          something else. The primitive still buys the graded placeholder, the focus behaviour and
+          the autocorrect defaults a bare `<input>` was dropping. */}
+      <Input
         ref={inputRef}
+        variant="ghost"
+        inputSize="sm"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
@@ -72,7 +79,7 @@ export function CommitSearchPanel({
         }}
         placeholder={t('toolbar.findCommit')}
         aria-label={t('toolbar.findCommit')}
-        className="w-48 min-w-0 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+        className="w-48 min-w-0 px-0"
         data-testid="commit-search-panel-input"
       />
       {hasQuery && (
