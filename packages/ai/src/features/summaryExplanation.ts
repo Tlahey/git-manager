@@ -29,7 +29,7 @@ export interface SummaryExplanationInput {
   branchCommits?: string[]
   /** `commit` scope: the commit itself. */
   commit?: SummaryExplanationCommit
-  /** BCP-47-ish language tag (`'fr'` / `'en'`) the explanation should be written in. */
+  /** BCP-47-ish language tag (`'fr'` / `'en'` / `'es'`) the explanation should be written in. */
   language?: string
   contextTokens?: number
 }

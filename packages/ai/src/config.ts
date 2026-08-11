@@ -210,7 +210,7 @@ export interface AiActivity {
   baseOid: string | null
   /** The newest commit in the window. `null` when the window held no commits. */
   headOid: string | null
-  /** BCP-47-ish language tag (`'fr'` / `'en'`) the summary should be written in. Frontend-populated
+  /** BCP-47-ish language tag (`'fr'` / `'en'` / `'es'`) the summary should be written in. Frontend-populated
    * from app Settings (not from Rust) so the briefing matches the user's UI language. */
   language?: string
 }
