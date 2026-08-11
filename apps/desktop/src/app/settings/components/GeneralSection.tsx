@@ -26,7 +26,7 @@ export function GeneralSection() {
     setCommitsDraft(String(git.initialGraphCommits ?? DEFAULT_GRAPH_COMMITS))
   }, [git.initialGraphCommits])
 
-  function handleLanguageChange(lang: 'en' | 'fr') {
+  function handleLanguageChange(lang: 'en' | 'fr' | 'es') {
     updateSettings({ language: lang })
     i18next.changeLanguage(lang)
   }
@@ -39,9 +39,10 @@ export function GeneralSection() {
     updateSettings({ advanced: { ...advanced, ...partial } })
   }
 
-  const languages: { value: 'en' | 'fr'; label: string; flag: string }[] = [
+  const languages: { value: 'en' | 'fr' | 'es'; label: string; flag: string }[] = [
     { value: 'en', label: t('settings.language.en'), flag: '🇬🇧' },
     { value: 'fr', label: t('settings.language.fr'), flag: '🇫🇷' },
+    { value: 'es', label: t('settings.language.es'), flag: '🇪🇸' },
   ]
 
   return (
@@ -50,7 +51,7 @@ export function GeneralSection() {
       <FilterableSetting
         className="space-y-2"
         testId="setting-language"
-        match={`${t('settings.language.title')} language langue english français anglais francais`}
+        match={`${t('settings.language.title')} language langue idioma english français español anglais francais ingles espanol`}
       >
         <p className="text-xs font-medium text-foreground">
           <Highlight text={t('settings.language.title')} />
@@ -58,7 +59,7 @@ export function GeneralSection() {
         <NativeSelect
           data-testid="language-select"
           value={settings.language}
-          onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr')}
+          onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr' | 'es')}
           className="max-w-[220px]"
         >
           {languages.map((lang) => (

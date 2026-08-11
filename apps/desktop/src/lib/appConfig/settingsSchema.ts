@@ -165,7 +165,7 @@ export const SETTINGS_GROUP_SCHEMAS = {
   ai: aiSchema,
   git: gitSchema,
   appearance: appearanceSchema,
-  language: z.enum(['fr', 'en']),
+  language: z.enum(['fr', 'en', 'es']),
   advanced: advancedSchema,
   // Optional exactly where `AppSettings` says so — these groups postdate the first version of the
   // settings and an old snapshot legitimately has none of them.

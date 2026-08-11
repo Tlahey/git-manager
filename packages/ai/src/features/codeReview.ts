@@ -111,7 +111,7 @@ export interface CodeReviewInput {
   context: AiContext
   /** Which of the two moments this review is for — it only changes the prompt's framing. */
   scope: CodeReviewScope
-  /** BCP-47-ish language tag (`'fr'` / `'en'`) the review should be written in. Populated from app
+  /** BCP-47-ish language tag (`'fr'` / `'en'` / `'es'`) the review should be written in. Populated from app
    * Settings so the prose matches the UI language. */
   language?: string
   /** The model's context window, from the connection settings. Sizes how much diff is sent — see

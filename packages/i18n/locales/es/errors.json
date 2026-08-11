@@ -1,0 +1,20 @@
+{
+  "errors.REPO_NOT_FOUND": "No se encontró ningún repositorio Git en esta carpeta.",
+  "errors.NOT_A_REPO": "Esta carpeta no es un repositorio Git.",
+  "errors.PERMISSION_DENIED": "Permiso denegado.",
+  "errors.MERGE_CONFLICT": "Conflicto de merge.",
+  "errors.DIRTY_WORKING_TREE": "Hay cambios sin confirmar.",
+  "errors.BRANCH_NOT_FOUND": "Rama no encontrada.",
+  "errors.COMMIT_NOT_FOUND": "Commit no encontrado.",
+  "errors.PROTECTED_BRANCH": "Esta rama está protegida.",
+  "errors.AI_PROVIDER_NOT_RUNNING": "El proveedor de IA no está en ejecución.",
+  "errors.AI_MODEL_NOT_FOUND": "Modelo de IA no encontrado.",
+  "errors.UNKNOWN": "Error desconocido.",
+  "errors.AI_EMPTY_RESPONSE": "El modelo respondió con una respuesta vacía.",
+  "errors.AI_NO_BRANCH_CHANGES": "Esta rama no tiene cambios respecto a su rama base.",
+  "errors.AI_NO_COMMIT_CHANGES": "Este commit no tiene cambios de texto que explicar.",
+  "errors.AI_NO_WORKING_CHANGES": "No hay cambios sin confirmar que resumir.",
+  "appCrash.title": "Algo salió mal",
+  "appCrash.description": "La interfaz encontró un error inesperado y tuvo que detenerse. Tus repositorios están intactos — recargar restaura todo.",
+  "appCrash.reload": "Recargar la aplicación"
+}

@@ -999,7 +999,7 @@ export interface AppSettings {
   ai: AiConnectionConfig
   git: GitSettings
   appearance: AppearanceSettings
-  language: 'fr' | 'en'
+  language: 'fr' | 'en' | 'es'
   advanced: AdvancedSettings
   github?: GitHubSettings
   ssh?: SSHSettings

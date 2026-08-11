@@ -272,6 +272,7 @@
   "settings.appearance.stickyScroll": "Sticky scroll in code/diff editors (pins the enclosing function/class name to the top while scrolling)",
   "settings.language.en": "English",
   "settings.language.fr": "Français",
+  "settings.language.es": "Spanish",
   "settings.language.note": "Language changes take effect immediately.",
   "settings.advanced.exclusions": "Scan exclusions",
   "settings.advanced.configFile": "Configuration file",
