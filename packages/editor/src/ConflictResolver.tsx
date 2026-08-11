@@ -52,6 +52,12 @@ const DEFAULT_IGNORE_CHANGE_LABEL = 'Ignore this change'
 const defaultCollapsedLinesLabel = (count: number) =>
   `${count} ${count === 1 ? 'line' : 'lines'} collapsed`
 
+/** How long a 2-panel pane stays empty waiting for the geometry that describes its text before
+ * giving up and painting the raw file uncollapsed — see `rawTextAllowed`. Long enough that a real
+ * diff (a detached Monaco diff editor, answering in a frame or two) always wins the race, short
+ * enough that a host whose diff never answers reads as a load rather than a hang. */
+const RAW_TEXT_FALLBACK_MS = 500
+
 // Typed against monaco-editor's own root export rather than `@monaco-editor/react`'s `Monaco`
 // type — see the comment in `useMergeScrollSync.ts` for why.
 type Monaco = typeof monaco
@@ -192,9 +198,32 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     )
 
     // Compute diff dynamically in 2-way mode
-    const dynamicDiff = useTwoWayDiffView(isTwoWay, monaco, original, modified, whitespaceMode)
+    const dynamicDiff = useTwoWayDiffView(
+      isTwoWay,
+      monaco,
+      original,
+      modified,
+      whitespaceMode,
+      modelPathPrefix
+    )
     const dynamicView = dynamicDiff?.view ?? null
     const viewToUse = isTwoWay ? (dynamicView ?? dummyView) : staticView
+
+    /* Whether to paint a 2-panel file that has no geometry yet — see `displayedOriginal` below.
+     *
+     * Off until it times out, so the normal path never shows an uncollapsed file at all. It cannot
+     * simply be off forever: a diff result may never arrive (Monaco computes it in the detached
+     * editor `useTwoWayDiffView` creates, which an environment can leave unlaid-out and therefore
+     * silent — this package's own Storybook is one), and never painting a file is a far worse
+     * failure than painting it uncollapsed. So the raw props are a fallback on a timer rather than
+     * the default. Keyed on the texts, so each new file gets its own grace period. */
+    const [rawTextAllowed, setRawTextAllowed] = useState(false)
+    useEffect(() => {
+      if (!isTwoWay) return
+      setRawTextAllowed(false)
+      const timer = setTimeout(() => setRawTextAllowed(true), RAW_TEXT_FALLBACK_MS)
+      return () => clearTimeout(timer)
+    }, [isTwoWay, original, modified])
 
     /* The texts the panes actually show in 2-way mode: the ones the current geometry describes,
      * NOT the newest ones handed down as props.
@@ -203,16 +232,30 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
      * the new file while the blocks are still the old one's. Painting the new text then means
      * painting it with no blocks — no collapsed regions, no decorations — and the collapse snaps
      * in a frame or two later, which is exactly the flicker this avoids. Deferring keeps the
-     * previous file on screen for that moment instead, then swaps text, blocks and placements in
-     * a single commit.
+     * previous file on screen for that moment instead, then swaps text, blocks, placements and the
+     * models they live in (see `TwoWayDiffView.modelPathPrefix`) in a single commit.
      *
-     * The fallback to the raw props is not just for the first render: a diff result may never
-     * arrive at all (Monaco computes it in the detached editor `useTwoWayDiffView` creates, which
-     * an environment can leave unlaid-out and therefore silent — this package's own Storybook is
-     * one). Deferring unconditionally would turn "no diff geometry" into "no text", which is a far
-     * worse failure than showing the file uncollapsed. Nothing to defer *to* means show it. */
-    const displayedOriginal = isTwoWay ? (dynamicDiff?.original ?? original ?? '') : undefined
-    const displayedModified = isTwoWay ? (dynamicDiff?.modified ?? modified ?? '') : undefined
+     * On a *first* open there is no previous file to hold, so this deliberately renders nothing
+     * until the geometry lands (`rawTextAllowed` above is the escape hatch for a host whose diff
+     * never answers): an empty pane that fills in once is one transition, where painting the raw
+     * text first is two — the whole file, then the collapse. */
+    const geometryPending = isTwoWay && dynamicDiff === null && !rawTextAllowed
+    const displayedOriginal = isTwoWay
+      ? geometryPending
+        ? ''
+        : (dynamicDiff?.original ?? original ?? '')
+      : undefined
+    const displayedModified = isTwoWay
+      ? geometryPending
+        ? ''
+        : (dynamicDiff?.modified ?? modified ?? '')
+      : undefined
+    /* The prefix naming the models the panes attach to. Deferred with the text for the reason that
+     * type documents: taken from props it would swap the models — and with them the hidden areas and
+     * every view zone — while the previous file is still the one on screen. */
+    const displayedPrefix = isTwoWay
+      ? (dynamicDiff?.modelPathPrefix ?? modelPathPrefix)
+      : modelPathPrefix
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     // The resolver's own root. Carries `--merge-editor-background` — Monaco's actual resolved
@@ -281,6 +324,20 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const scheduleRecomputeIndirectionRef = useRef<() => void>(() => {})
     const stableScheduleRecompute = useCallback(() => scheduleRecomputeIndirectionRef.current(), [])
 
+    // Same shape of cycle, same fix, in the other direction: the collapsed-region banners are
+    // positioned from the resolver's line-top geometry (see the collapse hook's `lineTop` param),
+    // but that geometry is itself derived from the collapse state that hook owns. A stable
+    // indirection lets it call whatever `getTop` currently is — assigned right after
+    // `useLineTopGeometry` has produced it, a few lines down.
+    const lineTopIndirectionRef = useRef<((side: PaneSide, lineNumber: number) => number) | null>(
+      null
+    )
+    const stableLineTop = useCallback(
+      (side: PaneSide, lineNumber: number) =>
+        lineTopIndirectionRef.current?.(side, lineNumber) ?? 0,
+      []
+    )
+
     const {
       collapseUnchanged,
       setCollapseUnchanged,
@@ -294,6 +351,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       scheduleRecompute: stableScheduleRecompute,
       defaultCollapseUnchanged,
       collapsedLinesLabel: labels?.collapsedLinesLabel ?? defaultCollapsedLinesLabel,
+      lineTop: stableLineTop,
       editorsReady,
     })
 
@@ -313,7 +371,15 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
      * geometry itself comes from `useLineTopGeometry`'s per-state memoized index (see that file
      * for why resolving it per call is a performance trap on large files). */
     const getTop = useCallback(
-      (_paneEditor: editor.IStandaloneCodeEditor, lineNumber: number, side: PaneSide): number => {
+      (
+        // Nullable so the collapse hook's banner geometry — which has no pane editor to hand over,
+        // and doesn't need one — can go through this same function instead of a second copy of it.
+        // Kept in the signature for parity with the `getTop`-shaped callback the connector builder
+        // and the scroll sync consume.
+        _paneEditor: editor.IStandaloneCodeEditor | null,
+        lineNumber: number,
+        side: PaneSide
+      ): number => {
         const lineHeight =
           editors.monacoRef.current && editors.centerEditorRef.current
             ? editors.centerEditorRef.current.getOption(
@@ -325,6 +391,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       },
       [editors, lineTopForSide]
     )
+
+    lineTopIndirectionRef.current = (side, lineNumber) => getTop(null, lineNumber, side)
 
     // Dynamic conflict/change stats
     const { changesCount, conflictsCount } = useMemo(() => {
@@ -419,9 +487,13 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     // ever seeded once (the `useState` lazy initializer above only runs on the component's
     // first mount) — CodePane's `value`/`path` props already make the pane *text* switch to
     // the new file correctly, but without this, decorations/colors and undo history would keep
-    // pointing at the *previous* file's blocks. Keyed on modelPathPrefix rather than on the
+    // pointing at the *previous* file's blocks. Keyed on the prefix rather than on the
     // blocks themselves, since the host can hand back freshly-fetched (but identical) blocks
     // for the *same* file on revalidation — that shouldn't wipe in-progress edits.
+    //
+    // The *displayed* prefix, so this fires when the panes actually change file rather than when the
+    // host asks for one: between those two moments the previous file is still on screen, and
+    // resetting its placements there would strip the colors off what the reader is looking at.
     useEffect(() => {
       if (!isTwoWay) {
         updatePlacementsStateAndRef(computeInitialPlacements(viewToUse.blocks))
@@ -429,7 +501,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       resetHistory()
       resetPanelWidths()
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [modelPathPrefix, updatePlacementsStateAndRef, isTwoWay, resetHistory, resetPanelWidths])
+    }, [displayedPrefix, updatePlacementsStateAndRef, isTwoWay, resetHistory, resetPanelWidths])
 
     const { attach: attachScrollSync } = useMergeScrollSync(
       blocksRef,
@@ -534,13 +606,13 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             id: 'theirs' as const,
             value: displayedOriginal ?? '',
             readOnly: true,
-            modelPath: `${modelPathPrefix}.original`,
+            modelPath: `${displayedPrefix}.original`,
           },
           {
             id: 'center' as const,
             value: displayedModified ?? '',
             readOnly: true,
-            modelPath: `${modelPathPrefix}.modified`,
+            modelPath: `${displayedPrefix}.modified`,
           },
         ]
       }

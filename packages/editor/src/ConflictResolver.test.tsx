@@ -12,6 +12,7 @@ import {
   FakeMonacoEditor,
   fakeEditors,
   fakeDiffEditors,
+  fakeDiffSilent,
   fakeVisibleRange,
   resetFakeEditors,
 } from './__tests__/fakeMonacoPane'
@@ -1200,6 +1201,83 @@ describe('ConflictResolver — intra-line highlight scoping', () => {
 
     await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
     await waitFor(() => expect(intraDecorationCount(theirsPath)).toBe(3))
+  })
+})
+
+/* Three properties that together are what "no flicker" means here, each one a mechanism that used to
+ * paint an intermediate state. They are asserted at the seams rather than through a delay, because
+ * every attempt to hide these states behind a timed gate mis-guessed the delay in one direction or
+ * the other. */
+describe('ConflictResolver — nothing paints before it is whole', () => {
+  const longOriginal = Array.from({ length: 30 }, (_, i) => `line ${i}`).join('\n')
+  const longModified = longOriginal.replace('line 15', 'LINE 15')
+  const NEXT_PREFIX = 'next.txt'
+
+  it('paints no text at all until the first file has its geometry', async () => {
+    renderDiff(longOriginal, longModified)
+
+    // Synchronously: the pane exists and holds nothing. Painting the raw file here is what showed
+    // the whole thing uncollapsed for a moment, with the collapse snapping in after.
+    expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe('')
+
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe(longOriginal)
+    )
+    // ...and when the text does arrive, it arrives already collapsed.
+    expect(fakeEditors.get(originalPath)!.hiddenAreas.length).toBeGreaterThan(0)
+  })
+
+  it('still paints the file when the host’s diff never answers', async () => {
+    // An unlaid-out host (this package's Storybook) leaves Monaco's detached diff editor silent
+    // forever. Waiting for geometry must not turn that into a file that never shows.
+    fakeDiffSilent.current = true
+    renderDiff(longOriginal, longModified)
+
+    expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe('')
+
+    await waitFor(
+      () => expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe(longOriginal),
+      { timeout: 2000 }
+    )
+    // Uncollapsed, since there is no geometry to collapse by — the honest degraded state.
+    expect(fakeEditors.get(originalPath)!.hiddenAreas).toEqual([])
+  })
+
+  it('keeps the previous file’s models attached until the new file’s geometry lands', async () => {
+    const { rerender } = renderDiff(longOriginal, longModified)
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.getModel().getValue()).toBe(longOriginal)
+    )
+
+    rerender(
+      <ConflictResolver
+        panels={[{ content: 'gamma\ndelta' }, { content: 'gamma\nDELTA' }]}
+        modelPathPrefix={NEXT_PREFIX}
+        editor={{ component: FakeMonacoEditor }}
+      />
+    )
+
+    /* The model path is what this is about. Taken straight from props it changes on the click, so
+     * Monaco swapped models — and a model swap takes the view model with it, which is where hidden
+     * areas live and what owns every view zone. The old file was left on screen fully expanded,
+     * fold banners floating, until the new file's contents and diff arrived. A new pane at the new
+     * path existing here at all is that bug. */
+    expect(fakeEditors.has(`${NEXT_PREFIX}.original`)).toBe(false)
+    expect(fakeEditors.get(originalPath)!.hiddenAreas.length).toBeGreaterThan(0)
+
+    await waitFor(() => expect(fakeEditors.has(`${NEXT_PREFIX}.original`)).toBe(true))
+    expect(fakeEditors.get(`${NEXT_PREFIX}.original`)!.getModel().getValue()).toBe('gamma\ndelta')
+  })
+
+  it('forces Monaco to paint the collapse in the same task it was applied in', async () => {
+    renderDiff(longOriginal, longModified)
+
+    await waitFor(() =>
+      expect(fakeEditors.get(originalPath)!.hiddenAreas.length).toBeGreaterThan(0)
+    )
+    // Monaco would otherwise render the hidden areas on an animation frame of its own, leaving the
+    // browser free to paint the uncollapsed pane first. `render(true)` is what removes that window.
+    expect(fakeEditors.get(originalPath)!.renderCalls).toContain(true)
   })
 })
 
