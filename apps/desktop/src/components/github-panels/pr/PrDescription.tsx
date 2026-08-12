@@ -79,6 +79,7 @@ export function PrDescription({ repoPath, prNumber, body, prUrl }: PrDescription
             className="text-xs"
             data-testid="pr-description-input"
             placeholder={t('pr.publish.descriptionPlaceholder')}
+            rich
           />
           <div className="flex justify-end gap-2">
             <Button

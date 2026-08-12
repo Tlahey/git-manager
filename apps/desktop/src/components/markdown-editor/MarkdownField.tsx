@@ -1,5 +1,9 @@
 import type { DragEvent, KeyboardEvent } from 'react'
-import { useMarkdownEditor } from '@git-manager/components'
+import {
+  MarkdownLiveEditor,
+  useMarkdownEditor,
+  useMarkdownLiveEditor,
+} from '@git-manager/components'
 import { Textarea } from '@git-manager/ui'
 import { MarkdownEditorFrame } from './MarkdownEditorFrame'
 
@@ -23,6 +27,11 @@ export interface MarkdownFieldProps {
   repoPath?: string
   /** Widens the preview's sanitiser to what the user may write themselves (board cards). */
   authored?: boolean
+  /**
+   * Adds the formatted editing tab — the same markdown, painted to look like the result, still
+   * editable. Opt-in while it is being tried out on one surface rather than all nine.
+   */
+  rich?: boolean
   'data-testid'?: string
 }
 
@@ -48,9 +57,11 @@ export function MarkdownField({
   onKeyDown,
   repoPath,
   authored,
+  rich,
   'data-testid': testId,
 }: MarkdownFieldProps) {
   const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
+  const live = useMarkdownLiveEditor()
 
   return (
     <MarkdownEditorFrame
@@ -59,6 +70,21 @@ export function MarkdownField({
       disabled={disabled}
       repoPath={repoPath}
       authored={authored}
+      onRichCommand={live.runCommand}
+      richEditor={
+        rich ? (
+          <MarkdownLiveEditor
+            value={value}
+            onChange={onChange}
+            viewRef={live.viewRef}
+            onCommand={live.runCommand}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={className}
+            data-testid={testId ? `${testId}-rich` : undefined}
+          />
+        ) : undefined
+      }
     >
       <Textarea
         ref={textareaRef}

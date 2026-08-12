@@ -1444,5 +1444,6 @@
   "markdown.command.hiddenComment": "Commentaire masqué",
   "markdown.tab.code": "Code",
   "markdown.tab.preview": "Aperçu",
-  "markdown.preview.empty": "Rien à prévisualiser pour l'instant."
+  "markdown.preview.empty": "Rien à prévisualiser pour l'instant.",
+  "markdown.tab.rich": "Formaté"
 }

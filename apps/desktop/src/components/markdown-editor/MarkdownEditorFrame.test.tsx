@@ -1,16 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { MarkdownEditorFrame } from './MarkdownEditorFrame'
 
-function setUp(value = '# Title\n\nSome **text**.') {
-  const onPreviewingChange = vi.fn()
+function setUp(value = '# Title\n\nSome **text**.', richEditor?: ReactNode) {
+  const onModeChange = vi.fn()
   render(
-    <MarkdownEditorFrame value={value} onCommand={vi.fn()} onPreviewingChange={onPreviewingChange}>
+    <MarkdownEditorFrame
+      value={value}
+      onCommand={vi.fn()}
+      onModeChange={onModeChange}
+      richEditor={richEditor}
+    >
       <textarea defaultValue={value} data-testid="editor" />
     </MarkdownEditorFrame>
   )
-  return onPreviewingChange
+  return onModeChange
 }
 
 async function showPreview() {
@@ -69,10 +75,45 @@ describe('MarkdownEditorFrame', () => {
   })
 
   it('reports the switch to a caller that measures the field', async () => {
-    const onPreviewingChange = setUp()
+    const onModeChange = setUp()
 
     await showPreview()
 
-    expect(onPreviewingChange).toHaveBeenCalledWith(true)
+    expect(onModeChange).toHaveBeenCalledWith('preview')
+  })
+
+  it('offers no formatted tab unless one is supplied', () => {
+    setUp()
+
+    expect(screen.queryByTestId('markdown-tab-rich')).not.toBeInTheDocument()
+  })
+
+  it('shows the formatted editor under its own tab, the raw one staying mounted', async () => {
+    setUp('# Title', <div data-testid="rich-editor" />)
+
+    await userEvent.click(screen.getByTestId('markdown-tab-rich'))
+
+    expect(screen.getByTestId('rich-editor')).toBeInTheDocument()
+    expect(screen.getByTestId('editor')).toBeInTheDocument()
+    expect(screen.getByTestId('markdown-toolbar')).toBeInTheDocument()
+  })
+
+  it('sends the toolbar commands to whichever editor is on screen', async () => {
+    const onRich = vi.fn()
+    render(
+      <MarkdownEditorFrame
+        value="x"
+        onCommand={vi.fn()}
+        onRichCommand={onRich}
+        richEditor={<div data-testid="rich-editor" />}
+      >
+        <textarea data-testid="editor" />
+      </MarkdownEditorFrame>
+    )
+
+    await userEvent.click(screen.getByTestId('markdown-tab-rich'))
+    await userEvent.click(screen.getByTestId('markdown-toolbar-bold'))
+
+    expect(onRich).toHaveBeenCalledWith('bold')
   })
 })

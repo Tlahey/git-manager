@@ -1444,5 +1444,6 @@
   "markdown.command.hiddenComment": "Hidden comment",
   "markdown.tab.code": "Code",
   "markdown.tab.preview": "Preview",
-  "markdown.preview.empty": "Nothing to preview yet."
+  "markdown.preview.empty": "Nothing to preview yet.",
+  "markdown.tab.rich": "Formatted"
 }

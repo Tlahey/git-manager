@@ -71,6 +71,21 @@ describe('MarkdownField', () => {
     expect(onKeyDown).toHaveBeenCalled()
   })
 
+  it('stays on the two plain tabs by default', () => {
+    render(<Harness />)
+
+    expect(screen.queryByTestId('markdown-tab-rich')).not.toBeInTheDocument()
+  })
+
+  it('opts into the formatted editor, on the same markdown', async () => {
+    render(<MarkdownField value="## Title" onChange={vi.fn()} rich data-testid="field" />)
+
+    await userEvent.click(screen.getByTestId('markdown-tab-rich'))
+
+    expect(screen.getByTestId('field-rich').textContent).toContain('Title')
+    expect(screen.getByTestId('field')).toBeInTheDocument()
+  })
+
   it('disables the toolbar with the field', () => {
     render(<MarkdownField value="" onChange={vi.fn()} disabled data-testid="field" />)
 
