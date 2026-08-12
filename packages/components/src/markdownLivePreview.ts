@@ -71,13 +71,21 @@ const livePreviewTheme = EditorView.theme({
     fontWeight: '600',
     color: 'hsl(var(--foreground) / 0.8)',
   },
-  '.cm-md-line-heading': { marginTop: '0.75rem' },
+  // Vertical space is padding, never margin — here and on every block widget below.
+  //
+  // CodeMirror maps a click to a document position through each line's *border box*, and a margin
+  // sits outside that box: a heading with `margin-top` takes more room on screen than the height
+  // CodeMirror recorded for it, and every position beneath it drifts by the difference. The symptom
+  // is a selection landing beside the pointer, and moving further off as soon as a style changes a
+  // block's size. (A horizontal margin on an inline widget — the task checkbox — is harmless: it is
+  // the height map that positions get read from.)
+  '.cm-md-line-heading': { paddingTop: '0.75rem' },
   '.cm-md-line-h1': {
-    marginTop: '1rem',
+    paddingTop: '1rem',
     paddingBottom: '2px',
     borderBottom: '1px solid hsl(var(--border))',
   },
-  '.cm-md-line-h4, .cm-md-line-h5, .cm-md-line-h6': { marginTop: '0.5rem' },
+  '.cm-md-line-h4, .cm-md-line-h5, .cm-md-line-h6': { paddingTop: '0.5rem' },
 
   '.cm-md-strong': { fontWeight: '700' },
   '.cm-md-emphasis': { fontStyle: 'italic' },
@@ -118,7 +126,6 @@ const livePreviewTheme = EditorView.theme({
     maxWidth: '100%',
     maxHeight: '240px',
     borderRadius: '4px',
-    margin: '0.25rem 0',
   },
   // A GitHub alert, as the callout the renderer draws: the marker line becomes the title, and the
   // body keeps its own tint. The text stays text — it is edited in place, not inside a widget.
@@ -152,7 +159,6 @@ const livePreviewTheme = EditorView.theme({
 
   '.cm-md-table': {
     borderCollapse: 'collapse',
-    margin: '0.25rem 0',
     fontSize: '0.95em',
     maxWidth: '100%',
   },
@@ -170,9 +176,9 @@ const livePreviewTheme = EditorView.theme({
 
   '.cm-md-rule': {
     display: 'block',
+    height: '0',
     border: 'none',
     borderTop: '1px solid hsl(var(--border))',
-    margin: '0.5em 0',
   },
 })
 
