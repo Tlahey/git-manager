@@ -13,21 +13,27 @@ interface Decorated {
   className?: string
 }
 
-function decorated(doc: string, cursor?: number): { hidden: string[]; styled: Decorated[] } {
+function decorated(
+  doc: string,
+  cursor?: number
+): { hidden: string[]; styled: Decorated[]; lines: string[] } {
   const editorState = state(doc, cursor)
   const set = markdownDecorations(editorState)
   const hidden: string[] = []
   const styled: Decorated[] = []
+  const lines: string[] = []
 
   const iterator = set.iter()
   while (iterator.value) {
     const text = editorState.doc.sliceString(iterator.from, iterator.to)
     const className = iterator.value.spec.class as string | undefined
-    if (className) styled.push({ text, className })
+    // A line decoration is empty and carries a class; a hidden marker is empty of class instead.
+    if (className && iterator.from === iterator.to) lines.push(className)
+    else if (className) styled.push({ text, className })
     else hidden.push(text)
     iterator.next()
   }
-  return { hidden, styled }
+  return { hidden, styled, lines }
 }
 
 /** The classes applied to a given fragment of the document. */
@@ -42,7 +48,19 @@ describe('markdownDecorations', () => {
     const { hidden } = decorated('para\n\n## Title')
 
     expect(classesOf('para\n\n## Title', '## Title')).toContain('cm-md-heading cm-md-h2')
-    expect(hidden).toContain('##')
+    expect(hidden).toContain('## ')
+  })
+
+  it('hides the space after a heading marker, so the title is not indented by one', () => {
+    const { hidden } = decorated('para\n\n## Title')
+
+    expect(hidden).toContain('## ')
+    expect(hidden).not.toContain('##')
+  })
+
+  it('marks the heading line itself, for what belongs to the block', () => {
+    expect(decorated('para\n\n# Title').lines).toContain('cm-md-line-heading cm-md-line-h1')
+    expect(decorated('para\n\n### Title').lines).toContain('cm-md-line-heading cm-md-line-h3')
   })
 
   it('styles bold and italic', () => {
@@ -101,6 +119,12 @@ describe('markdownDecorations', () => {
     const { hidden } = decorated('cursor\n\n> quoted')
 
     expect(hidden).not.toContain('>')
+  })
+
+  it('marks every line of a quote, so it reads like the rendered one', () => {
+    const { lines } = decorated('cursor\n\n> first\n> second')
+
+    expect(lines.filter((className) => className === 'cm-md-line-quote')).toHaveLength(2)
   })
 
   it('decorates nothing in a plain paragraph', () => {

@@ -58,6 +58,17 @@ function isLinkTarget(name: string, parent: string | undefined): boolean {
   return name === 'URL' && (parent === 'Link' || parent === 'Image')
 }
 
+/**
+ * Where a hidden marker really ends: a heading's `#` is followed by a space that belongs to the
+ * syntax, not to the title. Leaving it visible indents every heading by one space — which is
+ * exactly as wide as the gap it leaves, and reads as a broken alignment against the preview.
+ */
+function hiddenTo(state: EditorState, name: string, to: number): number {
+  if (name !== 'HeaderMark') return to
+  const rest = state.doc.sliceString(to, state.doc.lineAt(to).to)
+  return to + (rest.length - rest.trimStart().length)
+}
+
 /** The lines any cursor or selection touches — where the markers stay visible. */
 function activeLines(state: EditorState): Set<number> {
   const lines = new Set<number>()
@@ -90,7 +101,26 @@ export function markdownDecorations(
       enter: (node) => {
         if (node.to === node.from) return
 
+        if (node.name === 'Blockquote') {
+          for (let pos = node.from; pos <= node.to;) {
+            const line = state.doc.lineAt(pos)
+            decorations.push(Decoration.line({ class: 'cm-md-line-quote' }).range(line.from))
+            pos = line.to + 1
+          }
+        }
+
         const heading = node.name.match(HEADING)
+        if (heading) {
+          // The line carries what belongs to the block — the rule under an H1, the space above a
+          // heading — since an inline mark is only ever as wide as its own text.
+          const line = state.doc.lineAt(node.from)
+          decorations.push(
+            Decoration.line({ class: `cm-md-line-heading cm-md-line-h${heading[1]}` }).range(
+              line.from
+            )
+          )
+        }
+
         const styleClass = heading ? `cm-md-heading cm-md-h${heading[1]}` : STYLED_NODES[node.name]
         if (styleClass) {
           decorations.push(Decoration.mark({ class: styleClass }).range(node.from, node.to))
@@ -99,7 +129,9 @@ export function markdownDecorations(
         const hideable =
           HIDDEN_MARKS.has(node.name) || isLinkTarget(node.name, node.node.parent?.name)
         if (hideable && !editing.has(state.doc.lineAt(node.from).number)) {
-          decorations.push(Decoration.replace({}).range(node.from, node.to))
+          decorations.push(
+            Decoration.replace({}).range(node.from, hiddenTo(state, node.name, node.to))
+          )
         }
       },
     })
@@ -141,11 +173,35 @@ const livePreviewTheme = EditorView.theme({
   '&.cm-focused': { outline: 'none' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'hsl(var(--foreground))' },
   '.cm-placeholder': { color: 'hsl(var(--muted-foreground))' },
-  '.cm-md-heading': { fontWeight: '600', lineHeight: '1.6' },
-  '.cm-md-h1': { fontSize: '1.5em' },
-  '.cm-md-h2': { fontSize: '1.3em' },
-  '.cm-md-h3': { fontSize: '1.15em' },
-  '.cm-md-h4, .cm-md-h5, .cm-md-h6': { fontSize: '1em' },
+  // Sized and weighted like `MarkdownRenderer`'s headings, in `em` so both stay in step whatever
+  // font size the surface gives the editor: 1.5em over the app's 12px body is its `text-lg`, and so
+  // on down. The rule under an H1 is the renderer's `border-b`, and the reason this pairing is
+  // worth keeping: a heading that changes shape between the two tabs reads as a bug.
+  '.cm-md-heading': { lineHeight: '1.6' },
+  '.cm-md-h1': { fontSize: '1.5em', fontWeight: '800' },
+  '.cm-md-h2': { fontSize: '1.333em', fontWeight: '700', color: 'hsl(var(--foreground) / 0.9)' },
+  '.cm-md-h3': { fontSize: '1.167em', fontWeight: '600', color: 'hsl(var(--foreground) / 0.85)' },
+  '.cm-md-h4, .cm-md-h5, .cm-md-h6': {
+    fontSize: '1em',
+    fontWeight: '600',
+    color: 'hsl(var(--foreground) / 0.8)',
+  },
+  '.cm-md-line-heading': { marginTop: '0.75rem' },
+  '.cm-md-line-h1': {
+    marginTop: '1rem',
+    paddingBottom: '2px',
+    borderBottom: '1px solid hsl(var(--border))',
+  },
+  '.cm-md-line-h4, .cm-md-line-h5, .cm-md-line-h6': { marginTop: '0.5rem' },
+  // The renderer's blockquote, line by line — a `>` alone told the reader nothing the preview
+  // didn't say with a rule and a tint.
+  '.cm-md-line-quote': {
+    borderLeft: '2px solid hsl(var(--primary) / 0.6)',
+    backgroundColor: 'hsl(var(--muted) / 0.2)',
+    paddingLeft: '0.75rem',
+    fontStyle: 'italic',
+    color: 'hsl(var(--muted-foreground))',
+  },
   '.cm-md-strong': { fontWeight: '700' },
   '.cm-md-emphasis': { fontStyle: 'italic' },
   '.cm-md-strikethrough': { textDecoration: 'line-through', opacity: '0.7' },
