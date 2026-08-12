@@ -41,7 +41,14 @@ describe('TerminalItem', () => {
     const row = screen.getByTestId('terminal-item-sess-1')
     expect(row).toHaveTextContent('claude')
     expect(row).not.toHaveTextContent('zsh 1')
-    expect(screen.getByTestId('terminal-item-busy-sess-1')).toBeInTheDocument()
+    expect(screen.getByTestId('terminal-item-state-sess-1')).toHaveAttribute('data-state', 'busy')
+  })
+
+  it('shows a still green chip while the session sits at its prompt', () => {
+    renderItem()
+    const chip = screen.getByTestId('terminal-item-state-sess-1')
+    expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).not.toContain('animate-pulse')
   })
 
   it('falls back to a generic label when the command could not be resolved', () => {

@@ -73,11 +73,11 @@ describe('TerminalPanel', () => {
     expect(screen.getByTestId('terminal-tab-a')).toHaveTextContent('main')
   })
 
-  it('marks the session that is running a command', () => {
+  it('marks the session that is running a command, and leaves the idle one green', () => {
     activity.mockReturnValue({ b: { id: 'b', busy: true, command: 'claude' } })
     render(<TerminalPanel path="/repo" />)
-    expect(screen.getByTestId('terminal-busy-b')).toBeInTheDocument()
-    expect(screen.queryByTestId('terminal-busy-a')).not.toBeInTheDocument()
+    expect(screen.getByTestId('terminal-state-b')).toHaveAttribute('data-state', 'busy')
+    expect(screen.getByTestId('terminal-state-a')).toHaveAttribute('data-state', 'idle')
   })
 
   it('switches the shown session on click, without touching the view', async () => {

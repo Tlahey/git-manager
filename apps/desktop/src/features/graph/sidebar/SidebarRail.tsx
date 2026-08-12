@@ -8,7 +8,7 @@ import {
   Archive as ArchiveIcon,
   Terminal as TerminalIcon,
 } from 'lucide-react'
-import { NumberBadge } from '@git-manager/ui'
+import { NumberBadge, cn } from '@git-manager/ui'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePullRequests } from '../../../hooks/usePullRequests'
@@ -139,9 +139,14 @@ export function SidebarRail({
         )}
         {sessions.length > 0 && (
           <RailIcon
+            // The same two states the rows use — breathing amber while a command runs, still green
+            // otherwise — on a bare glyph rather than a chip, since the rail has no chips.
             icon={
               <TerminalIcon
-                className={anyBusy ? 'h-4 w-4 text-amber-400' : 'h-4 w-4 text-emerald-400'}
+                className={cn(
+                  'h-4 w-4',
+                  anyBusy ? 'animate-pulse text-tone-warning' : 'text-tone-success'
+                )}
               />
             }
             label="Terminals"

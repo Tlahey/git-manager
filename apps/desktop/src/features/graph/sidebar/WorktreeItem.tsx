@@ -12,10 +12,8 @@ import {
   ExternalLink,
   Trash2,
   GitBranch as BranchIcon,
-  Terminal as TerminalIcon,
 } from 'lucide-react'
 import {
-  Spinner,
   Tag,
   Tooltip,
   DropdownMenu,
@@ -31,6 +29,7 @@ import { copyWithToast } from '../../../lib/clipboard'
 import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
 import type { WorktreeWipStatus } from '../hooks/useWorktreeWipStatuses'
 import type { WorktreeTerminalSummary } from '../lib/worktreeTerminals'
+import { TerminalStateIcon } from '../../../components/terminal/TerminalStateIcon'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
 interface WorktreeItemProps {
@@ -54,10 +53,10 @@ interface WorktreeItemProps {
  * The row deliberately shows only the branch name: the folder it lives in is the kind of detail you
  * want on demand, not permanently taking up a narrow row, so it surfaces in the hover card instead.
  *
- * The terminal badge is the exception to that restraint, and it earns the space by naming the
- * command: "claude" beside a branch is the answer to "where is the agent I left running", which is
- * otherwise only knowable by entering each worktree in turn. Clicking it goes there *and* puts that
- * terminal on screen — the row's own double-click only does the first half.
+ * The terminal badge is the exception to that restraint, and it earns its place at the head of the
+ * row: whether something is running here is otherwise only knowable by entering each worktree in
+ * turn. Clicking it goes there *and* puts that terminal on screen — the row's own double-click only
+ * does the first half.
  */
 export function WorktreeItem({
   wt,
@@ -107,12 +106,12 @@ export function WorktreeItem({
         onDoubleClick={() => onOpenWorktree?.(wt)}
         className="group/wt relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-6 pl-6 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
       >
-        <Layers className="h-3 w-3 shrink-0 opacity-30" />
-        <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
-          {wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
-          {highlightMatch(wt.branch, filterQuery)}
-        </HoverExpandLabel>
-
+        {/* Ahead of the worktree glyph, not tucked in at the end of the row: a row is scanned from
+            its left edge, and "something is running here" is the one thing on it worth finding
+            without reading the branch name first. It sits in the row's own indent gutter (nothing
+            else claims it on a worktree row) and stays a fixed-width glyph — naming the command
+            here would move every branch label right by however long that name happened to be, so
+            the name is left to the tooltip, to the accessible label, and to the Terminals section. */}
         {terminals && (
           <Tooltip delay={0} placement="top" content={terminalLabel}>
             <button
@@ -123,25 +122,20 @@ export function WorktreeItem({
               }}
               onMouseEnter={() => setDotHovered(true)}
               onMouseLeave={() => setDotHovered(false)}
-              className="flex shrink-0 cursor-pointer items-center gap-0.5 rounded px-1 py-px text-[10px] hover:bg-sidebar-accent/80"
+              className="-ml-4 flex shrink-0 cursor-pointer items-center rounded hover:bg-sidebar-accent/80"
               data-testid={`worktree-terminal-badge-${wt.path}`}
               aria-label={terminalLabel}
             >
-              {terminals.busy ? (
-                <>
-                  <Spinner className="h-2.5 w-2.5 text-amber-400" />
-                  {terminals.command && (
-                    <span className="max-w-[70px] truncate font-mono text-amber-400">
-                      {terminals.command}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <TerminalIcon className="h-2.5 w-2.5 text-emerald-400/70" />
-              )}
+              <TerminalStateIcon busy={terminals.busy} size={2.5} className="px-0.5 py-px" />
             </button>
           </Tooltip>
         )}
+
+        <Layers className="h-3 w-3 shrink-0 opacity-30" />
+        <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
+          {wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
+          {highlightMatch(wt.branch, filterQuery)}
+        </HoverExpandLabel>
 
         {wipStatus && (
           <Tooltip

@@ -341,15 +341,38 @@ describe('WorktreeItem — terminal badge', () => {
     expect(screen.queryByTestId(`worktree-terminal-badge-${PATH}`)).not.toBeInTheDocument()
   })
 
-  it('names the running command, which is the whole point of the badge', () => {
-    render(<WorktreeItem wt={worktree()} terminals={running} />)
-    expect(screen.getByTestId(`worktree-terminal-badge-${PATH}`)).toHaveTextContent('claude')
+  it('sits ahead of the worktree glyph, where a row is read from', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
+    const row = screen.getByTestId(`worktree-item-${PATH}`)
+    const badge = screen.getByTestId(`worktree-terminal-badge-${PATH}`)
+    const glyph = row.querySelector('.lucide-layers')!
+    expect(badge.compareDocumentPosition(glyph) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('stays a bare icon for a terminal that is merely open', () => {
+  it('breathes while a command runs and settles green once the prompt is back', () => {
+    const { unmount } = render(<WorktreeItem wt={worktree()} terminals={running} />)
+    let chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'busy')
+    expect(chip.className).toContain('animate-pulse')
+    unmount()
+
     render(<WorktreeItem wt={worktree()} terminals={idle} />)
-    const badge = screen.getByTestId(`worktree-terminal-badge-${PATH}`)
-    expect(badge).toHaveTextContent('')
+    chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).not.toContain('animate-pulse')
+  })
+
+  it('stays a fixed-width glyph, so a running command cannot shift the branch labels', () => {
+    // The name is the tooltip's and the accessible label's job — see the row's own comment.
+    render(<WorktreeItem wt={worktree()} terminals={running} />)
+    expect(screen.getByTestId(`worktree-terminal-badge-${PATH}`)).toHaveTextContent('')
+    expect(
+      screen.getByLabelText('claude is running here — click to open its terminal')
+    ).toBeInTheDocument()
+  })
+
+  it('counts the open terminals in its label when none is running', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
     expect(screen.getByLabelText('1 terminal open here — click to show it')).toBeInTheDocument()
   })
 

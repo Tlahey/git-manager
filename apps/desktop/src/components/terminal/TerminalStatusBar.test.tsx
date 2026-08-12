@@ -52,6 +52,16 @@ describe('TerminalStatusBar', () => {
     activity.mockReturnValue({ a: { id: 'a', busy: false, command: null } })
     render(<TerminalStatusBar />)
     expect(screen.queryByTestId('terminal-status-busy')).not.toBeInTheDocument()
+    expect(screen.getByTestId('terminal-status-state')).toHaveAttribute('data-state', 'idle')
+  })
+
+  it('breathes on the collapsed bar too while anything is running', () => {
+    useTerminalStore.setState({ sessions: [session('a')], activeId: 'a' })
+    activity.mockReturnValue({ a: { id: 'a', busy: true, command: 'pnpm' } })
+    render(<TerminalStatusBar />)
+    const chip = screen.getByTestId('terminal-status-state')
+    expect(chip).toHaveAttribute('data-state', 'busy')
+    expect(chip.className).toContain('animate-pulse')
   })
 
   it('re-opens the panel when clicked', async () => {

@@ -24,14 +24,18 @@ describe('TerminalTab', () => {
     expect(tab).toHaveTextContent('zsh 2')
   })
 
-  it('spins while a command holds the terminal', () => {
+  it('breathes while a command holds the terminal', () => {
     renderTab({ isBusy: true, command: 'claude' })
-    expect(screen.getByTestId('terminal-busy-sess-1')).toBeInTheDocument()
+    const chip = screen.getByTestId('terminal-state-sess-1')
+    expect(chip).toHaveAttribute('data-state', 'busy')
+    expect(chip.className).toContain('animate-pulse')
   })
 
-  it('shows no spinner at an idle prompt', () => {
+  it('settles onto a still green chip at an idle prompt', () => {
     renderTab()
-    expect(screen.queryByTestId('terminal-busy-sess-1')).not.toBeInTheDocument()
+    const chip = screen.getByTestId('terminal-state-sess-1')
+    expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).not.toContain('animate-pulse')
   })
 
   it('selects and closes through its own buttons', () => {

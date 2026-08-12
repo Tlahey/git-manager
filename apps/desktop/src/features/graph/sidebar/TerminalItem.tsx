@@ -1,8 +1,9 @@
-import { Terminal as TerminalIcon, X } from 'lucide-react'
-import { Spinner, Tooltip, cn } from '@git-manager/ui'
+import { X } from 'lucide-react'
+import { Tooltip, cn } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import type { TerminalSession } from '../../../stores/terminal.store'
+import { TerminalStateIcon } from '../../../components/terminal/TerminalStateIcon'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
 interface TerminalItemProps {
@@ -73,21 +74,14 @@ export function TerminalItem({
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
           data-testid={`terminal-item-open-${session.id}`}
         >
-          {isBusy ? (
-            <Spinner
-              className="h-3 w-3 shrink-0 text-amber-400"
-              data-testid={`terminal-item-busy-${session.id}`}
-            />
-          ) : (
-            <TerminalIcon className="h-3 w-3 shrink-0 text-emerald-400 opacity-60" />
-          )}
+          <TerminalStateIcon busy={isBusy} data-testid={`terminal-item-state-${session.id}`} />
           <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
             {highlightMatch(location, filterQuery)}
           </HoverExpandLabel>
           <span
             className={cn(
               'shrink-0 truncate font-mono text-[10px]',
-              isBusy ? 'text-amber-400' : 'text-sidebar-muted-foreground/50'
+              isBusy ? 'text-tone-warning' : 'text-sidebar-muted-foreground/50'
             )}
           >
             {isBusy ? (command ?? t('terminal.runningSomething')) : session.title}

@@ -1,7 +1,8 @@
-import { Terminal as TerminalIcon, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Tooltip, cn } from '@git-manager/ui'
+import { Tooltip, cn } from '@git-manager/ui'
 import type { TerminalSession } from '../../stores/terminal.store'
+import { TerminalStateIcon } from './TerminalStateIcon'
 
 interface TerminalTabProps {
   session: TerminalSession
@@ -63,14 +64,7 @@ export function TerminalTab({
           className="flex min-w-0 cursor-pointer items-center gap-1.5"
           data-testid={`terminal-tab-${session.id}`}
         >
-          {isBusy ? (
-            <Spinner
-              className="h-3 w-3 shrink-0 text-amber-400"
-              data-testid={`terminal-busy-${session.id}`}
-            />
-          ) : (
-            <TerminalIcon className="h-3 w-3 shrink-0 text-emerald-400" />
-          )}
+          <TerminalStateIcon busy={isBusy} data-testid={`terminal-state-${session.id}`} />
           <span className="truncate font-medium">{location}</span>
           <span className="shrink-0 font-mono text-[10px] opacity-50">{session.title}</span>
         </button>

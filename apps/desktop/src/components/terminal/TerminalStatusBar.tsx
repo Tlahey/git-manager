@@ -1,8 +1,9 @@
-import { ChevronUp, Terminal as TerminalIcon } from 'lucide-react'
+import { ChevronUp } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Tooltip } from '@git-manager/ui'
+import { Tooltip } from '@git-manager/ui'
 import { useTerminalStore } from '../../stores/terminal.store'
 import { useTerminalActivity } from '../../hooks/useTerminalActivity'
+import { TerminalStateIcon } from './TerminalStateIcon'
 
 /**
  * Thin bar shown at the bottom of the repo view when the terminal panel is collapsed but sessions
@@ -32,17 +33,13 @@ export function TerminalStatusBar() {
         data-testid="terminal-status-bar"
         className="chrome-surface flex h-7 shrink-0 items-center gap-2 border-t border-border bg-sidebar px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
-        <TerminalIcon className="h-3.5 w-3.5 text-emerald-400" />
+        <TerminalStateIcon busy={busyCount > 0} size={3.5} data-testid="terminal-status-state" />
         <span>{t('terminal.title')}</span>
         <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none">
           {count}
         </span>
         {busyCount > 0 && (
-          <span
-            className="flex items-center gap-1 text-amber-400"
-            data-testid="terminal-status-busy"
-          >
-            <Spinner className="h-3 w-3" />
+          <span className="text-tone-warning" data-testid="terminal-status-busy">
             {t('terminal.runningCount', { count: busyCount })}
           </span>
         )}
