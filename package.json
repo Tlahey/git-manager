@@ -1,6 +1,6 @@
 {
   "name": "git-manager",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @git-manager/desktop dev",

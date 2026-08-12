@@ -8,6 +8,84 @@ on Settings → Changelog (and via the version badge in the footer).
 
 _Auto-populated at release time from the merged pull requests since the last tag, via the GitHub release notes API — see tools/release/cut-release.sh._
 
+## [0.3.0] - 2026-08-12
+
+## What's Changed
+* docs(release): add local release tooling and rewrite the release-process skill by @Tlahey in https://github.com/Tlahey/git-manager/pull/320
+* feat(tray): use a monochrome mascot mark for the macOS menu bar icon by @Tlahey in https://github.com/Tlahey/git-manager/pull/319
+* feat(splash): rebuild the startup splash as a lit underwater scene by @Tlahey in https://github.com/Tlahey/git-manager/pull/321
+* chrore: divers fixes, changes by @Tlahey in https://github.com/Tlahey/git-manager/pull/322
+* chore(deps): consolidate the pnpm catalog and update every dependency, majors included by @Tlahey in https://github.com/Tlahey/git-manager/pull/323
+* feat(settings): default to 32px rows, on one shared segmented control by @Tlahey in https://github.com/Tlahey/git-manager/pull/324
+* fix(notifications): stop a notch card repainting the whole app dark by @Tlahey in https://github.com/Tlahey/git-manager/pull/325
+* feat(launchpad,sidebar): ask for a GitHub account instead of failing without one by @Tlahey in https://github.com/Tlahey/git-manager/pull/326
+* feat(sidebar): open the clicked section when expanding from the collapsed rail by @Tlahey in https://github.com/Tlahey/git-manager/pull/327
+* fix(branch): check out a remote branch as a local one, not a detached HEAD by @Tlahey in https://github.com/Tlahey/git-manager/pull/328
+* fix(rewards): only unlock an achievement for something the user did by @Tlahey in https://github.com/Tlahey/git-manager/pull/329
+* feat(config): persist the app configuration in ~/.git-manager/settings.json by @Tlahey in https://github.com/Tlahey/git-manager/pull/330
+* feat(board): column-wide actions, iteration boards, and a say in what a delete takes by @Tlahey in https://github.com/Tlahey/git-manager/pull/333
+* feat(board): give every ticket an identifier, and its type a colour by @Tlahey in https://github.com/Tlahey/git-manager/pull/335
+* feat(repo): scope a repo tab's chrome to the view on screen by @Tlahey in https://github.com/Tlahey/git-manager/pull/336
+* feat(board): an autocompleting prefix, a kind dropdown, and a new-card form that reads as one line by @Tlahey in https://github.com/Tlahey/git-manager/pull/338
+* feat(board): a Definition of Done written as a list, and a card that sits on the page's own surface by @Tlahey in https://github.com/Tlahey/git-manager/pull/339
+* fix(ui): read a tooltip child's ref from its props, not from the element by @Tlahey in https://github.com/Tlahey/git-manager/pull/340
+* feat(board): a card's fields answer a click with their values, and a card wears its kind on its edge by @Tlahey in https://github.com/Tlahey/git-manager/pull/341
+* feat(board): a parent chosen over the card, and a relation written as a line of its own list by @Tlahey in https://github.com/Tlahey/git-manager/pull/342
+* fix(ui): a command run from another view lands where its result is drawn by @Tlahey in https://github.com/Tlahey/git-manager/pull/343
+* chore(tooling): make prettier a gate, and format the repo once by @Tlahey in https://github.com/Tlahey/git-manager/pull/344
+* fix(notifications): a card arrives without taking the keyboard by @Tlahey in https://github.com/Tlahey/git-manager/pull/345
+* fix(ai): a running card names the action, and the ✕ on a live card means it by @Tlahey in https://github.com/Tlahey/git-manager/pull/346
+* fix(graph): a hovered commit no longer covers the search it scrolls under by @Tlahey in https://github.com/Tlahey/git-manager/pull/347
+* fix(board): the archive list fits the window instead of being cut off at it by @Tlahey in https://github.com/Tlahey/git-manager/pull/348
+* feat(palette): a verb before its ref, and the letters you typed where you typed them by @Tlahey in https://github.com/Tlahey/git-manager/pull/349
+* fix(settings): the GitHub activation button becomes a real button, and the code stops wrapping by @Tlahey in https://github.com/Tlahey/git-manager/pull/351
+* fix(settings): the GitHub login stops waiting forever after you have already approved it by @Tlahey in https://github.com/Tlahey/git-manager/pull/352
+* refactor(launchpad): the Launchpad becomes one folder by @Tlahey in https://github.com/Tlahey/git-manager/pull/350
+* refactor(ui): the twelve hand-rolled panel close buttons become one shared Button by @Tlahey in https://github.com/Tlahey/git-manager/pull/353
+* refactor(dashboard): the dashboard becomes one folder, and settings deliberately does not by @Tlahey in https://github.com/Tlahey/git-manager/pull/354
+* refactor(graph): GitGraph stops deciding what fills its two slots inline by @Tlahey in https://github.com/Tlahey/git-manager/pull/355
+* refactor(graph): three passes over the graph — context menus, synthetic rows, sidebar sections by @Tlahey in https://github.com/Tlahey/git-manager/pull/359
+* refactor(graph): three files that were doing four jobs each by @Tlahey in https://github.com/Tlahey/git-manager/pull/360
+* refactor(graph): the sidebar's sections and the WIP panel's forms come out of their hosts by @Tlahey in https://github.com/Tlahey/git-manager/pull/361
+* refactor(graph): GitGraph sheds five concerns, and two sidebar rows become one by @Tlahey in https://github.com/Tlahey/git-manager/pull/362
+* refactor: the IPC layer splits by domain, and three copied helpers become one each by @Tlahey in https://github.com/Tlahey/git-manager/pull/363
+* refactor(files): the file tree's two rows leave the list that renders them by @Tlahey in https://github.com/Tlahey/git-manager/pull/364
+* refactor(store): the repo tab's UI state stops being half a type declaration by @Tlahey in https://github.com/Tlahey/git-manager/pull/365
+* refactor(ai-search): the AI commit search becomes a feature of its own, + footer tooltip by @Tlahey in https://github.com/Tlahey/git-manager/pull/366
+* refactor(settings): the GitHub panel becomes the four things it renders by @Tlahey in https://github.com/Tlahey/git-manager/pull/369
+* refactor(settings): the page and the appearance panel stop carrying their own tables by @Tlahey in https://github.com/Tlahey/git-manager/pull/370
+* refactor(board): the remote board's config file, and the migrations hiding in it by @Tlahey in https://github.com/Tlahey/git-manager/pull/372
+* test(board): cover the remote backend's writes that reach a user's real issues by @Tlahey in https://github.com/Tlahey/git-manager/pull/373
+* refactor(board): the remote backend splits, but not along the seam I predicted by @Tlahey in https://github.com/Tlahey/git-manager/pull/374
+* refactor(graph): the virtualised row list, and the two rules buried in it by @Tlahey in https://github.com/Tlahey/git-manager/pull/375
+* fix(a11y): give every icon-only control a real name, not just a native tooltip by @Tlahey in https://github.com/Tlahey/git-manager/pull/376
+* feat(a11y): the names land on the keyboard too, not just under the mouse by @Tlahey in https://github.com/Tlahey/git-manager/pull/377
+* fix(merge): Apply wrote an empty file wherever there was no result pane by @Tlahey in https://github.com/Tlahey/git-manager/pull/378
+* refactor(editor): make the merge geometry's recorded invariants true again by @Tlahey in https://github.com/Tlahey/git-manager/pull/379
+* refactor(editor): lift the pane-mount wiring out of the resolver by @Tlahey in https://github.com/Tlahey/git-manager/pull/380
+* refactor(editor): separate the theme table from the theme that computes itself by @Tlahey in https://github.com/Tlahey/git-manager/pull/381
+* refactor(editor): drop the color token nothing produced, and the CSS behind it by @Tlahey in https://github.com/Tlahey/git-manager/pull/382
+* fix(a11y): name the merge editor's controls, and let a host translate them by @Tlahey in https://github.com/Tlahey/git-manager/pull/383
+* fix(notch): a card no longer costs the user their focus, and stop actually stops by @Tlahey in https://github.com/Tlahey/git-manager/pull/371
+* fix(ai): the daily summary can be stopped, and stops when nobody is watching by @Tlahey in https://github.com/Tlahey/git-manager/pull/384
+* docs: give the loose markdown a folder, and every link a target by @Tlahey in https://github.com/Tlahey/git-manager/pull/388
+* fix(window): let the window be moved while the app is loading by @Tlahey in https://github.com/Tlahey/git-manager/pull/390
+* fix(theme): give glass's tone chips a margin over the APCA bar, not a rounding error by @Tlahey in https://github.com/Tlahey/git-manager/pull/387
+* feat(dev): let a developer see the themes they haven't earned by @Tlahey in https://github.com/Tlahey/git-manager/pull/389
+* feat(files): list the repository's tracked files, not the working directory by @Tlahey in https://github.com/Tlahey/git-manager/pull/391
+* refactor(ui): give every search box in the app the same field by @Tlahey in https://github.com/Tlahey/git-manager/pull/392
+* feat(i18n): add Spanish as a third supported language by @Tlahey in https://github.com/Tlahey/git-manager/pull/393
+* fix(branch): switch the project a branch belongs to, not the worktree on screen by @Tlahey in https://github.com/Tlahey/git-manager/pull/395
+* feat(security): move every secret to the keychain, where the webview cannot reach it by @Tlahey in https://github.com/Tlahey/git-manager/pull/394
+* fix(i18n): give Spanish the eight keys it was missing by @Tlahey in https://github.com/Tlahey/git-manager/pull/397
+* fix(editor): the diff arrives already collapsed, instead of assembling itself in view by @Tlahey in https://github.com/Tlahey/git-manager/pull/396
+* feat(error-report): turn a failure into a GitHub issue the user reads before sending by @Tlahey in https://github.com/Tlahey/git-manager/pull/398
+* feat(markdown): a formatting toolbar and a formatted editing mode for every markdown field by @Tlahey in https://github.com/Tlahey/git-manager/pull/399
+* feat(terminal): bind a shell to its worktree, and say from the sidebar what is running where by @Tlahey in https://github.com/Tlahey/git-manager/pull/400
+
+
+**Full Changelog**: https://github.com/Tlahey/git-manager/compare/v0.2.1...v0.3.0
+
 ## [0.2.1] - 2026-08-06
 
 Release tooling only — no app-facing changes.
