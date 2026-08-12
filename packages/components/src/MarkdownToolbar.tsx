@@ -39,7 +39,13 @@ export interface MarkdownToolbarProps {
  *    the command applies to what the user actually highlighted;
  *  - the menus are Radix's, which measures and flips them against the viewport. Hand-rolled
  *    anchoring is what made an earlier prototype open its widest panel off the bottom edge, out of
- *    reach — the same reason `useAnchoredMenu` was retired (see `dropdown-menu.tsx`).
+ *    reach — the same reason `useAnchoredMenu` was retired (see `dropdown-menu.tsx`);
+ *  - every menu is `modal={false}`. A modal Radix menu parks `pointer-events: none` on
+ *    `document.body` while it is open and takes it back on close; nested in a dialog — which is
+ *    where the board's card editor lives — the two layers race and the lock can outlive the menu,
+ *    leaving the field underneath unselectable. It is also wrong on its own terms: this toolbar
+ *    exists to act on the selection in the field behind it, so sealing that field off is the
+ *    opposite of what it is for.
  */
 export function MarkdownToolbar({ onCommand, labels, disabled, className }: MarkdownToolbarProps) {
   function tooltip(item: MarkdownToolbarItem): string {
@@ -112,7 +118,7 @@ export function MarkdownToolbar({ onCommand, labels, disabled, className }: Mark
       className={cn('flex flex-wrap items-center gap-0.5 px-1.5 py-1', className)}
       data-testid="markdown-toolbar"
     >
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         {renderMenuTrigger(
           labels.headings,
           <Heading className="h-3.5 w-3.5" />,
@@ -132,7 +138,7 @@ export function MarkdownToolbar({ onCommand, labels, disabled, className }: Mark
 
       <Separator orientation="vertical" className="mx-1 h-4" />
 
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         {renderMenuTrigger(
           labels.alerts,
           <Info className="h-3.5 w-3.5" />,
@@ -143,7 +149,7 @@ export function MarkdownToolbar({ onCommand, labels, disabled, className }: Mark
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         {renderMenuTrigger(
           labels.more,
           <MoreHorizontal className="h-3.5 w-3.5" />,

@@ -71,6 +71,18 @@ describe('MarkdownToolbar', () => {
     expect(onCommand).toHaveBeenCalledWith('footnote')
   })
 
+  it('never seals off the page it is formatting', async () => {
+    setUp()
+
+    await userEvent.click(screen.getByTestId('markdown-toolbar-more'))
+
+    // A modal Radix menu locks `document.body` with `pointer-events: none` while it is open, and
+    // inside a dialog that lock can outlive it — the field underneath then takes no selection at
+    // all. Flip the menus back to modal and this is the assertion that catches it.
+    expect(await screen.findByText('Blocks')).toBeInTheDocument()
+    expect(document.body.style.pointerEvents).not.toBe('none')
+  })
+
   it('disables every button while the editor is saving', () => {
     render(<MarkdownToolbar onCommand={vi.fn()} labels={labels} disabled />)
 
