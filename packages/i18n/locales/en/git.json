@@ -1441,5 +1441,8 @@
   "markdown.command.emoji": "Emoji",
   "markdown.command.mermaid": "Diagram",
   "markdown.command.math": "Formula",
-  "markdown.command.hiddenComment": "Hidden comment"
+  "markdown.command.hiddenComment": "Hidden comment",
+  "markdown.tab.code": "Code",
+  "markdown.tab.preview": "Preview",
+  "markdown.preview.empty": "Nothing to preview yet."
 }

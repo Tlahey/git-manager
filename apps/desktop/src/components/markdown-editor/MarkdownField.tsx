@@ -1,7 +1,7 @@
 import type { DragEvent, KeyboardEvent } from 'react'
 import { useMarkdownEditor } from '@git-manager/components'
 import { Textarea } from '@git-manager/ui'
-import { MarkdownFormattingBar } from './MarkdownFormattingBar'
+import { MarkdownEditorFrame } from './MarkdownEditorFrame'
 
 export interface MarkdownFieldProps {
   value: string
@@ -19,16 +19,20 @@ export interface MarkdownFieldProps {
   /** Runs after the formatting shortcuts, so a caller can add its own (⌘↵ to submit) without
    * shadowing them. */
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  /** Passed to the preview so relative image paths resolve against the repository. */
+  repoPath?: string
+  /** Widens the preview's sanitiser to what the user may write themselves (board cards). */
+  authored?: boolean
   'data-testid'?: string
 }
 
 /**
- * A markdown textarea with its formatting bar — the editor behind every place the app writes
- * markdown to GitHub: a pull request's description, an issue's, and the comment boxes.
+ * A markdown textarea with its formatting bar and preview — the editor behind every place the app
+ * writes markdown to GitHub: a pull request's description, an issue's, and the comment boxes.
  *
- * The bar sits above the field rather than inside a shared frame on purpose: the field keeps
- * `Textarea`'s own border and focus ring, which is what an audited primitive is for. Board cards
- * use `AttachmentTextarea` instead — same bar, but that one also owns paste-to-attach.
+ * The field keeps `Textarea`'s own border and focus ring rather than being folded into the frame's
+ * box, which is what an audited primitive is for. Board cards use `AttachmentTextarea` instead —
+ * same frame, but that one also owns paste-to-attach.
  */
 export function MarkdownField({
   value,
@@ -42,13 +46,20 @@ export function MarkdownField({
   onDragOver,
   onDrop,
   onKeyDown,
+  repoPath,
+  authored,
   'data-testid': testId,
 }: MarkdownFieldProps) {
   const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
 
   return (
-    <div className="space-y-1">
-      <MarkdownFormattingBar onCommand={runCommand} disabled={disabled} />
+    <MarkdownEditorFrame
+      value={value}
+      onCommand={runCommand}
+      disabled={disabled}
+      repoPath={repoPath}
+      authored={authored}
+    >
       <Textarea
         ref={textareaRef}
         id={id}
@@ -67,6 +78,6 @@ export function MarkdownField({
         className={className}
         data-testid={testId}
       />
-    </div>
+    </MarkdownEditorFrame>
   )
 }

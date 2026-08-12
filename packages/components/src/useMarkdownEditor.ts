@@ -49,9 +49,13 @@ export function useMarkdownEditor(onChange: (value: string) => void): UseMarkdow
       element.focus({ preventScroll: true })
       element.setSelectionRange(edit.from, edit.to)
 
+      // Deprecated on purpose, and unreplaced: no standard API edits a textarea *as if typed*, which
+      // is what keeps the undo stack and the scroll. See this hook's doc comment.
+      /* oxlint-disable typescript/no-deprecated */
       const typed =
         typeof document.execCommand === 'function' &&
         document.execCommand('insertText', false, edit.text)
+      /* oxlint-enable typescript/no-deprecated */
 
       if (!typed) {
         const next = applyEdit(state, edit)

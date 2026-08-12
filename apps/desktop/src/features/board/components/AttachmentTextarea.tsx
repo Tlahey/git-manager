@@ -3,7 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { useMarkdownEditor } from '@git-manager/components'
 import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
-import { MarkdownFormattingBar } from '../../../components/markdown-editor/MarkdownFormattingBar'
+import { MarkdownEditorFrame } from '../../../components/markdown-editor/MarkdownEditorFrame'
 import { saveBoardAttachment } from '../api/attachment.api'
 import { attachmentMarkdown, insertAtCaret } from '../lib/attachmentMarkdown'
 
@@ -55,16 +55,19 @@ export function AttachmentTextarea({
   const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
 
   // Measured after every value change rather than tracked in state: the height has to be read back
   // from the laid-out element, and `scrollHeight` is only meaningful once the box has been collapsed
-  // to `auto` first.
+  // to `auto` first — which a hidden element cannot give, since it reports 0. Hence `previewing`
+  // both as a guard and as a dependency: the measurement is deferred to the moment the field comes
+  // back on screen, rather than collapsing it to nothing behind the preview.
   useLayoutEffect(() => {
     const el = textareaRef.current
-    if (!autoGrow || !el) return
+    if (!autoGrow || !el || previewing) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-  }, [value, autoGrow])
+  }, [value, autoGrow, previewing])
 
   async function attach(files: File[]) {
     if (files.length === 0 || disabled) return
@@ -93,8 +96,14 @@ export function AttachmentTextarea({
   }
 
   return (
-    <div className="relative">
-      <MarkdownFormattingBar onCommand={runCommand} disabled={disabled || uploading} />
+    <MarkdownEditorFrame
+      value={value}
+      onCommand={runCommand}
+      disabled={disabled || uploading}
+      repoPath={repoPath}
+      authored
+      onPreviewingChange={setPreviewing}
+    >
       <Textarea
         ref={textareaRef}
         value={value}
@@ -139,6 +148,6 @@ export function AttachmentTextarea({
             ? t('attachment.hintRemote')
             : t('attachment.hint')}
       </p>
-    </div>
+    </MarkdownEditorFrame>
   )
 }
