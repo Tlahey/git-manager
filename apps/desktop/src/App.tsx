@@ -17,7 +17,8 @@ import {
   type Section,
   type Scope as SettingsScope,
 } from './app/settings/SettingsPage'
-import { ActivityLogsPage } from './app/activity-logs/ActivityLogsPage'
+import { ActivityLogsPage, type LevelFilter } from './app/activity-logs/ActivityLogsPage'
+import { ErrorReportHost } from './features/error-report'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
@@ -55,6 +56,9 @@ export default function App() {
   const [settingsSection, setSettingsSection] = useState<Section>('general')
   const [settingsScope, setSettingsScope] = useState<SettingsScope>('general')
   const [showActivityLogs, setShowActivityLogs] = useState(false)
+  // Which level filter the takeover opens on. The footer's bug button lands on `error`; every
+  // other opener wants the whole stream.
+  const [activityLogsLevel, setActivityLogsLevel] = useState<LevelFilter>('all')
 
   useTheme()
   useMonacoTheme()
@@ -165,6 +169,11 @@ export default function App() {
     setShowSettings(true)
   }
 
+  function handleOpenActivityLogs(initialLevel: LevelFilter = 'all') {
+    setActivityLogsLevel(initialLevel)
+    setShowActivityLogs(true)
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="animate-fadeIn flex h-screen flex-col bg-background text-foreground">
@@ -176,7 +185,10 @@ export default function App() {
             onClose={() => setShowSettings(false)}
           />
         ) : showActivityLogs ? (
-          <ActivityLogsPage onClose={() => setShowActivityLogs(false)} />
+          <ActivityLogsPage
+            onClose={() => setShowActivityLogs(false)}
+            initialLevel={activityLogsLevel}
+          />
         ) : (
           <>
             <TabBar onOpenSettings={handleOpenSettings} />
@@ -197,16 +209,19 @@ export default function App() {
             </div>
             <Footer
               onOpenSettings={handleOpenSettings}
-              onOpenActivityLogs={() => setShowActivityLogs(true)}
+              onOpenActivityLogs={handleOpenActivityLogs}
             />
           </>
         )}
         <CommandPalette
           onOpenSettings={handleOpenSettings}
           onCloseSettings={() => setShowSettings(false)}
-          onOpenActivityLogs={() => setShowActivityLogs(true)}
+          onOpenActivityLogs={() => handleOpenActivityLogs()}
         />
         <Toaster />
+        {/* Renders nothing until something opens a report — mounted here, above every takeover, so
+            the dialog survives the Activity Logs view closing under it. */}
+        <ErrorReportHost />
         <LoadingOverlay />
         {/* Renders nothing — it holds one notch card per transfer in flight, which needs a
             component instance each (hooks can't be called in a loop over a changing list). */}

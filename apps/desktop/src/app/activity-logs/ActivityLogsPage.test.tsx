@@ -158,6 +158,44 @@ describe('ActivityLogsPage', () => {
     expect(rows[0]).toHaveAttribute('data-command', 'push')
   })
 
+  it('opens already narrowed to failures when asked, for the footer’s report button', () => {
+    useActivityLogStore.setState({
+      entries: [
+        makeEntry({ command: 'pull', status: 'ok' }),
+        makeEntry({ command: 'push', status: 'error', error: 'boom' }),
+      ],
+    })
+    render(<ActivityLogsPage onClose={() => {}} initialLevel="error" />)
+
+    const rows = screen.getAllByTestId('activity-log-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveAttribute('data-command', 'push')
+  })
+
+  it('leaves that filter switchable — it is a starting point, not a lock', () => {
+    useActivityLogStore.setState({
+      entries: [
+        makeEntry({ command: 'pull', status: 'ok' }),
+        makeEntry({ command: 'push', status: 'error', error: 'boom' }),
+      ],
+    })
+    render(<ActivityLogsPage onClose={() => {}} initialLevel="error" />)
+
+    fireEvent.change(screen.getByTestId('activity-level-filter'), { target: { value: 'all' } })
+    expect(screen.getAllByTestId('activity-log-row')).toHaveLength(2)
+  })
+
+  it('shows the whole stream by default, for every other opener', () => {
+    useActivityLogStore.setState({
+      entries: [
+        makeEntry({ command: 'pull', status: 'ok' }),
+        makeEntry({ command: 'push', status: 'error', error: 'boom' }),
+      ],
+    })
+    render(<ActivityLogsPage onClose={() => {}} />)
+    expect(screen.getAllByTestId('activity-log-row')).toHaveLength(2)
+  })
+
   it('shows a no-match empty state when the filter excludes everything', () => {
     useActivityLogStore.setState({ entries: [makeEntry({ command: 'pull' })] })
     render(<ActivityLogsPage onClose={() => {}} />)

@@ -21,6 +21,7 @@ import {
   Search,
   Activity,
   GraduationCap,
+  MessageSquareWarning,
 } from 'lucide-react'
 import {
   Dialog,
@@ -40,10 +41,12 @@ import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
 import { DebugMenu } from './DebugMenu'
 import { openActionJournalWindow } from '../../lib/actionJournalWindow'
+import type { LevelFilter } from '../../app/activity-logs/ActivityLogsPage'
 
 interface FooterProps {
   onOpenSettings: (section?: Section) => void
-  onOpenActivityLogs: () => void
+  /** `initialLevel` lets the bug button land on the failures alone — see the button's comment. */
+  onOpenActivityLogs: (initialLevel?: LevelFilter) => void
 }
 
 export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
@@ -236,12 +239,34 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         </Tooltip>
         <Tooltip content={t('footer.activityLogs')}>
           <button
-            onClick={onOpenActivityLogs}
+            // Wrapped, not passed by reference: this handler now takes an initial level filter,
+            // and handing it straight to onClick would send it a MouseEvent as one.
+            onClick={() => onOpenActivityLogs()}
             aria-label={t('footer.activityLogs')}
             data-testid="footer-activity-logs-button"
             className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
           >
             <Activity className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+        {/* Next to Activity Logs because it goes there — the same view, opened on the failures
+            alone. It deliberately does NOT report anything by itself: with no failure attached, a
+            one-click "report" would have to guess which error the user means, and the last one
+            recorded is routinely not the one bothering them. Picking the line is the whole
+            difference between a useful report and a wrong one.
+
+            Not a `Bug` icon, however tempting: `DebugMenu` sits a few pixels away with exactly that
+            one, and two beetles in a nine-icon row is a coin toss for the user. A beetle also says
+            "a defect exists" where this says "tell us about it" — which is why the same
+            speech-bubble marks the report action at its other two entry points. */}
+        <Tooltip content={t('footer.reportProblem')}>
+          <button
+            onClick={() => onOpenActivityLogs('error')}
+            aria-label={t('footer.reportProblem')}
+            data-testid="footer-report-problem-button"
+            className="flex cursor-pointer items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+          >
+            <MessageSquareWarning className="h-3.5 w-3.5" />
           </button>
         </Tooltip>
         <Tooltip content={t('footer.keyboardShortcuts')}>

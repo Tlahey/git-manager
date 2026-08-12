@@ -91,6 +91,32 @@ describe('Footer — contextual left section', () => {
     expect(screen.getByText('2 registered repos')).toBeInTheDocument()
   })
 
+  it('sends the bug button to the activity logs, narrowed to failures', () => {
+    const onOpenActivityLogs = vi.fn()
+    render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={onOpenActivityLogs} />)
+
+    fireEvent.click(screen.getByTestId('footer-report-problem-button'))
+    expect(onOpenActivityLogs).toHaveBeenCalledWith('error')
+  })
+
+  it('does not report anything by itself — with no failure attached it would have to guess', () => {
+    const onOpenActivityLogs = vi.fn()
+    render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={onOpenActivityLogs} />)
+
+    fireEvent.click(screen.getByTestId('footer-report-problem-button'))
+    expect(screen.queryByTestId('error-report-dialog')).not.toBeInTheDocument()
+  })
+
+  it('leaves the plain activity-logs button on the whole stream', () => {
+    const onOpenActivityLogs = vi.fn()
+    render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={onOpenActivityLogs} />)
+
+    fireEvent.click(screen.getByTestId('footer-activity-logs-button'))
+    // With no argument at all — passing the handler straight to `onClick` would send it the
+    // MouseEvent as an initial level filter.
+    expect(onOpenActivityLogs).toHaveBeenCalledWith()
+  })
+
   it('shows the launchpad state on the pull-requests tab', () => {
     useRepoUIStore.setState({ activeTab: PULL_REQUESTS_TAB })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)

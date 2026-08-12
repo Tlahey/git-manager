@@ -14,7 +14,7 @@ import { ActivityScopeSwitch } from './components/ActivityScopeSwitch'
 // Same platform check the Settings takeover uses to pad the header past the macOS traffic lights.
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
-type LevelFilter = 'all' | 'error'
+export type LevelFilter = 'all' | 'error'
 
 function entryHaystack(e: ActivityLogEntry): string {
   const args =
@@ -28,15 +28,26 @@ function entryHaystack(e: ActivityLogEntry): string {
  * `lib/groupActivityLog.ts`). Clicking a line opens a master-detail panel with its full record and a
  * recap of the action it belongs to. Capture is always on (no enable switch). Two scopes: the whole
  * Application, or just the active Repository's operations.
+ *
+ * `initialLevel` is what the footer's "report a problem" button lands on: it opens this view
+ * already narrowed to failures, because the alternative — a button that reports "the last error"
+ * on the user's behalf — files a report about whatever failed twenty minutes ago rather than the
+ * thing in front of them. The filter is a starting point, not a lock: the level switch still works.
  */
-export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
+export function ActivityLogsPage({
+  onClose,
+  initialLevel = 'all',
+}: {
+  onClose: () => void
+  initialLevel?: LevelFilter
+}) {
   const { t } = useTranslation('common')
   const entries = useActivityLogStore((s) => s.entries)
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
 
   const [scope, setScope] = useState<ActivityScope>('application')
   const [filter, setFilter] = useState('')
-  const [level, setLevel] = useState<LevelFilter>('all')
+  const [level, setLevel] = useState<LevelFilter>(initialLevel)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // When set, the stream is narrowed to a single action's correlation id to trace its flow.
   const [traceId, setTraceId] = useState<string | null>(null)
