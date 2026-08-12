@@ -148,3 +148,40 @@ export class TableWidget extends WidgetType {
     return element
   }
 }
+
+/**
+ * A fenced diagram, as the diagram.
+ *
+ * The rendering is asynchronous and belongs to the app — the package has no diagram engine and
+ * wants none — so the widget is handed a promise of markup and fills itself in when it arrives.
+ * A failure leaves the source on screen rather than an empty box: a diagram that does not parse is
+ * something the writer needs to see, not something to hide.
+ */
+export class DiagramWidget extends WidgetType {
+  constructor(
+    readonly code: string,
+    readonly render: (code: string) => Promise<string | null>
+  ) {
+    super()
+  }
+
+  eq(other: DiagramWidget): boolean {
+    return other.code === this.code
+  }
+
+  toDOM(): HTMLElement {
+    const host = document.createElement('div')
+    host.className = 'cm-md-diagram'
+    host.textContent = this.code
+
+    void this.render(this.code)
+      .then((svg) => {
+        if (svg) host.innerHTML = svg
+      })
+      .catch(() => {
+        host.classList.add('cm-md-diagram-failed')
+      })
+
+    return host
+  }
+}

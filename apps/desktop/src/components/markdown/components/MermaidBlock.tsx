@@ -1,31 +1,18 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import { renderMermaid } from './renderMermaid'
 
 interface MermaidBlockProps {
   code: string
 }
 
 /**
- * Mermaid is loaded on demand, and only for documents that actually contain a diagram.
+ * A fenced `mermaid` block, rendered.
  *
- * Statically imported it added ~640 kB (~150 kB gzipped) to the chunk the app boots from, for a
- * feature most READMEs never use — and the renderer that pulls this component in is mounted by the
- * dashboard, so every launch paid for it.
+ * The rendering itself lives in `renderMermaid`, since the formatted editor draws the same diagrams
+ * from a CodeMirror widget that has no React tree to mount a component into.
  */
-async function loadMermaid() {
-  return (await import('mermaid')).default
-}
-
-function unescapeHtml(str: string) {
-  return str
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-}
-
 export function MermaidBlock({ code }: MermaidBlockProps) {
   const { t } = useTranslation('common')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -39,62 +26,22 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
   useEffect(() => {
     let isMounted = true
+    setLoading(true)
+    setError(null)
 
-    async function renderDiagram() {
-      const cleanCode = unescapeHtml(code).trim()
-      if (!cleanCode) {
-        if (isMounted) {
-          setSvgContent(null)
-          setLoading(false)
-        }
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        const mermaid = await loadMermaid()
+    renderMermaid(code, uniqueId)
+      .then((svg) => {
         if (!isMounted) return
-
-        const currentTheme = document.documentElement.dataset.theme || ''
-        const isDark =
-          currentTheme.includes('dark') ||
-          document.documentElement.classList.contains('dark') ||
-          (typeof window !== 'undefined' &&
-            window.matchMedia?.('(prefers-color-scheme: dark)').matches)
-
-        // `strict` (Mermaid's own default) is what makes the generated SVG safe to hand to
-        // `dangerouslySetInnerHTML` below: it escapes HTML labels and ignores `click` directives.
-        // The diagrams rendered here come from READMEs and PR descriptions we don't control, so
-        // `loose` would let that content inject markup straight into the app.
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: isDark ? 'dark' : 'default',
-          securityLevel: 'strict',
-          fontFamily: 'inherit',
-        })
-
-        // Clean previous renders
-        const renderId = `${uniqueId}-${Math.random().toString(36).substring(2, 9)}`
-        const { svg } = await mermaid.render(renderId, cleanCode)
-
-        if (isMounted) {
-          setSvgContent(svg)
-          setError(null)
-          setLoading(false)
-        }
-      } catch (err) {
-        console.warn('Mermaid rendering failed:', err)
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : String(err))
-          setSvgContent(null)
-          setLoading(false)
-        }
-      }
-    }
-
-    renderDiagram()
+        setSvgContent(svg)
+        setLoading(false)
+      })
+      .catch((failure: unknown) => {
+        console.warn('Mermaid rendering failed:', failure)
+        if (!isMounted) return
+        setError(failure instanceof Error ? failure.message : String(failure))
+        setSvgContent(null)
+        setLoading(false)
+      })
 
     return () => {
       isMounted = false

@@ -3,6 +3,7 @@ import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, type DecorationSet } from '@codemirror/view'
 import {
   AlertTitleWidget,
+  DiagramWidget,
   ImageWidget,
   RuleWidget,
   TableWidget,
@@ -32,6 +33,9 @@ export interface MarkdownDecorationOptions {
   /** The translated name of a GitHub alert kind (`note`, `warning`, …) for its callout title.
    * Without it the kind's own word is shown, which is right for a package that holds no copy. */
   alertLabel?: (kind: string) => string
+  /** Renders a fenced diagram to SVG. Without it a ```mermaid block stays the source it already is,
+   * which is what a package with no diagram engine should do. */
+  renderDiagram?: (code: string) => Promise<string | null>
 }
 
 /** A blockquote is a GitHub alert when its first line is nothing but the marker. */
@@ -177,6 +181,17 @@ export function markdownDecorations(
         }
 
         if (node.name === 'FencedCode') {
+          const source = state.doc.sliceString(node.from, node.to)
+          const diagram = source.match(/^```mermaid\s*\n([\s\S]*?)\n?```\s*$/)
+          if (diagram && options.renderDiagram && !isEditingBlock(node.from, node.to)) {
+            decorations.push(
+              Decoration.replace({
+                widget: new DiagramWidget(diagram[1], options.renderDiagram),
+              }).range(node.from, node.to)
+            )
+            drawn.push([node.from, node.to])
+            return false
+          }
           decorations.push(...eachLine(state, node.from, node.to, 'cm-md-line-fence'))
         }
 

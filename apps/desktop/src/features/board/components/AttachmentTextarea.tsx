@@ -9,6 +9,7 @@ import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
 import { MarkdownEditorFrame } from '../../../components/markdown-editor/MarkdownEditorFrame'
 import { resolveImageSrc } from '../../../components/markdown/components/resolveImageSrc'
+import { renderMermaid } from '../../../components/markdown/components/renderMermaid'
 import { saveBoardAttachment } from '../api/attachment.api'
 import { attachmentMarkdown, insertAtCaret } from '../lib/attachmentMarkdown'
 
@@ -32,8 +33,6 @@ interface AttachmentTextareaProps {
   /** Set for a GitHub-backed board: makes inserted attachments absolute `raw.githubusercontent.com`
    * URLs, since GitHub doesn't resolve relative image paths in issue bodies. */
   attachmentUrlPrefix?: string
-  /** Adds the formatted editing tab — the same markdown, painted to look like the result. */
-  rich?: boolean
 }
 
 /**
@@ -54,7 +53,6 @@ export function AttachmentTextarea({
   className = '',
   attachmentUrlPrefix,
   autoGrow,
-  rich,
   'data-testid': testId,
 }: AttachmentTextareaProps) {
   const { t } = useTranslation('board')
@@ -111,29 +109,25 @@ export function AttachmentTextarea({
 
   return (
     <MarkdownEditorFrame
-      value={value}
       onCommand={runCommand}
       disabled={disabled || uploading}
-      repoPath={repoPath}
-      authored
       onModeChange={(mode) => setHidden(mode !== 'code')}
       onRichCommand={live.runCommand}
       richEditor={
-        rich ? (
-          <MarkdownLiveEditor
-            value={value}
-            onChange={onChange}
-            viewRef={live.viewRef}
-            onCommand={live.runCommand}
-            onFiles={(files) => void attach(files)}
-            resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
-            alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
-            placeholder={placeholder}
-            disabled={disabled || uploading}
-            className={className}
-            data-testid={testId ? `${testId}-rich` : undefined}
-          />
-        ) : undefined
+        <MarkdownLiveEditor
+          value={value}
+          onChange={onChange}
+          viewRef={live.viewRef}
+          onCommand={live.runCommand}
+          onFiles={(files) => void attach(files)}
+          resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
+          alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
+          renderDiagram={(code) => renderMermaid(code, 'cm-diagram')}
+          placeholder={placeholder}
+          disabled={disabled || uploading}
+          className={className}
+          data-testid={testId ? `${testId}-rich` : undefined}
+        />
       }
     >
       <Textarea

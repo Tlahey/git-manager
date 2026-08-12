@@ -7,6 +7,7 @@ import {
 } from '@git-manager/components'
 import { Textarea } from '@git-manager/ui'
 import { resolveImageSrc } from '../markdown/components/resolveImageSrc'
+import { renderMermaid } from '../markdown/components/renderMermaid'
 import { MarkdownEditorFrame } from './MarkdownEditorFrame'
 
 export interface MarkdownFieldProps {
@@ -25,25 +26,20 @@ export interface MarkdownFieldProps {
   /** Runs after the formatting shortcuts, so a caller can add its own (⌘↵ to submit) without
    * shadowing them. */
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
-  /** Passed to the preview so relative image paths resolve against the repository. */
+  /** Resolves relative image paths against the repository, so an attachment is drawn rather than
+   * left as its path. */
   repoPath?: string
-  /** Widens the preview's sanitiser to what the user may write themselves (board cards). */
-  authored?: boolean
-  /**
-   * Adds the formatted editing tab — the same markdown, painted to look like the result, still
-   * editable. Opt-in while it is being tried out on one surface rather than all nine.
-   */
-  rich?: boolean
   'data-testid'?: string
 }
 
 /**
- * A markdown textarea with its formatting bar and preview — the editor behind every place the app
- * writes markdown to GitHub: a pull request's description, an issue's, and the comment boxes.
+ * A markdown editor in its two modes — formatted and raw — with the formatting bar over both. It is
+ * behind every place the app writes markdown to GitHub: a pull request's description, an issue's,
+ * and the comment boxes.
  *
- * The field keeps `Textarea`'s own border and focus ring rather than being folded into the frame's
- * box, which is what an audited primitive is for. Board cards use `AttachmentTextarea` instead —
- * same frame, but that one also owns paste-to-attach.
+ * The raw field keeps `Textarea`'s own border and focus ring rather than being folded into the
+ * frame's box, which is what an audited primitive is for. Board cards use `AttachmentTextarea`
+ * instead — same frame, but that one also owns paste-to-attach.
  */
 export function MarkdownField({
   value,
@@ -58,8 +54,6 @@ export function MarkdownField({
   onDrop,
   onKeyDown,
   repoPath,
-  authored,
-  rich,
   'data-testid': testId,
 }: MarkdownFieldProps) {
   const { t } = useTranslation('git')
@@ -68,27 +62,23 @@ export function MarkdownField({
 
   return (
     <MarkdownEditorFrame
-      value={value}
       onCommand={runCommand}
       disabled={disabled}
-      repoPath={repoPath}
-      authored={authored}
       onRichCommand={live.runCommand}
       richEditor={
-        rich ? (
-          <MarkdownLiveEditor
-            value={value}
-            onChange={onChange}
-            viewRef={live.viewRef}
-            onCommand={live.runCommand}
-            resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
-            alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={className}
-            data-testid={testId ? `${testId}-rich` : undefined}
-          />
-        ) : undefined
+        <MarkdownLiveEditor
+          value={value}
+          onChange={onChange}
+          viewRef={live.viewRef}
+          onCommand={live.runCommand}
+          resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
+          alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
+          renderDiagram={(code) => renderMermaid(code, 'cm-diagram')}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={className}
+          data-testid={testId ? `${testId}-rich` : undefined}
+        />
       }
     >
       <Textarea

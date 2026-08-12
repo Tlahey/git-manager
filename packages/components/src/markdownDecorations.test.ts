@@ -4,6 +4,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { markdownDecorations } from './markdownDecorations'
 import {
   AlertTitleWidget,
+  DiagramWidget,
   ImageWidget,
   RuleWidget,
   TableWidget,
@@ -233,6 +234,39 @@ describe('markdownDecorations', () => {
 
     expect(widgets.some((widget) => widget instanceof TableWidget)).toBe(false)
     expect(lines.filter((c) => c === 'cm-md-line-table').length).toBeGreaterThan(0)
+  })
+
+  it('draws a mermaid fence as a diagram', () => {
+    const { widgets } = decorated('cursor\n\n```mermaid\nflowchart TD\n  A --> B\n```', 0, {
+      renderDiagram: async () => '<svg />',
+    })
+    const diagram = widgets.find((widget) => widget instanceof DiagramWidget) as DiagramWidget
+
+    expect(diagram.code).toBe('flowchart TD\n  A --> B')
+  })
+
+  it('leaves an ordinary fence as code', () => {
+    const { widgets, lines } = decorated('cursor\n\n```ts\nconst a = 1\n```', 0, {
+      renderDiagram: async () => '<svg />',
+    })
+
+    expect(widgets.some((widget) => widget instanceof DiagramWidget)).toBe(false)
+    expect(lines).toContain('cm-md-line-fence')
+  })
+
+  it('gives a diagram back as source while it is being edited', () => {
+    const doc = 'cursor\n\n```mermaid\nflowchart TD\n```'
+    const { widgets } = decorated(doc, doc.indexOf('flowchart'), {
+      renderDiagram: async () => '<svg />',
+    })
+
+    expect(widgets.some((widget) => widget instanceof DiagramWidget)).toBe(false)
+  })
+
+  it('leaves diagrams as source when nobody can render them', () => {
+    const { widgets } = decorated('cursor\n\n```mermaid\nflowchart TD\n```')
+
+    expect(widgets.some((widget) => widget instanceof DiagramWidget)).toBe(false)
   })
 
   it('decorates nothing in a plain paragraph', () => {

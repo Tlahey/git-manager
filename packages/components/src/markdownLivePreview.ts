@@ -178,6 +178,22 @@ const livePreviewTheme = EditorView.theme({
     backgroundColor: 'hsl(var(--muted) / 0.35)',
   },
 
+  '.cm-md-diagram': {
+    display: 'block',
+    overflowX: 'auto',
+    borderRadius: '4px',
+    border: '1px solid hsl(var(--border))',
+    backgroundColor: 'hsl(var(--card) / 0.6)',
+    textAlign: 'center',
+  },
+  '.cm-md-diagram-failed': {
+    fontFamily: 'var(--font-mono, monospace)',
+    fontSize: '0.9em',
+    textAlign: 'left',
+    borderColor: 'hsl(var(--destructive) / 0.4)',
+  },
+  '.cm-md-diagram svg': { maxWidth: '100%', height: 'auto' },
+
   '.cm-md-rule': {
     display: 'block',
     height: '0',

@@ -25,6 +25,8 @@ export interface MarkdownLiveEditorProps {
   resolveImageSrc?: (src: string) => string
   /** The translated name of a GitHub alert kind, for the callout titles. */
   alertLabel?: (kind: string) => string
+  /** Renders a fenced diagram to SVG. Omit it and diagrams stay source. */
+  renderDiagram?: (code: string) => Promise<string | null>
   'data-testid'?: string
 }
 
@@ -59,6 +61,7 @@ export function MarkdownLiveEditor({
   onFiles,
   resolveImageSrc,
   alertLabel,
+  renderDiagram,
   'data-testid': testId,
 }: MarkdownLiveEditorProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -77,6 +80,8 @@ export function MarkdownLiveEditor({
   resolver.current = (src: string) => (resolveImageSrc ? resolveImageSrc(src) : src)
   const alerts = useRef((kind: string) => (alertLabel ? alertLabel(kind) : kind))
   alerts.current = (kind: string) => (alertLabel ? alertLabel(kind) : kind)
+  const diagrams = useRef(renderDiagram)
+  diagrams.current = renderDiagram
 
   /** Only a *file* paste or drop is ours; text falls through to CodeMirror untouched. */
   function handleFiles(dropped: File[], event: Event): boolean {
@@ -106,6 +111,9 @@ export function MarkdownLiveEditor({
           markdownLivePreview({
             resolveImageSrc: (src) => resolver.current(src),
             alertLabel: (kind) => alerts.current(kind),
+            renderDiagram: renderDiagram
+              ? (code) => (diagrams.current ?? (async () => null))(code)
+              : undefined,
           }),
           EditorView.lineWrapping,
           placeholderExtension(placeholder ?? ''),

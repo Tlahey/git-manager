@@ -43,17 +43,8 @@ beforeEach(() => {
 })
 
 describe('AttachmentTextarea', () => {
-  it('keeps to the plain tabs unless the formatted editor is asked for', () => {
-    renderTextarea()
-
-    expect(screen.queryByTestId('markdown-tab-rich')).not.toBeInTheDocument()
-  })
-
-  it('offers the formatted editor on the same markdown when asked', async () => {
-    const user = userEvent.setup()
-    renderTextarea({ value: '## Title', rich: true })
-
-    await user.click(screen.getByTestId('markdown-tab-rich'))
+  it('offers the formatted editor on the same markdown', () => {
+    renderTextarea({ value: '## Title' })
 
     expect(screen.getByTestId('field-rich').textContent).toContain('Title')
   })
