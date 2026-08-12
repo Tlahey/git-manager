@@ -109,6 +109,7 @@
   "footer.copyBranch": "Click to copy branch name",
   "footer.searchShortcut": "Search for a shortcut",
   "footer.activityLogs": "Activity Logs",
+  "footer.reportProblem": "Report a problem — pick the failure",
   "footer.level": "Lvl {{level}}",
   "footer.rewardsTooltip": "View your Git achievements and rewards",
   "tabs.dashboard": "Dashboard",

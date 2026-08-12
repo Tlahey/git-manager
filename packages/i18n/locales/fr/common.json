@@ -109,6 +109,7 @@
   "footer.copyBranch": "Cliquer pour copier le nom de la branche",
   "footer.searchShortcut": "Rechercher un raccourci",
   "footer.activityLogs": "Journal d’activité",
+  "footer.reportProblem": "Signaler un problème — choisissez l’erreur",
   "footer.level": "Niv. {{level}}",
   "footer.rewardsTooltip": "Consulter vos succès et récompenses Git",
   "tabs.dashboard": "Accueil",

@@ -56,6 +56,9 @@ export function ActivityLogRow({ entry, selected, onSelect }: ActivityLogRowProp
       data-testid="activity-log-row"
       data-command={entry.command}
       data-entry-id={entry.id}
+      // The row's status carries in its colour alone, which no test can read. Exposed because the
+      // footer's report button promises exactly one thing — that what you land on is the failures.
+      data-status={entry.status}
     >
       <span className="w-48 shrink-0 text-muted-foreground/60 tabular-nums">
         {formatActivityDateTime(entry.timestamp)}

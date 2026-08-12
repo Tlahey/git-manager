@@ -109,6 +109,7 @@
   "footer.copyBranch": "Haz clic para copiar el nombre de la rama",
   "footer.searchShortcut": "Buscar un atajo",
   "footer.activityLogs": "Registro de actividad",
+  "footer.reportProblem": "Informar de un problema — elige el fallo",
   "footer.level": "Niv. {{level}}",
   "footer.rewardsTooltip": "Ver tus logros y recompensas de Git",
   "tabs.dashboard": "Panel",

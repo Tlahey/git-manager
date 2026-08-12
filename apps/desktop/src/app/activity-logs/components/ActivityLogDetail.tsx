@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Check, Copy, GitBranch, X } from 'lucide-react'
-import { ScrollArea, Tooltip } from '@git-manager/ui'
+import { Check, Copy, GitBranch, MessageSquareWarning, X } from 'lucide-react'
+import { Button, ScrollArea, Tooltip } from '@git-manager/ui'
+import { draftFromActivityEntry, useErrorReportStore } from '../../../features/error-report'
 import type { ActivityLogEntry } from '../../../stores/activityLog.store'
 import type { ActivityBlock } from '../../../lib/groupActivityLog'
 import { formatActivityDateTime, formatActivityTimestamp } from '../../../lib/formatActivityLog'
@@ -34,6 +35,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
  */
 export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLogDetailProps) {
   const { t } = useTranslation('common')
+  const openReport = useErrorReportStore((s) => s.openReport)
   const [copiedData, setCopiedData] = useState(false)
   const [copiedError, setCopiedError] = useState(false)
   const isError = entry.status === 'error'
@@ -201,6 +203,18 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                 <pre className="mt-1 rounded-md border border-destructive/40 bg-destructive/10 p-2 font-mono text-[10px] break-all whitespace-pre-wrap text-destructive">
                   {entry.error}
                 </pre>
+                {/* The whole action travels with the report, not just this line — `block` is the
+                    correlated group, which is what makes a report reproducible. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={() => openReport(draftFromActivityEntry(entry, block))}
+                  data-testid="activity-detail-report"
+                >
+                  <MessageSquareWarning className="h-3.5 w-3.5" />
+                  {t('errors:report.action')}
+                </Button>
               </div>
             )}
           </div>
