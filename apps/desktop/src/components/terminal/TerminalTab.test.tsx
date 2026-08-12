@@ -25,16 +25,23 @@ describe('TerminalTab', () => {
   })
 
   it('breathes while a command holds the terminal', () => {
-    renderTab({ isBusy: true, command: 'claude' })
+    renderTab({ state: 'busy', command: 'claude' })
     const chip = screen.getByTestId('terminal-state-sess-1')
     expect(chip).toHaveAttribute('data-state', 'busy')
     expect(chip.className).toContain('animate-pulse')
   })
 
-  it('settles onto a still green chip at an idle prompt', () => {
+  it('settles onto a quiet grey chip at an idle prompt', () => {
     renderTab()
     const chip = screen.getByTestId('terminal-state-sess-1')
     expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).not.toContain('animate-pulse')
+  })
+
+  it('turns blue once a command has finished and nobody has looked', () => {
+    renderTab({ state: 'done', command: 'pnpm' })
+    const chip = screen.getByTestId('terminal-state-sess-1')
+    expect(chip).toHaveAttribute('data-state', 'done')
     expect(chip.className).not.toContain('animate-pulse')
   })
 

@@ -29,10 +29,44 @@ describe('summarizeWorktreeTerminals', () => {
     )
     expect(summaries.get('/repo')).toEqual({
       count: 1,
-      busy: false,
+      state: 'idle',
       command: null,
       sessionId: 'a',
     })
+  })
+
+  it('reports a finished session, naming what finished', () => {
+    const summaries = summarizeWorktreeTerminals(
+      [session('a', '/repo')],
+      {},
+      {
+        a: { command: 'pnpm' },
+      }
+    )
+    expect(summaries.get('/repo')).toMatchObject({ state: 'done', command: 'pnpm' })
+  })
+
+  it('lets a running session speak over a finished one on the same worktree', () => {
+    const summaries = summarizeWorktreeTerminals(
+      [session('done', '/repo'), session('agent', '/repo')],
+      activityOf(status('agent', true, 'claude')),
+      { done: { command: 'pnpm' } }
+    )
+    expect(summaries.get('/repo')).toMatchObject({
+      count: 2,
+      state: 'busy',
+      command: 'claude',
+      sessionId: 'agent',
+    })
+  })
+
+  it('lets a finished session speak over a merely open one', () => {
+    const summaries = summarizeWorktreeTerminals(
+      [session('quiet', '/repo'), session('done', '/repo')],
+      {},
+      { done: { command: 'pnpm' } }
+    )
+    expect(summaries.get('/repo')).toMatchObject({ state: 'done', sessionId: 'done' })
   })
 
   it('names the command running in a busy session', () => {
@@ -40,7 +74,7 @@ describe('summarizeWorktreeTerminals', () => {
       [session('a', '/repo')],
       activityOf(status('a', true, 'claude'))
     )
-    expect(summaries.get('/repo')).toMatchObject({ busy: true, command: 'claude' })
+    expect(summaries.get('/repo')).toMatchObject({ state: 'busy', command: 'claude' })
   })
 
   it('counts every session bound to the same directory', () => {
@@ -59,7 +93,7 @@ describe('summarizeWorktreeTerminals', () => {
     )
     expect(summaries.get('/repo')).toMatchObject({
       count: 3,
-      busy: true,
+      state: 'busy',
       command: 'claude',
       sessionId: 'agent',
     })
@@ -73,7 +107,7 @@ describe('summarizeWorktreeTerminals', () => {
   it('treats a session missing from the activity map as idle rather than unknown', () => {
     // The poll has not come back yet, or the session was opened between two polls.
     const summaries = summarizeWorktreeTerminals([session('a', '/repo')], {})
-    expect(summaries.get('/repo')).toMatchObject({ busy: false, command: null })
+    expect(summaries.get('/repo')).toMatchObject({ state: 'idle', command: null })
   })
 })
 
@@ -84,6 +118,20 @@ describe('sortWorktreesByTerminal', () => {
     const summaries = summarizeWorktreeTerminals(
       [session('idle', '/wt/b'), session('agent', '/wt/d')],
       activityOf(status('agent', true, 'claude'))
+    )
+    expect(sortWorktreesByTerminal(worktrees, summaries).map((wt) => wt.path)).toEqual([
+      '/wt/d',
+      '/wt/b',
+      '/wt/a',
+      '/wt/c',
+    ])
+  })
+
+  it('ranks running, then finished-unread, then merely open, then nothing', () => {
+    const summaries = summarizeWorktreeTerminals(
+      [session('quiet', '/wt/a'), session('done', '/wt/b'), session('agent', '/wt/d')],
+      activityOf(status('agent', true, 'claude')),
+      { done: { command: 'pnpm' } }
     )
     expect(sortWorktreesByTerminal(worktrees, summaries).map((wt) => wt.path)).toEqual([
       '/wt/d',

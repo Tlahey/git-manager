@@ -1448,5 +1448,12 @@
   "sidebar.terminal.close": "Close this terminal",
   "sidebar.worktree.terminalRunning": "{{command}} is running here — click to open its terminal",
   "sidebar.worktree.terminalOpen_one": "1 terminal open here — click to show it",
-  "sidebar.worktree.terminalOpen_other": "{{count}} terminals open here — click to show one"
+  "sidebar.worktree.terminalOpen_other": "{{count}} terminals open here — click to show one",
+  "terminal.finishedCommand": "{{command}} has finished",
+  "terminal.finished": "The command has finished",
+  "terminal.finishedCount_one": "1 finished",
+  "terminal.finishedCount_other": "{{count}} finished",
+  "sidebar.worktree.terminalRunningUnnamed": "A command is running here — click to open its terminal",
+  "sidebar.worktree.terminalFinished": "{{command}} has finished here — click to open its terminal",
+  "sidebar.worktree.terminalFinishedUnnamed": "A command has finished here — click to open its terminal"
 }

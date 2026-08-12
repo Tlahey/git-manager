@@ -1,5 +1,6 @@
 import type { GitWorktree, TerminalStatus } from '@git-manager/git-types'
-import type { TerminalSession } from '../../../stores/terminal.store'
+import type { TerminalFinished, TerminalSession } from '../../../stores/terminal.store'
+import { terminalSessionState, type TerminalSessionState } from '../../../lib/terminalState'
 
 /**
  * Reading the integrated terminal's sessions as a fact *about the worktrees*.
@@ -15,48 +16,56 @@ import type { TerminalSession } from '../../../stores/terminal.store'
 export interface WorktreeTerminalSummary {
   /** How many live sessions are bound to that directory. */
   count: number
-  /** True while at least one of them is running a command. */
-  busy: boolean
-  /** The running command's name, when one could be resolved (`claude`, `pnpm`). */
+  /**
+   * The loudest state among them: `busy` if anything is running there, else `done` if something
+   * finished that the user has not looked at, else `idle`.
+   */
+  state: TerminalSessionState
+  /** The name of the command that state is about, when one could be resolved. */
   command: string | null
   /**
-   * The session a click on the row should show: the busy one, else the most recently opened. A row
-   * stands for a place, and the answer to "take me to what is happening there" is that session.
+   * The session a click on the row should show: the one the state came from — the busy session,
+   * else the one with news, else the most recently opened. A row stands for a place, and the answer
+   * to "take me to what is happening there" is that session.
    */
   sessionId: string
 }
 
+/** How loudly a state asks to be looked at — the order the summary and the rows are ranked by. */
+const PRIORITY: Record<TerminalSessionState, number> = { busy: 0, done: 1, idle: 2 }
+
 /**
- * One summary per directory that has at least one session. Absent from the map = nothing running
- * there, which is what the callers test rather than a `count === 0` entry.
+ * One summary per directory that has at least one session. Absent from the map = no terminal there
+ * at all, which is what the callers test rather than a `count === 0` entry.
  */
 export function summarizeWorktreeTerminals(
   sessions: TerminalSession[],
-  activity: Record<string, TerminalStatus>
+  activity: Record<string, TerminalStatus>,
+  finished: Record<string, TerminalFinished> = {}
 ): Map<string, WorktreeTerminalSummary> {
   const summaries = new Map<string, WorktreeTerminalSummary>()
   for (const session of sessions) {
     const status = activity[session.id]
     const busy = status?.busy ?? false
+    const state = terminalSessionState(busy, session.id in finished)
+    const command = busy ? (status?.command ?? null) : (finished[session.id]?.command ?? null)
     const current = summaries.get(session.cwd)
     if (!current) {
-      summaries.set(session.cwd, {
-        count: 1,
-        busy,
-        command: busy ? (status?.command ?? null) : null,
-        sessionId: session.id,
-      })
+      summaries.set(session.cwd, { count: 1, state, command, sessionId: session.id })
       continue
     }
     current.count += 1
-    // A busy session wins the click target, and the first busy one keeps it: two agents on one
-    // worktree is not a case worth arbitrating, and swapping the target under the pointer as the
-    // poll comes back would be worse than picking either.
-    if (busy && !current.busy) {
-      current.busy = true
-      current.command = status?.command ?? null
-      current.sessionId = session.id
-    } else if (!current.busy) {
+    // The loudest state wins the row, and the *first* session in that state keeps the click:
+    // two agents on one worktree is not a case worth arbitrating, and swapping the target under
+    // the pointer as the poll comes back would be worse than picking either. A later session only
+    // takes over when it is strictly louder — or when neither has anything to say, where the most
+    // recent one is the better guess.
+    if (
+      PRIORITY[state] < PRIORITY[current.state] ||
+      (state === 'idle' && current.state === 'idle')
+    ) {
+      current.state = state
+      current.command = command
       current.sessionId = session.id
     }
   }
@@ -64,9 +73,10 @@ export function summarizeWorktreeTerminals(
 }
 
 /**
- * Worktrees reordered so the ones being worked in come first: running a command beats merely having
- * a shell open, which beats nothing. Ties keep the incoming order — `git worktree list`'s, which is
- * stable — so the list only ever moves for a reason the user can see.
+ * Worktrees reordered so the ones worth looking at come first: running a command, then having
+ * finished one nobody has read, then merely having a shell open, then nothing. Ties keep the
+ * incoming order — `git worktree list`'s, which is stable — so the list only ever moves for a
+ * reason the user can see.
  */
 export function sortWorktreesByTerminal(
   worktrees: GitWorktree[],
@@ -74,8 +84,7 @@ export function sortWorktreesByTerminal(
 ): GitWorktree[] {
   const rank = (wt: GitWorktree) => {
     const summary = summaries.get(wt.path)
-    if (!summary) return 2
-    return summary.busy ? 0 : 1
+    return summary ? PRIORITY[summary.state] : 3
   }
   // A copy, sorted stably (the language guarantees it): the array belongs to the query cache.
   return [...worktrees].sort((a, b) => rank(a) - rank(b))

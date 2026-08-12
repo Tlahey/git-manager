@@ -30,6 +30,7 @@ const build = (over: Partial<Parameters<typeof buildTerminalsSection>[1]> = {}, 
   buildTerminalsSection(ctx({ q }), {
     sessions: [],
     activity: {},
+    finished: {},
     worktrees,
     repoPath: '/repo',
     activeId: null,
@@ -44,9 +45,13 @@ describe('repoTerminalSessions', () => {
       session('elsewhere', '/other-repo'),
     ]
     expect(
-      repoTerminalSessions({ sessions, activity: {}, worktrees, repoPath: '/repo' }).map(
-        (s) => s.id
-      )
+      repoTerminalSessions({
+        sessions,
+        activity: {},
+        finished: {},
+        worktrees,
+        repoPath: '/repo',
+      }).map((s) => s.id)
     ).toEqual(['here', 'worktree'])
   })
 
@@ -55,6 +60,7 @@ describe('repoTerminalSessions', () => {
       repoTerminalSessions({
         sessions: [session('here', '/repo')],
         activity: {},
+        finished: {},
         worktrees: [],
         repoPath: '/repo',
       })
@@ -67,10 +73,28 @@ describe('repoTerminalSessions', () => {
       repoTerminalSessions({
         sessions,
         activity: { agent: busy('agent', 'claude') },
+        finished: {},
         worktrees,
         repoPath: '/repo',
       }).map((s) => s.id)
     ).toEqual(['agent', 'idle'])
+  })
+
+  it('ranks a finished-unread session above a quiet one, and below a running one', () => {
+    const sessions = [
+      session('quiet', '/repo'),
+      session('done', '/repo'),
+      session('agent', '/repo/.worktrees/feature'),
+    ]
+    expect(
+      repoTerminalSessions({
+        sessions,
+        activity: { agent: busy('agent', 'claude') },
+        finished: { done: { command: 'pnpm' } },
+        worktrees,
+        repoPath: '/repo',
+      }).map((s) => s.id)
+    ).toEqual(['agent', 'done', 'quiet'])
   })
 })
 
@@ -100,7 +124,22 @@ describe('buildTerminalsSection', () => {
       activity: { a: busy('a', 'claude') },
     })
     const row = section?.rows[0]
-    expect(row?.kind === 'terminal' && row).toMatchObject({ isBusy: true, command: 'claude' })
+    expect(row?.kind === 'terminal' && row).toMatchObject({ state: 'busy', command: 'claude' })
+  })
+
+  it('carries the finished command onto the row, which the backend no longer reports', () => {
+    const section = build({
+      sessions: [session('a', '/repo')],
+      finished: { a: { command: 'pnpm' } },
+    })
+    const row = section?.rows[0]
+    expect(row?.kind === 'terminal' && row).toMatchObject({ state: 'done', command: 'pnpm' })
+  })
+
+  it('leaves a session that has never run anything quiet', () => {
+    const section = build({ sessions: [session('a', '/repo')] })
+    const row = section?.rows[0]
+    expect(row?.kind === 'terminal' && row).toMatchObject({ state: 'idle', command: null })
   })
 
   it('marks the session the panel is showing', () => {
@@ -120,6 +159,7 @@ describe('buildTerminalsSection', () => {
     const section = buildTerminalsSection(ctx({ isOpen: false }), {
       sessions: [session('a', '/repo')],
       activity: {},
+      finished: {},
       worktrees,
       repoPath: '/repo',
       activeId: null,
@@ -135,6 +175,10 @@ describe('buildTerminalsSection', () => {
     expect(
       build({ sessions, activity: { a: busy('a', 'claude') } }, 'claude')?.rows.map((r) => r.id)
     ).toEqual(['term:a'])
+    // A finished command is searchable by name too — it is what the row is showing.
+    expect(
+      build({ sessions, finished: { b: { command: 'vitest' } } }, 'vitest')?.rows.map((r) => r.id)
+    ).toEqual(['term:b'])
   })
 
   it('hides itself when a search matches none of its sessions', () => {

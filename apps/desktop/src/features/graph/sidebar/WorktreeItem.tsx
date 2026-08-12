@@ -48,6 +48,29 @@ interface WorktreeItemProps {
 }
 
 /**
+ * The badge's tooltip and its accessible name, which are the same sentence — the glyph carries no
+ * text of its own, so this is the only thing that announces it.
+ *
+ * Three shapes rather than one, because the three states are about different things: what is
+ * running, what has just finished, or simply how many shells are open here.
+ */
+function terminalBadgeLabel(
+  t: ReturnType<typeof useTranslation<'git'>>['t'],
+  terminals: WorktreeTerminalSummary
+): string {
+  const { state, command, count } = terminals
+  if (state === 'idle') return t('sidebar.worktree.terminalOpen', { count })
+  if (state === 'busy') {
+    return command
+      ? t('sidebar.worktree.terminalRunning', { command })
+      : t('sidebar.worktree.terminalRunningUnnamed')
+  }
+  return command
+    ? t('sidebar.worktree.terminalFinished', { command })
+    : t('sidebar.worktree.terminalFinishedUnnamed')
+}
+
+/**
  * One linked worktree in the sidebar.
  *
  * The row deliberately shows only the branch name: the folder it lives in is the kind of detail you
@@ -75,13 +98,7 @@ export function WorktreeItem({
   // is the relevant one.
   const [dotHovered, setDotHovered] = useState(false)
 
-  // The badge's tooltip and its accessible name are the same sentence — a running command names
-  // itself, a merely open shell is counted. The icon alone carries no text, so this is what
-  // announces it.
-  const terminalLabel =
-    terminals?.busy && terminals.command
-      ? t('sidebar.worktree.terminalRunning', { command: terminals.command })
-      : t('sidebar.worktree.terminalOpen', { count: terminals?.count ?? 0 })
+  const terminalLabel = terminals ? terminalBadgeLabel(t, terminals) : ''
 
   return (
     <Tooltip
@@ -126,7 +143,7 @@ export function WorktreeItem({
               data-testid={`worktree-terminal-badge-${wt.path}`}
               aria-label={terminalLabel}
             >
-              <TerminalStateIcon busy={terminals.busy} size={2.5} className="px-0.5 py-px" />
+              <TerminalStateIcon state={terminals.state} size={2.5} className="px-0.5 py-px" />
             </button>
           </Tooltip>
         )}

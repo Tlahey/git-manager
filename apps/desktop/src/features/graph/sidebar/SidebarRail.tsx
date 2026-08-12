@@ -83,12 +83,15 @@ export function SidebarRail({
 
   const { data: stashes = [] } = useGitStashes(repoPath)
 
-  // Terminals get a rail icon so a running agent stays visible with the sidebar folded away — that
-  // is the state a long-running session is most likely to be forgotten in. It turns amber while
-  // something is running, which is the only colour change on the rail that isn't decorative.
+  // Terminals get a rail icon so a running session stays visible with the sidebar folded away —
+  // that is the state a long-running one is most likely to be forgotten in. It breathes while
+  // something runs and turns blue when something has finished unread, which are the only colour
+  // changes on the rail that aren't decorative.
   const sessions = useTerminalStore((s) => s.sessions)
+  const finished = useTerminalStore((s) => s.finished)
   const activity = useTerminalActivity()
   const anyBusy = sessions.some((session) => activity[session.id]?.busy)
+  const anyFinished = !anyBusy && sessions.some((session) => session.id in finished)
 
   return (
     <div className="flex h-full flex-col items-center">
@@ -139,13 +142,14 @@ export function SidebarRail({
         )}
         {sessions.length > 0 && (
           <RailIcon
-            // The same two states the rows use — breathing amber while a command runs, still green
-            // otherwise — on a bare glyph rather than a chip, since the rail has no chips.
+            // The same states the rows use — breathing while a command runs, blue when one has
+            // finished unread — on a bare glyph rather than a chip, since the rail has no chips.
             icon={
               <TerminalIcon
                 className={cn(
                   'h-4 w-4',
-                  anyBusy ? 'animate-pulse text-tone-warning' : 'text-tone-success'
+                  anyBusy && 'animate-pulse',
+                  anyFinished && 'text-tone-info'
                 )}
               />
             }

@@ -2,14 +2,15 @@ import { X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Tooltip, cn } from '@git-manager/ui'
 import type { TerminalSession } from '../../stores/terminal.store'
+import type { TerminalSessionState } from '../../lib/terminalState'
 import { TerminalStateIcon } from './TerminalStateIcon'
 
 interface TerminalTabProps {
   session: TerminalSession
   isActive: boolean
-  /** A command is holding the PTY's foreground — see `useTerminalActivity`. */
-  isBusy?: boolean
-  /** Name of that command (`claude`, `pnpm`), when the backend could resolve it. */
+  /** What the session is doing — see {@link TerminalSessionState}. */
+  state?: TerminalSessionState
+  /** Name of the command running (or just finished), when the backend could resolve it. */
   command?: string | null
   /** Branch checked out where the session lives, or its folder name — see `terminalLocation.ts`. */
   location: string
@@ -28,13 +29,24 @@ interface TerminalTabProps {
 export function TerminalTab({
   session,
   isActive,
-  isBusy = false,
+  state = 'idle',
   command,
   location,
   onSelect,
   onClose,
 }: TerminalTabProps) {
   const { t } = useTranslation('git')
+
+  // One sentence for the state, shared by the tooltip. `idle` gets none: "this terminal is doing
+  // nothing" is not worth a line under the path.
+  const stateLabel =
+    state === 'busy'
+      ? command
+        ? t('terminal.runningCommand', { command })
+        : t('terminal.runningSomething')
+      : command
+        ? t('terminal.finishedCommand', { command })
+        : t('terminal.finished')
 
   return (
     <Tooltip
@@ -44,10 +56,8 @@ export function TerminalTab({
       content={
         <div className="max-w-xs whitespace-normal">
           <div className="font-mono text-[11px] break-all text-foreground">{session.cwd}</div>
-          {isBusy && (
-            <div className="mt-0.5 text-[10px] text-muted-foreground">
-              {command ? t('terminal.runningCommand', { command }) : t('terminal.runningSomething')}
-            </div>
+          {state !== 'idle' && (
+            <div className="mt-0.5 text-[10px] text-muted-foreground">{stateLabel}</div>
           )}
         </div>
       }
@@ -64,7 +74,7 @@ export function TerminalTab({
           className="flex min-w-0 cursor-pointer items-center gap-1.5"
           data-testid={`terminal-tab-${session.id}`}
         >
-          <TerminalStateIcon busy={isBusy} data-testid={`terminal-state-${session.id}`} />
+          <TerminalStateIcon state={state} data-testid={`terminal-state-${session.id}`} />
           <span className="truncate font-medium">{location}</span>
           <span className="shrink-0 font-mono text-[10px] opacity-50">{session.title}</span>
         </button>

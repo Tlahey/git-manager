@@ -42,6 +42,8 @@ const seed = () =>
       { id: 'b', title: 'zsh 2', cwd: '/repo/.worktrees/feature' },
     ],
     activeId: 'a',
+    finished: {},
+    lastActivity: {},
   })
 
 beforeEach(() => {
@@ -73,11 +75,34 @@ describe('TerminalPanel', () => {
     expect(screen.getByTestId('terminal-tab-a')).toHaveTextContent('main')
   })
 
-  it('marks the session that is running a command, and leaves the idle one green', () => {
+  it('marks the session that is running a command, and leaves the quiet one quiet', () => {
     activity.mockReturnValue({ b: { id: 'b', busy: true, command: 'claude' } })
     render(<TerminalPanel path="/repo" />)
     expect(screen.getByTestId('terminal-state-b')).toHaveAttribute('data-state', 'busy')
     expect(screen.getByTestId('terminal-state-a')).toHaveAttribute('data-state', 'idle')
+  })
+
+  it('flags a session whose command finished while another one was on screen', () => {
+    useTerminalStore.setState({ finished: { b: { command: 'pnpm' } } })
+    render(<TerminalPanel path="/repo" />)
+    expect(screen.getByTestId('terminal-state-b')).toHaveAttribute('data-state', 'done')
+  })
+
+  it('clears the flag of the session it is showing — looking at it is what marks it seen', () => {
+    useTerminalStore.setState({ finished: { a: { command: 'pnpm' } } })
+    render(<TerminalPanel path="/repo" />)
+    expect(useTerminalStore.getState().finished).toEqual({})
+    expect(screen.getByTestId('terminal-state-a')).toHaveAttribute('data-state', 'idle')
+  })
+
+  it('clears the flag of a session the user switches to', async () => {
+    const user = userEvent.setup()
+    useTerminalStore.setState({ finished: { b: { command: 'pnpm' } } })
+    render(<TerminalPanel path="/repo" />)
+    expect(useTerminalStore.getState().finished).toHaveProperty('b')
+
+    await user.click(screen.getByTestId('terminal-tab-b'))
+    expect(useTerminalStore.getState().finished).toEqual({})
   })
 
   it('switches the shown session on click, without touching the view', async () => {

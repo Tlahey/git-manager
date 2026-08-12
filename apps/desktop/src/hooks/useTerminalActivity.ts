@@ -16,6 +16,12 @@ const EMPTY: Record<string, TerminalStatus> = {}
  *
  * The poll stops dead when there is no session: the SWR key goes `null`, and nothing is asked of
  * the backend until a terminal is opened.
+ *
+ * Each answer is also folded into the store's finished/seen bookkeeping. That happens *in the
+ * fetcher* rather than in an effect because the fetcher is the one place that runs once per poll:
+ * SWR dedupes it across every mounted copy of this hook, where an effect would fire once per
+ * component. `syncActivity` is idempotent anyway, so a stray extra call changes nothing — the
+ * fetcher is simply where it belongs.
  */
 export function useTerminalActivity(): Record<string, TerminalStatus> {
   const sessionCount = useTerminalStore((s) => s.sessions.length)
@@ -23,7 +29,9 @@ export function useTerminalActivity(): Record<string, TerminalStatus> {
     sessionCount > 0 ? ['terminal-activity', sessionCount] : null,
     async () => {
       const statuses = await apiTerminalStatus()
-      return Object.fromEntries(statuses.map((status) => [status.id, status]))
+      const byId = Object.fromEntries(statuses.map((status) => [status.id, status]))
+      useTerminalStore.getState().syncActivity(byId)
+      return byId
     },
     { refreshInterval: 2000, revalidateOnFocus: true }
   )

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button } from '@git-manager/ui'
@@ -8,6 +8,7 @@ import { useTerminalActivity } from '../../hooks/useTerminalActivity'
 import { useWorktrees } from '../../hooks/useWorktrees'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { terminalLocationLabel } from '../../lib/terminalLocation'
+import { terminalSessionState } from '../../lib/terminalState'
 import { TerminalTab } from './TerminalTab'
 import { XtermView } from './XtermView'
 
@@ -38,6 +39,17 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
   const activity = useTerminalActivity()
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
   const worktrees = useWorktrees(activeRepo)
+  const finished = useTerminalStore((s) => s.finished)
+  const markSeen = useTerminalStore((s) => s.markSeen)
+
+  // Being the session on screen *is* having been seen — this component only renders while the
+  // panel is open, so mounting it is the event. The `finished` dependency is what covers the case
+  // that has no gesture behind it at all: a command that ends while the user is already watching
+  // its terminal is marked and cleared in the same breath, so it never flashes blue at someone who
+  // just watched it finish.
+  useEffect(() => {
+    if (activeId && activeId in finished) markSeen(activeId)
+  }, [activeId, finished, markSeen])
 
   const drag = useRef<{ startY: number; startHeight: number } | null>(null)
 
@@ -79,8 +91,11 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             key={session.id}
             session={session}
             isActive={session.id === activeId}
-            isBusy={activity[session.id]?.busy}
-            command={activity[session.id]?.command}
+            state={terminalSessionState(
+              activity[session.id]?.busy ?? false,
+              session.id in finished
+            )}
+            command={activity[session.id]?.command ?? finished[session.id]?.command}
             location={terminalLocationLabel(session.cwd, worktrees)}
             onSelect={() => setActiveSession(session.id)}
             onClose={() => closeSession(session.id)}

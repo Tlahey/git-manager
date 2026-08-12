@@ -20,7 +20,7 @@ const renderItem = (over: Partial<React.ComponentProps<typeof TerminalItem>> = {
       session={session}
       location="feat/login"
       isActive={false}
-      isBusy={false}
+      state="idle"
       command={null}
       {...over}
     />
@@ -37,7 +37,7 @@ describe('TerminalItem', () => {
     expect(screen.getByTestId('terminal-item-sess-1')).toHaveTextContent('zsh 1')
     unmount()
 
-    renderItem({ isBusy: true, command: 'claude' })
+    renderItem({ state: 'busy', command: 'claude' })
     const row = screen.getByTestId('terminal-item-sess-1')
     expect(row).toHaveTextContent('claude')
     expect(row).not.toHaveTextContent('zsh 1')
@@ -52,7 +52,7 @@ describe('TerminalItem', () => {
   })
 
   it('falls back to a generic label when the command could not be resolved', () => {
-    renderItem({ isBusy: true, command: null })
+    renderItem({ state: 'busy', command: null })
     expect(screen.getByTestId('terminal-item-sess-1')).toHaveTextContent('A command is running')
   })
 

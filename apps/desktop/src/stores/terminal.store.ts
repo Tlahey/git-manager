@@ -27,6 +27,19 @@ export interface TerminalSession {
   cwd: string
 }
 
+/** A command that has run to completion in a session the user has not looked at since. */
+export interface TerminalFinished {
+  /** Its name while it was running (`claude`, `pnpm`), when the backend could resolve one. */
+  command: string | null
+}
+
+/** One session's busy state as of the last poll — the transition detector's memory. */
+interface TerminalActivitySnapshot {
+  busy: boolean
+  /** Last command seen holding the foreground; kept after it ends, to name what finished. */
+  command: string | null
+}
+
 interface TerminalState {
   /** Whether the bottom dock is visible. */
   open: boolean
@@ -36,6 +49,18 @@ interface TerminalState {
   sessions: TerminalSession[]
   /** The session the panel is showing, whichever directory it belongs to. */
   activeId: string | null
+  /**
+   * Sessions whose command has finished and which the user has not looked at since — what turns a
+   * chip blue. Keyed by session id; absent means "nothing to report".
+   *
+   * This is the one piece of terminal state that cannot be read off the backend: "finished" is a
+   * *transition* (busy → idle) and "seen" is about the user, not the process. Both are therefore
+   * derived here, from the polled snapshots, rather than asked for.
+   */
+  finished: Record<string, TerminalFinished>
+  /** Previous poll's busy/command per session. Held in the store, not in a module-level variable,
+   *  so a test resetting the store really does reset the detector. */
+  lastActivity: Record<string, TerminalActivitySnapshot>
 
   openPanel: () => void
   closePanel: () => void
@@ -49,6 +74,17 @@ interface TerminalState {
   setActiveSession: (id: string) => void
   /** The live sessions spawned in `cwd` (empty when none) — what the sidebar lists per worktree. */
   sessionsFor: (cwd: string) => TerminalSession[]
+  /**
+   * Folds a poll of `terminal_status` into the finished/seen bookkeeping: a session that was busy
+   * and no longer is has finished; one that has started running again has nothing left to report.
+   *
+   * Idempotent — replaying the same statuses records no second transition, since the snapshot it
+   * compares against is updated in the same pass. That is what lets it be called from the polling
+   * hook without caring how many components happen to be mounted.
+   */
+  syncActivity: (statuses: Record<string, { busy: boolean; command: string | null }>) => void
+  /** Clears a session's finished mark — the user has now looked at it. */
+  markSeen: (id: string) => void
 }
 
 const MIN_HEIGHT = 120
@@ -61,6 +97,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   height: 260,
   sessions: [],
   activeId: null,
+  finished: {},
+  lastActivity: {},
 
   openPanel: () => set({ open: true }),
   closePanel: () => set({ open: false }),
@@ -80,10 +118,59 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         // Activate the previous session, or the new first one, or nothing when the list is empty.
         activeId = sessions[Math.max(0, index - 1)]?.id ?? null
       }
-      return { sessions, activeId }
+      // A closed session reports nothing: leaving its mark behind would keep a chip blue for a
+      // shell that no longer exists, and the ids are never reused within a run.
+      const { [id]: _finished, ...finished } = state.finished
+      const { [id]: _activity, ...lastActivity } = state.lastActivity
+      return { sessions, activeId, finished, lastActivity }
     }),
 
   setActiveSession: (id) => set({ activeId: id }),
 
   sessionsFor: (cwd) => get().sessions.filter((s) => s.cwd === cwd),
+
+  syncActivity: (statuses) =>
+    set((state) => {
+      const lastActivity: Record<string, TerminalActivitySnapshot> = {}
+      let finished = state.finished
+      let finishedChanged = false
+      const editFinished = () => {
+        if (!finishedChanged) {
+          finished = { ...finished }
+          finishedChanged = true
+        }
+        return finished
+      }
+
+      for (const session of state.sessions) {
+        const status = statuses[session.id]
+        const busy = status?.busy ?? false
+        const previous = state.lastActivity[session.id]
+        lastActivity[session.id] = {
+          busy,
+          // While busy, take the name the poll reports; once idle, keep the last one seen — it is
+          // what named the command that just finished, and the backend stops reporting it the
+          // instant the prompt returns.
+          command: busy
+            ? (status?.command ?? previous?.command ?? null)
+            : (previous?.command ?? null),
+        }
+
+        if (previous?.busy && !busy && !(session.id in finished)) {
+          editFinished()[session.id] = { command: previous.command }
+        } else if (busy && session.id in finished) {
+          // Off again: whatever finished before is no longer the news about this session.
+          delete editFinished()[session.id]
+        }
+      }
+
+      return finishedChanged ? { lastActivity, finished } : { lastActivity }
+    }),
+
+  markSeen: (id) =>
+    set((state) => {
+      if (!(id in state.finished)) return state
+      const { [id]: _seen, ...finished } = state.finished
+      return { finished }
+    }),
 }))

@@ -155,10 +155,11 @@ export function useSidebarRows({
   // inputs: the session list (a store, so it changes on a user gesture) and the polled busy state.
   const sessions = useTerminalStore((s) => s.sessions)
   const activeTerminalId = useTerminalStore((s) => s.activeId)
+  const finishedTerminals = useTerminalStore((s) => s.finished)
   const terminalActivity = useTerminalActivity()
   const worktreeTerminals = useMemo(
-    () => summarizeWorktreeTerminals(sessions, terminalActivity),
-    [sessions, terminalActivity]
+    () => summarizeWorktreeTerminals(sessions, terminalActivity, finishedTerminals),
+    [sessions, terminalActivity, finishedTerminals]
   )
 
   const q = filter.trim().toLowerCase()
@@ -344,6 +345,7 @@ export function useSidebarRows({
       buildTerminalsSection(ctx('terminals'), {
         sessions,
         activity: terminalActivity,
+        finished: finishedTerminals,
         worktrees: allWorktrees,
         repoPath,
         activeId: activeTerminalId,
@@ -377,6 +379,7 @@ export function useSidebarRows({
     filteredWorktrees,
     sessions,
     terminalActivity,
+    finishedTerminals,
     allWorktrees,
     repoPath,
     activeTerminalId,

@@ -1,6 +1,7 @@
 import type { GitWorktree, TerminalStatus } from '@git-manager/git-types'
-import type { TerminalSession } from '../../../stores/terminal.store'
+import type { TerminalFinished, TerminalSession } from '../../../stores/terminal.store'
 import { terminalLocationLabel } from '../../../lib/terminalLocation'
+import { terminalSessionState } from '../../../lib/terminalState'
 import type { SidebarRow, SidebarSection } from '../sidebar/types'
 import type { SidebarSectionContext } from './sidebarGithubSections'
 
@@ -20,6 +21,8 @@ import type { SidebarSectionContext } from './sidebarGithubSections'
 interface TerminalsSectionData {
   sessions: TerminalSession[]
   activity: Record<string, TerminalStatus>
+  /** Sessions whose command finished unseen — see `terminal.store.ts`. */
+  finished: Record<string, TerminalFinished>
   /** Every worktree of the repo, main included — both the ownership test and the row labels. */
   worktrees: GitWorktree[]
   /** The repo tab's own path, in case the worktree list has not arrived yet. */
@@ -28,37 +31,52 @@ interface TerminalsSectionData {
   activeId: string | null
 }
 
-/** Sessions bound to a directory this repository owns, running ones first. */
+/** How loudly a state asks to be looked at — the order the rows are listed in. */
+const PRIORITY = { busy: 0, done: 1, idle: 2 } as const
+
+/**
+ * Sessions bound to a directory this repository owns, the ones worth looking at first: running,
+ * then finished-and-unread, then quiet. Sorted stably, so two quiet sessions keep the order they
+ * were opened in.
+ */
 export function repoTerminalSessions({
   sessions,
   activity,
+  finished,
   worktrees,
   repoPath,
 }: Omit<TerminalsSectionData, 'activeId'>): TerminalSession[] {
   const owned = new Set([repoPath, ...worktrees.map((wt) => wt.path)])
-  return sessions
-    .filter((session) => owned.has(session.cwd))
-    .sort((a, b) => Number(activity[b.id]?.busy ?? false) - Number(activity[a.id]?.busy ?? false))
+  const rank = (session: TerminalSession) =>
+    PRIORITY[terminalSessionState(activity[session.id]?.busy ?? false, session.id in finished)]
+  return sessions.filter((session) => owned.has(session.cwd)).sort((a, b) => rank(a) - rank(b))
 }
 
 export function buildTerminalsSection(
   { t, q, isOpen }: SidebarSectionContext,
-  { sessions, activity, worktrees, repoPath, activeId }: TerminalsSectionData
+  { sessions, activity, finished, worktrees, repoPath, activeId }: TerminalsSectionData
 ): SidebarSection | null {
-  const owned = repoTerminalSessions({ sessions, activity, worktrees, repoPath })
+  const owned = repoTerminalSessions({ sessions, activity, finished, worktrees, repoPath })
 
   const query = q.trim().toLowerCase()
-  const labelled = owned.map((session) => ({
-    session,
-    location: terminalLocationLabel(session.cwd, worktrees),
-    status: activity[session.id],
-  }))
+  const labelled = owned.map((session) => {
+    const busy = activity[session.id]?.busy ?? false
+    return {
+      session,
+      location: terminalLocationLabel(session.cwd, worktrees),
+      state: terminalSessionState(busy, session.id in finished),
+      // The name of whatever the state is about: what is running, or what just finished.
+      command: busy
+        ? (activity[session.id]?.command ?? null)
+        : (finished[session.id]?.command ?? null),
+    }
+  })
   const matching = labelled.filter(
-    ({ session, location, status }) =>
+    ({ session, location, command }) =>
       !query ||
       location.toLowerCase().includes(query) ||
       session.title.toLowerCase().includes(query) ||
-      (status?.command ?? '').toLowerCase().includes(query)
+      (command ?? '').toLowerCase().includes(query)
   )
 
   // Like Local and Worktrees, the section survives being empty — a repo with no terminal open is
@@ -72,15 +90,15 @@ export function buildTerminalsSection(
     if (matching.length === 0) {
       rows.push({ kind: 'message', id: 'term:empty', text: t('sidebar.terminals.empty') })
     } else {
-      for (const { session, location, status } of matching) {
+      for (const { session, location, state, command } of matching) {
         rows.push({
           kind: 'terminal',
           id: `term:${session.id}`,
           session,
           location,
           isActive: session.id === activeId,
-          isBusy: status?.busy ?? false,
-          command: status?.command ?? null,
+          state,
+          command,
         })
       }
     }

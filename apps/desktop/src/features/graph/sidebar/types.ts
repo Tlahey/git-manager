@@ -8,6 +8,7 @@ import type {
 } from '@git-manager/git-types'
 import type { MockIssue } from '../../../lib/github/types'
 import type { TerminalSession } from '../../../stores/terminal.store'
+import type { TerminalSessionState } from '../../../lib/terminalState'
 import type { SavedFilter } from '../stores/savedFilters'
 
 /** Stable section identifiers (open state + scroll). */
@@ -112,9 +113,9 @@ export type SidebarRow =
       location: string
       /** True when the panel is showing this session right now. */
       isActive: boolean
-      /** A command holds the PTY's foreground — polled, so this changes without a user gesture. */
-      isBusy: boolean
-      /** That command's name, when it could be resolved. */
+      /** Running / finished-unseen / quiet — polled, so it changes without a user gesture. */
+      state: TerminalSessionState
+      /** The name of the command that state is about, when it could be resolved. */
       command: string | null
     }
   | { kind: 'message'; id: string; text: string; loading?: boolean }

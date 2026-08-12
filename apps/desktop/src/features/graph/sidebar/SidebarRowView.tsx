@@ -398,7 +398,7 @@ export function SidebarRowView({
           session={row.session}
           location={row.location}
           isActive={row.isActive}
-          isBusy={row.isBusy}
+          state={row.state}
           command={row.command}
           filterQuery={filterQuery}
           onFocus={onFocusTerminal}

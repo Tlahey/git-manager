@@ -3,6 +3,7 @@ import { Tooltip, cn } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import type { TerminalSession } from '../../../stores/terminal.store'
+import type { TerminalSessionState } from '../../../lib/terminalState'
 import { TerminalStateIcon } from '../../../components/terminal/TerminalStateIcon'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -12,9 +13,9 @@ interface TerminalItemProps {
   location: string
   /** True when the panel is currently showing this session. */
   isActive: boolean
-  /** A command holds the PTY's foreground right now. */
-  isBusy: boolean
-  /** Its name (`claude`, `pnpm`), when the backend could resolve it. */
+  /** Running / finished-unseen / quiet — see {@link TerminalSessionState}. */
+  state: TerminalSessionState
+  /** The name of the command that state is about, when the backend could resolve it. */
   command: string | null
   filterQuery?: string
   /** Enters the session's worktree, opens the panel and shows it. */
@@ -34,13 +35,16 @@ export function TerminalItem({
   session,
   location,
   isActive,
-  isBusy,
+  state,
   command,
   filterQuery = '',
   onFocus,
   onClose,
 }: TerminalItemProps) {
   const { t } = useTranslation('git')
+  // Only reached when the command could not be named — rare, and still better than a blank slot.
+  const trailingFallback =
+    state === 'busy' ? t('terminal.runningSomething') : t('terminal.finished')
 
   return (
     <Tooltip
@@ -74,17 +78,20 @@ export function TerminalItem({
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
           data-testid={`terminal-item-open-${session.id}`}
         >
-          <TerminalStateIcon busy={isBusy} data-testid={`terminal-item-state-${session.id}`} />
+          <TerminalStateIcon state={state} data-testid={`terminal-item-state-${session.id}`} />
           <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
             {highlightMatch(location, filterQuery)}
           </HoverExpandLabel>
+          {/* The trailing slot says what the row is *about*: the command while there is news
+              about one, and the session's own name the rest of the time — which is the only thing
+              that tells two shells on the same worktree apart. */}
           <span
             className={cn(
               'shrink-0 truncate font-mono text-[10px]',
-              isBusy ? 'text-tone-warning' : 'text-sidebar-muted-foreground/50'
+              state === 'done' ? 'text-tone-info' : 'text-sidebar-muted-foreground/50'
             )}
           >
-            {isBusy ? (command ?? t('terminal.runningSomething')) : session.title}
+            {state === 'idle' ? session.title : (command ?? trailingFallback)}
           </span>
         </button>
 

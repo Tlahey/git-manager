@@ -333,8 +333,9 @@ describe('WorktreeItem — row behaviour', () => {
 })
 
 describe('WorktreeItem — terminal badge', () => {
-  const idle = { count: 1, busy: false, command: null, sessionId: 'sess-1' }
-  const running = { count: 1, busy: true, command: 'claude', sessionId: 'sess-1' }
+  const idle = { count: 1, state: 'idle' as const, command: null, sessionId: 'sess-1' }
+  const running = { count: 1, state: 'busy' as const, command: 'claude', sessionId: 'sess-1' }
+  const done = { count: 1, state: 'done' as const, command: 'pnpm', sessionId: 'sess-1' }
 
   it('shows nothing when no terminal is open on the worktree', () => {
     render(<WorktreeItem wt={worktree()} />)
@@ -349,16 +350,29 @@ describe('WorktreeItem — terminal badge', () => {
     expect(badge.compareDocumentPosition(glyph) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('breathes while a command runs and settles green once the prompt is back', () => {
-    const { unmount } = render(<WorktreeItem wt={worktree()} terminals={running} />)
-    let chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+  it('breathes while a command runs', () => {
+    render(<WorktreeItem wt={worktree()} terminals={running} />)
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
     expect(chip).toHaveAttribute('data-state', 'busy')
     expect(chip.className).toContain('animate-pulse')
-    unmount()
+  })
 
+  it('turns blue and still once a command has finished unread', () => {
+    render(<WorktreeItem wt={worktree()} terminals={done} />)
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'done')
+    expect(chip.className).toContain('bg-blue-500/15')
+    expect(chip.className).not.toContain('animate-pulse')
+    expect(
+      screen.getByLabelText('pnpm has finished here — click to open its terminal')
+    ).toBeInTheDocument()
+  })
+
+  it('goes quiet and grey for a shell that is merely open', () => {
     render(<WorktreeItem wt={worktree()} terminals={idle} />)
-    chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
     expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).toContain('bg-muted')
     expect(chip.className).not.toContain('animate-pulse')
   })
 

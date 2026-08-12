@@ -2,7 +2,17 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useTerminalStore } from './terminal.store'
 
 const reset = () =>
-  useTerminalStore.setState({ open: false, height: 260, sessions: [], activeId: null })
+  useTerminalStore.setState({
+    open: false,
+    height: 260,
+    sessions: [],
+    activeId: null,
+    finished: {},
+    lastActivity: {},
+  })
+
+const running = (id: string, command: string | null = null) => ({ [id]: { busy: true, command } })
+const atPrompt = (id: string) => ({ [id]: { busy: false, command: null } })
 
 const session = (id: string, cwd = '/repo') => ({ id, title: `zsh ${id}`, cwd })
 
@@ -93,5 +103,96 @@ describe('useTerminalStore', () => {
     useTerminalStore.getState().removeSession('gone')
     expect(useTerminalStore.getState().sessions.map((s) => s.id)).toEqual(['a'])
     expect(useTerminalStore.getState().activeId).toBe('a')
+  })
+})
+
+describe('useTerminalStore — what finished while nobody was looking', () => {
+  beforeEach(reset)
+
+  const store = () => useTerminalStore.getState()
+
+  it('reports nothing for a session that has never run anything', () => {
+    store().addSession(session('a'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('marks a session finished when its command lets go of the terminal', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    expect(store().finished).toEqual({})
+
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({ a: { command: 'claude' } })
+  })
+
+  it('remembers what finished, which the backend stops reporting the moment it does', () => {
+    // `terminal_status` names the *foreground* command; at an idle prompt there is none to name,
+    // so the name has to come from the snapshot taken while it was still running.
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'pnpm'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished.a.command).toBe('pnpm')
+  })
+
+  it('is idempotent — replaying a poll records no second transition', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().markSeen('a')
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('drops the mark when the session starts running again', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().syncActivity(running('a', 'vitest'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('names the most recent result when several commands come and go unseen', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    // A second command comes and goes before the user looks. The mark never drops (the terminal
+    // still has something to show), but what it names is the latest thing that happened there —
+    // reporting the older one would send the user to read a result two commands out of date.
+    store().syncActivity(running('a', 'vitest'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished.a.command).toBe('vitest')
+  })
+
+  it('markSeen clears one session and leaves the others alone', () => {
+    store().addSession(session('a'))
+    store().addSession(session('b'))
+    store().syncActivity({ ...running('a'), ...running('b') })
+    store().syncActivity({ ...atPrompt('a'), ...atPrompt('b') })
+    expect(Object.keys(store().finished)).toEqual(['a', 'b'])
+
+    store().markSeen('a')
+    expect(Object.keys(store().finished)).toEqual(['b'])
+  })
+
+  it('markSeen on a session with nothing to report changes nothing', () => {
+    const before = store().finished
+    store().markSeen('nobody')
+    expect(store().finished).toBe(before)
+  })
+
+  it('forgets a closed session rather than leaving its mark behind', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().removeSession('a')
+    expect(store().finished).toEqual({})
+    expect(store().lastActivity).toEqual({})
+  })
+
+  it('ignores statuses for sessions it does not know about', () => {
+    store().syncActivity(running('ghost'))
+    store().syncActivity(atPrompt('ghost'))
+    expect(store().finished).toEqual({})
   })
 })
