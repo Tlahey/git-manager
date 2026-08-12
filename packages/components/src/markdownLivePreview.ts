@@ -52,6 +52,10 @@ function livePreviewPlugin(options: MarkdownDecorationOptions) {
  */
 const livePreviewTheme = EditorView.theme({
   '&': { color: 'hsl(var(--foreground))', backgroundColor: 'transparent' },
+  // CodeMirror's own base theme sets `font-family: monospace` on the scroller, so `inherit` on the
+  // content alone inherits *that* — which is how the formatted tab ended up in a different typeface
+  // from the preview. The line height matches the renderer's `leading-relaxed` for the same reason.
+  '.cm-scroller': { fontFamily: 'inherit', lineHeight: '1.625' },
   '.cm-content': {
     padding: '0.5rem 0.75rem',
     fontFamily: 'inherit',

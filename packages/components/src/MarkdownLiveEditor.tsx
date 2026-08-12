@@ -148,7 +148,11 @@ export function MarkdownLiveEditor({
       ref={host}
       data-testid={testId}
       className={cn(
-        'min-h-[60px] w-full overflow-hidden rounded-md border border-input bg-transparent text-sm shadow-xs focus-within:ring-1 focus-within:ring-ring',
+        // `font-sans` is what `MarkdownRenderer`'s root carries, and the reason it is spelled out
+        // here too: nothing in the app sets a family on `body`, so the two views only agree if
+        // both ask for it. The theme then makes CodeMirror's scroller inherit, or its own
+        // monospace default wins over anything the container says.
+        'min-h-[60px] w-full overflow-hidden rounded-md border border-input bg-transparent font-sans text-sm shadow-xs focus-within:ring-1 focus-within:ring-ring',
         disabled && 'cursor-not-allowed opacity-50',
         className
       )}
