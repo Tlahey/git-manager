@@ -12,11 +12,11 @@ import {
   fetchIssuesByQuery,
 } from '../../../api/github/github-issues.api'
 import type { MockIssue } from '../../../lib/github/types'
+import { PROJECT_REPO } from '../../../lib/projectRepo'
 import {
   apiCommentOnReportedIssue,
   apiCreateErrorIssue,
   apiFindReportedIssue,
-  PROJECT_REPO,
 } from './errorReport.api'
 import type { ErrorReport } from '../lib/buildReport'
 

@@ -15,7 +15,7 @@ import {
   Textarea,
 } from '@git-manager/ui'
 import { apiOpenUrl } from '../../../api/shell.api'
-import { PROJECT_ISSUES_URL } from '../api/errorReport.api'
+import { PROJECT_ISSUES_URL } from '../../../lib/projectRepo'
 import { useErrorReport } from '../hooks/useErrorReport'
 import type { ErrorReportDraft } from '../lib/buildReport'
 import { ReportVerdictBanner } from './ReportVerdictBanner'

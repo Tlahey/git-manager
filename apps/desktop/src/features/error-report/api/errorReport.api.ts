@@ -4,6 +4,7 @@ import {
   createIssueComment,
   fetchIssuesByQuery,
 } from '../../../api/github/github-issues.api'
+import { PROJECT_REPO } from '../../../lib/projectRepo'
 import { fingerprintMarker } from '../lib/fingerprint'
 import type { ErrorReport } from '../lib/buildReport'
 
@@ -16,18 +17,10 @@ import type { ErrorReport } from '../lib/buildReport'
  * signs its own GitHub requests with the user's token (see CLAUDE.md on why the tokens live in
  * settings), so an issue posted from the app is an issue posted by the user, under their own
  * account, with the `repo` scope the device flow already asks for.
+ *
+ * Every call here targets `PROJECT_REPO` — the app's own tracker — and never the repository the
+ * user has open. See `lib/projectRepo.ts` for why that is a constant rather than a lookup.
  */
-
-/**
- * Where reports go. Hard-coded, and it has to be: this is the *app's* tracker, not the tracker of
- * whatever repository happens to be open — a bug in Git Manager filed against the user's employer's
- * repo would be both useless and a leak.
- */
-export const PROJECT_REPO = { owner: 'Tlahey', repo: 'git-manager' } as const
-
-/** The tracker's web pages, for the reporter who has no account connected and files it by hand. */
-export const PROJECT_ISSUES_URL = `https://github.com/${PROJECT_REPO.owner}/${PROJECT_REPO.repo}/issues`
-export const PROJECT_NEW_ISSUE_URL = `${PROJECT_ISSUES_URL}/new`
 
 /**
  * The already-filed report of this exact failure, or `null`.

@@ -26,7 +26,7 @@ existing issue instead of the tenth copy of it.
 | Path                          | What's in it                                                                                                |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `index.ts`                    | The public surface — five names, one per kind of caller. Read its comment before widening it.               |
-| `api/errorReport.api.ts`      | The project's `owner/repo`, the duplicate search, and the two ways to submit. Composes `api/github/`.       |
+| `api/errorReport.api.ts`      | The duplicate search and the two ways to submit. Composes `api/github/`; targets `lib/projectRepo.ts`.      |
 | `lib/publicRedact.ts`         | The **second** redaction pass — the one calibrated for publishing, not for a local log.                     |
 | `lib/reportability.config.ts` | `AppError` code → `bug` / `unclear` / `expected`, with the reason shown to the reporter.                    |
 | `lib/fingerprint.ts`          | The stable id that makes duplicate detection possible.                                                      |
