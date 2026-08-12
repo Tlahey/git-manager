@@ -6,6 +6,7 @@ import {
   Tag as TagIcon,
   GitFork,
   Archive as ArchiveIcon,
+  Terminal as TerminalIcon,
 } from 'lucide-react'
 import { NumberBadge } from '@git-manager/ui'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
@@ -13,6 +14,8 @@ import { useBranches } from '../../../hooks/useBranches'
 import { usePullRequests } from '../../../hooks/usePullRequests'
 import { useGitStashes } from '../../../hooks/useGitStashes'
 import { apiGetTags, apiListSubmodules } from '../../../api/git.api'
+import { useTerminalStore } from '../../../stores/terminal.store'
+import { useTerminalActivity } from '../../../hooks/useTerminalActivity'
 import type { SectionKey } from './types'
 
 interface SidebarRailProps {
@@ -80,6 +83,13 @@ export function SidebarRail({
 
   const { data: stashes = [] } = useGitStashes(repoPath)
 
+  // Terminals get a rail icon so a running agent stays visible with the sidebar folded away — that
+  // is the state a long-running session is most likely to be forgotten in. It turns amber while
+  // something is running, which is the only colour change on the rail that isn't decorative.
+  const sessions = useTerminalStore((s) => s.sessions)
+  const activity = useTerminalActivity()
+  const anyBusy = sessions.some((session) => activity[session.id]?.busy)
+
   return (
     <div className="flex h-full flex-col items-center">
       {/* No expand button of its own: coming back to full width is the toolbar's panel control (or
@@ -125,6 +135,18 @@ export function SidebarRail({
             label="Submodules"
             count={submodules.length}
             onClick={() => onOpenSection('submodules')}
+          />
+        )}
+        {sessions.length > 0 && (
+          <RailIcon
+            icon={
+              <TerminalIcon
+                className={anyBusy ? 'h-4 w-4 text-amber-400' : 'h-4 w-4 text-emerald-400'}
+              />
+            }
+            label="Terminals"
+            count={sessions.length}
+            onClick={() => onOpenSection('terminals')}
           />
         )}
       </div>

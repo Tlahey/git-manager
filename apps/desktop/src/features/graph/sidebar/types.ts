@@ -7,11 +7,20 @@ import type {
   GitStash,
 } from '@git-manager/git-types'
 import type { MockIssue } from '../../../lib/github/types'
+import type { TerminalSession } from '../../../stores/terminal.store'
 import type { SavedFilter } from '../stores/savedFilters'
 
 /** Stable section identifiers (open state + scroll). */
 export type SectionKey =
-  'local' | 'remotes' | 'prs' | 'issues' | 'tags' | 'submodules' | 'stashes' | 'worktrees'
+  | 'local'
+  | 'remotes'
+  | 'prs'
+  | 'issues'
+  | 'tags'
+  | 'submodules'
+  | 'stashes'
+  | 'worktrees'
+  | 'terminals'
 
 /**
  * One row in the body of a sidebar section (branches, folders, tags, …) — not the section header
@@ -95,6 +104,19 @@ export type SidebarRow =
   | { kind: 'stash'; id: string; stash: GitStash; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
   | { kind: 'worktree'; id: string; wt: GitWorktree }
+  | {
+      kind: 'terminal'
+      id: string
+      session: TerminalSession
+      /** Branch checked out where the session lives, or its folder name. */
+      location: string
+      /** True when the panel is showing this session right now. */
+      isActive: boolean
+      /** A command holds the PTY's foreground — polled, so this changes without a user gesture. */
+      isBusy: boolean
+      /** That command's name, when it could be resolved. */
+      command: string | null
+    }
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 
@@ -154,6 +176,7 @@ export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {
   submodules: false,
   stashes: false,
   worktrees: false,
+  terminals: false,
 }
 
 /** Branches pinned by default (always on top, unless the user overrides it). */

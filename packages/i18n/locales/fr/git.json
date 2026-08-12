@@ -1438,5 +1438,15 @@
   "markdown.command.math": "Formule",
   "markdown.command.hiddenComment": "Commentaire masqué",
   "markdown.tab.code": "Code",
-  "markdown.tab.rich": "Formaté"
+  "markdown.tab.rich": "Formaté",
+  "terminal.runningCommand": "{{command}} est en cours",
+  "terminal.runningSomething": "Une commande est en cours",
+  "terminal.runningCount_one": "1 en cours",
+  "terminal.runningCount_other": "{{count}} en cours",
+  "sidebar.terminals.empty": "Aucun terminal ouvert.",
+  "sidebar.terminal.show": "Afficher ce terminal",
+  "sidebar.terminal.close": "Fermer ce terminal",
+  "sidebar.worktree.terminalRunning": "{{command}} est en cours ici — cliquez pour ouvrir son terminal",
+  "sidebar.worktree.terminalOpen_one": "1 terminal ouvert ici — cliquez pour l'afficher",
+  "sidebar.worktree.terminalOpen_other": "{{count}} terminaux ouverts ici — cliquez pour en afficher un"
 }

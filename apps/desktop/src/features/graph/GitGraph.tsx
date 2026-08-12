@@ -573,11 +573,7 @@ export function GitGraph({
                 </>
               </GraphCenterPane>
 
-              {terminalOpen ? (
-                <TerminalPanel path={repoPath} />
-              ) : (
-                <TerminalStatusBar path={repoPath} />
-              )}
+              {terminalOpen ? <TerminalPanel path={repoPath} /> : <TerminalStatusBar />}
             </div>
 
             {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict

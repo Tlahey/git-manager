@@ -166,6 +166,23 @@ pub struct WorktreeAgentActivity {
     pub last_activity_ms: i64,
 }
 
+// ─── Integrated terminal ────────────────────────────────────────────────────────
+
+/// What one integrated-terminal session is doing right now, as reported by `terminal_status`.
+/// Derived from the PTY's foreground process group — see `services/terminal_pty.rs`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalStatus {
+    /// The session id `terminal_open` returned.
+    pub id: String,
+    /// True while a command holds the foreground (an agent, a build, an editor); false at an idle
+    /// prompt.
+    pub busy: bool,
+    /// Name of that command (`"claude"`, `"pnpm"`, `"vim"`), when it could be resolved. Always
+    /// `None` while idle — the shell itself is not worth naming.
+    pub command: Option<String>,
+}
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 /// One command of a *running* rebase's todo list, as reconstructed by

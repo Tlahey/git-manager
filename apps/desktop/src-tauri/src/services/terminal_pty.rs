@@ -18,6 +18,9 @@ pub struct TerminalSession {
     master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     child: Box<dyn portable_pty::Child + Send + Sync>,
+    /// PID of the shell itself — the reference `foreground_pid` is compared against to tell an idle
+    /// prompt from a running command. `None` only if the platform can't report it.
+    shell_pid: Option<u32>,
 }
 
 impl TerminalSession {
@@ -25,6 +28,34 @@ impl TerminalSession {
     pub fn write(&mut self, data: &[u8]) -> std::io::Result<()> {
         self.writer.write_all(data)?;
         self.writer.flush()
+    }
+
+    /// The PID of the process group currently in the *foreground* of this PTY — i.e. the one that
+    /// owns the keyboard. `tcgetpgrp(2)`, via portable-pty.
+    ///
+    /// This is what makes "a terminal is working" an observable fact rather than a guess: an idle
+    /// shell puts *itself* in the foreground, so the value equals `shell_pid`; the moment the user
+    /// runs anything, the shell forks it into its own foreground group and the value changes. An
+    /// output-timing heuristic was the alternative and it is strictly worse — a long-thinking agent
+    /// prints nothing for a minute and would read as idle, while a finished `ls` would read as busy
+    /// for as long as the window lasted.
+    #[cfg(unix)]
+    pub fn foreground_pid(&self) -> Option<i32> {
+        self.master.process_group_leader()
+    }
+
+    #[cfg(not(unix))]
+    pub fn foreground_pid(&self) -> Option<i32> {
+        None
+    }
+
+    /// Whether a command is running in the foreground (see {@link foreground_pid}). False for an
+    /// idle prompt, and false whenever the platform can't answer — never a false "busy".
+    pub fn is_busy(&self) -> bool {
+        match (self.foreground_pid(), self.shell_pid) {
+            (Some(foreground), Some(shell)) => foreground != shell as i32,
+            _ => false,
+        }
     }
 
     /// Resizes the PTY so the shell (and full-screen TUIs) re-flow to the xterm.js viewport.
@@ -96,14 +127,60 @@ pub fn spawn_shell(
         .take_writer()
         .map_err(|e| format!("Failed to write terminal: {e}"))?;
 
+    let shell_pid = child.process_id();
+
     Ok((
         TerminalSession {
             master: pair.master,
             writer,
             child,
+            shell_pid,
         },
         reader,
     ))
+}
+
+/// Names the command running in the foreground of a PTY, given its `ps -o args=` line.
+///
+/// The first token's file name is the answer for a native binary (`/usr/bin/vim` → `vim`), but not
+/// for the interpreted CLIs this is mostly about: an agent installed through npm shows up as
+/// `node /Users/.../bin/claude`, and answering "node" would make every such session look alike. So
+/// when the first token is a known interpreter, the script it was handed is the name instead —
+/// skipping the flags in between (`node --enable-source-maps foo.js` → `foo.js`).
+pub fn command_label(args: &str) -> Option<String> {
+    let mut tokens = args.split_whitespace();
+    let first = tokens.next()?;
+    let name = file_name_of(first);
+    const INTERPRETERS: [&str; 8] = [
+        "node", "bun", "deno", "python", "python3", "ruby", "perl", "php",
+    ];
+    if !INTERPRETERS.contains(&name.as_str()) {
+        return Some(name);
+    }
+    // The first token that isn't a flag is the script; fall back to the interpreter itself when it
+    // was started with no script at all (a bare REPL).
+    tokens
+        .find(|token| !token.starts_with('-'))
+        .map(file_name_of)
+        .or(Some(name))
+}
+
+fn file_name_of(path: &str) -> String {
+    path.rsplit('/').next().unwrap_or(path).to_string()
+}
+
+/// Reads the foreground command's `ps` line and names it (see {@link command_label}). `None` when
+/// the process is already gone — a command that ends between the status snapshot and this call.
+pub fn describe_process(pid: i32) -> Option<String> {
+    let output = std::process::Command::new("ps")
+        .args(["-o", "args=", "-p", &pid.to_string()])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let line = String::from_utf8_lossy(&output.stdout);
+    command_label(line.trim())
 }
 
 #[cfg(test)]
@@ -116,6 +193,56 @@ mod tests {
         let fallback = "/bin/zsh";
         let resolved = std::env::var("SHELL").unwrap_or_else(|_| fallback.to_string());
         assert_eq!(default_shell(), resolved);
+    }
+
+    #[test]
+    fn command_label_names_a_native_binary_by_its_file_name() {
+        assert_eq!(
+            command_label("/usr/bin/vim file.txt").as_deref(),
+            Some("vim")
+        );
+        assert_eq!(command_label("pnpm run dev").as_deref(), Some("pnpm"));
+    }
+
+    #[test]
+    fn command_label_names_the_script_an_interpreter_was_handed() {
+        assert_eq!(
+            command_label("node /Users/me/.nvm/versions/node/v22.0.0/bin/claude --resume")
+                .as_deref(),
+            Some("claude")
+        );
+        assert_eq!(
+            command_label("/opt/homebrew/bin/node --enable-source-maps ./tools/build.js")
+                .as_deref(),
+            Some("build.js")
+        );
+        // A bare REPL has no script to name, so the interpreter is the answer.
+        assert_eq!(command_label("python3").as_deref(), Some("python3"));
+        assert_eq!(command_label("node -i").as_deref(), Some("node"));
+    }
+
+    #[test]
+    fn command_label_is_none_for_an_empty_line() {
+        assert_eq!(command_label(""), None);
+        assert_eq!(command_label("   "), None);
+    }
+
+    #[test]
+    fn an_idle_shell_is_not_busy() {
+        let (mut session, _reader) = spawn_shell("/", 80, 24).expect("spawn shell");
+        // The shell puts itself in the foreground as soon as it takes control of the pty; poll
+        // briefly rather than assuming it has got there by the time we look.
+        let mut foreground = None;
+        for _ in 0..50 {
+            foreground = session.foreground_pid();
+            if foreground.is_some() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert!(foreground.is_some(), "pty should report a foreground group");
+        assert!(!session.is_busy(), "an idle prompt must not read as busy");
+        session.kill();
     }
 
     #[test]

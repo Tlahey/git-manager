@@ -88,7 +88,9 @@ use commands::stash::{
 };
 use commands::submodule::list_submodules;
 use commands::tasks::{get_project_commands, run_task_in_terminal};
-use commands::terminal::{terminal_close, terminal_open, terminal_resize, terminal_write};
+use commands::terminal::{
+    terminal_close, terminal_open, terminal_resize, terminal_status, terminal_write,
+};
 use commands::themes::get_user_themes;
 use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, resolve_revision, restore_file_blob,
@@ -268,6 +270,7 @@ pub fn run() {
             terminal_write,
             terminal_resize,
             terminal_close,
+            terminal_status,
             // Log / Graph
             get_log,
             get_commit_diff,

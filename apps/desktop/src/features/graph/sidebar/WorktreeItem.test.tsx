@@ -331,3 +331,42 @@ describe('WorktreeItem — row behaviour', () => {
     expect(marks[0].textContent).toBe('login')
   })
 })
+
+describe('WorktreeItem — terminal badge', () => {
+  const idle = { count: 1, busy: false, command: null, sessionId: 'sess-1' }
+  const running = { count: 1, busy: true, command: 'claude', sessionId: 'sess-1' }
+
+  it('shows nothing when no terminal is open on the worktree', () => {
+    render(<WorktreeItem wt={worktree()} />)
+    expect(screen.queryByTestId(`worktree-terminal-badge-${PATH}`)).not.toBeInTheDocument()
+  })
+
+  it('names the running command, which is the whole point of the badge', () => {
+    render(<WorktreeItem wt={worktree()} terminals={running} />)
+    expect(screen.getByTestId(`worktree-terminal-badge-${PATH}`)).toHaveTextContent('claude')
+  })
+
+  it('stays a bare icon for a terminal that is merely open', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
+    const badge = screen.getByTestId(`worktree-terminal-badge-${PATH}`)
+    expect(badge).toHaveTextContent('')
+    expect(screen.getByLabelText('1 terminal open here — click to show it')).toBeInTheDocument()
+  })
+
+  it('hands the session over on click without opening the worktree twice', () => {
+    const onFocusTerminal = vi.fn()
+    const onOpenWorktree = vi.fn()
+    render(
+      <WorktreeItem
+        wt={worktree()}
+        terminals={running}
+        onFocusTerminal={onFocusTerminal}
+        onOpenWorktree={onOpenWorktree}
+      />
+    )
+    fireEvent.click(screen.getByTestId(`worktree-terminal-badge-${PATH}`))
+    expect(onFocusTerminal).toHaveBeenCalledWith('sess-1', PATH)
+    // The click stops at the badge: the row's own double-click gesture is a different thing.
+    expect(onOpenWorktree).not.toHaveBeenCalled()
+  })
+})

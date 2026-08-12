@@ -11,7 +11,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::services::terminal_pty::spawn_shell;
+use crate::models::TerminalStatus;
+use crate::services::terminal_pty::{describe_process, spawn_shell};
 use crate::state::AppState;
 
 /// Monotonic counter making session ids unique within a process run.
@@ -105,6 +106,44 @@ pub async fn terminal_resize(
         session.resize(cols, rows)?;
     }
     Ok(())
+}
+
+/// Reports what every live session is doing — busy or idle, and the name of the running command.
+///
+/// Polled by the frontend (see `useTerminalActivity`) rather than pushed, because the underlying
+/// signal is a *state* to be sampled (`tcgetpgrp`) and not an event: there is nothing to emit on,
+/// short of the app polling on the user's behalf.
+///
+/// The session lock is released before any `ps` runs. Holding it across a subprocess would block
+/// every keystroke in every terminal for the duration, which is the one thing an integrated
+/// terminal may never do.
+#[tauri::command]
+pub async fn terminal_status(state: State<'_, AppState>) -> Result<Vec<TerminalStatus>, String> {
+    let snapshot: Vec<(String, Option<i32>)> = {
+        let map = state
+            .terminals
+            .lock()
+            .map_err(|_| "Terminal state lock poisoned".to_string())?;
+        map.iter()
+            .map(|(id, session)| {
+                let foreground = if session.is_busy() {
+                    session.foreground_pid()
+                } else {
+                    None
+                };
+                (id.clone(), foreground)
+            })
+            .collect()
+    };
+
+    Ok(snapshot
+        .into_iter()
+        .map(|(id, foreground)| TerminalStatus {
+            id,
+            busy: foreground.is_some(),
+            command: foreground.and_then(describe_process),
+        })
+        .collect())
 }
 
 /// Closes a session: kills the shell process and removes it from the map. The streaming thread then

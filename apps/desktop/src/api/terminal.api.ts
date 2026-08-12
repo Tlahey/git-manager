@@ -1,4 +1,11 @@
-import { terminalClose, terminalOpen, terminalResize, terminalWrite } from '../lib/tauri'
+import type { TerminalStatus } from '@git-manager/git-types'
+import {
+  terminalClose,
+  terminalOpen,
+  terminalResize,
+  terminalStatus,
+  terminalWrite,
+} from '../lib/tauri'
 
 /** Opens a PTY-backed login shell in `cwd` (a repo/worktree path) and returns its session id. */
 export function apiTerminalOpen(cwd: string, cols: number, rows: number): Promise<string> {
@@ -18,4 +25,9 @@ export function apiTerminalResize(id: string, cols: number, rows: number): Promi
 /** Kills the shell process behind session `id`. */
 export function apiTerminalClose(id: string): Promise<void> {
   return terminalClose(id)
+}
+
+/** Busy/idle state and running command of every live session — polled by `useTerminalActivity`. */
+export function apiTerminalStatus(): Promise<TerminalStatus[]> {
+  return terminalStatus()
 }

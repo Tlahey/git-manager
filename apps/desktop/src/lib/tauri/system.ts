@@ -63,6 +63,10 @@ export const terminalResize = (id: string, cols: number, rows: number) =>
 /** Kills the shell process and drops the session. */
 export const terminalClose = (id: string) => invoke<void>('terminal_close', { id })
 
+/** What every live session is doing — busy/idle plus the running command's name. Polled. */
+export const terminalStatus = () =>
+  invoke<import('@git-manager/git-types').TerminalStatus[]>('terminal_status')
+
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 
 export const generateSshKey = (

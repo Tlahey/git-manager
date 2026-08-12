@@ -14,6 +14,8 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import type { WorktreeWipStatus } from '../hooks/useWorktreeWipStatuses'
 import type { MockIssue } from '../../../lib/github/types'
+import type { TerminalSession } from '../../../stores/terminal.store'
+import type { WorktreeTerminalSummary } from '../lib/worktreeTerminals'
 import type { IssueFilterMenuTarget, SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { VisibilityToggle } from './VisibilityToggle'
@@ -22,6 +24,7 @@ import { rowIndent } from './rowIndent'
 import { PullRequestItem } from './PullRequestItem'
 import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
+import { TerminalItem } from './TerminalItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { SidebarHideableRow } from './SidebarHideableRow'
 import { shortOid } from '../../../lib/shortOid'
@@ -72,6 +75,14 @@ interface SidebarRowViewProps {
   /** Remove a worktree *and* delete the branch it had checked out. */
   onRemoveWorktreeAndBranch?: (wt: GitWorktree) => void
   onOpenWorktree?: (wt: GitWorktree) => void
+  /** Live terminal sessions per worktree path — drives the row's terminal badge. Absent or no
+   * match for a given row = no terminal open there. */
+  worktreeTerminals?: Map<string, WorktreeTerminalSummary>
+  /** Enters a session's worktree, opens the panel and shows that session. */
+  onFocusTerminal?: (session: TerminalSession) => void
+  /** Same, addressed by session id — what a worktree row's terminal badge hands over. */
+  onFocusTerminalSession?: (sessionId: string, cwd: string) => void
+  onCloseTerminal?: (id: string) => void
   /** Pending-changes info for linked worktrees with uncommitted changes — drives the bubble/hover
    * breakdown on a worktree row. Absent or no match for a given row = no bubble. */
   worktreeWipStatuses?: WorktreeWipStatus[]
@@ -112,6 +123,10 @@ export function SidebarRowView({
   onRemoveWorktree,
   onRemoveWorktreeAndBranch,
   onOpenWorktree,
+  worktreeTerminals,
+  onFocusTerminal,
+  onFocusTerminalSession,
+  onCloseTerminal,
   worktreeWipStatuses = [],
   filterQuery = '',
   soloActive = false,
@@ -368,10 +383,26 @@ export function SidebarRowView({
         <WorktreeItem
           wt={row.wt}
           wipStatus={worktreeWipStatuses.find((s) => s.path === row.wt.path)}
+          terminals={worktreeTerminals?.get(row.wt.path)}
           filterQuery={filterQuery}
           onOpenWorktree={onOpenWorktree}
           onRemoveWorktree={onRemoveWorktree}
           onRemoveWorktreeAndBranch={onRemoveWorktreeAndBranch}
+          onFocusTerminal={onFocusTerminalSession}
+        />
+      )
+
+    case 'terminal':
+      return (
+        <TerminalItem
+          session={row.session}
+          location={row.location}
+          isActive={row.isActive}
+          isBusy={row.isBusy}
+          command={row.command}
+          filterQuery={filterQuery}
+          onFocus={onFocusTerminal}
+          onClose={onCloseTerminal}
         />
       )
 

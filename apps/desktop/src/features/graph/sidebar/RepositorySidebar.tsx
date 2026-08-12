@@ -7,6 +7,8 @@ import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
+import { useFocusTerminalSession } from '../../../hooks/useFocusTerminalSession'
+import { useIntegratedTerminal } from '../../../hooks/useIntegratedTerminal'
 import { SidebarRail } from './SidebarRail'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarSearchHeader } from './SidebarSearchHeader'
@@ -104,6 +106,12 @@ export function RepositorySidebar({
     setActiveWorkspacePath(wt.path)
   }
 
+  // Clicking a terminal is a *navigation*: it enters the worktree that session is bound to and puts
+  // it on screen (see `useFocusTerminalSession`). Closing one goes through the same path the panel
+  // uses, so the PTY is killed and the xterm disposed rather than just dropped from the list.
+  const focusTerminalSession = useFocusTerminalSession()
+  const { closeSession } = useIntegratedTerminal(repoPath)
+
   // Every dialog the headers and rows can raise — state and openers both (see `useSidebarDialogs`).
   const dialogs = useSidebarDialogs()
   // Destructured because the two menu hooks below keep these in their own dependency lists, and a
@@ -182,6 +190,7 @@ export function RepositorySidebar({
     prunableWorktrees = [],
     worktrees = [],
     allLocalBranches = [],
+    worktreeTerminals,
     refreshIssues,
   } = useSidebarRows({
     repoPath,
@@ -321,6 +330,10 @@ export function RepositorySidebar({
     onRemoveWorktreeAndBranch: (wt) => dialogs.open.removeWorktree(wt, true),
     onOpenWorktree: handleOpenWorktree,
     worktreeWipStatuses,
+    worktreeTerminals,
+    onFocusTerminal: (session) => focusTerminalSession(session.id, session.cwd),
+    onFocusTerminalSession: focusTerminalSession,
+    onCloseTerminal: closeSession,
   }
 
   // ── Focus shortcut (⌥⌘F) ────────────────────────────────────────────

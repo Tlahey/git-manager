@@ -1394,5 +1394,15 @@
   "health.updates.updateLatestMajorTooltip": "Actualizar a {{version}} — cruza una versión mayor, se te pedirá confirmación",
   "health.changelog.showTooltip": "Leer las notas de la versión de {{from}} → {{to}}",
   "mediaDrop.openedBrowser": "GitHub no admite subir imágenes o vídeos desde aquí — se abrirá tu navegador para que puedas soltarlo allí.",
-  "mediaDrop.noTarget": "GitHub no admite subir imágenes o vídeos desde aquí. Podrás añadirlo directamente en GitHub una vez creado."
+  "mediaDrop.noTarget": "GitHub no admite subir imágenes o vídeos desde aquí. Podrás añadirlo directamente en GitHub una vez creado.",
+  "terminal.runningCommand": "{{command}} está en ejecución",
+  "terminal.runningSomething": "Se está ejecutando un comando",
+  "terminal.runningCount_one": "1 en ejecución",
+  "terminal.runningCount_other": "{{count}} en ejecución",
+  "sidebar.terminals.empty": "No hay ninguna terminal abierta.",
+  "sidebar.terminal.show": "Mostrar esta terminal",
+  "sidebar.terminal.close": "Cerrar esta terminal",
+  "sidebar.worktree.terminalRunning": "{{command}} se está ejecutando aquí — haz clic para abrir su terminal",
+  "sidebar.worktree.terminalOpen_one": "1 terminal abierta aquí — haz clic para mostrarla",
+  "sidebar.worktree.terminalOpen_other": "{{count}} terminales abiertas aquí — haz clic para mostrar una"
 }

@@ -181,11 +181,7 @@ export function FilesPage() {
       </div>
 
       {effectiveRepoPath &&
-        (terminalOpen ? (
-          <TerminalPanel path={effectiveRepoPath} />
-        ) : (
-          <TerminalStatusBar path={effectiveRepoPath} />
-        ))}
+        (terminalOpen ? <TerminalPanel path={effectiveRepoPath} /> : <TerminalStatusBar />)}
     </div>
   )
 }
