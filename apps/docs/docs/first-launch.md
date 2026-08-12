@@ -49,9 +49,9 @@ it:
 To connect, open **Settings → Integrations** and start the sign-in.
 [Settings](/docs/features/settings) shows the flow: the app displays a one-time
 device code, sends you to `github.com/login/device` to type it, and never sees
-your password — that's GitHub's official _device flow_, and the token it
-produces stays on your machine (see
-[Private by design](/docs/privacy)).
+your password — that's GitHub's official _device flow_. The token it produces
+goes straight into your macOS Keychain, where you can inspect or revoke it at
+any time (see [Private by design](/docs/privacy)).
 
 ::: tip Where next?
 Learn the window's fixed landmarks in

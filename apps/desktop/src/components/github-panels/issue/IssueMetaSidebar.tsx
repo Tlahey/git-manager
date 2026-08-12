@@ -49,7 +49,7 @@ export function IssueMetaSidebar({
 }: IssueMetaSidebarProps) {
   const { t } = useTranslation('git')
   const { issue: detail, isLoading, refresh } = useIssueDetail(repoPath, issueNumber)
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const {
     repoPath: localRepoPath,
     branch,
@@ -76,7 +76,7 @@ export function IssueMetaSidebar({
   )
 
   async function run(op: () => Promise<unknown>) {
-    if (!ownerRepo || !token) return
+    if (!ownerRepo || !accountId) return
     setPending(true)
     try {
       await op()
@@ -120,7 +120,7 @@ export function IssueMetaSidebar({
             {isOpen ? <CircleDot className="h-3 w-3" /> : <CircleCheck className="h-3 w-3" />}
             {isOpen ? t('issue.view.stateOpen') : t('issue.view.stateClosed')}
           </span>
-          {ownerRepo && token && (
+          {ownerRepo && accountId && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -143,7 +143,7 @@ export function IssueMetaSidebar({
                   className="gap-2 text-xs"
                   onSelect={() =>
                     run(() =>
-                      setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'open', token)
+                      setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'open', accountId)
                     )
                   }
                 >
@@ -155,7 +155,13 @@ export function IssueMetaSidebar({
                   className="gap-2 text-xs"
                   onSelect={() =>
                     run(() =>
-                      setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'closed', token)
+                      setIssueState(
+                        ownerRepo.owner,
+                        ownerRepo.repo,
+                        issueNumber,
+                        'closed',
+                        accountId
+                      )
                     )
                   }
                 >
@@ -172,7 +178,7 @@ export function IssueMetaSidebar({
       <PrSidebarSection
         title={t('pr.side.assignees')}
         testId="issue-assignees"
-        onEdit={ownerRepo && token ? () => toggle('assignees') : undefined}
+        onEdit={ownerRepo && accountId ? () => toggle('assignees') : undefined}
         editTitle={t('pr.side.editAssignees')}
       >
         <PrUserList users={detail.assignees ?? []} emptyLabel="pr.side.noAssignees" />
@@ -185,12 +191,12 @@ export function IssueMetaSidebar({
             busy={pending}
             onAdd={(login) =>
               run(() =>
-                addAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!)
+                addAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], accountId!)
               )
             }
             onRemove={(login) =>
               run(() =>
-                removeAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], token!)
+                removeAssignees(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [login], accountId!)
               )
             }
             onClose={() => setEditing(null)}
@@ -202,7 +208,7 @@ export function IssueMetaSidebar({
       <PrSidebarSection
         title={t('pr.side.labels')}
         testId="issue-labels"
-        onEdit={ownerRepo && token ? () => toggle('labels') : undefined}
+        onEdit={ownerRepo && accountId ? () => toggle('labels') : undefined}
         editTitle={t('pr.side.editLabels')}
       >
         {detail.labels && detail.labels.length > 0 ? (
@@ -234,10 +240,14 @@ export function IssueMetaSidebar({
             loading={labelsLoading}
             busy={pending}
             onAdd={(name) =>
-              run(() => addLabels(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [name], token!))
+              run(() =>
+                addLabels(ownerRepo!.owner, ownerRepo!.repo, issueNumber, [name], accountId!)
+              )
             }
             onRemove={(name) =>
-              run(() => removeLabel(ownerRepo!.owner, ownerRepo!.repo, issueNumber, name, token!))
+              run(() =>
+                removeLabel(ownerRepo!.owner, ownerRepo!.repo, issueNumber, name, accountId!)
+              )
             }
             onClose={() => setEditing(null)}
           />

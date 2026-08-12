@@ -58,7 +58,7 @@ function rawToTracked(raw: GhRawIssue): RawTrackedIssue {
 export async function mergeTrackedIssues(
   board: Board,
   cards: BoardCard[],
-  token: string
+  accountId: string
 ): Promise<BoardCard[]> {
   const tracked = cards.filter((c) => c.sourceIssue)
   if (tracked.length === 0) return cards
@@ -67,7 +67,7 @@ export async function mergeTrackedIssues(
     tracked.map(async (card) => {
       const ref = card.sourceIssue as BoardCardSourceIssue
       try {
-        const raw = await fetchIssueDetail(ref.owner, ref.repo, ref.number, token)
+        const raw = await fetchIssueDetail(ref.owner, ref.repo, ref.number, accountId)
         return [card.id, rawToTracked(raw)] as const
       } catch {
         return [card.id, null] as const
@@ -85,9 +85,9 @@ export async function mergeTrackedIssues(
 /** Fetches one issue for the "add to board" flow, so the new card starts with real content. */
 export async function fetchIssueForTracking(
   ref: BoardCardSourceIssue,
-  token: string
+  accountId: string
 ): Promise<RawTrackedIssue> {
-  return rawToTracked(await fetchIssueDetail(ref.owner, ref.repo, ref.number, token))
+  return rawToTracked(await fetchIssueDetail(ref.owner, ref.repo, ref.number, accountId))
 }
 
 /**
@@ -102,24 +102,24 @@ export async function pushCardToIssue(
   board: Board,
   next: BoardCard,
   ref: BoardCardSourceIssue,
-  token: string
+  accountId: string
 ): Promise<void> {
   const { owner, repo, number } = ref
-  const raw = await fetchIssueDetail(owner, repo, number, token)
+  const raw = await fetchIssueDetail(owner, repo, number, accountId)
 
   await updateIssue(
     owner,
     repo,
     number,
     { title: next.title, body: bodyForTrackedCard(next, raw.body ?? '') },
-    token
+    accountId
   )
 
   const currentAssignees = (raw.assignees ?? []).map((a) => a.login)
   const stale = currentAssignees.filter((login) => login !== next.assignee)
-  if (stale.length > 0) await removeAssignees(owner, repo, number, stale, token)
+  if (stale.length > 0) await removeAssignees(owner, repo, number, stale, accountId)
   if (next.assignee && !currentAssignees.includes(next.assignee)) {
-    await addAssignees(owner, repo, number, [next.assignee], token)
+    await addAssignees(owner, repo, number, [next.assignee], accountId)
   }
 
   const currentLabels = (raw.labels ?? []).map((l) => l.name)
@@ -127,14 +127,14 @@ export async function pushCardToIssue(
   const { toAdd, toRemove } = reconcileTrackedLabels(board, currentLabels, desired)
 
   for (const label of toRemove) {
-    await removeLabel(owner, repo, number, label, token)
+    await removeLabel(owner, repo, number, label, accountId)
   }
   if (toAdd.length > 0) {
     // A board tag has a colour the repo's label may not have yet. Created before it is attached, so
     // the label never appears in GitHub's default grey and then changes colour on a later edit.
     for (const tag of board.tags.filter((t) => toAdd.includes(t.name))) {
-      await createOrUpdateLabel(owner, repo, tag.name, tag.color, token)
+      await createOrUpdateLabel(owner, repo, tag.name, tag.color, accountId)
     }
-    await addLabels(owner, repo, number, toAdd, token)
+    await addLabels(owner, repo, number, toAdd, accountId)
   }
 }

@@ -32,7 +32,7 @@ export interface UseMergedBranchesResult {
   mergedBranches: GitBranch[]
   isLoading: boolean
   isGithub: boolean
-  hasToken: boolean
+  hasAccount: boolean
 }
 
 /** A branch that must never be bulk-pruned: the checked-out HEAD, or the default (main/master). */
@@ -54,17 +54,17 @@ export function useMergedBranches(
   branches: GitBranch[],
   worktreeBranches: string[],
   remoteUrls: string[],
-  githubToken: string | undefined,
+  githubAccountId: string | undefined,
   enabled: boolean
 ): UseMergedBranchesResult {
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
-  const token = githubToken || (activeAccount?.token ?? undefined)
+  const accountId = githubAccountId || (activeAccount?.id ?? undefined)
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
-  const hasToken = !!token
+  const hasAccount = !!accountId
 
   const worktreeBranchSet = new Set(worktreeBranches)
   // Shown in the dialog: every local branch except the protected ones (HEAD / main / master).
@@ -84,13 +84,13 @@ export function useMergedBranches(
   // ── GitHub signal 1: the merged PR of each candidate's tip commit, filtered on its own name. ──
   const candidatePairs = candidates.map((b) => ({ oid: b.commitOid, branch: b.shortName }))
   const commitPrKey =
-    enabled && ownerRepo && token && candidatePairs.length > 0
+    enabled && ownerRepo && accountId && candidatePairs.length > 0
       ? [
           'commit-merged-prs',
           repoPath,
           ownerRepo.owner,
           ownerRepo.repo,
-          token,
+          accountId,
           candidatePairs
             .map((p) => `${p.oid}@${p.branch}`)
             .sort()
@@ -106,9 +106,13 @@ export function useMergedBranches(
           async ({ oid, branch }) =>
             [
               `${oid}@${branch}`,
-              await fetchCommitMergedPullRequestForBranch(owner, repo, oid, branch, token).catch(
-                () => null
-              ),
+              await fetchCommitMergedPullRequestForBranch(
+                owner,
+                repo,
+                oid,
+                branch,
+                accountId
+              ).catch(() => null),
             ] as const
         )
       )
@@ -119,14 +123,14 @@ export function useMergedBranches(
 
   // ── GitHub signal 2: closed pull requests, matched on head ref + merged_at. ──
   const prKey =
-    enabled && ownerRepo && token && candidates.length > 0
-      ? ['closed-pull-requests', repoPath, ownerRepo.owner, ownerRepo.repo, token]
+    enabled && ownerRepo && accountId && candidates.length > 0
+      ? ['closed-pull-requests', repoPath, ownerRepo.owner, ownerRepo.repo, accountId]
       : null
   const { data: prList } = useSWR(
     prKey,
     () => {
       const { owner, repo } = ownerRepo as { owner: string; repo: string }
-      return fetchClosedPullRequests(owner, repo, token)
+      return fetchClosedPullRequests(owner, repo, accountId)
     },
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
@@ -170,6 +174,6 @@ export function useMergedBranches(
     mergedBranches,
     isLoading: stillChecking,
     isGithub,
-    hasToken,
+    hasAccount,
   }
 }

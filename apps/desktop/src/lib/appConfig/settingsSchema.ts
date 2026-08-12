@@ -37,7 +37,6 @@ const aiSchema = z.object({
   preset: looseString<AiPresetId>(),
   url: z.string(),
   model: z.string(),
-  apiKey: z.string().optional(),
   timeoutSeconds: z.number(),
   contextTokens: z.number().optional(),
   fastModel: z.string().optional(),
@@ -85,8 +84,12 @@ const githubUserSchema = z.object({
   avatarUrl: z.string(),
 })
 
+// No `token` on an account, in either schema below, and no `apiKey` on `ai`: every secret lives in
+// the OS keychain now (see `lib/tauri/credentials.ts`). A file written by an older build still
+// carries them — `validate.ts` keeps the *raw* value, so nothing is stripped here — and
+// `secretsMigration.ts` moves them across on the first launch that finds them.
 const githubSchema = z.object({
-  accounts: z.array(z.object({ id: z.string(), token: z.string(), user: githubUserSchema })),
+  accounts: z.array(z.object({ id: z.string(), user: githubUserSchema })),
   activeAccountId: z.string().nullable(),
 })
 
@@ -119,7 +122,6 @@ const notificationsSchema = z.object({
 const providerAccountSchema = z.object({
   id: z.string(),
   host: z.string(),
-  token: z.string(),
   username: z.string(),
   avatarUrl: z.string().optional(),
   displayName: z.string().optional(),

@@ -10,6 +10,7 @@ pub mod cherry_pick;
 pub mod commit;
 pub mod config;
 pub mod conflict;
+pub mod credentials;
 pub mod daily_summary;
 pub mod fixup;
 pub mod github;

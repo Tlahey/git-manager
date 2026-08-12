@@ -80,7 +80,7 @@ function mockHook(overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {
     loading: false,
     isValidating: false,
     error: null,
-    hasToken: true,
+    hasAccount: true,
     // The page's GitHub half is on by default here; the signed-out suite flips these.
     githubConnected: true,
     showConnectBanner: false,
@@ -145,7 +145,7 @@ describe('PullRequestsPage — header sync status', () => {
   // already says it *and* says what to do about it, and two notices for one fact left the header
   // shouting about a state the user had chosen. Only invented data still warrants a warning here.
   it('says nothing in the header about a missing account', () => {
-    mockHook({ hasToken: false, githubConnected: false, showConnectBanner: true })
+    mockHook({ hasAccount: false, githubConnected: false, showConnectBanner: true })
     render(<PullRequestsPage />)
     expect(screen.queryByText(/No GitHub account/)).not.toBeInTheDocument()
     // The guidance is not lost — it moved to the one place that can act on it.
@@ -156,7 +156,7 @@ describe('PullRequestsPage — header sync status', () => {
     const { container } = render(<PullRequestsPage />)
     const withStatus = container.querySelectorAll('header .w-px').length
 
-    mockHook({ hasToken: false, githubConnected: false })
+    mockHook({ hasAccount: false, githubConnected: false })
     const { container: signedOut } = render(<PullRequestsPage />)
     expect(withStatus).toBe(1)
     expect(signedOut.querySelectorAll('header .w-px')).toHaveLength(0)
@@ -350,7 +350,7 @@ describe('PullRequestsPage — no GitHub account connected', () => {
     onOpenSettings?: () => void
   ) {
     mockHook({
-      hasToken: false,
+      hasAccount: false,
       githubConnected: false,
       showConnectBanner: true,
       ...overrides,

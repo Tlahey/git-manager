@@ -9,11 +9,11 @@ const useBranchesMock = vi.fn()
 vi.mock('../../hooks/useBranches', () => ({ useBranches: () => useBranchesMock() }))
 
 vi.mock('../../api/git.api', () => ({ apiCheckoutBranch: vi.fn() }))
-vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn() }))
+vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn(), apiGetRepoSummary: vi.fn() }))
 vi.mock('../../api/worktree.api', () => ({ apiListWorktrees: vi.fn() }))
 
 import { apiCheckoutBranch } from '../../api/git.api'
-import { apiOpenRepo } from '../../api/repo.api'
+import { apiOpenRepo, apiGetRepoSummary } from '../../api/repo.api'
 import { apiListWorktrees } from '../../api/worktree.api'
 import { BranchContext } from './BranchContext'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -23,6 +23,7 @@ import { useStashDialogStore } from '../../stores/stashDialog.store'
 const mockedCheckout = apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>
 const mockedOpenRepo = apiOpenRepo as unknown as ReturnType<typeof vi.fn>
 const mockedListWorktrees = apiListWorktrees as unknown as ReturnType<typeof vi.fn>
+const mockedRepoSummary = apiGetRepoSummary as unknown as ReturnType<typeof vi.fn>
 
 function branch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranch {
   return {
@@ -75,6 +76,8 @@ beforeEach(() => {
   useRepoDataStore.setState({ repoCache: {} })
   useBranchesMock.mockReturnValue({ data: [] })
   mockedListWorktrees.mockResolvedValue([])
+  // The base project's own HEAD, which the checkout records as the undo entry's starting point.
+  mockedRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
 })
 
 describe('BranchContext — visibility/label', () => {
@@ -159,10 +162,12 @@ describe('BranchContext — checkout', () => {
     await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
 
-    expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', {
-      fromRef: 'main',
-      fromDetached: false,
-    })
+    await waitFor(() =>
+      expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', {
+        fromRef: 'main',
+        fromDetached: false,
+      })
+    )
     await waitFor(() => expect(mockedOpenRepo).toHaveBeenCalledWith('/repo'))
   })
 
@@ -316,6 +321,106 @@ describe('BranchContext — entering a workspace', () => {
   })
 })
 
+describe('BranchContext — a tab opened on a linked worktree', () => {
+  // The tab itself IS `/wt/other` (opened via the sidebar's "Open in new tab"), so the base
+  // project — where every branch without a worktree of its own lives — is `/repo`.
+  beforeEach(() => {
+    useRepoUIStore.setState({ activeRepo: '/wt/other', activeWorkspacePath: null, openTabs: [] })
+    useRepoDataStore.setState({
+      repoCache: {
+        '/wt/other': repo({ path: '/wt/other', head: 'feature-y', mainWorktreePath: '/repo' }),
+      },
+    })
+    useStashDialogStore.getState().closeDialog()
+    useBranchesMock.mockReturnValue({
+      data: [branch('feature-y', { isHead: true }), branch('main'), branch('feature-x')],
+    })
+    mockedListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo', branch: 'main', isMain: true }),
+      worktree({ path: '/wt/other', branch: 'feature-y', isMain: false }),
+      worktree({ path: '/wt/third', branch: 'feature-z', isMain: false }),
+    ])
+    mockedRepoSummary.mockResolvedValue({ head: 'main', isDetached: false })
+  })
+
+  it('checks the branch out in the base project, not in the worktree the tab is showing', async () => {
+    mockedCheckout.mockResolvedValue(undefined)
+    mockedOpenRepo.mockResolvedValue(repo())
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+    await user.click(await screen.findByTestId('branch-option-feature-x'))
+
+    await waitFor(() =>
+      expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', {
+        fromRef: 'main',
+        fromDetached: false,
+      })
+    )
+    // The undo entry's starting point is the BASE project's HEAD, never the worktree's.
+    expect(mockedRepoSummary).toHaveBeenCalledWith('/repo')
+  })
+
+  it('brings the view back to the base project once the switch lands', async () => {
+    mockedCheckout.mockResolvedValue(undefined)
+    mockedOpenRepo.mockResolvedValue(repo())
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+    await user.click(await screen.findByTestId('branch-option-feature-x'))
+
+    await waitFor(() => expect(useRepoUIStore.getState().openTabs).toContain('/repo'))
+    expect(useRepoUIStore.getState().activeRepo).toBe('/repo')
+  })
+
+  it('leaves the tab alone when the checkout is refused', async () => {
+    mockedCheckout.mockRejectedValue(new Error('Branch not found: feature-x'))
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+    await user.click(await screen.findByTestId('branch-option-feature-x'))
+
+    await waitFor(() => expect(mockedCheckout).toHaveBeenCalled())
+    expect(useRepoUIStore.getState().activeRepo).toBe('/wt/other')
+    expect(useRepoUIStore.getState().openTabs).not.toContain('/repo')
+  })
+
+  it('still switches when the base project cannot be read, just without an undo starting point', async () => {
+    mockedRepoSummary.mockRejectedValue(new Error('repository not found'))
+    mockedCheckout.mockResolvedValue(undefined)
+    mockedOpenRepo.mockResolvedValue(repo())
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+    await user.click(await screen.findByTestId('branch-option-feature-x'))
+
+    await waitFor(() =>
+      expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', undefined)
+    )
+  })
+
+  it('offers the other worktrees as workspaces but not the one the tab is already on', async () => {
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+
+    expect(await screen.findByTestId('workspace-option-/wt/third')).toBeInTheDocument()
+    expect(screen.queryByTestId('workspace-option-/wt/other')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('workspace-option-/repo')).not.toBeInTheDocument()
+  })
+
+  it("lists the base project's branch as a branch — it is what a checkout can still reach", async () => {
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+
+    const mainOption = await screen.findByTestId('branch-option-main')
+    expect(mainOption.querySelector('.lucide-git-branch')).toBeTruthy()
+    // …while the branch held by another worktree stays a workspace, never a checkout target.
+    expect(screen.queryByTestId('branch-option-feature-z')).not.toBeInTheDocument()
+  })
+})
+
 describe('BranchContext — exiting a workspace', () => {
   beforeEach(() => {
     useRepoUIStore.setState({ activeRepo: '/repo', activeWorkspacePath: '/wt/other' })
@@ -343,7 +448,9 @@ describe('BranchContext — exiting a workspace', () => {
     await user.click(await screen.findByTestId('branch-context-trigger'))
     await user.click(await screen.findByTestId('branch-option-main'))
 
-    expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'main', expect.anything())
+    await waitFor(() =>
+      expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'main', expect.anything())
+    )
     await waitFor(() => expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull())
   })
 })

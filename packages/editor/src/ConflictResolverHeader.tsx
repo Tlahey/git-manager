@@ -87,8 +87,12 @@ export interface ConflictResolverHeaderProps {
   onApplyAuto?: () => void
   onReset: () => void
   onRecalculate?: () => void
-  changesCount: number
-  conflictsCount: number
+  /** `null` while the resolver has no geometry to count — the stats are then omitted rather than
+   * reported as zero. "0 changes" is a statement about the file, and printing it before anything is
+   * known makes the toolbar say something false and then correct itself, which is the same flicker
+   * the panes were fixed for, one row up. */
+  changesCount: number | null
+  conflictsCount: number | null
   /** Status nodes rendered above each pane (left / center / right), host-provided — e.g. the
    * desktop app shows "Rebasing <sha> from theirs" here. */
   statuses: [ReactNode, ReactNode, ReactNode]
@@ -146,7 +150,8 @@ export function ConflictResolverHeader({
   const showRecalculate = actions.recalculate !== false && onRecalculate !== undefined
   const showWhitespace = actions.whitespace !== false
   const showHighlight = actions.highlight !== false
-  const showStats = actions.stats !== false
+  // Nothing to say yet is not the same as nothing to report — see the `changesCount` prop.
+  const showStats = actions.stats !== false && changesCount !== null && conflictsCount !== null
 
   return (
     <div className="flex w-full flex-col border-b border-border bg-card font-sans text-foreground select-none">

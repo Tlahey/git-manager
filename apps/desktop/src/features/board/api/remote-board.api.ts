@@ -31,8 +31,12 @@ import { createCardOps } from './remoteCardOps'
  * methods (the config file's CRUD), `remoteCardOps.ts` the card-level ones (everything that reaches
  * an issue). Label arithmetic and the read mapping stay in `remoteCardMapping.ts`, pure and tested.
  */
-export function createRemoteBoardBackend(owner: string, repo: string, token: string): BoardBackend {
-  const ctx = createRemoteBoardContext(owner, repo, token)
+export function createRemoteBoardBackend(
+  owner: string,
+  repo: string,
+  accountId: string
+): BoardBackend {
+  const ctx = createRemoteBoardContext(owner, repo, accountId)
   const boardOps = createBoardOps(ctx)
   // Only `getBoard` crosses: `setCardsArchived` needs the board *with its cards*, which is a
   // board-level read. Passing the one method keeps the two files acyclic.
@@ -84,10 +88,10 @@ export function createRemoteBoardBackend(owner: string, repo: string, token: str
 export async function fetchRemoteCardComments(
   owner: string,
   repo: string,
-  token: string,
+  accountId: string,
   cardId: string
 ): Promise<BoardComment[]> {
-  const comments = await fetchIssueComments(owner, repo, Number(cardId), token)
+  const comments = await fetchIssueComments(owner, repo, Number(cardId), accountId)
   return comments.map((c) => ({
     id: String(c.id),
     author: c.user?.login ?? 'unknown',
@@ -105,12 +109,12 @@ export async function fetchRemoteCardComments(
 export async function addExistingIssueToColumn(
   owner: string,
   repo: string,
-  token: string,
+  accountId: string,
   boardId: string,
   issueNumber: number,
   columnId: string
 ): Promise<void> {
-  await addLabels(owner, repo, issueNumber, [boardColumnLabel(boardId, columnId)], token)
+  await addLabels(owner, repo, issueNumber, [boardColumnLabel(boardId, columnId)], accountId)
 }
 
 export { BLOCKED_LABEL, BLOCKED_LABEL_COLOR, PRIORITY_LABELS }

@@ -22,7 +22,7 @@ interface GitHubData {
   loading: boolean
   isValidating: boolean
   error: string | null
-  hasToken: boolean
+  hasAccount: boolean
   username: string | null
   lastRefreshed: Date | null
   refresh: () => void
@@ -44,17 +44,17 @@ export function useGitHubData(): GitHubData {
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
-  const token = activeAccount?.token ?? null
+  const accountId = activeAccount?.id ?? null
   const username = activeAccount?.user?.login ?? null
 
-  const hasToken = !!token && !!username
+  const hasAccount = !!accountId && !!username
 
   // Local state to track the last refreshed time
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(
-    hasToken ? null : fallbackRefreshed
+    hasAccount ? null : fallbackRefreshed
   )
 
-  const swrKey = hasToken ? ['github-data', token, username] : null
+  const swrKey = hasAccount ? ['github-data', accountId, username] : null
 
   const { data, error, mutate, isValidating } = useSWR(
     swrKey,
@@ -157,7 +157,7 @@ export function useGitHubData(): GitHubData {
     mutate()
   }, [mutate])
 
-  if (!hasToken) {
+  if (!hasAccount) {
     // No account connected. The fixtures used to be handed over here unconditionally, which meant
     // a user who simply had not connected GitHub yet was shown ten invented pull requests —
     // invented authors, invented titles — rendered exactly like real ones. Showing fiction as fact
@@ -172,7 +172,7 @@ export function useGitHubData(): GitHubData {
       loading: false,
       isValidating: false,
       error: null,
-      hasToken: false,
+      hasAccount: false,
       username: null,
       lastRefreshed: mockGitHub ? fallbackRefreshed : null,
       refresh,
@@ -186,7 +186,7 @@ export function useGitHubData(): GitHubData {
     loading: !data && !error,
     isValidating,
     error: error ? String(error) : null,
-    hasToken: true,
+    hasAccount: true,
     username,
     lastRefreshed: lastRefreshed,
     refresh,

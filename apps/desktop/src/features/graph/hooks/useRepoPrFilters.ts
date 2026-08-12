@@ -8,7 +8,7 @@ import type { PrFilter } from '../stores/prFilters.store'
 
 export interface UseRepoPrFiltersOptions {
   remoteUrls: string[]
-  githubToken?: string
+  githubAccountId?: string
   /** The saved filters to resolve, in display order — one sub-group each. */
   filters: PrFilter[]
   /**
@@ -34,7 +34,7 @@ export interface UseRepoPrFiltersResult {
   /** Every PR matched by any filter, de-duplicated (the filters overlap by design). */
   allMatched: PullRequest[]
   isGithub: boolean
-  /** Whether a GitHub account (or an explicit `githubToken`) backs the queries — see below. */
+  /** Whether a GitHub account (or an explicit `githubAccountId`) backs the queries — see below. */
   isConnected: boolean
   isLoading: boolean
   error: Error | null
@@ -59,14 +59,14 @@ export interface UseRepoPrFiltersResult {
  */
 export function useRepoPrFilters({
   remoteUrls,
-  githubToken,
+  githubAccountId,
   filters,
   knownPrs,
   enabled = true,
 }: UseRepoPrFiltersOptions): UseRepoPrFiltersResult {
   const account = useGithubAccount()
-  const resolvedToken = githubToken || account.token || undefined
-  const isConnected = !!resolvedToken
+  const resolvedAccountId = githubAccountId || account.accountId || undefined
+  const isConnected = !!resolvedAccountId
 
   const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
   const isGithub = ownerRepo !== null
@@ -77,7 +77,13 @@ export function useRepoPrFilters({
 
   const swrKey =
     enabled && isGithub && isConnected && ownerRepo && filters.length > 0
-      ? (['repo-pr-filters', ownerRepo.owner, ownerRepo.repo, resolvedToken, queriesKey] as const)
+      ? ([
+          'repo-pr-filters',
+          ownerRepo.owner,
+          ownerRepo.repo,
+          resolvedAccountId,
+          queriesKey,
+        ] as const)
       : null
 
   const { data, error, mutate } = useSWR<PrFilterGroup[], Error>(
@@ -87,7 +93,7 @@ export function useRepoPrFilters({
       return Promise.all(
         filters.map(async (filter) => {
           try {
-            const prs = await fetchPullRequestsByQuery(owner, repo, filter.query, resolvedToken)
+            const prs = await fetchPullRequestsByQuery(owner, repo, filter.query, resolvedAccountId)
             return { filter, prs, error: null }
           } catch (err) {
             return { filter, prs: [], error: String(err) }

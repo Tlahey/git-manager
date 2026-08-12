@@ -28,7 +28,7 @@ export interface CreatePrArgs {
  */
 export function usePrCreateFlow(repoPath: string) {
   const queryClient = useQueryClient()
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const repo = useRepoDataStore((s) => s.repoCache[repoPath])
   const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
   const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
@@ -38,8 +38,8 @@ export function usePrCreateFlow(repoPath: string) {
 
   // The GitHub default branch pre-fills the base selector; fetched lazily and cached.
   const { data: defaultBase } = useSWR(
-    ownerRepo && token ? ['repo-default-branch', ownerRepo.owner, ownerRepo.repo] : null,
-    () => fetchRepoDefaultBranch(ownerRepo!.owner, ownerRepo!.repo, token!),
+    ownerRepo && accountId ? ['repo-default-branch', ownerRepo.owner, ownerRepo.repo] : null,
+    () => fetchRepoDefaultBranch(ownerRepo!.owner, ownerRepo!.repo, accountId!),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
 
@@ -48,7 +48,7 @@ export function usePrCreateFlow(repoPath: string) {
 
   const createPr = useCallback(
     async ({ head, base, title, body, draft }: CreatePrArgs): Promise<GhRawPR | undefined> => {
-      if (!ownerRepo || !token || !head || !base || !title.trim()) return
+      if (!ownerRepo || !accountId || !head || !base || !title.trim()) return
       setError(null)
       setBusy(true)
       try {
@@ -66,11 +66,11 @@ export function usePrCreateFlow(repoPath: string) {
           ownerRepo.owner,
           ownerRepo.repo,
           { title: title.trim(), head, base, body, draft },
-          token
+          accountId
         )
 
         // Refresh the sidebar PR list so the new PR shows up immediately.
-        mutate(['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, token])
+        mutate(['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, accountId])
 
         setPrCreateOpen(false)
         setActivePrNumber(pr.number)
@@ -84,7 +84,7 @@ export function usePrCreateFlow(repoPath: string) {
     },
     [
       ownerRepo,
-      token,
+      accountId,
       currentBranch,
       isDetached,
       repoPath,
@@ -101,7 +101,7 @@ export function usePrCreateFlow(repoPath: string) {
 
   return {
     ownerRepo,
-    token,
+    accountId,
     currentBranch,
     defaultBase: defaultBase ?? null,
     busy,

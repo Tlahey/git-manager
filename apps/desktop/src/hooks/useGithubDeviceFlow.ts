@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { apiGithubDeviceCode, apiGithubGetUser, apiGithubPollToken } from '../api/github.api'
+import { apiGithubConnectToken, apiGithubDeviceCode, apiGithubPollToken } from '../api/github.api'
 import type { DeviceCodeResponse } from '../lib/tauri'
 import type { GitHubUser } from '@git-manager/git-types'
 
 interface UseGithubDeviceFlowOptions {
-  onLoginSuccess: (token: string, user: GitHubUser) => void
+  /**
+   * Called once the account is connected — with the *user*, and no token.
+   *
+   * By the time this fires the credential is already in the OS keychain: both paths below end in
+   * Rust, which validates the token, stores it and answers with the profile. The caller's job is to
+   * record who is connected, which is public information; it has no way to obtain the secret, and
+   * that is deliberate (see `lib/tauri/credentials.ts`).
+   */
+  onLoginSuccess: (user: GitHubUser) => void
 }
 
 /** Extra delay GitHub asks for when we polled too fast, per RFC 8628 §3.5. */
@@ -47,18 +55,13 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
 
   useEffect(() => stopPolling, [])
 
+  /** The personal-access-token path: send it to Rust, which stores it and names its owner. */
   async function completeLoginWithToken(tokenVal: string): Promise<boolean> {
     setConnecting(true)
     setError(null)
     try {
-      const userData = await apiGithubGetUser(tokenVal)
-      const connectedUser: GitHubUser = {
-        login: userData.login,
-        name: userData.name || userData.login,
-        email: userData.email,
-        avatarUrl: userData.avatarUrl,
-      }
-      onLoginSuccess(tokenVal, connectedUser)
+      const userData = await apiGithubConnectToken(tokenVal)
+      announceConnected(userData)
       return true
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : '') || String(err))
@@ -66,6 +69,20 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
     } finally {
       setConnecting(false)
     }
+  }
+
+  function announceConnected(userData: {
+    login: string
+    name: string | null
+    email: string | null
+    avatarUrl: string
+  }) {
+    onLoginSuccess({
+      login: userData.login,
+      name: userData.name || userData.login,
+      email: userData.email,
+      avatarUrl: userData.avatarUrl,
+    })
   }
 
   /** Ends the flow with a message, leaving the card replaced by the error rather than a spinner. */
@@ -117,13 +134,16 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
             failFlow(`OAuth Error: ${pollData.error_description || pollData.error}`)
             return
           }
-          if (pollData.access_token) {
+          // An authorized poll comes back with the *account*: Rust has already exchanged the code,
+          // validated the token and filed it in the keychain. There is no token here to hand on.
+          if (pollData.user) {
             stopPolling()
             setDeviceFlowData(null)
-            await completeLoginWithToken(pollData.access_token)
+            setConnecting(false)
+            announceConnected(pollData.user)
             return
           }
-          // Neither a token nor an error — nothing to act on, so keep waiting rather than
+          // Neither an account nor an error — nothing to act on, so keep waiting rather than
           // treating an unexpected shape as a failure.
           scheduleNextPoll()
         } catch (e: unknown) {

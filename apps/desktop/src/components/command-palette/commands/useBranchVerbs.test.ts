@@ -27,14 +27,15 @@ vi.mock('../../../api/git.api', () => ({
   apiRebaseOntoCommit,
 }))
 
-// The checkout entry points are shared with the sidebar's branch menu (stash prompt included);
-// what this suite checks is that the palette calls them, not what they do.
-const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = vi.hoisted(() => ({
-  checkoutBranchWithStashPrompt: vi.fn(),
-  checkoutRemoteBranchAsLocal: vi.fn(),
+// The switch entry points are shared with the sidebar's branch menu (stash prompt included); what
+// this suite checks is that the palette calls them, and under which name. Neither takes a path —
+// they target the base project, which is `useSwitchBranch`'s own concern and its own test file's.
+const { switchBranch, switchRemoteBranch } = vi.hoisted(() => ({
+  switchBranch: vi.fn(),
+  switchRemoteBranch: vi.fn(),
 }))
-vi.mock('../../../hooks/useBranchCheckout', () => ({
-  useBranchCheckout: () => ({ checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal }),
+vi.mock('../../../hooks/useSwitchBranch', () => ({
+  useSwitchBranch: () => ({ switchBranch, switchRemoteBranch, basePath: '/repo' }),
 }))
 
 import { useBranchVerbs } from './useBranchVerbs'
@@ -111,8 +112,8 @@ beforeEach(() => {
   apiFastForwardBranch.mockResolvedValue(undefined)
   apiDeleteBranch.mockResolvedValue(undefined)
   apiRebaseOntoCommit.mockResolvedValue(undefined)
-  checkoutBranchWithStashPrompt.mockResolvedValue(true)
-  checkoutRemoteBranchAsLocal.mockResolvedValue(true)
+  switchBranch.mockResolvedValue(true)
+  switchRemoteBranch.mockResolvedValue(true)
 })
 
 describe('useBranchVerbs — which verbs exist', () => {
@@ -189,15 +190,15 @@ describe('useBranchVerbs — what each can act on', () => {
 describe('useBranchVerbs — what applying one does', () => {
   it('checks out a local branch through the shared stash-prompting entry point', () => {
     apply(setup({ head: 'main', branches: [branch('feat')] }), 'checkout', 'feat')
-    expect(checkoutBranchWithStashPrompt).toHaveBeenCalledWith(REPO, 'feat')
+    expect(switchBranch).toHaveBeenCalledWith('feat')
   })
 
   // A remote row switches onto the LOCAL branch of that name, creating it when needed — never the
   // detached form. It is named remote-qualified, which `GitBranch` carries in `name`.
   it('checks out a remote branch as its local counterpart', () => {
     apply(setup({ branches: [branch('feat/login', 'origin')] }), 'checkout', 'origin/feat/login')
-    expect(checkoutRemoteBranchAsLocal).toHaveBeenCalledWith(REPO, 'origin/feat/login')
-    expect(checkoutBranchWithStashPrompt).not.toHaveBeenCalled()
+    expect(switchRemoteBranch).toHaveBeenCalledWith('origin/feat/login')
+    expect(switchBranch).not.toHaveBeenCalled()
   })
 
   it('merges the named branch into the current one', () => {

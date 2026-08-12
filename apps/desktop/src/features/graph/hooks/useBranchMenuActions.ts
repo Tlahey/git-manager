@@ -15,6 +15,7 @@ import { remoteBranchTarget, type BranchMenuActions } from '../../../lib/graphCo
 import { resolveExplanationBase } from '../../../lib/branchExplanationBase'
 import { resolveDefaultUpstream } from '../../../lib/branchUpstream'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
@@ -34,8 +35,10 @@ interface UseBranchMenuActionsParams {
   setPendingAction: (action: PendingAction) => void
   /** Shared with the commit row's own "create worktree here" — one flow, one folder picker. */
   createWorktree: (oid: string) => void
+  /** Commit-scoped checkout only — a tag row's tip, which detaches HEAD on `repoPath`. Switching
+   *  onto a *branch* goes through `useSwitchBranch` instead, since that targets the base project
+   *  rather than the viewed worktree. */
   checkoutBranchWithStashPrompt: (repoPath: string, targetRef: string) => Promise<boolean>
-  checkoutRemoteBranchAsLocal: (repoPath: string, shortName: string) => Promise<boolean>
   t: TranslateFn
 }
 
@@ -58,10 +61,10 @@ export function useBranchMenuActions({
   setPendingAction,
   createWorktree,
   checkoutBranchWithStashPrompt,
-  checkoutRemoteBranchAsLocal,
   t,
 }: UseBranchMenuActionsParams): BranchMenuActions {
   const queryClient = useQueryClient()
+  const { switchBranch, switchRemoteBranch } = useSwitchBranch()
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   // The branch comparison dialog is mounted by `RepoView`, not by the graph's overlay manager: it
@@ -172,15 +175,17 @@ export function useBranchMenuActions({
     // A remote ref switches onto its LOCAL branch, creating it (tracking that remote) if it
     // doesn't exist — `git switch x`, not the detached `git checkout origin/x`. See
     // `checkoutRemoteBranchAsLocal`.
+    //
+    // Both branch cases land on the base project (`useSwitchBranch`); only a tag's tip still
+    // detaches on `repoPath`, because a detached HEAD belongs to the worktree being looked at.
     onCheckoutBranch: (ref) => {
       if (ref.type === 'remote') {
-        void checkoutRemoteBranchAsLocal(repoPath, ref.shortName)
-        return
+        void switchRemoteBranch(ref.shortName)
+      } else if (ref.type === 'branch') {
+        void switchBranch(ref.shortName)
+      } else {
+        void checkoutBranchWithStashPrompt(repoPath, ref.commitOid)
       }
-      void checkoutBranchWithStashPrompt(
-        repoPath,
-        ref.type === 'branch' ? ref.shortName : ref.commitOid
-      )
     },
     onOpenWorktreeFrom: (ref) => createWorktree(ref.commitOid),
     // PR-create flow prefilled with head = current branch, base = the remote branch (without

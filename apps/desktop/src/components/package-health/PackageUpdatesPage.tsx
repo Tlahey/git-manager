@@ -4,7 +4,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Alert, Button, Spinner, toast } from '@git-manager/ui'
 import type { OutdatedPackage } from '@git-manager/git-types'
 import { useOutdatedPackages, useUpdatePackages } from '../../hooks/usePackageHealth'
-import { useSettingsStore } from '../../stores/settings.store'
+import { useGithubAccount } from '../../hooks/useGithubAccount'
 import { PackageChangelogPanel } from './PackageChangelogPanel'
 import { PackageUpdateRow } from './PackageUpdateRow'
 
@@ -26,9 +26,8 @@ export function PackageUpdatesPage({
   packageManager: string
 }) {
   const { t } = useTranslation('git')
-  const github = useSettingsStore((s) => s.settings.github)
   // Optional: public repos resolve unauthenticated, just at a lower rate limit.
-  const token = github?.accounts?.find((a) => a.id === github.activeAccountId)?.token ?? undefined
+  const accountId = useGithubAccount().accountId ?? undefined
 
   const {
     data,
@@ -164,7 +163,7 @@ export function PackageUpdatesPage({
         <PackageChangelogPanel
           entry={changelogFor}
           repoPath={repoPath}
-          token={token}
+          accountId={accountId}
           onClose={() => setChangelogFor(null)}
         />
       )}

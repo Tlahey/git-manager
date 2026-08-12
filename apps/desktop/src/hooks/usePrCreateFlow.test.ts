@@ -46,7 +46,10 @@ function setBranch(head: string, isDetached = false) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoGitHubMock.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  useRepoGitHubMock.mockReturnValue({
+    ownerRepo: { owner: 'org', repo: 'repo' },
+    accountId: 'acct',
+  })
   m.createPr.mockResolvedValue({ number: 99, html_url: 'https://github.com/org/repo/pull/99' })
   setBranch('feature-x')
   useRepoUIStore.setState({ activePrNumber: null, prCreateOpen: true, prComposer: null })
@@ -71,9 +74,9 @@ describe('usePrCreateFlow — createPr', () => {
       'org',
       'repo',
       { title: 'T', head: 'feature-x', base: 'main', body: 'B', draft: true },
-      'tok'
+      'acct'
     )
-    expect(mutateMock).toHaveBeenCalledWith(['repo-pull-requests', 'org', 'repo', 'tok'])
+    expect(mutateMock).toHaveBeenCalledWith(['repo-pull-requests', 'org', 'repo', 'acct'])
     expect(useRepoUIStore.getState().activePrNumber).toBe(99)
     expect(useRepoUIStore.getState().prCreateOpen).toBe(false)
   })
@@ -119,7 +122,10 @@ describe('usePrCreateFlow — createPr', () => {
   })
 
   it('does nothing when signed out', async () => {
-    useRepoGitHubMock.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: null })
+    useRepoGitHubMock.mockReturnValue({
+      ownerRepo: { owner: 'org', repo: 'repo' },
+      accountId: null,
+    })
     const { result } = renderHook(() => usePrCreateFlow(REPO))
     await act(async () => {
       await result.current.createPr({

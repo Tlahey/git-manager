@@ -56,12 +56,11 @@ function withToken() {
       github: {
         accounts: [
           {
-            id: 'acc1',
-            token: 'tok',
+            id: 'acct',
             user: { login: 'me', name: null, email: null, avatarUrl: '' },
           },
         ],
-        activeAccountId: 'acc1',
+        activeAccountId: 'acct',
       },
     },
   })
@@ -119,7 +118,7 @@ describe('useIssueActions — createBranch', () => {
 })
 
 describe('useIssueActions — close', () => {
-  it('is disabled without a token', () => {
+  it('is disabled without a connected account', () => {
     const { result } = renderHook(() => useIssueActions(issue()))
     expect(result.current.canClose).toBe(false)
   })
@@ -130,7 +129,7 @@ describe('useIssueActions — close', () => {
     const { result } = renderHook(() => useIssueActions(issue(), onChanged))
     expect(result.current.canClose).toBe(true)
     await act(async () => result.current.close())
-    expect(mocked.setIssueState).toHaveBeenCalledWith('owner', 'git-manager', 42, 'closed', 'tok')
+    expect(mocked.setIssueState).toHaveBeenCalledWith('owner', 'git-manager', 42, 'closed', 'acct')
     expect(onChanged).toHaveBeenCalled()
     expect(mocked.toastSuccess).toHaveBeenCalled()
   })

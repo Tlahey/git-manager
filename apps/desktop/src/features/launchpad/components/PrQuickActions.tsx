@@ -47,7 +47,7 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
   const refreshPrData = () => mutate((key) => Array.isArray(key) && key[0] === 'github-data')
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) ?? null
-  const token = activeAccount?.token ?? null
+  const accountId = activeAccount?.id ?? null
   const currentUser = activeAccount?.user?.login ?? null
 
   const [confirm, setConfirm] = useState<'merge' | 'close' | null>(null)
@@ -55,17 +55,17 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
   const [busy, setBusy] = useState(false)
 
   const isOpenState = pr.status !== 'merged' && pr.status !== 'closed'
-  const canMerge = !!token && canMergePr(pr, currentUser)
-  const canClose = !!token && isOpenState && !!currentUser && pr.author === currentUser
+  const canMerge = !!accountId && canMergePr(pr, currentUser)
+  const canClose = !!accountId && isOpenState && !!currentUser && pr.author === currentUser
 
   const openPanel = () => (openPr ? openPr(pr) : openUrl(pr.url))
 
   async function runMerge() {
     const or = ownerRepoOf(pr)
-    if (!or || !token) return
+    if (!or || !accountId) return
     setBusy(true)
     try {
-      await mergePullRequest(or.owner, or.repo, pr.number, { mergeMethod }, token)
+      await mergePullRequest(or.owner, or.repo, pr.number, { mergeMethod }, accountId)
       toast.success(t('merge.success'))
       refreshPrData()
     } catch (e) {
@@ -78,10 +78,10 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
 
   async function runClose() {
     const or = ownerRepoOf(pr)
-    if (!or || !token) return
+    if (!or || !accountId) return
     setBusy(true)
     try {
-      await updatePullRequest(or.owner, or.repo, pr.number, { state: 'closed' }, token)
+      await updatePullRequest(or.owner, or.repo, pr.number, { state: 'closed' }, accountId)
       toast.success(t('close.success'))
       refreshPrData()
     } catch (e) {

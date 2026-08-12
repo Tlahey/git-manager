@@ -92,7 +92,7 @@ vi.mock('../../features/graph', async () => ({
     selectedBranch: string | null
     onSelectBranch: (name: string | null) => void
     currentUser?: string
-    githubToken?: string
+    githubAccountId?: string
     onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
     onOpenPr?: (pr: { headRef: string; number: number }) => void
   }) => (
@@ -100,7 +100,7 @@ vi.mock('../../features/graph', async () => ({
       <span data-testid="sidebar-remotes">{(props.remoteUrls ?? []).join(',')}</span>
       <span data-testid="sidebar-selected">{props.selectedBranch ?? ''}</span>
       <span data-testid="sidebar-user">{props.currentUser ?? ''}</span>
-      <span data-testid="sidebar-token">{props.githubToken ?? ''}</span>
+      <span data-testid="sidebar-account-id">{props.githubAccountId ?? ''}</span>
       <button onClick={() => props.onSelectBranch('feature-x')}>select-feature-x</button>
       <button onClick={() => props.onSelectBranch(null)}>select-none</button>
       <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>
@@ -266,7 +266,7 @@ describe('RepoView — prop wiring', () => {
     expect(screen.getByTestId('sidebar-remotes')).toHaveTextContent('')
   })
 
-  it('passes the active GitHub account user/token to the sidebar', () => {
+  it('passes the active GitHub account user/id to the sidebar', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useSettingsStore.setState({
       settings: {
@@ -275,7 +275,6 @@ describe('RepoView — prop wiring', () => {
           accounts: [
             {
               id: 'acc-1',
-              token: 'tok-123',
               user: { login: 'octocat', name: null, email: null, avatarUrl: '' },
             },
           ],
@@ -285,14 +284,14 @@ describe('RepoView — prop wiring', () => {
     })
     render(<RepoView />)
     expect(screen.getByTestId('sidebar-user')).toHaveTextContent('octocat')
-    expect(screen.getByTestId('sidebar-token')).toHaveTextContent('tok-123')
+    expect(screen.getByTestId('sidebar-account-id')).toHaveTextContent('acc-1')
   })
 
-  it('leaves user/token empty when there is no active GitHub account', () => {
+  it('leaves user/id empty when there is no active GitHub account', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
     expect(screen.getByTestId('sidebar-user')).toHaveTextContent('')
-    expect(screen.getByTestId('sidebar-token')).toHaveTextContent('')
+    expect(screen.getByTestId('sidebar-account-id')).toHaveTextContent('')
   })
 })
 

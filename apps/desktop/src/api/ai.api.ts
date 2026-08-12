@@ -85,10 +85,9 @@ export async function apiGetAiCommitScan(path: string, maxCommits?: number): Pro
  * `services/ai_model_info.rs` for what this can and cannot prove. */
 export async function apiGetModelContextLimits(
   url: string,
-  model: string,
-  apiKey?: string
+  model: string
 ): Promise<ModelContextLimits> {
-  return getModelContextLimits(url, model, apiKey)
+  return getModelContextLimits(url, model)
 }
 
 /** Cancels one call — streaming or completion — by the id it was started with; see

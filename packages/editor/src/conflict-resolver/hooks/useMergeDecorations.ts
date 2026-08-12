@@ -7,7 +7,12 @@ import {
   computeTwoWayIntraLineHighlights,
 } from '../../mergeIntraLineDiff'
 import { computeTwoWayVisuals } from '../twoWayView'
-import { applyViewZones, toInlineMonacoDecoration, toMonacoDecoration } from '../monacoInterop'
+import {
+  applyViewZones,
+  renderPane,
+  toInlineMonacoDecoration,
+  toMonacoDecoration,
+} from '../monacoInterop'
 import { blocksInCenterRange, type CenterLineRange } from '../visibleBlocks'
 import type { MergeEditorRefs } from './useMergeEditorRefs'
 
@@ -192,6 +197,15 @@ export function useMergeDecorations({
     // must land in the same commit as the block fills it belongs to, or the two disagree for a
     // frame.
     applyIntraHighlights()
+
+    /* Then flush, for the same reason the collapse pass does — with one extra consequence here. The
+     * alignment/filler zones applied just above are measured back *out of the DOM* by the connector
+     * builder (`getZoneRect` queries `[data-zone-id]`), and it runs on the next animation frame. Left
+     * to Monaco's own render schedule, those elements might not exist yet, so a deletion's ribbon
+     * measured zero-height and only got its shape from a later re-run on a timer. */
+    renderPane(theirsEditor)
+    renderPane(centerEditor)
+    if (!isTwoWay) renderPane(oursEditor)
 
     onPendingCountChange?.(pendingConflicts)
     scheduleRecompute()

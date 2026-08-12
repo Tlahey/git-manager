@@ -54,7 +54,9 @@ export function useErrorReport(draft: ErrorReportDraft, description: string): Us
 
   const account =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
-  const token = account?.token ?? null
+  // The account **id**, not a token: since secrets moved to the keychain the webview has no
+  // credential to hand out, and Rust attaches it. An id is a GitHub login — public by nature.
+  const accountId = account?.id ?? null
 
   const [submitting, setSubmitting] = useState(false)
   const [submission, setSubmission] = useState<ErrorReportSubmission | null>(null)
@@ -83,12 +85,12 @@ export function useErrorReport(draft: ErrorReportDraft, description: string): Us
   )
 
   // Keyed on the fingerprint, not the draft: two failures that will land on the same issue must
-  // share one lookup. Skipped entirely without a token — the search API would rate-limit an
-  // anonymous caller within a handful of crashes, and an unconnected user cannot file anything
-  // anyway.
+  // share one lookup. Skipped entirely with no account connected — the search API would
+  // rate-limit an anonymous caller within a handful of crashes, and someone who cannot file a
+  // report has no use for the answer.
   const { data: existing = null, isLoading: checkingDuplicate } = useSWR(
-    token ? ['error-report-duplicate', report.fingerprint, token] : null,
-    ([, fingerprint, tok]) => apiFindReportedIssue(fingerprint, tok),
+    accountId ? ['error-report-duplicate', report.fingerprint, accountId] : null,
+    ([, fingerprint, id]) => apiFindReportedIssue(fingerprint, id),
     {
       revalidateOnFocus: false,
       // A failed duplicate lookup must not block the report — worst case the maintainer gets a
@@ -99,16 +101,16 @@ export function useErrorReport(draft: ErrorReportDraft, description: string): Us
   )
 
   async function submit(mode: 'create' | 'comment') {
-    if (!token) return
+    if (!accountId) return
     setSubmitting(true)
     setSubmitError(null)
     try {
       if (mode === 'comment' && existing) {
-        await apiCommentOnReportedIssue(existing.number, report, token)
+        await apiCommentOnReportedIssue(existing.number, report, accountId)
         setSubmission({ kind: 'commented', url: existing.url })
         markReported(report.fingerprint, existing.url)
       } else {
-        const created = await apiCreateErrorIssue(report, token)
+        const created = await apiCreateErrorIssue(report, accountId)
         setSubmission({ kind: 'created', url: created.url })
         markReported(report.fingerprint, created.url)
       }

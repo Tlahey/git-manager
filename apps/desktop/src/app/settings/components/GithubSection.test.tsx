@@ -3,20 +3,23 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitHubAccount } from '@git-manager/git-types'
 
-const { useGitHubRepos, useGithubDeviceFlow, lastDeviceFlowOptions } = vi.hoisted(() => ({
-  useGitHubRepos: vi.fn(),
-  useGithubDeviceFlow: vi.fn(),
-  lastDeviceFlowOptions: {
-    current: null as null | { onLoginSuccess: (token: string, user: unknown) => void },
-  },
-}))
+const { useGitHubRepos, useGithubDeviceFlow, lastDeviceFlowOptions, apiGithubDisconnectAccount } =
+  vi.hoisted(() => ({
+    useGitHubRepos: vi.fn(),
+    useGithubDeviceFlow: vi.fn(),
+    lastDeviceFlowOptions: {
+      current: null as null | { onLoginSuccess: (user: unknown) => void },
+    },
+    apiGithubDisconnectAccount: vi.fn().mockResolvedValue(undefined),
+  }))
 vi.mock('../../../hooks/useGitHubRepos', () => ({ useGitHubRepos }))
 vi.mock('../../../hooks/useGithubDeviceFlow', () => ({
-  useGithubDeviceFlow: (opts: { onLoginSuccess: (token: string, user: unknown) => void }) => {
+  useGithubDeviceFlow: (opts: { onLoginSuccess: (user: unknown) => void }) => {
     lastDeviceFlowOptions.current = opts
     return useGithubDeviceFlow()
   },
 }))
+vi.mock('../../../api/github.api', () => ({ apiGithubDisconnectAccount }))
 
 import { GithubSection } from './GithubSection'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -38,7 +41,6 @@ function deviceFlowState(overrides: Partial<ReturnType<typeof useGithubDeviceFlo
 function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
   return {
     id: 'octocat',
-    token: 'tok',
     user: { login: 'octocat', name: 'The Octocat', email: null, avatarUrl: 'https://x/avatar.png' },
     ...overrides,
   }
@@ -235,7 +237,7 @@ describe('GithubSection — onLoginSuccess wiring', () => {
   it('adds the new account and makes it active', () => {
     render(<GithubSection />)
     act(() =>
-      lastDeviceFlowOptions.current!.onLoginSuccess('new-token', {
+      lastDeviceFlowOptions.current!.onLoginSuccess({
         login: 'octocat',
         name: 'The Octocat',
         email: null,
@@ -243,10 +245,11 @@ describe('GithubSection — onLoginSuccess wiring', () => {
       })
     )
     const github = useSettingsStore.getState().settings.github!
+    // The account's public half and nothing else: its token is already in the keychain, put there by
+    // Rust before `onLoginSuccess` ever fired.
     expect(github.accounts).toEqual([
       {
         id: 'octocat',
-        token: 'new-token',
         user: { login: 'octocat', name: 'The Octocat', email: null, avatarUrl: 'a' },
       },
     ])
@@ -257,13 +260,17 @@ describe('GithubSection — onLoginSuccess wiring', () => {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,
-        github: { accounts: [account({ token: 'old-token' })], activeAccountId: 'octocat' },
+        github: {
+          accounts: [account({ user: { ...account().user, name: 'Stale name' } })],
+          activeAccountId: 'octocat',
+        },
       },
     })
     render(<GithubSection />)
-    act(() => lastDeviceFlowOptions.current!.onLoginSuccess('new-token', account().user))
-    expect(useSettingsStore.getState().settings.github!.accounts).toHaveLength(1)
-    expect(useSettingsStore.getState().settings.github!.accounts[0].token).toBe('new-token')
+    act(() => lastDeviceFlowOptions.current!.onLoginSuccess(account().user))
+    const accounts = useSettingsStore.getState().settings.github!.accounts
+    expect(accounts).toHaveLength(1)
+    expect(accounts[0].user.name).toBe('The Octocat')
   })
 })
 
@@ -334,6 +341,24 @@ describe('GithubSection — accounts list', () => {
     const github = useSettingsStore.getState().settings.github!
     expect(github.accounts.map((a) => a.id)).toEqual(['b'])
     expect(github.activeAccountId).toBe('b')
+  })
+
+  /**
+   * The half of "remove" the frontend cannot do itself. Dropping the account from the settings while
+   * its token stayed in the keychain would leave an entry the user can still see in Keychain Access
+   * and no longer revoke from here.
+   */
+  it('also forgets the account\u2019s stored token', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        github: { accounts: [account({ id: 'a' })], activeAccountId: 'a' },
+      },
+    })
+    const user = userEvent.setup()
+    render(<GithubSection />)
+    await user.click(screen.getByText('Remove'))
+    expect(apiGithubDisconnectAccount).toHaveBeenCalledWith('a')
   })
 })
 

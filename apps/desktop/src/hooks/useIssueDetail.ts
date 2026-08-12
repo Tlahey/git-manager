@@ -17,14 +17,19 @@ export function useIssueDetail(
   error: unknown
   refresh: () => void
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
-    issueNumber != null && ownerRepo && token
-      ? ['issue-detail', ownerRepo.owner, ownerRepo.repo, issueNumber, token]
+    issueNumber != null && ownerRepo && accountId
+      ? ['issue-detail', ownerRepo.owner, ownerRepo.repo, issueNumber, accountId]
       : null,
     () =>
-      fetchIssueDetail(ownerRepo!.owner, ownerRepo!.repo, issueNumber as number, token as string),
+      fetchIssueDetail(
+        ownerRepo!.owner,
+        ownerRepo!.repo,
+        issueNumber as number,
+        accountId as string
+      ),
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 

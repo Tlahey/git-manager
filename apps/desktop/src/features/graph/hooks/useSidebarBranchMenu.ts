@@ -34,6 +34,7 @@ import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { useBranches } from '../../../hooks/useBranches'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
 
@@ -74,7 +75,10 @@ export function useSidebarBranchMenu(repoPath: string) {
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
-  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  // Branch switching is base-project-scoped and comes from its own hook; the one above stays for
+  // the *commit*-scoped checkout below (a tag's tip), which really does target the viewed path.
+  const { switchBranch, switchRemoteBranch } = useSwitchBranch()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   // Shared state rather than `useState`, like the two below it: the command palette offers Rename
   // for any branch too, and it cannot reach this hook's local state. See `pendingBranchRename`.
@@ -217,15 +221,18 @@ export function useSidebarBranchMenu(repoPath: string) {
         ),
       // A remote row switches onto its LOCAL branch, creating it if needed — see
       // `checkoutRemoteBranchAsLocal`. Anything else (a tag row's tip) still detaches on its commit.
+      //
+      // The two branch cases go to the base project (`useSwitchBranch`); the tag case stays on
+      // `repoPath` because detaching on a commit is per-worktree — it is the one checkout that
+      // genuinely belongs to whichever tree you are looking at.
       onCheckoutBranch: (r) => {
         if (r.type === 'remote') {
-          void checkoutRemoteBranchAsLocal(repoPath, r.shortName)
-          return
+          void switchRemoteBranch(r.shortName)
+        } else if (r.type === 'branch') {
+          void switchBranch(r.shortName)
+        } else {
+          void checkoutBranchWithStashPrompt(repoPath, r.commitOid)
         }
-        void checkoutBranchWithStashPrompt(
-          repoPath,
-          r.type === 'branch' ? r.shortName : r.commitOid
-        )
       },
       onOpenWorktreeFrom: (r) => void createWorktreeFrom(r.commitOid),
       onStartPr: (r) => {

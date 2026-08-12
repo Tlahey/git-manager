@@ -71,7 +71,7 @@ beforeEach(() => {
   apiCreateCommitsPatch.mockResolvedValue(undefined)
   pickSaveDestination.mockResolvedValue('/tmp/e2e.patch')
   resolveTagOrReleaseUrl.mockResolvedValue('https://github.com/o/r/releases/tag/v1.0')
-  useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+  useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
   useCommitTag.mockReturnValue(null)
   useCommitPullRequest.mockReturnValue(null)
 })
@@ -196,12 +196,12 @@ describe('useCommitCommands', () => {
   it('adds an open-tag command that resolves the release/tag URL and opens it', async () => {
     useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
     useCommitTag.mockReturnValue('v1.0')
-    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'o', repo: 'r' }, token: 'tok' })
+    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'o', repo: 'r' }, accountId: 'acct' })
     const cmd = commands().find((c) => c.id === 'commit-open-tag')!
     expect(cmd).toBeTruthy()
     expect(cmd.subtitle).toBe('v1.0')
     cmd.run()
-    expect(resolveTagOrReleaseUrl).toHaveBeenCalledWith('o', 'r', 'v1.0', 'tok')
+    expect(resolveTagOrReleaseUrl).toHaveBeenCalledWith('o', 'r', 'v1.0', 'acct')
     await vi.waitFor(() => {
       expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/releases/tag/v1.0')
     })
@@ -210,7 +210,7 @@ describe('useCommitCommands', () => {
   it('omits the open-tag command when the tag is known but the repo is not on GitHub', () => {
     useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
     useCommitTag.mockReturnValue('v1.0')
-    useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+    useRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
     expect(commands().find((c) => c.id === 'commit-open-tag')).toBeUndefined()
   })
 

@@ -56,31 +56,31 @@ beforeEach(() => {
 describe('apiFindReportedIssue', () => {
   it('searches the app’s own tracker, never the repository the user has open', async () => {
     vi.mocked(fetchIssuesByQuery).mockResolvedValue([])
-    await apiFindReportedIssue('a1b2c3d4', 'tok')
+    await apiFindReportedIssue('a1b2c3d4', 'octocat')
 
     expect(fetchIssuesByQuery).toHaveBeenCalledWith(
       PROJECT_REPO.owner,
       PROJECT_REPO.repo,
       '"gm-fp:a1b2c3d4" in:body',
-      'tok'
+      'octocat'
     )
   })
 
   it('returns the issue whose body really carries the marker', async () => {
     vi.mocked(fetchIssuesByQuery).mockResolvedValue([issue()])
-    await expect(apiFindReportedIssue('a1b2c3d4', 'tok')).resolves.toMatchObject({ number: 7 })
+    await expect(apiFindReportedIssue('a1b2c3d4', 'octocat')).resolves.toMatchObject({ number: 7 })
   })
 
   it('rejects a search hit that does not actually contain the marker', async () => {
     // GitHub's search is not an exact phrase match inside an HTML comment, so a near-miss can come
     // back — telling a user their bug is already filed when it isn't is worse than a duplicate.
     vi.mocked(fetchIssuesByQuery).mockResolvedValue([issue({ body: 'unrelated issue' })])
-    await expect(apiFindReportedIssue('a1b2c3d4', 'tok')).resolves.toBeNull()
+    await expect(apiFindReportedIssue('a1b2c3d4', 'octocat')).resolves.toBeNull()
   })
 
   it('returns null when nothing matches', async () => {
     vi.mocked(fetchIssuesByQuery).mockResolvedValue([])
-    await expect(apiFindReportedIssue('a1b2c3d4', 'tok')).resolves.toBeNull()
+    await expect(apiFindReportedIssue('a1b2c3d4', 'octocat')).resolves.toBeNull()
   })
 })
 
@@ -95,7 +95,7 @@ describe('apiCreateErrorIssue', () => {
       updated_at: '',
     })
 
-    await expect(apiCreateErrorIssue(REPORT, 'tok')).resolves.toEqual({
+    await expect(apiCreateErrorIssue(REPORT, 'octocat')).resolves.toEqual({
       number: 42,
       url: 'https://github.com/Tlahey/git-manager/issues/42',
     })
@@ -103,7 +103,7 @@ describe('apiCreateErrorIssue', () => {
       PROJECT_REPO.owner,
       PROJECT_REPO.repo,
       { title: REPORT.title, body: REPORT.body },
-      'tok'
+      'octocat'
     )
   })
 })
@@ -111,7 +111,7 @@ describe('apiCreateErrorIssue', () => {
 describe('apiCommentOnReportedIssue', () => {
   it('adds the occurrence to the existing issue rather than opening a second one', async () => {
     vi.mocked(createIssueComment).mockResolvedValue({ id: 1, created_at: '' })
-    await apiCommentOnReportedIssue(7, REPORT, 'tok')
+    await apiCommentOnReportedIssue(7, REPORT, 'octocat')
 
     const [, , number, body] = vi.mocked(createIssueComment).mock.calls[0]
     expect(number).toBe(7)

@@ -11,7 +11,20 @@ export interface DeviceCodeResponse {
   interval: number
 }
 
+/**
+ * The device flow's answer. Carries the *account*, never the token behind it: an authorized poll is
+ * completed inside Rust, which stores the credential in the keychain and reports who signed in.
+ * There is no field here a caller could read a secret out of, and that is the point — see
+ * `src-tauri/src/services/credential_store.rs`.
+ */
 export interface PollTokenResponse {
+  user: GitHubUserInfo | null
+  error: string | null
+  error_description: string | null
+}
+
+/** GitLab's poll, which still hands its access token back for the caller to store. */
+export interface GitLabPollTokenResponse {
   access_token: string | null
   error: string | null
   error_description: string | null
@@ -30,7 +43,47 @@ export const githubDeviceCode = (scope: string) =>
 export const githubPollToken = (deviceCode: string) =>
   invoke<PollTokenResponse>('github_poll_token', { deviceCode })
 
-export const githubGetUser = (token: string) => invoke<GitHubUserInfo>('github_get_user', { token })
+/**
+ * Validates a personal access token, stores it in the keychain and returns the account it belongs
+ * to. The token's one and only trip through the webview: the user pastes it, this sends it to Rust,
+ * and nothing hands it back.
+ */
+export const githubConnectToken = (token: string) =>
+  invoke<GitHubUserInfo>('github_connect_token', { token })
+
+/** Forgets an account's stored token — the half of "remove account" the frontend cannot reach. */
+export const githubDisconnectAccount = (accountId: string) =>
+  invoke<void>('github_disconnect_account', { accountId })
+
+/** One GitHub API response, as {@link githubApiRequest} returns it. */
+export interface GithubApiResponse {
+  status: number
+  ok: boolean
+  /** The raw body. Not parsed here: the contents API's `raw` media type returns file text. */
+  body: string
+}
+
+/**
+ * Performs one GitHub API call through Rust, which attaches `accountId`'s token from the keychain.
+ *
+ * The only way the app reaches api.github.com. `fetch` must not be used for GitHub from the webview
+ * — it cannot be, now: the token is not here to attach. Rust also refuses any URL outside
+ * `https://api.github.com/`, so this cannot be turned into a way to post a credential elsewhere.
+ */
+export const githubApiRequest = (input: {
+  accountId?: string | null
+  url: string
+  method?: string
+  body?: unknown
+  accept?: string
+}) =>
+  invoke<GithubApiResponse>('github_api_request', {
+    accountId: input.accountId ?? null,
+    url: input.url,
+    method: input.method ?? 'GET',
+    body: input.body ?? null,
+    accept: input.accept ?? null,
+  })
 
 // ─── GitLab OAuth (device flow) ───────────────────────────────────────────────
 //
@@ -60,7 +113,7 @@ export const gitlabDeviceCode = (instanceUrl: string, clientId: string | null, s
   invoke<GitLabDeviceCodeResponse>('gitlab_device_code', { instanceUrl, clientId, scope })
 
 export const gitlabPollToken = (instanceUrl: string, clientId: string | null, deviceCode: string) =>
-  invoke<PollTokenResponse>('gitlab_poll_token', { instanceUrl, clientId, deviceCode })
+  invoke<GitLabPollTokenResponse>('gitlab_poll_token', { instanceUrl, clientId, deviceCode })
 
 export const gitlabGetUser = (instanceUrl: string, token: string) =>
   invoke<GitLabUserInfo>('gitlab_get_user', { instanceUrl, token })
@@ -88,12 +141,16 @@ export interface GitHubRepoInfo {
   updatedAt: string
 }
 
-export const githubListRepos = (token: string) =>
-  invoke<GitHubRepoInfo[]>('github_list_repos', { token })
+export const githubListRepos = (accountId: string) =>
+  invoke<GitHubRepoInfo[]>('github_list_repos', { accountId })
 
 /** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
-export const githubCommitAvatars = (token: string, owner: string, repo: string, shas: string[]) =>
-  invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
+export const githubCommitAvatars = (
+  accountId: string,
+  owner: string,
+  repo: string,
+  shas: string[]
+) => invoke<Record<string, string>>('github_commit_avatars', { accountId, owner, repo, shas })
 
 /** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
 export const getPrTemplate = (path: string) =>

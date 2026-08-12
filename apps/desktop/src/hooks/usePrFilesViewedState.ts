@@ -23,25 +23,25 @@ export function usePrFilesViewedState(
   isToggling: boolean
   toggleViewed: (path: string) => Promise<void>
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
   const [isToggling, setIsToggling] = useState(false)
 
   const { data, isLoading, mutate } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-files-viewed', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-files-viewed', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
     () =>
       fetchPrFilesViewedState(
         ownerRepo!.owner,
         ownerRepo!.repo,
         prNumber as number,
-        token as string
+        accountId as string
       ),
     { revalidateOnFocus: false }
   )
 
   async function toggleViewed(path: string) {
-    if (!data || !token) return
+    if (!data || !accountId) return
     const wasViewed = data.viewedByPath[path] === 'VIEWED'
     const optimistic: PrFilesViewedState = {
       ...data,
@@ -53,9 +53,9 @@ export function usePrFilesViewedState(
       await mutate(
         async () => {
           if (wasViewed) {
-            await unmarkPrFileAsViewed(data.pullRequestId, path, token)
+            await unmarkPrFileAsViewed(data.pullRequestId, path, accountId)
           } else {
-            await markPrFileAsViewed(data.pullRequestId, path, token)
+            await markPrFileAsViewed(data.pullRequestId, path, accountId)
           }
           // The mutation already confirmed the new state — no need to re-fetch the whole list.
           return optimistic

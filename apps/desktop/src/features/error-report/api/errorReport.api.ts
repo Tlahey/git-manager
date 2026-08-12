@@ -13,10 +13,13 @@ import type { ErrorReport } from '../lib/buildReport'
  * filing or amending one.
  *
  * It composes `api/github/github-issues.api.ts` rather than calling `fetch` — the same rule every
- * other api file follows, and the reason there is no new Rust command here. The frontend already
- * signs its own GitHub requests with the user's token (see CLAUDE.md on why the tokens live in
- * settings), so an issue posted from the app is an issue posted by the user, under their own
- * account, with the `repo` scope the device flow already asks for.
+ * other api file follows, and the reason there is no new Rust command here.
+ *
+ * What travels from here is an **account id**, which is a GitHub login and therefore public: the
+ * token itself lives in the OS keychain and is attached in Rust, where the webview cannot reach it
+ * (see `githubApiShared.ts` on why `fetch` must never come back). The issue is still posted by the
+ * user, under their own account, with the `repo` scope the device flow asks for — the app simply
+ * never holds the credential that does it.
  *
  * Every call here targets `PROJECT_REPO` — the app's own tracker — and never the repository the
  * user has open. See `lib/projectRepo.ts` for why that is a constant rather than a lookup.
@@ -32,14 +35,14 @@ import type { ErrorReport } from '../lib/buildReport'
  */
 export async function apiFindReportedIssue(
   fingerprint: string,
-  token: string
+  accountId: string
 ): Promise<MockIssue | null> {
   const marker = fingerprintMarker(fingerprint)
   const issues = await fetchIssuesByQuery(
     PROJECT_REPO.owner,
     PROJECT_REPO.repo,
     `"${marker}" in:body`,
-    token
+    accountId
   )
   // GitHub's search is not exact-match on a quoted phrase inside an HTML comment, so confirm the
   // marker really is in the body before telling a user their bug is already known.
@@ -49,13 +52,13 @@ export async function apiFindReportedIssue(
 /** Files the report. Returns the new issue's number and URL. */
 export async function apiCreateErrorIssue(
   report: ErrorReport,
-  token: string
+  accountId: string
 ): Promise<{ number: number; url: string }> {
   const created = await createIssue(
     PROJECT_REPO.owner,
     PROJECT_REPO.repo,
     { title: report.title, body: report.body },
-    token
+    accountId
   )
   return { number: created.number, url: created.html_url }
 }
@@ -70,13 +73,13 @@ export async function apiCreateErrorIssue(
 export async function apiCommentOnReportedIssue(
   issueNumber: number,
   report: ErrorReport,
-  token: string
+  accountId: string
 ): Promise<void> {
   await createIssueComment(
     PROJECT_REPO.owner,
     PROJECT_REPO.repo,
     issueNumber,
     `**Also hit this.**\n\n${report.body}`,
-    token
+    accountId
   )
 }

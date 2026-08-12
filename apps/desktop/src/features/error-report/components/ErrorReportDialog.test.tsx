@@ -42,20 +42,20 @@ function draft(overrides: Partial<ErrorReportDraft> = {}): ErrorReportDraft {
   }
 }
 
-function connectAccount(token: string | null) {
+/**
+ * `connected` rather than a token: since secrets moved to the keychain an account carries only its
+ * public half, and what the feature passes to GitHub is the account id.
+ */
+function connectAccount(connected: boolean) {
   useSettingsStore.setState((s) => ({
     settings: {
       ...s.settings,
-      github: token
+      github: connected
         ? {
             accounts: [
-              {
-                id: 'acc-1',
-                token,
-                user: { login: 'octocat', name: null, email: null, avatarUrl: '' },
-              },
+              { id: 'octocat', user: { login: 'octocat', name: null, email: null, avatarUrl: '' } },
             ],
-            activeAccountId: 'acc-1',
+            activeAccountId: 'octocat',
           }
         : { accounts: [], activeAccountId: null },
     },
@@ -75,7 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(apiFindReportedIssue).mockResolvedValue(null)
   useErrorReportStore.setState({ draft: null, reported: {} })
-  connectAccount('gho_token')
+  connectAccount(true)
 })
 
 describe('ErrorReportDialog', () => {
@@ -144,7 +144,7 @@ describe('ErrorReportDialog', () => {
     await screen.findByText('Issue opened. Thank you.')
     expect(apiCreateErrorIssue).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'UNKNOWN: something broke' }),
-      'gho_token'
+      'octocat'
     )
   })
 
@@ -169,13 +169,13 @@ describe('ErrorReportDialog', () => {
 
     await user.click(screen.getByTestId('error-report-comment'))
     await waitFor(() =>
-      expect(apiCommentOnReportedIssue).toHaveBeenCalledWith(7, expect.anything(), 'gho_token')
+      expect(apiCommentOnReportedIssue).toHaveBeenCalledWith(7, expect.anything(), 'octocat')
     )
     expect(apiCreateErrorIssue).not.toHaveBeenCalled()
   })
 
   it('with no account connected, shows the report and no way to send it', async () => {
-    connectAccount(null)
+    connectAccount(false)
     renderDialog()
 
     expect(await screen.findByTestId('error-report-not-connected')).toBeInTheDocument()
@@ -184,8 +184,8 @@ describe('ErrorReportDialog', () => {
     expect(screen.getByTestId('error-report-preview').textContent).toContain('something broke')
   })
 
-  it('never searches GitHub without a token — an anonymous search would rate-limit in a few crashes', async () => {
-    connectAccount(null)
+  it('never searches GitHub with no account — an anonymous search would rate-limit in a few crashes', async () => {
+    connectAccount(false)
     renderDialog()
 
     await screen.findByTestId('error-report-preview')
@@ -194,7 +194,7 @@ describe('ErrorReportDialog', () => {
 
   it('opens the tracker in the browser for a reporter who will file it by hand', async () => {
     const user = userEvent.setup()
-    connectAccount(null)
+    connectAccount(false)
     renderDialog()
 
     await user.click(await screen.findByTestId('error-report-open-tracker'))

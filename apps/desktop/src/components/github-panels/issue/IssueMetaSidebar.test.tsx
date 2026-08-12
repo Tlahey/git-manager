@@ -97,7 +97,7 @@ function renderSidebar(onChanged = vi.fn()) {
 beforeEach(() => {
   vi.clearAllMocks()
   m.useIssueDetail.mockReturnValue({ issue: raw(), isLoading: false, error: null, refresh })
-  m.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, token: 'tok' })
+  m.useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
   m.useAssignableUsers.mockReturnValue({
     users: [{ login: 'bob', avatar_url: '' }],
     isLoading: false,
@@ -116,7 +116,7 @@ describe('IssueMetaSidebar — status', () => {
     await act(async () => {
       await user.click(screen.getByTestId('issue-status-closed'))
     })
-    expect(m.setIssueState).toHaveBeenCalledWith('org', 'repo', 7, 'closed', 'tok')
+    expect(m.setIssueState).toHaveBeenCalledWith('org', 'repo', 7, 'closed', 'acct')
     expect(refresh).toHaveBeenCalled()
     expect(onChanged).toHaveBeenCalled()
   })
@@ -131,7 +131,7 @@ describe('IssueMetaSidebar — assignees', () => {
     await act(async () => {
       await user.click(screen.getByTestId('pr-edit-add-bob'))
     })
-    expect(m.addAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['bob'], 'tok')
+    expect(m.addAssignees).toHaveBeenCalledWith('org', 'repo', 7, ['bob'], 'acct')
   })
 })
 
@@ -144,7 +144,7 @@ describe('IssueMetaSidebar — labels', () => {
     await act(async () => {
       await user.click(screen.getByTestId('pr-edit-add-ui'))
     })
-    expect(m.addLabels).toHaveBeenCalledWith('org', 'repo', 7, ['ui'], 'tok')
+    expect(m.addLabels).toHaveBeenCalledWith('org', 'repo', 7, ['ui'], 'acct')
   })
 })
 

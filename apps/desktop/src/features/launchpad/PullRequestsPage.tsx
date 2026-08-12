@@ -41,7 +41,7 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
     loading,
     isValidating,
     error,
-    hasToken,
+    hasAccount,
     githubConnected,
     showConnectBanner,
     dismissConnectBanner,
@@ -88,7 +88,7 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
         <div className="relative flex h-full overflow-hidden bg-background">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <LaunchpadHeader
-              hasToken={hasToken}
+              hasAccount={hasAccount}
               isMocked={isMocked}
               githubConnected={githubConnected}
               loading={loading}

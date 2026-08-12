@@ -28,7 +28,7 @@ export async function fetchPrReviewSummary(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<PrReviewSummary> {
   const query = `query($owner:String!,$repo:String!,$number:Int!){
     repository(owner:$owner,name:$repo){
@@ -63,7 +63,7 @@ export async function fetchPrReviewSummary(
         }
       }
     }
-  }>(query, { owner, repo, number: prNumber }, token)
+  }>(query, { owner, repo, number: prNumber }, accountId)
 
   const prNode = data.repository?.pullRequest
   const reviewers: PrReviewer[] = []
@@ -112,7 +112,7 @@ export async function fetchPrFilesViewedState(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<PrFilesViewedState> {
   const query = `query($owner:String!,$repo:String!,$number:Int!){
     repository(owner:$owner,name:$repo){
@@ -129,7 +129,7 @@ export async function fetchPrFilesViewedState(
         files?: { nodes?: Array<{ path: string; viewerViewedState: PrFileViewedState }> }
       }
     }
-  }>(query, { owner, repo, number: prNumber }, token)
+  }>(query, { owner, repo, number: prNumber }, accountId)
   const prNode = data.repository?.pullRequest
   const nodes = prNode?.files?.nodes ?? []
   return {
@@ -142,12 +142,12 @@ export async function fetchPrFilesViewedState(
 export async function markPrFileAsViewed(
   pullRequestId: string,
   path: string,
-  token: string
+  accountId: string
 ): Promise<void> {
   await ghGraphQL(
     `mutation($id:ID!,$path:String!){markFileAsViewed(input:{pullRequestId:$id,path:$path}){clientMutationId}}`,
     { id: pullRequestId, path },
-    token
+    accountId
   )
 }
 
@@ -155,12 +155,12 @@ export async function markPrFileAsViewed(
 export async function unmarkPrFileAsViewed(
   pullRequestId: string,
   path: string,
-  token: string
+  accountId: string
 ): Promise<void> {
   await ghGraphQL(
     `mutation($id:ID!,$path:String!){unmarkFileAsViewed(input:{pullRequestId:$id,path:$path}){clientMutationId}}`,
     { id: pullRequestId, path },
-    token
+    accountId
   )
 }
 
@@ -170,12 +170,12 @@ export async function postPrComment(
   repo: string,
   prNumber: number,
   body: string,
-  token: string
+  accountId: string
 ): Promise<{ id: number; html_url: string }> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`, {
     method: 'POST',
     body: { body },
-    token,
+    accountId,
   })
 }
 
@@ -187,12 +187,12 @@ export async function submitPrReview(
   repo: string,
   prNumber: number,
   input: { event: PrReviewEvent; body?: string },
-  token: string
+  accountId: string
 ): Promise<{ id: number; state: string }> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
     method: 'POST',
     body: input,
-    token,
+    accountId,
   })
 }
 
@@ -210,11 +210,11 @@ export async function fetchPrComments(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<GhComment[]> {
   return ghFetch<GhComment[]>(
     `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -239,7 +239,7 @@ export async function fetchPrReviewThreads(
   owner: string,
   repo: string,
   prNumber: number,
-  token: string
+  accountId: string
 ): Promise<PrReviewThread[]> {
   const query = `query($owner:String!,$repo:String!,$number:Int!){
     repository(owner:$owner,name:$repo){
@@ -268,7 +268,7 @@ export async function fetchPrReviewThreads(
         }
       }
     }
-  }>(query, { owner, repo, number: prNumber }, token)
+  }>(query, { owner, repo, number: prNumber }, accountId)
 
   const nodes = data.repository?.pullRequest?.reviewThreads?.nodes ?? []
   return nodes

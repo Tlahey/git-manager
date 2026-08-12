@@ -52,11 +52,11 @@ function runFetcher() {
   return useSWRMock.mock.calls.at(-1)![1]()
 }
 
-function signIn(token: string | null) {
+function signIn(accountId: string | null) {
   useSettingsStoreMock.mockReturnValue({
     settings: {
-      github: token
-        ? { accounts: [{ id: 'a', token, user: { login: 'antoine' } }], activeAccountId: 'a' }
+      github: accountId
+        ? { accounts: [{ id: accountId, user: { login: 'antoine' } }], activeAccountId: accountId }
         : { accounts: [], activeAccountId: null },
     },
   })
@@ -71,7 +71,7 @@ function render(options: Partial<Parameters<typeof useRepoIssues>[0]> = {}) {
 beforeEach(() => {
   useSWRMock.mockReset().mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
   fetchIssuesByQuery.mockReset().mockResolvedValue([])
-  signIn('tok')
+  signIn('acct')
 })
 
 describe('useRepoIssues — GitHub resolution', () => {
@@ -83,7 +83,7 @@ describe('useRepoIssues — GitHub resolution', () => {
       'repo-issue-filters',
       'org',
       'repo',
-      'tok',
+      'acct',
       'f1 is:open\nf2 is:open author:@me',
     ])
   })
@@ -105,8 +105,8 @@ describe('useRepoIssues — GitHub resolution', () => {
     expect(lastKey()).toBeNull()
   })
 
-  it("prefers an explicitly passed token over the active account's", () => {
-    render({ githubToken: 'explicit' })
+  it("prefers an explicitly passed accountId over the active account's", () => {
+    render({ githubAccountId: 'explicit' })
     expect(lastKey()![3]).toBe('explicit')
   })
 
@@ -122,9 +122,9 @@ describe('useRepoIssues — GitHub resolution', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
-  it('counts an explicitly passed token as connected even with no account', () => {
+  it('counts an explicitly passed accountId as connected even with no account', () => {
     signIn(null)
-    const { result } = render({ githubToken: 'explicit' })
+    const { result } = render({ githubAccountId: 'explicit' })
     expect(result.current.isConnected).toBe(true)
     expect(lastKey()![3]).toBe('explicit')
   })
@@ -143,8 +143,8 @@ describe('useRepoIssues — fetching', () => {
     render()
     await runFetcher()
     expect(fetchIssuesByQuery.mock.calls).toEqual([
-      ['org', 'repo', 'is:open', 'tok'],
-      ['org', 'repo', 'is:open author:@me', 'tok'],
+      ['org', 'repo', 'is:open', 'acct'],
+      ['org', 'repo', 'is:open author:@me', 'acct'],
     ])
   })
 

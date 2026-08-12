@@ -198,6 +198,9 @@ beforeEach(() => {
     editingOid: null,
     aiPanelTarget: null,
     compareRefsTarget: null,
+    // The tab, which is what a branch switch resolves its base project from (`useSwitchBranch`) —
+    // here it is the repo itself, so the two coincide.
+    activeRepo: REPO,
     activeWorkspacePath: null,
     pendingGraphAction: null,
     pendingCommitMenuOid: null,

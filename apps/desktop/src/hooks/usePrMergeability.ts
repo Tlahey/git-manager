@@ -15,14 +15,19 @@ export function usePrMergeability(
   error: unknown
   refresh: () => void
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-mergeability', ownerRepo.owner, ownerRepo.repo, prNumber, headSha, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-mergeability', ownerRepo.owner, ownerRepo.repo, prNumber, headSha, accountId]
       : null,
     () =>
-      fetchPrMergeability(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+      fetchPrMergeability(
+        ownerRepo!.owner,
+        ownerRepo!.repo,
+        prNumber as number,
+        accountId as string
+      ),
     { revalidateOnFocus: false, refreshInterval: 20_000 }
   )
 

@@ -69,7 +69,7 @@ function mockGitHubData(overrides: Partial<ReturnType<typeof useGitHubData>> = {
     loading: false,
     isValidating: false,
     error: null,
-    hasToken: true,
+    hasAccount: true,
     username: 'me',
     lastRefreshed: null,
     refresh: vi.fn(),
@@ -237,13 +237,13 @@ describe('usePullRequestsPage — pinning and following', () => {
   })
 })
 
-// `githubConnected` is what hides the page's GitHub half, and it is deliberately *not* `hasToken`:
+// `githubConnected` is what hides the page's GitHub half, and it is deliberately *not* `hasAccount`:
 // the dev fixture flag exists so a build with no account still renders the populated page, and
 // hiding the tabs from it would empty the e2e run and the documentation screenshots with it.
 describe('usePullRequestsPage — githubConnected', () => {
   it('is true with a real account, and reports the data as real', () => {
     useDevFlagsStore.setState({ mockGitHub: false })
-    mockGitHubData({ hasToken: true })
+    mockGitHubData({ hasAccount: true })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.githubConnected).toBe(true)
     expect(result.current.isMocked).toBe(false)
@@ -251,7 +251,7 @@ describe('usePullRequestsPage — githubConnected', () => {
 
   it('is false with neither an account nor the fixture flag', () => {
     useDevFlagsStore.setState({ mockGitHub: false })
-    mockGitHubData({ hasToken: false })
+    mockGitHubData({ hasAccount: false })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.githubConnected).toBe(false)
     expect(result.current.isMocked).toBe(false)
@@ -259,7 +259,7 @@ describe('usePullRequestsPage — githubConnected', () => {
 
   it('is true on the fixture flag alone, and says the data is invented', () => {
     useDevFlagsStore.setState({ mockGitHub: true })
-    mockGitHubData({ hasToken: false })
+    mockGitHubData({ hasAccount: false })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.githubConnected).toBe(true)
     expect(result.current.isMocked).toBe(true)
@@ -271,7 +271,7 @@ describe('usePullRequestsPage — githubConnected', () => {
 describe('usePullRequestsPage — the connect banner', () => {
   function signedOut() {
     useDevFlagsStore.setState({ mockGitHub: false })
-    mockGitHubData({ hasToken: false })
+    mockGitHubData({ hasAccount: false })
   }
 
   it('is shown while signed out and never seen off', () => {
@@ -295,7 +295,7 @@ describe('usePullRequestsPage — the connect banner', () => {
 
   it('has nothing to show once an account is connected', () => {
     useDevFlagsStore.setState({ mockGitHub: false })
-    mockGitHubData({ hasToken: true })
+    mockGitHubData({ hasAccount: true })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.showConnectBanner).toBe(false)
   })
@@ -308,7 +308,7 @@ describe('usePullRequestsPage — the connect banner', () => {
     unmount()
 
     // Connect: the flag is cleared even though the banner is not rendered in this state.
-    mockGitHubData({ hasToken: true })
+    mockGitHubData({ hasAccount: true })
     const connected = renderHook(() => usePullRequestsPage())
     expect(useLaunchpadStore.getState().connectBannerDismissed).toBe(false)
     connected.unmount()

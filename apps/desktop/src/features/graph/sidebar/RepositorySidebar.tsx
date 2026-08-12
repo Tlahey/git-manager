@@ -6,7 +6,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
-import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import { SidebarRail } from './SidebarRail'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarSearchHeader } from './SidebarSearchHeader'
@@ -38,7 +38,7 @@ interface RepositorySidebarProps {
   /** Clicking a tag scrolls to / selects its commit in the graph rather than re-filtering the log. */
   onSelectTag?: (commitOid: string) => void
   currentUser?: string
-  githubToken?: string
+  githubAccountId?: string
   onCreateBranch?: () => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   /** Opens a remote branch row's own (wider) action menu. */
@@ -57,7 +57,7 @@ export function RepositorySidebar({
   onSelectBranch,
   onSelectTag,
   currentUser,
-  githubToken,
+  githubAccountId,
   onCreateBranch,
   onContextMenu,
   onRemoteBranchContextMenu,
@@ -65,10 +65,10 @@ export function RepositorySidebar({
   onOpenPr,
 }: RepositorySidebarProps) {
   const { t } = useTranslation('git')
-  // The `githubToken` prop is the caller's own copy of the active account's token; fall back to the
+  // The `githubAccountId` prop is the caller's own copy of the active account's token; fall back to the
   // account itself so a caller that doesn't pass one still gets the signed-in behaviour.
   const { isConnected } = useGithubAccount()
-  const githubConnected = !!githubToken || isConnected
+  const githubConnected = !!githubAccountId || isConnected
   const { width, resizeHandleProps } = useSidebarResize()
   /**
    * The shell's panel flag (⌘S, or the toolbar's button). On this view "off" is not *gone*: the
@@ -114,8 +114,12 @@ export function RepositorySidebar({
   // A branch row's two gestures: one click brings its tip into view in the graph, a double click
   // switches to it. A remote row switches onto its local counterpart, creating it if it doesn't
   // exist yet (see `checkoutRemoteBranchAsLocal`) — the same thing the menu's own Checkout does.
+  //
+  // The switch goes through `useSwitchBranch`, so it lands on the base project rather than on
+  // `repoPath` — which is the *viewed* path and therefore a linked worktree whenever a workspace is
+  // open. Focusing a commit stays on `repoPath`: that one really is about what is on screen.
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
-  const { checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal } = useBranchCheckout()
+  const { switchBranch, switchRemoteBranch } = useSwitchBranch()
   const focusBranch = useCallback(
     (branch: GitBranch) => setPendingGraphSelection(branch.commitOid),
     [setPendingGraphSelection]
@@ -124,10 +128,10 @@ export function RepositorySidebar({
     (branch: GitBranch) => {
       // `name`, not `shortName`: the backend strips the remote prefix from a remote branch's
       // `shortName`, and the remote-qualified name is what identifies the ref to track.
-      if (branch.isRemote) void checkoutRemoteBranchAsLocal(repoPath, branch.name)
-      else void checkoutBranchWithStashPrompt(repoPath, branch.shortName)
+      if (branch.isRemote) void switchRemoteBranch(branch.name)
+      else void switchBranch(branch.shortName)
     },
-    [checkoutBranchWithStashPrompt, checkoutRemoteBranchAsLocal, repoPath]
+    [switchBranch, switchRemoteBranch]
   )
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
@@ -183,7 +187,7 @@ export function RepositorySidebar({
     repoPath,
     remoteUrls,
     currentUser,
-    githubToken,
+    githubAccountId,
     selectedBranch,
     filter: branchQuery,
     openState,
@@ -371,7 +375,7 @@ export function RepositorySidebar({
           repoPath={repoPath}
           remoteUrls={remoteUrls}
           currentUser={currentUser}
-          githubToken={githubToken}
+          githubAccountId={githubAccountId}
           onOpenSection={openSectionFromRail}
         />
       </div>
@@ -416,7 +420,7 @@ export function RepositorySidebar({
         repoPath={repoPath}
         remoteUrls={remoteUrls}
         currentUser={currentUser}
-        githubToken={githubToken}
+        githubAccountId={githubAccountId}
         worktrees={worktrees}
         prunableWorktrees={prunableWorktrees}
         allLocalBranches={allLocalBranches}

@@ -26,13 +26,28 @@ const fakeMonaco = {
 interface FakeOverlayWidget {
   getId: () => string
   getDomNode: () => HTMLElement
+  getPosition: () => { preference?: { top: number; left: number } } | null
 }
 
-/** Minimal fake pane covering exactly the Monaco surface useCollapseUnchanged touches: uniform
- * `LINE_HEIGHT`-per-line geometry via `getTopForLineNumber` (mirrors the real API's contract —
- * document-space, unaffected by scroll or view-zone virtualization) plus add/removeOverlayWidget,
- * which the desktop app's own `packages/editor/src/__tests__/fakeMonacoPane.tsx` doesn't stub
- * since nothing exercised it before the sticky-banner overlay was added. */
+/** Stands in for the resolver's own line-top geometry (`useLineTopGeometry`) — what the hook
+ * positions its banners from, instead of asking Monaco for a mapping that isn't settled yet. Every
+ * fixture below anchors its banner above any hidden region and any view zone, and for such a line
+ * the real index's answer is exactly this. */
+const fakeLineTop = (_side: 'ours' | 'theirs' | 'center', line: number) => (line - 1) * LINE_HEIGHT
+
+/** Writes a widget's own `getPosition()` onto its DOM node, as Monaco's overlay-widget part does on
+ * every render pass — see the same helper (and why it matters) in
+ * `packages/editor/src/__tests__/fakeMonacoPane.tsx`. */
+function applyOverlayPosition(widget: FakeOverlayWidget) {
+  const preference = widget.getPosition()?.preference
+  if (!preference) return
+  widget.getDomNode().style.top = `${preference.top}px`
+}
+
+/** Minimal fake pane covering exactly the Monaco surface useCollapseUnchanged touches: the scroll
+ * position, `getOption` for the line height, and the overlay-widget API — which the desktop app's
+ * own `apps/desktop/src/components/merge-editor/__tests__/fakeMonacoPane.tsx` doesn't stub, since
+ * its fixtures have no block long enough to collapse. */
 function createFakePane() {
   let scrollTop = 0
   const overlayWidgets: FakeOverlayWidget[] = []
@@ -41,8 +56,9 @@ function createFakePane() {
     setScrollTop: (value: number) => {
       scrollTop = value
     },
-    getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
     getOption: () => LINE_HEIGHT,
+    layoutOverlayWidget: (widget: FakeOverlayWidget) => applyOverlayPosition(widget),
+    render: () => overlayWidgets.forEach(applyOverlayPosition),
     changeViewZones: (
       cb: (accessor: {
         addZone: (zone: unknown) => string
@@ -54,6 +70,7 @@ function createFakePane() {
     },
     addOverlayWidget: (widget: FakeOverlayWidget) => {
       overlayWidgets.push(widget)
+      applyOverlayPosition(widget)
     },
     removeOverlayWidget: (widget: FakeOverlayWidget) => {
       const index = overlayWidgets.findIndex((w) => w.getId() === widget.getId())
@@ -107,9 +124,9 @@ function makeSingleUnchangedBlock(lineCount: number): MergeBlock[] {
 
 describe('useCollapseUnchanged', () => {
   // 20-line unchanged block, COLLAPSE_CONTEXT_LINES=3 either side -> hides lines 4..17 (14
-  // lines), banner anchored after line 3. naturalTop = getTopForLineNumber(3) + LINE_HEIGHT =
-  // 2*18 + 18 = 54; bannerHeight = 1.5*18 = 27 -> pinned (top clamped to 0) while scrollTop is
-  // in (54, 81), and tracking `54 - scrollTop` normally outside that span.
+  // lines), banner anchored after line 3. naturalTop = lineTop(3) + LINE_HEIGHT = 2*18 + 18 = 54;
+  // bannerHeight = 1.5*18 = 27 -> pinned (top clamped to 0) while scrollTop is in (54, 81), and
+  // tracking `54 - scrollTop` normally outside that span.
 
   it('creates the overlay banner eagerly and renders it full width via `right: 0`, not the document scroll width', () => {
     const blocks = makeSingleUnchangedBlock(20)
@@ -127,6 +144,7 @@ describe('useCollapseUnchanged', () => {
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
         collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
         editorsReady: true,
       })
     )
@@ -141,6 +159,41 @@ describe('useCollapseUnchanged', () => {
     expect(domNode.querySelector('.monaco-collapsed-zone-banner-label')?.textContent).toBe(
       '14 lines collapsed'
     )
+  })
+
+  /* The banner's position is answered by its own `getPosition()` and applied by Monaco, rather than
+   * written to `style.top` behind Monaco's back. This is the difference between the two, and it is
+   * the flicker the user actually reported ("the waves start at the first line and teleport into
+   * place"): Monaco re-positions every overlay widget from `getPosition()` on every render pass, so
+   * a banner that answered `{ top: 0 }` was reset to the top of the pane on the next frame and
+   * stayed there until some later pin moved it back. */
+  it('survives a Monaco render pass instead of being reset to the top of the pane', () => {
+    const blocks = makeSingleUnchangedBlock(20)
+    const placements = computeInitialPlacements(blocks)
+    const theirs = createFakePane()
+    const center = createFakePane()
+    const ours = createFakePane()
+    const editors = editorsWith(theirs, center, ours)
+
+    renderHook(() =>
+      useCollapseUnchanged({
+        editors,
+        blocks,
+        placements,
+        scheduleRecompute: () => {},
+        defaultCollapseUnchanged: true,
+        collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
+        editorsReady: true,
+      })
+    )
+
+    const domNode = center.overlayWidgets[0].getDomNode()
+    expect(domNode.style.top).toBe('54px')
+
+    act(() => center.render())
+
+    expect(domNode.style.top).toBe('54px')
   })
 
   it('tracks normal scroll before the span, pins to 0 inside it, and resumes past it', () => {
@@ -159,6 +212,7 @@ describe('useCollapseUnchanged', () => {
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
         collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
         editorsReady: true,
       })
     )
@@ -198,6 +252,7 @@ describe('useCollapseUnchanged', () => {
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
         collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
         editorsReady: true,
       })
     )
@@ -230,6 +285,7 @@ describe('useCollapseUnchanged', () => {
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
         collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
         editorsReady: true,
       })
     )
@@ -257,6 +313,7 @@ describe('useCollapseUnchanged', () => {
         scheduleRecompute: () => {},
         defaultCollapseUnchanged: true,
         collapsedLinesLabel: (count: number) => `${count} lines collapsed`,
+        lineTop: fakeLineTop,
         editorsReady: true,
       })
     )

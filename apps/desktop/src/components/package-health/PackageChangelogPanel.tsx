@@ -18,12 +18,12 @@ import { UpgradeRiskReport } from './UpgradeRiskReport'
 export function PackageChangelogPanel({
   entry,
   repoPath,
-  token,
+  accountId,
   onClose,
 }: {
   entry: OutdatedPackage
   repoPath: string
-  token?: string
+  accountId?: string
   onClose: () => void
 }) {
   return (
@@ -52,12 +52,12 @@ export function PackageChangelogPanel({
               name={entry.name}
               from={entry.current}
               to={entry.latest}
-              token={token}
+              accountId={accountId}
             />
             {/* Below the notes on purpose: the assessment is *about* them. It reads
                 the same SWR key rather than being handed the data, so the two share
                 one fetch without the panel having to lift state between them. */}
-            <UpgradeRiskReport entry={entry} repoPath={repoPath} token={token} />
+            <UpgradeRiskReport entry={entry} repoPath={repoPath} accountId={accountId} />
           </div>
         </ScrollArea>
       </div>

@@ -6,7 +6,7 @@ import type { Board, BoardCard } from '@git-manager/git-types'
 import { useBoardStore } from '../stores/board.store'
 
 vi.mock('../../../hooks/useRepoGitHub', () => ({
-  useRepoGitHub: vi.fn(() => ({ ownerRepo: null, token: null })),
+  useRepoGitHub: vi.fn(() => ({ ownerRepo: null, accountId: null })),
 }))
 
 const { localBackend, remoteBackendFactory, remoteBackend } = vi.hoisted(() => {
@@ -91,7 +91,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockedUseRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+  mockedUseRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
   useBoardStore.setState({ activeBoardIdByRepo: {} })
   localBackend.listBoards.mockResolvedValue([])
 })
@@ -110,7 +110,7 @@ describe('useBoardData', () => {
   it('merges local and remote boards when a GitHub account is connected', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     localBackend.listBoards.mockResolvedValue([board({ id: 'local-1', source: 'local' })])
     remoteBackend.listBoards.mockResolvedValue([board({ id: 'remote-1', source: 'remote' })])
@@ -119,7 +119,7 @@ describe('useBoardData', () => {
 
     await waitFor(() => expect(result.current.boards).toHaveLength(2))
     expect(result.current.canUseRemote).toBe(true)
-    expect(remoteBackendFactory).toHaveBeenCalledWith('acme', 'widgets', 'tok')
+    expect(remoteBackendFactory).toHaveBeenCalledWith('acme', 'widgets', 'acct')
   })
 
   it('defaults the active board to the first one and fetches its cards from the matching backend', async () => {
@@ -200,7 +200,7 @@ describe('useBoardData', () => {
   it('moving a local card onto a GitHub board creates the issue, then removes the local card', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const remote = board({ id: 'remote-board', source: 'remote' })
     localBackend.listBoards.mockResolvedValue([board()])
@@ -269,7 +269,7 @@ describe('useBoardData', () => {
   it('adding an issue to a local board creates a card tracking it', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const withPrefix = board({ cardPrefixes: ['GM'] })
     localBackend.listBoards.mockResolvedValue([withPrefix])
@@ -294,7 +294,7 @@ describe('useBoardData', () => {
     })
 
     const ref = { owner: 'acme', repo: 'widgets', number: 9 }
-    expect(fetchIssueForTracking).toHaveBeenCalledWith(ref, 'tok')
+    expect(fetchIssueForTracking).toHaveBeenCalledWith(ref, 'acct')
     // The board's own sequence, like any other card it holds: a tracked card carries `GM-8` *and*
     // `#9`, and leaving the prefix out is what made every imported card arrive numberless.
     expect(localBackend.createCard).toHaveBeenCalledWith(path, 'b1', 'todo', {
@@ -310,7 +310,7 @@ describe('useBoardData', () => {
   it('imports under the board’s default prefix when it offers none', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     localBackend.listBoards.mockResolvedValue([board()])
     remoteBackend.listBoards.mockResolvedValue([])
@@ -344,7 +344,7 @@ describe('useBoardData', () => {
   it('adding an issue to a remote board just labels the existing issue', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const remote = board({ id: 'r1', source: 'remote' })
     localBackend.listBoards.mockResolvedValue([])
@@ -359,7 +359,14 @@ describe('useBoardData', () => {
       await result.current.addIssueToBoard(9, 'todo')
     })
 
-    expect(addExistingIssueToColumn).toHaveBeenCalledWith('acme', 'widgets', 'tok', 'r1', 9, 'todo')
+    expect(addExistingIssueToColumn).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      'acct',
+      'r1',
+      9,
+      'todo'
+    )
     // No card is created and no issue is opened: the issue itself becomes the card, via its label.
     expect(fetchIssueForTracking).not.toHaveBeenCalled()
     expect(localBackend.createCard).not.toHaveBeenCalled()
@@ -377,7 +384,7 @@ describe('useBoardData — tracked cards', () => {
   function withTrackedCard(overrides: Partial<BoardCard> = {}) {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const tracked = card({ id: 'c1', sourceIssue: ref, ...overrides })
     localBackend.listBoards.mockResolvedValue([board()])
@@ -421,7 +428,7 @@ describe('useBoardData — tracked cards', () => {
       expect.objectContaining({ id: 'b1' }),
       expect.objectContaining({ title: 'Renamed' }),
       ref,
-      'tok'
+      'acct'
     )
   })
 
@@ -466,7 +473,7 @@ describe('useBoardData — tracked cards', () => {
       await result.current.addComment(tracked, 'Looks good')
     })
 
-    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'tok')
+    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'acct')
     expect(localBackend.addComment).not.toHaveBeenCalled()
   })
 
@@ -481,7 +488,7 @@ describe('useBoardData — tracked cards', () => {
       await result.current.loadComments(tracked)
     })
 
-    expect(fetchRemoteCardComments).toHaveBeenCalledWith('acme', 'widgets', 'tok', '42')
+    expect(fetchRemoteCardComments).toHaveBeenCalledWith('acme', 'widgets', 'acct', '42')
   })
 
   /**
@@ -541,7 +548,7 @@ describe('useBoardData — tracked cards', () => {
   /** Without a token nothing can be fetched or written, so the card stays an ordinary local one
    * rather than half-tracked. */
   it('leaves a tracked card alone when no GitHub account is connected', async () => {
-    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+    mockedUseRepoGitHub.mockReturnValue({ ownerRepo: null, accountId: null })
     const tracked = card({ id: 'c1', sourceIssue: ref })
     localBackend.listBoards.mockResolvedValue([board()])
     localBackend.getBoard.mockResolvedValue({ board: board(), cards: [tracked] })
@@ -674,7 +681,7 @@ describe('useBoardData — comments', () => {
   it('fetches a remote card’s comments from GitHub', async () => {
     mockedUseRepoGitHub.mockReturnValue({
       ownerRepo: { owner: 'acme', repo: 'widgets' },
-      token: 'tok',
+      accountId: 'acct',
     })
     const remote = board({ id: 'r1', source: 'remote' })
     const card = makeCard({ id: '42', boardId: 'r1' })
@@ -689,7 +696,7 @@ describe('useBoardData — comments', () => {
     await waitFor(() => expect(result.current.activeBoard?.id).toBe('r1'))
 
     const comments = await result.current.loadComments(card)
-    expect(fetchRemoteCardComments).toHaveBeenCalledWith('acme', 'widgets', 'tok', '42')
+    expect(fetchRemoteCardComments).toHaveBeenCalledWith('acme', 'widgets', 'acct', '42')
     expect(comments[0].author).toBe('grace')
   })
 

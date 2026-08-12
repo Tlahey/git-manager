@@ -35,12 +35,11 @@ function withToken() {
       github: {
         accounts: [
           {
-            id: 'acc1',
-            token: 'tok',
+            id: 'acct',
             user: { login: 'me', name: null, email: null, avatarUrl: '' },
           },
         ],
-        activeAccountId: 'acc1',
+        activeAccountId: 'acct',
       },
     },
   })
@@ -70,7 +69,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   resetDevFixturesLoad()
   useDevFixturesStore.setState({ loaded: false, issues: [], contributions: [] })
-  // Off by default here: the interesting assertion is what a *user* without a token gets.
+  // Off by default here: the interesting assertion is what a *user* without an account gets.
   useDevFlagsStore.setState({ mockGitHub: false })
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useRepoDataStore.setState({ savedRepos: [] })
@@ -81,7 +80,7 @@ beforeEach(() => {
 describe('useGitHubRepoIssues — signed out', () => {
   it('returns an empty list and never touches the network', async () => {
     // Behaviour change, and the point of it. This used to hand the four fixture issues to *anyone*
-    // without a token, so a user who simply had not connected their GitHub account was shown
+    // without an account, so a user who simply had not connected their GitHub account was shown
     // invented issues — invented authors, invented titles, invented thumbs-up counts — rendered
     // exactly like real ones. Same defect `useGitHubData` carried for pull requests.
     const { result } = renderHook(() => useGitHubRepoIssues(), { wrapper })
@@ -103,7 +102,7 @@ describe('useGitHubRepoIssues — signed out', () => {
   })
 })
 
-describe('useGitHubRepoIssues — with a token', () => {
+describe('useGitHubRepoIssues — with a connected account', () => {
   it('resolves each saved repo to owner/repo and fetches their issues', async () => {
     withToken()
     useRepoDataStore.setState({
@@ -119,7 +118,7 @@ describe('useGitHubRepoIssues — with a token', () => {
 
     expect(mocked.fetchGitHubRepoIssues).toHaveBeenCalledWith(
       [{ owner: 'Tlahey', repo: 'git-manager' }],
-      'tok'
+      'acct'
     )
     expect(result.current.issues.map((i) => i.id)).toEqual(['x1'])
   })
@@ -143,7 +142,7 @@ describe('useGitHubRepoIssues — with a token', () => {
 
     expect(mocked.fetchGitHubRepoIssues).toHaveBeenCalledWith(
       [{ owner: 'Tlahey', repo: 'git-manager' }],
-      'tok'
+      'acct'
     )
     expect(warnSpy).toHaveBeenCalled()
   })

@@ -691,16 +691,53 @@ const cases: {
     args: { deviceCode: 'device-code' },
   },
   {
-    name: 'githubGetUser',
-    call: () => tauri.githubGetUser('token-1'),
-    command: 'github_get_user',
+    name: 'githubConnectToken',
+    call: () => tauri.githubConnectToken('token-1'),
+    command: 'github_connect_token',
     args: { token: 'token-1' },
   },
   {
+    name: 'githubDisconnectAccount',
+    call: () => tauri.githubDisconnectAccount('octocat'),
+    command: 'github_disconnect_account',
+    args: { accountId: 'octocat' },
+  },
+  {
+    name: 'githubApiRequest',
+    call: () =>
+      tauri.githubApiRequest({ accountId: 'octocat', url: 'https://api.github.com/user' }),
+    command: 'github_api_request',
+    args: {
+      accountId: 'octocat',
+      url: 'https://api.github.com/user',
+      method: 'GET',
+      body: null,
+      accept: null,
+    },
+  },
+  {
     name: 'githubListRepos',
-    call: () => tauri.githubListRepos('token-1'),
+    call: () => tauri.githubListRepos('octocat'),
     command: 'github_list_repos',
-    args: { token: 'token-1' },
+    args: { accountId: 'octocat' },
+  },
+  {
+    name: 'storeCredential',
+    call: () => tauri.storeCredential('ai', 'provider', 'sk-secret'),
+    command: 'store_credential',
+    args: { kind: 'ai', id: 'provider', secret: 'sk-secret' },
+  },
+  {
+    name: 'deleteCredential',
+    call: () => tauri.deleteCredential('github', 'octocat'),
+    command: 'delete_credential',
+    args: { kind: 'github', id: 'octocat' },
+  },
+  {
+    name: 'hasCredential',
+    call: () => tauri.hasCredential('github', 'octocat'),
+    command: 'has_credential',
+    args: { kind: 'github', id: 'octocat' },
   },
 
   {
@@ -799,7 +836,7 @@ describe('lib/tauri — activity log capture', () => {
 
   it('redacts arguments of credential-shaped commands before storing them', async () => {
     mockInvoke.mockResolvedValue({})
-    await tauri.githubGetUser('super-secret-token')
+    await tauri.githubConnectToken('super-secret-token')
     expect(useActivityLogStore.getState().entries[0].args).toBe('[redacted]')
   })
 })

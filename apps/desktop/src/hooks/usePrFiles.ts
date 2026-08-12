@@ -11,13 +11,13 @@ export function usePrFiles(
   isLoading: boolean
   error: unknown
 } {
-  const { ownerRepo, token } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error } = useSWR(
-    prNumber != null && ownerRepo && token
-      ? ['pr-files', ownerRepo.owner, ownerRepo.repo, prNumber, token]
+    prNumber != null && ownerRepo && accountId
+      ? ['pr-files', ownerRepo.owner, ownerRepo.repo, prNumber, accountId]
       : null,
-    () => fetchPrFiles(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, token as string),
+    () => fetchPrFiles(ownerRepo!.owner, ownerRepo!.repo, prNumber as number, accountId as string),
     { revalidateOnFocus: false }
   )
 

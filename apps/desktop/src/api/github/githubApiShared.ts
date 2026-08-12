@@ -1,5 +1,5 @@
 // Shared kernel reused by every github/*.api.ts domain file: GitHub's own `user`/`label` shapes
-// plus the low-level REST/GraphQL request plumbing (auth headers, error extraction, generic
+// plus the low-level REST/GraphQL request plumbing (auth, error extraction, generic
 // fetch/request/graphql wrappers) that every domain below — pulls, issues, reviews, checks,
 // labels, releases, contributions, auth — builds its typed calls on top of. Split out of the
 // former monolithic github.api.ts (2026-08) precisely because these cut across every domain;
@@ -7,6 +7,23 @@
 // in each one. None of this was ever exported from github.api.ts itself (these helpers were
 // private to the monolith), so it stays out of the `github.api.ts` barrel too — domain files
 // import it directly from here, the same way `git/*.api.ts` files import `gitApiShared.ts`.
+//
+// ─── Why there is no `fetch` here any more ───────────────────────────────────────────────────────
+//
+// These helpers used to sign their own requests with a `token: string` the caller passed in, which
+// is *why* GitHub tokens had to be persisted somewhere the webview could read — first localStorage,
+// then `~/.git-manager/settings.json`. They now go through `githubApiRequest`, a Tauri command that
+// looks the token up in the OS keychain by account id and attaches it in Rust. What travels from
+// here is an **account id**, which is a login, not a secret.
+//
+// Two consequences worth knowing before changing anything below:
+//   • Never reintroduce `fetch` for GitHub. It would not work — there is no token in the webview to
+//     attach — and reaching for one is the exact regression this file exists to prevent.
+//   • Rust returns the status *and* the body rather than throwing, because callers judge status
+//     themselves: a 404 from the releases endpoint means "this tag has no release". That is why the
+//     shape below still reads like a `Response` even though nothing here holds one.
+
+import { githubApiRequest } from '../../lib/tauri'
 
 export interface GhUser {
   login: string
@@ -24,53 +41,59 @@ export interface GhSearchResult<T> {
   items: T[]
 }
 
-export function ghHeaders(token?: string, accept = 'application/vnd.github.v3+json'): HeadersInit {
-  const h: HeadersInit = { Accept: accept }
-  if (token) h['Authorization'] = `token ${token}`
-  return h
-}
-
 export interface GhRequestOptions {
   method?: string
   body?: unknown
-  token?: string
+  /**
+   * Which connected account to act as. Absent (or null) means an anonymous request — a handful of
+   * reads work signed out, and those callers already treated the credential as optional.
+   */
+  accountId?: string | null
   /** Override the `Accept` media type (e.g. a preview flag). Defaults to `v3+json`. */
   accept?: string
 }
 
 /**
- * Low-level GitHub REST call with shared auth headers + error handling.
- * Backs both reads (`ghFetch`) and writes (create PR, comment, review, merge).
+ * Low-level GitHub REST call: Rust performs it, having attached `accountId`'s token.
+ *
+ * Backs both reads (`ghFetch`) and writes (create PR, comment, review, merge). Throws on a non-2xx
+ * status, carrying GitHub's own error detail — the one behaviour worth preserving verbatim from the
+ * `fetch` version, because "Validation Failed: No commits between main and x" is the difference
+ * between a debuggable failure and a bare 422.
+ *
+ * The webview's HTTP cache is no longer in the way, incidentally: GitHub sends
+ * `Cache-Control: max-age=60` on GETs, which used to let a pre-merge response be replayed for up to
+ * a minute even when SWR asked to revalidate right after a merge. Requests leave from Rust now, so
+ * the `cache: 'no-store'` that used to force each one through has nothing left to force.
  */
 export async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, token, accept } = opts
-  const headers = ghHeaders(token, accept)
-  if (body !== undefined) {
-    ;(headers as Record<string, string>)['Content-Type'] = 'application/json'
-  }
-  const res = await fetch(url, {
-    method,
-    headers,
-    // GitHub's REST API sends `Cache-Control: max-age=60` on GETs (e.g. a PR's own detail
-    // endpoint), so the webview's HTTP cache can silently serve a pre-merge response for up to a
-    // minute even when SWR asks us to revalidate right after a merge/comment/review — the fetch()
-    // call never reaches the network. Force every call through.
-    cache: 'no-store',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  const { method = 'GET', body, accountId, accept } = opts
+  const res = await githubApiRequest({ accountId, url, method, body, accept })
   if (!res.ok) {
-    // Surface GitHub's own error detail (e.g. "Validation Failed: No commits between main and x",
-    // "A pull request already exists") instead of a bare status — vital for debugging PR creation.
-    const detail = await extractGitHubError(res)
-    throw new Error(`GitHub API ${res.status}${detail ? `: ${detail}` : ''}`)
+    throw new Error(`GitHub API ${res.status}${describeError(res.body)}`)
   }
-  return res.json()
+  return parseBody<T>(res.body)
 }
 
-/** Best-effort extraction of a human-readable message from a GitHub error response body. */
-async function extractGitHubError(res: Response): Promise<string> {
+/**
+ * Parses a JSON body, tolerating an empty one.
+ *
+ * GitHub answers some writes with `204 No Content` (deleting a label, dismissing a review request),
+ * and the callers of those declare `Promise<void>` — so an empty body is a successful result, not a
+ * malformed one. `res.json()` used to reject on it; this returns `undefined` instead.
+ */
+function parseBody<T>(body: string): T {
+  if (body.trim() === '') return undefined as T
+  return JSON.parse(body) as T
+}
+
+/**
+ * Best-effort extraction of a human-readable message from a GitHub error response body, already
+ * formatted as the suffix of an error string (`": …"`, or empty when there is nothing to say).
+ */
+function describeError(body: string): string {
   try {
-    const data = (await res.json()) as {
+    const data = JSON.parse(body) as {
       message?: string
       errors?: Array<{ message?: string; field?: string; code?: string }>
     }
@@ -80,14 +103,19 @@ async function extractGitHubError(res: Response): Promise<string> {
       if (e.message) parts.push(e.message)
       else if (e.field && e.code) parts.push(`${e.field}: ${e.code}`)
     }
-    return parts.join(' — ')
+    const detail = parts.join(' — ')
+    return detail ? `: ${detail}` : ''
   } catch {
     return ''
   }
 }
 
-export async function ghFetch<T>(url: string, token?: string, accept?: string): Promise<T> {
-  return ghRequest<T>(url, { token, accept })
+export async function ghFetch<T>(
+  url: string,
+  accountId?: string | null,
+  accept?: string
+): Promise<T> {
+  return ghRequest<T>(url, { accountId, accept })
 }
 
 /** GitHub GraphQL v4 call — for the operations REST can't do (draft toggle, `mergeStateStatus`,
@@ -95,22 +123,21 @@ export async function ghFetch<T>(url: string, token?: string, accept?: string): 
 export async function ghGraphQL<T>(
   query: string,
   variables: Record<string, unknown>,
-  token: string,
+  accountId: string,
   accept = 'application/json'
 ): Promise<T> {
-  const res = await fetch('https://api.github.com/graphql', {
+  const res = await githubApiRequest({
+    accountId,
+    url: 'https://api.github.com/graphql',
     method: 'POST',
-    headers: {
-      Authorization: `bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: accept,
-    },
-    body: JSON.stringify({ query, variables }),
+    body: { query, variables },
+    accept,
   })
   if (!res.ok) {
     throw new Error(`GitHub GraphQL ${res.status}`)
   }
-  const json = (await res.json()) as { data?: T; errors?: Array<{ message?: string }> }
+  const json = JSON.parse(res.body) as { data?: T; errors?: Array<{ message?: string }> }
+  // GraphQL reports failures inside a 200, so the status above is only half the check.
   if (json.errors?.length) {
     throw new Error(`GitHub GraphQL: ${json.errors.map((e) => e.message).join(' — ')}`)
   }

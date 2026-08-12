@@ -6,8 +6,8 @@ import { useGithubAccount } from './useGithubAccount'
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
-function account(id: string, token: string, login: string): GitHubAccount {
-  return { id, token, user: { login, name: null, email: null, avatarUrl: '' } }
+function account(id: string, login: string): GitHubAccount {
+  return { id, user: { login, name: null, email: null, avatarUrl: '' } }
 }
 
 function setAccounts(accounts: GitHubAccount[], activeAccountId: string | null) {
@@ -25,34 +25,35 @@ describe('useGithubAccount', () => {
     const { result } = renderHook(() => useGithubAccount())
     expect(result.current).toMatchObject({
       account: null,
-      token: null,
+      accountId: null,
       login: null,
       isConnected: false,
     })
   })
 
   it('resolves the active account, not merely the first one', () => {
-    setAccounts([account('a', 'tok-a', 'alice'), account('b', 'tok-b', 'bob')], 'b')
+    setAccounts([account('a', 'alice'), account('b', 'bob')], 'b')
     const { result } = renderHook(() => useGithubAccount())
-    expect(result.current.token).toBe('tok-b')
+    expect(result.current.accountId).toBe('b')
     expect(result.current.login).toBe('bob')
     expect(result.current.isConnected).toBe(true)
   })
 
   // The store can hold accounts while pointing at none of them (the user removed the active one).
   it('reports no connection when the active id matches nothing', () => {
-    setAccounts([account('a', 'tok-a', 'alice')], null)
+    setAccounts([account('a', 'alice')], null)
     const { result } = renderHook(() => useGithubAccount())
     expect(result.current.account).toBeNull()
     expect(result.current.isConnected).toBe(false)
   })
 
-  // What every caller actually asks. An account whose token was emptied cannot sign a request, so
-  // treating it as connected would put the app straight back on the failing-request path.
-  it('does not count an account with an empty token as connected', () => {
-    setAccounts([account('a', '', 'alice')], 'a')
+  // What every caller actually asks. The account id is the key its token is filed under in the
+  // keychain, so a blank one names nothing and cannot sign a request — treating it as connected
+  // would put the app straight back on the failing-request path.
+  it('does not count an account with a blank id as connected', () => {
+    setAccounts([account('', 'alice')], '')
     const { result } = renderHook(() => useGithubAccount())
-    expect(result.current.token).toBeNull()
+    expect(result.current.accountId).toBeNull()
     expect(result.current.isConnected).toBe(false)
   })
 })

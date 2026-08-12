@@ -6,11 +6,11 @@ import { type GhUser, type GhLabel, ghFetch, ghRequest } from './githubApiShared
 export async function fetchAssignableUsers(
   owner: string,
   repo: string,
-  token: string
+  accountId: string
 ): Promise<GhUser[]> {
   return ghFetch<GhUser[]>(
     `https://api.github.com/repos/${owner}/${repo}/assignees?per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -28,21 +28,21 @@ export async function createOrUpdateLabel(
   repo: string,
   name: string,
   color: string,
-  token: string
+  accountId: string
 ): Promise<void> {
   const body = { name, color: color.replace(/^#/, '').toLowerCase() }
   try {
     await ghRequest(`https://api.github.com/repos/${owner}/${repo}/labels`, {
       method: 'POST',
       body,
-      token,
+      accountId,
     })
   } catch {
     // Already exists (422) — patch it so a recoloured tag reaches GitHub. A failure here is not
     // worth aborting the caller's actual write over: the label still applies, just off-colour.
     await ghRequest(
       `https://api.github.com/repos/${owner}/${repo}/labels/${encodeURIComponent(name)}`,
-      { method: 'PATCH', body, token }
+      { method: 'PATCH', body, accountId }
     ).catch(() => undefined)
   }
 }
@@ -51,11 +51,11 @@ export async function createOrUpdateLabel(
 export async function fetchRepoLabels(
   owner: string,
   repo: string,
-  token: string
+  accountId: string
 ): Promise<GhLabel[]> {
   return ghFetch<GhLabel[]>(
     `https://api.github.com/repos/${owner}/${repo}/labels?per_page=100`,
-    token
+    accountId
   )
 }
 
@@ -65,14 +65,14 @@ export async function addReviewers(
   repo: string,
   prNumber: number,
   reviewers: string[],
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`,
     {
       method: 'POST',
       body: { reviewers },
-      token,
+      accountId,
     }
   )
 }
@@ -83,14 +83,14 @@ export async function removeReviewers(
   repo: string,
   prNumber: number,
   reviewers: string[],
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`,
     {
       method: 'DELETE',
       body: { reviewers },
-      token,
+      accountId,
     }
   )
 }
@@ -101,12 +101,12 @@ export async function addAssignees(
   repo: string,
   prNumber: number,
   assignees: string[],
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/assignees`, {
     method: 'POST',
     body: { assignees },
-    token,
+    accountId,
   })
 }
 
@@ -116,12 +116,12 @@ export async function removeAssignees(
   repo: string,
   prNumber: number,
   assignees: string[],
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/assignees`, {
     method: 'DELETE',
     body: { assignees },
-    token,
+    accountId,
   })
 }
 
@@ -131,12 +131,12 @@ export async function addLabels(
   repo: string,
   prNumber: number,
   labels: string[],
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels`, {
     method: 'POST',
     body: { labels },
-    token,
+    accountId,
   })
 }
 
@@ -146,10 +146,10 @@ export async function removeLabel(
   repo: string,
   prNumber: number,
   label: string,
-  token: string
+  accountId: string
 ): Promise<unknown> {
   return ghRequest(
     `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels/${encodeURIComponent(label)}`,
-    { method: 'DELETE', token }
+    { method: 'DELETE', accountId }
   )
 }

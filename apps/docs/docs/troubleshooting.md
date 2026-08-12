@@ -20,6 +20,23 @@ Ollama isn't running. [Set up your AI provider](./ai-setup) covers the two-comma
 **Test connection** button in Settings → AI re-checks on demand. Every non-AI feature works
 regardless.
 
+## My GitHub account is listed, but nothing loads
+
+Pull requests, issues and avatars come up empty, or the app asks you to reconnect an account that
+is plainly still there. Your account and your token are stored separately on purpose: the account
+lives in `~/.git-manager/settings.json` and the token in your macOS Keychain
+([Private by design](./privacy) explains why). Anything that removes one without the other leaves
+exactly this state — deleting the `git-manager` entry in Keychain Access, resetting your Keychain,
+or copying `settings.json` over from another Mac, which brings the account across but not the
+secret.
+
+The fix is the same in every case: **Settings → Integrations**, remove the account, and sign in
+again. That takes a few seconds and puts a fresh token in the Keychain.
+
+If macOS asks whether Git Manager may use your confidential information, that prompt _is_ the app
+reading your token — allowing it is what lets GitHub work. Denying it leaves the account connected
+but unusable.
+
 ## Something went wrong — where are the logs?
 
 The footer's activity button opens the **activity log**: every Git operation the app ran on your

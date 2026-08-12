@@ -10,11 +10,12 @@ submitted by them, from their own account, with the machine-identifying parts st
 telemetry, no cloud calls_), and an automatic error upload is telemetry whatever it is called. A
 report is a thing a user reads and submits.
 
-**2. The app posts as the user, or not at all.** `apiCreateErrorIssue` uses the token from the
-active GitHub account in settings — the same one the device flow already grants `repo` scope to.
-Without a connected account the dialog degrades to a finished, redacted body with a copy button and
-a link to the tracker: filing on the user's behalf would need a bot token and a server to hold it,
-which is rule 1 broken by another route.
+**2. The app posts as the user, or not at all.** `apiCreateErrorIssue` passes the **id** of the
+active GitHub account — a login, not a secret; Rust looks the token up in the OS keychain and
+attaches it, so nothing here ever holds a credential. It is the same account the device flow
+already grants `repo` scope to. Without one, the dialog degrades to a finished, redacted body with
+a copy button and a link to the tracker: filing on the user's behalf would need a bot token and a
+server to hold it, which is rule 1 broken by another route.
 
 **3. A tracker nobody reads helps nobody.** Two mechanisms defend that, and both are load-bearing:
 `lib/reportability.config.ts` refuses to treat a protected branch or a failing pre-commit hook as a
