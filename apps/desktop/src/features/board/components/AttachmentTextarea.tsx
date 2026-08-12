@@ -1,6 +1,10 @@
 import { useLayoutEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { useMarkdownEditor } from '@git-manager/components'
+import {
+  MarkdownLiveEditor,
+  useMarkdownEditor,
+  useMarkdownLiveEditor,
+} from '@git-manager/components'
 import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
 import { MarkdownEditorFrame } from '../../../components/markdown-editor/MarkdownEditorFrame'
@@ -27,6 +31,8 @@ interface AttachmentTextareaProps {
   /** Set for a GitHub-backed board: makes inserted attachments absolute `raw.githubusercontent.com`
    * URLs, since GitHub doesn't resolve relative image paths in issue bodies. */
   attachmentUrlPrefix?: string
+  /** Adds the formatted editing tab — the same markdown, painted to look like the result. */
+  rich?: boolean
 }
 
 /**
@@ -47,12 +53,14 @@ export function AttachmentTextarea({
   className = '',
   attachmentUrlPrefix,
   autoGrow,
+  rich,
   'data-testid': testId,
 }: AttachmentTextareaProps) {
   const { t } = useTranslation('board')
   // The formatting bar drives the same element the attachment logic reads the caret from, so both
   // share the hook's ref rather than keeping one each.
   const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
+  const live = useMarkdownLiveEditor()
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
   // True whenever the raw field is off screen (preview, or the formatted editor).
@@ -77,8 +85,12 @@ export function AttachmentTextarea({
       // Sequential rather than parallel: each insertion depends on where the previous one left the
       // text, and two concurrent writes would race over the same `value`.
       let next = value
-      let caret = textareaRef.current?.selectionStart ?? value.length
-      let caretEnd = textareaRef.current?.selectionEnd ?? caret
+      // Whichever editor is on screen owns the caret the file lands at.
+      const insertion = live.viewRef.current?.hasFocus
+        ? live.viewRef.current.state.selection.main
+        : { from: textareaRef.current?.selectionStart, to: textareaRef.current?.selectionEnd }
+      let caret = insertion.from ?? value.length
+      let caretEnd = insertion.to ?? caret
       for (const file of files) {
         const bytes = Array.from(new Uint8Array(await file.arrayBuffer()))
         const relativePath = await saveBoardAttachment(repoPath, file.name, bytes)
@@ -104,6 +116,22 @@ export function AttachmentTextarea({
       repoPath={repoPath}
       authored
       onModeChange={(mode) => setHidden(mode !== 'code')}
+      onRichCommand={live.runCommand}
+      richEditor={
+        rich ? (
+          <MarkdownLiveEditor
+            value={value}
+            onChange={onChange}
+            viewRef={live.viewRef}
+            onCommand={live.runCommand}
+            onFiles={(files) => void attach(files)}
+            placeholder={placeholder}
+            disabled={disabled || uploading}
+            className={className}
+            data-testid={testId ? `${testId}-rich` : undefined}
+          />
+        ) : undefined
+      }
     >
       <Textarea
         ref={textareaRef}

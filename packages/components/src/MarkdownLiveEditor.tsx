@@ -17,6 +17,9 @@ export interface MarkdownLiveEditorProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  /** Called with the files of a paste or a drop, so a caller that stores attachments keeps doing it
+   * in this mode too. Without it, both events fall through to CodeMirror's own handling. */
+  onFiles?: (files: File[]) => void
   'data-testid'?: string
 }
 
@@ -48,6 +51,7 @@ export function MarkdownLiveEditor({
   placeholder,
   disabled,
   className,
+  onFiles,
   'data-testid': testId,
 }: MarkdownLiveEditorProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -58,6 +62,16 @@ export function MarkdownLiveEditor({
   notify.current = onChange
   const command = useRef(onCommand)
   command.current = onCommand
+  const files = useRef(onFiles)
+  files.current = onFiles
+
+  /** Only a *file* paste or drop is ours; text falls through to CodeMirror untouched. */
+  function handleFiles(dropped: File[], event: Event): boolean {
+    if (dropped.length === 0 || !files.current) return false
+    event.preventDefault()
+    files.current(dropped)
+    return true
+  }
 
   useEffect(() => {
     if (!host.current) return
@@ -80,6 +94,10 @@ export function MarkdownLiveEditor({
           editable.of(EditorView.editable.of(true)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) notify.current(update.state.doc.toString())
+          }),
+          EditorView.domEventHandlers({
+            paste: (event) => handleFiles(Array.from(event.clipboardData?.files ?? []), event),
+            drop: (event) => handleFiles(Array.from(event.dataTransfer?.files ?? []), event),
           }),
         ],
       }),

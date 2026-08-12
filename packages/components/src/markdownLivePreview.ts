@@ -1,5 +1,5 @@
 import { syntaxTree } from '@codemirror/language'
-import { EditorState, Range, type Extension } from '@codemirror/state'
+import type { EditorState, Extension, Range } from '@codemirror/state'
 import {
   Decoration,
   EditorView,

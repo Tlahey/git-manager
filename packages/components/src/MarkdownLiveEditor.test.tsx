@@ -13,10 +13,12 @@ function Harness({
   initial = '',
   onChange,
   disabled,
+  onFiles,
 }: {
   initial?: string
   onChange?: (value: string) => void
   disabled?: boolean
+  onFiles?: (files: File[]) => void
 }) {
   const [value, setValue] = useState(initial)
   const { viewRef, runCommand } = useMarkdownLiveEditor()
@@ -32,6 +34,7 @@ function Harness({
         viewRef={viewRef}
         onCommand={runCommand}
         disabled={disabled}
+        onFiles={onFiles}
         data-testid="live"
       />
       <button type="button" onClick={() => runCommand('bold')}>
@@ -100,6 +103,34 @@ describe('MarkdownLiveEditor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'bold' }))
 
     expect(editor?.current?.state.selection.main.from).toBe(8)
+  })
+
+  it('hands a pasted file to its owner instead of inserting it', () => {
+    const onFiles = vi.fn()
+    render(<Harness initial="x" onFiles={onFiles} />)
+
+    const content = screen.getByTestId('live').querySelector('.cm-content') as HTMLElement
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', {
+      value: { files: [new File(['bytes'], 'shot.png', { type: 'image/png' })] },
+    })
+    content.dispatchEvent(event)
+
+    expect(onFiles).toHaveBeenCalledWith([expect.objectContaining({ name: 'shot.png' })])
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('leaves a plain text paste to CodeMirror', () => {
+    const onFiles = vi.fn()
+    render(<Harness initial="x" onFiles={onFiles} />)
+
+    const content = screen.getByTestId('live').querySelector('.cm-content') as HTMLElement
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: { files: [] } })
+    content.dispatchEvent(event)
+
+    expect(onFiles).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
   })
 
   it('stops accepting input when disabled', () => {

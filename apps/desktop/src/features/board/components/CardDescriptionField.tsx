@@ -66,6 +66,7 @@ export function CardDescriptionField({
             placeholder={t('card.dialog.descriptionPlaceholder')}
             rows={4}
             autoGrow
+            rich
             disabled={pending}
             className="text-xs"
             data-testid="card-description-input"
