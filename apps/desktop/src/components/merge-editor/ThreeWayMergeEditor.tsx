@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type * as monaco from 'monaco-editor'
 import { Lock } from 'lucide-react'
+import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { ThreeWayMergeView } from '@git-manager/git-types'
 import {
@@ -200,8 +201,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         theme: 'git-manager-dynamic',
         onEditorMount: handleEditorMount,
         options: { stickyScroll: { enabled: stickyScroll } },
+        // Same spinner and wording as DiffViewCenter's own loading state, so the moment the panes
+        // spend waiting for their diff geometry reads as the continuation of the fetch it follows
+        // rather than as a second, different kind of wait.
+        loadingFallback: (
+          <div className="flex items-center justify-center">
+            <Spinner className="mr-2 h-5 w-5 text-muted-foreground" />
+            <span className="text-muted-foreground">{t('diffView.loading')}</span>
+          </div>
+        ),
       }),
-      [filePath, handleEditorMount, stickyScroll]
+      [filePath, handleEditorMount, stickyScroll, t]
     )
 
     return (

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock } from '../../types'
 import type { BlockPlacement } from '../../mergeBlockLayout'
-import { setHiddenAreas } from '../monacoInterop'
+import { renderPane, setHiddenAreas } from '../monacoInterop'
 import { collapsedRegionsForPane, setCollapsedBlockHover } from '../collapsedRegions'
 import {
   COLLAPSED_BANNER_HEIGHT_LINES,
@@ -23,6 +23,18 @@ interface StickyOverlay {
   widget: editor.IOverlayWidget
   /** HTMLElement, not HTMLDivElement: the banner is a <button>. */
   domNode: HTMLElement
+  /** Where the banner currently belongs, in the pane's viewport space.
+   *
+   * A mutable box rather than a style write, because Monaco owns this widget's `top` and will
+   * reassert it: its overlay-widget part re-reads `getPosition()` for every widget on every render
+   * pass (`overlayWidgets.js`'s `render`) and pushes the result through a `FastDomNode`, which
+   * caches the last value it wrote and skips the DOM when it matches. Writing `style.top` directly
+   * therefore left that cache stale at `''`, so Monaco's next frame saw `'' !== '0px'`, wrote the
+   * `top: 0` its `getPosition()` still advertised, and every banner snapped to the pane's first
+   * line until the next pin moved it back — the "waves start at line 1 then teleport" flicker.
+   * Answering the question honestly, and asking Monaco to re-read it (`layoutOverlayWidget`), makes
+   * that disagreement impossible instead of racing it. */
+  position: { top: number }
 }
 
 interface UseCollapseUnchangedParams {
@@ -34,6 +46,17 @@ interface UseCollapseUnchangedParams {
   /** Formats the banner's text, e.g. "12 lines collapsed" — host-provided so it can be
    * translated and pluralised; falls back to English. */
   collapsedLinesLabel: (count: number) => string
+  /** A line's top Y offset in a pane's content space — the resolver's own collapse/zone-aware
+   * geometry (`useLineTopGeometry`), NOT Monaco's `getTopForLineNumber`.
+   *
+   * Monaco updates its internal line-height mapping on its own layout pass, so right after
+   * `setHiddenAreas` + `changeViewZones` its answer still describes the *uncollapsed* document: the
+   * banners were placed against that stale mapping and only reached their real position when the
+   * follow-up re-pins below ran. The geometry here is a pure function of the blocks, placements and
+   * expansions being applied, so it is already correct — and it is the same source the connector
+   * waves in the gaps are drawn from, so a banner can no longer drift from the ribbon it belongs
+   * to. */
+  lineTop: (side: PaneKey, lineNumber: number) => number
   /** Flips to `true` once every pane's Monaco instance has mounted. The `editors` bundle is a
    * stable ref object, so mutating its `.current` handles never re-triggers the apply effect on
    * its own — without this flag in the deps, the effect's first (and, with static `blocks`/
@@ -65,6 +88,7 @@ export function useCollapseUnchanged({
   scheduleRecompute,
   defaultCollapseUnchanged,
   collapsedLinesLabel,
+  lineTop,
   editorsReady,
 }: UseCollapseUnchangedParams) {
   const [collapseUnchanged, setCollapseUnchanged] = useState(defaultCollapseUnchanged)
@@ -74,7 +98,7 @@ export function useCollapseUnchanged({
   // on each scroll tick. Line numbers, not pixel positions: Monaco resets a view zone's own
   // `top` to 0 whenever its internal viewport culling considers the zone "not visible" (exactly
   // the zones we care about, scrolled just past the top edge), so naturalTop is recomputed fresh
-  // from `getTopForLineNumber` every time instead of cached from view-zone DOM state.
+  // from the line geometry every time instead of cached from view-zone DOM state.
   const bannerInfoRef = useRef<Record<PaneKey, BannerZoneInfo[]>>({
     theirs: [],
     center: [],
@@ -149,13 +173,19 @@ export function useCollapseUnchanged({
         domNode.addEventListener('mouseenter', () => setCollapsedBlockHover(info.blockId, true))
         domNode.addEventListener('mouseleave', () => setCollapsedBlockHover(info.blockId, false))
 
+        // Starts at 0 and is filled in by the `applyStickyBanners()` call that always follows this
+        // one, synchronously, in the same task — well before Monaco's next render pass can ask.
+        const position = { top: 0 }
         const widget: editor.IOverlayWidget = {
           getId: () => `merge-editor-collapsed-banner-${key}-${info.blockId}`,
           getDomNode: () => domNode,
-          getPosition: () => ({ preference: { top: 0, left: 0 } }),
+          // The `{ top, left }` form, so Monaco writes `top`/`left`/`position` and nothing else —
+          // `right: 0` above (the banner's full-viewport-width span) and the height set by
+          // applyStickyBanners stay ours to own. See `StickyOverlay.position`.
+          getPosition: () => ({ preference: { top: position.top, left: 0 } }),
         }
         paneEditor.addOverlayWidget(widget)
-        overlays.set(info.blockId, { widget, domNode })
+        overlays.set(info.blockId, { widget, domNode, position })
       })
     },
     [expandBlock, collapsedLinesLabel]
@@ -189,26 +219,26 @@ export function useCollapseUnchanged({
         const overlay = overlays.get(info.blockId)
         if (!overlay) return
 
-        let naturalTop: number
-        try {
-          // `afterLineNumber` is always the last visible context line right before the hidden
-          // range, never a hidden line itself, so the "throws for hidden lines" caveat on
-          // Monaco's own getTopForLineNumber (see editorGeometry.ts) doesn't apply here — still
-          // guarded since this runs on every scroll tick and a transient exception shouldn't
-          // break scrolling.
-          naturalTop = paneEditor.getTopForLineNumber(info.afterLineNumber) + lineHeight
-        } catch {
-          return
-        }
-
+        // The banner sits immediately below `afterLineNumber` (the last visible context line before
+        // the hidden range), so its own top is that line's bottom. Resolved through the resolver's
+        // own geometry rather than Monaco's — see the `lineTop` param.
+        const naturalTop = lineTop(key, info.afterLineNumber) + lineHeight
         const correction = stickyTopCorrection(scrollTop, naturalTop, bannerHeight)
-        overlay.domNode.style.top = `${naturalTop - scrollTop + correction}px`
-        // Unlike a view zone (which Monaco sizes itself via `setHeight`), an overlay widget's
-        // height is left entirely to its own CSS/content — without this, the banner's wave
-        // decoration (centered within its own box via `align-items: center`) collapses to
-        // whatever height the label's opacity-0 text naturally takes, landing at a different Y
-        // than the connector wave's midpoint (computed from this same `bannerHeight`) expects,
-        // which reads as a small vertical seam between the two.
+        const top = naturalTop - scrollTop + correction
+
+        // Through Monaco, never around it: this is the write that used to go to `style.top` and get
+        // reasserted a frame later (see `StickyOverlay.position`).
+        if (overlay.position.top !== top) {
+          overlay.position.top = top
+          paneEditor.layoutOverlayWidget(overlay.widget)
+        }
+        // Height, on the other hand, is genuinely ours: unlike a view zone (which Monaco sizes
+        // itself via `setHeight`) an overlay widget's height is left entirely to its own
+        // CSS/content, and `_renderWidget` never touches it. Without this the banner's wave
+        // decoration (centered within its own box via `align-items: center`) collapses to whatever
+        // height the label's opacity-0 text naturally takes, landing at a different Y than the
+        // connector wave's midpoint (computed from this same `bannerHeight`) expects, which reads as
+        // a small vertical seam between the two.
         overlay.domNode.style.height = `${bannerHeight}px`
       })
     }
@@ -216,7 +246,7 @@ export function useCollapseUnchanged({
     pinPane(editors.theirsEditorRef.current, 'theirs', bannerInfoRef.current.theirs)
     pinPane(centerEditor, 'center', bannerInfoRef.current.center)
     pinPane(editors.oursEditorRef.current, 'ours', bannerInfoRef.current.ours)
-  }, [editors])
+  }, [editors, lineTop])
 
   // Apply collapseUnchanged regions to standard Monaco editors using hiddenAreas API and custom view zones
   useEffect(() => {
@@ -313,21 +343,30 @@ export function useCollapseUnchanged({
     createStickyOverlays(centerEditor, 'center', centerZones)
     createStickyOverlays(oursEditor, 'ours', oursZones)
 
-    // Monaco's layout takes a moment to update line height mappings after setHiddenAreas — the
-    // sticky pin re-applies alongside each recompute so it uses the settled layout once available.
     scheduleRecompute()
     applyStickyBanners()
-    const t1 = setTimeout(() => {
-      scheduleRecompute()
-      applyStickyBanners()
-    }, 50)
-    const t2 = setTimeout(() => {
-      scheduleRecompute()
-      applyStickyBanners()
-    }, 150)
+
+    /* Everything above — hidden areas, spacer zones, banners and their positions — has now been
+     * handed to Monaco, but Monaco would paint it on an animation frame of its own, and the browser
+     * is free to paint the pane before that: one frame of the file uncollapsed. `render(true)` (a
+     * documented part of the editor API: "Force an editor render now") closes that window by
+     * flushing the view synchronously, so this whole pass lands in a single task and the next paint
+     * can only show its result.
+     *
+     * This is what makes the intermediate state not exist, rather than hiding it — every attempt to
+     * hide it instead (an opacity gate over the panes) had to guess how long to wait, and guessed
+     * wrong in both directions. */
+    renderPane(theirsEditor)
+    renderPane(centerEditor)
+    renderPane(oursEditor)
+
+    /* This pass used to run itself again at 50ms and 150ms, to re-pin the banners and re-measure the
+     * connectors "once the settled layout was available". Both reasons are gone: the banners are
+     * placed from the resolver's own geometry (see `lineTop`), which never needed Monaco's layout,
+     * and the flush above means the view the connector recompute measures a moment later is already
+     * the final one. What remains of that safety net is in `usePaneMount`, where it covers the first
+     * layout of the panes themselves rather than this pass. */
     return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
       // Read `.current` HERE rather than reusing the `theirsEditor`/`centerEditor`/`oursEditor`
       // captured at the top of the effect — which is what `exhaustive-deps` asks for, and is
       // wrong in this one place. On unmount the pane refs are nulled *before* this cleanup runs,

@@ -172,7 +172,26 @@ export interface FakeViewZone {
 export interface FakeOverlayWidget {
   getId: () => string
   getDomNode: () => HTMLElement
-  getPosition: () => unknown
+  /** Only the `{ top, left }` coordinate form, which is the one the resolver's banners use — the
+   * enum preferences (corners, top-center) have no consumer here. */
+  getPosition: () => { preference?: { top: number; left: number } } | null
+}
+
+/** Applies a widget's own `getPosition()` to its DOM node, the way Monaco's overlay-widget part
+ * does (`overlayWidgets.js`'s `_renderWidget`: for the `{ top, left }` preference form it writes
+ * `top`, `left` and `position`, and nothing else).
+ *
+ * Faithful on purpose. Monaco re-runs this for *every* widget on *every* render pass, which is what
+ * made a banner positioned by writing `style.top` behind Monaco's back snap back to the top of the
+ * pane a frame later. A fake that only stored widgets would have shown that bug as passing. */
+function applyOverlayPosition(widget: FakeOverlayWidget) {
+  const preference = widget.getPosition()?.preference
+  if (!preference || typeof preference !== 'object') return
+  const { top, left } = preference as { top: number; left: number }
+  const domNode = widget.getDomNode()
+  domNode.style.top = `${top}px`
+  domNode.style.left = `${left}px`
+  domNode.style.position = 'absolute'
 }
 
 export interface FakeEditorInstance {
@@ -203,7 +222,9 @@ export interface FakeEditorInstance {
   getTopForLineNumber: (line: number) => number
   getVisibleRanges: () => { startLineNumber: number; endLineNumber: number }[]
   addOverlayWidget: (widget: FakeOverlayWidget) => void
+  layoutOverlayWidget: (widget: FakeOverlayWidget) => void
   removeOverlayWidget: (widget: FakeOverlayWidget) => void
+  render: (forceRedraw?: boolean) => void
   addCommand: (keybinding: number, handler: () => void) => void
   focus: () => void
   trigger: (source: string, actionId: string, payload: unknown) => void
@@ -225,6 +246,8 @@ export interface FakeEditorInstance {
   commands: Map<number, () => void>
   /** Test-only: the most recent ranges passed to `setHiddenAreas` (collapse-unchanged). */
   hiddenAreas: FakeRange[]
+  /** Test-only: one entry per `render()` call, holding its `forceRedraw` argument. */
+  renderCalls: boolean[]
   /** Test-only: the last line passed to `revealLineInCenter` (goToNextChange/goToPreviousChange). */
   lastRevealedLine: number | null
   /** Test-only: the last position passed to `setPosition`. */
@@ -301,9 +324,21 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
         : [],
     addOverlayWidget: (widget) => {
       instance.overlayWidgets.push(widget)
+      applyOverlayPosition(widget)
+    },
+    layoutOverlayWidget: (widget) => {
+      // Monaco re-reads `getPosition()` here (`codeEditorWidget.js`'s `layoutOverlayWidget` assigns
+      // `widgetData.position = widget.getPosition()` before handing it to the view).
+      applyOverlayPosition(widget)
     },
     removeOverlayWidget: (widget) => {
       instance.overlayWidgets = instance.overlayWidgets.filter((w) => w.getId() !== widget.getId())
+    },
+    render: (forceRedraw) => {
+      instance.renderCalls.push(Boolean(forceRedraw))
+      // A render pass re-positions every widget from its own `getPosition()` — see
+      // `applyOverlayPosition`.
+      instance.overlayWidgets.forEach(applyOverlayPosition)
     },
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
@@ -349,6 +384,7 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     overlayWidgets: [],
     commands,
     hiddenAreas: [],
+    renderCalls: [],
     lastRevealedLine: null,
     lastPosition: null,
     lastUpdateOptions: null,
@@ -397,10 +433,18 @@ export interface FakeDiffEditorInstance {
  * that care can inspect e.g. `fakeDiffEditors.at(-1)!.disposed` after switching modes. */
 export const fakeDiffEditors: FakeDiffEditorInstance[] = []
 
+/** Set to `true` to make every fake diff editor never answer, reproducing a host where Monaco's
+ * diff is silent because the detached editor it runs in is never laid out (this package's own
+ * Storybook). The resolver waits on that geometry before painting anything, so its give-up
+ * fallback is the difference between "a file that shows uncollapsed" and "a file that never
+ * shows" — untestable without a way to stay quiet. Reset by `resetFakeEditors`. */
+export const fakeDiffSilent = { current: false }
+
 export function resetFakeEditors() {
   fakeEditors.clear()
   fakeDiffEditors.length = 0
   fakeVisibleRange.current = null
+  fakeDiffSilent.current = false
 }
 
 /** A deliberately simple stand-in for Monaco's real line-diff algorithm: trims the common
@@ -466,7 +510,7 @@ function createFakeDiffEditor(options: { ignoreTrimWhitespace?: boolean }): Fake
       // `waitFor`) while still landing after the synchronous `onDidUpdateDiff` subscription that
       // immediately follows `setModel` in ConflictResolver.tsx's own effect body.
       queueMicrotask(() => {
-        if (instance.disposed) return
+        if (instance.disposed || fakeDiffSilent.current) return
         changes = computeSimpleLineDiff(
           originalText,
           modifiedText,
