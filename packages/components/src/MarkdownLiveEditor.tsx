@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView, keymap, placeholder as placeholderExtension } from '@codemirror/view'
@@ -20,6 +20,9 @@ export interface MarkdownLiveEditorProps {
   /** Called with the files of a paste or a drop, so a caller that stores attachments keeps doing it
    * in this mode too. Without it, both events fall through to CodeMirror's own handling. */
   onFiles?: (files: File[]) => void
+  /** Turns a markdown image path into one the webview can load. Omit it and images stay as source
+   * text — resolving a repository-relative attachment is the app's business, not this package's. */
+  resolveImageSrc?: (src: string) => string
   'data-testid'?: string
 }
 
@@ -52,6 +55,7 @@ export function MarkdownLiveEditor({
   disabled,
   className,
   onFiles,
+  resolveImageSrc,
   'data-testid': testId,
 }: MarkdownLiveEditorProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -64,6 +68,10 @@ export function MarkdownLiveEditor({
   command.current = onCommand
   const files = useRef(onFiles)
   files.current = onFiles
+  // Wrapped in a ref like the rest: the extension is built once, and a caller that rebuilds its
+  // resolver on every render would otherwise freeze the first one into the editor.
+  const resolver = useRef((src: string) => (resolveImageSrc ? resolveImageSrc(src) : src))
+  resolver.current = (src: string) => (resolveImageSrc ? resolveImageSrc(src) : src)
 
   /** Only a *file* paste or drop is ours; text falls through to CodeMirror untouched. */
   function handleFiles(dropped: File[], event: Event): boolean {
@@ -87,8 +95,10 @@ export function MarkdownLiveEditor({
             ...historyKeymap,
             ...defaultKeymap,
           ]),
-          markdown(),
-          markdownLivePreview(),
+          // GFM, not plain CommonMark: task lists, tables and strikethrough are the syntax this
+          // app's markdown actually uses, and `markdown()` alone parses none of them.
+          markdown({ base: markdownLanguage }),
+          markdownLivePreview({ resolveImageSrc: resolver.current }),
           EditorView.lineWrapping,
           placeholderExtension(placeholder ?? ''),
           editable.of(EditorView.editable.of(true)),

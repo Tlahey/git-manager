@@ -5,6 +5,7 @@ import {
   useMarkdownLiveEditor,
 } from '@git-manager/components'
 import { Textarea } from '@git-manager/ui'
+import { resolveImageSrc } from '../markdown/components/resolveImageSrc'
 import { MarkdownEditorFrame } from './MarkdownEditorFrame'
 
 export interface MarkdownFieldProps {
@@ -78,6 +79,7 @@ export function MarkdownField({
             onChange={onChange}
             viewRef={live.viewRef}
             onCommand={live.runCommand}
+            resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
             placeholder={placeholder}
             disabled={disabled}
             className={className}

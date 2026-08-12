@@ -1,11 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
-import { markdown } from '@codemirror/lang-markdown'
-import { markdownDecorations } from './markdownLivePreview'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { markdownDecorations } from './markdownDecorations'
+import { ImageWidget, RuleWidget, TaskCheckboxWidget } from './markdownWidgets'
 
 /** `cursor` defaults to the very start, so the assertions are about a line nobody is editing. */
 function state(doc: string, cursor = 0) {
-  return EditorState.create({ doc, extensions: [markdown()], selection: { anchor: cursor } })
+  return EditorState.create({
+    doc,
+    extensions: [markdown({ base: markdownLanguage })],
+    selection: { anchor: cursor },
+  })
 }
 
 interface Decorated {
@@ -15,26 +20,34 @@ interface Decorated {
 
 function decorated(
   doc: string,
-  cursor?: number
-): { hidden: string[]; styled: Decorated[]; lines: string[] } {
+  cursor?: number,
+  options?: Parameters<typeof markdownDecorations>[2]
+): { hidden: string[]; styled: Decorated[]; lines: string[]; widgets: unknown[] } {
   const editorState = state(doc, cursor)
-  const set = markdownDecorations(editorState)
+  const set = markdownDecorations(editorState, undefined, options)
   const hidden: string[] = []
   const styled: Decorated[] = []
   const lines: string[] = []
+  const widgets: unknown[] = []
 
   const iterator = set.iter()
   while (iterator.value) {
     const text = editorState.doc.sliceString(iterator.from, iterator.to)
     const className = iterator.value.spec.class as string | undefined
-    // A line decoration is empty and carries a class; a hidden marker is empty of class instead.
-    if (className && iterator.from === iterator.to) lines.push(className)
+    const widget = iterator.value.spec.widget as unknown
+    // A line decoration is empty and carries a class; a replaced range carries a widget, or
+    // nothing at all when it is simply hidden.
+    if (widget) widgets.push(widget)
+    else if (className && iterator.from === iterator.to) lines.push(className)
     else if (className) styled.push({ text, className })
     else hidden.push(text)
     iterator.next()
   }
-  return { hidden, styled, lines }
+  return { hidden, styled, lines, widgets }
 }
+
+/** Images are only drawn for a caller that knows how to resolve their paths. */
+const withImages = { resolveImageSrc: (src: string) => `resolved:${src}` }
 
 /** The classes applied to a given fragment of the document. */
 function classesOf(doc: string, text: string, cursor?: number): string[] {
@@ -125,6 +138,55 @@ describe('markdownDecorations', () => {
     const { lines } = decorated('cursor\n\n> first\n> second')
 
     expect(lines.filter((className) => className === 'cm-md-line-quote')).toHaveLength(2)
+  })
+
+  it('draws a task marker as a checkbox, ticked or not', () => {
+    const { widgets } = decorated('cursor\n\n- [x] done\n- [ ] todo')
+    const boxes = widgets.filter((widget) => widget instanceof TaskCheckboxWidget)
+
+    expect(boxes).toHaveLength(2)
+    expect((boxes[0] as TaskCheckboxWidget).checked).toBe(true)
+    expect((boxes[1] as TaskCheckboxWidget).checked).toBe(false)
+  })
+
+  it('keeps the checkbox on the line being edited — ticking it is the whole gesture', () => {
+    const doc = '- [ ] todo'
+    const { widgets } = decorated(doc, doc.indexOf('todo'))
+
+    expect(widgets.some((widget) => widget instanceof TaskCheckboxWidget)).toBe(true)
+  })
+
+  it("draws an image, through the caller's own path resolution", () => {
+    const { widgets } = decorated('cursor\n\n![shot](a.png)', 0, withImages)
+    const image = widgets.find((widget) => widget instanceof ImageWidget) as ImageWidget
+
+    expect(image.src).toBe('resolved:a.png')
+    expect(image.alt).toBe('shot')
+  })
+
+  it('shows an image as source while its line is being edited', () => {
+    const doc = 'cursor\n\n![shot](a.png)'
+    const { widgets } = decorated(doc, doc.indexOf('shot'), withImages)
+
+    expect(widgets.some((widget) => widget instanceof ImageWidget)).toBe(false)
+  })
+
+  it('leaves an image alone when nobody can resolve its path', () => {
+    const { widgets } = decorated('cursor\n\n![shot](a.png)')
+
+    expect(widgets.some((widget) => widget instanceof ImageWidget)).toBe(false)
+  })
+
+  it('draws a horizontal rule', () => {
+    const { widgets } = decorated('cursor\n\n---\n\nafter')
+
+    expect(widgets.some((widget) => widget instanceof RuleWidget)).toBe(true)
+  })
+
+  it('tints every line of a fenced code block', () => {
+    const { lines } = decorated('cursor\n\n```ts\nconst a = 1\n```')
+
+    expect(lines.filter((className) => className === 'cm-md-line-fence')).toHaveLength(3)
   })
 
   it('decorates nothing in a plain paragraph', () => {

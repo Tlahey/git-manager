@@ -8,6 +8,7 @@ import {
 import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
 import { MarkdownEditorFrame } from '../../../components/markdown-editor/MarkdownEditorFrame'
+import { resolveImageSrc } from '../../../components/markdown/components/resolveImageSrc'
 import { saveBoardAttachment } from '../api/attachment.api'
 import { attachmentMarkdown, insertAtCaret } from '../lib/attachmentMarkdown'
 
@@ -125,6 +126,7 @@ export function AttachmentTextarea({
             viewRef={live.viewRef}
             onCommand={live.runCommand}
             onFiles={(files) => void attach(files)}
+            resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
             placeholder={placeholder}
             disabled={disabled || uploading}
             className={className}
