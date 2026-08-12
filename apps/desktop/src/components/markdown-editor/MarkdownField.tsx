@@ -39,6 +39,13 @@ export interface MarkdownFieldProps {
  * The raw field keeps `Textarea`'s own border and focus ring rather than being folded into the
  * frame's box, which is what an audited primitive is for. Board cards use `AttachmentTextarea`
  * instead — same frame, but that one also owns paste-to-attach.
+ *
+ * **A commit message is not one of these, and the omission is deliberate.** The commit box, the
+ * stash message, a reword, the batch plan, an annotated tag: git stores all of them as plain text,
+ * so `**bold**` stays `**bold**` in `git log` and in GitHub's commit view alike. A formatting bar
+ * there would promise a rendering that never arrives, and headings or tables would fight the 50/72
+ * subject-and-body convention those fields exist to support. Adding `MarkdownField` to one of them
+ * looks like fixing an oversight; it isn't.
  */
 export function MarkdownField({
   value,
