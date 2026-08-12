@@ -145,8 +145,10 @@ export const DOC_SECTIONS: DocSection[] = [
   {
     // Kept last so it sits right above the hand-curated "Help" section (the troubleshooting
     // page) in the rendered sidebar — together they form the debugging corner of the docs.
+    // error-report follows activity-log because it is what you do *after* reading one: the log
+    // is where you find the failure, the report is how you send it.
     title: 'Debugging',
-    features: ['activity-log'],
+    features: ['activity-log', 'error-report'],
   },
 ]
 

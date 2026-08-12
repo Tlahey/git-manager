@@ -33,7 +33,20 @@ If your repository installs hooks (pre-commit, commit-msg, pre-push), they run h
 they do on the command line — a refusal shows the hook's own output, and the commit button's
 menu offers a one-time "without hooks" escape hatch. See [Repository hooks](./features/git-hooks).
 
-## Still stuck?
+## Still stuck? Report it from the app
 
-[Open an issue](https://github.com/Tlahey/git-manager/issues) with the app version (bottom-right
-of the footer) and, if it concerns a Git operation, the matching activity-log entry.
+The footer's **report button** (the speech bubble, next to the activity button) opens the activity
+log filtered to failures. Pick the operation that went wrong and choose **Report this problem**:
+the app assembles the issue for you — the error, the operations that led to it, your app version
+and platform — and shows you the exact text before anything is sent. Paths, repository names and
+argument values are stripped out first; see [Private by design](./privacy#reporting-a-problem).
+
+With a GitHub account connected, one button posts it as an issue under your own account. Without
+one, copy the report and [open an issue](https://github.com/Tlahey/git-manager/issues) yourself.
+
+[Reporting a problem](./features/error-report) shows the whole screen.
+
+The app will also tell you when a failure is _not_ a bug — a protected branch, a hook of your own
+that refused a commit, an AI provider that isn't running — and explain what happened instead of
+filing it. That is the check working, not a refusal to listen: if you think it is wrong, there is
+a box to report it anyway.
