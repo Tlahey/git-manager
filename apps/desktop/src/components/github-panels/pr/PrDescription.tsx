@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Spinner } from '@git-manager/ui'
 import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
+import { MarkdownField } from '../../markdown-editor/MarkdownField'
 import { usePrActions } from '../../../hooks/usePrActions'
 import { useMarkdownTaskToggle } from '../../../hooks/useMarkdownTaskToggle'
 import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
@@ -68,9 +69,9 @@ export function PrDescription({ repoPath, prNumber, body, prUrl }: PrDescription
 
       {editing ? (
         <div className="space-y-2">
-          <Textarea
+          <MarkdownField
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
             onDragOver={mediaDrop.onDragOver}
             onDrop={mediaDrop.onDrop}
             disabled={pending}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Spinner } from '@git-manager/ui'
+import { MarkdownField } from '../../markdown-editor/MarkdownField'
 import { usePrActions } from '../../../hooks/usePrActions'
 import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
 
@@ -27,9 +28,9 @@ export function PrCommentBox({ repoPath, prNumber, targetUrl }: PrCommentBoxProp
 
   return (
     <section data-testid="pr-comment-box" className="border-t border-border px-4 py-3">
-      <Textarea
+      <MarkdownField
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         onDragOver={mediaDrop.onDragOver}
         onDrop={mediaDrop.onDrop}
         placeholder={t('pr.comment.placeholder')}

@@ -3,7 +3,6 @@ import {
   Button,
   Spinner,
   Input,
-  Textarea,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -11,6 +10,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
+import { MarkdownField } from '../../../components/markdown-editor/MarkdownField'
 import { createIssue } from '../../../api/github.api'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { useGithubMediaDropHandler } from '../../../hooks/useGithubMediaDropHandler'
@@ -113,10 +113,10 @@ export function CreateIssueDialog({ repoPath, open, onClose, onCreated }: Create
             <label className="block text-xs text-muted-foreground" htmlFor="issue-create-body">
               {t('sidebar.createIssue.bodyLabel')}
             </label>
-            <Textarea
+            <MarkdownField
               id="issue-create-body"
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={setBody}
               onDragOver={mediaDrop.onDragOver}
               onDrop={mediaDrop.onDrop}
               placeholder={t('sidebar.createIssue.bodyPlaceholder')}

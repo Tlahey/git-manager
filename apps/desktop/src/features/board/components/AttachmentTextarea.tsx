@@ -1,7 +1,15 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import {
+  MarkdownLiveEditor,
+  useMarkdownEditor,
+  useMarkdownLiveEditor,
+} from '@git-manager/components'
 import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
+import { MarkdownEditorFrame } from '../../../components/markdown-editor/MarkdownEditorFrame'
+import { resolveImageSrc } from '../../../components/markdown/components/resolveImageSrc'
+import { renderMermaid } from '../../../components/markdown/components/renderMermaid'
 import { saveBoardAttachment } from '../api/attachment.api'
 import { attachmentMarkdown, insertAtCaret } from '../lib/attachmentMarkdown'
 
@@ -48,19 +56,26 @@ export function AttachmentTextarea({
   'data-testid': testId,
 }: AttachmentTextareaProps) {
   const { t } = useTranslation('board')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // The formatting bar drives the same element the attachment logic reads the caret from, so both
+  // share the hook's ref rather than keeping one each.
+  const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
+  const live = useMarkdownLiveEditor()
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
+  // True whenever the raw field is off screen (preview, or the formatted editor).
+  const [hidden, setHidden] = useState(false)
 
   // Measured after every value change rather than tracked in state: the height has to be read back
   // from the laid-out element, and `scrollHeight` is only meaningful once the box has been collapsed
-  // to `auto` first.
+  // to `auto` first — which a hidden element cannot give, since it reports 0. Hence `hidden` both as
+  // a guard and as a dependency: the measurement is deferred to the moment the field comes back on
+  // screen, rather than collapsing it to nothing behind another tab.
   useLayoutEffect(() => {
     const el = textareaRef.current
-    if (!autoGrow || !el) return
+    if (!autoGrow || !el || hidden) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-  }, [value, autoGrow])
+  }, [value, autoGrow, hidden])
 
   async function attach(files: File[]) {
     if (files.length === 0 || disabled) return
@@ -69,8 +84,12 @@ export function AttachmentTextarea({
       // Sequential rather than parallel: each insertion depends on where the previous one left the
       // text, and two concurrent writes would race over the same `value`.
       let next = value
-      let caret = textareaRef.current?.selectionStart ?? value.length
-      let caretEnd = textareaRef.current?.selectionEnd ?? caret
+      // Whichever editor is on screen owns the caret the file lands at.
+      const insertion = live.viewRef.current?.hasFocus
+        ? live.viewRef.current.state.selection.main
+        : { from: textareaRef.current?.selectionStart, to: textareaRef.current?.selectionEnd }
+      let caret = insertion.from ?? value.length
+      let caretEnd = insertion.to ?? caret
       for (const file of files) {
         const bytes = Array.from(new Uint8Array(await file.arrayBuffer()))
         const relativePath = await saveBoardAttachment(repoPath, file.name, bytes)
@@ -89,11 +108,32 @@ export function AttachmentTextarea({
   }
 
   return (
-    <div className="relative">
+    <MarkdownEditorFrame
+      onCommand={runCommand}
+      disabled={disabled || uploading}
+      onModeChange={(mode) => setHidden(mode !== 'code')}
+      onRichCommand={live.runCommand}
+      richEditor={
+        <MarkdownLiveEditor
+          value={value}
+          onChange={onChange}
+          viewRef={live.viewRef}
+          onCommand={live.runCommand}
+          onFiles={(files) => void attach(files)}
+          resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
+          renderDiagram={(code) => renderMermaid(code, 'cm-diagram')}
+          placeholder={placeholder}
+          disabled={disabled || uploading}
+          className={className}
+          data-testid={testId ? `${testId}-rich` : undefined}
+        />
+      }
+    >
       <Textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled || uploading}
@@ -133,6 +173,6 @@ export function AttachmentTextarea({
             ? t('attachment.hintRemote')
             : t('attachment.hint')}
       </p>
-    </div>
+    </MarkdownEditorFrame>
   )
 }

@@ -43,6 +43,12 @@ beforeEach(() => {
 })
 
 describe('AttachmentTextarea', () => {
+  it('offers the formatted editor on the same markdown', () => {
+    renderTextarea({ value: '## Title' })
+
+    expect(screen.getByTestId('field-rich').textContent).toContain('Title')
+  })
+
   it('edits like a normal textarea', async () => {
     const user = userEvent.setup()
     const { onChange } = renderTextarea()

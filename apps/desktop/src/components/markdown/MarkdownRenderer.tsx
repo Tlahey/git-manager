@@ -11,6 +11,7 @@ import { CodeBlock } from './components/CodeBlock'
 import { MarkdownLink } from './components/MarkdownLink'
 import { MarkdownTable, MarkdownTableCell, MarkdownTableHead } from './components/MarkdownTable'
 import { MarkdownTaskListInput } from './components/MarkdownTaskList'
+import { MarkdownBlockquote } from './components/MarkdownBlockquote'
 import { MarkdownImage } from './components/MarkdownImage'
 import { MarkdownVideo } from './components/MarkdownVideo'
 import {
@@ -179,11 +180,7 @@ export function MarkdownRenderer({
               <li {...props}>{children}</li>
             </MarkdownTaskItemLineContext.Provider>
           ),
-          blockquote: ({ children }) => (
-            <blockquote className="my-2.5 rounded-r border-l-2 border-primary/60 bg-muted/20 py-1.5 pl-3.5 text-muted-foreground italic">
-              {children}
-            </blockquote>
-          ),
+          blockquote: ({ children }) => <MarkdownBlockquote>{children}</MarkdownBlockquote>,
           hr: () => <hr className="my-4 border-border" />,
           // Only ever reached under `authoredMarkdownSanitizeSchema` — the strict schema drops the
           // tag before it gets here, so a README can't render one.
