@@ -1,7 +1,13 @@
 import { syntaxTree } from '@codemirror/language'
 import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, type DecorationSet } from '@codemirror/view'
-import { ImageWidget, RuleWidget, TaskCheckboxWidget } from './markdownWidgets'
+import {
+  AlertTitleWidget,
+  ImageWidget,
+  RuleWidget,
+  TableWidget,
+  TaskCheckboxWidget,
+} from './markdownWidgets'
 
 /**
  * What the live-preview layer paints over a markdown document, node by node.
@@ -23,7 +29,13 @@ export interface MarkdownDecorationOptions {
    * is the app's business and not this package's.
    */
   resolveImageSrc?: (src: string) => string
+  /** The translated name of a GitHub alert kind (`note`, `warning`, …) for its callout title.
+   * Without it the kind's own word is shown, which is right for a package that holds no copy. */
+  alertLabel?: (kind: string) => string
 }
+
+/** A blockquote is a GitHub alert when its first line is nothing but the marker. */
+const ALERT = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/
 
 /** Nodes whose whole range gets a style. Heading levels are handled separately. */
 const STYLED_NODES: Record<string, string> = {
@@ -115,6 +127,16 @@ export function markdownDecorations(
   const decorations: Range<Decoration>[] = []
   const editing = activeLines(state)
   const isEditing = (pos: number) => editing.has(state.doc.lineAt(pos).number)
+  const isEditingBlock = (from: number, to: number) => {
+    const first = state.doc.lineAt(from).number
+    const last = state.doc.lineAt(to).number
+    for (let line = first; line <= last; line += 1) if (editing.has(line)) return true
+    return false
+  }
+  // Ranges already replaced by a widget. CodeMirror rejects one replacement nested in another, and
+  // a table's own cells would otherwise go on emitting hidden markers underneath the drawn table.
+  const drawn: [number, number][] = []
+  const isDrawn = (pos: number) => drawn.some(([from, to]) => pos >= from && pos < to)
 
   for (const range of ranges) {
     syntaxTree(state).iterate({
@@ -158,8 +180,42 @@ export function markdownDecorations(
           decorations.push(...eachLine(state, node.from, node.to, 'cm-md-line-fence'))
         }
 
+        if (node.name === 'Table') {
+          if (!isEditingBlock(node.from, node.to)) {
+            decorations.push(
+              Decoration.replace({
+                widget: new TableWidget(state.doc.sliceString(node.from, node.to)),
+              }).range(node.from, node.to)
+            )
+            drawn.push([node.from, node.to])
+            return false
+          }
+          // Being edited: the source stays, but reads as a table rather than as prose.
+          decorations.push(...eachLine(state, node.from, node.to, 'cm-md-line-table'))
+        }
+
         if (node.name === 'Blockquote') {
-          decorations.push(...eachLine(state, node.from, node.to, 'cm-md-line-quote'))
+          const first = state.doc.lineAt(node.from)
+          const alert = first.text.match(ALERT)
+          const kind = alert ? alert[1].toLowerCase() : null
+
+          decorations.push(
+            ...eachLine(
+              state,
+              node.from,
+              node.to,
+              kind ? `cm-md-line-alert cm-md-line-alert-${kind}` : 'cm-md-line-quote'
+            )
+          )
+
+          if (kind && !isEditing(first.from)) {
+            decorations.push(
+              Decoration.replace({
+                widget: new AlertTitleWidget(kind, options.alertLabel?.(kind) ?? kind),
+              }).range(first.from, first.to)
+            )
+            drawn.push([first.from, first.to])
+          }
         }
 
         const heading = node.name.match(HEADING)
@@ -181,7 +237,7 @@ export function markdownDecorations(
 
         const hideable =
           HIDDEN_MARKS.has(node.name) || isLinkTarget(node.name, node.node.parent?.name)
-        if (hideable && !isEditing(node.from)) {
+        if (hideable && !isEditing(node.from) && !isDrawn(node.from)) {
           decorations.push(
             Decoration.replace({}).range(node.from, hiddenTo(state, node.name, node.to))
           )

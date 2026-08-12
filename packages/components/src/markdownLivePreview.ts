@@ -120,6 +120,54 @@ const livePreviewTheme = EditorView.theme({
     borderRadius: '4px',
     margin: '0.25rem 0',
   },
+  // A GitHub alert, as the callout the renderer draws: the marker line becomes the title, and the
+  // body keeps its own tint. The text stays text — it is edited in place, not inside a widget.
+  '.cm-md-line-alert': {
+    borderLeft: '2px solid hsl(var(--primary) / 0.6)',
+    backgroundColor: 'hsl(var(--primary) / 0.06)',
+    paddingLeft: '0.75rem',
+  },
+  '.cm-md-line-alert-tip': {
+    borderLeftColor: 'hsl(var(--success) / 0.7)',
+    backgroundColor: 'hsl(var(--success) / 0.07)',
+  },
+  '.cm-md-line-alert-warning': {
+    borderLeftColor: 'hsl(var(--warning) / 0.7)',
+    backgroundColor: 'hsl(var(--warning) / 0.08)',
+  },
+  '.cm-md-line-alert-caution': {
+    borderLeftColor: 'hsl(var(--destructive) / 0.7)',
+    backgroundColor: 'hsl(var(--destructive) / 0.07)',
+  },
+  '.cm-md-alert-title': {
+    fontWeight: '500',
+    fontSize: '0.9em',
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
+    color: 'hsl(var(--primary))',
+  },
+  '.cm-md-alert-tip': { color: 'hsl(var(--success))' },
+  '.cm-md-alert-warning': { color: 'hsl(var(--warning))' },
+  '.cm-md-alert-caution': { color: 'hsl(var(--destructive))' },
+
+  '.cm-md-table': {
+    borderCollapse: 'collapse',
+    margin: '0.25rem 0',
+    fontSize: '0.95em',
+    maxWidth: '100%',
+  },
+  '.cm-md-table th, .cm-md-table td': {
+    border: '1px solid hsl(var(--border))',
+    padding: '0.15rem 0.5rem',
+    textAlign: 'left',
+  },
+  '.cm-md-table th': { backgroundColor: 'hsl(var(--muted) / 0.5)', fontWeight: '600' },
+  '.cm-md-line-table': {
+    fontFamily: 'var(--font-mono, monospace)',
+    fontSize: '0.9em',
+    backgroundColor: 'hsl(var(--muted) / 0.35)',
+  },
+
   '.cm-md-rule': {
     display: 'block',
     border: 'none',

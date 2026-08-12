@@ -1,4 +1,5 @@
 import type { DragEvent, KeyboardEvent } from 'react'
+import { useTranslation } from '@git-manager/i18n'
 import {
   MarkdownLiveEditor,
   useMarkdownEditor,
@@ -61,6 +62,7 @@ export function MarkdownField({
   rich,
   'data-testid': testId,
 }: MarkdownFieldProps) {
+  const { t } = useTranslation('git')
   const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
   const live = useMarkdownLiveEditor()
 
@@ -80,6 +82,7 @@ export function MarkdownField({
             viewRef={live.viewRef}
             onCommand={live.runCommand}
             resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
+            alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
             placeholder={placeholder}
             disabled={disabled}
             className={className}

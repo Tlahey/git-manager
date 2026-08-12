@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { markdownDecorations } from './markdownDecorations'
-import { ImageWidget, RuleWidget, TaskCheckboxWidget } from './markdownWidgets'
+import {
+  AlertTitleWidget,
+  ImageWidget,
+  RuleWidget,
+  TableWidget,
+  TaskCheckboxWidget,
+} from './markdownWidgets'
 
 /** `cursor` defaults to the very start, so the assertions are about a line nobody is editing. */
 function state(doc: string, cursor = 0) {
@@ -187,6 +193,46 @@ describe('markdownDecorations', () => {
     const { lines } = decorated('cursor\n\n```ts\nconst a = 1\n```')
 
     expect(lines.filter((className) => className === 'cm-md-line-fence')).toHaveLength(3)
+  })
+
+  it('turns an alert into a callout, title and tint', () => {
+    const { widgets, lines } = decorated('cursor\n\n> [!WARNING]\n> careful', 0, {
+      alertLabel: (kind) => `label:${kind}`,
+    })
+    const title = widgets.find((widget) => widget instanceof AlertTitleWidget) as AlertTitleWidget
+
+    expect(title.kind).toBe('warning')
+    expect(title.label).toBe('label:warning')
+    expect(lines.filter((c) => c === 'cm-md-line-alert cm-md-line-alert-warning')).toHaveLength(2)
+  })
+
+  it('shows the alert marker again when its line is being edited', () => {
+    const doc = '> [!NOTE]\n> careful'
+    const { widgets } = decorated(doc, 2)
+
+    expect(widgets.some((widget) => widget instanceof AlertTitleWidget)).toBe(false)
+  })
+
+  it('leaves an ordinary quote a quote', () => {
+    const { lines, widgets } = decorated('cursor\n\n> just quoted')
+
+    expect(lines).toContain('cm-md-line-quote')
+    expect(widgets.some((widget) => widget instanceof AlertTitleWidget)).toBe(false)
+  })
+
+  it('draws a table', () => {
+    const { widgets } = decorated('cursor\n\n| a | b |\n| --- | --- |\n| 1 | 2 |')
+    const table = widgets.find((widget) => widget instanceof TableWidget) as TableWidget
+
+    expect(table.source).toContain('| a | b |')
+  })
+
+  it('gives the table back as source while it is being edited', () => {
+    const doc = 'cursor\n\n| a | b |\n| --- | --- |\n| 1 | 2 |'
+    const { widgets, lines } = decorated(doc, doc.indexOf('| 1'))
+
+    expect(widgets.some((widget) => widget instanceof TableWidget)).toBe(false)
+    expect(lines.filter((c) => c === 'cm-md-line-table').length).toBeGreaterThan(0)
   })
 
   it('decorates nothing in a plain paragraph', () => {

@@ -23,6 +23,8 @@ export interface MarkdownLiveEditorProps {
   /** Turns a markdown image path into one the webview can load. Omit it and images stay as source
    * text — resolving a repository-relative attachment is the app's business, not this package's. */
   resolveImageSrc?: (src: string) => string
+  /** The translated name of a GitHub alert kind, for the callout titles. */
+  alertLabel?: (kind: string) => string
   'data-testid'?: string
 }
 
@@ -56,6 +58,7 @@ export function MarkdownLiveEditor({
   className,
   onFiles,
   resolveImageSrc,
+  alertLabel,
   'data-testid': testId,
 }: MarkdownLiveEditorProps) {
   const host = useRef<HTMLDivElement>(null)
@@ -72,6 +75,8 @@ export function MarkdownLiveEditor({
   // resolver on every render would otherwise freeze the first one into the editor.
   const resolver = useRef((src: string) => (resolveImageSrc ? resolveImageSrc(src) : src))
   resolver.current = (src: string) => (resolveImageSrc ? resolveImageSrc(src) : src)
+  const alerts = useRef((kind: string) => (alertLabel ? alertLabel(kind) : kind))
+  alerts.current = (kind: string) => (alertLabel ? alertLabel(kind) : kind)
 
   /** Only a *file* paste or drop is ours; text falls through to CodeMirror untouched. */
   function handleFiles(dropped: File[], event: Event): boolean {
@@ -98,7 +103,10 @@ export function MarkdownLiveEditor({
           // GFM, not plain CommonMark: task lists, tables and strikethrough are the syntax this
           // app's markdown actually uses, and `markdown()` alone parses none of them.
           markdown({ base: markdownLanguage }),
-          markdownLivePreview({ resolveImageSrc: resolver.current }),
+          markdownLivePreview({
+            resolveImageSrc: (src) => resolver.current(src),
+            alertLabel: (kind) => alerts.current(kind),
+          }),
           EditorView.lineWrapping,
           placeholderExtension(placeholder ?? ''),
           editable.of(EditorView.editable.of(true)),

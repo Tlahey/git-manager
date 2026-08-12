@@ -127,6 +127,7 @@ export function AttachmentTextarea({
             onCommand={live.runCommand}
             onFiles={(files) => void attach(files)}
             resolveImageSrc={(src) => resolveImageSrc(src, repoPath)}
+            alertLabel={(kind) => t(`git:markdown.alert.${kind}`)}
             placeholder={placeholder}
             disabled={disabled || uploading}
             className={className}

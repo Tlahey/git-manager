@@ -1,5 +1,6 @@
 import { WidgetType } from '@codemirror/view'
 import type { EditorView } from '@codemirror/view'
+import { parseMarkdownTable } from './markdownTable'
 
 /**
  * The pieces of markdown that are *drawn* rather than styled: an image, a task checkbox, a rule.
@@ -78,5 +79,72 @@ export class RuleWidget extends WidgetType {
     const rule = document.createElement('hr')
     rule.className = 'cm-md-rule'
     return rule
+  }
+}
+
+/** A GitHub alert's `> [!NOTE]` line, as the callout's title. */
+export class AlertTitleWidget extends WidgetType {
+  constructor(
+    readonly kind: string,
+    readonly label: string
+  ) {
+    super()
+  }
+
+  eq(other: AlertTitleWidget): boolean {
+    return other.kind === this.kind && other.label === this.label
+  }
+
+  toDOM(): HTMLElement {
+    const title = document.createElement('span')
+    title.className = `cm-md-alert-title cm-md-alert-${this.kind}`
+    title.textContent = this.label
+    return title
+  }
+}
+
+/**
+ * A GFM table, as the table.
+ *
+ * Read-only, like every block widget here: editing a cell means putting the caret in the block,
+ * which brings its source back. A table editable in place is a second editor with its own
+ * navigation, and it would be the one part of this surface that answers to different rules.
+ */
+export class TableWidget extends WidgetType {
+  constructor(readonly source: string) {
+    super()
+  }
+
+  eq(other: TableWidget): boolean {
+    return other.source === this.source
+  }
+
+  toDOM(): HTMLElement {
+    const table = parseMarkdownTable(this.source)
+    const element = document.createElement('table')
+    element.className = 'cm-md-table'
+    if (!table) {
+      element.textContent = this.source
+      return element
+    }
+
+    const head = element.appendChild(document.createElement('thead'))
+    const headRow = head.appendChild(document.createElement('tr'))
+    table.header.forEach((cell, column) => {
+      const th = headRow.appendChild(document.createElement('th'))
+      th.textContent = cell
+      if (table.align[column]) th.style.textAlign = table.align[column]
+    })
+
+    const body = element.appendChild(document.createElement('tbody'))
+    for (const row of table.rows) {
+      const tr = body.appendChild(document.createElement('tr'))
+      row.forEach((cell, column) => {
+        const td = tr.appendChild(document.createElement('td'))
+        td.textContent = cell
+        if (table.align[column]) td.style.textAlign = table.align[column]
+      })
+    }
+    return element
   }
 }
