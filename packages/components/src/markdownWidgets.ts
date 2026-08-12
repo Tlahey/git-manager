@@ -82,23 +82,26 @@ export class RuleWidget extends WidgetType {
   }
 }
 
-/** A GitHub alert's `> [!NOTE]` line, as the callout's title. */
+/**
+ * A GitHub alert's `> [!NOTE]` line, as the callout's title.
+ *
+ * The title is the marker's own word, untranslated: it stands for text inside the document rather
+ * than for a piece of the app's interface, and GitHub will render that same document under the
+ * English word whatever language the writer works in.
+ */
 export class AlertTitleWidget extends WidgetType {
-  constructor(
-    readonly kind: string,
-    readonly label: string
-  ) {
+  constructor(readonly kind: string) {
     super()
   }
 
   eq(other: AlertTitleWidget): boolean {
-    return other.kind === this.kind && other.label === this.label
+    return other.kind === this.kind
   }
 
   toDOM(): HTMLElement {
     const title = document.createElement('span')
     title.className = `cm-md-alert-title cm-md-alert-${this.kind}`
-    title.textContent = this.label
+    title.textContent = this.kind.charAt(0).toUpperCase() + this.kind.slice(1)
     return title
   }
 }

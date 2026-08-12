@@ -23,8 +23,6 @@ export interface MarkdownLiveEditorProps {
   /** Turns a markdown image path into one the webview can load. Omit it and images stay as source
    * text — resolving a repository-relative attachment is the app's business, not this package's. */
   resolveImageSrc?: (src: string) => string
-  /** The translated name of a GitHub alert kind, for the callout titles. */
-  alertLabel?: (kind: string) => string
   /** Renders a fenced diagram to SVG. Omit it and diagrams stay source. */
   renderDiagram?: (code: string) => Promise<string | null>
   'data-testid'?: string
@@ -60,7 +58,6 @@ export function MarkdownLiveEditor({
   className,
   onFiles,
   resolveImageSrc,
-  alertLabel,
   renderDiagram,
   'data-testid': testId,
 }: MarkdownLiveEditorProps) {
@@ -78,8 +75,6 @@ export function MarkdownLiveEditor({
   // resolver on every render would otherwise freeze the first one into the editor.
   const resolver = useRef((src: string) => (resolveImageSrc ? resolveImageSrc(src) : src))
   resolver.current = (src: string) => (resolveImageSrc ? resolveImageSrc(src) : src)
-  const alerts = useRef((kind: string) => (alertLabel ? alertLabel(kind) : kind))
-  alerts.current = (kind: string) => (alertLabel ? alertLabel(kind) : kind)
   const diagrams = useRef(renderDiagram)
   diagrams.current = renderDiagram
 
@@ -110,7 +105,6 @@ export function MarkdownLiveEditor({
           markdown({ base: markdownLanguage }),
           markdownLivePreview({
             resolveImageSrc: (src) => resolver.current(src),
-            alertLabel: (kind) => alerts.current(kind),
             renderDiagram: renderDiagram
               ? (code) => (diagrams.current ?? (async () => null))(code)
               : undefined,

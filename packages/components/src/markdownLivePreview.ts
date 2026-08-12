@@ -152,9 +152,6 @@ const livePreviewTheme = EditorView.theme({
   },
   '.cm-md-alert-title': {
     fontWeight: '500',
-    fontSize: '0.9em',
-    letterSpacing: '0.02em',
-    textTransform: 'uppercase',
     color: 'hsl(var(--primary))',
   },
   '.cm-md-alert-tip': { color: 'hsl(var(--success))' },

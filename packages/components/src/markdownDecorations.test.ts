@@ -197,13 +197,10 @@ describe('markdownDecorations', () => {
   })
 
   it('turns an alert into a callout, title and tint', () => {
-    const { widgets, lines } = decorated('cursor\n\n> [!WARNING]\n> careful', 0, {
-      alertLabel: (kind) => `label:${kind}`,
-    })
+    const { widgets, lines } = decorated('cursor\n\n> [!WARNING]\n> careful')
     const title = widgets.find((widget) => widget instanceof AlertTitleWidget) as AlertTitleWidget
 
     expect(title.kind).toBe('warning')
-    expect(title.label).toBe('label:warning')
     expect(lines.filter((c) => c === 'cm-md-line-alert cm-md-line-alert-warning')).toHaveLength(2)
   })
 

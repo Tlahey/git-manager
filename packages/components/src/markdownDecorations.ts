@@ -30,9 +30,6 @@ export interface MarkdownDecorationOptions {
    * is the app's business and not this package's.
    */
   resolveImageSrc?: (src: string) => string
-  /** The translated name of a GitHub alert kind (`note`, `warning`, …) for its callout title.
-   * Without it the kind's own word is shown, which is right for a package that holds no copy. */
-  alertLabel?: (kind: string) => string
   /** Renders a fenced diagram to SVG. Without it a ```mermaid block stays the source it already is,
    * which is what a package with no diagram engine should do. */
   renderDiagram?: (code: string) => Promise<string | null>
@@ -226,7 +223,7 @@ export function markdownDecorations(
           if (kind && !isEditing(first.from)) {
             decorations.push(
               Decoration.replace({
-                widget: new AlertTitleWidget(kind, options.alertLabel?.(kind) ?? kind),
+                widget: new AlertTitleWidget(kind),
               }).range(first.from, first.to)
             )
             drawn.push([first.from, first.to])
