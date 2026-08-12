@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Spinner, Textarea, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { Button, Input, Spinner, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { MarkdownField } from '../../markdown-editor/MarkdownField'
 import { GitBranch as GitBranchIcon } from 'lucide-react'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
@@ -164,10 +165,10 @@ export function PrComposerExpander({
             </button>
           )}
         </div>
-        <Textarea
+        <MarkdownField
           value={body}
-          onChange={(e) => {
-            setBody(e.target.value)
+          onChange={(next) => {
+            setBody(next)
             setBodyTouched(true)
           }}
           onDragOver={mediaDrop.onDragOver}

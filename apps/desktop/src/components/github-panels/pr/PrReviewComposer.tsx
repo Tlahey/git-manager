@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Spinner } from '@git-manager/ui'
+import { MarkdownField } from '../../markdown-editor/MarkdownField'
 import { Check, X, MessageSquare } from 'lucide-react'
 import type { PrReviewEvent } from '../../../api/github.api'
 import { usePrActions } from '../../../hooks/usePrActions'
@@ -29,9 +30,9 @@ export function PrReviewComposer({ repoPath, prNumber, prUrl }: PrReviewComposer
   return (
     <section data-testid="pr-review-composer" className="border-t border-border px-4 py-3">
       <h3 className="mb-2 text-xs font-semibold text-foreground">{t('pr.review.title')}</h3>
-      <Textarea
+      <MarkdownField
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         onDragOver={mediaDrop.onDragOver}
         onDrop={mediaDrop.onDrop}
         placeholder={t('pr.review.bodyPlaceholder')}

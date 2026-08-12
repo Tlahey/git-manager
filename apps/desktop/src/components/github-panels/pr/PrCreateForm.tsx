@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Checkbox, Input, Spinner, Textarea, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { Button, Checkbox, Input, Spinner, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { MarkdownField } from '../../markdown-editor/MarkdownField'
 import { ArrowRight } from 'lucide-react'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
@@ -205,10 +206,10 @@ export function PrCreateForm({
             </button>
           )}
         </div>
-        <Textarea
+        <MarkdownField
           value={body}
-          onChange={(e) => {
-            setBody(e.target.value)
+          onChange={(next) => {
+            setBody(next)
             setBodyTouched(true)
           }}
           onDragOver={mediaDrop.onDragOver}

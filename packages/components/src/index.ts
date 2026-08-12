@@ -46,3 +46,16 @@ export type { SidePanelOverlayProps } from './SidePanelOverlay'
 
 export { useConfirm } from './useConfirm'
 export type { ConfirmOptions } from './useConfirm'
+
+export { MarkdownToolbar } from './MarkdownToolbar'
+export type { MarkdownToolbarProps } from './MarkdownToolbar'
+export type {
+  MarkdownToolbarLabels,
+  MarkdownToolbarItem,
+  MarkdownOverflowSectionKey,
+} from './markdownToolbar.config'
+export { useMarkdownEditor } from './useMarkdownEditor'
+export type { UseMarkdownEditorResult } from './useMarkdownEditor'
+export { MARKDOWN_COMMANDS, MARKDOWN_SHORTCUTS } from './markdownCommands'
+export type { MarkdownCommandId, MarkdownCommand } from './markdownCommands'
+export type { MarkdownEdit, MarkdownSelection } from './markdownEdit'

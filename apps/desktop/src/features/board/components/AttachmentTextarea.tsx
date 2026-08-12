@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import { useMarkdownEditor } from '@git-manager/components'
 import { Textarea, toast } from '@git-manager/ui'
 import { Paperclip } from 'lucide-react'
+import { MarkdownFormattingBar } from '../../../components/markdown-editor/MarkdownFormattingBar'
 import { saveBoardAttachment } from '../api/attachment.api'
 import { attachmentMarkdown, insertAtCaret } from '../lib/attachmentMarkdown'
 
@@ -48,7 +50,9 @@ export function AttachmentTextarea({
   'data-testid': testId,
 }: AttachmentTextareaProps) {
   const { t } = useTranslation('board')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // The formatting bar drives the same element the attachment logic reads the caret from, so both
+  // share the hook's ref rather than keeping one each.
+  const { textareaRef, runCommand, handleKeyDown } = useMarkdownEditor(onChange)
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
 
@@ -90,10 +94,12 @@ export function AttachmentTextarea({
 
   return (
     <div className="relative">
+      <MarkdownFormattingBar onCommand={runCommand} disabled={disabled || uploading} />
       <Textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled || uploading}
