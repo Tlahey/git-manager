@@ -455,6 +455,22 @@ export interface WorktreeAgentActivity {
   lastActivityMs: number
 }
 
+// ─── Integrated terminal ──────────────────────────────────────────────────────
+
+/**
+ * What one integrated-terminal session is doing right now. Mirrors `TerminalStatus` in
+ * `apps/desktop/src-tauri/src/models.rs`; derived from the PTY's foreground process group, so it
+ * says "a command is running", not "output arrived recently".
+ */
+export interface TerminalStatus {
+  /** The session id `terminal_open` returned. */
+  id: string
+  /** True while a command holds the foreground (an agent, a build, an editor). */
+  busy: boolean
+  /** Name of that command (`claude`, `pnpm`, `vim`) when resolvable; never set while idle. */
+  command: string | null
+}
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 export type RebaseStateKind = 'idle' | 'in_progress' | 'conflict' | 'edit_pause'

@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useTerminalStore } from './terminal.store'
 
-const reset = () => useTerminalStore.setState({ open: false, height: 260, byPath: {} })
+const reset = () =>
+  useTerminalStore.setState({
+    open: false,
+    height: 260,
+    sessions: [],
+    activeId: null,
+    finished: {},
+    lastActivity: {},
+  })
 
-const tab = (id: string, cwd = '/repo') => ({ id, title: `zsh ${id}`, cwd })
+const running = (id: string, command: string | null = null) => ({ [id]: { busy: true, command } })
+const atPrompt = (id: string) => ({ [id]: { busy: false, command: null } })
+
+const session = (id: string, cwd = '/repo') => ({ id, title: `zsh ${id}`, cwd })
 
 describe('useTerminalStore', () => {
   beforeEach(reset)
@@ -11,8 +22,9 @@ describe('useTerminalStore', () => {
   it('starts closed with no sessions', () => {
     const s = useTerminalStore.getState()
     expect(s.open).toBe(false)
-    expect(s.byPath).toEqual({})
-    expect(s.tabsFor('/repo')).toEqual({ tabs: [], activeId: null })
+    expect(s.sessions).toEqual([])
+    expect(s.activeId).toBeNull()
+    expect(s.sessionsFor('/repo')).toEqual([])
   })
 
   it('openPanel / closePanel / togglePanel flip visibility', () => {
@@ -33,55 +45,154 @@ describe('useTerminalStore', () => {
     expect(useTerminalStore.getState().height).toBe(300)
   })
 
-  it('addTab appends and activates the new session', () => {
-    useTerminalStore.getState().addTab('/repo', tab('a'))
-    useTerminalStore.getState().addTab('/repo', tab('b'))
-    const s = useTerminalStore.getState().tabsFor('/repo')
-    expect(s.tabs.map((t) => t.id)).toEqual(['a', 'b'])
+  it('addSession appends and activates the new session', () => {
+    useTerminalStore.getState().addSession(session('a'))
+    useTerminalStore.getState().addSession(session('b'))
+    const s = useTerminalStore.getState()
+    expect(s.sessions.map((x) => x.id)).toEqual(['a', 'b'])
     expect(s.activeId).toBe('b')
   })
 
-  it('keeps sessions isolated per path', () => {
-    useTerminalStore.getState().addTab('/repo', tab('a'))
-    useTerminalStore.getState().addTab('/other', tab('x', '/other'))
-    expect(
-      useTerminalStore
-        .getState()
-        .tabsFor('/repo')
-        .tabs.map((t) => t.id)
-    ).toEqual(['a'])
-    expect(
-      useTerminalStore
-        .getState()
-        .tabsFor('/other')
-        .tabs.map((t) => t.id)
-    ).toEqual(['x'])
+  it('keeps every session in one list whatever directory it belongs to', () => {
+    useTerminalStore.getState().addSession(session('a'))
+    useTerminalStore.getState().addSession(session('x', '/worktree'))
+    const s = useTerminalStore.getState()
+    expect(s.sessions.map((x) => x.id)).toEqual(['a', 'x'])
+    expect(s.sessionsFor('/repo').map((x) => x.id)).toEqual(['a'])
+    expect(s.sessionsFor('/worktree').map((x) => x.id)).toEqual(['x'])
   })
 
-  it('removeTab activates the previous neighbour when the active tab closes', () => {
+  it('leaves the shown session alone when another directory becomes the one on screen', () => {
+    // The whole point of the flat list: entering another workspace is a view change, and a running
+    // shell is not part of the view. Nothing in the store even knows the workspace changed.
+    useTerminalStore.getState().addSession(session('agent', '/worktree'))
+    expect(useTerminalStore.getState().activeId).toBe('agent')
+    expect(useTerminalStore.getState().sessions).toHaveLength(1)
+  })
+
+  it('removeSession activates the previous neighbour when the shown session closes', () => {
     const store = useTerminalStore.getState()
-    store.addTab('/repo', tab('a'))
-    store.addTab('/repo', tab('b'))
-    store.addTab('/repo', tab('c'))
-    store.setActiveTab('/repo', 'b')
-    store.removeTab('/repo', 'b')
-    const s = useTerminalStore.getState().tabsFor('/repo')
-    expect(s.tabs.map((t) => t.id)).toEqual(['a', 'c'])
+    store.addSession(session('a'))
+    store.addSession(session('b'))
+    store.addSession(session('c'))
+    store.setActiveSession('b')
+    store.removeSession('b')
+    const s = useTerminalStore.getState()
+    expect(s.sessions.map((x) => x.id)).toEqual(['a', 'c'])
     expect(s.activeId).toBe('a')
   })
 
-  it('removeTab leaves activeId null once the last tab is closed', () => {
-    useTerminalStore.getState().addTab('/repo', tab('a'))
-    useTerminalStore.getState().removeTab('/repo', 'a')
-    expect(useTerminalStore.getState().tabsFor('/repo')).toEqual({ tabs: [], activeId: null })
+  it('removeSession leaves activeId null once the last session is closed', () => {
+    useTerminalStore.getState().addSession(session('a'))
+    useTerminalStore.getState().removeSession('a')
+    expect(useTerminalStore.getState().sessions).toEqual([])
+    expect(useTerminalStore.getState().activeId).toBeNull()
   })
 
-  it('removeTab keeps the active tab when a different one closes', () => {
+  it('removeSession keeps the shown session when a different one closes', () => {
     const store = useTerminalStore.getState()
-    store.addTab('/repo', tab('a'))
-    store.addTab('/repo', tab('b'))
-    store.setActiveTab('/repo', 'b')
-    store.removeTab('/repo', 'a')
-    expect(useTerminalStore.getState().tabsFor('/repo').activeId).toBe('b')
+    store.addSession(session('a'))
+    store.addSession(session('b'))
+    store.setActiveSession('b')
+    store.removeSession('a')
+    expect(useTerminalStore.getState().activeId).toBe('b')
+  })
+
+  it('removeSession ignores an id that is not a live session', () => {
+    useTerminalStore.getState().addSession(session('a'))
+    useTerminalStore.getState().removeSession('gone')
+    expect(useTerminalStore.getState().sessions.map((s) => s.id)).toEqual(['a'])
+    expect(useTerminalStore.getState().activeId).toBe('a')
+  })
+})
+
+describe('useTerminalStore — what finished while nobody was looking', () => {
+  beforeEach(reset)
+
+  const store = () => useTerminalStore.getState()
+
+  it('reports nothing for a session that has never run anything', () => {
+    store().addSession(session('a'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('marks a session finished when its command lets go of the terminal', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    expect(store().finished).toEqual({})
+
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({ a: { command: 'claude' } })
+  })
+
+  it('remembers what finished, which the backend stops reporting the moment it does', () => {
+    // `terminal_status` names the *foreground* command; at an idle prompt there is none to name,
+    // so the name has to come from the snapshot taken while it was still running.
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'pnpm'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished.a.command).toBe('pnpm')
+  })
+
+  it('is idempotent — replaying a poll records no second transition', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().markSeen('a')
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('drops the mark when the session starts running again', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().syncActivity(running('a', 'vitest'))
+    expect(store().finished).toEqual({})
+  })
+
+  it('names the most recent result when several commands come and go unseen', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    // A second command comes and goes before the user looks. The mark never drops (the terminal
+    // still has something to show), but what it names is the latest thing that happened there —
+    // reporting the older one would send the user to read a result two commands out of date.
+    store().syncActivity(running('a', 'vitest'))
+    store().syncActivity(atPrompt('a'))
+    expect(store().finished.a.command).toBe('vitest')
+  })
+
+  it('markSeen clears one session and leaves the others alone', () => {
+    store().addSession(session('a'))
+    store().addSession(session('b'))
+    store().syncActivity({ ...running('a'), ...running('b') })
+    store().syncActivity({ ...atPrompt('a'), ...atPrompt('b') })
+    expect(Object.keys(store().finished)).toEqual(['a', 'b'])
+
+    store().markSeen('a')
+    expect(Object.keys(store().finished)).toEqual(['b'])
+  })
+
+  it('markSeen on a session with nothing to report changes nothing', () => {
+    const before = store().finished
+    store().markSeen('nobody')
+    expect(store().finished).toBe(before)
+  })
+
+  it('forgets a closed session rather than leaving its mark behind', () => {
+    store().addSession(session('a'))
+    store().syncActivity(running('a', 'claude'))
+    store().syncActivity(atPrompt('a'))
+    store().removeSession('a')
+    expect(store().finished).toEqual({})
+    expect(store().lastActivity).toEqual({})
+  })
+
+  it('ignores statuses for sessions it does not know about', () => {
+    store().syncActivity(running('ghost'))
+    store().syncActivity(atPrompt('ghost'))
+    expect(store().finished).toEqual({})
   })
 })

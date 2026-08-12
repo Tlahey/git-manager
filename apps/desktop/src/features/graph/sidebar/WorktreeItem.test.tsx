@@ -331,3 +331,79 @@ describe('WorktreeItem — row behaviour', () => {
     expect(marks[0].textContent).toBe('login')
   })
 })
+
+describe('WorktreeItem — terminal badge', () => {
+  const idle = { count: 1, state: 'idle' as const, command: null, sessionId: 'sess-1' }
+  const running = { count: 1, state: 'busy' as const, command: 'claude', sessionId: 'sess-1' }
+  const done = { count: 1, state: 'done' as const, command: 'pnpm', sessionId: 'sess-1' }
+
+  it('shows nothing when no terminal is open on the worktree', () => {
+    render(<WorktreeItem wt={worktree()} />)
+    expect(screen.queryByTestId(`worktree-terminal-badge-${PATH}`)).not.toBeInTheDocument()
+  })
+
+  it('sits ahead of the worktree glyph, where a row is read from', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
+    const row = screen.getByTestId(`worktree-item-${PATH}`)
+    const badge = screen.getByTestId(`worktree-terminal-badge-${PATH}`)
+    const glyph = row.querySelector('.lucide-layers')!
+    expect(badge.compareDocumentPosition(glyph) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('breathes while a command runs', () => {
+    render(<WorktreeItem wt={worktree()} terminals={running} />)
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'busy')
+    expect(chip.className).toContain('animate-pulse')
+  })
+
+  it('turns blue and still once a command has finished unread', () => {
+    render(<WorktreeItem wt={worktree()} terminals={done} />)
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'done')
+    expect(chip.className).toContain('bg-blue-500/15')
+    expect(chip.className).not.toContain('animate-pulse')
+    expect(
+      screen.getByLabelText('pnpm has finished here — click to open its terminal')
+    ).toBeInTheDocument()
+  })
+
+  it('goes quiet and grey for a shell that is merely open', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
+    const chip = screen.getByTestId(`worktree-terminal-badge-${PATH}`).firstElementChild!
+    expect(chip).toHaveAttribute('data-state', 'idle')
+    expect(chip.className).toContain('bg-muted')
+    expect(chip.className).not.toContain('animate-pulse')
+  })
+
+  it('stays a fixed-width glyph, so a running command cannot shift the branch labels', () => {
+    // The name is the tooltip's and the accessible label's job — see the row's own comment.
+    render(<WorktreeItem wt={worktree()} terminals={running} />)
+    expect(screen.getByTestId(`worktree-terminal-badge-${PATH}`)).toHaveTextContent('')
+    expect(
+      screen.getByLabelText('claude is running here — click to open its terminal')
+    ).toBeInTheDocument()
+  })
+
+  it('counts the open terminals in its label when none is running', () => {
+    render(<WorktreeItem wt={worktree()} terminals={idle} />)
+    expect(screen.getByLabelText('1 terminal open here — click to show it')).toBeInTheDocument()
+  })
+
+  it('hands the session over on click without opening the worktree twice', () => {
+    const onFocusTerminal = vi.fn()
+    const onOpenWorktree = vi.fn()
+    render(
+      <WorktreeItem
+        wt={worktree()}
+        terminals={running}
+        onFocusTerminal={onFocusTerminal}
+        onOpenWorktree={onOpenWorktree}
+      />
+    )
+    fireEvent.click(screen.getByTestId(`worktree-terminal-badge-${PATH}`))
+    expect(onFocusTerminal).toHaveBeenCalledWith('sess-1', PATH)
+    // The click stops at the badge: the row's own double-click gesture is a different thing.
+    expect(onOpenWorktree).not.toHaveBeenCalled()
+  })
+})

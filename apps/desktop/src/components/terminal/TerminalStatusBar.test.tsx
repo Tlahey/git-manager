@@ -1,43 +1,73 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { TerminalStatus } from '@git-manager/git-types'
+
+const activity = vi.fn<() => Record<string, TerminalStatus>>(() => ({}))
+vi.mock('../../hooks/useTerminalActivity', () => ({
+  useTerminalActivity: () => activity(),
+}))
+
 import { TerminalStatusBar } from './TerminalStatusBar'
 import { useTerminalStore } from '../../stores/terminal.store'
 
-const reset = () => useTerminalStore.setState({ open: false, height: 260, byPath: {} })
+const session = (id: string, cwd = '/repo') => ({ id, title: `zsh ${id}`, cwd })
 
-beforeEach(reset)
+beforeEach(() => {
+  activity.mockReturnValue({})
+  useTerminalStore.setState({ open: false, height: 260, sessions: [], activeId: null })
+})
 
 describe('TerminalStatusBar', () => {
-  it('renders nothing when the path has no sessions', () => {
-    const { container } = render(<TerminalStatusBar path="/repo" />)
+  it('renders nothing when no session is alive', () => {
+    const { container } = render(<TerminalStatusBar />)
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows the collapsed sessions with a count', () => {
+  it('counts every session, wherever it was opened', () => {
+    // A shell on another worktree is still running; a bar that ignored it would report zero the
+    // moment the user entered a different workspace.
     useTerminalStore.setState({
-      byPath: {
-        '/repo': {
-          tabs: [
-            { id: 'a', title: 'zsh 1', cwd: '/repo' },
-            { id: 'b', title: 'zsh 2', cwd: '/repo' },
-          ],
-          activeId: 'a',
-        },
-      },
+      sessions: [session('a'), session('b', '/repo/.worktrees/feature')],
+      activeId: 'a',
     })
-    render(<TerminalStatusBar path="/repo" />)
+    render(<TerminalStatusBar />)
     const bar = screen.getByTestId('terminal-status-bar')
     expect(bar).toBeInTheDocument()
     expect(bar).toHaveTextContent('2')
   })
 
-  it('re-opens the panel when clicked', async () => {
-    useTerminalStore.setState({
-      byPath: { '/repo': { tabs: [{ id: 'a', title: 'zsh 1', cwd: '/repo' }], activeId: 'a' } },
+  it('says how many sessions are running a command', () => {
+    useTerminalStore.setState({ sessions: [session('a'), session('b')], activeId: 'a' })
+    activity.mockReturnValue({
+      a: { id: 'a', busy: true, command: 'claude' },
+      b: { id: 'b', busy: false, command: null },
     })
+    render(<TerminalStatusBar />)
+    expect(screen.getByTestId('terminal-status-busy')).toHaveTextContent('1 running')
+  })
+
+  it('shows no running badge while every session sits at its prompt', () => {
+    useTerminalStore.setState({ sessions: [session('a')], activeId: 'a' })
+    activity.mockReturnValue({ a: { id: 'a', busy: false, command: null } })
+    render(<TerminalStatusBar />)
+    expect(screen.queryByTestId('terminal-status-busy')).not.toBeInTheDocument()
+    expect(screen.getByTestId('terminal-status-state')).toHaveAttribute('data-state', 'idle')
+  })
+
+  it('breathes on the collapsed bar too while anything is running', () => {
+    useTerminalStore.setState({ sessions: [session('a')], activeId: 'a' })
+    activity.mockReturnValue({ a: { id: 'a', busy: true, command: 'pnpm' } })
+    render(<TerminalStatusBar />)
+    const chip = screen.getByTestId('terminal-status-state')
+    expect(chip).toHaveAttribute('data-state', 'busy')
+    expect(chip.className).toContain('animate-pulse')
+  })
+
+  it('re-opens the panel when clicked', async () => {
+    useTerminalStore.setState({ sessions: [session('a')], activeId: 'a' })
     const user = userEvent.setup()
-    render(<TerminalStatusBar path="/repo" />)
+    render(<TerminalStatusBar />)
     await user.click(screen.getByTestId('terminal-status-bar'))
     expect(useTerminalStore.getState().open).toBe(true)
   })

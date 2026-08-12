@@ -13,6 +13,7 @@ import {
   GitMerge,
   UserCheck,
   ListFilter,
+  Terminal as TerminalIcon,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
   submodules: <GitFork className="h-3 w-3" />,
   stashes: <ArchiveIcon className="h-3 w-3" />,
   worktrees: <Layers className="h-3 w-3" />,
+  terminals: <TerminalIcon className="h-3 w-3" />,
 }
 
 interface SidebarSectionHeaderProps {

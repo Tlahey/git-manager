@@ -6,13 +6,16 @@ import {
   Tag as TagIcon,
   GitFork,
   Archive as ArchiveIcon,
+  Terminal as TerminalIcon,
 } from 'lucide-react'
-import { NumberBadge } from '@git-manager/ui'
+import { NumberBadge, cn } from '@git-manager/ui'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePullRequests } from '../../../hooks/usePullRequests'
 import { useGitStashes } from '../../../hooks/useGitStashes'
 import { apiGetTags, apiListSubmodules } from '../../../api/git.api'
+import { useTerminalStore } from '../../../stores/terminal.store'
+import { useTerminalActivity } from '../../../hooks/useTerminalActivity'
 import type { SectionKey } from './types'
 
 interface SidebarRailProps {
@@ -80,6 +83,16 @@ export function SidebarRail({
 
   const { data: stashes = [] } = useGitStashes(repoPath)
 
+  // Terminals get a rail icon so a running session stays visible with the sidebar folded away —
+  // that is the state a long-running one is most likely to be forgotten in. It breathes while
+  // something runs and turns blue when something has finished unread, which are the only colour
+  // changes on the rail that aren't decorative.
+  const sessions = useTerminalStore((s) => s.sessions)
+  const finished = useTerminalStore((s) => s.finished)
+  const activity = useTerminalActivity()
+  const anyBusy = sessions.some((session) => activity[session.id]?.busy)
+  const anyFinished = !anyBusy && sessions.some((session) => session.id in finished)
+
   return (
     <div className="flex h-full flex-col items-center">
       {/* No expand button of its own: coming back to full width is the toolbar's panel control (or
@@ -125,6 +138,24 @@ export function SidebarRail({
             label="Submodules"
             count={submodules.length}
             onClick={() => onOpenSection('submodules')}
+          />
+        )}
+        {sessions.length > 0 && (
+          <RailIcon
+            // The same states the rows use — breathing while a command runs, blue when one has
+            // finished unread — on a bare glyph rather than a chip, since the rail has no chips.
+            icon={
+              <TerminalIcon
+                className={cn(
+                  'h-4 w-4',
+                  anyBusy && 'animate-pulse',
+                  anyFinished && 'text-tone-info'
+                )}
+              />
+            }
+            label="Terminals"
+            count={sessions.length}
+            onClick={() => onOpenSection('terminals')}
           />
         )}
       </div>

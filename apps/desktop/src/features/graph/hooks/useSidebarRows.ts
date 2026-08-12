@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
+import type { WorktreeTerminalSummary } from '../lib/worktreeTerminals'
 import { useBranches } from '../../../hooks/useBranches'
 import { useGitStashes } from '../../../hooks/useGitStashes'
 import { usePullRequests } from '../../../hooks/usePullRequests'
@@ -12,6 +13,8 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useIssueFiltersStore } from '../stores/issueFilters.store'
 import { usePrFiltersStore } from '../stores/prFilters.store'
 import { buildPrSection, buildIssueSection } from '../lib/sidebarGithubSections'
+import { buildTerminalsSection } from '../lib/sidebarTerminalSection'
+import { sortWorktreesByTerminal, summarizeWorktreeTerminals } from '../lib/worktreeTerminals'
 import {
   buildLocalSection,
   buildRemotesSection,
@@ -23,6 +26,8 @@ import {
 } from '../lib/sidebarGitSections'
 import { apiGetTags, apiListSubmodules } from '../../../api/git.api'
 import { apiListWorktrees } from '../../../api/worktree.api'
+import { useTerminalStore } from '../../../stores/terminal.store'
+import { useTerminalActivity } from '../../../hooks/useTerminalActivity'
 import {
   type SidebarSection,
   type SectionKey,
@@ -54,6 +59,8 @@ interface UseSidebarRowsResult {
   worktrees: GitWorktree[]
   /** Every local branch, unfiltered by search query — the bulk merged-branch-prune candidate set. */
   allLocalBranches: GitBranch[]
+  /** Live terminal sessions per worktree path — the worktree rows' terminal badge. */
+  worktreeTerminals: Map<string, WorktreeTerminalSummary>
   /** Revalidate the repo's issue list — called after creating one from the sidebar. */
   refreshIssues: () => void
 }
@@ -143,6 +150,18 @@ export function useSidebarRows({
   // depend on whether the sidebar search box happens to currently hide the stale entry.
   const prunableWorktrees = useMemo(() => worktrees.filter((wt) => wt.isPrunable), [worktrees])
 
+  // ── Integrated-terminal sessions ────────────────────────────────────
+  // Their own section, and a badge on the worktree rows they belong to. Both read the same two
+  // inputs: the session list (a store, so it changes on a user gesture) and the polled busy state.
+  const sessions = useTerminalStore((s) => s.sessions)
+  const activeTerminalId = useTerminalStore((s) => s.activeId)
+  const finishedTerminals = useTerminalStore((s) => s.finished)
+  const terminalActivity = useTerminalActivity()
+  const worktreeTerminals = useMemo(
+    () => summarizeWorktreeTerminals(sessions, terminalActivity, finishedTerminals),
+    [sessions, terminalActivity, finishedTerminals]
+  )
+
   const q = filter.trim().toLowerCase()
   const includesQuery = (text: string) => !q || text.toLowerCase().includes(q)
   const matchesFilter = (b: GitBranch) => includesQuery(b.shortName)
@@ -218,10 +237,17 @@ export function useSidebarRows({
     [submodules, q]
   )
 
+  // Worktrees with something running float to the top of their section: a list ordered by
+  // `git worktree list` is ordered by nothing the user is thinking about, and "where is my agent"
+  // is the question this panel is now expected to answer at a glance.
   const filteredWorktrees = useMemo(
-    () => worktrees.filter((wt) => includesQuery(wt.branch) || includesQuery(wt.path)),
+    () =>
+      sortWorktreesByTerminal(
+        worktrees.filter((wt) => includesQuery(wt.branch) || includesQuery(wt.path)),
+        worktreeTerminals
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [worktrees, q]
+    [worktrees, q, worktreeTerminals]
   )
 
   const isPinned = (shortName: string): boolean =>
@@ -316,6 +342,14 @@ export function useSidebarRows({
       buildStashesSection(ctx('stashes'), { stashes: filteredStashes, selectedBranch }),
       buildSubmodulesSection(ctx('submodules'), { submodules: filteredSubmodules }),
       buildWorktreesSection(ctx('worktrees'), { worktrees: filteredWorktrees }),
+      buildTerminalsSection(ctx('terminals'), {
+        sessions,
+        activity: terminalActivity,
+        finished: finishedTerminals,
+        worktrees: allWorktrees,
+        repoPath,
+        activeId: activeTerminalId,
+      }),
     ].filter((s): s is SidebarSection => s !== null)
   }, [
     q,
@@ -343,6 +377,12 @@ export function useSidebarRows({
     filteredStashes,
     filteredSubmodules,
     filteredWorktrees,
+    sessions,
+    terminalActivity,
+    finishedTerminals,
+    allWorktrees,
+    repoPath,
+    activeTerminalId,
   ])
 
   const filterStats = useMemo(
@@ -391,6 +431,7 @@ export function useSidebarRows({
     prunableWorktrees,
     worktrees,
     allLocalBranches,
+    worktreeTerminals,
     refreshIssues,
   }
 }
