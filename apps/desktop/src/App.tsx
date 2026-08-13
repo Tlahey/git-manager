@@ -31,6 +31,8 @@ import { useHookProgressListener } from './hooks/useHookProgressListener'
 import { NotchRemoteOperations } from './components/notch/NotchRemoteOperations'
 import { NotchRunningHooks } from './components/notch/NotchRunningHooks'
 import { NotchAiRuns } from './components/notch/NotchAiRuns'
+import { NotchTerminalActivity } from './components/notch/NotchTerminalActivity'
+import { BoardMergeCompletion } from './features/board'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { useAiStatusCheck } from './hooks/useAiStatusCheck'
@@ -230,6 +232,12 @@ export default function App() {
         {/* Likewise — the model's own work, above all the file-by-file read that is where a long
             generation actually spends its minutes. */}
         <NotchAiRuns />
+        {/* Likewise — a finished terminal command (an agent's run included), the one way to learn
+            it's done without the panel open and watched. */}
+        <NotchTerminalActivity />
+        {/* Renders nothing — listens for a branch merge and moves the card that named it its
+            `linkedBranch` to its board's done column. */}
+        <BoardMergeCompletion />
         {import.meta.env.VITE_E2E === 'true' && <E2ePathPickerDialog />}
       </div>
     </QueryClientProvider>

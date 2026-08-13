@@ -197,6 +197,18 @@ describe('mergeSettingsWithDefaults', () => {
     expect(merged.appearance.rowHeight).toBe(DEFAULT_SETTINGS.appearance.rowHeight)
   })
 
+  it('fills agentLaunchCommand into a persisted externalTools group that predates it', () => {
+    const merged = mergeSettingsWithDefaults({
+      externalTools: {
+        externalTerminalCommand: '/Applications/iTerm.app',
+      } as unknown as typeof DEFAULT_SETTINGS.externalTools,
+    })
+    expect(merged.externalTools?.externalTerminalCommand).toBe('/Applications/iTerm.app')
+    expect(merged.externalTools?.agentLaunchCommand).toBe(
+      DEFAULT_SETTINGS.externalTools?.agentLaunchCommand
+    )
+  })
+
   it('does not treat arrays as mergeable groups', () => {
     const merged = mergeSettingsWithDefaults({
       advanced: { ...DEFAULT_SETTINGS.advanced, scanExclusions: ['only-this'] },

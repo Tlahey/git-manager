@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event'
 import type { BoardData } from '../hooks/useBoardData'
 import { makeBoard, makeCard, makeBoardData } from '../test/boardFactories'
 import { useBoardDialogsStore, type BoardDialogs } from '../stores/boardDialogs.store'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useRepoViewStore } from '../../../stores/repoView.store'
 import { BoardDialogsManager } from './BoardDialogsManager'
 
 vi.mock('../../../api/git.api', () => ({
@@ -38,6 +40,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   // The dialog state is a store now, so it outlives a test unless it is put back.
   useBoardDialogsStore.getState().reset()
+  useRepoUIStore.setState({
+    activeRepo: '/repo',
+    activeWorkspacePath: null,
+    prCreateOpen: false,
+    prCreatePrefill: null,
+  })
+  useRepoViewStore.setState({ view: 'board' })
 })
 
 describe('BoardDialogsManager', () => {
@@ -89,6 +98,55 @@ describe('BoardDialogsManager — the edit dialog resolves its card', () => {
       d.setCardDialog({ mode: 'edit', cardId: 'gone' })
     )
     expect(screen.queryByTestId('board-card-dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('BoardDialogsManager — Create PR', () => {
+  it('offers no Create PR button when the repo has no connected GitHub account', () => {
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', linkedBranch: 'feature/x' })],
+        canUseRemote: false,
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    expect(screen.queryByTestId('board-card-create-pr')).not.toBeInTheDocument()
+  })
+
+  it('offers no Create PR button without a linked branch, even when connected', () => {
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1' })],
+        canUseRemote: true,
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    expect(screen.queryByTestId('board-card-create-pr')).not.toBeInTheDocument()
+  })
+
+  it('opens the PR-create view for the linked branch, connected and linked', async () => {
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [
+          makeCard({ id: 'c1', linkedBranch: 'feature/x', linkedWorktreePath: '/repo/.wt/x' }),
+        ],
+        canUseRemote: true,
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+
+    await userEvent.click(screen.getByTestId('board-card-create-pr'))
+
+    expect(useRepoUIStore.getState().prCreateOpen).toBe(true)
+    expect(useRepoUIStore.getState().prCreatePrefill).toEqual({ head: 'feature/x', base: '' })
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/repo/.wt/x')
+    expect(useRepoViewStore.getState().view).toBe('graph')
   })
 })
 

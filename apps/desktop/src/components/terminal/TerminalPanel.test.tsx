@@ -8,6 +8,7 @@ const closeSession = vi.fn()
 const closeAllSessions = vi.fn()
 const activity = vi.fn<() => Record<string, TerminalStatus>>(() => ({}))
 const worktrees = vi.fn<() => GitWorktree[]>(() => [])
+const apiTerminalWrite = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../hooks/useIntegratedTerminal', () => ({
   useIntegratedTerminal: () => ({
@@ -25,6 +26,9 @@ vi.mock('../../hooks/useTerminalActivity', () => ({
 vi.mock('../../hooks/useWorktrees', () => ({
   useWorktrees: () => worktrees(),
 }))
+vi.mock('../../api/terminal.api', () => ({
+  apiTerminalWrite: (id: string, data: string) => apiTerminalWrite(id, data),
+}))
 // XtermView drives real xterm.js (canvas) — stub it out; its own test covers the registry wiring.
 vi.mock('./XtermView', () => ({
   XtermView: ({ id }: { id: string }) => <div data-testid={`xterm-${id}`} />,
@@ -32,6 +36,9 @@ vi.mock('./XtermView', () => ({
 
 import { TerminalPanel } from './TerminalPanel'
 import { useTerminalStore } from '../../stores/terminal.store'
+import { useSettingsStore } from '../../stores/settings.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useRepoViewStore } from '../../stores/repoView.store'
 
 const seed = () =>
   useTerminalStore.setState({
@@ -50,12 +57,24 @@ beforeEach(() => {
   addSession.mockReset()
   closeSession.mockReset()
   closeAllSessions.mockReset()
+  apiTerminalWrite.mockClear()
   activity.mockReturnValue({})
   worktrees.mockReturnValue([
     { path: '/repo', branch: 'main', isMain: true } as GitWorktree,
     { path: '/repo/.worktrees/feature', branch: 'feat/login' } as GitWorktree,
   ])
   seed()
+  useRepoUIStore.setState({ activeRepo: '/repo', activeWorkspacePath: null, aiPanelTarget: null })
+  useRepoViewStore.setState({ view: 'board' })
+  useSettingsStore.setState((state) => ({
+    settings: {
+      ...state.settings,
+      externalTools: {
+        ...(state.settings.externalTools ?? { externalTerminalCommand: '' }),
+        agentLaunchCommand: 'claude',
+      },
+    },
+  }))
 })
 
 describe('TerminalPanel', () => {
@@ -144,5 +163,67 @@ describe('TerminalPanel', () => {
     render(<TerminalPanel path="/repo" />)
     expect(screen.getByTestId('terminal-panel')).toHaveStyle({ height: '260px' })
     expect(screen.getByTestId('terminal-resize-handle')).toBeInTheDocument()
+  })
+})
+
+describe('TerminalPanel — launch agent', () => {
+  it('sends the configured command, with Enter, to the active session', async () => {
+    const user = userEvent.setup()
+    render(<TerminalPanel path="/repo" />)
+    await user.click(screen.getByTestId('terminal-launch-agent'))
+    expect(apiTerminalWrite).toHaveBeenCalledWith('a', 'claude\r')
+    expect(addSession).not.toHaveBeenCalled()
+  })
+
+  it('spawns a session first when the panel has none, then sends the command to it', async () => {
+    useTerminalStore.setState({ sessions: [], activeId: null })
+    // The mocked hook's addSession does not itself touch the store — stand in for what the real one
+    // does (see `useIntegratedTerminal`: a new session is added and becomes the active one).
+    addSession.mockImplementation(async () => {
+      useTerminalStore.setState({
+        sessions: [{ id: 'new-1', title: 'zsh 1', cwd: '/repo' }],
+        activeId: 'new-1',
+      })
+    })
+    const user = userEvent.setup()
+    render(<TerminalPanel path="/repo" />)
+    await user.click(screen.getByTestId('terminal-launch-agent'))
+    expect(addSession).toHaveBeenCalledTimes(1)
+    expect(apiTerminalWrite).toHaveBeenCalledWith('new-1', 'claude\r')
+  })
+
+  it('is disabled when no agent command is configured', () => {
+    useSettingsStore.setState((state) => ({
+      settings: {
+        ...state.settings,
+        externalTools: {
+          ...(state.settings.externalTools ?? { externalTerminalCommand: '' }),
+          agentLaunchCommand: '',
+        },
+      },
+    }))
+    render(<TerminalPanel path="/repo" />)
+    expect(screen.getByTestId('terminal-launch-agent')).toBeDisabled()
+  })
+})
+
+describe('TerminalPanel — review changes', () => {
+  it('offers no review button on a session with nothing finished', () => {
+    render(<TerminalPanel path="/repo" />)
+    expect(screen.queryByTestId('terminal-review-a')).not.toBeInTheDocument()
+  })
+
+  it('reviewing a finished session enters its worktree and opens the AI review', async () => {
+    useTerminalStore.setState({ finished: { b: { command: 'claude' } } })
+    const user = userEvent.setup()
+    render(<TerminalPanel path="/repo" />)
+
+    await user.click(screen.getByTestId('terminal-review-b'))
+
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/repo/.worktrees/feature')
+    expect(useRepoViewStore.getState().view).toBe('graph')
+    expect(useRepoUIStore.getState().aiPanelTarget).toEqual({ kind: 'reviewWorking' })
+    // Asking for a review is dealing with what finished — the chip clears too.
+    expect(useTerminalStore.getState().finished).not.toHaveProperty('b')
   })
 })

@@ -67,6 +67,8 @@
   "notifications.settings.pullDesc": "Show a pull while it runs, and how it ended",
   "notifications.settings.pushTitle": "Push",
   "notifications.settings.pushDesc": "Show a push while it runs, and how it ended",
+  "notifications.settings.terminalFinishedTitle": "Terminal command finished",
+  "notifications.settings.terminalFinishedDesc": "Notify when a command in the integrated terminal (e.g. a coding agent) finishes",
   "notifications.settings.newPrTitle": "New pull requests",
   "notifications.settings.newPrDesc": "Notify when a new pull request appears",
   "notifications.settings.prMergedTitle": "Merged or closed PRs",

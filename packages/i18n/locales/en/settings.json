@@ -43,6 +43,8 @@
   "settings.externalTools.selectTerminal": "Select my terminal…",
   "settings.externalTools.change": "Change",
   "settings.externalTools.remove": "Remove the application",
+  "settings.externalTools.agentLaunchTitle": "Coding agent",
+  "settings.externalTools.agentLaunchDescription": "Command the integrated terminal's launch-agent button sends to the active session.",
   "settings.sections.notifications": "Notifications",
   "settings.sections.board": "Board",
   "settings.board.autoSyncEnabled": "Automatically sync the board config",

@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   externalTools: {
     externalTerminalCommand: '',
+    agentLaunchCommand: 'claude',
   },
   notifications: {
     enabled: true,

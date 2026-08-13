@@ -26,6 +26,7 @@ import {
 } from '../../lib/tauri'
 import { runActivity } from '../../lib/activityCorrelation'
 import { generateId, pushAction, clearRedo, withHookFailureCard } from './gitApiShared'
+import { callCommand } from '../service'
 
 // ─── Checkout ──────────────────────────────────────────────────────────────
 
@@ -86,10 +87,21 @@ export async function apiCheckoutBranch(path: string, toRef: string, opts?: Chec
 // ─── Ref drag-and-drop integrations ──────────────────────────────────────────
 
 /** Merges `source` into `target` (checks out `target` first). Rewrites the target ref, so
- * the snapshot-based undo doesn't apply — clear the redo stack like the other rewriting ops. */
+ * the snapshot-based undo doesn't apply — clear the redo stack like the other rewriting ops.
+ *
+ * Raised as a `merge_branch` event (not called directly): the board feature listens for it
+ * (`BoardMergeCompletion`, mounted once in `App.tsx`) to move a card whose `linkedBranch` is
+ * `source` to its board's done column. This file cannot import the board feature to call that
+ * directly without an import cycle — board components already import `git-branch.api.ts` (via
+ * `api/git.api`) for their own branch actions — so the event bus is what CLAUDE.md's "hook cross-
+ * cutting concerns into `appEventBus`" rule exists for. */
 export async function apiMergeBranch(path: string, source: string, target: string) {
-  await mergeBranch(path, source, target)
+  const result = await callCommand('merge_branch', () => mergeBranch(path, source, target), {
+    path,
+    source,
+  })
   clearRedo(path)
+  return result
 }
 
 /** Fast-forwards `target` up to `source` (ff-only; rejected if not an ancestor). */

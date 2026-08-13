@@ -46,7 +46,10 @@ export function PrCreateCenter({ repoPath }: PrCreateCenterProps) {
           <PrCreateForm
             repoPath={repoPath}
             currentBranch={prefill?.head ?? flow.currentBranch}
-            defaultBase={prefill?.base ?? flow.defaultBase}
+            // `||`, not `??`: a prefill with a known head but no opinion on base (e.g. a board
+            // card's "Create PR", which only names the branch) sets `base: ''`, and that empty
+            // string must still fall through to the real GitHub default rather than being kept.
+            defaultBase={prefill?.base || flow.defaultBase}
             isSubmitting={flow.busy}
             error={flow.error}
             onCreate={(input) => void flow.createPr(input).catch(() => {})}

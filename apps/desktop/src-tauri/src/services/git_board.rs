@@ -256,6 +256,9 @@ fn apply_card_patch(card: &mut BoardCard, patch: BoardCardPatch) {
     if let Some(linked_branch) = patch.linked_branch {
         card.linked_branch = linked_branch;
     }
+    if let Some(linked_worktree_path) = patch.linked_worktree_path {
+        card.linked_worktree_path = linked_worktree_path;
+    }
     if let Some(assignee) = patch.assignee {
         card.assignee = assignee;
     }
@@ -578,6 +581,7 @@ pub fn create_card(
         description,
         order: next_order,
         linked_branch: None,
+        linked_worktree_path: None,
         revision: String::new(),
         prefix,
         number,
@@ -2365,6 +2369,65 @@ mod tests {
         )
         .unwrap();
         assert_eq!(unblocked.blocked_reason, None);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn linking_a_worktree_persists_and_can_be_unlinked() {
+        let (dir, repo) = init_repo("worktree-link");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Task".to_string(),
+                prefix: "GM".to_string(),
+                kind: "task".to_string(),
+                source_issue: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(card.linked_worktree_path, None);
+
+        let linked = update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                linked_worktree_path: Some(Some("/tmp/repo.worktrees/task".to_string())),
+                ..Default::default()
+            },
+            &card.revision,
+        )
+        .unwrap();
+        assert_eq!(
+            linked.linked_worktree_path.as_deref(),
+            Some("/tmp/repo.worktrees/task")
+        );
+
+        // Re-read from the ref rather than trusting the returned value, same as the source-issue
+        // test above: the field must actually be written, not just present on the in-memory result.
+        let (_, stored) = get_board(&repo, &board.id).unwrap();
+        assert_eq!(
+            stored[0].linked_worktree_path.as_deref(),
+            Some("/tmp/repo.worktrees/task")
+        );
+
+        let unlinked = update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                linked_worktree_path: Some(None),
+                ..Default::default()
+            },
+            &linked.revision,
+        )
+        .unwrap();
+        assert_eq!(unlinked.linked_worktree_path, None);
 
         std::fs::remove_dir_all(&dir).ok();
     }

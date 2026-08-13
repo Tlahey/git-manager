@@ -20,6 +20,9 @@ interface CardDetailsPanelProps {
   onCreateBranch?: () => Promise<unknown>
   onCheckoutBranch?: () => Promise<unknown>
   onUnlinkBranch?: () => Promise<unknown>
+  onCreatePr?: () => void
+  onCreateWorktree?: () => Promise<unknown>
+  onUnlinkWorktree?: () => Promise<unknown>
   readOnly?: boolean
 }
 
@@ -42,6 +45,9 @@ export function CardDetailsPanel({
   onCreateBranch,
   onCheckoutBranch,
   onUnlinkBranch,
+  onCreatePr,
+  onCreateWorktree,
+  onUnlinkWorktree,
   readOnly,
 }: CardDetailsPanelProps) {
   const { t } = useTranslation('board')
@@ -160,6 +166,10 @@ export function CardDetailsPanel({
               onCreateBranch={onCreateBranch}
               onCheckoutBranch={onCheckoutBranch}
               onUnlinkBranch={onUnlinkBranch}
+              onCreatePr={onCreatePr}
+              linkedWorktreePath={card.linkedWorktreePath}
+              onCreateWorktree={onCreateWorktree}
+              onUnlinkWorktree={onUnlinkWorktree}
               disabled={readOnly}
             />
           </div>

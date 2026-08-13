@@ -683,6 +683,10 @@ export interface BoardCard {
   order: number
   /** Branch created/checked out for this card via the "create/checkout branch" card action. */
   linkedBranch?: string
+  /** Worktree created for this card's work via the "create worktree" card action. Distinct from
+   * {@link BoardCard.linkedBranch}: a card can have a branch with no worktree, but never a worktree
+   * without the branch that owns it. */
+  linkedWorktreePath?: string
   /** Optimistic-concurrency token — see {@link Board.revision} (local backend) or the remote
    * backend's use of the source issue's `updated_at`. Sent back on every update so a write that
    * raced another one is rejected instead of silently overwriting it. */
@@ -837,6 +841,7 @@ export interface BoardCardPatch {
   columnId?: string
   order?: number
   linkedBranch?: string | null
+  linkedWorktreePath?: string | null
   assignee?: string | null
   priority?: BoardCardPriority
   dueDate?: string | null
@@ -1081,6 +1086,11 @@ export interface SSHSettings {
 export interface ExternalToolsSettings {
   /** Absolute path to the user-picked terminal .app (or executable). Empty = not configured. */
   externalTerminalCommand: string
+  /** Shell command the integrated terminal's "launch agent" button sends to the active session —
+   * see `TerminalPanel`. Not a path like `externalTerminalCommand`: it's typed straight into the
+   * PTY, so it can carry arguments (`claude --resume`). Optional: this postdates the first version
+   * of `externalTools`, and an old snapshot legitimately has none of it. */
+  agentLaunchCommand?: string
 }
 
 export interface NotificationSettings {
@@ -1099,6 +1109,9 @@ export interface NotificationSettings {
   notifyOnNewPr?: boolean
   /** Gates both CI outcomes: checks going green and checks failing. */
   notifyOnCi?: boolean
+  /** A command in the integrated terminal (e.g. a coding agent) finished running — see
+   * `NotchTerminalActivity`. */
+  notifyOnTerminalFinished?: boolean
   /**
    * How a notification is presented — and, as a consequence, *how many* the app raises.
    *

@@ -610,6 +610,11 @@ pub struct BoardCard {
     pub order: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linked_branch: Option<String>,
+    /// A worktree created for this card's work, separate from `linked_branch`: a card can have a
+    /// branch with no worktree (checked out in the active tab instead), but never a worktree without
+    /// the branch that owns it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub linked_worktree_path: Option<String>,
     /// Optimistic-concurrency token — see `Board::revision`. Sent back on every update so a write
     /// racing another one is rejected (`AppError::BoardConflict`) instead of silently overwriting it.
     pub revision: String,
@@ -714,10 +719,12 @@ mod double_option_probe {
 
     #[test]
     fn the_same_holds_for_every_clearable_field() {
-        let patch: BoardCardPatch =
-            serde_json::from_str(r#"{"linkedBranch":null,"assignee":null,"blockedReason":null}"#)
-                .unwrap();
+        let patch: BoardCardPatch = serde_json::from_str(
+            r#"{"linkedBranch":null,"linkedWorktreePath":null,"assignee":null,"blockedReason":null}"#,
+        )
+        .unwrap();
         assert_eq!(patch.linked_branch, Some(None));
+        assert_eq!(patch.linked_worktree_path, Some(None));
         assert_eq!(patch.assignee, Some(None));
         assert_eq!(patch.blocked_reason, Some(None));
     }
@@ -736,6 +743,9 @@ pub struct BoardCardPatch {
     /// The `deserialize_with` is what actually keeps them apart; see `double_option`.
     #[serde(default, deserialize_with = "double_option")]
     pub linked_branch: Option<Option<String>>,
+    /// Same double-`Option` "unchanged vs cleared" encoding as `linked_branch` above.
+    #[serde(default, deserialize_with = "double_option")]
+    pub linked_worktree_path: Option<Option<String>>,
     /// Same double-`Option` "unchanged vs cleared" encoding as `linked_branch` above.
     #[serde(default, deserialize_with = "double_option")]
     pub assignee: Option<Option<String>>,

@@ -54,4 +54,24 @@ describe('TerminalTab', () => {
     fireEvent.click(screen.getByTestId('terminal-close-tab-sess-1'))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('offers no review button while idle or busy, even with a handler supplied', () => {
+    const onReview = vi.fn()
+    renderTab({ state: 'idle', onReview })
+    expect(screen.queryByTestId('terminal-review-sess-1')).not.toBeInTheDocument()
+    renderTab({ state: 'busy', onReview })
+    expect(screen.queryByTestId('terminal-review-sess-1')).not.toBeInTheDocument()
+  })
+
+  it('offers no review button once done unless a handler was supplied', () => {
+    renderTab({ state: 'done' })
+    expect(screen.queryByTestId('terminal-review-sess-1')).not.toBeInTheDocument()
+  })
+
+  it('offers a review button once done, and fires its handler', () => {
+    const onReview = vi.fn()
+    renderTab({ state: 'done', onReview })
+    fireEvent.click(screen.getByTestId('terminal-review-sess-1'))
+    expect(onReview).toHaveBeenCalledTimes(1)
+  })
 })
