@@ -49,3 +49,12 @@ export { useBoardControlsStore } from './stores/boardControls.store'
  * other dialogs — the toolbar that does is this feature's own.
  */
 export { useBoardDialogsStore } from './stores/boardDialogs.store'
+
+/**
+ * Renders nothing — it exists purely to be mounted once by `App`, alongside the notch producers,
+ * and listen for the `merge_branch` event `apiMergeBranch` raises. Closes the loop the board's own
+ * "create branch for card" action opens: a card whose `linkedBranch` just merged moves to its
+ * board's done column. Public for the same reason `BoardSidebar`/`BoardToolbar` are — a slot the
+ * app wires in, not the feature's own business.
+ */
+export { BoardMergeCompletion } from './components/BoardMergeCompletion'

@@ -22,7 +22,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { apiAddWorktree, apiListWorktrees } from '../../../api/worktree.api'
 import { DefaultFilesEditor } from '../../../components/worktree/DefaultFilesEditor'
 import { BranchCombobox } from './BranchCombobox'
-import { defaultWorktreePath, worktreePathInParent } from './worktreePath'
+import { defaultWorktreePath, worktreePathInParent } from '../../../lib/worktreePath'
 
 interface AddWorktreeDialogProps {
   repoPath: string

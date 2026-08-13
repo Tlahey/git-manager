@@ -99,7 +99,10 @@ const sshSchema = z.object({
   useSystemAgent: z.boolean(),
 })
 
-const externalToolsSchema = z.object({ externalTerminalCommand: z.string() })
+const externalToolsSchema = z.object({
+  externalTerminalCommand: z.string(),
+  agentLaunchCommand: z.string().optional(),
+})
 
 const notificationsSchema = z.object({
   enabled: z.boolean(),
@@ -114,6 +117,7 @@ const notificationsSchema = z.object({
   notifyOnReviewStatusChanged: z.boolean().optional(),
   notifyOnNewPr: z.boolean().optional(),
   notifyOnCi: z.boolean().optional(),
+  notifyOnTerminalFinished: z.boolean().optional(),
   // Any string: `migrateDisplayStyle` remaps the previous `'popover'` spelling on the way in.
   displayStyle: looseString<NotificationDisplayStyle>().optional(),
   displayDurationMs: z.number().optional(),

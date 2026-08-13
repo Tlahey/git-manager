@@ -15,6 +15,9 @@ interface CardMetaSidebarProps {
   onCreateBranch?: () => Promise<unknown>
   onCheckoutBranch?: () => Promise<unknown>
   onUnlinkBranch?: () => Promise<unknown>
+  onCreatePr?: () => void
+  onCreateWorktree?: () => Promise<unknown>
+  onUnlinkWorktree?: () => Promise<unknown>
   /** Severs the link to a tracked GitHub issue — see `CardTrackingSection`. */
   onUntrack?: () => Promise<unknown>
   readOnly?: boolean
@@ -37,6 +40,9 @@ export function CardMetaSidebar({
   onCreateBranch,
   onCheckoutBranch,
   onUnlinkBranch,
+  onCreatePr,
+  onCreateWorktree,
+  onUnlinkWorktree,
   onUntrack,
   readOnly,
 }: CardMetaSidebarProps) {
@@ -67,6 +73,9 @@ export function CardMetaSidebar({
         onCreateBranch={onCreateBranch}
         onCheckoutBranch={onCheckoutBranch}
         onUnlinkBranch={onUnlinkBranch}
+        onCreatePr={onCreatePr}
+        onCreateWorktree={onCreateWorktree}
+        onUnlinkWorktree={onUnlinkWorktree}
         readOnly={readOnly}
       />
 

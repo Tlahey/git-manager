@@ -1,12 +1,15 @@
-import { useEffect, useRef } from 'react'
-import { ChevronDown, Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bot, ChevronDown, Plus, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button } from '@git-manager/ui'
 import { useTerminalStore } from '../../stores/terminal.store'
+import { useSettingsStore } from '../../stores/settings.store'
 import { useIntegratedTerminal } from '../../hooks/useIntegratedTerminal'
 import { useTerminalActivity } from '../../hooks/useTerminalActivity'
+import { useReviewTerminalSessionChanges } from '../../hooks/useReviewTerminalSessionChanges'
 import { useWorktrees } from '../../hooks/useWorktrees'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { apiTerminalWrite } from '../../api/terminal.api'
 import { terminalLocationLabel } from '../../lib/terminalLocation'
 import { terminalSessionState } from '../../lib/terminalState'
 import { TerminalTab } from './TerminalTab'
@@ -41,6 +44,28 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
   const worktrees = useWorktrees(activeRepo)
   const finished = useTerminalStore((s) => s.finished)
   const markSeen = useTerminalStore((s) => s.markSeen)
+  const reviewChanges = useReviewTerminalSessionChanges()
+  const agentLaunchCommand = useSettingsStore((s) => s.settings.externalTools?.agentLaunchCommand)
+  const [launchingAgent, setLaunchingAgent] = useState(false)
+
+  /** Sends the configured command to whatever session is active, spawning one bound to `path` first
+   * if the panel has none — the terminal's one-click equivalent of typing the agent's name and
+   * pressing Enter by hand. `\r` submits it, matching what a real keypress sends the PTY. */
+  async function launchAgent() {
+    const command = agentLaunchCommand?.trim()
+    if (!command || launchingAgent) return
+    setLaunchingAgent(true)
+    try {
+      let id = useTerminalStore.getState().activeId
+      if (!id) {
+        await addSession()
+        id = useTerminalStore.getState().activeId
+      }
+      if (id) await apiTerminalWrite(id, `${command}\r`)
+    } finally {
+      setLaunchingAgent(false)
+    }
+  }
 
   // Being the session on screen *is* having been seen — this component only renders while the
   // panel is open, so mounting it is the event. The `finished` dependency is what covers the case
@@ -99,6 +124,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             location={terminalLocationLabel(session.cwd, worktrees)}
             onSelect={() => setActiveSession(session.id)}
             onClose={() => closeSession(session.id)}
+            onReview={() => reviewChanges(session.id, session.cwd)}
           />
         ))}
         <Button
@@ -110,6 +136,17 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
           data-testid="terminal-new-tab"
         >
           <Plus className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="iconSm"
+          onClick={() => void launchAgent()}
+          disabled={launchingAgent || !agentLaunchCommand?.trim()}
+          aria-label={t('terminal.launchAgent')}
+          title={t('terminal.launchAgent')}
+          data-testid="terminal-launch-agent"
+        >
+          <Bot className="h-3.5 w-3.5" />
         </Button>
 
         <div className="ml-auto flex items-center gap-1">

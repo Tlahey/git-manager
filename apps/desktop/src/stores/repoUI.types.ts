@@ -210,8 +210,10 @@ export interface RepoUIState {
    * falls back to the current branch / GitHub default base. Consumed by `PrCreateCenter`.
    */
   prCreatePrefill: { head: string; base: string } | null
-  /** Opens the PR-create view with head/base pre-selected (ref drag-and-drop "Start a PR"). */
-  openPrCreateWith: (head: string, base: string) => void
+  /** Opens the PR-create view with head pre-selected, and optionally base (ref drag-and-drop
+   * "Start a PR" gives both; a caller with an opinion on the branch alone — e.g. the board's
+   * "Create PR" — omits it and gets the real GitHub default base instead, see `PrCreateCenter`). */
+  openPrCreateWith: (head: string, base?: string) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   /**

@@ -47,9 +47,11 @@ vi.mock('./PrCreateForm', () => ({
 }))
 
 import { PrCreateCenter } from './PrCreateCenter'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useRepoUIStore.setState({ prCreatePrefill: null })
   Object.assign(flow, {
     ownerRepo: { owner: 'o', repo: 'r' },
     token: 't',
@@ -85,5 +87,14 @@ describe('PrCreateCenter', () => {
     render(<PrCreateCenter repoPath="/repo" />)
     await userEvent.setup().click(screen.getByTestId('pr-create-close'))
     expect(flow.cancel).toHaveBeenCalledOnce()
+  })
+
+  it('takes the prefilled head but falls back to the real GitHub default base when the prefill has none', () => {
+    // The board's "Create PR" only names a branch (see `useOpenPrCreateForBranch`) — its empty
+    // `base` must not shadow `flow.defaultBase`.
+    useRepoUIStore.setState({ prCreatePrefill: { head: 'card/branch', base: '' } })
+    render(<PrCreateCenter repoPath="/repo" />)
+    expect(screen.getByTestId('stub-head')).toHaveTextContent('card/branch')
+    expect(screen.getByTestId('stub-base')).toHaveTextContent('main')
   })
 })

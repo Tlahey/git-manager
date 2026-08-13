@@ -80,6 +80,9 @@ export interface EditProps extends BoardCardDialogProps {
   onCreateBranch?: () => Promise<unknown>
   onCheckoutBranch?: () => Promise<unknown>
   onUnlinkBranch?: () => Promise<unknown>
+  onCreatePr?: () => void
+  onCreateWorktree?: () => Promise<unknown>
+  onUnlinkWorktree?: () => Promise<unknown>
   /** Severs a tracked card's link to its GitHub issue — see `CardTrackingSection`. */
   onUntrack?: () => Promise<unknown>
 }

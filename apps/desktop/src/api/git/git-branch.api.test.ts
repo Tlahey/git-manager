@@ -19,11 +19,13 @@ vi.mock('../../lib/tauri', async () => {
     snapshotWorktree: vi.fn(),
     getRepoSummary: vi.fn(),
     resolveRevision: vi.fn(),
+    mergeBranch: vi.fn(),
   }
 })
 
 import * as tauri from '../../lib/tauri'
 import * as api from './git-branch.api'
+import { appEventBus, type AppEvent } from '../../lib/appEventBus'
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 
@@ -218,6 +220,41 @@ describe('apiSetBranchUpstream', () => {
     await api.apiSetBranchUpstream(path, 'feat', 'origin/feat')
 
     expect(mocked.setBranchUpstream).toHaveBeenCalledWith(path, 'feat', 'origin/feat')
+  })
+})
+
+describe('apiMergeBranch', () => {
+  it('merges source into target', async () => {
+    const path = freshPath()
+    mocked.mergeBranch.mockResolvedValue(undefined)
+
+    await api.apiMergeBranch(path, 'feature/x', 'main')
+
+    expect(mocked.mergeBranch).toHaveBeenCalledWith(path, 'feature/x', 'main')
+  })
+
+  it('raises merge_branch on the event bus once the merge lands, naming the source branch', async () => {
+    const path = freshPath()
+    mocked.mergeBranch.mockResolvedValue(undefined)
+    const heard: Array<{ event: AppEvent; payload?: unknown }> = []
+    const unsubscribe = appEventBus.subscribe((event, payload) => heard.push({ event, payload }))
+
+    await api.apiMergeBranch(path, 'feature/x', 'main')
+    unsubscribe()
+
+    expect(heard).toEqual([{ event: 'merge_branch', payload: { path, source: 'feature/x' } }])
+  })
+
+  it('raises nothing when the merge itself fails', async () => {
+    const path = freshPath()
+    mocked.mergeBranch.mockRejectedValue(new Error('conflict'))
+    const heard: Array<{ event: AppEvent; payload?: unknown }> = []
+    const unsubscribe = appEventBus.subscribe((event, payload) => heard.push({ event, payload }))
+
+    await expect(api.apiMergeBranch(path, 'feature/x', 'main')).rejects.toThrow('conflict')
+    unsubscribe()
+
+    expect(heard).toEqual([])
   })
 })
 

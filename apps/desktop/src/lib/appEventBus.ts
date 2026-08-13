@@ -23,6 +23,9 @@ export type AppEvent =
   | 'view_waiting_reviews'
   | 'terminal_command'
   | 'pr_closed_or_merged'
+  /** A local branch merge landed — payload `{ path: string; source: string }`. Consumed by the
+   * board feature (`BoardMergeCompletion`) to move a card linked to `source` to its done column. */
+  | 'merge_branch'
 
 export type AppEventListener = (event: AppEvent, payload?: unknown) => void
 

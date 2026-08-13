@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Separator } from '@git-manager/ui'
-import { FileCode, FolderOpen, Terminal, X } from 'lucide-react'
+import { Button, Input, Separator } from '@git-manager/ui'
+import { Bot, FileCode, FolderOpen, Terminal, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { FilterableSetting, Highlight } from './settingsSearch'
@@ -15,7 +15,7 @@ export function ExternalToolsSection() {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
 
-  const tools = settings.externalTools || { externalTerminalCommand: '' }
+  const tools = settings.externalTools || { externalTerminalCommand: '', agentLaunchCommand: '' }
   const git = settings.git
 
   function updateTools(partial: Partial<typeof tools>) {
@@ -164,6 +164,29 @@ export function ExternalToolsSection() {
             {t('settings.externalTools.selectTerminal')}
           </Button>
         )}
+      </FilterableSetting>
+
+      {/* Coding agent launch command */}
+      <FilterableSetting
+        className="space-y-3"
+        testId="setting-agent-launch-command"
+        match="agent claude launch command coding assistant ia commande lancement"
+      >
+        <Separator className="mb-3" />
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          <Highlight text={t('settings.externalTools.agentLaunchTitle')} />
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          {t('settings.externalTools.agentLaunchDescription')}
+        </p>
+        <Input
+          value={tools.agentLaunchCommand ?? ''}
+          onChange={(e) => updateTools({ agentLaunchCommand: e.target.value })}
+          placeholder="claude"
+          className="font-mono text-xs"
+          data-testid="agentLaunchCommand-input"
+        />
       </FilterableSetting>
     </div>
   )

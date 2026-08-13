@@ -153,7 +153,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           prComposer: open ? null : state.prComposer,
         })),
 
-      openPrCreateWith: (head, base) =>
+      openPrCreateWith: (head, base = '') =>
         set({
           prCreateOpen: true,
           prCreatePrefill: { head, base },

@@ -445,6 +445,13 @@ describe('useRepoUIStore — prCreateOpen', () => {
     useRepoUIStore.getState().setPrCreateOpen(true)
     expect(useRepoUIStore.getState().prCreatePrefill).toBeNull()
   })
+
+  it('openPrCreateWith defaults to an empty base when the caller has no opinion on one', () => {
+    // A caller that only knows the branch (the board's "Create PR") — `PrCreateCenter` is what
+    // turns this empty string into the repository's real GitHub default base.
+    useRepoUIStore.getState().openPrCreateWith('feat/x')
+    expect(useRepoUIStore.getState().prCreatePrefill).toEqual({ head: 'feat/x', base: '' })
+  })
 })
 
 describe('useRepoUIStore — command-palette bridges', () => {

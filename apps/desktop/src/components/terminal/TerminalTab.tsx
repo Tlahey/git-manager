@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Sparkles, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Tooltip, cn } from '@git-manager/ui'
 import type { TerminalSession } from '../../stores/terminal.store'
@@ -16,6 +16,10 @@ interface TerminalTabProps {
   location: string
   onSelect: () => void
   onClose: () => void
+  /** Opens the AI review of this session's worktree. The button only ever renders while
+   * `state === 'done'` — reviewing is something to do about a command that just finished, not a
+   * standing action on every tab. */
+  onReview?: () => void
 }
 
 /**
@@ -34,6 +38,7 @@ export function TerminalTab({
   location,
   onSelect,
   onClose,
+  onReview,
 }: TerminalTabProps) {
   const { t } = useTranslation('git')
 
@@ -78,6 +83,18 @@ export function TerminalTab({
           <span className="truncate font-medium">{location}</span>
           <span className="shrink-0 font-mono text-[10px] opacity-50">{session.title}</span>
         </button>
+        {state === 'done' && onReview && (
+          <button
+            type="button"
+            onClick={onReview}
+            aria-label={t('terminal.reviewChanges')}
+            title={t('terminal.reviewChanges')}
+            data-testid={`terminal-review-${session.id}`}
+            className="shrink-0 cursor-pointer rounded p-0.5 text-primary hover:bg-background"
+          >
+            <Sparkles className="h-3 w-3" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}

@@ -43,6 +43,8 @@
   "settings.externalTools.selectTerminal": "Sélectionner mon terminal…",
   "settings.externalTools.change": "Changer",
   "settings.externalTools.remove": "Retirer l'application",
+  "settings.externalTools.agentLaunchTitle": "Agent de codage",
+  "settings.externalTools.agentLaunchDescription": "Commande envoyée à la session active par le bouton de lancement d'agent du terminal intégré.",
   "settings.sections.notifications": "Notifications",
   "settings.sections.board": "Tableau",
   "settings.board.autoSyncEnabled": "Synchroniser automatiquement la configuration du tableau",

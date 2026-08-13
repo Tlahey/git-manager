@@ -9,6 +9,8 @@ import type {
   BoardSource,
 } from '@git-manager/git-types'
 import { createIssueComment } from '../../../api/github.api'
+import { apiAddWorktree, apiListWorktrees } from '../../../api/worktree.api'
+import { defaultWorktreePath } from '../../../lib/worktreePath'
 import { pushCardToIssue } from '../api/trackedIssue.api'
 import { applyCardPatch, splitPatch } from '../api/trackedIssueMapping'
 import { isBoardConflict } from '../api/boardConflict'
@@ -122,6 +124,31 @@ export function useBoardCardActions({
    * ordinary local card — severing the link is not a reason to lose the content. */
   async function untrackCard(card: BoardCard): Promise<BoardCard | null> {
     return updateCard(card, { sourceIssue: null })
+  }
+
+  /**
+   * Creates a worktree for the card's linked branch and links it back onto the card — the board's
+   * one-click equivalent of `AddWorktreeDialog`'s default destination, with no dialog of its own
+   * since the branch is already decided. No-ops on a card with no linked branch yet: a worktree
+   * without the branch that owns it isn't a state this card can represent.
+   */
+  async function createWorktreeForCard(card: BoardCard): Promise<BoardCard | null> {
+    if (!card.linkedBranch) return null
+    // Anchor on the MAIN worktree's root, not `repoPath` — the active tab may itself be a linked
+    // worktree, and nesting the new one inside it is exactly the wrong place (see
+    // `defaultWorktreePath`'s doc comment).
+    const worktrees = await apiListWorktrees(repoPath)
+    const repoRoot = worktrees.find((wt) => wt.isMain)?.path ?? repoPath
+    const path = defaultWorktreePath(repoRoot, card.linkedBranch)
+    await apiAddWorktree(repoPath, card.linkedBranch, path)
+    return updateCard(card, { linkedWorktreePath: path })
+  }
+
+  /** Unlinks the worktree without touching the branch or removing the worktree on disk — see
+   * `BoardCardBranchSection`'s unlink action. Removing the worktree itself is a separate, existing
+   * capability (the graph sidebar's worktree row), deliberately not duplicated here. */
+  async function unlinkWorktree(card: BoardCard): Promise<BoardCard | null> {
+    return updateCard(card, { linkedWorktreePath: null })
   }
 
   /**
@@ -412,6 +439,8 @@ export function useBoardCardActions({
     createCard,
     updateCard,
     untrackCard,
+    createWorktreeForCard,
+    unlinkWorktree,
     moveCard,
     moveCardToBoard,
     deleteCard,

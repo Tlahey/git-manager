@@ -38,6 +38,11 @@ const EVENT_TOGGLES: Array<{
     descKey: 'notifications.settings.pushDesc',
   },
   {
+    key: 'notifyOnTerminalFinished',
+    titleKey: 'notifications.settings.terminalFinishedTitle',
+    descKey: 'notifications.settings.terminalFinishedDesc',
+  },
+  {
     key: 'notifyOnNewPr',
     titleKey: 'notifications.settings.newPrTitle',
     descKey: 'notifications.settings.newPrDesc',
@@ -81,6 +86,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   notifyOnReviewStatusChanged: true,
   notifyOnNewPr: true,
   notifyOnCi: true,
+  notifyOnTerminalFinished: true,
   displayStyle: DEFAULT_DISPLAY_STYLE,
   displayDurationMs: DEFAULT_DISPLAY_DURATION_MS,
 }

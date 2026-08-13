@@ -67,6 +67,8 @@
   "notifications.settings.pullDesc": "Muestra un pull mientras se ejecuta, y cómo terminó",
   "notifications.settings.pushTitle": "Push",
   "notifications.settings.pushDesc": "Muestra un push mientras se ejecuta, y cómo terminó",
+  "notifications.settings.terminalFinishedTitle": "Comando de terminal finalizado",
+  "notifications.settings.terminalFinishedDesc": "Avisar cuando un comando del terminal integrado (p. ej. un agente de codificación) termina",
   "notifications.settings.newPrTitle": "Nuevas Pull Requests",
   "notifications.settings.newPrDesc": "Notificar cuando aparece una nueva Pull Request",
   "notifications.settings.prMergedTitle": "PR fusionadas o cerradas",

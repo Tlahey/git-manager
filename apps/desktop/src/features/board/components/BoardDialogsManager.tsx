@@ -20,6 +20,7 @@ import { cardIdentifier } from '../lib/cardMeta'
 import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
+import { useOpenPrCreateForBranch } from '../../../hooks/useOpenPrCreateForBranch'
 import type { BoardDialogs } from '../stores/boardDialogs.store'
 
 interface BoardDialogsManagerProps {
@@ -55,6 +56,8 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     deleteBoard,
     createCard,
     updateCard,
+    createWorktreeForCard,
+    unlinkWorktree,
     deleteCard,
     deleteArchivedCards,
     archiveColumn,
@@ -89,6 +92,13 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     editingCard,
     loadComments
   )
+  const openPrCreateForBranch = useOpenPrCreateForBranch()
+  /** Guards the branch check here rather than inside `useOpenPrCreateForBranch` itself, the same
+   * shape `onCreateWorktree` below already uses — the hook is generic over any branch, so "does
+   * this card have one" is the caller's question, not its. */
+  function openPrForCard(card: BoardCard) {
+    if (card.linkedBranch) openPrCreateForBranch(card.linkedBranch, card.linkedWorktreePath)
+  }
 
   /**
    * Relating two cards writes on **one** of them — whichever stores the forward half, which is not
@@ -276,6 +286,13 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
               : Promise.resolve()
           }
           onUnlinkBranch={() => updateCard(editingCard, { linkedBranch: null })}
+          onCreatePr={
+            canUseRemote && editingCard.linkedBranch ? () => openPrForCard(editingCard) : undefined
+          }
+          onCreateWorktree={
+            editingCard.linkedBranch ? () => createWorktreeForCard(editingCard) : undefined
+          }
+          onUnlinkWorktree={() => unlinkWorktree(editingCard)}
           onUntrack={editingCard.sourceIssue ? () => untrackCard(editingCard) : undefined}
           columns={activeBoard?.columns}
           boardName={activeBoard?.name}

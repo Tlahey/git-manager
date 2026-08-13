@@ -882,6 +882,8 @@
   "terminal.open": "Ouvrir le terminal intégré ici",
   "terminal.toggle": "Afficher/masquer le terminal",
   "terminal.newTab": "Nouveau terminal",
+  "terminal.launchAgent": "Lancer l'agent de codage",
+  "terminal.reviewChanges": "Revue IA des changements",
   "terminal.closeTab": "Fermer le terminal",
   "terminal.hidePanel": "Masquer le terminal",
   "terminal.closePanel": "Fermer le terminal complètement",

@@ -114,6 +114,22 @@ describe.each(SECTIONS)(
   }
 )
 
+describe('ExternalToolsSection — agent launch command', () => {
+  it('starts from the stored default', () => {
+    render(<ExternalToolsSection />)
+    expect(screen.getByTestId('agentLaunchCommand-input')).toHaveValue('claude')
+  })
+
+  it('typing updates the setting', async () => {
+    const user = userEvent.setup()
+    render(<ExternalToolsSection />)
+    const input = screen.getByTestId('agentLaunchCommand-input')
+    await user.clear(input)
+    await user.type(input, 'claude --resume')
+    expect(sliceField('externalTools', 'agentLaunchCommand')).toBe('claude --resume')
+  })
+})
+
 describe('ExternalToolsSection — in-page search filtering', () => {
   it('shows only the external-terminal setting when searching "terminal"', () => {
     render(
@@ -123,6 +139,17 @@ describe('ExternalToolsSection — in-page search filtering', () => {
     )
     expect(screen.getByTestId('setting-external-terminal')).toBeInTheDocument()
     expect(screen.queryByTestId('setting-external-editor')).not.toBeInTheDocument()
+  })
+
+  it('shows only the agent-launch setting when searching "claude"', () => {
+    render(
+      <SettingsSearchProvider query="claude">
+        <ExternalToolsSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-agent-launch-command')).toBeInTheDocument()
+    expect(screen.queryByTestId('setting-external-editor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('setting-external-terminal')).not.toBeInTheDocument()
   })
 
   it('highlights the query inside the now-translated label, not just filtering on it', () => {

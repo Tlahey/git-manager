@@ -61,6 +61,14 @@ describe('NotificationSection — event toggles', () => {
     expect(useSettingsStore.getState().settings.notifications!.notifyOnNewPr).toBe(false)
   })
 
+  it('offers a toggle for a finished terminal command', async () => {
+    const user = userEvent.setup()
+    render(<NotificationSection />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Terminal command finished' }))
+    expect(useSettingsStore.getState().settings.notifications!.notifyOnTerminalFinished).toBe(false)
+  })
+
   it('offers one toggle per step of a PR lifecycle, CI and the merge queue included', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)

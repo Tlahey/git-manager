@@ -3,35 +3,43 @@ import { renderHook } from '@testing-library/react'
 import type { Board, BoardCard } from '@git-manager/git-types'
 import { makeBoard, makeCard } from '../test/boardFactories'
 
-const { localBackend, remoteBackend, pushCardToIssue, createIssueComment, toastError } = vi.hoisted(
-  () => {
-    const make = () => ({
-      listBoards: vi.fn(),
-      getBoard: vi.fn(),
-      createBoard: vi.fn(),
-      updateBoardColumns: vi.fn(),
-      updateBoardMeta: vi.fn(),
-      closeBoard: vi.fn(),
-      deleteBoard: vi.fn(),
-      createCard: vi.fn(),
-      updateCard: vi.fn(),
-      addComment: vi.fn(),
-      moveCard: vi.fn(),
-      moveCardsToBoard: vi.fn(),
-      deleteCard: vi.fn(),
-      deleteCards: vi.fn(),
-      setCardsArchived: vi.fn(),
-      assignCardIdentifiers: vi.fn(),
-    })
-    return {
-      localBackend: make(),
-      remoteBackend: make(),
-      pushCardToIssue: vi.fn(),
-      createIssueComment: vi.fn(),
-      toastError: vi.fn(),
-    }
+const {
+  localBackend,
+  remoteBackend,
+  pushCardToIssue,
+  createIssueComment,
+  toastError,
+  apiAddWorktree,
+  apiListWorktrees,
+} = vi.hoisted(() => {
+  const make = () => ({
+    listBoards: vi.fn(),
+    getBoard: vi.fn(),
+    createBoard: vi.fn(),
+    updateBoardColumns: vi.fn(),
+    updateBoardMeta: vi.fn(),
+    closeBoard: vi.fn(),
+    deleteBoard: vi.fn(),
+    createCard: vi.fn(),
+    updateCard: vi.fn(),
+    addComment: vi.fn(),
+    moveCard: vi.fn(),
+    moveCardsToBoard: vi.fn(),
+    deleteCard: vi.fn(),
+    deleteCards: vi.fn(),
+    setCardsArchived: vi.fn(),
+    assignCardIdentifiers: vi.fn(),
+  })
+  return {
+    localBackend: make(),
+    remoteBackend: make(),
+    pushCardToIssue: vi.fn(),
+    createIssueComment: vi.fn(),
+    toastError: vi.fn(),
+    apiAddWorktree: vi.fn(),
+    apiListWorktrees: vi.fn(),
   }
-)
+})
 
 /** A `BOARD_CONFLICT` as the backends raise it — see `api/boardConflict.ts`. */
 function conflict() {
@@ -45,6 +53,7 @@ vi.mock('@git-manager/ui', async () => {
 })
 vi.mock('../api/trackedIssue.api', () => ({ pushCardToIssue }))
 vi.mock('../../../api/github.api', () => ({ createIssueComment }))
+vi.mock('../../../api/worktree.api', () => ({ apiAddWorktree, apiListWorktrees }))
 
 import { useBoardCardActions } from './useBoardCardActions'
 
@@ -438,6 +447,80 @@ describe('useBoardCardActions — deleteCard and untrackCard', () => {
       'b1',
       'c1',
       { sourceIssue: null },
+      'rev-1'
+    )
+  })
+})
+
+describe('useBoardCardActions — createWorktreeForCard / unlinkWorktree', () => {
+  const worktree = (overrides: Partial<import('@git-manager/git-types').GitWorktree> = {}) => ({
+    path: '/repo',
+    branch: 'main',
+    commitOid: 'abc123',
+    isMain: true,
+    isLocked: false,
+    isDirty: false,
+    isPrunable: false,
+    ...overrides,
+  })
+
+  it('does nothing for a card with no linked branch', async () => {
+    const { result } = renderActions()
+
+    await expect(result.current.createWorktreeForCard(makeCard())).resolves.toBeNull()
+    expect(apiListWorktrees).not.toHaveBeenCalled()
+    expect(apiAddWorktree).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The default destination is anchored on the MAIN worktree's root, not `repoPath` — the active tab
+   * may itself be a linked worktree, and nesting the new one inside it would be exactly the wrong
+   * place. Here `repoPath` ('/repo') and the main worktree's path deliberately differ so the test
+   * fails if the wrong one is used.
+   */
+  it('anchors the new worktree on the main worktree root, not the active tab', async () => {
+    apiListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo-main', isMain: true }),
+      worktree({ path: '/repo', branch: 'feature/x', isMain: false }),
+    ])
+    apiAddWorktree.mockResolvedValue({ copied: [], skipped: [] })
+    localBackend.updateCard.mockResolvedValue(makeCard({ linkedBranch: 'feature/x' }))
+    const { result } = renderActions()
+
+    await result.current.createWorktreeForCard(makeCard({ linkedBranch: 'feature/x' }))
+
+    expect(apiListWorktrees).toHaveBeenCalledWith(path)
+    expect(apiAddWorktree).toHaveBeenCalledWith(path, 'feature/x', '/repo-main.worktrees/feature/x')
+    expect(localBackend.updateCard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      { linkedWorktreePath: '/repo-main.worktrees/feature/x' },
+      'rev-1'
+    )
+  })
+
+  it('falls back to repoPath when no worktree is reported as main', async () => {
+    apiListWorktrees.mockResolvedValue([])
+    apiAddWorktree.mockResolvedValue({ copied: [], skipped: [] })
+    localBackend.updateCard.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.createWorktreeForCard(makeCard({ linkedBranch: 'feature/x' }))
+
+    expect(apiAddWorktree).toHaveBeenCalledWith(path, 'feature/x', '/repo.worktrees/feature/x')
+  })
+
+  it('unlinks the worktree without touching the branch', async () => {
+    localBackend.updateCard.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.unlinkWorktree(makeCard({ linkedBranch: 'feature/x' }))
+    expect(localBackend.updateCard).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      { linkedWorktreePath: null },
       'rev-1'
     )
   })
