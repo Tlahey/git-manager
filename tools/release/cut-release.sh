@@ -180,6 +180,10 @@ node -e "
 
 (
   cd "$WORKTREE_DIR"
+  # The hand-written JSON.stringify above doesn't match prettier's own formatting (e.g. its
+  # tailwindStylesheet-pinned plugin ordering), and the pre-push hook's format:check gate would
+  # otherwise reject this exact commit on every single release.
+  pnpm exec prettier --write package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json CHANGELOG.md
   git add package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml CHANGELOG.md
   git commit -q -m "chore(release): bump version to $TAG"
   git tag "$TAG"
@@ -221,7 +225,9 @@ if [ "$LOCAL_BUILD" = true ]; then
   fi
 
   echo "=== building universal bundle locally (signed) ==="
-  BUNDLE_DIR="$WORKTREE_DIR/apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle"
+  # target/ lands at the Cargo workspace root ($WORKTREE_DIR/Cargo.toml), not under the
+  # src-tauri member directory — cargo always resolves target-dir relative to the workspace root.
+  BUNDLE_DIR="$WORKTREE_DIR/target/universal-apple-darwin/release/bundle"
   (
     cd "$WORKTREE_DIR/apps/desktop"
     # shellcheck disable=SC1090
