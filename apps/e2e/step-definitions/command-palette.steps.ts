@@ -284,10 +284,12 @@ When(/^I run the command palette action "([^"]*)"$/, async (id: string) => {
  * Run a palette command the way a reader would: by the entry they can actually see.
  *
  * The documentation form of the step above. `@doc` scenarios use this one so the published page
- * says "Pick `Delete local branch release/1.0` from the palette" — a real label from
+ * says "Pick `Delete a local branch…` from the palette" — a real label from
  * `packages/i18n/locales/en/common.json`, rendered by `CommandPalette.tsx` as the item's first
  * `<span>` (the icon before it is an `<svg>`, and the optional subtitle is a later span, so "first
- * span" is the title and nothing else).
+ * span" is the title and nothing else). A ref-scoped verb (delete a branch, push a tag…) needs
+ * this step twice — once for the verb's own row, once for the ref it narrows to on the picker
+ * screen `useRefCommands` opens next — since `buildRefCommands` no longer renders one row per ref.
  *
  * Matching is exact, and a miss reports every label currently on screen. That matters because
  * this step is the one place in the suite where a feature file has to agree with translated copy:

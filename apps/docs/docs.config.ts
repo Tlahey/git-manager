@@ -124,8 +124,11 @@ export const DOC_SECTIONS: DocSection[] = [
   {
     // Tracking the work rather than the code — one repository's own board, whose cards live in its
     // `.git`. Sits just above Launchpad, which is the same concern read across every repository.
+    // `board-cards` is the card record's own page — assignee/priority/due date/tags, relations
+    // between cards, deleting and moving one — split out because `board.feature` is already the
+    // board-level tour and a single page holding both would bury one under the other.
     title: 'Planning',
-    features: ['board'],
+    features: ['board', 'board-cards'],
   },
   {
     title: 'Launchpad',

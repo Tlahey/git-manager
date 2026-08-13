@@ -18,6 +18,14 @@ After({ tags: '@ai' }, async () => {
 // Seeds `git-manager-settings` directly (same "seed localStorage, then reload" pattern used
 // throughout this suite) rather than driving the Settings UI — this scenario is about the
 // generation flow itself, not about how the settings get there (see settings.feature for that).
+//
+// Writes straight onto `state`, not `state.settings`: `settings.store.ts`'s persist config
+// declares `partialize: (state) => state.settings`, so the *persisted* shape is the settings
+// object itself (`state.ai`, `state.language`, …) — a `state.settings.ai` write lands in a key
+// nothing reads, and the seed silently never takes effect. Cost a real bug to find: every AI
+// call kept landing on the suite-wide fake server (`SUITE_WIDE_FAKE_AI_URL`) instead of this
+// scenario's own, which only surfaced once a scenario asserted on the actual request body rather
+// than on a response both servers happen to answer identically.
 async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
   // Seed, then navigate through WebDriver rather than assigning `window.location.href` inside
   // the same execute (repo.steps.ts's pattern): the in-page assignment either tears the context
@@ -29,9 +37,8 @@ async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
   await browser.execute(
     (key: string, aiJson: string) => {
       const raw = localStorage.getItem(key)
-      const parsed = raw ? JSON.parse(raw) : { state: { settings: {} }, version: 0 }
-      parsed.state = parsed.state ?? {}
-      parsed.state.settings = { ...parsed.state.settings, ai: JSON.parse(aiJson) }
+      const parsed = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+      parsed.state = { ...parsed.state, ai: JSON.parse(aiJson) }
       localStorage.setItem(key, JSON.stringify(parsed))
     },
     'git-manager-settings',

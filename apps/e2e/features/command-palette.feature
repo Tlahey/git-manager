@@ -181,10 +181,10 @@ Feature: Command palette (⌘K)
     And I confirm the branch creation
     And I check out the "main" branch
     When I open the command palette
-    And I type "delete" into the command palette
+    And I pick "Delete a local branch…" from the palette
     And the interface has settled
     Then a full-window screenshot is saved as "doc-branch-delete"
-    When I pick "Delete local branch release/1.0" from the palette
+    When I pick "release/1.0" from the palette
     Then the branch "release/1.0" no longer exists
     And no error notification is displayed
     # The deletion goes through the undo-recording API wrapper, so the branch comes back at its
@@ -199,7 +199,8 @@ Feature: Command palette (⌘K)
   Scenario: Deleting an unmerged branch is refused
     Given the "feature-branches" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-delete-branch-feature/login"
+    And I run the command palette action "ref-deleteBranch"
+    And I run the command palette action "ref-pick-deleteBranch-feature/login"
     Then the branch "feature/login" exists
 
   Scenario: Creating a patch file from a commit

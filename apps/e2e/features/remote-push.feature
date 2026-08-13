@@ -57,7 +57,8 @@ Feature: Pushing to a remote
   Scenario: Deleting a remote branch removes it on the remote
     Given the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-delete-remote-branch-origin/feature/diverged"
+    And I run the command palette action "ref-deleteRemoteBranch"
+    And I run the command palette action "ref-pick-deleteRemoteBranch-origin/feature/diverged"
     Then the remote branch deletion dialog is shown
     When I confirm the remote branch deletion
     Then the remote "origin" no longer has the branch "feature/diverged"

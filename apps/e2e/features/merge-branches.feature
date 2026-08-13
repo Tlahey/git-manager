@@ -27,11 +27,11 @@ Feature: Merging branches
     And the "feature-branches" fixture repository is opened
     Then the branch indicator reads "main"
     When I open the command palette
-    And I type "merge" into the command palette
+    And I pick "Merge a branch into main…" from the palette
     And the interface has settled
     Then the command palette is shown
     And a full-window screenshot is saved as "doc-merge-branch"
-    When I pick "Merge feature/login into main" from the palette
+    When I pick "feature/login" from the palette
     Then the branch "main" contains the commit "feat: add login screen"
     And no error notification is displayed
 
@@ -57,9 +57,9 @@ Feature: Merging branches
     And I confirm the branch creation
     And the branch indicator reads "release/1.0"
     When I open the command palette
-    And I type "fast" into the command palette
+    And I pick "Fast-forward release/1.0 to a branch…" from the palette
     And the interface has settled
     Then a full-window screenshot is saved as "doc-fast-forward"
-    When I pick "Fast-forward release/1.0 to main" from the palette
+    When I pick "main" from the palette
     Then the branches "release/1.0" and "main" point at the same commit
     And no error notification is displayed

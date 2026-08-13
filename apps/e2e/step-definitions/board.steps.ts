@@ -35,45 +35,87 @@ When(/^I open the board$/, async () => {
   await $('[data-testid="create-board-button"]').waitForDisplayed({ timeout: 15000 })
 })
 
+async function createBoard(name: string, prefix: string, standing?: boolean): Promise<void> {
+  await $('[data-testid="create-board-button"]').click()
+  await $('[data-testid="create-board-dialog"]').waitForDisplayed({ timeout: 10000 })
+  await $('[data-testid="board-name-input"]').setValue(name)
+  // On by default — a sprint that can be closed. Off is what makes a *standing* board: a
+  // backlog that never ends and never offers to close (see BoardToolbar's `isIterationBoard`
+  // gate).
+  if (standing) await clickViaJs('board-iteration-input')
+  await $('[data-testid="board-prefix-input"]').setValue(prefix)
+  await $('[data-testid="create-board-submit"]').click()
+  await $('[data-testid="create-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
+  // The new board becomes the active one (`useBoardActions.createBoard`), so its columns are what
+  // the next step queries — waiting for the sidebar to mark it current is what proves the switch
+  // landed.
+  await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+    timeout: 15000,
+    timeoutMsg: `the board sidebar never made "${name}" the current board`,
+  })
+}
+
 When(
   /^I create a board named "([^"]*)" with the card prefix "([^"]*)"$/,
   async (name: string, prefix: string) => {
-    await $('[data-testid="create-board-button"]').click()
-    await $('[data-testid="create-board-dialog"]').waitForDisplayed({ timeout: 10000 })
-    await $('[data-testid="board-name-input"]').setValue(name)
-    await $('[data-testid="board-prefix-input"]').setValue(prefix)
-    await $('[data-testid="create-board-submit"]').click()
-    await $('[data-testid="create-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
-    // The new board becomes the active one (`useBoardActions.createBoard`), so its columns are what
-    // the next step queries — waiting for the sidebar to mark it current is what proves the switch
-    // landed.
-    await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
-      timeout: 15000,
-      timeoutMsg: `the board sidebar never made "${name}" the current board`,
-    })
+    await createBoard(name, prefix)
   }
 )
 
+When(
+  /^I create a standing board named "([^"]*)" with the card prefix "([^"]*)"$/,
+  async (name: string, prefix: string) => {
+    await createBoard(name, prefix, true)
+  }
+)
+
+Then(/^the board offers no way to close it$/, async () => {
+  await expect($('[data-testid="board-close-sprint-button"]')).not.toBeExisting()
+})
+
 // ─── Cards ─────────────────────────────────────────────────────────────────
+
+async function addCard(columnName: string, title: string, kind?: string): Promise<void> {
+  const columnId = await columnIdByName(columnName)
+  await $(`[data-testid="board-column-${columnId}-add-card"]`).click()
+  await $('[data-testid="board-card-title-input"]').waitForDisplayed({ timeout: 10000 })
+  // Task by default (CreateCardDialog's own initial state) — only touched when a scenario cares
+  // which of the three kinds (Task/Bug/Epic) the card takes.
+  if (kind) {
+    await openMenuViaJs('card-kind-select')
+    await clickViaJs(`card-kind-${kind.toLowerCase()}-option`)
+  }
+  await $('[data-testid="board-card-title-input"]').setValue(title)
+  await $('[data-testid="board-card-save"]').click()
+  // The create form is replaced by the card's own record view rather than closing — that swap is
+  // what proves the card was really written (`BoardDialogsManager` only reopens on a created id).
+  await $('[data-testid="card-meta-sidebar"]').waitForDisplayed({ timeout: 15000 })
+  await closeDialog('board-card-dialog')
+  await browser.waitUntil(async () => (await cardTestId(title)) !== null, {
+    timeout: 15000,
+    timeoutMsg: `the card "${title}" never appeared on the board`,
+  })
+}
 
 When(
   /^I add a card titled "([^"]*)" to the "([^"]*)" column$/,
   async (title: string, columnName: string) => {
-    const columnId = await columnIdByName(columnName)
-    await $(`[data-testid="board-column-${columnId}-add-card"]`).click()
-    await $('[data-testid="board-card-title-input"]').waitForDisplayed({ timeout: 10000 })
-    await $('[data-testid="board-card-title-input"]').setValue(title)
-    await $('[data-testid="board-card-save"]').click()
-    // The create form is replaced by the card's own record view rather than closing — that swap is
-    // what proves the card was really written (`BoardDialogsManager` only reopens on a created id).
-    await $('[data-testid="card-meta-sidebar"]').waitForDisplayed({ timeout: 15000 })
-    await closeDialog('board-card-dialog')
-    await browser.waitUntil(async () => (await cardTestId(title)) !== null, {
-      timeout: 15000,
-      timeoutMsg: `the card "${title}" never appeared on the board`,
-    })
+    await addCard(columnName, title)
   }
 )
+
+When(
+  /^I add a "([^"]*)" card titled "([^"]*)" to the "([^"]*)" column$/,
+  async (kind: string, title: string, columnName: string) => {
+    await addCard(columnName, title, kind)
+  }
+)
+
+Then(/^the card "([^"]*)" is shown as a "([^"]*)"$/, async (title: string, kind: string) => {
+  const testid = await cardTestIdOrThrow(title)
+  const icon = $(`[data-testid="${testid}"] [data-testid="card-kind-${kind.toLowerCase()}"]`)
+  await expect(icon).toBeDisplayed()
+})
 
 When(
   /^I set the status of the card "([^"]*)" to "([^"]*)"$/,
@@ -161,6 +203,11 @@ When(
     // Carrying over is the dialog's default; the name it proposes is `nextSprintName(board.name)`,
     // overwritten here so the scenario states the name it then asserts on.
     await $('[data-testid="close-sprint-next-name"]').setValue(successorName)
+    // "Archive completed cards" also defaults on (CloseSprintDialog.tsx), which would file the done
+    // column away rather than leave it "shown on the board" the way a reader of this scenario's own
+    // prose ("a card in a done column ... stays behind") expects. Unchecked here so a closed sprint's
+    // done cards stay visible rather than in the archive.
+    await clickViaJs('close-sprint-archive-done')
     await $('[data-testid="close-sprint-confirm"]').click()
     await $('[data-testid="close-sprint-dialog"]').waitForExist({ reverse: true, timeout: 20000 })
   }

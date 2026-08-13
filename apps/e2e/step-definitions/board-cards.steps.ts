@@ -331,7 +331,23 @@ Then(
 
 // ─── The discussion ────────────────────────────────────────────────────────
 
+/**
+ * Switches a `MarkdownEditorFrame` to its raw "code" tab so `testid`'s field (hidden behind
+ * `class="hidden"` while the frame defaults to "rich") is actually there to type into. Scoped to
+ * the frame that owns `testid` rather than a bare `$('[data-testid="markdown-tab-code"]')`, since
+ * a card panel can have more than one editor mounted at once (the description and the comment box).
+ */
+async function switchToRawMarkdown(testid: string): Promise<void> {
+  await browser.execute((id: string) => {
+    const field = document.querySelector(`[data-testid="${id}"]`)
+    const frame = field?.closest('[data-testid="markdown-editor-frame"]')
+    const codeTab = frame?.querySelector('[data-testid="markdown-tab-code"]') as HTMLElement | null
+    codeTab?.click()
+  }, testid)
+}
+
 When(/^I write the comment "([^"]*)"$/, async (body: string) => {
+  await switchToRawMarkdown('card-comment-input')
   const input = $('[data-testid="card-comment-input"]')
   await input.waitForDisplayed({ timeout: 10000 })
   await input.setValue(body)
@@ -555,8 +571,11 @@ When(/^I link the card "([^"]*)" as "([^"]*)"$/, async (targetTitle: string, rel
   const kind = RELATION_VALUES[relation]
   if (!kind) throw new Error(`no such relation: "${relation}"`)
   await $('[data-testid="card-links-add"]').click()
-  await $('[data-testid="card-link-picker"]').waitForDisplayed({ timeout: 10000 })
-  await setNativeSelectValue('card-link-kind', kind)
+  await $('[data-testid="card-link-draft"]').waitForDisplayed({ timeout: 10000 })
+  // `card-link-kind` is a `@git-manager/ui` `Select` (Radix), not a native one — same open-on-
+  // pointerdown quirk as a `DropdownMenuTrigger`, hence the JS dispatch rather than `setNativeSelectValue`.
+  await openMenuViaJs('card-link-kind')
+  await clickViaJs(`card-link-kind-${kind}`)
   await $('[data-testid="card-link-search"]').setValue(targetTitle)
   // The candidate rows are keyed by card id, which is generated per write — resolved by title.
   const optionTestId = await browser.execute((wanted: string) => {
@@ -566,8 +585,10 @@ When(/^I link the card "([^"]*)" as "([^"]*)"$/, async (targetTitle: string, rel
   }, targetTitle)
   if (!optionTestId) throw new Error(`the link picker offers no card titled "${targetTitle}"`)
   await $(`[data-testid="${optionTestId}"]`).click()
-  // The picker closes itself once the write resolves.
-  await $('[data-testid="card-link-picker"]').waitForExist({ reverse: true, timeout: 15000 })
+  // Picking a candidate only fills the field (CardLinkDraftRow.pick) — the confirm button is what
+  // writes, so the draft row only closes once that click's write resolves.
+  await $('[data-testid="card-link-draft-add"]').click()
+  await $('[data-testid="card-link-draft"]').waitForExist({ reverse: true, timeout: 15000 })
 })
 
 Then(
