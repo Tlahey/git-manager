@@ -105,8 +105,11 @@ export async function applyBaseline(baseline: Baseline): Promise<boolean> {
       const settingsKey = 'git-manager-settings'
       const storedSettings = window.localStorage.getItem(settingsKey)
       const data = storedSettings ? JSON.parse(storedSettings) : { state: {}, version: 0 }
-      data.state = data.state ?? {}
-      data.state.settings = { ...(data.state.settings ?? {}), ...settings }
+      // Onto `state` directly, not `state.settings`: `settings.store.ts`'s `partialize` makes the
+      // persisted payload the settings object itself, so a `state.settings.x` write is inert —
+      // masked here only because the live patch above already persisted the real shape via
+      // zustand's own storage write; this one exists so a reader trusts what it reads.
+      data.state = { ...(data.state ?? {}), ...settings }
       window.localStorage.setItem(settingsKey, JSON.stringify(data))
 
       window.localStorage.setItem(

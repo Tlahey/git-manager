@@ -5,14 +5,18 @@ import { browser } from '@wdio/globals'
  * merge (mergeSettingsWithDefaults in settings.store.ts) fills every missing group with defaults.
  * Takes effect on the next load — a step that reloads (fixture-open, fixture-build + window nav,
  * etc.) must run right after for the app to pick it up.
+ *
+ * Merged onto `state` directly, not `state.settings`: `settings.store.ts`'s persist config
+ * declares `partialize: (state) => state.settings`, so the *persisted* payload is the settings
+ * object itself (`state.ai`, `state.language`, …) — a `state.settings.x` write lands in a key
+ * hydration never reads, and the seed silently never takes effect.
  */
 export async function seedSettings(patch: Record<string, unknown>): Promise<void> {
   await browser.execute((raw: string) => {
     const key = 'git-manager-settings'
     const stored = window.localStorage.getItem(key)
     const data = stored ? JSON.parse(stored) : { state: {}, version: 0 }
-    data.state = data.state ?? {}
-    data.state.settings = { ...(data.state.settings ?? {}), ...JSON.parse(raw) }
+    data.state = { ...(data.state ?? {}), ...JSON.parse(raw) }
     window.localStorage.setItem(key, JSON.stringify(data))
   }, JSON.stringify(patch))
 }
@@ -66,8 +70,7 @@ export async function seedSettingsFromCleanState(
       const key = 'git-manager-settings'
       const stored = window.localStorage.getItem(key)
       const data = stored ? JSON.parse(stored) : { state: {}, version: 0 }
-      data.state = data.state ?? {}
-      data.state.settings = { ...(data.state.settings ?? {}), ...JSON.parse(raw) }
+      data.state = { ...(data.state ?? {}), ...JSON.parse(raw) }
       window.localStorage.setItem(key, JSON.stringify(data))
     },
     JSON.stringify(patch),

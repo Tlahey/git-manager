@@ -32,10 +32,28 @@ Feature: Kanban board
     And a full-window screenshot is saved as "doc-board-create"
 
   @doc @screenshots
+  Scenario: Creating a standing board with no sprint to close
+    Not every board is a sprint. "This board is an iteration" is on by default, and turning it
+    off makes a standing board instead — a backlog a ticket passes through before it ever
+    reaches one, with no report to freeze and no successor to open when the work slows down.
+    A standing board never offers to close, which is the one thing that tells the two apart
+    on screen once it exists.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a standing board named "Backlog" with the card prefix "GM"
+    Then the board "Backlog" is shown
+    And the board offers no way to close it
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-standing"
+
+  @doc @screenshots
   Scenario: Adding a card and moving it across the board
     The `+` on a column header opens a new card in that column. Only what has to be decided
-    before the card exists is asked for — its type, its identifier and its title — and the
-    card then opens as a full record where every other field saves on its own.
+    before the card exists is asked for — its kind, its identifier and its title — and the
+    card then opens as a full record where every other field saves on its own. A card is a
+    Task, a Bug or an Epic: three coloured tiles the board reads at a glance, chosen once here
+    and changeable afterwards from the card's own record.
 
     Changing which column a card is in is a drag on the board, and, for the times the card is
     already open, the status button at the top of its right-hand panel. Both write the same
@@ -44,8 +62,9 @@ Feature: Kanban board
     And the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
-    And I add a card titled "Write the release notes" to the "To do" column
+    And I add a "Bug" card titled "Write the release notes" to the "To do" column
     Then the card "Write the release notes" is identified as "GM-1"
+    And the card "Write the release notes" is shown as a "Bug"
     When I set the status of the card "Write the release notes" to "In progress"
     Then the "In progress" column holds 1 card
     And the "To do" column holds 0 cards
@@ -112,11 +131,18 @@ Feature: Kanban board
     And the interface has settled
     And a full-window screenshot is saved as "doc-board-sprint"
 
-  # Not documented: archiving is described on the page above only as the reversible neighbour of
-  # deleting. This covers the round trip, and above all the deliberate rule that the global ticket
-  # search runs over archived cards too — archiving hides a card from the board without losing it.
+  @doc @screenshots
   Scenario: An archived card leaves the board but stays findable
-    Given the "feature-branches" fixture repository is opened
+    Archiving takes a card off the board without losing a word of it — the reversible
+    neighbour of deleting, for a card that is done being tracked but not done being real. It
+    comes back into whichever column it left, exactly as it was, the moment it is restored.
+
+    The global search (⌘F) reaches every card of every board in one field, archived cards
+    included — found by its identifier, title, assignee or board name, so "where is GM-7"
+    never has to start by naming which board GM-7 is on. Picking a result switches to its
+    board and opens it there.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
     And I add a card titled "Rework the onboarding" to the "To do" column
@@ -124,6 +150,8 @@ Feature: Kanban board
     Then the "To do" column holds 0 cards
     When I search every board for "onboarding"
     Then the ticket "Rework the onboarding" is offered by the search
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-search"
     When I close the ticket search
     And I restore the card "Rework the onboarding" from the archive
     Then the "To do" column holds 1 card

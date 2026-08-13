@@ -134,12 +134,12 @@ Then(/^the file diff matches the visual snapshot "([^"]*)"$/, async (tag: string
 
 // Each working-tree file row (file-tree-file-<path>) replaces its persistent stage checkbox with a
 // hover +/- button when the zone uses `hoverStage` (both the staged and unstaged zones do) —
-// CommitFileList.tsx hardcodes its title as plain "Stage"/"Unstage" (not run through i18n, unlike
-// the bulk-stage button), so this selector is locale-independent.
+// FileTreeFileRow.tsx labels it through the shared `Tooltip` component (`aria-label`, run through
+// i18n but still plain "Stage"/"Unstage" in English), not a native `title` attribute.
 When(/^I stage the file "([^"]*)"$/, async (filePath: string) => {
   const row = $(`[data-testid="file-tree-file-${filePath}"]`)
   await row.waitForDisplayed({ timeout: 10000 })
-  const stageButton = row.$('button[title="Stage"]')
+  const stageButton = row.$('button[aria-label="Stage"]')
   await stageButton.waitForExist({ timeout: 10000 })
   await stageButton.click()
 })
@@ -147,7 +147,7 @@ When(/^I stage the file "([^"]*)"$/, async (filePath: string) => {
 When(/^I unstage the file "([^"]*)"$/, async (filePath: string) => {
   const row = $(`[data-testid="file-tree-file-${filePath}"]`)
   await row.waitForDisplayed({ timeout: 10000 })
-  const unstageButton = row.$('button[title="Unstage"]')
+  const unstageButton = row.$('button[aria-label="Unstage"]')
   await unstageButton.waitForExist({ timeout: 10000 })
   await unstageButton.click()
 })

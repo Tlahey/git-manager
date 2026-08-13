@@ -68,11 +68,13 @@ Feature: Tagging a commit
     Given the app language is English
     And the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I pick "Push tag v0.9" from the palette
+    And I pick "Push a tag…" from the palette
+    And I pick "v0.9" from the palette
     Then the remote "origin" has the tag "v0.9"
     And no error notification is displayed
     When I open the command palette
-    And I pick "Delete remote tag v1.0" from the palette
+    And I pick "Delete a remote tag…" from the palette
+    And I pick "v1.0" from the palette
     Then the remote tag deletion dialog is shown
     When I confirm the remote tag deletion
     Then the remote "origin" no longer has the tag "v1.0"
@@ -82,7 +84,8 @@ Feature: Tagging a commit
   Scenario: Deleting a local tag leaves the remote's copy alone
     Given the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-delete-tag-v1.0"
+    And I run the command palette action "ref-deleteTag"
+    And I run the command palette action "ref-pick-deleteTag-v1.0"
     Then the local tag "v1.0" no longer exists
     And the remote "origin" has the tag "v1.0"
     And no error notification is displayed

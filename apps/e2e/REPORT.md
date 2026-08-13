@@ -5,9 +5,9 @@ point without anyone having to run an 18-minute suite first. It is a snapshot of
 last run: treat the shape (which files dominate, how little sits inside steps) as the signal, and
 the absolute numbers as indicative._
 
-**207 scenarios** across **57 feature files** · 0 failing · **8.3 min** of scenario time, of which 5.3 min (64%) is inside steps.
+**105 scenarios** across **55 feature files** · 0 failing · **5.0 min** of scenario time, of which 2.8 min (56%) is inside steps.
 
-Plus **0.2 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 57 times, ~0.2s each.
+Plus **0.1 min** launching the app: wdio gives each feature file its own worker, so that cost is paid 55 times, ~0.1s each.
 
 This is a report on the scenarios that **exist**. What the suite does *not* cover — the untested command surface, and what is deliberately out of reach — lives in [COVERAGE.md § Not covered today](COVERAGE.md#not-covered-today).
 
@@ -17,80 +17,78 @@ Read the last column first. "In steps" is what cucumber's `afterStep` reported, 
 
 | Feature | Scenarios | Failing | App launch | Scenarios | In steps | Outside steps |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `board-cards.feature` | 10 |  | 0.1s | 43.2s | 32.0s | **11.2s** |
-| `command-palette.feature` | 14 |  | 0.2s | 34.3s | 25.0s | **9.3s** |
-| `working-tree.feature` | 10 |  | 0.4s | 27.6s | 18.3s | **9.3s** |
-| `settings.feature` | 17 |  | 0.2s | 20.8s | 11.6s | **9.3s** |
-| `board.feature` | 5 |  | 0.1s | 20.6s | 13.5s | **7.1s** |
-| `rebase-progress.feature` | 10 |  | 0.1s | 17.7s | 11.5s | **6.2s** |
-| `git-hooks.feature` | 4 |  | 0.1s | 15.7s | 4.6s | **11.1s** |
-| `bisect.feature` | 6 |  | 0.1s | 15.0s | 11.8s | **3.1s** |
-| `tags.feature` | 5 |  | 0.2s | 14.6s | 9.5s | **5.1s** |
-| `remote-push.feature` | 4 |  | 0.1s | 13.7s | 9.6s | **4.1s** |
-| `merge-commit-actions.feature` | 4 |  | 0.1s | 13.1s | 7.0s | **6.1s** |
-| `undo-redo.feature` | 3 |  | 0.5s | 12.7s | 8.6s | **4.1s** |
-| `merge-editor.feature` | 4 |  | 0.2s | 12.2s | 6.2s | **6.0s** |
-| `worktree.feature` | 5 |  | 0.5s | 12.2s | 8.0s | **4.1s** |
-| `settings-repository.feature` | 4 |  | 0.1s | 10.3s | 6.2s | **4.1s** |
-| `blame-history.feature` | 4 |  | 0.1s | 9.7s | 5.7s | **4.1s** |
-| `dashboard.feature` | 3 |  | 0.2s | 9.6s | 4.5s | **5.1s** |
-| `ai-explanation.feature` | 4 |  | 0.2s | 9.3s | 5.2s | **4.1s** |
-| `stash-stack.feature` | 3 |  | 0.2s | 8.8s | 5.7s | **3.1s** |
-| `merge-branches.feature` | 2 |  | 0.1s | 8.6s | 4.6s | **4.1s** |
-| `interactive-rebase.feature` | 4 |  | 0.1s | 8.6s | 7.5s | **1.1s** |
-| `fixup-autosquash.feature` | 4 |  | 0.1s | 7.9s | 6.9s | **1.1s** |
-| `rebase-conflict.feature` | 5 |  | 0.1s | 7.9s | 6.8s | **1.1s** |
-| `ai-generation.feature` | 4 |  | 0.1s | 7.4s | 5.3s | **2.1s** |
-| `marketing-screenshots.feature` | 2 |  | 0.1s | 6.9s | 2.8s | **4.0s** |
-| `commit-graph.feature` | 2 |  | 0.1s | 6.6s | 2.6s | **4.0s** |
-| `detached-head.feature` | 3 |  | 0.1s | 6.6s | 4.6s | **2.1s** |
-| `interface-overview.feature` | 3 |  | 0.1s | 6.5s | 3.4s | **3.1s** |
-| `launchpad-organize.feature` | 3 |  | 0.1s | 6.4s | 3.3s | **3.1s** |
-| `sidebar-navigation.feature` | 2 |  | 0.1s | 6.1s | 4.1s | **2.0s** |
-| `daily-summary.feature` | 3 |  | 0.1s | 6.1s | 5.0s | **1.1s** |
-| `commit.feature` | 2 |  | 0.1s | 5.8s | 3.8s | **2.1s** |
-| `open-repo.feature` | 5 |  | 0.2s | 5.6s | 4.5s | **1.1s** |
-| `file-explorer.feature` | 4 |  | 0.2s | 5.6s | 4.5s | **1.1s** |
-| `patch-workspace.feature` | 2 |  | 0.1s | 5.5s | 3.5s | **2.1s** |
-| `action-journal.feature` | 1 |  | 0.1s | 5.3s | 2.2s | **3.1s** |
-| `compare-branches.feature` | 3 |  | 0.1s | 5.0s | 4.0s | **1.1s** |
-| `terminal.feature` | 3 |  | 0.1s | 5.0s | 3.9s | **1.1s** |
-| `branch-rename.feature` | 2 |  | 0.1s | 5.0s | 2.9s | **2.0s** |
-| `notifications.feature` | 4 |  | 0.1s | 4.8s | 2.8s | **2.1s** |
-| `branch-upstream.feature` | 1 |  | 0.1s | 4.4s | 2.4s | **2.0s** |
-| `ai-code-review.feature` | 2 |  | 0.1s | 4.2s | 2.2s | **2.0s** |
-| `rewards.feature` | 2 |  | 0.2s | 3.5s | 2.5s | **1.1s** |
-| `ai-summary-search.feature` | 1 |  | 0.1s | 3.2s | 2.2s | **1.0s** |
-| `remote-fetch-pull.feature` | 1 |  | 0.1s | 3.0s | 2.0s | **1.0s** |
-| `submodule.feature` | 1 |  | 0.1s | 3.0s | 2.0s | **1.0s** |
-| `branch-create.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.0s** |
-| `ai-pr-description.feature` | 1 |  | 0.1s | 2.5s | 1.5s | **1.0s** |
-| `ai-commit-search.feature` | 1 |  | 0.1s | 2.4s | 1.4s | **1.0s** |
-| `activity-log.feature` | 1 |  | 0.1s | 2.2s | 1.2s | **1.0s** |
-| `package-health.feature` | 1 |  | 0.2s | 2.1s | 1.1s | **1.0s** |
-| `launchpad-prs.feature` | 1 |  | 0.1s | 2.1s | 1.1s | **1.0s** |
-| `launchpad-commit-stats.feature` | 1 |  | 0.1s | 1.9s | 0.8s | **1.0s** |
-| `launchpad-issues.feature` | 1 |  | 0.1s | 1.8s | 0.8s | **1.1s** |
-| `ai-commit-recompose.feature` | 1 |  | 0.2s | 1.5s | 1.4s | **0.0s** |
-| `command-mocking.feature` | 6 |  | 0.1s | 0.2s | 0.1s | **0.1s** |
-| `app-launch.feature` | 2 |  | 0.1s | 0.1s | 0.1s | **0.0s** |
+| `board.feature` | 6 |  | 0.1s | 21.6s | 12.5s | **9.1s** |
+| `board-cards.feature` | 4 |  | 0.1s | 20.1s | 12.0s | **8.1s** |
+| `command-palette.feature` | 5 |  | 0.1s | 16.3s | 10.0s | **6.3s** |
+| `settings.feature` | 8 |  | 0.1s | 13.0s | 4.9s | **8.1s** |
+| `working-tree.feature` | 3 |  | 0.1s | 11.4s | 7.3s | **4.1s** |
+| `ai-explanation.feature` | 4 |  | 0.1s | 10.2s | 6.1s | **4.1s** |
+| `bisect.feature` | 3 |  | 0.1s | 9.4s | 6.3s | **3.1s** |
+| `settings-repository.feature` | 4 |  | 0.1s | 9.2s | 5.2s | **4.1s** |
+| `dashboard.feature` | 3 |  | 0.1s | 9.0s | 3.9s | **5.1s** |
+| `merge-branches.feature` | 2 |  | 0.1s | 8.2s | 4.1s | **4.1s** |
+| `blame-history.feature` | 2 |  | 0.1s | 7.7s | 4.6s | **3.1s** |
+| `stash-stack.feature` | 2 |  | 0.1s | 7.4s | 4.2s | **3.1s** |
+| `merge-commit-actions.feature` | 2 |  | 0.1s | 7.2s | 3.1s | **4.1s** |
+| `tags.feature` | 3 |  | 0.1s | 6.8s | 4.7s | **2.1s** |
+| `sidebar-navigation.feature` | 2 |  | 0.1s | 6.7s | 3.6s | **3.1s** |
+| `commit-graph.feature` | 2 |  | 0.1s | 6.4s | 2.4s | **4.1s** |
+| `remote-push.feature` | 2 |  | 0.1s | 6.3s | 4.2s | **2.1s** |
+| `interface-overview.feature` | 3 |  | 0.1s | 6.2s | 3.1s | **3.1s** |
+| `action-journal.feature` | 1 |  | 0.1s | 5.9s | 2.7s | **3.2s** |
+| `launchpad-organize.feature` | 3 |  | 0.1s | 5.8s | 2.7s | **3.0s** |
+| `ai-generation.feature` | 2 |  | 0.1s | 5.7s | 3.6s | **2.1s** |
+| `patch-workspace.feature` | 2 |  | 0.1s | 5.3s | 3.3s | **2.1s** |
+| `worktree.feature` | 2 |  | 0.1s | 5.0s | 2.9s | **2.1s** |
+| `ai-code-review.feature` | 2 |  | 0.1s | 4.4s | 2.4s | **2.0s** |
+| `branch-upstream.feature` | 1 |  | 0.1s | 4.2s | 2.1s | **2.0s** |
+| `notifications.feature` | 2 |  | 0.1s | 3.9s | 1.8s | **2.1s** |
+| `interactive-rebase.feature` | 1 |  | 0.1s | 3.9s | 2.9s | **1.0s** |
+| `branch-rename.feature` | 1 |  | 0.1s | 3.9s | 1.8s | **2.0s** |
+| `commit.feature` | 1 |  | 0.1s | 3.3s | 2.2s | **1.1s** |
+| `rebase-progress.feature` | 1 |  | 0.1s | 3.2s | 2.2s | **1.0s** |
+| `rewards.feature` | 2 |  | 0.1s | 3.0s | 1.9s | **1.1s** |
+| `submodule.feature` | 1 |  | 0.1s | 2.9s | 1.9s | **1.0s** |
+| `undo-redo.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.0s** |
+| `daily-summary.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.1s** |
+| `remote-fetch-pull.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.0s** |
+| `fixup-autosquash.feature` | 1 |  | 0.1s | 2.9s | 1.8s | **1.0s** |
+| `branch-create.feature` | 1 |  | 0.1s | 2.7s | 1.7s | **1.0s** |
+| `detached-head.feature` | 1 |  | 0.1s | 2.7s | 1.7s | **1.0s** |
+| `ai-summary-search.feature` | 1 |  | 0.1s | 2.7s | 1.6s | **1.0s** |
+| `rebase-conflict.feature` | 1 |  | 0.1s | 2.6s | 1.6s | **1.0s** |
+| `merge-editor.feature` | 1 |  | 0.1s | 2.5s | 1.3s | **1.2s** |
+| `compare-branches.feature` | 1 |  | 0.1s | 2.4s | 1.3s | **1.0s** |
+| `ai-pr-description.feature` | 1 |  | 0.1s | 2.3s | 1.3s | **1.0s** |
+| `ai-commit-search.feature` | 1 |  | 0.1s | 2.3s | 1.2s | **1.0s** |
+| `terminal.feature` | 1 |  | 0.1s | 2.2s | 1.2s | **1.0s** |
+| `open-repo.feature` | 1 |  | 0.1s | 2.2s | 1.1s | **1.0s** |
+| `error-report.feature` | 1 |  | 0.1s | 2.1s | 1.1s | **1.0s** |
+| `activity-log.feature` | 1 |  | 0.1s | 2.0s | 1.0s | **1.0s** |
+| `package-health.feature` | 1 |  | 0.1s | 2.0s | 1.0s | **1.0s** |
+| `file-explorer.feature` | 1 |  | 0.1s | 2.0s | 1.0s | **1.0s** |
+| `launchpad-prs.feature` | 1 |  | 0.1s | 2.0s | 1.0s | **1.0s** |
+| `launchpad-commit-stats.feature` | 1 |  | 0.1s | 1.9s | 0.9s | **1.0s** |
+| `launchpad-issues.feature` | 1 |  | 0.1s | 1.9s | 0.9s | **1.0s** |
+| `git-hooks.feature` | 1 |  | 0.1s | 1.9s | 0.8s | **1.1s** |
+| `ai-commit-recompose.feature` | 1 |  | 0.1s | 1.3s | 1.3s | **0.0s** |
 
 ## Slowest individual scenarios
 
 | Scenario | Feature | Total | Outside steps |
 | --- | --- | ---: | ---: |
-| Hooks installed husky-style through core.hooksPath run just the same | `git-hooks.feature` | 5.8s | 4.0s |
-| Discarding a file's changes throws them away | `working-tree.feature` | 5.7s | 2.0s |
-| Auto-merging then resolving the remaining conflicts writes the merged result to disk | `merge-editor.feature` | 5.7s | 2.2s |
-| A pre-commit hook that refuses stops the commit and shows its output | `git-hooks.feature` | 5.6s | 5.0s |
-| Filling in a card's record | `board.feature` | 5.4s | 2.0s |
-| The delete confirmation offers archiving instead, and deletes for good when asked | `board-cards.feature` | 5.3s | 1.0s |
-| Explaining the commands behind a recent action | `action-journal.feature` | 5.3s | 3.1s |
-| A card moved to another sprint keeps its identifier and its column | `board-cards.feature` | 5.2s | 1.0s |
-| A card cannot be marked blocked without saying what is blocking it | `board-cards.feature` | 5.1s | 2.0s |
-| Deleting a local branch from the palette, and undoing it | `command-palette.feature` | 5.1s | 2.0s |
-| Undoing a branch creation takes back the checkout with it | `undo-redo.feature` | 4.9s | 2.0s |
-| Adding a card and moving it across the board | `board.feature` | 4.8s | 2.0s |
-| Every field of the card's side panel saves on its own | `board-cards.feature` | 4.6s | 1.0s |
-| Fast-forwarding the current branch onto another | `merge-branches.feature` | 4.6s | 2.0s |
-| Adding a new worktree | `worktree.feature` | 4.6s | 1.0s |
+| Explaining the commands behind a recent action | `action-journal.feature` | 5.9s | 3.2s |
+| A card moved to another sprint keeps its identifier and its column | `board-cards.feature` | 5.9s | 2.0s |
+| Deleting a card offers archiving as the reversible way out | `board-cards.feature` | 4.9s | 2.0s |
+| Every field of the card's side panel saves on its own | `board-cards.feature` | 4.9s | 2.0s |
+| Filling in a card's record | `board.feature` | 4.9s | 2.0s |
+| Deleting a local branch from the palette, and undoing it | `command-palette.feature` | 4.9s | 2.0s |
+| Discarding a file's changes throws them away | `working-tree.feature` | 4.8s | 2.0s |
+| An archived card leaves the board but stays findable | `board.feature` | 4.5s | 2.0s |
+| Linking a card to another states how they relate | `board-cards.feature` | 4.4s | 2.0s |
+| Fast-forwarding the current branch onto another | `merge-branches.feature` | 4.3s | 2.0s |
+| Stashing puts your work aside and clears the tree | `stash-stack.feature` | 4.3s | 2.1s |
+| Adding a card and moving it across the board | `board.feature` | 4.3s | 2.0s |
+| Setting a branch's upstream configures tracking on disk | `branch-upstream.feature` | 4.2s | 2.0s |
+| Pinning a branch keeps it pinned across a reload | `sidebar-navigation.feature` | 4.0s | 2.0s |
+| The File view shows blame avatars in the gutter | `blame-history.feature` | 3.9s | 2.0s |

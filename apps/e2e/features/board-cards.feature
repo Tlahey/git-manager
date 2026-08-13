@@ -1,29 +1,24 @@
 @board-cards
 Feature: Kanban board — the card record and the board's own shape
-  As a developer tracking the work on a repository
-  I want a card to hold the whole state of one piece of work
-  So that the board describes the work rather than only placing it
 
   What `board.feature` deliberately leaves out: everything *inside* a card — its checklist, its
   discussion, the fields of its side panel, its relations to other cards — and everything that
   reshapes the board around it: its columns, its settings, deleting a card, moving one to another
-  sprint.
-
-  Nothing here is tagged `@doc`. The board's documentation page is curated from `board.feature`;
-  these are regressions, and a scenario that exists to catch a bug is not a tour of the feature.
+  sprint. A few scenarios here are curated onto the board's documentation page alongside
+  `board.feature`'s own — the card's side-panel fields, its relations, deleting it and moving it to
+  another sprint — the rest exist purely to catch a regression and stay untagged, since a scenario
+  written to pin a bug is not automatically a tour of the feature.
 
   Every scenario starts from a repository with no board at all, and builds the one it needs through
   the UI — the only way a board comes into being. The assertions end on the repository's own git
   ref (`refs/git-manager/board/<id>/state`), because a render the backend never agreed to would
   satisfy a DOM assertion just as well.
 
-  Background:
+  Scenario: A checklist ticked on the card record counts on the card's face
     Given the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
-
-  Scenario: A checklist ticked on the card record counts on the card's face
-    Given I add a card titled "Polish the toolbar" to the "To do" column
+    And I add a card titled "Polish the toolbar" to the "To do" column
     When I open the card "Polish the toolbar"
     And I add the checklist item "Write the changelog"
     And I add the checklist item "Ship the build"
@@ -41,7 +36,10 @@ Feature: Kanban board — the card record and the board's own shape
   # patch, so they get their own commit subject — and a card's discussion is the one part of it that
   # would be silently lost by a write that only round-tripped the fields.
   Scenario: A comment survives closing and reopening the card
-    Given I add a card titled "Rework the exporter" to the "To do" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Rework the exporter" to the "To do" column
     When I open the card "Rework the exporter"
     And I write the comment "Waiting on the design review"
     Then the card record shows the comment "Waiting on the design review"
@@ -57,7 +55,10 @@ Feature: Kanban board — the card record and the board's own shape
   # switch on is therefore allowed to show an empty required field — and must write nothing at all
   # until there is something to write.
   Scenario: A card cannot be marked blocked without saying what is blocking it
-    Given I add a card titled "Migrate the database" to the "In progress" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Migrate the database" to the "In progress" column
     When I open the card "Migrate the database"
     And I turn the blocked switch on
     Then the card record asks for a blocking reason
@@ -71,8 +72,17 @@ Feature: Kanban board — the card record and the board's own shape
   # Every field of the side panel saves on its own, with no Save button — and on a local board each
   # write moves the *board's* ref tip, which is the revision the next write has to present. So four
   # edits in a row are also a test of the revision being refreshed between them.
+  @doc @screenshots
   Scenario: Every field of the card's side panel saves on its own
-    Given I add a card titled "Cut the release" to the "To do" column
+    The right-hand panel is the rest of what a card can carry: who has it, how urgent it is,
+    when it is due, and the tags that group it with others like it. Every field commits the
+    moment you leave it — there is no Save button anywhere on the panel — and each one lands
+    in the repository as its own commit.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Cut the release" to the "To do" column
     When I open the card "Cut the release"
     And I assign the card to "Marie Dubois"
     And I set the card priority to "High"
@@ -83,6 +93,8 @@ Feature: Kanban board — the card record and the board's own shape
     And the card "Cut the release" is stored with the due date "2031-03-04"
     And the card "Cut the release" is stored with the tag "infra"
     And the board offers the tag "infra"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-card-options"
     And no error notification is displayed
 
   # Only the forward half of a relation is stored (`features/board/lib/cardLinks.ts`): saying "A is
@@ -90,7 +102,10 @@ Feature: Kanban board — the card record and the board's own shape
   # asserted here, and so is the asymmetry on disk — a second stored half would be a second thing
   # that can disagree, and a half-deleted link has no natural repair.
   Scenario: Declaring a card blocked writes the relation on the card that blocks it
-    Given I add a card titled "Ship the installer" to the "To do" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Ship the installer" to the "To do" column
     And I add a card titled "Sign the build" to the "To do" column
     When I open the card "Ship the installer"
     And I link the card "Sign the build" as "Is blocked by"
@@ -110,8 +125,33 @@ Feature: Kanban board — the card record and the board's own shape
     Then the card "Sign the build" stores no relation of its own
     And no error notification is displayed
 
+  # The documented counterpart of the scenario above: the same gesture, without the internal
+  # storage asymmetry a reader has no reason to know about.
+  @doc @screenshots
+  Scenario: Linking a card to another states how they relate
+    Cards relate to each other by more than sitting on the same board: a card can block
+    another, be blocked by it, contain it, be part of it, or simply relate to it. Adding one
+    writes on both cards at once — the blocked card lists what blocks it, and the one doing
+    the blocking lists what it blocks — so either card tells the whole story on its own,
+    without opening the other.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Ship the installer" to the "To do" column
+    And I add a card titled "Sign the build" to the "To do" column
+    When I open the card "Ship the installer"
+    And I link the card "Sign the build" as "Is blocked by"
+    Then the card record lists "Sign the build" under "Blocked by"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-card-relations"
+    And no error notification is displayed
+
   Scenario: A column added to the board takes cards like any other
-    When I open the column editor
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I open the column editor
     And I add the column "In review"
     And I flag the column "In review" as counting for done
     And I save the columns
@@ -128,7 +168,10 @@ Feature: Kanban board — the card record and the board's own shape
   # column therefore re-homes its cards into the first remaining one, in the same commit — the rule
   # `move_cards_to_board` already applies when a card lands on a board without its column.
   Scenario: Removing a column does not swallow the cards that were in it
-    Given I add a card titled "Draft the release notes" to the "In progress" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Draft the release notes" to the "In progress" column
     When I open the column editor
     And I remove the column "In progress"
     And I save the columns
@@ -142,7 +185,10 @@ Feature: Kanban board — the card record and the board's own shape
   # — so editing the board's list of prefixes never touches a card. `GM-1` stays `GM-1` after the
   # board stops offering `GM` at all, and the next card drawn from `OPS` starts its own sequence.
   Scenario: Renaming the board and its prefix leaves the existing cards' identifiers alone
-    Given I add a card titled "Cut the release" to the "To do" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Cut the release" to the "To do" column
     Then the card "Cut the release" is identified as "GM-1"
     When I open the board settings
     And I rename the board to "Sprint 12 hardening"
@@ -163,7 +209,10 @@ Feature: Kanban board — the card record and the board's own shape
   # neighbour someone reaching for it usually wanted: archiving, which takes the card off the board
   # and keeps every word of it.
   Scenario: The delete confirmation offers archiving instead, and deletes for good when asked
-    Given I add a card titled "Retire the old parser" to the "To do" column
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Retire the old parser" to the "To do" column
     When I open the card "Retire the old parser"
     And I ask to delete the card
     Then the delete confirmation is shown
@@ -182,11 +231,44 @@ Feature: Kanban board — the card record and the board's own shape
     And the board history records "git-manager: delete board card"
     And no error notification is displayed
 
+  # The documented counterpart of the scenario above: just the confirmation and the escape hatch a
+  # reader would actually reach for, without the archive/restore/delete round trip a regression
+  # needs to pin the whole behaviour.
+  @doc @screenshots
+  Scenario: Deleting a card offers archiving as the reversible way out
+    Deleting a card is the one action nothing undoes, so its confirmation offers the
+    reversible neighbour first: archive it instead, and it comes back exactly as it was
+    whenever it is needed again. Confirming the deletion itself, with archiving turned down,
+    throws the card away for good — description, checklist and comment thread included.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Retire the old parser" to the "To do" column
+    When I open the card "Retire the old parser"
+    And I ask to delete the card
+    Then the delete confirmation is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-card-delete"
+    When I confirm the deletion
+    Then the "To do" column holds 0 cards
+    And no card titled "Retire the old parser" is stored in the repository
+    And no error notification is displayed
+
   # The card keeps its id, its identifier and its column: the prefix belongs to the card, and a
   # column is matched by id across boards, so "In progress" on one sprint is "In progress" on the
   # next rather than a fall back to the first column.
+  @doc @screenshots
   Scenario: A card moved to another sprint keeps its identifier and its column
-    Given I add a card titled "Package the app" to the "In progress" column
+    A card that outlives one sprint does not have to be recreated in the next: move it, and it
+    keeps its own identifier and lands in the column of the same name — "In progress" on one
+    sprint is "In progress" on the next, matched by the column itself rather than falling back
+    to the first one. The sprint it left no longer lists it; the one it landed on now does.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Package the app" to the "In progress" column
     And I create a board named "Sprint 13" with the card prefix "GM"
     And I select the "Sprint 12" sprint
     When I open the card "Package the app"
@@ -196,6 +278,8 @@ Feature: Kanban board — the card record and the board's own shape
     When I select the "Sprint 13" sprint
     Then the card "Package the app" is shown on the board
     And the card "Package the app" is identified as "GM-1"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-card-move-sprint"
     And the "Sprint 13" board stores the card "Package the app" in the "In progress" column
     And the "Sprint 12" board stores no card titled "Package the app"
     And no error notification is displayed

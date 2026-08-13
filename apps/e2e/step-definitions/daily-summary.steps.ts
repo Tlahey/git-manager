@@ -28,8 +28,8 @@ After({ tags: '@daily-summary' }, async () => {
     const raw = localStorage.getItem('git-manager-settings')
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (parsed?.state?.settings) {
-        delete parsed.state.settings.dailySummary
+      if (parsed?.state) {
+        delete parsed.state.dailySummary
         localStorage.setItem('git-manager-settings', JSON.stringify(parsed))
       }
     }
@@ -58,6 +58,10 @@ After({ tags: '@daily-summary' }, async () => {
 // Seeds `git-manager-settings` directly then reloads (the same pattern ai-generation.steps uses for
 // the `ai` block), merging the given settings keys into the persisted snapshot. Used here to toggle
 // the `dailySummary` feature flags without driving the Settings UI — those are covered by unit tests.
+//
+// Writes onto `state` directly, not `state.settings` — see ai-generation.steps.ts's
+// `seedAiSettingsAndReload` doc comment for why: `settings.store.ts`'s `partialize` makes the
+// *persisted* shape the settings object itself, so a `state.settings.x` write lands nowhere.
 async function seedSettingsAndReload(patch: Record<string, unknown>) {
   const stamp = `settings-${Date.now()}`
   // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
@@ -67,9 +71,8 @@ async function seedSettingsAndReload(patch: Record<string, unknown>) {
   await browser.execute(
     (key: string, patchJson: string) => {
       const raw = localStorage.getItem(key)
-      const parsed = raw ? JSON.parse(raw) : { state: { settings: {} }, version: 0 }
-      parsed.state = parsed.state ?? {}
-      parsed.state.settings = { ...parsed.state.settings, ...JSON.parse(patchJson) }
+      const parsed = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+      parsed.state = { ...parsed.state, ...JSON.parse(patchJson) }
       localStorage.setItem(key, JSON.stringify(parsed))
     },
     'git-manager-settings',
