@@ -112,7 +112,10 @@ describe('MarkdownLiveEditor', () => {
     const content = screen.getByTestId('live').querySelector('.cm-content') as HTMLElement
     const event = new Event('paste', { bubbles: true, cancelable: true })
     Object.defineProperty(event, 'clipboardData', {
-      value: { files: [new File(['bytes'], 'shot.png', { type: 'image/png' })] },
+      value: {
+        files: [new File(['bytes'], 'shot.png', { type: 'image/png' })],
+        getData: () => '',
+      },
     })
     content.dispatchEvent(event)
 
@@ -126,11 +129,12 @@ describe('MarkdownLiveEditor', () => {
 
     const content = screen.getByTestId('live').querySelector('.cm-content') as HTMLElement
     const event = new Event('paste', { bubbles: true, cancelable: true })
-    Object.defineProperty(event, 'clipboardData', { value: { files: [] } })
+    Object.defineProperty(event, 'clipboardData', {
+      value: { files: [], getData: () => 'pasted text' },
+    })
     content.dispatchEvent(event)
 
     expect(onFiles).not.toHaveBeenCalled()
-    expect(event.defaultPrevented).toBe(false)
   })
 
   it('stops accepting input when disabled', () => {

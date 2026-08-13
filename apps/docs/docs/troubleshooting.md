@@ -24,18 +24,17 @@ regardless.
 
 Pull requests, issues and avatars come up empty, or the app asks you to reconnect an account that
 is plainly still there. Your account and your token are stored separately on purpose: the account
-lives in `~/.git-manager/settings.json` and the token in your macOS Keychain
+lives in `~/.git-manager/settings.json` and the token in your encrypted vault / Keychain
 ([Private by design](./privacy) explains why). Anything that removes one without the other leaves
-exactly this state — deleting the `git-manager` entry in Keychain Access, resetting your Keychain,
-or copying `settings.json` over from another Mac, which brings the account across but not the
-secret.
+exactly this state — deleting `vault.enc`, resetting credentials, or copying `settings.json` over
+from another Mac without the corresponding secret.
 
 The fix is the same in every case: **Settings → Integrations**, remove the account, and sign in
-again. That takes a few seconds and puts a fresh token in the Keychain.
+again. That takes a few seconds and saves a fresh token in the vault.
 
-If macOS asks whether Git Manager may use your confidential information, that prompt _is_ the app
-reading your token — allowing it is what lets GitHub work. Denying it leaves the account connected
-but unusable.
+If using Keychain mode and macOS asks whether Git Manager may use your confidential information,
+that prompt is the app reading your token — allowing it is what lets GitHub work. In default vault mode,
+no OS prompt is displayed.
 
 ## Something went wrong — where are the logs?
 

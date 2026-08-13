@@ -63,24 +63,31 @@ It is worth being precise about what that does and does not mean.
 ## Where your passwords live
 
 Every secret the app holds — your GitHub token, and your AI provider's API key if you set one — is
-stored in the **macOS Keychain**, never in a file of ours.
+stored in a **dedicated encrypted local vault** (`~/.git-manager/vault.enc`), or optionally in the
+**macOS Keychain**.
 
-You can see them yourself. Open **Keychain Access** (the utility, not the Passwords app: these are
-application passwords, which the Passwords app does not list), pick the **login** keychain, and
-search for `git-manager`. Each secret appears as its own entry, named for what it is:
+### Why an encrypted local vault by default?
 
-| Entry               | What it holds              |
+macOS Keychain enforces strict Access Control Lists (ACLs) based on Apple Developer binary code
+signatures. On unsigned builds or applications distributed without a paid Apple Developer identity,
+macOS prompts the user for their system password on every restart or update.
+
+To ensure a seamless experience without disruptive OS password popups while maintaining strong
+confidentiality, Git Manager stores secrets in an **AES-256-GCM encrypted vault**
+(`~/.git-manager/vault.enc`) keyed to your local user machine profile:
+
+| Secret              | What it holds              |
 | ------------------- | -------------------------- |
 | `github:your-login` | Your GitHub token          |
 | `ai:provider`       | Your AI provider's API key |
 
-Deleting an entry there revokes the app's access on the spot, and removing an account in
-Settings → Integrations deletes it for you.
+If you prefer to store credentials directly in your native **macOS Keychain**, you can run the app
+with `GIT_MANAGER_CREDENTIAL_BACKEND=keychain`.
 
 `settings.json` keeps only the public half of a connected account: your login, your avatar and
 which account is active. So you can copy that file between machines, keep it in a backup, or paste
 it into a bug report without handing anyone your credentials. If you used a version of Git Manager
-from before this change, your tokens are moved into the Keychain automatically the first time you
+from before this change, your tokens are moved into the encrypted vault automatically the first time you
 launch the new one — nothing to reconnect.
 
 ## Credentials never reach the interface
