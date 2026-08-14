@@ -628,15 +628,25 @@ fn notch_panel_enabled() -> bool {
 /// end to end and the bug survived. The activation is the *application's*, and no window-level flag
 /// reaches it.
 ///
-/// ## Why it is opt-in, and why the class swap is not hand-rolled this time
+/// ## Why the class swap is not hand-rolled this time
 ///
 /// A hand-written version of this shipped and **crashed the app** (`EXC_CRASH`/`SIGABRT`) — an
 /// AppKit assertion inside `-[NSView(NSSafeAreas) safeAreaRect]`, reached from tracking-area
 /// routing on a mouse-enter over the card. That version re-classed the *view* as well as the
 /// window; this one never touches a view, which is the single largest difference between them.
-/// Whether the remaining half is also unsafe is exactly what this experiment exists to find out, so
-/// it is off unless `GIT_MANAGER_NOTCH_PANEL` is set: a crash then costs the user unsetting a
-/// variable rather than a rebuild, and a default build cannot regress.
+/// It ships on by default, with [`NOTCH_PANEL_ENV`] as the *disable* switch: a crash then costs
+/// the user unsetting a variable rather than a rebuild.
+///
+/// ## Release-build validation (resolves the doubt in #371's commit message)
+///
+/// The conversion was first validated only against a `pnpm dev` build. A release binary compiles
+/// with `panic = "abort"` and without objc2's `#[cfg(debug_assertions)]` encoding checks, so it is
+/// a different binary — worth stating separately rather than assuming "held in dev" carries over.
+/// Tracked as #386 and closed by exercising a `pnpm build` release binary directly: a card raised
+/// while another app was frontmost, hovered, dismissed via Cancel, dismissed via ✕, and left to
+/// auto-dismiss, none of which activated the app or crashed the process. Nothing in the conversion
+/// was ever knowingly debug-conditional; this closes the gap in evidence rather than fixing a
+/// defect.
 ///
 /// ## The one integration trap
 ///
