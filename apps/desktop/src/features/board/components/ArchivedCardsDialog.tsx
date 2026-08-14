@@ -213,7 +213,7 @@ function ArchivedRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-0.5 text-left"
+        className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
         data-testid={`archived-card-open-${card.id}`}
       >
         <span className="flex w-full min-w-0 items-center gap-1.5">

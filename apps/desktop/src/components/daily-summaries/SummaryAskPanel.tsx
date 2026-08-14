@@ -110,7 +110,7 @@ export function SummaryAskPanel({
                     <button
                       type="button"
                       onClick={() => onSelectMatch(match.repo, match.date)}
-                      className="cursor-pointer rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       data-testid="summary-answer-match"
                     >
                       {match.repo} · {match.date}

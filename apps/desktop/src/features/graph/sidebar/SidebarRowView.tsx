@@ -190,7 +190,7 @@ export function SidebarRowView({
           <button
             onClick={() => onToggleOpen(row.id)}
             style={{ paddingLeft: rowIndent(isRemoteNode ? 0 : row.depth) }}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground"
+            className="flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground"
           >
             <span className="shrink-0">
               {row.isOpen ? (
@@ -247,7 +247,7 @@ export function SidebarRowView({
         <div className="group/subgroup flex w-full items-center text-[10px] font-semibold tracking-widest text-sidebar-muted-foreground/60 uppercase transition-colors hover:bg-sidebar-accent/30">
           <button
             onClick={() => onToggleOpen(row.id)}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 py-[3px] pr-1 pl-4 text-left transition-colors hover:text-sidebar-muted-foreground"
+            className="flex min-w-0 flex-1 items-center gap-1 py-[3px] pr-1 pl-4 text-left transition-colors hover:text-sidebar-muted-foreground"
           >
             <span className="shrink-0">
               {row.isOpen ? (
@@ -268,7 +268,7 @@ export function SidebarRowView({
                   canMoveDown: row.canMoveDown,
                 })
               }
-              className="mr-1 shrink-0 cursor-pointer rounded p-0.5 opacity-0 transition-all group-hover/subgroup:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+              className="mr-1 shrink-0 rounded p-0.5 opacity-0 transition-all group-hover/subgroup:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
               aria-label={t('sidebar.issueFilters.actions')}
               title={t('sidebar.issueFilters.actions')}
               data-testid={`issue-filter-actions-${filter.id}`}

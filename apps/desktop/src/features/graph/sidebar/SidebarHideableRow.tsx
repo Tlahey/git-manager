@@ -114,7 +114,7 @@ export function SidebarHideableRow({
           e.stopPropagation()
           onOpenMenu(e)
         }}
-        className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/row:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+        className="absolute top-1/2 right-1 shrink-0 -translate-y-1/2 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/row:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
         aria-label={actionsLabel}
         title={actionsLabel}
         data-testid={actionsTestId}

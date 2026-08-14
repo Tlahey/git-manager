@@ -34,7 +34,7 @@ export function TerminalStatusBar() {
         onClick={openPanel}
         aria-label={t('terminal.restore')}
         data-testid="terminal-status-bar"
-        className="chrome-surface flex h-7 shrink-0 cursor-pointer items-center gap-2 border-t border-border bg-sidebar px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="chrome-surface flex h-7 shrink-0 items-center gap-2 border-t border-border bg-sidebar px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <TerminalStateIcon
           state={terminalSessionState(busyCount > 0, finishedCount > 0)}

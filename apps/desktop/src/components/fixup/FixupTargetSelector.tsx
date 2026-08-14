@@ -107,7 +107,7 @@ export function FixupTargetSelector({
                       setSelectedOid(n.commit.oid)
                       setSelectedSubject(n.commit.subject)
                     }}
-                    className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+                    className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
                       isSelected
                         ? 'bg-primary/20 text-foreground'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'

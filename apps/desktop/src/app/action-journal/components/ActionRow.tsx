@@ -33,7 +33,7 @@ export function ActionRow({ action, selected, explained, onSelect }: ActionRowPr
       onClick={onSelect}
       data-testid={`action-row-${action.id}`}
       aria-current={selected ? 'true' : undefined}
-      className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-3 py-2 text-left transition-colors ${
+      className={`flex w-full items-start gap-2.5 border-b border-border/40 px-3 py-2 text-left transition-colors ${
         selected ? 'bg-accent' : 'hover:bg-accent/50'
       }`}
     >

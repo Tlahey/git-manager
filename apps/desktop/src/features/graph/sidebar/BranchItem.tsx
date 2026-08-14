@@ -109,7 +109,7 @@ export function BranchItem({
       {/* Pin / unpin — always visible once pinned, on hover otherwise */}
       {canPin && onTogglePin && (
         <button
-          className={`shrink-0 cursor-pointer rounded p-0.5 transition-colors hover:bg-sidebar-accent ${
+          className={`shrink-0 rounded p-0.5 transition-colors hover:bg-sidebar-accent ${
             isPinned ? 'text-sidebar-muted-foreground/70' : 'hidden group-hover/branch:inline-flex'
           }`}
           onClick={(e) => {
@@ -136,7 +136,7 @@ export function BranchItem({
           menu spec rather than a second, forkable definition of it. */}
       <button
         data-toggle="branch-actions"
-        className="shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/branch:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+        className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/branch:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
         onClick={(e) => {
           e.stopPropagation()
           onContextMenu?.(e, branch)
