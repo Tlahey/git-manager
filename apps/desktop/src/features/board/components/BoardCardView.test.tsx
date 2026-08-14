@@ -45,6 +45,31 @@ describe('BoardCardView', () => {
     expect(screen.queryByTestId('board-card-comments')).not.toBeInTheDocument()
   })
 
+  /** A card face is read at a glance, so the markers in what it shows are either honoured (the
+   * title) or removed (the description) — never printed. */
+  it('formats the title’s markdown instead of printing its markers', () => {
+    renderCard(card({ title: 'Fix the `useState` **crash**' }))
+    const title = screen.getByText(/Fix the/)
+    expect(title.textContent).toBe('Fix the useState crash')
+    expect(within(title).getByText('useState').tagName).toBe('CODE')
+    expect(within(title).getByText('crash').tagName).toBe('STRONG')
+  })
+
+  it('flattens the description to its prose, structure and all', () => {
+    renderCard(
+      card({ description: '## Context\n\nThe **header** is ~~fine~~ broken\n\n```ts\nboom()\n```' })
+    )
+    expect(screen.getByTestId('board-card-description').textContent).toBe(
+      'Context The header is fine broken'
+    )
+  })
+
+  /** A body of nothing but a screenshot flattens to nothing — better no row than an empty one. */
+  it('drops the description row when nothing survives the flattening', () => {
+    renderCard(card({ description: '![screenshot](shot.png)' }))
+    expect(screen.queryByTestId('board-card-description')).not.toBeInTheDocument()
+  })
+
   it('calls onClick when the card is clicked', () => {
     const onClick = renderCard(card())
     fireEvent.click(screen.getByTestId('board-card-c1'))
