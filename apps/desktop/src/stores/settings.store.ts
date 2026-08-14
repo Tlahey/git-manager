@@ -53,6 +53,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     terminalBackground: '#000000',
     terminalForeground: '#e4e4e7',
     glassTransparency: DEFAULT_GLASS_TRANSPARENCY,
+    appIcon: 'default',
   },
   language: 'fr',
   advanced: {

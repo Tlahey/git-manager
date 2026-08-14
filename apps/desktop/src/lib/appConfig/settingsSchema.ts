@@ -1,6 +1,32 @@
 import { z } from 'zod'
 import type { AiPresetId } from '@git-manager/ai'
-import type { AppSettings, NotificationDisplayStyle } from '@git-manager/git-types'
+import type { AppIconId, AppSettings, NotificationDisplayStyle } from '@git-manager/git-types'
+
+/**
+ * The icon ids `appearance.appIcon` accepts, listed rather than derived because `z.enum` needs a
+ * literal tuple. The two lines below keep the list honest in both directions — `satisfies` rejects
+ * an id that isn't an {@link AppIconId}, and `AssertNever` stops the file compiling when the union
+ * gains an id this tuple doesn't have.
+ *
+ * Worth the ceremony because the failure is silent and disproportionate: validation is per group
+ * (see {@link SETTINGS_GROUP_SCHEMAS} below), so an unrecognized `appIcon` invalidates the whole
+ * `appearance` group — a forgotten line here would reset the user's theme, font size and terminal
+ * colors, not just their icon.
+ */
+const APP_ICON_IDS = [
+  'default',
+  'neon',
+  '3d',
+  'light',
+  'duotone',
+  'line',
+  'flat',
+  'minimal-light',
+] as const satisfies readonly AppIconId[]
+
+type AssertNever<T extends never> = T
+/** Exported only so `noUnusedLocals` tolerates it; it exists for its constraint, not its value. */
+export type AppIconIdsAreExhaustive = AssertNever<Exclude<AppIconId, (typeof APP_ICON_IDS)[number]>>
 
 /**
  * Zod schema for the `settings` section of `~/.git-manager/settings.json`, one schema per group.
@@ -70,6 +96,7 @@ const appearanceSchema = z.object({
   terminalBackground: z.string(),
   terminalForeground: z.string(),
   glassTransparency: z.number().optional(),
+  appIcon: z.enum(APP_ICON_IDS).optional(),
 })
 
 const advancedSchema = z.object({

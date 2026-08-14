@@ -10,6 +10,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { ThemeCard } from './appearance/ThemeCard'
 import { TerminalColorsSetting } from './appearance/TerminalColorsSetting'
+import { AppIconSection } from './AppIconSection'
 import { SettingInfo } from './SettingInfo'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
@@ -126,6 +127,9 @@ export function AppearanceSection() {
           </code>
         </p>
       </FilterableSetting>
+
+      {/* Application Icon Picker */}
+      <AppIconSection />
 
       {/* Glass transparency — only for translucent themes */}
       {showGlassTransparency && (

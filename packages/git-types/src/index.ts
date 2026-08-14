@@ -1186,7 +1186,12 @@ export interface AppearanceSettings {
    * native material already lightens it, so a fixed default is either invisible on
    * one desktop or unreadable on another. */
   glassTransparency?: number
+  /** Chosen macOS dock / application icon identifier. Defaults to 'default'. */
+  appIcon?: AppIconId
 }
+
+export type AppIconId =
+  'default' | 'neon' | '3d' | 'light' | 'duotone' | 'line' | 'flat' | 'minimal-light'
 
 export interface UserTheme {
   id: string

@@ -22,6 +22,7 @@ import { ErrorReportHost } from './features/error-report'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
+import { useAppIcon } from './hooks/useAppIcon'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useNotchQueue } from './hooks/useNotchQueue'
 import { useRewardNotch } from './hooks/useRewardNotch'
@@ -64,6 +65,7 @@ export default function App() {
 
   useTheme()
   useMonacoTheme()
+  useAppIcon()
   useNotificationWatcher()
   // Turns the notch queue into a window. Separate from the watcher on purpose: the watcher decides
   // *what* to notify about, these two decide what happens to a card once it exists — which is what

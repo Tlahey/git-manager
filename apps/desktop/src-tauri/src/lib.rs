@@ -14,6 +14,7 @@ use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
     get_ai_commit_scan, get_ai_context, get_model_context_limits,
 };
+use commands::app_icon::set_app_icon;
 use commands::bisect::{
     bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
 };
@@ -134,6 +135,22 @@ use tauri::{Manager, WindowEvent};
 /// of the 18pt macOS draws tray icons at).
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/tray/iconTemplate.png");
 
+/// Applies the persisted icon preference at startup, in both of the senses
+/// [`services::app_icon`] documents: to this process, and — when the bundle has lost it, which
+/// is what an update leaves behind — to the installed `.app`, so the *following* launch needs no
+/// swap at all.
+///
+/// Both halves are best-effort: an unbundled `pnpm dev` run and an app the user cannot write to
+/// both fail the second one, and neither is a reason to hold up `setup`.
+fn setup_initial_app_icon(app: &tauri::App, icon_name: &str) {
+    if let Err(err) = services::app_icon::apply_runtime_icon(app.handle(), icon_name) {
+        eprintln!("[app-icon] could not apply the startup icon: {err}");
+    }
+    if let Err(err) = services::app_icon::sync_bundle_icon(icon_name) {
+        eprintln!("[app-icon] could not refresh the bundle icon: {err}");
+    }
+}
+
 /// Builds the system tray icon (Show/Quit menu) and wires left-click-to-show. Pairs with the
 /// `on_window_event` hook below: closing the window hides it instead of exiting, so the tray icon
 /// is the only way back in (or out) once the window is closed — see
@@ -218,8 +235,14 @@ pub fn run() {
 
     builder = builder.manage(AppState::new());
 
+    // Read once, applied at two moments — see the `RunEvent::Ready` arm at the bottom of this
+    // function for why `setup` alone is not enough under `pnpm dev`.
+    let startup_icon = services::app_icon::persisted_icon_name();
+    let ready_icon = startup_icon.clone();
+
     builder
-        .setup(|app| {
+        .setup(move |app| {
+            setup_initial_app_icon(app, &startup_icon);
             setup_tray(app)?;
             Ok(())
         })
@@ -236,6 +259,8 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // App icon
+            set_app_icon,
             // Activity log
             append_activity_log,
             append_ai_log,
@@ -472,6 +497,21 @@ pub fn run() {
             resolve_conflict_binary,
             auto_merge_conflict_view,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(move |app_handle, event| {
+            // Tauri re-asserts its *own* configured icon on `Ready`, after `setup` has run — see
+            // the `#[cfg(all(dev, target_os = "macos"))]` block in tauri's `app.rs`. It is gated
+            // on `dev`, so it costs a packaged build nothing, but under `pnpm dev` it silently
+            // undoes the user's choice and leaves the Dock on the default icon whatever Settings
+            // says. Re-applying here lands after it.
+            //
+            // Harmless in a packaged build, where the icon it re-applies is the one the launch
+            // tile is already showing.
+            if matches!(event, tauri::RunEvent::Ready) {
+                if let Err(err) = services::app_icon::apply_runtime_icon(app_handle, &ready_icon) {
+                    eprintln!("[app-icon] could not re-apply the icon once ready: {err}");
+                }
+            }
+        });
 }

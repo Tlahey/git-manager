@@ -10,6 +10,7 @@ pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;
 pub mod app_config;
+pub mod app_icon;
 pub mod credential_store;
 pub mod daily_summary_archive;
 pub mod dependency_patch;
