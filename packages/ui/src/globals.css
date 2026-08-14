@@ -57,13 +57,17 @@
 }
 
 @layer base {
-  /* Every raw `<button>` shows a pointer cursor on hover — the browser default is
-     inconsistent across platforms, and Tailwind's preflight resets it to `default`.
-     `:not(:disabled)` keeps a disabled button's cursor unset here so `disabled:cursor-not-allowed`
-     utilities (e.g. the shared Button's) still apply — this rule lives in the base layer, which
-     Tailwind's utilities layer always overrides regardless of selector specificity. */
+  /* Every raw `<button>` shows a pointer cursor on hover, and `not-allowed` once disabled —
+     including a `disabled={pending}` loading state, which sets the same native attribute. The
+     browser default is inconsistent across platforms, and Tailwind's preflight resets it to
+     `default`. This is a fallback, not an override: it lives in the base layer, which Tailwind's
+     utilities layer always beats regardless of selector specificity, so a component's own
+     `cursor-*`/`disabled:cursor-*` utility (e.g. the shared Button's) still wins where it exists. */
   button:not(:disabled) {
     cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
   }
 
   /* Avatar Frames */
