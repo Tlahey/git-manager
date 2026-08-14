@@ -25,11 +25,17 @@ pub fn derive_vault_key(base_dir: &Path) -> Result<[u8; 32], AppError> {
 
     let seed_bytes = if seed_path.exists() {
         fs::read(&seed_path).map_err(|e| {
-            AppError::Unknown(format!("Could not read vault seed file {}: {e}", seed_path.display()))
+            AppError::Unknown(format!(
+                "Could not read vault seed file {}: {e}",
+                seed_path.display()
+            ))
         })?
     } else {
         fs::create_dir_all(base_dir).map_err(|e| {
-            AppError::Unknown(format!("Could not create vault directory {}: {e}", base_dir.display()))
+            AppError::Unknown(format!(
+                "Could not create vault directory {}: {e}",
+                base_dir.display()
+            ))
         })?;
 
         let mut random_seed = [0u8; 32];
@@ -43,12 +49,14 @@ pub fn derive_vault_key(base_dir: &Path) -> Result<[u8; 32], AppError> {
         options.mode(0o600); // Only accessible by current user
 
         let mut file = options.open(&seed_path).map_err(|e| {
-            AppError::Unknown(format!("Could not create vault seed file {}: {e}", seed_path.display()))
+            AppError::Unknown(format!(
+                "Could not create vault seed file {}: {e}",
+                seed_path.display()
+            ))
         })?;
 
-        file.write_all(&random_seed).map_err(|e| {
-            AppError::Unknown(format!("Could not write vault seed: {e}"))
-        })?;
+        file.write_all(&random_seed)
+            .map_err(|e| AppError::Unknown(format!("Could not write vault seed: {e}")))?;
 
         random_seed.to_vec()
     };
