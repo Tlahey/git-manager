@@ -78,3 +78,8 @@ export const generateSshKey = (
 ) => invoke<string>('generate_ssh_key', { keyType, bits, comment, path, passphrase })
 
 export const readSshPublicKey = (path: string) => invoke<string>('read_ssh_public_key', { path })
+
+// ─── App Icon ────────────────────────────────────────────────────────────────
+
+export const setAppIcon = (iconName: import('@git-manager/git-types').AppIconId) =>
+  invoke<void>('set_app_icon', { iconName })

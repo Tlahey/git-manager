@@ -99,8 +99,15 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   "NSScreen",
   # NSApplication.isActive — the veto on creating a webview while the app is in the background,
   # which wry would turn into an activation and so into a stolen keyboard. See is_app_active in
-  # commands/window.rs.
+  # commands/window.rs. Also NSApplication.setApplicationIconImage:, the Dock icon of the running
+  # process — the first of the two halves in services/app_icon.rs.
   "NSApplication",
+  # NSImage — the icon itself, for both halves.
+  "NSImage",
+  # NSWorkspace.setIcon:forFile:options: — the *persisted* half: the Finder custom icon on the
+  # installed .app, which is the only thing that makes a launch flicker-free. See the module
+  # comment in services/app_icon.rs before touching this.
+  "NSWorkspace",
 ] }
 # NSRect/NSEdgeInsets, the return types of the NSScreen geometry methods above. Same version
 # NSScreen's own "NSScreen" feature already pulls in transitively; declared directly because the
@@ -108,6 +115,9 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
 objc2-foundation = { version = "0.2.2", default-features = false, features = [
   "std",
   "NSGeometry",
+  # NSData/NSString — the icon bytes and the bundle path handed to AppKit in services/app_icon.rs.
+  "NSData",
+  "NSString",
   # `MainThreadMarker::new()` — satisfied today by another dependency's own feature request
   # (Cargo unifies features across the build), but declared directly so this code's own
   # requirement doesn't depend on staying true of some other crate.

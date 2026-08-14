@@ -1,6 +1,7 @@
 pub mod activity_log;
 pub mod agent;
 pub mod ai;
+pub mod app_icon;
 pub mod bisect;
 pub mod bitbucket;
 pub mod blame;
