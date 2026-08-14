@@ -47,7 +47,10 @@ mod tests {
         assert_eq!(backend.get("test:key").unwrap(), None);
 
         backend.set("test:key", "value123").unwrap();
-        assert_eq!(backend.get("test:key").unwrap(), Some("value123".to_string()));
+        assert_eq!(
+            backend.get("test:key").unwrap(),
+            Some("value123".to_string())
+        );
 
         backend.delete("test:key").unwrap();
         assert_eq!(backend.get("test:key").unwrap(), None);

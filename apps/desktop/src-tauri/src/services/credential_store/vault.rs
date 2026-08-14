@@ -39,7 +39,10 @@ impl EncryptedVaultBackend {
         }
 
         let raw = fs::read(&self.vault_path).map_err(|e| {
-            AppError::Unknown(format!("Could not read vault file {}: {e}", self.vault_path.display()))
+            AppError::Unknown(format!(
+                "Could not read vault file {}: {e}",
+                self.vault_path.display()
+            ))
         })?;
 
         if raw.is_empty() {
@@ -47,21 +50,22 @@ impl EncryptedVaultBackend {
         }
 
         let decrypted = decrypt_payload(&raw, &self.key)?;
-        serde_json::from_slice(&decrypted).map_err(|e| {
-            AppError::Unknown(format!("Invalid JSON inside decrypted vault: {e}"))
-        })
+        serde_json::from_slice(&decrypted)
+            .map_err(|e| AppError::Unknown(format!("Invalid JSON inside decrypted vault: {e}")))
     }
 
     fn save_entries(&self, entries: &HashMap<String, String>) -> Result<(), AppError> {
         if let Some(parent) = self.vault_path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
-                AppError::Unknown(format!("Could not create vault directory {}: {e}", parent.display()))
+                AppError::Unknown(format!(
+                    "Could not create vault directory {}: {e}",
+                    parent.display()
+                ))
             })?;
         }
 
-        let json_bytes = serde_json::to_vec(entries).map_err(|e| {
-            AppError::Unknown(format!("Could not serialize vault entries: {e}"))
-        })?;
+        let json_bytes = serde_json::to_vec(entries)
+            .map_err(|e| AppError::Unknown(format!("Could not serialize vault entries: {e}")))?;
 
         let encrypted = encrypt_payload(&json_bytes, &self.key)?;
 
@@ -75,21 +79,25 @@ impl EncryptedVaultBackend {
         options.mode(0o600); // Strict user-only permissions
 
         let mut file = options.open(&tmp_path).map_err(|e| {
-            AppError::Unknown(format!("Could not open temp vault file {}: {e}", tmp_path.display()))
+            AppError::Unknown(format!(
+                "Could not open temp vault file {}: {e}",
+                tmp_path.display()
+            ))
         })?;
 
-        file.write_all(&encrypted).map_err(|e| {
-            AppError::Unknown(format!("Could not write temp vault file: {e}"))
-        })?;
+        file.write_all(&encrypted)
+            .map_err(|e| AppError::Unknown(format!("Could not write temp vault file: {e}")))?;
 
-        file.flush().map_err(|e| {
-            AppError::Unknown(format!("Could not flush temp vault file: {e}"))
-        })?;
+        file.flush()
+            .map_err(|e| AppError::Unknown(format!("Could not flush temp vault file: {e}")))?;
 
         drop(file);
 
         fs::rename(&tmp_path, &self.vault_path).map_err(|e| {
-            AppError::Unknown(format!("Could not commit vault file to {}: {e}", self.vault_path.display()))
+            AppError::Unknown(format!(
+                "Could not commit vault file to {}: {e}",
+                self.vault_path.display()
+            ))
         })?;
 
         Ok(())
@@ -135,11 +143,17 @@ mod tests {
         assert_eq!(backend.get("github:test").unwrap(), None);
 
         backend.set("github:test", "secret_token_123").unwrap();
-        assert_eq!(backend.get("github:test").unwrap(), Some("secret_token_123".to_string()));
+        assert_eq!(
+            backend.get("github:test").unwrap(),
+            Some("secret_token_123".to_string())
+        );
 
         // Check that a fresh backend instance with same key reads the persisted vault
         let backend_reloaded = EncryptedVaultBackend::new(temp_dir.clone()).unwrap();
-        assert_eq!(backend_reloaded.get("github:test").unwrap(), Some("secret_token_123".to_string()));
+        assert_eq!(
+            backend_reloaded.get("github:test").unwrap(),
+            Some("secret_token_123".to_string())
+        );
 
         backend_reloaded.delete("github:test").unwrap();
         assert_eq!(backend_reloaded.get("github:test").unwrap(), None);
