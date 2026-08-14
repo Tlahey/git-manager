@@ -5,6 +5,8 @@ import type { BoardCard, BoardTag } from '@git-manager/git-types'
 import { Card, Tooltip } from '@git-manager/ui'
 import { AlertTriangle, CalendarClock, CheckCircle2, CircleDot, ListChecks } from 'lucide-react'
 import { CommitAvatar } from '../../../components/common/CommitAvatar'
+import { InlineMarkdown } from '../../../components/markdown/InlineMarkdown'
+import { markdownToPlainText } from '../../../components/markdown/markdownPlainText'
 import {
   cardIdentifier,
   dodProgress,
@@ -71,6 +73,11 @@ export function BoardCardView({
   const dod = dodProgress(card.dod)
   const overdue = isOverdue(card.dueDate)
   const identifier = cardIdentifier(card)
+  // The description is a whole markdown document — a card's face has room for two lines of the
+  // prose in it and none for its structure, so it is flattened rather than rendered. A body made of
+  // nothing but a screenshot or a checklist flattens to nothing, and then the row is dropped
+  // instead of reserving space for an empty paragraph.
+  const descriptionPreview = markdownToPlainText(card.description)
   const hasBadges = cardTags.length > 0 || Boolean(card.archivedAt) || Boolean(card.sourceIssue)
 
   return (
@@ -120,15 +127,22 @@ export function BoardCardView({
               />
             </Tooltip>
           )}
+          {/* The title's own markers are honoured rather than printed: a title carrying a symbol
+              name in backticks or an emphasised word is written the way it reads everywhere else in
+              the app, and `**` never appears on the face of a card. Inline only — see
+              `InlineMarkdown`. */}
           <p className="line-clamp-2 flex-1 text-[13px] leading-snug font-medium text-foreground">
-            {card.title}
+            <InlineMarkdown text={card.title} />
           </p>
           {actions && <CardActionsMenu {...actions} compact testId="board-card-actions-menu" />}
         </div>
 
-        {card.description && (
-          <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-            {card.description}
+        {descriptionPreview && (
+          <p
+            className="line-clamp-2 text-[11px] leading-snug text-muted-foreground"
+            data-testid="board-card-description"
+          >
+            {descriptionPreview}
           </p>
         )}
 
