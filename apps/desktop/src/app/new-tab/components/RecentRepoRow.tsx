@@ -19,7 +19,7 @@ export function RecentRepoRow({ path, name, isOpen, onSelect }: RecentRepoRowPro
       type="button"
       onClick={onSelect}
       data-testid={`new-tab-recent-repo-${path}`}
-      className="group flex w-full items-center gap-3 border-b border-border/10 px-4 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/40"
+      className="group flex w-full cursor-pointer items-center gap-3 border-b border-border/10 px-4 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/40"
     >
       <FolderGit2 className="h-4 w-4 shrink-0 text-primary/70" />
       <div className="flex min-w-0 flex-1 flex-col">

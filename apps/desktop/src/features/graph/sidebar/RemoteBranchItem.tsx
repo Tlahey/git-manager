@@ -139,7 +139,7 @@ export function RemoteBranchItem({
           e.stopPropagation()
           onContextMenu?.(e, branch)
         }}
-        className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/rbranch:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all group-hover/rbranch:opacity-100 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
         aria-label={t('sidebar.branchActions')}
         title={t('sidebar.branchActions')}
         data-testid={`remote-branch-actions-${qualifiedName}`}
