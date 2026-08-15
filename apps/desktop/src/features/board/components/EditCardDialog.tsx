@@ -3,6 +3,7 @@ import { CardTitleField } from './CardTitleField'
 import { CardDescriptionField } from './CardDescriptionField'
 import { CardDodSection } from './CardDodSection'
 import { CardCommentsSection } from './CardCommentsSection'
+import { CardHistorySection } from './CardHistorySection'
 import { CardMetaSidebar } from './CardMetaSidebar'
 import { CardActionsMenu } from './CardActionsMenu'
 import { CardKindIcon } from './CardKindIcon'
@@ -46,6 +47,8 @@ export function EditCardDialog({
   comments,
   commentsLoading,
   onAddComment,
+  history,
+  historyLoading,
   onCreateBranch,
   onCheckoutBranch,
   onUnlinkBranch,
@@ -132,6 +135,15 @@ export function EditCardDialog({
               attachmentUrlPrefix={attachmentUrlPrefix}
               disabled={readOnly}
             />
+
+            {history && (
+              <CardHistorySection
+                history={history}
+                loading={historyLoading}
+                columns={columns ?? []}
+                tags={tags}
+              />
+            )}
           </div>
 
           {/* One step darker than the content column, so the split reads as depth rather than as one

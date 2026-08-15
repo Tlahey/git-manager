@@ -16,6 +16,7 @@ import {
   setBoardCardsArchived,
   assignBoardCardIdentifiers,
   getBoardHistory,
+  getCardHistory,
   listRecoverableBoards,
   restoreBoardBackup,
 } from '../../../lib/tauri'
@@ -62,6 +63,11 @@ export const localBoardBackend: BoardBackend = {
  * module doc comment). Local-only: the remote backend has no equivalent, GitHub's own issue/label
  * history serves that role there. */
 export const apiGetBoardHistory = (path: string, boardId: string) => getBoardHistory(path, boardId)
+
+/** One card's history, diffed field-by-field commit to commit (see `git_board.rs::card_history`).
+ * Local-only, for the same reason as `apiGetBoardHistory`. */
+export const apiGetCardHistory = (path: string, boardId: string, cardId: string) =>
+  getCardHistory(path, boardId, cardId)
 
 /** Boards recoverable from the `~/.git-manager/boards/` disaster-recovery backup after the repo
  * itself was deleted and re-cloned (see `git_board.rs`'s module doc comment). Local-only. */

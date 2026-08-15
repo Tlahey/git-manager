@@ -6,6 +6,7 @@ import type {
   BoardCardPatch,
   BoardComment,
   BoardTag,
+  CardHistoryEntry,
 } from '@git-manager/git-types'
 import { CreateCardDialog } from './CreateCardDialog'
 import { EditCardDialog } from './EditCardDialog'
@@ -77,6 +78,10 @@ export interface EditProps extends BoardCardDialogProps {
   comments: BoardComment[]
   commentsLoading?: boolean
   onAddComment: (body: string) => Promise<unknown>
+  /** The card's activity feed — local-only, so omitted entirely for a remote (GitHub-backed) card,
+   * the same way `columns`/`boardName` are omitted for a card rendered outside a board. */
+  history?: CardHistoryEntry[]
+  historyLoading?: boolean
   onCreateBranch?: () => Promise<unknown>
   onCheckoutBranch?: () => Promise<unknown>
   onUnlinkBranch?: () => Promise<unknown>

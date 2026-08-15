@@ -829,6 +829,32 @@ export interface BoardWithCards {
   cards: BoardCard[]
 }
 
+export type CardHistoryEntryKind = 'created' | 'updated' | 'deleted'
+
+/** One field that differed between a card's state in a commit and in that commit's parent — see
+ * `git_board::diff_card_fields`. `oldValue`/`newValue` are absent for long free-text fields
+ * (`description`, `dod`), where only *that* the field changed is reported, and for `comment`
+ * `oldValue` is always absent, `newValue` carrying the new comment's body. */
+export interface CardFieldChange {
+  field: string
+  oldValue?: string
+  newValue?: string
+}
+
+/** One commit in a single card's history (mirrors `git_board::CardHistoryEntry`) — the same ref
+ * `board_history` walks, filtered down to the commits that touched this one card and turned into
+ * what changed rather than the storage-level fact that *a* card changed. */
+export interface CardHistoryEntry {
+  oid: string
+  shortOid: string
+  authorName: string
+  authorEmail: string
+  /** Author time, Unix epoch seconds. */
+  timestamp: number
+  kind: CardHistoryEntryKind
+  changes: CardFieldChange[]
+}
+
 /** Patch applied to one card — every field left `undefined` is left unchanged. Mirrors the Rust
  * `BoardCardPatch`. The nullable fields distinguish "leave unchanged" (omitted) from "clear it"
  * (`null`), since a plain optional can't express that third state.
