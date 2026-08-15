@@ -24,7 +24,7 @@ interface BoardSearchDialogProps {
 
 /**
  * The **global** ticket search: every card of every board of this repository, found by identifier,
- * title, assignee or board name, and opened where it lives.
+ * title, assignee, board name or description, and opened where it lives.
  *
  * Two searches on this view, answering two questions. The left panel's field narrows *the board on
  * screen* — "which of these am I looking for". This one starts from nothing but the ticket — "where
@@ -112,7 +112,7 @@ export function BoardSearchDialog({ repoPath }: BoardSearchDialogProps) {
           </p>
         )}
 
-        {results.map(({ card, board }) => {
+        {results.map(({ card, board, descriptionSnippet }) => {
           const identifier = cardIdentifier(card)
           const column = board.columns.find((c) => c.id === card.columnId)
           return (
@@ -121,27 +121,37 @@ export function BoardSearchDialog({ repoPath }: BoardSearchDialogProps) {
               value={`${board.id}:${card.id}`}
               onSelect={() => openCard(board.id, card.id)}
               data-testid={`board-search-result-${card.id}`}
+              className="flex-col items-stretch gap-0.5"
             >
-              <CardKindIcon kind={card.kind} />
-              {identifier && (
-                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                  {highlightMatch(identifier, query)}
+              <span className="flex items-center gap-2">
+                <CardKindIcon kind={card.kind} />
+                {identifier && (
+                  <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                    {highlightMatch(identifier, query)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate">{highlightMatch(card.title, query)}</span>
+                {card.archivedAt && (
+                  <Archive
+                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    aria-label={t('search.archived')}
+                  />
+                )}
+                {/* The board is what tells two identically-titled tickets apart, so it is never
+                    truncated away: the column and the assignee are, being the details. */}
+                <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11px] text-muted-foreground">
+                  {card.assignee && <span className="max-w-24 truncate">{card.assignee}</span>}
+                  {column && <span className="max-w-24 truncate">{column.name}</span>}
+                  <span className="text-foreground">{highlightMatch(board.name, query)}</span>
+                </span>
+              </span>
+              {/* Only rendered when nothing else on the row explains the match — see
+                  `CardSearchResult.descriptionSnippet`. */}
+              {descriptionSnippet && (
+                <span className="truncate pl-6 text-[11px] text-muted-foreground">
+                  {highlightMatch(descriptionSnippet, query)}
                 </span>
               )}
-              <span className="min-w-0 flex-1 truncate">{highlightMatch(card.title, query)}</span>
-              {card.archivedAt && (
-                <Archive
-                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                  aria-label={t('search.archived')}
-                />
-              )}
-              {/* The board is what tells two identically-titled tickets apart, so it is never
-                  truncated away: the column and the assignee are, being the details. */}
-              <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11px] text-muted-foreground">
-                {card.assignee && <span className="max-w-24 truncate">{card.assignee}</span>}
-                {column && <span className="max-w-24 truncate">{column.name}</span>}
-                <span className="text-foreground">{highlightMatch(board.name, query)}</span>
-              </span>
             </CommandItem>
           )
         })}

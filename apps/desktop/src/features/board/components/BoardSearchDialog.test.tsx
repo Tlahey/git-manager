@@ -75,6 +75,27 @@ describe('BoardSearchDialog', () => {
     expect(screen.getByTestId('board-search-result-c2')).toBeInTheDocument()
   })
 
+  /** A card that matched only in its body needs the snippet, or the row would be a highlighted hit
+   * with nothing visible to justify it. */
+  it('shows why a card matched when only its description does', async () => {
+    const user = userEvent.setup()
+    withCards([
+      {
+        card: makeCard({
+          id: 'c1',
+          title: 'Fix the header',
+          description: 'the oauth callback 500s',
+        }),
+        board: sprint,
+      },
+    ])
+    render(<BoardSearchDialog repoPath="/repo" />)
+
+    await user.type(screen.getByTestId('board-search-dialog-input'), 'oauth')
+
+    expect(screen.getByTestId('board-search-result-c1')).toHaveTextContent('oauth callback')
+  })
+
   it('names the board each result is on, which is what tells two alike tickets apart', async () => {
     const user = userEvent.setup()
     withCards([{ card: makeCard({ id: 'c1', title: 'Fix login' }), board: backlog }])

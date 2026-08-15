@@ -20,13 +20,22 @@ describe('scoreCard — what is matched', () => {
   })
 
   /**
-   * Never the description. A row whose every visible word misses the query is one the user cannot
-   * judge — the same trap the file tree fell into when a folder match kept files with nothing of the
-   * query in their own name.
+   * The description is searched too, but as the broadest sweep of all — a whole document rather
+   * than a name — so it ranks below every other tier. See the `searchCards` block below for the
+   * snippet that lets the row explain a description-only match.
    */
-  it('does not match the description, which the result row does not show', () => {
+  it('matches the description, ranked below every other tier', () => {
     const entry = on(sprint, { title: 'Fix login', description: 'the oauth callback 500s' })
-    expect(scoreCard(entry, 'oauth')).toBeNull()
+    const byDescription = scoreCard(entry, 'oauth')!
+    expect(byDescription).not.toBeNull()
+
+    const byBoard = scoreCard(on(sprint, { title: 'Fix login' }), 'sprint')!
+    expect(byBoard).toBeLessThan(byDescription)
+  })
+
+  it('strips markdown before matching the description', () => {
+    const entry = on(sprint, { title: 'Fix login', description: '# The **oauth** callback 500s' })
+    expect(scoreCard(entry, 'oauth')).not.toBeNull()
   })
 
   it('matches case-insensitively', () => {
@@ -114,6 +123,32 @@ describe('searchCards', () => {
     const cards = [on(sprint, { title: 'Fix login' })]
     searchCards(cards, 'login')
     expect(cards[0].card.title).toBe('Fix login')
+  })
+
+  describe('descriptionSnippet', () => {
+    it('is null when the title already explains the match', () => {
+      const [result] = searchCards([on(sprint, { title: 'Fix login' })], 'login')
+      expect(result.descriptionSnippet).toBeNull()
+    })
+
+    it('carries a window of the description when that is the only reason the card matched', () => {
+      const [result] = searchCards(
+        [on(sprint, { title: 'Fix the header', description: 'the oauth callback 500s' })],
+        'oauth'
+      )
+      expect(result.descriptionSnippet).toContain('oauth')
+    })
+
+    it('trims a long description down around the match', () => {
+      const long = `${'x'.repeat(200)} oauth ${'y'.repeat(200)}`
+      const [result] = searchCards(
+        [on(sprint, { title: 'Fix the header', description: long })],
+        'oauth'
+      )
+      expect(result.descriptionSnippet!.length).toBeLessThan(long.length)
+      expect(result.descriptionSnippet).toMatch(/^…/)
+      expect(result.descriptionSnippet).toMatch(/…$/)
+    })
   })
 })
 
