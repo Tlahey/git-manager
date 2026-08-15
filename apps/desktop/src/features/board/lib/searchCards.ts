@@ -1,4 +1,5 @@
 import type { Board, BoardCard } from '@git-manager/git-types'
+import { markdownToPlainText } from '../../../components/markdown/markdownPlainText'
 import { cardIdentifier } from './cardMeta'
 
 /** One card, with the board it belongs to — the unit a cross-board search returns. */
@@ -10,34 +11,73 @@ export interface CardOnBoard {
 export interface CardSearchResult extends CardOnBoard {
   /** Lower is better. Exposed so a caller can group or debug, not to be rendered. */
   score: number
+  /**
+   * A window of the description around the query, when the description is the *only* reason this
+   * card matched. `null` for every other tier — the identifier, title, assignee or board name are
+   * already visible on the result row, so showing a snippet next to them would repeat what the
+   * highlighted row already says.
+   */
+  descriptionSnippet: string | null
+}
+
+/** Characters of context kept on each side of the match inside a description snippet. */
+const SNIPPET_RADIUS = 40
+
+/**
+ * A plain-text window of `description` centred on the first case-insensitive hit of `query`, so a
+ * card that only matched in its body shows the reader why — the same reasoning `searchDailySummaries`
+ * follows for the bullets it surfaces next to a match. Assumes the match exists; callers only reach
+ * this after confirming it does.
+ */
+function descriptionSnippet(description: string, query: string): string {
+  const plain = markdownToPlainText(description)
+  const idx = plain.toLowerCase().indexOf(query)
+  const start = Math.max(0, idx - SNIPPET_RADIUS)
+  const end = Math.min(plain.length, idx + query.length + SNIPPET_RADIUS)
+  const prefix = start > 0 ? '…' : ''
+  const suffix = end < plain.length ? '…' : ''
+  return `${prefix}${plain.slice(start, end).trim()}${suffix}`
 }
 
 /** Enough to fill the palette twice over; past that the query is the thing to narrow, not the list. */
 export const MAX_CARD_RESULTS = 50
 
+/** Which field explains a card's match — `searchCards` uses this to decide whether the row needs a
+ * snippet, since only `'description'` matches nothing the row already renders. */
+type MatchTier = 'name' | 'assignee' | 'board' | 'description'
+
 /**
- * Ranks one card against a lowercased query. `null` means no match.
- *
- * **What is matched is what the result row shows**: the identifier, the title, the assignee and the
- * board's name — never the description. A description hit would put a row on screen whose every
- * visible word misses the query, which is the same trap the file tree fell into when a folder match
- * kept files that had nothing of the query in their own name: the user cannot tell why the row is
- * there, so they cannot tell whether it is the one they want.
+ * Ranks one card against a lowercased query, and says which field it matched on. `null` means no
+ * match. The single source of truth for both {@link scoreCard} and {@link searchCards} — kept as one
+ * function so the two never drift on what counts as a match.
  *
  * The order encodes what a query usually *is*. Someone typing `GM-7` knows exactly which ticket they
  * want and would be insulted by a title match above it; someone typing `login` is describing work,
  * so titles come next; assignee and board are the broad sweeps that answer "everything of Sam's" and
- * "everything on Sprint 12", and they sort last because a query that matches them matches many
- * cards at once.
+ * "everything on Sprint 12"; the description is the broadest sweep of all — a whole document, not a
+ * name — so it sorts last, below even those.
  */
-export function scoreCard({ card, board }: CardOnBoard, query: string): number | null {
+function matchCard(
+  { card, board }: CardOnBoard,
+  query: string
+): { tier: MatchTier; score: number } | null {
   const byName = scoreCardName(card, query)
-  if (byName !== null) return byName
+  if (byName !== null) return { tier: 'name', score: byName }
 
   const title = card.title.toLowerCase()
-  if (card.assignee?.toLowerCase().includes(query)) return 3000 + title.length
-  if (board.name.toLowerCase().includes(query)) return 4000 + title.length
+  if (card.assignee?.toLowerCase().includes(query))
+    return { tier: 'assignee', score: 3000 + title.length }
+  if (board.name.toLowerCase().includes(query)) return { tier: 'board', score: 4000 + title.length }
+  if (markdownToPlainText(card.description).toLowerCase().includes(query)) {
+    return { tier: 'description', score: 5000 + title.length }
+  }
   return null
+}
+
+/** Ranks one card against a lowercased query. `null` means no match. See {@link matchCard} for what
+ * counts as one and in what order. */
+export function scoreCard(entry: CardOnBoard, query: string): number | null {
+  return matchCard(entry, query)?.score ?? null
 }
 
 /**
@@ -102,8 +142,14 @@ export function searchCards(cards: CardOnBoard[], query: string): CardSearchResu
 
   const scored: CardSearchResult[] = []
   for (const entry of cards) {
-    const score = scoreCard(entry, needle)
-    if (score !== null) scored.push({ ...entry, score })
+    const match = matchCard(entry, needle)
+    if (!match) continue
+    scored.push({
+      ...entry,
+      score: match.score,
+      descriptionSnippet:
+        match.tier === 'description' ? descriptionSnippet(entry.card.description, needle) : null,
+    })
   }
   scored.sort(
     (a, b) =>
