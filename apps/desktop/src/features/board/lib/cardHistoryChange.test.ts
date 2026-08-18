@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { i18next } from '@git-manager/i18n'
 import type { BoardColumn, BoardTag, CardFieldChange } from '@git-manager/git-types'
-import { formatCardHistoryChange } from './cardHistoryChange'
+import { describeCardFieldChange } from './cardHistoryChange'
 
 /** The real English copy, so a wrong or blank key fails here rather than in the UI. */
 const t = (key: string, options?: Record<string, unknown>) =>
@@ -17,92 +17,120 @@ function change(overrides: Partial<CardFieldChange> & { field: string }): CardFi
   return { oldValue: undefined, newValue: undefined, ...overrides }
 }
 
-function format(c: CardFieldChange): string {
-  return formatCardHistoryChange(c, { t, columns, tags })
+function describe_(c: CardFieldChange) {
+  return describeCardFieldChange(c, { t, columns, tags })
 }
 
-describe('formatCardHistoryChange', () => {
-  it('reads a title change as the new title', () => {
-    expect(format(change({ field: 'title', oldValue: 'Old', newValue: 'New' }))).toBe(
-      'Title changed to "New"'
-    )
+describe('describeCardFieldChange', () => {
+  it('reads a title change as a before/after pair', () => {
+    expect(describe_(change({ field: 'title', oldValue: 'Old', newValue: 'New' }))).toEqual({
+      label: 'Title',
+      from: 'Old',
+      to: 'New',
+    })
   })
 
-  it('resolves a column move to the column’s name, not its id', () => {
-    expect(format(change({ field: 'columnId', oldValue: 'todo', newValue: 'done' }))).toBe(
-      'Moved to Done'
-    )
+  it('resolves a column move to the columns’ names, not their ids', () => {
+    expect(describe_(change({ field: 'columnId', oldValue: 'todo', newValue: 'done' }))).toEqual({
+      label: 'Column',
+      from: 'To do',
+      to: 'Done',
+    })
   })
 
-  it('falls back to the raw id when the column no longer exists', () => {
-    expect(format(change({ field: 'columnId', newValue: 'gone' }))).toBe('Moved to gone')
+  it('falls back to the raw id when a column no longer exists', () => {
+    expect(describe_(change({ field: 'columnId', oldValue: 'todo', newValue: 'gone' }))).toEqual({
+      label: 'Column',
+      from: 'To do',
+      to: 'gone',
+    })
   })
 
   it('routes priority through the same label the rest of the card dialog uses', () => {
-    expect(format(change({ field: 'priority', oldValue: 'normal', newValue: 'high' }))).toBe(
-      'Priority changed to High'
-    )
+    expect(describe_(change({ field: 'priority', oldValue: 'normal', newValue: 'high' }))).toEqual({
+      label: 'Priority',
+      from: 'Normal',
+      to: 'High',
+    })
   })
 
   it('routes kind through the same label the rest of the card dialog uses', () => {
-    expect(format(change({ field: 'kind', oldValue: 'task', newValue: 'bug' }))).toBe(
-      'Changed to Bug'
-    )
+    expect(describe_(change({ field: 'kind', oldValue: 'task', newValue: 'bug' }))).toEqual({
+      label: 'Type',
+      from: 'Task',
+      to: 'Bug',
+    })
   })
 
-  it('distinguishes an assignment from a clear', () => {
-    expect(format(change({ field: 'assignee', newValue: 'ada' }))).toBe('Assigned to ada')
-    expect(format(change({ field: 'assignee', oldValue: 'ada' }))).toBe('Unassigned')
+  it('shows "None" for an empty assignee on either side', () => {
+    expect(describe_(change({ field: 'assignee', newValue: 'ada' }))).toEqual({
+      label: 'Assignee',
+      from: 'None',
+      to: 'ada',
+    })
+    expect(describe_(change({ field: 'assignee', oldValue: 'ada' }))).toEqual({
+      label: 'Assignee',
+      from: 'ada',
+      to: 'None',
+    })
   })
 
-  it('distinguishes setting a due date from clearing it', () => {
-    expect(format(change({ field: 'dueDate', newValue: '2026-08-20' }))).toBe(
-      'Due date set to 2026-08-20'
-    )
-    expect(format(change({ field: 'dueDate', oldValue: '2026-08-20' }))).toBe('Due date cleared')
+  it('shows "None" for an empty due date on either side', () => {
+    expect(describe_(change({ field: 'dueDate', newValue: '2026-08-20' }))).toEqual({
+      label: 'Due date',
+      from: 'None',
+      to: '2026-08-20',
+    })
   })
 
-  it('distinguishes blocking from unblocking', () => {
-    expect(format(change({ field: 'blockedReason', newValue: 'Waiting on review' }))).toBe(
-      'Blocked: Waiting on review'
-    )
-    expect(format(change({ field: 'blockedReason', oldValue: 'Waiting on review' }))).toBe(
-      'Unblocked'
-    )
+  it('shows "None" for a cleared blocked reason', () => {
+    expect(describe_(change({ field: 'blockedReason', oldValue: 'Waiting on review' }))).toEqual({
+      label: 'Blocked reason',
+      from: 'Waiting on review',
+      to: 'None',
+    })
   })
 
-  it('distinguishes linking a branch from unlinking one', () => {
-    expect(format(change({ field: 'linkedBranch', newValue: 'feature/x' }))).toBe(
-      'Linked to branch feature/x'
-    )
-    expect(format(change({ field: 'linkedBranch', oldValue: 'feature/x' }))).toBe('Branch unlinked')
+  it('shows "None" for an unlinked branch', () => {
+    expect(describe_(change({ field: 'linkedBranch', oldValue: 'feature/x' }))).toEqual({
+      label: 'Linked branch',
+      from: 'feature/x',
+      to: 'None',
+    })
   })
 
-  it('reads the archived flag off newValue', () => {
-    expect(format(change({ field: 'archived', oldValue: 'false', newValue: 'true' }))).toBe(
-      'Archived'
-    )
-    expect(format(change({ field: 'archived', oldValue: 'true', newValue: 'false' }))).toBe(
-      'Unarchived'
-    )
-  })
-
-  it('reports free-text fields as changed without echoing their content', () => {
-    expect(format(change({ field: 'description' }))).toBe('Description updated')
-    expect(format(change({ field: 'dod' }))).toBe('Definition of Done updated')
+  it('reads the archived flag as Yes/No', () => {
+    expect(describe_(change({ field: 'archived', oldValue: 'false', newValue: 'true' }))).toEqual({
+      label: 'Archived',
+      from: 'No',
+      to: 'Yes',
+    })
   })
 
   it('resolves tag ids to their names, comma-joined', () => {
-    expect(format(change({ field: 'tagIds', newValue: 't1' }))).toBe('Tags changed to Urgent')
+    expect(describe_(change({ field: 'tagIds', oldValue: 't1', newValue: '' }))).toEqual({
+      label: 'Tags',
+      from: 'Urgent',
+      to: 'None',
+    })
   })
 
-  it('shows a new comment’s body', () => {
-    expect(format(change({ field: 'comment', newValue: 'Looks good' }))).toBe(
-      'Commented: "Looks good"'
-    )
+  it('reports free-text fields as a note rather than a value pair', () => {
+    expect(describe_(change({ field: 'description' }))).toEqual({
+      label: 'Description',
+      note: 'Description updated',
+    })
+    expect(describe_(change({ field: 'dod' }))).toEqual({
+      label: 'Definition of Done',
+      note: 'Definition of Done updated',
+    })
   })
 
-  it('falls back to a generic sentence for an unrecognized field', () => {
-    expect(format(change({ field: 'somethingNew' }))).toBe('somethingNew updated')
+  it('falls back to the raw field name for an unrecognized field', () => {
+    expect(describe_(change({ field: 'somethingNew', newValue: 'x' }))).toEqual({
+      label: 'somethingNew',
+      from: 'None',
+      to: 'x',
+    })
   })
 })

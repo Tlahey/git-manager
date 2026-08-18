@@ -2,8 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@git-manager/u
 import { CardTitleField } from './CardTitleField'
 import { CardDescriptionField } from './CardDescriptionField'
 import { CardDodSection } from './CardDodSection'
-import { CardCommentsSection } from './CardCommentsSection'
-import { CardHistorySection } from './CardHistorySection'
+import { CardActivitySection } from './CardActivitySection'
 import { CardMetaSidebar } from './CardMetaSidebar'
 import { CardActionsMenu } from './CardActionsMenu'
 import { CardKindIcon } from './CardKindIcon'
@@ -127,23 +126,18 @@ export function EditCardDialog({
               />
             )}
 
-            <CardCommentsSection
+            <CardActivitySection
               comments={comments}
-              loading={commentsLoading}
+              commentsLoading={commentsLoading}
               onSubmit={onAddComment}
               repoPath={repoPath}
               attachmentUrlPrefix={attachmentUrlPrefix}
               disabled={readOnly}
+              history={history}
+              historyLoading={historyLoading}
+              columns={columns ?? []}
+              tags={tags}
             />
-
-            {history && (
-              <CardHistorySection
-                history={history}
-                loading={historyLoading}
-                columns={columns ?? []}
-                tags={tags}
-              />
-            )}
           </div>
 
           {/* One step darker than the content column, so the split reads as depth rather than as one
