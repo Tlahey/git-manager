@@ -77,7 +77,11 @@ export interface EditProps extends BoardCardDialogProps {
   onCreateTag?: (name: string) => Promise<BoardTag | null>
   comments: BoardComment[]
   commentsLoading?: boolean
-  onAddComment: (body: string) => Promise<unknown>
+  onAddComment: (body: string, parentCommentId?: string) => Promise<unknown>
+  /** Whether replying to a comment is offered at all — omitted/false for a card whose comments live
+   * on GitHub (a remote board, or a card tracked to an issue on a local one). Threading is a
+   * local-board-only concept; there is deliberately no UI entrypoint for it otherwise. */
+  repliesEnabled?: boolean
   /** The card's activity feed — local-only, so omitted entirely for a remote (GitHub-backed) card,
    * the same way `columns`/`boardName` are omitted for a card rendered outside a board. */
   history?: CardHistoryEntry[]

@@ -528,8 +528,33 @@ describe('addComment', () => {
       comments: 1,
     })
 
-    const card = await backend.addComment(path, 'b1', '7', 'Looks good', 'r1')
+    const card = await backend.addComment(path, 'b1', '7', 'Looks good', undefined, 'r1')
     expect(card.columnId).toBe('todo')
+
+    expect(issuesMocked.createIssueComment).toHaveBeenCalledWith(
+      'acme',
+      'widgets',
+      7,
+      'Looks good',
+      'gh-token'
+    )
+  })
+
+  /** GitHub's issue-comment API has no reply concept surfaced here — the UI never offers a reply
+   * affordance on a tracked card, so a parent id, if one somehow arrived, is simply never used. */
+  it('accepts a parent comment id and never forwards it to GitHub', async () => {
+    issuesMocked.createIssueComment.mockResolvedValue(undefined)
+    issuesMocked.fetchIssueDetail.mockResolvedValue({
+      number: 7,
+      title: 'Do the thing',
+      body: '',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      labels: [{ name: 'board:b1:status:todo' }],
+      assignees: [],
+      comments: 1,
+    })
+
+    await backend.addComment(path, 'b1', '7', 'Looks good', 'parent-1', 'r1')
 
     expect(issuesMocked.createIssueComment).toHaveBeenCalledWith(
       'acme',

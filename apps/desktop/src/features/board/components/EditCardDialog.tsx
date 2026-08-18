@@ -46,6 +46,7 @@ export function EditCardDialog({
   comments,
   commentsLoading,
   onAddComment,
+  repliesEnabled,
   history,
   historyLoading,
   onCreateBranch,
@@ -130,6 +131,7 @@ export function EditCardDialog({
               comments={comments}
               commentsLoading={commentsLoading}
               onSubmit={onAddComment}
+              repliesEnabled={repliesEnabled}
               repoPath={repoPath}
               attachmentUrlPrefix={attachmentUrlPrefix}
               disabled={readOnly}

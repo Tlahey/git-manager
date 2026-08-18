@@ -106,12 +106,61 @@ describe('CardActivitySection', () => {
     const onSubmit = renderSection({ history: [] })
     await userEvent.type(screen.getByTestId('card-comment-input'), 'Nice work')
     await userEvent.click(screen.getByTestId('card-comment-submit'))
-    expect(onSubmit).toHaveBeenCalledWith('Nice work')
+    expect(onSubmit).toHaveBeenCalledWith('Nice work', undefined)
     await waitFor(() => expect(screen.getByTestId('card-comment-input')).toHaveValue(''))
   })
 
   it('counts every item, comments and history together', () => {
     renderSection({ comments: [comment()], history: [entry()] })
     expect(screen.getByText('2')).toBeInTheDocument()
+  })
+
+  it('nests replies under their parent on the Comments tab', () => {
+    const parent = comment({ id: 'p1' })
+    const reply = comment({ id: 'r1', author: 'Grace', parentCommentId: 'p1' })
+    renderSection({ comments: [parent, reply] })
+    expect(screen.getByTestId('card-comment-p1')).toBeInTheDocument()
+    expect(screen.getByTestId('card-comment-r1')).toBeInTheDocument()
+  })
+
+  it('clicking Reply shows the target chip and threads the parent id through onSubmit', async () => {
+    const parent = comment({ id: 'p1', author: 'Grace' })
+    const onSubmit = renderSection({ comments: [parent], repliesEnabled: true })
+
+    await userEvent.click(screen.getByTestId('card-comment-reply-p1'))
+    expect(screen.getByTestId('card-comment-reply-target')).toHaveTextContent('Replying to Grace')
+
+    await userEvent.type(screen.getByTestId('card-comment-input'), 'Agreed')
+    await userEvent.click(screen.getByTestId('card-comment-submit'))
+    expect(onSubmit).toHaveBeenCalledWith('Agreed', 'p1')
+    await waitFor(() =>
+      expect(screen.queryByTestId('card-comment-reply-target')).not.toBeInTheDocument()
+    )
+  })
+
+  it('dismissing the reply chip clears it without submitting', async () => {
+    const parent = comment({ id: 'p1', author: 'Grace' })
+    const onSubmit = renderSection({ comments: [parent], repliesEnabled: true })
+
+    await userEvent.click(screen.getByTestId('card-comment-reply-p1'))
+    expect(screen.getByTestId('card-comment-reply-target')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('card-comment-reply-cancel'))
+    expect(screen.queryByTestId('card-comment-reply-target')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows no reply buttons anywhere when repliesEnabled is not set', () => {
+    renderSection({ comments: [comment()] })
+    expect(screen.queryByTestId('card-comment-reply-k1')).not.toBeInTheDocument()
+  })
+
+  it('shows the "replying to" pointer on the All tab, never a reply button', () => {
+    const parent = comment({ id: 'p1', author: 'Grace' })
+    const reply = comment({ id: 'r1', parentCommentId: 'p1' })
+    renderSection({ comments: [parent, reply], history: [], repliesEnabled: true })
+    expect(screen.getByText('↳ replying to Grace')).toBeInTheDocument()
+    expect(screen.queryByTestId('card-comment-reply-p1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('card-comment-reply-r1')).not.toBeInTheDocument()
   })
 })

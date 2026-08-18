@@ -239,6 +239,17 @@ describe('useBoardCardActions — tracked cards', () => {
     expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'acct')
     expect(localBackend.addComment).not.toHaveBeenCalled()
   })
+
+  /** Threading has no GitHub-facing equivalent, so a reply's parent id is silently dropped for a
+   * tracked card rather than sent anywhere — the UI never offers a reply affordance here either. */
+  it('drops the parent comment id when posting to a tracked issue', async () => {
+    createIssueComment.mockResolvedValue(undefined)
+    const { result } = renderActions(local, [local], () => ref)
+
+    await result.current.addComment(makeCard(), 'Looks good', 'parent-1')
+    expect(createIssueComment).toHaveBeenCalledWith('acme', 'widgets', 42, 'Looks good', 'acct')
+    expect(localBackend.addComment).not.toHaveBeenCalled()
+  })
 })
 
 describe('useBoardCardActions — duplicateCard', () => {
@@ -539,7 +550,29 @@ describe('useBoardCardActions — addComment', () => {
     const { result } = renderActions()
 
     await result.current.addComment(makeCard(), '  Looks good  ')
-    expect(localBackend.addComment).toHaveBeenCalledWith(path, 'b1', 'c1', 'Looks good', 'rev-1')
+    expect(localBackend.addComment).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      'Looks good',
+      undefined,
+      'rev-1'
+    )
+  })
+
+  it('forwards a reply’s parent comment id to the local backend', async () => {
+    localBackend.addComment.mockResolvedValue(makeCard())
+    const { result } = renderActions()
+
+    await result.current.addComment(makeCard(), 'Agreed', 'parent-1')
+    expect(localBackend.addComment).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      'Agreed',
+      'parent-1',
+      'rev-1'
+    )
   })
 })
 

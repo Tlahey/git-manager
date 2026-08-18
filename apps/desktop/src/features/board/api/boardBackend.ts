@@ -86,12 +86,16 @@ export interface BoardBackend {
     patch: BoardCardPatch,
     expectedRevision: string
   ): Promise<BoardCard>
-  /** Comments are append-only, which is why they're their own call rather than part of a patch. */
+  /** Comments are append-only, which is why they're their own call rather than part of a patch.
+   * `parentCommentId` threads a reply — local-board only; the remote backend accepts and ignores it
+   * (GitHub's issue-comment API has no reply concept surfaced here), so no UI should ever offer a
+   * reply affordance on a card whose comments come from GitHub. */
   addComment(
     path: string,
     boardId: string,
     cardId: string,
     body: string,
+    parentCommentId: string | undefined,
     expectedRevision: string
   ): Promise<BoardCard>
   moveCard(

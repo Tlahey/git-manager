@@ -46,4 +46,27 @@ describe('buildActivityTimeline', () => {
     const timeline = buildActivityTimeline([comment()], [entry()])
     expect(timeline.map((item) => item.type).sort()).toEqual(['comment', 'history'])
   })
+
+  it("resolves a reply's replyingToAuthor from its parent comment", () => {
+    const parent = comment({ id: 'p1', author: 'Grace' })
+    const reply = comment({ id: 'r1', author: 'Ada', parentCommentId: 'p1' })
+
+    const timeline = buildActivityTimeline([parent, reply], [])
+
+    const replyItem = timeline.find((item) => item.type === 'comment' && item.comment.id === 'r1')
+    expect(replyItem?.type === 'comment' && replyItem.replyingToAuthor).toBe('Grace')
+  })
+
+  it('leaves replyingToAuthor undefined for a top-level comment', () => {
+    const timeline = buildActivityTimeline([comment()], [])
+    const item = timeline[0]
+    expect(item.type === 'comment' && item.replyingToAuthor).toBeUndefined()
+  })
+
+  it("leaves replyingToAuthor undefined when the reply's parent isn't in the comment list", () => {
+    const reply = comment({ id: 'r1', parentCommentId: 'missing' })
+    const timeline = buildActivityTimeline([reply], [])
+    const item = timeline[0]
+    expect(item.type === 'comment' && item.replyingToAuthor).toBeUndefined()
+  })
 })

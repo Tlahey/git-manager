@@ -197,10 +197,18 @@ pub async fn add_board_card_comment(
     board_id: String,
     card_id: String,
     body: String,
+    parent_comment_id: Option<String>,
     expected_revision: String,
 ) -> Result<BoardCard, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_board::add_card_comment(&repo, &board_id, &card_id, &body, &expected_revision)
+    git_board::add_card_comment(
+        &repo,
+        &board_id,
+        &card_id,
+        &body,
+        parent_comment_id.as_deref(),
+        &expected_revision,
+    )
 }
 
 #[tauri::command]

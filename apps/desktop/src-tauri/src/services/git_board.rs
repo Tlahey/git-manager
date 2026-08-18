@@ -683,11 +683,18 @@ pub fn update_card(
 /// Appends a comment to a card. The author is taken from the repository's own git signature rather
 /// than from the caller: a comment records who the repo says is committing, which the frontend has
 /// no business asserting.
+///
+/// `parent_comment_id`, when present, must reference a comment that already exists on this card —
+/// otherwise the thread a client would render doesn't match anything anyone could look up. Because a
+/// reply's parent has to exist at write time, the normal write path can never produce a cycle; a
+/// hand-edited card file is the only way to fake one, and that's guarded defensively on the render
+/// side (`commentThreads.ts`) instead of here.
 pub fn add_card_comment(
     repo: &Repository,
     board_id: &str,
     card_id: &str,
     body: &str,
+    parent_comment_id: Option<&str>,
     expected_revision: &str,
 ) -> Result<BoardCard, String> {
     let tip = read_state(repo, board_id)?
@@ -701,14 +708,32 @@ pub fn add_card_comment(
         .position(|c| c.id == card_id)
         .ok_or_else(|| String::from(AppError::CardNotFound(card_id.to_string())))?;
 
+    if let Some(parent_id) = parent_comment_id {
+        if !cards[idx].comments.iter().any(|c| c.id == parent_id) {
+            return Err(String::from(AppError::CommentNotFound(
+                parent_id.to_string(),
+            )));
+        }
+    }
+
     let signature = get_git_signature(repo)?;
     let author = signature.name().unwrap_or("unknown").to_string();
     let now = now_iso();
+
+    // `generate_id` was never load-bearing as a reference target before this — a collision only
+    // ever cost a duplicate React key. Now that `parent_comment_id` can point at it, guard the
+    // (still astronomically unlikely) case defensively before pushing.
+    let mut id = generate_id(card_id);
+    while cards[idx].comments.iter().any(|c| c.id == id) {
+        id = generate_id(card_id);
+    }
+
     cards[idx].comments.push(BoardComment {
-        id: generate_id(card_id),
+        id,
         author,
         body: body.to_string(),
         created_at: now.clone(),
+        parent_comment_id: parent_comment_id.map(str::to_string),
     });
     cards[idx].updated_at = now;
 
@@ -2467,12 +2492,105 @@ mod tests {
         )
         .unwrap();
 
-        let commented =
-            add_card_comment(&repo, &board.id, &card.id, "Looks good", &card.revision).unwrap();
+        let commented = add_card_comment(
+            &repo,
+            &board.id,
+            &card.id,
+            "Looks good",
+            None,
+            &card.revision,
+        )
+        .unwrap();
 
         assert_eq!(commented.comments.len(), 1);
         assert_eq!(commented.comments[0].author, "Ada");
         assert_eq!(commented.comments[0].body, "Looks good");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_reply_carries_its_parent_comment_id() {
+        let (dir, repo) = init_repo("reply-parent-id");
+        repo.config().unwrap().set_str("user.name", "Ada").unwrap();
+        repo.config()
+            .unwrap()
+            .set_str("user.email", "ada@example.com")
+            .unwrap();
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Task".to_string(),
+                prefix: "GM".to_string(),
+                kind: "task".to_string(),
+                source_issue: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let first = add_card_comment(
+            &repo,
+            &board.id,
+            &card.id,
+            "Looks good",
+            None,
+            &card.revision,
+        )
+        .unwrap();
+        let parent_id = first.comments[0].id.clone();
+        let replied = add_card_comment(
+            &repo,
+            &board.id,
+            &card.id,
+            "Agreed",
+            Some(&parent_id),
+            &first.revision,
+        )
+        .unwrap();
+
+        assert_eq!(replied.comments.len(), 2);
+        assert_eq!(replied.comments[1].parent_comment_id, Some(parent_id));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn add_card_comment_rejects_an_unknown_parent_id() {
+        let (dir, repo) = init_repo("reply-unknown-parent");
+        repo.config().unwrap().set_str("user.name", "Ada").unwrap();
+        repo.config()
+            .unwrap()
+            .set_str("user.email", "ada@example.com")
+            .unwrap();
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Task".to_string(),
+                prefix: "GM".to_string(),
+                kind: "task".to_string(),
+                source_issue: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let err = add_card_comment(
+            &repo,
+            &board.id,
+            &card.id,
+            "Agreed",
+            Some("does-not-exist"),
+            &card.revision,
+        )
+        .unwrap_err();
+        assert!(err.contains("COMMENT_NOT_FOUND"));
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -2675,6 +2793,7 @@ mod tests {
             &sprint_1.id,
             &leftover.id,
             "blocked on X",
+            None,
             &leftover.revision,
         )
         .unwrap();
@@ -3192,7 +3311,15 @@ mod tests {
         )
         .unwrap();
 
-        add_card_comment(&repo, &board.id, &card.id, "Looks good", &moved.revision).unwrap();
+        add_card_comment(
+            &repo,
+            &board.id,
+            &card.id,
+            "Looks good",
+            None,
+            &moved.revision,
+        )
+        .unwrap();
 
         let history = card_history(&repo, &board.id, &card.id).unwrap();
         assert_eq!(history.len(), 4);

@@ -284,7 +284,8 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           onCreateTag={(name) => createTagAndAssign(editingCard, name)}
           comments={cardComments}
           commentsLoading={commentsLoading}
-          onAddComment={(body) => addComment(editingCard, body)}
+          onAddComment={(body, parentCommentId) => addComment(editingCard, body, parentCommentId)}
+          repliesEnabled={isLocalBoard && !editingCard.sourceIssue}
           history={isLocalBoard ? cardHistory : undefined}
           historyLoading={historyLoading}
           onCreateBranch={async () => {
