@@ -419,6 +419,11 @@ pub struct BoardComment {
     /// Markdown.
     pub body: String,
     pub created_at: String,
+    /// The comment this one replies to, or absent for a top-level comment. Local-board only — a
+    /// comment sourced from GitHub (a card tracked to an issue) never carries one, since GitHub's
+    /// issue-comment API has no reply concept surfaced by this app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_comment_id: Option<String>,
 }
 
 /// A sprint's outcome, frozen onto the board when it is closed. Computed in TypeScript

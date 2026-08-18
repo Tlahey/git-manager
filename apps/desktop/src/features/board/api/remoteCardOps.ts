@@ -167,6 +167,9 @@ export function createCardOps(
     updateCard,
 
     addComment: async (path, boardId, cardId, body) => {
+      // GitHub's issue-comment API has no reply concept surfaced by this app — `parentCommentId`
+      // is accepted only to satisfy `BoardBackend`'s shape and is otherwise ignored. The UI never
+      // offers a reply affordance for a card whose comments live here, so this never receives one.
       const board = await loadBoard(path, boardId)
       await createIssueComment(owner, repo, Number(cardId), body, accountId)
       return readCard(board, Number(cardId))

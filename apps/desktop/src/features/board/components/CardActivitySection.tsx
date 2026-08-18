@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner, cn } from '@git-manager/ui'
 import type { BoardColumn, BoardComment, BoardTag, CardHistoryEntry } from '@git-manager/git-types'
 import { AttachmentTextarea } from './AttachmentTextarea'
 import { CardContentSection } from './CardContentSection'
 import { CardActivityCommentRow } from './CardActivityCommentRow'
+import { CardActivityCommentThread } from './CardActivityCommentThread'
 import { CardActivityHistoryRow } from './CardActivityHistoryRow'
 import { buildActivityTimeline } from '../lib/cardActivityTimeline'
+import { buildCommentThreads } from '../lib/commentThreads'
 
 type ActivityTab = 'all' | 'comments' | 'history'
 const TABS: ActivityTab[] = ['all', 'comments', 'history']
@@ -14,7 +17,10 @@ const TABS: ActivityTab[] = ['all', 'comments', 'history']
 interface CardActivitySectionProps {
   comments: BoardComment[]
   commentsLoading?: boolean
-  onSubmit: (body: string) => Promise<unknown>
+  onSubmit: (body: string, parentCommentId?: string) => Promise<unknown>
+  /** Whether replying to a comment is offered at all — the reply action only ever shows in the
+   * Comments tab (never the flat "All" tab), and only when this is true. Local-board only. */
+  repliesEnabled?: boolean
   repoPath: string
   attachmentUrlPrefix?: string
   disabled?: boolean
@@ -37,6 +43,7 @@ export function CardActivitySection({
   comments,
   commentsLoading,
   onSubmit,
+  repliesEnabled,
   repoPath,
   attachmentUrlPrefix,
   disabled,
@@ -49,9 +56,11 @@ export function CardActivitySection({
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
   const [tab, setTab] = useState<ActivityTab>('all')
+  const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(null)
 
   const hasHistory = history !== undefined
   const timeline = buildActivityTimeline(comments, history ?? [])
+  const commentThreads = buildCommentThreads(comments)
   const activeTab: ActivityTab = hasHistory ? tab : 'comments'
   const items = timeline.filter((item) => {
     if (activeTab === 'all') return true
@@ -68,8 +77,9 @@ export function CardActivitySection({
     if (!draft.trim() || pending) return
     setPending(true)
     try {
-      await onSubmit(draft.trim())
+      await onSubmit(draft.trim(), replyTo?.id)
       setDraft('')
+      setReplyTo(null)
     } catch {
       // Reported by the action layer (`reportWriteFailures`); swallowed here so the rejection isn't
       // an unhandled one, and so the dialog stays open on what the user typed.
@@ -138,6 +148,19 @@ export function CardActivitySection({
           <p className="text-[11px] text-muted-foreground" data-testid="card-activity-empty">
             {emptyLabel}
           </p>
+        ) : activeTab === 'comments' ? (
+          <ul className="space-y-2">
+            {commentThreads.map((node) => (
+              <CardActivityCommentThread
+                key={node.comment.id}
+                node={node}
+                depth={0}
+                repoPath={repoPath}
+                repliesEnabled={Boolean(repliesEnabled)}
+                onReply={(comment) => setReplyTo({ id: comment.id, author: comment.author })}
+              />
+            ))}
+          </ul>
         ) : (
           <ul className="space-y-2">
             {items.map((item) =>
@@ -146,6 +169,7 @@ export function CardActivitySection({
                   key={`comment-${item.comment.id}`}
                   comment={item.comment}
                   repoPath={repoPath}
+                  replyingToAuthor={item.replyingToAuthor}
                 />
               ) : (
                 <CardActivityHistoryRow
@@ -161,6 +185,23 @@ export function CardActivitySection({
 
         {activeTab !== 'history' && (
           <>
+            {repliesEnabled && replyTo && (
+              <div
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                data-testid="card-comment-reply-target"
+              >
+                <span>{t('card.comments.replyingTo', { author: replyTo.author })}</span>
+                <button
+                  type="button"
+                  onClick={() => setReplyTo(null)}
+                  aria-label={t('card.comments.cancelReply')}
+                  className="cursor-pointer hover:text-foreground"
+                  data-testid="card-comment-reply-cancel"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
             <AttachmentTextarea
               value={draft}
               onChange={setDraft}

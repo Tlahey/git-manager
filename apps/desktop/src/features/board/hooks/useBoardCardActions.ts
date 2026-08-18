@@ -326,11 +326,17 @@ export function useBoardCardActions({
     return patched
   }
 
-  async function addComment(card: BoardCard, body: string): Promise<BoardCard | null> {
+  async function addComment(
+    card: BoardCard,
+    body: string,
+    parentCommentId?: string
+  ): Promise<BoardCard | null> {
     if (!activeBoard || !body.trim()) return null
 
     // A tracked card's discussion belongs to its issue: a comment written here has to be the same
-    // comment someone reads on github.com, or the two threads quietly diverge.
+    // comment someone reads on github.com, or the two threads quietly diverge. Threading has no
+    // GitHub-facing equivalent here, so a reply's parent is silently dropped rather than branched on
+    // — the UI never sets one for a tracked card in the first place.
     const ref = trackedRef(card)
     if (ref) {
       await createIssueComment(ref.owner, ref.repo, ref.number, body.trim(), accountId!)
@@ -344,6 +350,7 @@ export function useBoardCardActions({
         activeBoard.id,
         card.id,
         body.trim(),
+        parentCommentId,
         card.revision
       )
     )

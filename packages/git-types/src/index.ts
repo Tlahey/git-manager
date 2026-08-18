@@ -628,6 +628,10 @@ export interface BoardComment {
   /** Markdown. */
   body: string
   createdAt: string
+  /** The comment this one replies to, or absent for a top-level comment. Local-board only — a
+   * comment sourced from GitHub (a card tracked to an issue) never carries one, since GitHub's
+   * issue-comment API has no reply concept surfaced by this app. */
+  parentCommentId?: string
 }
 
 /** What kind of work a card stands for. An epic is the one that groups others. */

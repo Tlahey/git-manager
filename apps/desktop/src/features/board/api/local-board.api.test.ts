@@ -11,6 +11,7 @@ vi.mock('../../../lib/tauri', async () => {
     deleteBoard: vi.fn(),
     createBoardCard: vi.fn(),
     updateBoardCard: vi.fn(),
+    addBoardCardComment: vi.fn(),
     moveBoardCard: vi.fn(),
     deleteBoardCard: vi.fn(),
     assignBoardCardIdentifiers: vi.fn(),
@@ -112,6 +113,22 @@ describe('localBoardBackend', () => {
 
     await localBoardBackend.deleteCard(path, 'b1', 'c1')
     expect(mocked.deleteBoardCard).toHaveBeenCalledWith(path, 'b1', 'c1')
+  })
+
+  it('forwards addComment with the parent comment id in position', async () => {
+    mocked.addBoardCardComment.mockResolvedValue('commented-card')
+
+    await expect(
+      localBoardBackend.addComment(path, 'b1', 'c1', 'body', 'parent-1', 'rev-1')
+    ).resolves.toBe('commented-card')
+    expect(mocked.addBoardCardComment).toHaveBeenCalledWith(
+      path,
+      'b1',
+      'c1',
+      'body',
+      'parent-1',
+      'rev-1'
+    )
   })
 
   /** The retrofit for a board created before it offered a prefix — one command, one board commit,

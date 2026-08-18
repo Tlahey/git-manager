@@ -38,6 +38,8 @@ pub enum AppError {
     BoardAlreadyExists(String),
     #[error("Card not found: {0}")]
     CardNotFound(String),
+    #[error("Comment not found: {0}")]
+    CommentNotFound(String),
     /// A board/card mutation was rejected because the ref moved since the caller last read it
     /// (`Repository::reference_matching` returned `GIT_EMODIFIED`) — someone else wrote first.
     #[error("Board changed since it was last read: {0}")]
@@ -96,6 +98,7 @@ impl From<AppError> for String {
             AppError::BoardNotFound(_) => ("BOARD_NOT_FOUND", e.to_string()),
             AppError::BoardAlreadyExists(_) => ("BOARD_ALREADY_EXISTS", e.to_string()),
             AppError::CardNotFound(_) => ("CARD_NOT_FOUND", e.to_string()),
+            AppError::CommentNotFound(_) => ("COMMENT_NOT_FOUND", e.to_string()),
             AppError::BoardConflict(_) => ("BOARD_CONFLICT", e.to_string()),
             AppError::AiProvider(_) => ("AI_PROVIDER_ERROR", e.to_string()),
             AppError::AiTimeout(_) => ("AI_TIMEOUT", e.to_string()),

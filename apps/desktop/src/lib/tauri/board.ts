@@ -109,14 +109,24 @@ export const moveBoardCard = (
 ) =>
   invoke<BoardCard>('move_board_card', { path, boardId, cardId, columnId, order, expectedRevision })
 
-/** The comment's author is stamped in Rust from the repo's git signature, so none is passed here. */
+/** The comment's author is stamped in Rust from the repo's git signature, so none is passed here.
+ * `parentCommentId` threads a reply to another comment on the same card — local-board only. */
 export const addBoardCardComment = (
   path: string,
   boardId: string,
   cardId: string,
   body: string,
+  parentCommentId: string | undefined,
   expectedRevision: string
-) => invoke<BoardCard>('add_board_card_comment', { path, boardId, cardId, body, expectedRevision })
+) =>
+  invoke<BoardCard>('add_board_card_comment', {
+    path,
+    boardId,
+    cardId,
+    body,
+    parentCommentId,
+    expectedRevision,
+  })
 
 export const deleteBoardCard = (path: string, boardId: string, cardId: string) =>
   invoke<void>('delete_board_card', { path, boardId, cardId })

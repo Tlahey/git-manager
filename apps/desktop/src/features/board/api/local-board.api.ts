@@ -45,8 +45,8 @@ export const localBoardBackend: BoardBackend = {
   createCard: (path, boardId, columnId, card) => createBoardCard(path, boardId, columnId, card),
   updateCard: (path, boardId, cardId, patch, expectedRevision) =>
     updateBoardCard(path, boardId, cardId, patch, expectedRevision),
-  addComment: (path, boardId, cardId, body, expectedRevision) =>
-    addBoardCardComment(path, boardId, cardId, body, expectedRevision),
+  addComment: (path, boardId, cardId, body, parentCommentId, expectedRevision) =>
+    addBoardCardComment(path, boardId, cardId, body, parentCommentId, expectedRevision),
   moveCard: (path, boardId, cardId, columnId, order, expectedRevision) =>
     moveBoardCard(path, boardId, cardId, columnId, order, expectedRevision),
   moveCardsToBoard: (path, fromBoardId, toBoardId, cardIds, toColumnId) =>

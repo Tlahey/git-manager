@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { BoardComment } from '@git-manager/git-types'
 import { CardActivityCommentRow } from './CardActivityCommentRow'
 
@@ -21,8 +22,26 @@ describe('CardActivityCommentRow', () => {
     expect(screen.getByText('bold')).toBeInTheDocument()
   })
 
-  it('offers no way to edit or delete a comment — comments are append-only', () => {
+  it('offers no way to edit or delete a comment, only to reply — comments are append-only', () => {
     render(<CardActivityCommentRow comment={comment()} repoPath="/repo" />)
+    expect(screen.getByTestId('card-comment-k1').querySelectorAll('button')).toHaveLength(0)
+  })
+
+  it('renders a reply button and invokes onReply when clicked', async () => {
+    const user = userEvent.setup()
+    const onReply = vi.fn()
+    render(<CardActivityCommentRow comment={comment()} repoPath="/repo" onReply={onReply} />)
+
+    const buttons = screen.getByTestId('card-comment-k1').querySelectorAll('button')
+    expect(buttons).toHaveLength(1)
+
+    await user.click(screen.getByTestId('card-comment-reply-k1'))
+    expect(onReply).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a "replying to" pointer instead of a reply button', () => {
+    render(<CardActivityCommentRow comment={comment()} repoPath="/repo" replyingToAuthor="Grace" />)
+    expect(screen.getByText('↳ replying to Grace')).toBeInTheDocument()
     expect(screen.getByTestId('card-comment-k1').querySelectorAll('button')).toHaveLength(0)
   })
 })
