@@ -613,6 +613,32 @@ fn notch_panel_enabled() -> bool {
     }
 }
 
+// The panel class the notch window is re-classed into by `make_notch_window_nonactivating` below.
+// (A plain comment, not a doc comment: rustdoc cannot attach documentation to a macro invocation —
+// see `panel!`'s own doc comment in the `tauri-nspanel` crate for what this expands to.)
+//
+// Declared via `tauri_nspanel`'s `panel!` macro rather than by hand: the macro's `objc2::define_class!`
+// expansion is what the plugin itself uses for its own panel type, so following it here keeps this
+// integration exercising the same code path the plugin ships and tests, not a bespoke one. Only
+// `can_become_key_window` is overridden — matching the plugin's own pre-#385 default panel class,
+// which always answered `true` there and left `canBecomeMainWindow` at `NSPanel`'s own default
+// (`false`) — so the card still becomes key (buttons and text still receive events) without ever
+// becoming the app's main window.
+//
+// `Manager` has to be in scope here, at the invocation site: the macro's expansion calls
+// `window.app_handle()`, a trait method, and macro hygiene resolves trait scope at the call site,
+// not inside the macro's own crate.
+#[cfg(target_os = "macos")]
+use tauri::Manager as _;
+#[cfg(target_os = "macos")]
+tauri_nspanel::tauri_panel! {
+    panel!(NotchPanel {
+        config: {
+            can_become_key_window: true,
+        }
+    })
+}
+
 /// Turns the notch window into a nonactivating `NSPanel`, so that clicking the card does not drag
 /// the whole application in front of the user.
 ///
@@ -650,11 +676,14 @@ fn notch_panel_enabled() -> bool {
 ///
 /// ## The one integration trap
 ///
-/// The plugin's panel class re-implements `canBecomeKeyWindow` but declares **no `focusable` ivar**,
-/// where tao's window class has one. `WebviewWindow::set_focusable` writes that ivar *by name*, so
-/// calling it on a converted window would not merely misbehave — it would abort the process. The
-/// frontend therefore asks this first and skips `setFocusable` whenever it answers `true`
-/// (`notchWindow.ts`). Nothing else may call `set_focusable` on this window.
+/// The [`NotchPanel`] class declares **no `focusable` ivar**, where tao's window class has one.
+/// `WebviewWindow::set_focusable` writes that ivar *by name*, so calling it on a converted window
+/// would not merely misbehave — it would abort the process. The frontend therefore asks this first
+/// and skips `setFocusable` whenever it answers `true` (`notchWindow.ts`). Nothing else may call
+/// `set_focusable` on this window. Re-checked against the `objc2`-based plugin rev pulled in by
+/// #385: its `panel!` macro still generates an empty ivars struct and overrides
+/// `canBecomeKeyWindow`/`canBecomeMainWindow` as compile-time constants rather than reading any
+/// ivar, so the trap is unchanged.
 ///
 /// Returns whether the window is now a nonactivating panel. `false` is the ordinary answer, and the
 /// caller's cue that the old, key-window-based handling still applies.
@@ -666,11 +695,11 @@ pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> 
     #[cfg(target_os = "macos")]
     {
         use tauri::Manager;
+        // The re-exported `objc2_app_kit`, not this crate's own dependency of the same name: the
+        // plugin's `Panel::set_style_mask` takes its *own* version's `NSWindowStyleMask`, and passing
+        // a value built from a different `objc2-app-kit` version would not type-check.
+        use tauri_nspanel::objc2_app_kit::NSWindowStyleMask;
         use tauri_nspanel::{ManagerExt, WebviewWindowExt};
-
-        // `NSWindowStyleMaskNonactivatingPanel`. Only a panel may carry it, which is the entire
-        // reason the class has to change at all.
-        const NONACTIVATING_PANEL: i32 = 1 << 7;
 
         if !notch_panel_enabled() {
             return false;
@@ -685,7 +714,7 @@ pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> 
                     eprintln!("[notch] no window labelled {label} to turn into a panel");
                     return false;
                 };
-                match window.to_panel() {
+                match window.to_panel::<NotchPanel>() {
                     Ok(panel) => panel,
                     Err(e) => {
                         eprintln!("[notch] could not turn the card into a panel: {e:?}");
@@ -695,7 +724,7 @@ pub fn make_notch_window_nonactivating(app: tauri::AppHandle, label: String) -> 
             }
         };
 
-        panel.set_style_mask(NONACTIVATING_PANEL);
+        panel.set_style_mask(NSWindowStyleMask::NonactivatingPanel);
         // A panel's own default is to disappear whenever its application is deactivated — which for
         // a card raised *because* the user is elsewhere would mean never being seen at all.
         panel.set_hides_on_deactivate(false);
