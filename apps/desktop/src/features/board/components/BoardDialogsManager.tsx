@@ -20,6 +20,8 @@ import { cardIdentifier } from '../lib/cardMeta'
 import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
+import { useCardHistory } from '../hooks/useCardHistory'
+import { apiGetCardHistory } from '../api/local-board.api'
 import { useOpenPrCreateForBranch } from '../../../hooks/useOpenPrCreateForBranch'
 import type { BoardDialogs } from '../stores/boardDialogs.store'
 
@@ -91,6 +93,14 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
   const { comments: cardComments, loading: commentsLoading } = useCardComments(
     editingCard,
     loadComments
+  )
+  // Local-only: a remote (GitHub-backed) card has no ref to walk, so the hook is only fed a card
+  // when the active board is local — the same gate `apiGetCardHistory` itself has no way to enforce
+  // (it only sees a path/board id/card id, not which backend the caller is on).
+  const isLocalBoard = activeBoard?.source === 'local'
+  const { history: cardHistory, loading: historyLoading } = useCardHistory(
+    isLocalBoard ? editingCard : null,
+    (card) => apiGetCardHistory(repoPath, card.boardId, card.id)
   )
   const openPrCreateForBranch = useOpenPrCreateForBranch()
   /** Guards the branch check here rather than inside `useOpenPrCreateForBranch` itself, the same
@@ -275,6 +285,8 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           comments={cardComments}
           commentsLoading={commentsLoading}
           onAddComment={(body) => addComment(editingCard, body)}
+          history={isLocalBoard ? cardHistory : undefined}
+          historyLoading={historyLoading}
           onCreateBranch={async () => {
             const branchName = branchNameForCard(editingCard.title)
             await apiCreateAndCheckoutBranch(repoPath, branchName, 'HEAD')

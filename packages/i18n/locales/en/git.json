@@ -816,6 +816,7 @@
   "clipboard.copyFailed": "Could not copy {{what}}",
   "clipboard.what.sha": "SHA",
   "clipboard.what.path": "Path",
+  "clipboard.what.text": "Text",
   "cloneDialog.title": "Clone a repository",
   "cloneDialog.description": "Enter the remote repository URL and choose where to clone it.",
   "cloneDialog.urlLabel": "Repository URL",

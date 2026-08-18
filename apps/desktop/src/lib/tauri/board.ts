@@ -5,6 +5,7 @@ import type {
   BoardColumn,
   BoardCard,
   BoardCardPatch,
+  CardHistoryEntry,
   NewBoardCard,
   BoardTag,
   BoardWithCards,
@@ -141,6 +142,9 @@ export const assignBoardCardIdentifiers = (path: string, boardId: string, prefix
 
 export const getBoardHistory = (path: string, boardId: string) =>
   invoke<GitCommit[]>('get_board_history', { path, boardId })
+
+export const getCardHistory = (path: string, boardId: string, cardId: string) =>
+  invoke<CardHistoryEntry[]>('get_card_history', { path, boardId, cardId })
 
 export const listRecoverableBoards = (path: string) =>
   invoke<Board[]>('list_recoverable_boards', { path })

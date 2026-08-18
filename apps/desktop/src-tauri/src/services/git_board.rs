@@ -38,15 +38,15 @@
 
 use crate::error::AppError;
 use crate::models::{
-    Board, BoardCard, BoardCardPatch, BoardColumn, BoardComment, BoardTag, GitCommit, NewBoardCard,
-    SprintSummary, LOCAL_BOARD_SOURCE,
+    Board, BoardCard, BoardCardPatch, BoardColumn, BoardComment, BoardTag, CardFieldChange,
+    CardHistoryEntry, GitCommit, NewBoardCard, SprintSummary, LOCAL_BOARD_SOURCE,
 };
-use crate::utils::{commit_to_model, get_git_signature, repo_slug};
+use crate::utils::{commit_to_model, get_git_signature, repo_slug, short_oid};
 use chrono::Utc;
-use git2::{ErrorCode, Oid, Repository, Tree};
+use git2::{Delta, DiffOptions, ErrorCode, Oid, Repository, Sort, Tree};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -134,6 +134,27 @@ fn read_cards(repo: &Repository, tree: &Tree) -> Result<Vec<BoardCard>, String> 
     }
     cards.sort_by(|a, b| a.column_id.cmp(&b.column_id).then(a.order.cmp(&b.order)));
     Ok(cards)
+}
+
+/// Reads one card's blob out of an arbitrary (possibly historical) tree — `card_history`'s way of
+/// looking at a card as it stood in a past commit, as opposed to `read_cards`, which always reads
+/// every card in the board's *current* tree.
+fn read_card_at(
+    repo: &Repository,
+    tree: &Tree,
+    card_id: &str,
+) -> Result<Option<BoardCard>, String> {
+    let Some(cards_entry) = tree.get_name(CARDS_DIR) else {
+        return Ok(None);
+    };
+    let cards_tree = repo.find_tree(cards_entry.id()).map_err(AppError::Git)?;
+    let Some(entry) = cards_tree.get_name(&format!("{card_id}.json")) else {
+        return Ok(None);
+    };
+    let blob = repo.find_blob(entry.id()).map_err(AppError::Git)?;
+    let card: BoardCard = serde_json::from_slice(blob.content())
+        .map_err(|e| String::from(AppError::Unknown(format!("corrupt card blob: {e}"))))?;
+    Ok(Some(card))
 }
 
 /// Lists every local board in the repo, newest-name-first ordering left to the caller — sorted here
@@ -1189,6 +1210,193 @@ pub fn board_history(repo: &Repository, board_id: &str) -> Result<Vec<GitCommit>
         history.push(commit_to_model(&commit));
     }
     Ok(history)
+}
+
+fn history_entry(
+    commit: &git2::Commit,
+    kind: &str,
+    changes: Vec<CardFieldChange>,
+) -> CardHistoryEntry {
+    let author = commit.author();
+    let oid = commit.id().to_string();
+    CardHistoryEntry {
+        short_oid: short_oid(&oid),
+        oid,
+        author_name: author.name().unwrap_or("").to_string(),
+        author_email: author.email().unwrap_or("").to_string(),
+        timestamp: author.when().seconds(),
+        kind: kind.to_string(),
+        changes,
+    }
+}
+
+/// Every field worth surfacing in a history entry, description/DOD included — the frontend's
+/// before/after view lets the previous text be copied back in to undo an edit, which needs the
+/// actual value, not just the fact that it changed. Comments are diffed separately below since they
+/// only ever append.
+fn diff_card_fields(old: &BoardCard, new: &BoardCard) -> Vec<CardFieldChange> {
+    let mut changes = Vec::new();
+    let mut push = |field: &str, old_value: Option<String>, new_value: Option<String>| {
+        changes.push(CardFieldChange {
+            field: field.to_string(),
+            old_value,
+            new_value,
+        });
+    };
+
+    if old.title != new.title {
+        push("title", Some(old.title.clone()), Some(new.title.clone()));
+    }
+    if old.column_id != new.column_id {
+        push(
+            "columnId",
+            Some(old.column_id.clone()),
+            Some(new.column_id.clone()),
+        );
+    }
+    if old.priority != new.priority {
+        push(
+            "priority",
+            Some(old.priority.clone()),
+            Some(new.priority.clone()),
+        );
+    }
+    if old.assignee != new.assignee {
+        push("assignee", old.assignee.clone(), new.assignee.clone());
+    }
+    if old.due_date != new.due_date {
+        push("dueDate", old.due_date.clone(), new.due_date.clone());
+    }
+    if old.blocked_reason != new.blocked_reason {
+        push(
+            "blockedReason",
+            old.blocked_reason.clone(),
+            new.blocked_reason.clone(),
+        );
+    }
+    if old.kind != new.kind {
+        push("kind", Some(old.kind.clone()), Some(new.kind.clone()));
+    }
+    if old.linked_branch != new.linked_branch {
+        push(
+            "linkedBranch",
+            old.linked_branch.clone(),
+            new.linked_branch.clone(),
+        );
+    }
+    if old.archived_at.is_some() != new.archived_at.is_some() {
+        push(
+            "archived",
+            Some(old.archived_at.is_some().to_string()),
+            Some(new.archived_at.is_some().to_string()),
+        );
+    }
+    if old.description != new.description {
+        push(
+            "description",
+            Some(old.description.clone()),
+            Some(new.description.clone()),
+        );
+    }
+    if old.dod != new.dod {
+        push("dod", Some(old.dod.clone()), Some(new.dod.clone()));
+    }
+    let mut old_tags = old.tag_ids.clone();
+    old_tags.sort();
+    let mut new_tags = new.tag_ids.clone();
+    new_tags.sort();
+    if old_tags != new_tags {
+        push("tagIds", Some(old_tags.join(",")), Some(new_tags.join(",")));
+    }
+
+    // Comments are append-only (no delete/edit mutation exists), so the only meaningful diff is
+    // "which ids are new" — a body that changed on a still-present id can't happen.
+    let old_ids: HashSet<&str> = old.comments.iter().map(|c| c.id.as_str()).collect();
+    for comment in &new.comments {
+        if !old_ids.contains(comment.id.as_str()) {
+            push("comment", None, Some(comment.body.clone()));
+        }
+    }
+
+    changes
+}
+
+/// One card's history, newest first — every commit that actually touched `cards/<card_id>.json`,
+/// diffed field-by-field against its parent. Unlike `board_history` (every commit on the ref,
+/// undifferentiated) this walks the same ref but keeps only the commits relevant to one card, and
+/// turns each into what changed rather than the storage-level fact that *a* card changed.
+///
+/// The ref is linear (every mutation's parent is the previous tip — see the module doc comment), so
+/// following each commit's first parent is exhaustive, not a simplification. Stops as soon as the
+/// card's creation commit is found: nothing before a card existed is part of its history.
+pub fn card_history(
+    repo: &Repository,
+    board_id: &str,
+    card_id: &str,
+) -> Result<Vec<CardHistoryEntry>, String> {
+    let tip = read_state(repo, board_id)?
+        .ok_or_else(|| String::from(AppError::BoardNotFound(board_id.to_string())))?;
+
+    let mut revwalk = repo.revwalk().map_err(AppError::Git)?;
+    revwalk
+        .set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
+        .map_err(AppError::Git)?;
+    revwalk.push(tip.id()).map_err(AppError::Git)?;
+
+    let card_path = format!("{CARDS_DIR}/{card_id}.json");
+    let mut entries = Vec::new();
+
+    for oid in revwalk {
+        let oid = oid.map_err(AppError::Git)?;
+        let commit = repo.find_commit(oid).map_err(AppError::Git)?;
+        let tree = commit.tree().map_err(AppError::Git)?;
+
+        let parent = commit.parents().next();
+        let status: Option<Delta> = match &parent {
+            None => tree
+                .get_path(std::path::Path::new(&card_path))
+                .is_ok()
+                .then_some(Delta::Added),
+            Some(parent) => {
+                let parent_tree = parent.tree().map_err(AppError::Git)?;
+                let mut opts = DiffOptions::new();
+                opts.pathspec(&card_path);
+                repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), Some(&mut opts))
+                    .map_err(AppError::Git)?
+                    .deltas()
+                    .next()
+                    .map(|delta| delta.status())
+            }
+        };
+
+        let Some(status) = status else { continue };
+
+        match status {
+            Delta::Added | Delta::Copied | Delta::Untracked => {
+                entries.push(history_entry(&commit, "created", Vec::new()));
+                break;
+            }
+            Delta::Deleted => {
+                entries.push(history_entry(&commit, "deleted", Vec::new()));
+            }
+            _ => {
+                let Some(parent) = parent else { continue };
+                let parent_tree = parent.tree().map_err(AppError::Git)?;
+                let (Some(old_card), Some(new_card)) = (
+                    read_card_at(repo, &parent_tree, card_id)?,
+                    read_card_at(repo, &tree, card_id)?,
+                ) else {
+                    continue;
+                };
+                let changes = diff_card_fields(&old_card, &new_card);
+                if !changes.is_empty() {
+                    entries.push(history_entry(&commit, "updated", changes));
+                }
+            }
+        }
+    }
+
+    Ok(entries)
 }
 
 // ─── Disaster-recovery backup (~/.git-manager/boards/<repo-slug>/<board-id>.json) ─────────────────
@@ -2941,6 +3149,189 @@ mod tests {
 
         // An intentional delete must not be recoverable — that flow exists for accidental loss.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn card_history_records_creation_updates_and_a_comment_newest_first() {
+        let (dir, repo) = init_repo("card-history");
+        let board = board_with(&repo, "Board", vec![column("todo", 0), column("done", 1)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Write tests".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let updated = update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                priority: Some("high".to_string()),
+                ..Default::default()
+            },
+            &card.revision,
+        )
+        .unwrap();
+
+        let moved = update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                column_id: Some("done".to_string()),
+                ..Default::default()
+            },
+            &updated.revision,
+        )
+        .unwrap();
+
+        add_card_comment(&repo, &board.id, &card.id, "Looks good", &moved.revision).unwrap();
+
+        let history = card_history(&repo, &board.id, &card.id).unwrap();
+        assert_eq!(history.len(), 4);
+
+        assert_eq!(history[0].kind, "updated");
+        assert_eq!(history[0].changes.len(), 1);
+        assert_eq!(history[0].changes[0].field, "comment");
+        assert_eq!(history[0].changes[0].old_value, None);
+        assert_eq!(
+            history[0].changes[0].new_value.as_deref(),
+            Some("Looks good")
+        );
+
+        assert_eq!(history[1].kind, "updated");
+        assert_eq!(history[1].changes[0].field, "columnId");
+        assert_eq!(history[1].changes[0].old_value.as_deref(), Some("todo"));
+        assert_eq!(history[1].changes[0].new_value.as_deref(), Some("done"));
+
+        assert_eq!(history[2].kind, "updated");
+        assert_eq!(history[2].changes[0].field, "priority");
+        assert_eq!(history[2].changes[0].old_value.as_deref(), Some("normal"));
+        assert_eq!(history[2].changes[0].new_value.as_deref(), Some("high"));
+
+        assert_eq!(history[3].kind, "created");
+        assert!(history[3].changes.is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Most commits on a board's ref don't touch the queried card at all — the storage model is a
+    /// full-snapshot commit per mutation, so a card's own history has to filter those out rather than
+    /// report every commit as a change.
+    #[test]
+    fn card_history_ignores_commits_that_touched_a_different_card() {
+        let (dir, repo) = init_repo("card-history-other-card");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Card A".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let other = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Card B".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        update_card(
+            &repo,
+            &board.id,
+            &other.id,
+            BoardCardPatch {
+                priority: Some("high".to_string()),
+                ..Default::default()
+            },
+            &other.revision,
+        )
+        .unwrap();
+
+        let history = card_history(&repo, &board.id, &card.id).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].kind, "created");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn card_history_for_an_unknown_card_id_is_empty() {
+        let (dir, repo) = init_repo("card-history-unknown");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Card A".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let history = card_history(&repo, &board.id, "does-not-exist").unwrap();
+        assert!(history.is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The frontend's before/after view lets a previous description be copied back in to undo an
+    /// edit, which needs the actual text — unlike every other free-text field this history walks,
+    /// description/DOD used to be reported as "changed" with no value at all.
+    #[test]
+    fn card_history_carries_the_full_text_of_a_description_change() {
+        let (dir, repo) = init_repo("card-history-description");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Card A".to_string(),
+                description: "Before text".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                description: Some("After text".to_string()),
+                ..Default::default()
+            },
+            &card.revision,
+        )
+        .unwrap();
+
+        let history = card_history(&repo, &board.id, &card.id).unwrap();
+        assert_eq!(history[0].changes.len(), 1);
+        assert_eq!(history[0].changes[0].field, "description");
+        assert_eq!(
+            history[0].changes[0].old_value.as_deref(),
+            Some("Before text")
+        );
+        assert_eq!(
+            history[0].changes[0].new_value.as_deref(),
+            Some("After text")
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }

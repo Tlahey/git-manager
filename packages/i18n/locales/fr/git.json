@@ -816,6 +816,7 @@
   "clipboard.copyFailed": "Impossible de copier {{what}}",
   "clipboard.what.sha": "SHA",
   "clipboard.what.path": "Chemin",
+  "clipboard.what.text": "Texte",
   "cloneDialog.title": "Cloner un dépôt",
   "cloneDialog.description": "Saisissez l'URL du dépôt distant et choisissez où le cloner.",
   "cloneDialog.urlLabel": "URL du dépôt",

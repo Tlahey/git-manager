@@ -246,7 +246,7 @@ describe('BoardCardDialog — edit layout', () => {
     renderEdit()
     expect(screen.getByTestId('card-description-section')).toBeInTheDocument()
     expect(screen.getByTestId('card-dod-section')).toBeInTheDocument()
-    expect(screen.getByTestId('card-comments-section')).toBeInTheDocument()
+    expect(screen.getByTestId('card-activity-section')).toBeInTheDocument()
     expect(screen.getByTestId('card-meta-sidebar')).toBeInTheDocument()
   })
 

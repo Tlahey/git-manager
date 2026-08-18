@@ -9,13 +9,16 @@ import { BoardPage } from './BoardPage'
 import { BoardToolbar } from './components/BoardToolbar'
 import { BoardSidebar } from './components/BoardSidebar'
 
-const { useBoardData, apiCreateAndCheckoutBranch, apiCheckoutBranch } = vi.hoisted(() => ({
-  useBoardData: vi.fn(),
-  apiCreateAndCheckoutBranch: vi.fn(),
-  apiCheckoutBranch: vi.fn(),
-}))
+const { useBoardData, apiCreateAndCheckoutBranch, apiCheckoutBranch, apiGetCardHistory } =
+  vi.hoisted(() => ({
+    useBoardData: vi.fn(),
+    apiCreateAndCheckoutBranch: vi.fn(),
+    apiCheckoutBranch: vi.fn(),
+    apiGetCardHistory: vi.fn().mockResolvedValue([]),
+  }))
 vi.mock('./hooks/useBoardData', () => ({ useBoardData: useBoardData }))
 vi.mock('../../api/git.api', () => ({ apiCreateAndCheckoutBranch, apiCheckoutBranch }))
+vi.mock('./api/local-board.api', () => ({ apiGetCardHistory }))
 
 function baseHookState(overrides: Partial<ReturnType<typeof useBoardData>> = {}) {
   return makeBoardData(overrides)

@@ -13,6 +13,9 @@ vi.mock('../../../api/git.api', () => ({
   apiCreateAndCheckoutBranch: vi.fn().mockResolvedValue(undefined),
   apiCheckoutBranch: vi.fn().mockResolvedValue(undefined),
 }))
+vi.mock('../api/local-board.api', () => ({
+  apiGetCardHistory: vi.fn().mockResolvedValue([]),
+}))
 
 /**
  * Mounts the manager with the real dialog store, opening one dialog on mount — the manager reads

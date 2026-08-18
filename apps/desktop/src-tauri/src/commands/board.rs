@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::models::{
-    Board, BoardCard, BoardCardPatch, BoardColumn, BoardTag, GitCommit, NewBoardCard, SprintSummary,
+    Board, BoardCard, BoardCardPatch, BoardColumn, BoardTag, CardHistoryEntry, GitCommit,
+    NewBoardCard, SprintSummary,
 };
 use crate::services::git_board;
 use git2::Repository;
@@ -256,6 +257,17 @@ pub async fn assign_board_card_identifiers(
 pub async fn get_board_history(path: String, board_id: String) -> Result<Vec<GitCommit>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_board::board_history(&repo, &board_id)
+}
+
+/// One card's history, diffed field-by-field commit to commit — see `git_board::card_history`.
+#[tauri::command]
+pub async fn get_card_history(
+    path: String,
+    board_id: String,
+    card_id: String,
+) -> Result<Vec<CardHistoryEntry>, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_board::card_history(&repo, &board_id, &card_id)
 }
 
 #[tauri::command]
