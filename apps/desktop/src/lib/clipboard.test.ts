@@ -47,6 +47,20 @@ describe('copyWithToast', () => {
     expect(mockedToast.success).not.toHaveBeenCalled()
   })
 
+  it('supports the generic "text" kind for values with no more specific name', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    stubClipboard(writeText)
+
+    copyWithToast('Previous description', 'text')
+
+    expect(writeText).toHaveBeenCalledWith('Previous description')
+    await vi.waitFor(() =>
+      expect(mockedToast.success).toHaveBeenCalledWith('Text copied to clipboard', {
+        description: 'Previous description',
+      })
+    )
+  })
+
   // SHA is on the repo's intentionally-untranslated list, so it reads the same in both locales —
   // but it still goes through a key, so the surrounding sentence is the one that changes.
   it('names the copied kind in the active language', async () => {

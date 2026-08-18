@@ -680,9 +680,9 @@ fn default_card_kind() -> String {
 }
 
 /// One field that differed between a card's state in a commit and its state in that commit's
-/// parent — see `git_board::card_history`. `old_value`/`new_value` are omitted for long free-text
-/// fields (description, DOD) where the frontend only needs to know *that* it changed, and for
-/// `"comment"` `old_value` is always absent, `new_value` carrying the new comment's body.
+/// parent — see `git_board::card_history`. Carries the full text even for long free-text fields
+/// (description, DOD), so the frontend's before/after view can offer copying the previous value back
+/// in. For `"comment"`, `old_value` is always absent, `new_value` carrying the new comment's body.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CardFieldChange {

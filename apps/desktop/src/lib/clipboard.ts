@@ -8,11 +8,12 @@ import { i18next } from '@git-manager/i18n'
  * how this helper used to leak untranslatable copy into the UI), and adding a new kind is one entry
  * here plus one key in each locale.
  */
-export type CopyKind = 'sha' | 'path'
+export type CopyKind = 'sha' | 'path' | 'text'
 
 const KIND_KEYS: Record<CopyKind, string> = {
   sha: 'clipboard.what.sha',
   path: 'clipboard.what.path',
+  text: 'clipboard.what.text',
 }
 
 /**

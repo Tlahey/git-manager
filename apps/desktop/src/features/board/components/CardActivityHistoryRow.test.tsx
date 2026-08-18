@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { BoardColumn, BoardTag, CardHistoryEntry } from '@git-manager/git-types'
 import { CardActivityHistoryRow } from './CardActivityHistoryRow'
+
+vi.mock('../../../lib/clipboard', () => ({ copyWithToast: vi.fn() }))
+import { copyWithToast } from '../../../lib/clipboard'
 
 const columns: BoardColumn[] = [{ id: 'done', name: 'Done', order: 0 }]
 const tags: BoardTag[] = []
@@ -18,6 +22,10 @@ function entry(overrides: Partial<CardHistoryEntry> = {}): CardHistoryEntry {
     ...overrides,
   }
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('CardActivityHistoryRow', () => {
   it('renders a creation entry without a before/after list', () => {
@@ -58,19 +66,51 @@ describe('CardActivityHistoryRow', () => {
     expect(screen.getByText('ada')).toBeInTheDocument()
   })
 
-  it('shows a note instead of a before/after pair for a free-text field', () => {
-    render(
-      <CardActivityHistoryRow
-        entry={entry({ changes: [{ field: 'description' }] })}
-        columns={columns}
-        tags={tags}
-      />
-    )
-    expect(screen.getByText('Description updated')).toBeInTheDocument()
-  })
-
   it('shows author and date on every entry', () => {
     render(<CardActivityHistoryRow entry={entry()} columns={columns} tags={tags} />)
     expect(screen.getByText('Ada')).toBeInTheDocument()
+  })
+
+  describe('a description/DOD change', () => {
+    function renderDescriptionChange(oldValue?: string, newValue?: string) {
+      render(
+        <CardActivityHistoryRow
+          entry={entry({ changes: [{ field: 'description', oldValue, newValue }] })}
+          columns={columns}
+          tags={tags}
+        />
+      )
+    }
+
+    it('shows two columns, Before and After, with the full text', () => {
+      renderDescriptionChange('Old copy', 'New copy')
+      expect(screen.getByText('Before')).toBeInTheDocument()
+      expect(screen.getByText('After')).toBeInTheDocument()
+      expect(screen.getByText('Old copy')).toBeInTheDocument()
+      expect(screen.getByText('New copy')).toBeInTheDocument()
+    })
+
+    it('shows a "None" placeholder for a side that was empty', () => {
+      renderDescriptionChange(undefined, 'First draft')
+      expect(screen.getByText('None')).toBeInTheDocument()
+    })
+
+    it('offers no copy button for the empty side', () => {
+      renderDescriptionChange(undefined, 'First draft')
+      expect(screen.queryByTestId('card-history-copy-before-abc1234567-0')).not.toBeInTheDocument()
+      expect(screen.getByTestId('card-history-copy-after-abc1234567-0')).toBeInTheDocument()
+    })
+
+    it('copies the exact previous text when the Before copy button is clicked', async () => {
+      renderDescriptionChange('Old copy', 'New copy')
+      await userEvent.click(screen.getByTestId('card-history-copy-before-abc1234567-0'))
+      expect(copyWithToast).toHaveBeenCalledWith('Old copy', 'text')
+    })
+
+    it('copies the new text when the After copy button is clicked', async () => {
+      renderDescriptionChange('Old copy', 'New copy')
+      await userEvent.click(screen.getByTestId('card-history-copy-after-abc1234567-0'))
+      expect(copyWithToast).toHaveBeenCalledWith('New copy', 'text')
+    })
   })
 })

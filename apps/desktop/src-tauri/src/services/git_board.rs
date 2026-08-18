@@ -1230,9 +1230,10 @@ fn history_entry(
     }
 }
 
-/// The scalar/short fields worth surfacing verbatim in a history entry — long free-text fields
-/// (description, DOD) are reported as "changed" without their value (see `CardFieldChange`), and
-/// comments are diffed separately below since they only ever append.
+/// Every field worth surfacing in a history entry, description/DOD included — the frontend's
+/// before/after view lets the previous text be copied back in to undo an edit, which needs the
+/// actual value, not just the fact that it changed. Comments are diffed separately below since they
+/// only ever append.
 fn diff_card_fields(old: &BoardCard, new: &BoardCard) -> Vec<CardFieldChange> {
     let mut changes = Vec::new();
     let mut push = |field: &str, old_value: Option<String>, new_value: Option<String>| {
@@ -1291,10 +1292,14 @@ fn diff_card_fields(old: &BoardCard, new: &BoardCard) -> Vec<CardFieldChange> {
         );
     }
     if old.description != new.description {
-        push("description", None, None);
+        push(
+            "description",
+            Some(old.description.clone()),
+            Some(new.description.clone()),
+        );
     }
     if old.dod != new.dod {
-        push("dod", None, None);
+        push("dod", Some(old.dod.clone()), Some(new.dod.clone()));
     }
     let mut old_tags = old.tag_ids.clone();
     old_tags.sort();
@@ -3281,6 +3286,52 @@ mod tests {
 
         let history = card_history(&repo, &board.id, "does-not-exist").unwrap();
         assert!(history.is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The frontend's before/after view lets a previous description be copied back in to undo an
+    /// edit, which needs the actual text — unlike every other free-text field this history walks,
+    /// description/DOD used to be reported as "changed" with no value at all.
+    #[test]
+    fn card_history_carries_the_full_text_of_a_description_change() {
+        let (dir, repo) = init_repo("card-history-description");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Card A".to_string(),
+                description: "Before text".to_string(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                description: Some("After text".to_string()),
+                ..Default::default()
+            },
+            &card.revision,
+        )
+        .unwrap();
+
+        let history = card_history(&repo, &board.id, &card.id).unwrap();
+        assert_eq!(history[0].changes.len(), 1);
+        assert_eq!(history[0].changes[0].field, "description");
+        assert_eq!(
+            history[0].changes[0].old_value.as_deref(),
+            Some("Before text")
+        );
+        assert_eq!(
+            history[0].changes[0].new_value.as_deref(),
+            Some("After text")
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }
