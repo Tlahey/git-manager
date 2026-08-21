@@ -54,25 +54,21 @@ describe('CardActivitySection', () => {
     expect(screen.getByTestId('card-comment-k1')).toBeInTheDocument()
   })
 
-  it('shows the three tabs once history is available, even if empty', () => {
+  it('shows the two tabs once history is available, even if empty, defaulting to Comments', () => {
     renderSection({ history: [] })
-    expect(screen.getByTestId('card-activity-tab-all')).toBeInTheDocument()
+    expect(screen.queryByTestId('card-activity-tab-all')).not.toBeInTheDocument()
     expect(screen.getByTestId('card-activity-tab-comments')).toBeInTheDocument()
     expect(screen.getByTestId('card-activity-tab-history')).toBeInTheDocument()
+    expect(screen.getByTestId('card-activity-tab-comments')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
   })
 
-  it('interleaves comments and history entries on the All tab, newest first', () => {
+  it('shows only comments by default, even when history is present', () => {
     renderSection({ comments: [comment()], history: [entry()] })
-    // Scoped to top-level activity rows: `card-comment-input`/`-submit` share the `card-comment-`
-    // prefix but aren't rows, and a history row's own field changes are nested `<li>`s with no
-    // testid of their own.
-    const rows = screen
-      .getAllByRole('listitem')
-      .filter((r) => /^card-(comment-k|history-entry-)/.test(r.dataset.testid ?? ''))
-    expect(rows.map((r) => r.dataset.testid)).toEqual([
-      'card-history-entry-abc1234',
-      'card-comment-k1',
-    ])
+    expect(screen.getByTestId('card-comment-k1')).toBeInTheDocument()
+    expect(screen.queryByTestId('card-history-entry-abc1234')).not.toBeInTheDocument()
   })
 
   it('filters to only comments on the Comments tab', async () => {
@@ -90,14 +86,14 @@ describe('CardActivitySection', () => {
     expect(screen.queryByTestId('card-comment-input')).not.toBeInTheDocument()
   })
 
-  it('shows the composer on the All and Comments tabs', () => {
+  it('shows the composer on the Comments tab', () => {
     renderSection({ history: [] })
     expect(screen.getByTestId('card-comment-input')).toBeInTheDocument()
   })
 
   it('shows a tab-specific empty state', async () => {
     renderSection({ history: [] })
-    expect(screen.getByText('No activity yet.')).toBeInTheDocument()
+    expect(screen.getByText('No comments yet.')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('card-activity-tab-history'))
     expect(screen.getByText('No changes yet.')).toBeInTheDocument()
   })
@@ -153,14 +149,5 @@ describe('CardActivitySection', () => {
   it('shows no reply buttons anywhere when repliesEnabled is not set', () => {
     renderSection({ comments: [comment()] })
     expect(screen.queryByTestId('card-comment-reply-k1')).not.toBeInTheDocument()
-  })
-
-  it('shows the "replying to" pointer on the All tab, never a reply button', () => {
-    const parent = comment({ id: 'p1', author: 'Grace' })
-    const reply = comment({ id: 'r1', parentCommentId: 'p1' })
-    renderSection({ comments: [parent, reply], history: [], repliesEnabled: true })
-    expect(screen.getByText('↳ replying to Grace')).toBeInTheDocument()
-    expect(screen.queryByTestId('card-comment-reply-p1')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('card-comment-reply-r1')).not.toBeInTheDocument()
   })
 })

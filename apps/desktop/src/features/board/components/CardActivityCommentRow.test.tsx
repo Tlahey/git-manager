@@ -38,10 +38,4 @@ describe('CardActivityCommentRow', () => {
     await user.click(screen.getByTestId('card-comment-reply-k1'))
     expect(onReply).toHaveBeenCalledTimes(1)
   })
-
-  it('renders a "replying to" pointer instead of a reply button', () => {
-    render(<CardActivityCommentRow comment={comment()} repoPath="/repo" replyingToAuthor="Grace" />)
-    expect(screen.getByText('↳ replying to Grace')).toBeInTheDocument()
-    expect(screen.getByTestId('card-comment-k1').querySelectorAll('button')).toHaveLength(0)
-  })
 })
