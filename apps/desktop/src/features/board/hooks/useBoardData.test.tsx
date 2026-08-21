@@ -51,7 +51,11 @@ const {
   pushCardToIssue: vi.fn(),
 }))
 
-vi.mock('../api/local-board.api', () => ({ localBoardBackend: localBackend }))
+vi.mock('../api/local-board.api', () => ({
+  localBoardBackend: localBackend,
+  apiListRecoverableBoards: vi.fn().mockResolvedValue([]),
+  apiRestoreBoardBackup: vi.fn(),
+}))
 vi.mock('../api/remote-board.api', () => ({
   createRemoteBoardBackend: remoteBackendFactory,
   addExistingIssueToColumn,
