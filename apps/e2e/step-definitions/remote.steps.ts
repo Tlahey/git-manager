@@ -91,10 +91,30 @@ Then(
         return ''
       }
     }
-    await browser.waitUntil(() => configuredRemote() === remote, {
-      timeout: 10000,
-      timeoutMsg: `expected branch "${branch}" to track remote "${remote}"`,
-    })
+    try {
+      await browser.waitUntil(() => configuredRemote() === remote, { timeout: 10000 })
+    } catch {
+      // "It never tracked" cannot tell "the push failed" apart from "the push went to another
+      // branch", and those have opposite causes — so the failure reports what git actually holds:
+      // which branch HEAD is on, what each local branch tracks, and what the remote received.
+      const probe = (args: string[]) => {
+        try {
+          return execFileSync('git', ['-C', repoPath, ...args], { encoding: 'utf8' }).trim()
+        } catch (err) {
+          return `<failed: ${String(err).slice(0, 120)}>`
+        }
+      }
+      throw new Error(
+        `expected branch "${branch}" to track remote "${remote}"\n[probe] HEAD: ${probe([
+          'rev-parse',
+          '--abbrev-ref',
+          'HEAD',
+        ])}\n[probe] branches: ${probe(['branch', '-vv'])}\n[probe] remote refs: ${probe([
+          'ls-remote',
+          remote,
+        ])}`
+      )
+    }
     const configuredMerge = execFileSync(
       'git',
       ['-C', repoPath, 'config', `branch.${branch}.merge`],

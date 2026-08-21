@@ -282,6 +282,33 @@ Then(/^the active theme is "([^"]*)"$/, async (themeId: string) => {
   )
 })
 
+/**
+ * Picks an application icon.
+ *
+ * `app-icon-card-<id>` is the `<label>`; the radio it labels is `sr-only`, so the label is the
+ * clickable surface — same shape as the row-height radios above, and the same reason the click goes
+ * through the page: this provider refuses a click on a control it reads as not displayed, and a
+ * label's own `click()` forwards to its input exactly as a user's would.
+ */
+When(/^I select the "([^"]*)" application icon$/, async (iconId: string) => {
+  await clickViaJs(`app-icon-card-${iconId}`)
+})
+
+// The radio's checked state, not the card's ring: the ring is a class, and a class can be applied by
+// a render that the store never agreed to.
+Then(/^the "([^"]*)" application icon is selected$/, async (iconId: string) => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute((id: string) => {
+        const radio = document.querySelector(
+          `[data-testid="app-icon-radio-${id}"]`
+        ) as HTMLInputElement | null
+        return Boolean(radio?.checked)
+      }, iconId),
+    { timeout: 10000, timeoutMsg: `the "${iconId}" application icon never became the selected one` }
+  )
+})
+
 // A single theme card's own swatch — not the whole grid (COVERAGE.md's "Skipped on purpose" note
 // on why a full appearance snapshot isn't reproducible: which OTHER cards show up depends on
 // unlocked achievements + custom themes dropped in ~/.git-manager/themes/ on the test machine).

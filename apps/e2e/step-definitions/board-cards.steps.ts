@@ -18,6 +18,7 @@ import {
   storedCardTitled,
   storedCardTitledOrThrow,
   storedCards,
+  switchToRawMarkdown,
   type StoredBoard,
   type StoredCard,
 } from '../support/board'
@@ -331,21 +332,6 @@ Then(
 
 // ─── The discussion ────────────────────────────────────────────────────────
 
-/**
- * Switches a `MarkdownEditorFrame` to its raw "code" tab so `testid`'s field (hidden behind
- * `class="hidden"` while the frame defaults to "rich") is actually there to type into. Scoped to
- * the frame that owns `testid` rather than a bare `$('[data-testid="markdown-tab-code"]')`, since
- * a card panel can have more than one editor mounted at once (the description and the comment box).
- */
-async function switchToRawMarkdown(testid: string): Promise<void> {
-  await browser.execute((id: string) => {
-    const field = document.querySelector(`[data-testid="${id}"]`)
-    const frame = field?.closest('[data-testid="markdown-editor-frame"]')
-    const codeTab = frame?.querySelector('[data-testid="markdown-tab-code"]') as HTMLElement | null
-    codeTab?.click()
-  }, testid)
-}
-
 When(/^I write the comment "([^"]*)"$/, async (body: string) => {
   await switchToRawMarkdown('card-comment-input')
   const input = $('[data-testid="card-comment-input"]')
@@ -389,6 +375,76 @@ Then(/^the card "([^"]*)" stores the comment "([^"]*)"$/, async (title: string, 
     `holding a comment "${body}"`
   )
 })
+
+// ─── The description ───────────────────────────────────────────────────────
+
+/**
+ * Writes the card's description: click the rendered text to edit it, type the raw markdown, save.
+ *
+ * There is no pencil — the rendered block *is* the editor's trigger (`CardDescriptionField`), which
+ * is also why the step waits for the field to come back **rendered**: the save button's own spinner
+ * clears before the card has been re-read, and the next step reads the render.
+ */
+When(/^I give the card the description "([^"]*)"$/, async (markdown: string) => {
+  await clickViaJs('card-description-display')
+  await switchToRawMarkdown('card-description-input')
+  const input = $('[data-testid="card-description-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(markdown)
+  await $('[data-testid="card-description-save"]').click()
+  await $('[data-testid="card-description-display"]').waitForDisplayed({ timeout: 15000 })
+})
+
+// Markdown *rendered*, not printed: the assertion is on the element the renderer produced, since
+// "the text contains parquet" would be just as true of a card showing its own asterisks — which is
+// the bug this pins.
+Then(/^the card record renders "([^"]*)" in bold$/, async (text: string) => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute((wanted: string) => {
+        const rendered = document.querySelector('[data-testid="card-description-display"]')
+        return Array.from(rendered?.querySelectorAll('strong') ?? []).some((el) =>
+          (el.textContent ?? '').includes(wanted)
+        )
+      }, text),
+    { timeout: 15000, timeoutMsg: `the card record renders no bold "${text}"` }
+  )
+})
+
+Then(
+  /^the card "([^"]*)" is stored with the description "([^"]*)"$/,
+  async (title: string, markdown: string) => {
+    await waitForStoredCard(
+      title,
+      (card) => card.description === markdown,
+      `stored with the description "${markdown}"`
+    )
+  }
+)
+
+// The row only carries a snippet when the description is the *sole* reason the card matched
+// (`searchCards`), and it carries it as plain text — so this asserts both that the search read the
+// description and that what it quotes back is readable rather than raw markdown.
+Then(
+  /^the search result for "([^"]*)" quotes "([^"]*)"$/,
+  async (title: string, snippet: string) => {
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          (wantedTitle: string, wantedSnippet: string) =>
+            Array.from(document.querySelectorAll('[data-testid^="board-search-result-"]')).some(
+              (row) => {
+                const text = (row.textContent ?? '').replace(/\s+/g, ' ')
+                return text.includes(wantedTitle) && text.includes(wantedSnippet)
+              }
+            ),
+          title,
+          snippet
+        ),
+      { timeout: 15000, timeoutMsg: `no search result for "${title}" quotes "${snippet}"` }
+    )
+  }
+)
 
 // ─── Blocking ──────────────────────────────────────────────────────────────
 

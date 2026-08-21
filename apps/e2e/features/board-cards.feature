@@ -50,6 +50,27 @@ Feature: Kanban board — the card record and the board's own shape
     And the board history records "git-manager: comment on board card"
     And no error notification is displayed
 
+  # A description is markdown, and the record *renders* it rather than printing what was typed — the
+  # bug that shipped before it did was a card showing its own asterisks. The global ticket search
+  # reads that description too, as plain text: a card is findable by a word nobody thought to put in
+  # its title, and the row quotes the sentence it found rather than leaving the reader to guess why
+  # a card with an unrelated title came back.
+  Scenario: A card's description is rendered as markdown, and searched as text
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Rework the exporter" to the "To do" column
+    When I open the card "Rework the exporter"
+    And I give the card the description "Blocked on the **parquet** encoder"
+    Then the card record renders "parquet" in bold
+    And the card "Rework the exporter" is stored with the description "Blocked on the **parquet** encoder"
+    When I close the card record
+    And I search every board for "parquet"
+    Then the ticket "Rework the exporter" is offered by the search
+    And the search result for "Rework the exporter" quotes "Blocked on the parquet encoder"
+    When I close the ticket search
+    Then no error notification is displayed
+
   # The rule is enforced by the storage shape rather than by validation: a card holds only
   # `blockedReason`, so "blocked" *is* "has a reason" and the two cannot drift apart. Turning the
   # switch on is therefore allowed to show an empty required field — and must write nothing at all

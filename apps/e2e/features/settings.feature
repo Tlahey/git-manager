@@ -133,6 +133,25 @@ Feature: Settings
     Then the active theme is "dark"
     And a full-window screenshot is saved as "doc-settings-theme"
 
+  # The icon the app wears in the Dock is a setting like any other, and the only part of it this
+  # suite can see is the setting: WebDriver captures the webview, never the Dock. So this asserts the
+  # picked card is the selected one and that it still is after a reload — the same shape as the row
+  # height and the theme — and puts the default back at the end, since the choice outlives the
+  # scenario the way the theme's would.
+  Scenario: Choosing another application icon keeps it across a reload
+    Given the git-manager application is running
+    When I open the settings
+    And I open the "ui_customization" settings tab
+    And I select the "line" application icon
+    Then the "line" application icon is selected
+    When I reload the application
+    And I open the settings
+    And I open the "ui_customization" settings tab
+    Then the "line" application icon is selected
+    When I select the "default" application icon
+    Then the "default" application icon is selected
+    And no error notification is displayed
+
   @visual
   Scenario: The dark theme card matches the reference snapshot
     Given the git-manager application is running
