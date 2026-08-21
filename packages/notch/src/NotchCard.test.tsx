@@ -124,31 +124,17 @@ describe('NotchCard', () => {
     expect(halo.style.animation).not.toBe('')
   })
 
-  it('activates on a click anywhere on the card', async () => {
-    const onActivate = vi.fn()
+  it('does nothing on a click anywhere on the card body', async () => {
+    // See issue #413: only the close button and the action row's explicit buttons respond to a
+    // click. A plain body click used to also dismiss the card, which read as surprising.
     render(
-      <NotchCard tone="info" visible onActivate={onActivate}>
+      <NotchCard tone="info" visible>
         <div>body</div>
       </NotchCard>
     )
-    await userEvent.click(screen.getByText('body'))
-    expect(onActivate).toHaveBeenCalledTimes(1)
-  })
-
-  it('only looks clickable when it is', () => {
-    const { rerender } = render(
-      <NotchCard tone="info" visible>
-        <div />
-      </NotchCard>
-    )
     expect(screen.getByTestId('notch-card').className).not.toContain('cursor-pointer')
-
-    rerender(
-      <NotchCard tone="info" visible onActivate={() => {}}>
-        <div />
-      </NotchCard>
-    )
-    expect(screen.getByTestId('notch-card').className).toContain('cursor-pointer')
+    await userEvent.click(screen.getByText('body'))
+    // Nothing to assert beyond "it didn't throw" — the shell takes no onClick at all.
   })
 
   it('reports pointer enter and leave, for hover-to-pause', async () => {

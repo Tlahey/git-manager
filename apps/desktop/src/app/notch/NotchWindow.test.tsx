@@ -182,22 +182,27 @@ describe('NotchWindow', () => {
     expect(focusMain).toHaveBeenCalled()
   })
 
-  it('activates on a click on the card itself, not only on the button', async () => {
+  it('does nothing on a click on the card body, only on its explicit buttons', async () => {
+    // See issue #413: a body click used to also activate (and dismiss) the card, unlike a click on
+    // any other part of it.
     await renderWindow()
     await userEvent.click(screen.getByText('feat(notch): extract the notification card'))
-    expect(emitMock).toHaveBeenCalledWith(NOTIFICATION_ACTIVATED_EVENT, payload.route)
+    expect(emitMock).not.toHaveBeenCalledWith(NOTIFICATION_ACTIVATED_EVENT, expect.anything())
+    expect(showMain).not.toHaveBeenCalled()
   })
 
-  it('opens the external URL for the GitHub action', async () => {
+  it('opens the external URL for the GitHub action, and still brings the app forward', async () => {
     await renderWindow()
     await userEvent.click(screen.getByRole('button', { name: 'GitHub' }))
     expect(openUrlMock).toHaveBeenCalledWith(payload.externalUrl)
     expect(emitMock).not.toHaveBeenCalledWith(NOTIFICATION_ACTIVATED_EVENT, expect.anything())
+    expect(showMain).toHaveBeenCalled()
+    expect(focusMain).toHaveBeenCalled()
   })
 
-  it('hands an action it does not know about to the main window instead of dropping it', async () => {
+  it('hands an action it does not know about to the main window, and brings the app forward', async () => {
     // The extension point for the cards this window does not exist for yet — a hook's "Show
-    // output", a task's "Restart".
+    // output", a task's "Restart", a clone's "Cancel".
     await renderWindow({
       model: {
         ...payload.model,
@@ -210,6 +215,8 @@ describe('NotchWindow', () => {
       actionId: 'show-output',
       notchId: 'pr-231',
     })
+    expect(showMain).toHaveBeenCalled()
+    expect(focusMain).toHaveBeenCalled()
   })
 
   it('does nothing but dismiss when a card carries no route', async () => {
@@ -220,10 +227,14 @@ describe('NotchWindow', () => {
     await vi.waitFor(() => expect(hostCalls).toContain('close'))
   })
 
-  it('closes the window from the ✕ in the notch band', async () => {
+  it('closes the window from the ✕ in the notch band without focusing the app', async () => {
+    // The one control that does not bring the app forward: closing a card is the one thing the
+    // user might do without wanting the main window in front of them.
     await renderWindow()
     await userEvent.click(screen.getByTestId('notch-close'))
     await vi.waitFor(() => expect(hostCalls).toContain('close'))
+    expect(showMain).not.toHaveBeenCalled()
+    expect(focusMain).not.toHaveBeenCalled()
   })
 
   it('names the close button with the app’s own translated label', async () => {

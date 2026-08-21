@@ -50,10 +50,6 @@ export interface NotchCardProps {
    */
   backdrop?: ReactNode
   children: ReactNode
-  /** Clicking anywhere on the card. The action row's primary button is the same action made
-   *  explicit and keyboard-reachable, which is why this stays a plain div rather than a
-   *  `role="button"` wrapping other buttons. */
-  onActivate?: () => void
   onPointerEnter?: () => void
   onPointerLeave?: () => void
   haloMargin?: number
@@ -84,7 +80,6 @@ export function NotchCard({
   bandEnd,
   backdrop,
   children,
-  onActivate,
   onPointerEnter,
   onPointerLeave,
   haloMargin = HALO_MARGIN,
@@ -138,7 +133,6 @@ export function NotchCard({
 
       <div
         data-testid={testId}
-        onClick={onActivate}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         style={inset}
@@ -153,8 +147,10 @@ export function NotchCard({
           // allowed to render outside the card's own rectangle.
           // No opacity of its own: the shell slides, and that is all it does. Fading it as well
           // used to cancel the movement out — see `CONTENT_FADE_MS`.
-          'absolute flex flex-col overflow-hidden rounded-b-2xl border border-white/10 bg-black',
-          onActivate && 'cursor-pointer'
+          // Not clickable: only the close button and the action row's explicit buttons (including
+          // the primary "activate" action) respond to a click — see issue #413. A plain click on
+          // the body does nothing, unlike a native macOS notification banner.
+          'absolute flex flex-col overflow-hidden rounded-b-2xl border border-white/10 bg-black'
         )}
       >
         {/* Before the content in document order, so it stays behind it without a z-index. Outside
