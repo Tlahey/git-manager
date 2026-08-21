@@ -23,6 +23,8 @@ interface CardDetailsPanelProps {
   onCreatePr?: () => void
   onCreateWorktree?: () => Promise<unknown>
   onUnlinkWorktree?: () => Promise<unknown>
+  /** Where the card's branch is already checked out, if it is — see `BoardCardBranchSection`. */
+  branchCheckedOutAt?: string
   readOnly?: boolean
 }
 
@@ -48,6 +50,7 @@ export function CardDetailsPanel({
   onCreatePr,
   onCreateWorktree,
   onUnlinkWorktree,
+  branchCheckedOutAt,
   readOnly,
 }: CardDetailsPanelProps) {
   const { t } = useTranslation('board')
@@ -170,6 +173,7 @@ export function CardDetailsPanel({
               linkedWorktreePath={card.linkedWorktreePath}
               onCreateWorktree={onCreateWorktree}
               onUnlinkWorktree={onUnlinkWorktree}
+              branchCheckedOutAt={branchCheckedOutAt}
               disabled={readOnly}
             />
           </div>

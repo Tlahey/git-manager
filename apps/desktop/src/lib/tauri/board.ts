@@ -1,5 +1,6 @@
 import { invoke } from './invoke'
 import type {
+  RecoverableBoard,
   GitCommit,
   Board,
   BoardColumn,
@@ -157,7 +158,7 @@ export const getCardHistory = (path: string, boardId: string, cardId: string) =>
   invoke<CardHistoryEntry[]>('get_card_history', { path, boardId, cardId })
 
 export const listRecoverableBoards = (path: string) =>
-  invoke<Board[]>('list_recoverable_boards', { path })
+  invoke<RecoverableBoard[]>('list_recoverable_boards', { path })
 
 export const restoreBoardBackup = (path: string, boardId: string) =>
   invoke<Board>('restore_board_backup', { path, boardId })

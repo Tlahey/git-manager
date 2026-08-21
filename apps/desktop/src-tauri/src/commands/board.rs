@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::models::{
     Board, BoardCard, BoardCardPatch, BoardColumn, BoardTag, CardHistoryEntry, GitCommit,
-    NewBoardCard, SprintSummary,
+    NewBoardCard, RecoverableBoard, SprintSummary,
 };
 use crate::services::git_board;
 use git2::Repository;
@@ -279,7 +279,7 @@ pub async fn get_card_history(
 }
 
 #[tauri::command]
-pub async fn list_recoverable_boards(path: String) -> Result<Vec<Board>, String> {
+pub async fn list_recoverable_boards(path: String) -> Result<Vec<RecoverableBoard>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_board::list_recoverable_boards(&repo)
 }

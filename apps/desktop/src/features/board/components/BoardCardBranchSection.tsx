@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner } from '@git-manager/ui'
 import { GitBranch, FolderTree, GitPullRequest } from 'lucide-react'
@@ -19,6 +19,15 @@ interface BoardCardBranchSectionProps {
   linkedWorktreePath?: string
   onCreateWorktree?: () => Promise<unknown>
   onUnlinkWorktree?: () => Promise<unknown>
+  /**
+   * The worktree already holding `linkedBranch`, when one does — the repository's own included.
+   *
+   * git allows a branch in exactly one worktree, and this card's "Create branch" checks it out
+   * here, so the state right after that button is the state the next one cannot work in. Given the
+   * path, the section refuses in advance and says where the branch is, instead of offering a
+   * gesture whose only outcome is git's `fatal:` line (see `useWorktreeBranches`).
+   */
+  branchCheckedOutAt?: string
   disabled?: boolean
 }
 
@@ -36,15 +45,23 @@ export function BoardCardBranchSection({
   linkedWorktreePath,
   onCreateWorktree,
   onUnlinkWorktree,
+  branchCheckedOutAt,
   disabled,
 }: BoardCardBranchSectionProps) {
   const { t } = useTranslation('board')
   const [pending, setPending] = useState(false)
+  // Names the explanation so the disabled button is *described* by it rather than merely
+  // followed by it: a screen reader reaching a disabled control otherwise gets no reason at all.
+  const blockedId = useId()
 
   async function run(action: () => Promise<unknown>) {
     setPending(true)
     try {
       await action()
+    } catch {
+      // Reported by the action layer (`reportWriteFailures`); swallowed here so the rejection isn't
+      // an unhandled one. Nothing to undo: the section re-renders from the card, which is unchanged
+      // precisely because the write failed.
     } finally {
       setPending(false)
     }
@@ -157,7 +174,8 @@ export function BoardCardBranchSection({
                     variant="outline"
                     size="sm"
                     className="h-6 w-full gap-1 text-[11px]"
-                    disabled={disabled || pending}
+                    disabled={disabled || pending || Boolean(branchCheckedOutAt)}
+                    aria-describedby={branchCheckedOutAt ? blockedId : undefined}
                     onClick={() => void run(onCreateWorktree)}
                     data-testid="board-card-create-worktree"
                   >
@@ -166,6 +184,18 @@ export function BoardCardBranchSection({
                   </Button>
                 )}
           </div>
+
+          {/* Under the button rather than as its `title`: this is the reason it cannot be pressed,
+              and a tooltip on a disabled control is exactly where that reason goes unread. */}
+          {!linkedWorktreePath && branchCheckedOutAt && (
+            <p
+              id={blockedId}
+              className="text-[10px] leading-snug text-muted-foreground"
+              data-testid="board-card-worktree-blocked"
+            >
+              {t('card.worktree.branchInUse', { path: branchCheckedOutAt })}
+            </p>
+          )}
         </div>
       )}
     </div>

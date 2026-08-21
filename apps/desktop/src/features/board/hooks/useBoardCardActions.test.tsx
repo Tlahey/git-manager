@@ -492,7 +492,8 @@ describe('useBoardCardActions — createWorktreeForCard / unlinkWorktree', () =>
   it('anchors the new worktree on the main worktree root, not the active tab', async () => {
     apiListWorktrees.mockResolvedValue([
       worktree({ path: '/repo-main', isMain: true }),
-      worktree({ path: '/repo', branch: 'feature/x', isMain: false }),
+      // Any branch but the card's: a worktree already holding `feature/x` is the refusal below.
+      worktree({ path: '/repo', branch: 'feature/other', isMain: false }),
     ])
     apiAddWorktree.mockResolvedValue({ copied: [], skipped: [] })
     localBackend.updateCard.mockResolvedValue(makeCard({ linkedBranch: 'feature/x' }))
@@ -520,6 +521,26 @@ describe('useBoardCardActions — createWorktreeForCard / unlinkWorktree', () =>
     await result.current.createWorktreeForCard(makeCard({ linkedBranch: 'feature/x' }))
 
     expect(apiAddWorktree).toHaveBeenCalledWith(path, 'feature/x', '/repo.worktrees/feature/x')
+  })
+
+  /**
+   * git allows a branch in exactly one worktree, and this card's own "Create branch" checks it out
+   * in the repository on screen — so the refusal is the ordinary state right after that button, not
+   * an edge case. It has to happen *before* `apiAddWorktree`: letting the call through would put
+   * git's own `fatal:` line in front of the user, which says what git refused rather than what to
+   * do about it.
+   */
+  it('refuses a branch another worktree already holds, naming where it is checked out', async () => {
+    apiListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo-main', branch: 'feature/x', isMain: true }),
+    ])
+    const { result } = renderActions()
+
+    await expect(
+      result.current.createWorktreeForCard(makeCard({ linkedBranch: 'feature/x' }))
+    ).rejects.toThrow(/\/repo-main/)
+    expect(apiAddWorktree).not.toHaveBeenCalled()
+    expect(localBackend.updateCard).not.toHaveBeenCalled()
   })
 
   it('unlinks the worktree without touching the branch', async () => {

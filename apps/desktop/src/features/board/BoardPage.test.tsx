@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { makeBoard as board, makeCard as card, makeBoardData } from './test/boardFactories'
 import { useBoardStore } from './stores/board.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBoardControlsStore } from './stores/boardControls.store'
 import { useBoardDialogsStore } from './stores/boardDialogs.store'
 import { BoardPage } from './BoardPage'
@@ -17,7 +19,21 @@ const { useBoardData, apiCreateAndCheckoutBranch, apiCheckoutBranch, apiGetCardH
     apiGetCardHistory: vi.fn().mockResolvedValue([]),
   }))
 vi.mock('./hooks/useBoardData', () => ({ useBoardData: useBoardData }))
-vi.mock('../../api/git.api', () => ({ apiCreateAndCheckoutBranch, apiCheckoutBranch }))
+// The card's branch actions reach the shared checkout path (`useSwitchBranch` →
+// `useBranchCheckout`), so the mock covers the module rather than the two functions this view calls
+// directly.
+vi.mock('../../api/git.api', () => ({
+  apiCreateAndCheckoutBranch,
+  apiCheckoutBranch,
+  apiCreateBranch: vi.fn(),
+  apiGetBranches: vi.fn().mockResolvedValue([]),
+  apiSetBranchUpstream: vi.fn(),
+  apiStashPush: vi.fn(),
+}))
+vi.mock('../../api/repo.api', () => ({
+  apiOpenRepo: vi.fn().mockResolvedValue({ path: '/repo', head: 'main', isDetached: false }),
+  apiGetRepoSummary: vi.fn().mockResolvedValue({ path: '/repo', head: 'main', isDetached: false }),
+}))
 vi.mock('./api/local-board.api', () => ({ apiGetCardHistory }))
 
 function baseHookState(overrides: Partial<ReturnType<typeof useBoardData>> = {}) {
@@ -30,12 +46,14 @@ function baseHookState(overrides: Partial<ReturnType<typeof useBoardData>> = {})
  * and the board picker are drawn beside the page rather than inside it. All three read the same
  * mocked `useBoardData` and write the same dialog store, which is what still makes this one test.
  */
+// A client per render: the card's branch actions refresh what depends on HEAD through it
+// (`refreshAfterHeadMove`), which is a react-query concern even though the board itself is SWR.
 const boardView = (repoPath = '/repo') => (
-  <>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <BoardToolbar repoPath={repoPath} />
     <BoardSidebar repoPath={repoPath} />
     <BoardPage repoPath={repoPath} />
-  </>
+  </QueryClientProvider>
 )
 
 function renderBoardView(repoPath = '/repo') {
@@ -44,6 +62,10 @@ function renderBoardView(repoPath = '/repo') {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The card's checkout goes through `useSwitchBranch`, which targets the repository the tab is on
+  // rather than the path this view was handed — a branch has to be checked out in the project that
+  // owns it, never in a linked worktree being viewed. Set here because the app always has it set.
+  useRepoUIStore.setState({ activeRepo: '/repo', activeWorkspacePath: null })
   useBoardControlsStore.getState().reset()
   useBoardDialogsStore.getState().reset()
   useBoardStore.setState({ activeBoardIdByRepo: {} })
@@ -212,7 +234,14 @@ describe('BoardPage', () => {
     await userEvent.click(screen.getByTestId('board-card-c1'))
     await userEvent.click(screen.getByTestId('board-card-checkout-branch'))
 
-    expect(apiCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature/header')
+    // Through the shared switch (`useSwitchBranch`), which is what carries the undo entry: the
+    // options say where HEAD was, and without them ⌘Z has nothing to take the checkout back to.
+    await waitFor(() =>
+      expect(apiCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature/header', {
+        fromRef: 'main',
+        fromDetached: false,
+      })
+    )
     expect(apiCreateAndCheckoutBranch).not.toHaveBeenCalled()
   })
 

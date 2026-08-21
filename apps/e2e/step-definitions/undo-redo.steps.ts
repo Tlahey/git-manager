@@ -22,6 +22,29 @@ When(/^I check out the "([^"]*)" branch$/, async (branch: string) => {
 
   // The popover closes on checkout; Radix returns focus to the trigger (a button, not an input),
   // so the global Cmd+Z/Cmd+Shift+Z handler in useKeyboardShortcuts isn't suppressed afterwards.
+
+  // Wait for the checkout to have *landed*, not merely to have been asked for. It is a real IPC
+  // round trip, and returning as soon as the click is dispatched leaves the next step acting on the
+  // branch this one was supposed to leave — which is precisely what happened in
+  // `remote-push.feature`: the push that followed ran while HEAD was still `main`, so it published
+  // `main` and the brand-new branch got no upstream, reported as "the app doesn't configure
+  // tracking" rather than as a race. The indicator is the same signal
+  // `Then the branch indicator reads "…"` reads; scenarios that assert it explicitly still can.
+  const label = $('[data-testid="branch-context-label"]')
+  let last = ''
+  try {
+    await browser.waitUntil(
+      async () => {
+        last = (await label.getText()).trim()
+        return last === branch
+      },
+      { timeout: 15000 }
+    )
+  } catch {
+    throw new Error(
+      `the checkout of "${branch}" never landed — the branch indicator reads "${last}"`
+    )
+  }
 })
 
 // Undo / redo are bound to Cmd+Z / Cmd+Shift+Z globally (useKeyboardShortcuts). Both run async

@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (57 feature files / 207 scenarios)
+## Covered today (61 feature files / 219 scenarios)
 
 > **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
 > CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
@@ -25,6 +25,11 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 > failing outright on `main`, in every case because the app changed underneath a step and no run
 > caught it. Re-run the suite before trusting a row, and see
 > [Known blockers / gotchas](#known-blockers--gotchas) for the harness traps those five uncovered.
+>
+> **Last full run: 2026-08-21 — 61 feature files, 219 scenarios, 0 failing, 9 minutes.** That run
+> started red: `remote-push.feature` had gone stale in the eighteen days nobody ran the suite, and
+> the reason turned out to be a race in a shared step rather than anything about pushing — see the
+> gotcha it earned below.
 
 | Feature                                                                                                    | Area       | Setup                                             | Snapshot                          | Status                                                                                                                                                                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,19 +48,24 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Detached HEAD indicator reads "HEAD", checkout back to a branch                                            | repo state | fixture:detached-head                             | —                                 | ✅                                                                                                                                                                                                                                                                                                                   |
 | **Git bisect**: tools menu → pick bad/good in graph → run to first bad commit                              | bisect     | fixture:bisect-history                            | —                                 | ✅ (setup bar open/cancel; inverted-range rejected + start disabled; full run marks by bug presence and converges on commit 5 — asserted via `.git/BISECT_LOG`; abort clears `.git/BISECT_START`)                                                                                                                    |
 | Sidebar lists stashes                                                                                      | stash      | fixture:stash-stack                               | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file)                                                                                                                                                                                                             |
-| Settings screen opens + **snapshot**                                                                       | settings   | keyboard (Mod+,)                                  | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below)                                                         |
+| Settings screen opens + **snapshot**                                                                       | settings   | keyboard (Mod+,)                                  | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅ · application icon ✅**; appearance snapshot skipped on purpose, see below)                                   |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel                                       | AI         | fake HTTP server                                  | —                                 | ✅ (see "6. AI commit-message generation" below)                                                                                                                                                                                                                                                                     |
 | **Worktree** list / add / remove (incl. dirty-remove force gate) + **AI-agent activity**                   | worktree   | fixture:worktree-repo                             | 📷 (doc)                          | ✅ (see "Worktree management" below; `get_worktree_agent_activity` covered end to end — the step fabricates a Claude transcript in the run's isolated `$HOME`, and the WIP row's agent glyph and working tag are asserted from the real graph)                                                                       |
 | **Repo tab views**: switch Graph ↔ Terminal ↔ Settings                                                     | navigation | fixture:feature-branches                          | 📷 (doc)                          | ✅ (see "Repo tab views" below)                                                                                                                                                                                                                                                                                      |
 | **Kanban board**: create a board, add/move/archive a card, close a sprint with carry-over                  | board      | fixture:feature-branches                          | 📷 (doc, ×3)                      | ✅ (local backend only — see "Kanban board" below; every write also asserted on disk against the board's own git ref, and the sprint scenario found and now guards a real bug)                                                                                                                                       |
-| **Kanban card record**: checklist, comments, side-panel fields, relations, columns, settings, delete, move | board      | fixture:feature-branches                          | —                                 | ✅ (`board-cards.feature`, 10 scenarios, none documented — see "Kanban board" below; three real bugs found, two fixed here and one copy correction)                                                                                                                                                                  |
+| **Kanban card record**: checklist, comments, side-panel fields, relations, columns, settings, delete, move | board      | fixture:feature-branches                          | —                                 | ✅ (`board-cards.feature`, 11 scenarios, none documented — see "Kanban board" below; three real bugs found, two fixed here and one copy correction; the description's markdown rendering and the ticket search reading it were added 2026-08-21)                                                                     |
+| **Kanban card activity**: the History tab's field-by-field entries, a threaded discussion                  | board      | fixture:feature-branches                          | —                                 | ✅ (`board-card-activity.feature`, 2 scenarios — the history read back out of the board's own commits, and a reply asserted both as a thread on screen and as a `parentCommentId` on disk)                                                                                                                           |
+| **Kanban card → branch → merge**: create the branch a card is about, its worktree, and the done sweep      | board      | fixture:feature-branches                          | —                                 | ✅ (`board-card-branch.feature`, 3 scenarios — branch and worktree asserted with `git branch`/`git worktree list`, and a real palette merge moving the linked card to Done; two real constraints found, see below)                                                                                                   |
+| **Kanban board recovery**: a board its repository lost, offered back by the disaster-recovery mirror       | board      | fixture:feature-branches                          | —                                 | ✅ (`board-recovery.feature` — the fixture is rebuilt mid-scenario, which is the disaster; the mirror under the run's own `$HOME` is read with plain `git` before and the restored ref after)                                                                                                                        |
 
 ---
 
 ## Not covered today
 
 Audited 2026-08-03, against the full `generate_handler!` command list in `lib.rs` and the app's
-`src/app` + `src/components` surface. Tracked as a checklist in
+`src/app` + `src/components` surface, and again on **2026-08-21** against everything that shipped in
+between (the suite had not been touched since #402, while eleven feature PRs had landed — most of
+them on the board). Tracked as a checklist in
 [#267](https://github.com/Tlahey/git-manager/issues/267) — tick the item there and update the row
 here in the same PR that lands a scenario. What the suite does **not** exercise, split by why.
 This is the section REPORT.md points at —
@@ -64,9 +74,18 @@ what's missing has to live here, where a human maintains it.
 
 ### Real gaps — testable with today's harness, just not written yet
 
-**None.** Every row that stood here has since been written or moved below with a reason; the two
-that closed last did so by removing the blocker rather than working around it — the actions had no
-keyboard route at all, which was a product gap before it was a testing one.
+Written down here rather than left implicit: this table read **None** for eighteen days while the
+app kept shipping, which is how a coverage matrix goes quietly stale. What the 2026-08-21 pass left
+behind, each with what it would take:
+
+| Missing                                                   | What it would take                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A terminal bound to a worktree** (#400)                 | `terminal.feature` covers a shell in the repository on screen; what is untested is the tab-per-worktree binding and the sidebar saying what is running where. Needs `fixture:worktree-repo` rather than `feature-branches`, and a way to read a session's cwd back — `pwd` in the terminal already works, so this is a scenario nobody has written, not a wall. |
+| **The markdown editor's formatting toolbar** (#399)       | Every markdown field the suite drives is switched to its raw "code" tab first (`switchToRawMarkdown`), because typing raw markdown is what the assertions are about. The rich mode's toolbar — bold, list, link — is exercised only by its own unit tests.                                                                                                      |
+| **Switching the interface language** (#393 added Spanish) | Scenarios seed the language (`Given the app language is English`) rather than picking one in Settings, so the selector itself, and the third locale, are never clicked.                                                                                                                                                                                         |
+| **A card's "Create PR"** (#403)                           | Rendered only for a repository with a connected GitHub account (`canUseRemote`), same wall as the GitHub-backed board below.                                                                                                                                                                                                                                    |
+
+Everything else that stood here has been written or moved below with a reason.
 
 > **Closed 2026-08-03.** Tag push/delete, remote-branch delete, merge, fast-forward, local branch
 > delete and create-patch were all native-context-menu-only, which WebDriver cannot open. They now
@@ -278,6 +297,98 @@ card drawn from `OPS` starts its own sequence) and the copy now states it, en an
   is invisible on a button and fatal on a checkbox: the blocked switch, a checklist tick and the
   column editor's "counts as done" all flip forward and straight back about half the time. Every
   toggle here goes through a helper that verifies where it landed and re-clicks.
+
+### The card's activity feed (`board-card-activity.feature`) ✅
+
+The two halves of the Activity panel added in #412 and #416, both local-board only: the History tab,
+which is `card_history` walking the board's own ref and turning each commit that touched this card
+into "field: before → after"; and the Comments tab, where a reply nests under what it answers.
+
+- **The history is asserted as a reading of the ref, not as a feed that exists.** The scenario
+  changes one field (priority) and expects the row to read `Priority · Normal → High`, plus the
+  `Card created` entry the walk stops on — which is what proves it stops at the card's first commit
+  rather than reporting the whole board's history. Switching to Comments then asserts **no** history
+  row is left: the tabs are one timeline filtered, and "a comment is not a change" is the only thing
+  that distinguishes them.
+- **A reply is checked twice, because only one of the two can go wrong quietly.** On screen it must
+  be _nested_ (`CardActivityCommentThread`), and on disk the reply must carry the parent's id — the
+  nesting is derived from that id on every read, so a reply stored flat would look identical until
+  the card is reopened. Both are asserted, and then the record is closed and reopened so the thread
+  is rebuilt from storage rather than from the dialog's own state. The flat "All" tab is asserted
+  too, where the same reply is annotated (`↳ replying to Test User`) instead of indented.
+- **Gotcha**: the nesting is one level out from the row that carries the testid. Each comment sits in
+  a wrapper `<li>` (the indent), with `CardActivityCommentRow`'s `card-comment-<id>` `<li>` inside it
+  and the replies in a `<ul>` beside that row — so "the parent's row contains the reply's row" is
+  false for a perfectly good thread, and the step matches the wrapper's own child list instead.
+
+### From a card to a branch, and back when it merges (`board-card-branch.feature`) ✅
+
+The loop #403 closed, and the one capability a board hosted anywhere else cannot offer: the card's
+record creates the branch the card is about, gives it a worktree, and the card moves to its board's
+done column on its own when that branch is merged.
+
+- **Every assertion ends in git**: `git branch --list` for the branch, `rev-parse --abbrev-ref HEAD`
+  for the checkout that comes with it, `git worktree list --porcelain` for the worktree, and the
+  board's ref for the card's own half of the link. A card that says it has a branch and a repository
+  that has none is exactly what this section can produce, and only one of those two is in the DOM.
+- **The merge scenario drives the two views**: the branch is created from the card, given a commit of
+  its own directly on disk (scaffolding — committing is `commit.feature`'s subject, not this one's),
+  merged from the **graph** through the ⌘K palette exactly as `merge-branches.feature` does, and the
+  card is then read back on the board. Nothing on the board is touched between the two: the sweep is
+  `BoardMergeCompletion` listening for `apiMergeBranch`'s event, mounted once in `App`.
+- **Two real constraints found here, both pinned by the scenarios:**
+  1. **A worktree cannot be created for the branch the repository is standing on** — git refuses a
+     second checkout of the same branch (`fatal: 'card/x' is already used by worktree at …`). Since
+     creating a card's branch _checks it out_, the section's two buttons sat one above the other in
+     the one state the second could never work in: "Create worktree" right after "Create branch"
+     always failed, and all the user got was git's own `fatal:` line in a toast.
+     **Fixed 2026-08-21**: the section now knows where a branch is checked out
+     (`useWorktreeBranches`, re-read as part of the create-branch click, since that click is what
+     changes the answer), disables the action and says where the branch is; and
+     `createWorktreeForCard` refuses in the same words rather than letting the call reach git, for
+     the race between the render and the click. The constraint itself is git's and stays — so the
+     scenario asserts the refusal, then does what it asks: moves off the branch and creates the
+     worktree, which is also the state a card is in when someone comes back to it days later.
+  2. **The board's branch actions didn't invalidate what the graph reads.** `apiCreateAndCheckoutBranch`
+     moved HEAD for real, but nothing invalidated the `branches` query — the toolbar kept reading
+     `main` ten seconds after the checkout, with `staleTime: 5_000` and no refetch trigger, because
+     the graph mounted while the cached data was still fresh. Both scenarios worked around it with a
+     reload. **Fixed 2026-08-21**: `refreshAfterHeadMove` (extracted from `useBranchCheckout`, so
+     there is one definition of what a moved HEAD invalidates) now runs after the card creates its
+     branch, and the card's _checkout_ goes through `useSwitchBranch` like every other branch picker
+     — which also gets it the undo entry and the stash prompt it never had. The reloads are gone, and
+     each scenario now reads the branch indicator straight after leaving the board: that assertion is
+     what would catch the staleness coming back. It matters most in the merge scenario, where the
+     palette entry is named after the branch the app believes it is on — a stale toolbar would merge
+     in the wrong direction and still pass.
+
+### Recovering a board its repository lost (`board-recovery.feature`) ✅
+
+The disaster-recovery mirror (#417) and the banner that surfaces it (#419). Board refs are local and
+never pushed, so a repository that is deleted and cloned again comes back with no boards and no way
+to know it ever had any.
+
+- **The disaster is real, not simulated**: the scenario opens the fixture a second time mid-run, and
+  `fixture_init` wipes and rebuilds the repository at the same path — which is exactly what a
+  delete-and-re-clone leaves behind, since the mirror lives outside it under
+  `$HOME/.git-manager/boards/<repo-slug>/<board-id>.git`.
+- **Both sides are read with plain `git`**: the mirror's `board.json` off its own bare repo before
+  the wipe, and the restored ref after (`git-manager: restore board from backup`), with the banner
+  asserted gone once there is nothing left to recover.
+- **The row is asserted to be _choosable_, not merely present.** A board is named after a sprint and
+  one mirror is kept per lost clone, so "Sprint 12" can be offered several times over with nothing to
+  pick by; the scenario checks the card count the row carries beside the name (the date beside it is
+  rendered in the machine's locale, so pinning it would pin the run to one).
+- **The mirror outlives everything, which is the point and also the trap.** Every board any scenario
+  has ever created stays offered for recovery for the rest of the run — a fixture rebuild wipes the
+  repository and nothing else. That grew into a nine-line banner over the later board features, and
+  it reached the **documented captures**: `doc-card-options` was published with a pile of identical
+  "Sprint 12" behind the card. The per-scenario `Before` hook now clears them
+  (`support/boardMirrors.ts` — plain filesystem work, so it costs the hook no driver round trip,
+  which is what that hook is otherwise careful about), and this scenario still states the
+  precondition in its own text rather than inheriting it silently. The slug cannot be recomputed in
+  Node (`repo_slug` hashes the path with Rust's `DefaultHasher`), so the directories are matched by
+  their `<fixture>-` prefix instead.
 
 ---
 
@@ -754,6 +865,38 @@ DOM value:
   issues (e.g. folded into `forceLiveSettings`' own `execute`) rather than adding one. Verified
   separately that this was the reset and not the `main.tsx` window guard shipped in the same build:
   with the reset call removed and the same binary, the same specs run with zero window errors.
+
+- **An action taken in one view may leave another reading stale data — and a step there will
+  faithfully assert it.** Found 2026-08-21 driving the board's "create a branch for this card":
+  the checkout was real (`rev-parse` proved it on disk) but nothing invalidated the `branches` query,
+  so the toolbar still named the previous branch ten seconds later, on the graph. Fixed in the app
+  rather than worked around in the suite (`lib/repoRefresh.ts`'s `refreshAfterHeadMove`), and
+  `board-card-branch.feature` now asserts the branch indicator across the view switch instead of
+  reloading around it. The general shape is what to keep: **a view switch is not a refresh**, and
+  `staleTime: 5_000` (`lib/queryClient.ts`) means "recently fetched" beats "the world changed"
+  whenever the change came from somewhere that didn't invalidate — so a scenario crossing views is
+  where this class of bug surfaces, and it surfaces as a step asserting the old value quite happily.
+
+- **A step that starts an action has to wait for it to land, or the next step acts on the old
+  state — and the failure is reported against the wrong feature.** The full run of 2026-08-21 had
+  exactly one red scenario, `remote-push.feature`'s "Pushing a brand-new branch configures its
+  upstream tracking", and it read like a product regression: the branch was created, checked out and
+  pushed, and git had configured no upstream for it. It was the shared "I check out the `<branch>`
+  branch" step returning as soon as it had clicked the option: the push that followed ran while HEAD
+  was still `main`, so it published `main` — the probe added to that assertion says it plainly
+  (`HEAD: feature/tracked`, `main … [origin/main]`, and no `feature/tracked` on the remote). The step
+  now polls the branch indicator before returning. Two lessons kept here: **an IPC-backed action is
+  not done when the click is dispatched**, and an assertion about git should print what git holds —
+  "it never tracked" cannot tell "the push failed" apart from "the push went somewhere else".
+
+- **State kept outside the fixture outlives the fixture.** `fixture_init` wipes the repository and
+  nothing else, so anything the app wrote under the run's `$HOME` — the board mirrors under
+  `~/.git-manager/boards/`, and any worktree at the `<repo>.worktrees/` sibling path — is still there
+  for the next scenario and the next run. That is what makes board recovery testable at all, and it
+  is also why a scenario asserting on such state has to clear it first (`board-recovery.steps.ts`),
+  and why one that creates a worktree has to remove the destination before asking git for it (a
+  leftover directory makes `git worktree add` fail, so the scenario would pass exactly once per
+  machine).
 
 - **A step can "find" a control that changed shape under it.** Three of the five silently-broken
   feature files broke this way, all invisible to a testid-existence check:

@@ -41,11 +41,23 @@ export interface StoredCard {
   priority: string
   tagIds: string[]
   links: { kind: string; targetBoardId: string; targetCardId: string }[]
-  comments: { id: string; author: string; body: string; createdAt: string }[]
+  comments: {
+    id: string
+    author: string
+    body: string
+    createdAt: string
+    /** Set on a reply — the comment it answers. Absent on a top-level comment, which is what makes
+     * "this reply was stored under that comment" checkable on disk rather than only in the DOM. */
+    parentCommentId?: string
+  }[]
   assignee?: string
   dueDate?: string
   blockedReason?: string
   archivedAt?: string
+  /** The branch created for this card from the record's own branch section. */
+  linkedBranch?: string
+  /** The worktree created for that branch, if one was. */
+  linkedWorktreePath?: string
 }
 
 /** `board.json`, same story. */
@@ -246,6 +258,23 @@ export async function closeDialog(testid: string): Promise<void> {
     if (closed) return
   }
   throw new Error(`the "${testid}" dialog never closed`)
+}
+
+/**
+ * Switches a `MarkdownEditorFrame` to its raw "code" tab so `testid`'s field (hidden behind
+ * `class="hidden"` while the frame defaults to "rich") is actually there to type into.
+ *
+ * Scoped to the frame that owns `testid` rather than a bare `$('[data-testid="markdown-tab-code"]')`,
+ * since a card panel can have more than one editor mounted at once — the description and the comment
+ * box are both markdown fields, and the record shows them together.
+ */
+export async function switchToRawMarkdown(testid: string): Promise<void> {
+  await browser.execute((id: string) => {
+    const field = document.querySelector(`[data-testid="${id}"]`)
+    const frame = field?.closest('[data-testid="markdown-editor-frame"]')
+    const codeTab = frame?.querySelector('[data-testid="markdown-tab-code"]') as HTMLElement | null
+    codeTab?.click()
+  }, testid)
 }
 
 /** Opens a card by title and waits for the record view (not the create form) to be up. */

@@ -10,10 +10,10 @@ import {
   apiStashPush,
   type CheckoutOpts,
 } from '../api/git.api'
-import { apiGetRepoSummary, apiOpenRepo } from '../api/repo.api'
+import { apiGetRepoSummary } from '../api/repo.api'
 import { runActivity } from '../lib/activityCorrelation'
 import { localBranchNameForRemote } from '../lib/branchUpstream'
-import { useRepoDataStore } from '../stores/repoData.store'
+import { refreshAfterHeadMove } from '../lib/repoRefresh'
 import { useStashDialogStore } from '../stores/stashDialog.store'
 
 /** Message tagged on the stash created to unblock a checkout, so it's identifiable in the list
@@ -42,18 +42,10 @@ export function useBranchCheckout() {
   const closeStashDialog = useStashDialogStore((s) => s.closeDialog)
   const [pending, setPending] = useState(false)
 
+  // Shared with the Kanban card's branch actions, which move HEAD without going through a picker —
+  // see `refreshAfterHeadMove` for what has to be re-read and why it is one definition.
   const refresh = useCallback(
-    async (repoPath: string) => {
-      try {
-        const fresh = await apiOpenRepo(repoPath)
-        useRepoDataStore.getState().setRepoCache(repoPath, fresh)
-      } catch {
-        /* the queries below still refresh the views even if the cache update failed */
-      }
-      queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-    },
+    (repoPath: string) => refreshAfterHeadMove(queryClient, repoPath),
     [queryClient]
   )
 

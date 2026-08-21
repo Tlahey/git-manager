@@ -131,6 +131,13 @@ export function useBoardCardActions({
    * one-click equivalent of `AddWorktreeDialog`'s default destination, with no dialog of its own
    * since the branch is already decided. No-ops on a card with no linked branch yet: a worktree
    * without the branch that owns it isn't a state this card can represent.
+   *
+   * **Refuses a branch some worktree already holds**, in words rather than by letting git's own
+   * `fatal: '<branch>' is already used by worktree at …` reach a toast. That is not a rare edge:
+   * this card's "Create branch" *checks the branch out*, so the state right after it is exactly the
+   * one git refuses, and the two buttons would otherwise read as a sequence that can be followed.
+   * `useWorktreeBranches` says the same thing in the section itself, before the click; this is the
+   * authoritative check, since a checkout can land between the render and the click.
    */
   async function createWorktreeForCard(card: BoardCard): Promise<BoardCard | null> {
     if (!card.linkedBranch) return null
@@ -138,6 +145,8 @@ export function useBoardCardActions({
     // worktree, and nesting the new one inside it is exactly the wrong place (see
     // `defaultWorktreePath`'s doc comment).
     const worktrees = await apiListWorktrees(repoPath)
+    const holder = worktrees.find((wt) => wt.branch === card.linkedBranch)
+    if (holder) throw new Error(t('card.worktree.branchInUse', { path: holder.path }))
     const repoRoot = worktrees.find((wt) => wt.isMain)?.path ?? repoPath
     const path = defaultWorktreePath(repoRoot, card.linkedBranch)
     await apiAddWorktree(repoPath, card.linkedBranch, path)

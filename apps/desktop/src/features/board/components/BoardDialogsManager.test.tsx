@@ -1,21 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useEffect, useRef } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { SWRConfig } from 'swr'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { BoardData } from '../hooks/useBoardData'
 import { makeBoard, makeCard, makeBoardData } from '../test/boardFactories'
 import { useBoardDialogsStore, type BoardDialogs } from '../stores/boardDialogs.store'
+import { apiCheckoutBranch, apiCreateAndCheckoutBranch } from '../../../api/git.api'
+import { apiOpenRepo } from '../../../api/repo.api'
+import { apiListWorktrees } from '../../../api/worktree.api'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useRepoViewStore } from '../../../stores/repoView.store'
 import { BoardDialogsManager } from './BoardDialogsManager'
 
+// `useSwitchBranch` → `useBranchCheckout` reaches the rest of these, so the mock covers the module
+// rather than the two functions this file used to name.
 vi.mock('../../../api/git.api', () => ({
   apiCreateAndCheckoutBranch: vi.fn().mockResolvedValue(undefined),
   apiCheckoutBranch: vi.fn().mockResolvedValue(undefined),
+  apiCreateBranch: vi.fn().mockResolvedValue(undefined),
+  apiGetBranches: vi.fn().mockResolvedValue([]),
+  apiSetBranchUpstream: vi.fn().mockResolvedValue(undefined),
+  apiStashPush: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('../../../api/repo.api', () => ({
+  apiOpenRepo: vi.fn().mockResolvedValue({ path: '/repo', head: 'main', isDetached: false }),
+  apiGetRepoSummary: vi.fn().mockResolvedValue({ path: '/repo', head: 'main', isDetached: false }),
 }))
 vi.mock('../api/local-board.api', () => ({
   apiGetCardHistory: vi.fn().mockResolvedValue([]),
 }))
+// Read for the card's worktree action — which branch is already checked out where. Mocked to
+// nothing by default; the scenario that cares hands it a worktree holding the card's branch.
+vi.mock('../../../api/worktree.api', () => ({ apiListWorktrees: vi.fn().mockResolvedValue([]) }))
 
 /**
  * Mounts the manager with the real dialog store, opening one dialog on mount — the manager reads
@@ -35,8 +53,21 @@ function Harness({ data, open }: { data: BoardData; open?: (dialogs: BoardDialog
 
 function renderManager(data: Partial<BoardData> = {}, open?: (dialogs: BoardDialogs) => void) {
   const full = makeBoardData(data)
-  render(<Harness data={full} open={open} />)
-  return full
+  // A client per test, with no retries: the manager's branch actions refresh what depends on HEAD
+  // through it (`refreshAfterHeadMove`), and the tests below read the invalidations back off it.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // Its own SWR cache per test, and no deduping: the manager reads the repository's worktrees
+  // (`useWorktreeBranches`), and SWR's module-global cache would otherwise carry the first test's
+  // answer into every later one — invisibly, since `clearAllMocks` also erases the call that put it
+  // there.
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <Harness data={full} open={open} />
+      </SWRConfig>
+    </QueryClientProvider>
+  )
+  return { ...full, queryClient }
 }
 
 beforeEach(() => {
@@ -150,6 +181,179 @@ describe('BoardDialogsManager — Create PR', () => {
     expect(useRepoUIStore.getState().prCreatePrefill).toEqual({ head: 'feature/x', base: '' })
     expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/repo/.wt/x')
     expect(useRepoViewStore.getState().view).toBe('graph')
+  })
+})
+
+describe("BoardDialogsManager — the card's branch and its worktree", () => {
+  /**
+   * The wiring the sequence "Create branch, then Create worktree" depends on: creating a card's
+   * branch checks it out here, and git allows a branch in one worktree at a time — so the card has
+   * to be told where its branch already is, or it offers a button whose only outcome is a `fatal:`.
+   */
+  it('tells the card where its branch is already checked out', async () => {
+    vi.mocked(apiListWorktrees).mockResolvedValue([
+      {
+        path: '/repo',
+        branch: 'feature/x',
+        commitOid: 'abc123',
+        isMain: true,
+        isLocked: false,
+        isDirty: false,
+        isPrunable: false,
+      },
+    ])
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', linkedBranch: 'feature/x' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('board-card-worktree-blocked')).toHaveTextContent('/repo')
+    )
+    expect(screen.getByTestId('board-card-create-worktree')).toBeDisabled()
+  })
+
+  /**
+   * Creating the branch is also a checkout, so the answer to "where is this branch" changes with
+   * the same click — and the worktree action right below reads that answer. Without the re-read it
+   * would go on offering a worktree for a branch this worktree has just taken.
+   */
+  it('re-reads the worktrees after creating the branch, since that checked it out', async () => {
+    vi.mocked(apiListWorktrees).mockResolvedValue([])
+    const data = renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', title: 'Rework the exporter' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    await waitFor(() => expect(apiListWorktrees).toHaveBeenCalled())
+    // Counted from here rather than from zero: opening the record is itself a read (below), and what
+    // this test is about is the click adding one.
+    const beforeClick = vi.mocked(apiListWorktrees).mock.calls.length
+
+    await userEvent.click(screen.getByTestId('board-card-create-branch'))
+
+    await waitFor(() =>
+      expect(apiCreateAndCheckoutBranch).toHaveBeenCalledWith(
+        '/repo',
+        'card/rework-the-exporter',
+        'HEAD'
+      )
+    )
+    expect(data.updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), {
+      linkedBranch: 'card/rework-the-exporter',
+    })
+    await waitFor(() =>
+      expect(vi.mocked(apiListWorktrees).mock.calls.length).toBeGreaterThan(beforeClick)
+    )
+  })
+
+  /**
+   * Whether a card's branch is free is a fact about the whole repository, and what frees it — a
+   * checkout made from the graph — happens where this feature never sees it. Asking again as the
+   * record opens is what keeps the worktree action from refusing on last week's answer; a mount-time
+   * revalidation cannot be relied on for it, since returning to the board can land inside SWR's
+   * deduping window.
+   */
+  it('re-reads the worktrees when a card record opens', async () => {
+    vi.mocked(apiListWorktrees).mockResolvedValue([])
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1' }), makeCard({ id: 'c2' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    await waitFor(() => expect(apiListWorktrees).toHaveBeenCalled())
+    const afterFirstCard = vi.mocked(apiListWorktrees).mock.calls.length
+
+    act(() => useBoardDialogsStore.getState().setCardDialog({ mode: 'edit', cardId: 'c2' }))
+
+    await waitFor(() =>
+      expect(vi.mocked(apiListWorktrees).mock.calls.length).toBeGreaterThan(afterFirstCard)
+    )
+  })
+
+  /**
+   * Creating a branch from a card moves HEAD for real, and the rest of the app reads where HEAD is
+   * from caches nothing here would otherwise touch. Left un-refreshed, the toolbar went on naming
+   * the previous branch — measured at ten seconds and counting, since `staleTime` means a remount
+   * inside that window does not refetch either — and ⌘K built its ref commands from that stale
+   * name, offering to merge into a branch the repository had already left.
+   */
+  it('refreshes what depends on HEAD after creating the branch', async () => {
+    const { queryClient } = renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', title: 'Rework the exporter' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await userEvent.click(screen.getByTestId('board-card-create-branch'))
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
+    )
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
+    expect(apiOpenRepo).toHaveBeenCalledWith('/repo')
+  })
+
+  /**
+   * Checking a card's branch out is the same gesture as any branch picker's, so it goes through the
+   * same hook rather than calling the API directly: that is what gets it the undo entry (the
+   * `fromRef` read before the switch), the stash prompt on a dirty tree, and the refresh above.
+   */
+  it('checks a card branch out through the shared switch, undo entry and all', async () => {
+    const { queryClient } = renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', linkedBranch: 'feature/x' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await userEvent.click(screen.getByTestId('board-card-checkout-branch'))
+
+    await waitFor(() =>
+      expect(apiCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature/x', {
+        fromRef: 'main',
+        fromDetached: false,
+      })
+    )
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
+    )
+  })
+
+  it('leaves the worktree action alone when nothing holds the branch', async () => {
+    // Stated rather than inherited from the factory: `clearAllMocks` clears calls, not
+    // implementations, so the worktree list the test above installed would still be answering here.
+    vi.mocked(apiListWorktrees).mockResolvedValue([])
+    renderManager(
+      {
+        boards: [makeBoard()],
+        activeBoard: makeBoard(),
+        cards: [makeCard({ id: 'c1', linkedBranch: 'feature/x' })],
+      },
+      (d) => d.setCardDialog({ mode: 'edit', cardId: 'c1' })
+    )
+
+    await waitFor(() => expect(apiListWorktrees).toHaveBeenCalledWith('/repo'))
+    expect(screen.queryByTestId('board-card-worktree-blocked')).not.toBeInTheDocument()
+    expect(screen.getByTestId('board-card-create-worktree')).toBeEnabled()
   })
 })
 

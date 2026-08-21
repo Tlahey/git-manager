@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { Board, BoardCard, BoardColumn } from '@git-manager/git-types'
+import type { Board, BoardCard, BoardColumn, RecoverableBoard } from '@git-manager/git-types'
 import type { BoardData } from '../hooks/useBoardData'
 
 /**
@@ -13,6 +13,15 @@ import type { BoardData } from '../hooks/useBoardData'
 
 export function makeColumn(overrides: Partial<BoardColumn> = {}): BoardColumn {
   return { id: 'todo', name: 'To do', order: 0, ...overrides }
+}
+
+/** A board as the recovery banner receives it — the board itself plus what makes one telling apart
+ * from another possible. */
+export function makeRecoverableBoard(
+  overrides: Partial<Board> = {},
+  cardCount = 0
+): RecoverableBoard {
+  return { board: makeBoard(overrides), cardCount }
 }
 
 export function makeBoard(overrides: Partial<Board> = {}): Board {

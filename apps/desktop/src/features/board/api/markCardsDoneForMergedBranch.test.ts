@@ -216,7 +216,40 @@ describe('markCardsDoneForMergedBranch', () => {
     localBackend.listBoards.mockResolvedValue([board])
     localBackend.getBoard.mockResolvedValue({ board, cards: [] as BoardCard[] })
 
-    await expect(markCardsDoneForMergedBranch(path, 'feature/x')).resolves.toBeUndefined()
+    // Zero, not `undefined`: the count is what tells the caller whether anything on screen needs
+    // re-reading, and "nothing moved" is an answer rather than an absence (see `BoardMergeCompletion`).
+    await expect(markCardsDoneForMergedBranch(path, 'feature/x')).resolves.toBe(0)
     expect(localBackend.updateCard).not.toHaveBeenCalled()
+  })
+
+  it('counts the cards it moved, across boards', async () => {
+    const first = boardWith()
+    const second = { ...boardWith(), id: 'b2' }
+    localBackend.listBoards.mockResolvedValue([first, second])
+    localBackend.getBoard.mockImplementation((_path: string, boardId: string) =>
+      Promise.resolve({
+        board: boardId === 'b1' ? first : second,
+        cards: [
+          makeCard({ id: `${boardId}-c1`, boardId, columnId: 'todo', linkedBranch: 'feature/x' }),
+        ],
+      })
+    )
+    localBackend.updateCard.mockResolvedValue(makeCard())
+
+    await expect(markCardsDoneForMergedBranch(path, 'feature/x')).resolves.toBe(2)
+  })
+
+  // A write that lost its race left the card where it was, so counting it would tell the caller to
+  // re-read for a change that never landed — harmless, but the count is meant to mean something.
+  it('does not count a card whose write failed', async () => {
+    const board = boardWith()
+    localBackend.listBoards.mockResolvedValue([board])
+    localBackend.getBoard.mockResolvedValue({
+      board,
+      cards: [makeCard({ id: 'c1', columnId: 'todo', linkedBranch: 'feature/x' })],
+    })
+    localBackend.updateCard.mockRejectedValue(new Error('stale revision'))
+
+    await expect(markCardsDoneForMergedBranch(path, 'feature/x')).resolves.toBe(0)
   })
 })

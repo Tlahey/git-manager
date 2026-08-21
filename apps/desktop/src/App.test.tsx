@@ -30,7 +30,9 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 const { swrMutate } = vi.hoisted(() => ({ swrMutate: vi.fn() }))
-vi.mock('swr', () => ({ mutate: swrMutate }))
+// `useSWRConfig` too: `BoardMergeCompletion` mounts here and reads the cache-wide `mutate` off it,
+// to re-read the boards after a merge moved a card (see that component).
+vi.mock('swr', () => ({ mutate: swrMutate, useSWRConfig: () => ({ mutate: swrMutate }) }))
 
 vi.mock('@git-manager/ui', () => ({ Toaster: () => <div data-testid="fake-toaster" /> }))
 

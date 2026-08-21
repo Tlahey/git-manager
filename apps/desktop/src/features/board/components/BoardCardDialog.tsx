@@ -92,6 +92,9 @@ export interface EditProps extends BoardCardDialogProps {
   onCreatePr?: () => void
   onCreateWorktree?: () => Promise<unknown>
   onUnlinkWorktree?: () => Promise<unknown>
+  /** Where the card's branch is already checked out, if it is — a worktree cannot be created for a
+   * branch some worktree already holds, and creating the branch from this card checked it out. */
+  branchCheckedOutAt?: string
   /** Severs a tracked card's link to its GitHub issue — see `CardTrackingSection`. */
   onUntrack?: () => Promise<unknown>
 }
