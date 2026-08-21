@@ -127,21 +127,29 @@ export function NotchWindow({
   }, [windowHeight])
 
   /**
+   * Brings the app forward, unconditionally.
+   *
+   * Every action button does this — the whole point of pressing one is to do something about a
+   * card, and "about" always means the main window. The ✕ is the one control that does not call
+   * this: closing a card is the one thing the user might do without wanting the app in front of
+   * them.
+   */
+  async function focusMainWindow() {
+    const main = await WebviewWindow.getByLabel('main')
+    await main?.show()
+    await main?.setFocus()
+  }
+
+  /**
    * Brings the app forward, and — when the card knows where it belongs — navigates there.
    *
    * The route is emitted as the exact same event the OS banner's click already produces, so the
    * main window's existing `useNotificationWatcher` listener handles it: this window's Zustand
    * stores are a separate instance and navigating from here would mutate state nobody reads.
-   *
-   * Surfacing the window is unconditional, and that is not incidental. A card with no route is
-   * still about something the user left running in the app — a finished search, a dev server that
-   * came up — and "bring me back to it" is the only thing clicking it could reasonably mean.
    */
   async function activate() {
     if (route) await emit(NOTIFICATION_ACTIVATED_EVENT, route)
-    const main = await WebviewWindow.getByLabel('main')
-    await main?.show()
-    await main?.setFocus()
+    await focusMainWindow()
     presenter.dismiss()
   }
 
@@ -152,14 +160,16 @@ export function NotchWindow({
     }
     if (actionId === 'open-external') {
       if (externalUrl) await openUrl(externalUrl)
+      await focusMainWindow()
       presenter.dismiss()
       return
     }
-    // Anything a future producer defines (a hook's "Show output", a task's "Restart"): hand it to
-    // the main window, which is the one with the stores and the router. Keeping this open-ended is
-    // what stops every new kind of card from having to edit this file. The card's id travels with
-    // it so a handler can tell which operation it belongs to.
+    // Anything a future producer defines (a hook's "Show output", a task's "Restart", a clone's
+    // "Cancel"): hand it to the main window, which is the one with the stores and the router.
+    // Keeping this open-ended is what stops every new kind of card from having to edit this file.
+    // The card's id travels with it so a handler can tell which operation it belongs to.
     await apiEmitNotchAction({ actionId, notchId: model.id })
+    await focusMainWindow()
     presenter.dismiss()
   }
 
@@ -184,7 +194,6 @@ export function NotchWindow({
           productName="Git Manager"
           closeLabel={t('actions.close')}
           onAction={(actionId) => void handleAction(actionId)}
-          onActivate={() => void activate()}
           onDismiss={presenter.dismiss}
           onPointerEnter={presenter.pauseAutoDismiss}
           onPointerLeave={presenter.resumeAutoDismiss}

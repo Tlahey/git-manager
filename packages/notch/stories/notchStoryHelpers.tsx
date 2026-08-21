@@ -161,7 +161,6 @@ export function PresentedNotch({
         productName={PRODUCT_NAME}
         closeLabel={CLOSE_LABEL}
         onAction={(id) => onEvent(`action “${id}”`)}
-        onActivate={() => onEvent('card activated')}
         onDismiss={presenter.dismiss}
         onPointerEnter={() => {
           presenter.pauseAutoDismiss()

@@ -73,24 +73,27 @@ describe('NotchNotification', () => {
     expect(screen.getByRole('button', { name: 'Fermer' })).toBeInTheDocument()
   })
 
-  it('dismisses without also activating the card', async () => {
-    const props = renderCard({ onActivate: vi.fn() })
+  it('dismisses without triggering any action', async () => {
+    const props = renderCard()
     await userEvent.click(screen.getByTestId('notch-close'))
     expect(props.onDismiss).toHaveBeenCalledTimes(1)
-    expect(props.onActivate).not.toHaveBeenCalled()
+    expect(props.onAction).not.toHaveBeenCalled()
   })
 
-  it('reports an action by id without also activating the card', async () => {
-    const props = renderCard({ onActivate: vi.fn() })
+  it('reports an action by id without also dismissing the card', async () => {
+    const props = renderCard()
     await userEvent.click(screen.getByRole('button', { name: 'GitHub' }))
     expect(props.onAction).toHaveBeenCalledWith('github')
-    expect(props.onActivate).not.toHaveBeenCalled()
+    expect(props.onDismiss).not.toHaveBeenCalled()
   })
 
-  it('activates on a click on the card itself', async () => {
-    const props = renderCard({ onActivate: vi.fn() })
+  it('does nothing on a click on the card body', async () => {
+    // See issue #413: a plain body click used to also dismiss the card via `onActivate`. Only the
+    // close button and the action row's explicit buttons respond to a click now.
+    const props = renderCard()
     await userEvent.click(screen.getByTestId('notch-title'))
-    expect(props.onActivate).toHaveBeenCalledTimes(1)
+    expect(props.onAction).not.toHaveBeenCalled()
+    expect(props.onDismiss).not.toHaveBeenCalled()
   })
 
   it('drops the action row when there is neither a button nor a badge', () => {

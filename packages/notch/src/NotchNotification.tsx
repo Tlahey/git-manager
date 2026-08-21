@@ -24,8 +24,6 @@ export interface NotchNotificationProps {
    *  i18n dependency, so the only way a string gets here is the consumer resolving it. */
   closeLabel: string
   onAction: (actionId: string) => void
-  /** Clicking the card itself. */
-  onActivate?: () => void
   onDismiss: () => void
   onPointerEnter?: () => void
   onPointerLeave?: () => void
@@ -53,7 +51,6 @@ export function NotchNotification({
   productName,
   closeLabel,
   onAction,
-  onActivate,
   onDismiss,
   onPointerEnter,
   onPointerLeave,
@@ -90,7 +87,6 @@ export function NotchNotification({
             ),
           }
         : {})}
-      {...(onActivate ? { onActivate } : {})}
       {...(onPointerEnter ? { onPointerEnter } : {})}
       {...(onPointerLeave ? { onPointerLeave } : {})}
       {...(housingHalfWidth !== undefined ? { housingHalfWidth } : {})}
