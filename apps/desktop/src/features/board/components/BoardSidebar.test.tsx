@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { makeBoard, makeBoardData } from '../test/boardFactories'
+import { makeBoard, makeBoardData, makeRecoverableBoard } from '../test/boardFactories'
 import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
 import { BoardSidebar } from './BoardSidebar'
@@ -130,7 +130,11 @@ describe('BoardSidebar', () => {
 
   it('surfaces boards recoverable from the disaster-recovery mirror', () => {
     useBoardData.mockReturnValue(
-      makeBoardData({ boards: [], activeBoard: null, recoverableBoards: [makeBoard({ id: 'b1' })] })
+      makeBoardData({
+        boards: [],
+        activeBoard: null,
+        recoverableBoards: [makeRecoverableBoard({ id: 'b1' })],
+      })
     )
     render(<BoardSidebar repoPath="/repo" />)
 

@@ -375,11 +375,20 @@ to know it ever had any.
 - **Both sides are read with plain `git`**: the mirror's `board.json` off its own bare repo before
   the wipe, and the restored ref after (`git-manager: restore board from backup`), with the banner
   asserted gone once there is nothing left to recover.
+- **The row is asserted to be _choosable_, not merely present.** A board is named after a sprint and
+  one mirror is kept per lost clone, so "Sprint 12" can be offered several times over with nothing to
+  pick by; the scenario checks the card count the row carries beside the name (the date beside it is
+  rendered in the machine's locale, so pinning it would pin the run to one).
 - **The mirror outlives everything, which is the point and also the trap.** Every board any scenario
-  has ever created is still in there, so the first step of this one clears the fixture's mirrors —
-  otherwise it would be asserting on boards left by whatever ran before it. The slug cannot be
-  recomputed in Node (`repo_slug` hashes the path with Rust's `DefaultHasher`), so the steps match
-  the directory by its `feature-branches-` prefix instead.
+  has ever created stays offered for recovery for the rest of the run — a fixture rebuild wipes the
+  repository and nothing else. That grew into a nine-line banner over the later board features, and
+  it reached the **documented captures**: `doc-card-options` was published with a pile of identical
+  "Sprint 12" behind the card. The per-scenario `Before` hook now clears them
+  (`support/boardMirrors.ts` — plain filesystem work, so it costs the hook no driver round trip,
+  which is what that hook is otherwise careful about), and this scenario still states the
+  precondition in its own text rather than inheriting it silently. The slug cannot be recomputed in
+  Node (`repo_slug` hashes the path with Rust's `DefaultHasher`), so the directories are matched by
+  their `<fixture>-` prefix instead.
 
 ---
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
-import { makeBoard } from '../test/boardFactories'
+import { makeBoard, makeRecoverableBoard } from '../test/boardFactories'
 
 vi.mock('../api/local-board.api', () => ({
   apiListRecoverableBoards: vi.fn(),
@@ -27,7 +27,7 @@ beforeEach(() => {
 
 describe('useRecoverableBoards', () => {
   it('lists boards recoverable from the disaster-recovery mirror', async () => {
-    const board = makeBoard({ id: 'b1' })
+    const board = makeRecoverableBoard({ id: 'b1' }, 3)
     mockedList.mockResolvedValue([board])
     const setActiveBoard = vi.fn()
     const revalidateLists = vi.fn()
@@ -58,7 +58,7 @@ describe('useRecoverableBoards', () => {
   })
 
   it('restores a board, refreshes both lists, and jumps to it', async () => {
-    mockedList.mockResolvedValue([makeBoard({ id: 'b1' })])
+    mockedList.mockResolvedValue([makeRecoverableBoard({ id: 'b1' })])
     const restored = makeBoard({ id: 'b1' })
     mockedRestore.mockResolvedValue(restored)
     const setActiveBoard = vi.fn()

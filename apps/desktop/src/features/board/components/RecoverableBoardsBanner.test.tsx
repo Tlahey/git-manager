@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { makeBoard } from '../test/boardFactories'
+import { makeBoard, makeRecoverableBoard } from '../test/boardFactories'
 import { RecoverableBoardsBanner } from './RecoverableBoardsBanner'
 
 describe('RecoverableBoardsBanner', () => {
@@ -12,8 +12,8 @@ describe('RecoverableBoardsBanner', () => {
 
   it('lists every recoverable board with a restore button', () => {
     const boards = [
-      makeBoard({ id: 'b1', name: 'Sprint 12' }),
-      makeBoard({ id: 'b2', name: 'Backlog' }),
+      makeRecoverableBoard({ id: 'b1', name: 'Sprint 12' }),
+      makeRecoverableBoard({ id: 'b2', name: 'Backlog' }),
     ]
     render(<RecoverableBoardsBanner boards={boards} onRestore={vi.fn()} />)
 
@@ -23,10 +23,41 @@ describe('RecoverableBoardsBanner', () => {
     expect(screen.getByTestId('recoverable-board-restore-b2')).toBeInTheDocument()
   })
 
+  /**
+   * The case this line exists for: one mirror per lost clone, and boards named after sprints, so the
+   * name alone offers the same thing twice. What is on the row has to answer "which one was mine".
+   */
+  it('says how big each board is and when it last changed, so two of a name can be told apart', () => {
+    const boards = [
+      makeRecoverableBoard(
+        { id: 'b1', name: 'Sprint 12', updatedAt: '2026-08-21T09:30:00.000Z' },
+        7
+      ),
+      makeRecoverableBoard(
+        { id: 'b2', name: 'Sprint 12', updatedAt: '2026-05-04T09:30:00.000Z' },
+        1
+      ),
+    ]
+    render(<RecoverableBoardsBanner boards={boards} onRestore={vi.fn()} />)
+
+    // The date is formatted for the machine's locale, so the assertion is on the parts this file
+    // owns: the count, and that the two rows do not read the same.
+    const first = screen.getByTestId('recoverable-board-detail-b1')
+    const second = screen.getByTestId('recoverable-board-detail-b2')
+    expect(first).toHaveTextContent('7 cards')
+    expect(second).toHaveTextContent('1 card')
+    expect(first.textContent).not.toBe(second.textContent)
+  })
+
   it('restores the clicked board', async () => {
     const onRestore = vi.fn().mockResolvedValue(makeBoard({ id: 'b1' }))
     const user = userEvent.setup()
-    render(<RecoverableBoardsBanner boards={[makeBoard({ id: 'b1' })]} onRestore={onRestore} />)
+    render(
+      <RecoverableBoardsBanner
+        boards={[makeRecoverableBoard({ id: 'b1' })]}
+        onRestore={onRestore}
+      />
+    )
 
     await user.click(screen.getByTestId('recoverable-board-restore-b1'))
 
@@ -41,7 +72,7 @@ describe('RecoverableBoardsBanner', () => {
           resolveRestore = resolve
         })
     )
-    const boards = [makeBoard({ id: 'b1' }), makeBoard({ id: 'b2' })]
+    const boards = [makeRecoverableBoard({ id: 'b1' }), makeRecoverableBoard({ id: 'b2' })]
     const user = userEvent.setup()
     render(<RecoverableBoardsBanner boards={boards} onRestore={onRestore} />)
 

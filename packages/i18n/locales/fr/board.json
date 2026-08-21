@@ -26,6 +26,8 @@
   "recoverable.title_one": "1 tableau d'un précédent clone de ce dépôt peut être restauré",
   "recoverable.title_other": "{{count}} tableaux d'un précédent clone de ce dépôt peuvent être restaurés",
   "recoverable.restore": "Restaurer",
+  "recoverable.detail_one": "1 carte · dernière modification le {{date}}",
+  "recoverable.detail_other": "{{count}} cartes · dernière modification le {{date}}",
   "card.dialog.createTitle": "Nouvelle carte",
   "card.dialog.titlePlaceholder": "Titre de la carte",
   "card.dialog.descriptionPlaceholder": "Description (markdown)",

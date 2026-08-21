@@ -48,7 +48,7 @@
 use crate::error::AppError;
 use crate::models::{
     Board, BoardCard, BoardCardPatch, BoardColumn, BoardComment, BoardTag, CardFieldChange,
-    CardHistoryEntry, GitCommit, NewBoardCard, SprintSummary, LOCAL_BOARD_SOURCE,
+    CardHistoryEntry, GitCommit, NewBoardCard, RecoverableBoard, SprintSummary, LOCAL_BOARD_SOURCE,
 };
 use crate::utils::{commit_to_model, get_git_signature, repo_slug, short_oid};
 use chrono::Utc;
@@ -1594,7 +1594,12 @@ fn remove_backup(repo: &Repository, board_id: &str) {
 /// Boards whose backup mirror exists on disk but whose ref is missing from the repo — the case a
 /// backup exists to cover (repository deleted and re-cloned). A board with a live ref is not
 /// "recoverable": its backup is just the normal mirror, not evidence of loss.
-pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<Board>, String> {
+///
+/// Each comes back with its **card count**, and the list is ordered **most recently changed first**.
+/// Both are about choosing: one mirror is kept per lost clone, boards are named after sprints, and
+/// three "Sprint 12" offered with nothing but their name is a question the user cannot answer. The
+/// newest is the likeliest to be the one just lost, so it is the one to read first.
+pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<RecoverableBoard>, String> {
     let Some(dir) = backup_dir(repo) else {
         return Ok(Vec::new());
     };
@@ -1628,10 +1633,13 @@ pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<Board>, String> 
         let Some(mirror_repo) = open_mirror_repo(repo, board_id) else {
             continue;
         };
-        let Ok(Some((board, _))) = read_mirror_state(&mirror_repo) else {
+        let Ok(Some((board, cards))) = read_mirror_state(&mirror_repo) else {
             continue;
         };
-        recoverable.push(board);
+        recoverable.push(RecoverableBoard {
+            board,
+            card_count: cards.len(),
+        });
     }
     // A board only ever falls back to the legacy file if its mirror hasn't migrated yet — once
     // `sync_backup` has written a bare-repo commit for it, the JSON is stale and gets removed anyway.
@@ -1648,8 +1656,14 @@ pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<Board>, String> 
         let Ok(backup) = serde_json::from_slice::<BoardBackup>(&bytes) else {
             continue;
         };
-        recoverable.push(backup.board);
+        recoverable.push(RecoverableBoard {
+            card_count: backup.cards.len(),
+            board: backup.board,
+        });
     }
+    // Newest first. `read_dir` hands the mirrors over in whatever order the filesystem holds them,
+    // which is no order at all as far as the reader is concerned.
+    recoverable.sort_by(|a, b| b.board.updated_at.cmp(&a.board.updated_at));
     Ok(recoverable)
 }
 
@@ -2553,7 +2567,10 @@ mod tests {
 
         let recoverable = list_recoverable_boards(&repo).unwrap();
         assert_eq!(recoverable.len(), 1);
-        assert_eq!(recoverable[0].id, board.id);
+        assert_eq!(recoverable[0].board.id, board.id);
+        // What the row has to say beside the name, so two sprints called the same thing can be told
+        // apart: how much is in this one.
+        assert_eq!(recoverable[0].card_count, 1);
 
         let restored = restore_board_backup(&repo, &board.id).unwrap();
         assert_eq!(restored.name, "Board");
@@ -2563,6 +2580,47 @@ mod tests {
 
         // Restored, so no longer "recoverable" — it has a live ref again.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Two sprints called the same thing, both lost with the clone that held them: the list has to
+    /// give the reader something to choose by, and to put the likelier one first. `updated_at` is
+    /// RFC 3339, so ordering the strings orders the times.
+    #[test]
+    fn recoverable_boards_come_back_newest_first_with_their_card_counts() {
+        let (dir, repo) = init_repo("recoverable-ordering");
+        let older = board_with(&repo, "Sprint 12", vec![column("todo", 0)]);
+        let newer = board_with(&repo, "Sprint 12", vec![column("todo", 0)]);
+        for title in ["One", "Two"] {
+            create_card(
+                &repo,
+                &newer.id,
+                "todo",
+                NewBoardCard {
+                    title: title.to_string(),
+                    prefix: "GM".to_string(),
+                    kind: "task".to_string(),
+                    source_issue: None,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        }
+
+        for board_id in [&older.id, &newer.id] {
+            repo.find_reference(&board_ref_name(board_id))
+                .unwrap()
+                .delete()
+                .unwrap();
+        }
+
+        let recoverable = list_recoverable_boards(&repo).unwrap();
+        assert_eq!(recoverable.len(), 2);
+        assert_eq!(recoverable[0].board.id, newer.id, "newest first");
+        assert_eq!(recoverable[0].card_count, 2);
+        assert_eq!(recoverable[1].board.id, older.id);
+        assert_eq!(recoverable[1].card_count, 0);
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -2653,7 +2711,8 @@ mod tests {
 
         let recoverable = list_recoverable_boards(&repo).unwrap();
         assert_eq!(recoverable.len(), 1);
-        assert_eq!(recoverable[0].id, board.id);
+        assert_eq!(recoverable[0].board.id, board.id);
+        assert_eq!(recoverable[0].card_count, 1);
 
         let restored = restore_board_backup(&repo, &board.id).unwrap();
         assert_eq!(restored.name, "Legacy board");

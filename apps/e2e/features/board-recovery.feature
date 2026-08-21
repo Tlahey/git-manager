@@ -23,6 +23,10 @@ Feature: Kanban board — recovering a board its repository lost
     And I open the board
     Then the repository stores 0 boards in its own git history
     And the board "Sprint 12" is offered for recovery
+    # A board is named after a sprint, and one mirror is kept per lost clone — so the name alone can
+    # offer the same thing several times over. The row says how much is in it and when it last
+    # changed, which is what makes one of them choosable.
+    And the recovery offer for "Sprint 12" says it holds 1 card
     When I restore the board "Sprint 12"
     Then the board "Sprint 12" is shown
     And the card "Rework the exporter" is shown on the board

@@ -16,7 +16,9 @@ interface RecoverableBoardsDeps {
  * straight through `local-board.api` rather than `backendFor`.
  *
  * Fetched under its own SWR key so a repo with nothing to recover costs one cheap directory read, not
- * a wait on the boards the page already fetches.
+ * a wait on the boards the page already fetches. Each entry carries the card count and the board's
+ * own `updatedAt` — see `RecoverableBoard`: several lost clones of the same repository mean several
+ * boards of the same *name*, and the row has to be choosable.
  */
 export function useRecoverableBoards({
   repoPath,

@@ -26,6 +26,8 @@
   "recoverable.title_one": "1 board from a previous clone of this repository can be restored",
   "recoverable.title_other": "{{count}} boards from a previous clone of this repository can be restored",
   "recoverable.restore": "Restore",
+  "recoverable.detail_one": "1 card · last changed {{date}}",
+  "recoverable.detail_other": "{{count}} cards · last changed {{date}}",
   "card.dialog.createTitle": "New card",
   "card.dialog.titlePlaceholder": "Card title",
   "card.dialog.descriptionPlaceholder": "Description (markdown)",

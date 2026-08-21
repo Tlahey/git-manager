@@ -549,6 +549,22 @@ pub struct Board {
     pub updated_at: String,
 }
 
+/// A board the disaster-recovery mirror can bring back, with the two facts that make one telling
+/// apart from another possible.
+///
+/// The board alone was not enough: the mirror keeps a board per lost clone, and boards are named
+/// after sprints, so "Sprint 12" can be offered three times over with nothing to choose by. What is
+/// on the row has to answer "which one was mine" — when it last changed (on `board.updated_at`) and
+/// how much is in it.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoverableBoard {
+    pub board: Board,
+    /// Cards held by the mirror, archived ones included — it is a measure of what would come back,
+    /// not of what is on a board's columns.
+    pub card_count: usize,
+}
+
 /// The GitHub issue a card on a *local* board tracks.
 ///
 /// Its presence changes where the card's content lives: the issue becomes the source of truth for

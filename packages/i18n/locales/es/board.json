@@ -26,6 +26,8 @@
   "recoverable.title_one": "1 tablero de un clon anterior de este repositorio se puede restaurar",
   "recoverable.title_other": "{{count}} tableros de un clon anterior de este repositorio se pueden restaurar",
   "recoverable.restore": "Restaurar",
+  "recoverable.detail_one": "1 tarjeta · última modificación el {{date}}",
+  "recoverable.detail_other": "{{count}} tarjetas · última modificación el {{date}}",
   "card.dialog.createTitle": "Nueva tarjeta",
   "card.dialog.titlePlaceholder": "Título de la tarjeta",
   "card.dialog.descriptionPlaceholder": "Descripción (markdown)",

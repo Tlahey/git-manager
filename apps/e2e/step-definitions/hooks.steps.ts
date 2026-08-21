@@ -1,6 +1,7 @@
 import { After, Before } from '@wdio/cucumber-framework'
 import { browser } from '@wdio/globals'
 import { applyBaseline } from '../support/scenarioBaseline.js'
+import { clearBoardMirrors } from '../support/boardMirrors.js'
 import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
 import { navigateAndSettle } from '../support/navigation.js'
 
@@ -86,6 +87,12 @@ Before(async () => {
       sha: { visible: true, width: 80 },
     },
   }
+
+  // The board's disaster-recovery mirrors live outside every repository, so a fixture rebuild leaves
+  // them behind and every board a previous scenario created stays offered for recovery — a banner
+  // that grows all run and lands in the documented captures. Filesystem only: no driver round trip,
+  // which is what the comment above `applyBaseline` is protective of.
+  clearBoardMirrors()
 
   // Belt to the After hook's braces: if the previous scenario still left the session on a dead
   // window handle (every path there re-anchors on `main`, but none of them can be guaranteed to

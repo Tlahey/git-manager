@@ -660,6 +660,21 @@ export interface BoardCardLink {
 }
 
 /**
+ * A board the disaster-recovery mirror can bring back, with the two facts that make telling one from
+ * another possible.
+ *
+ * The board alone was not enough: one mirror is kept per lost clone and boards are named after
+ * sprints, so "Sprint 12" can be offered three times over with nothing to choose by. Mirrors the Rust
+ * `RecoverableBoard`.
+ */
+export interface RecoverableBoard {
+  board: Board
+  /** Cards held by the mirror, archived ones included — what would come back, not what would be on
+   * the columns. */
+  cardCount: number
+}
+
+/**
  * The GitHub issue a card on a *local* board tracks.
  *
  * Its presence changes where the card's content lives: the issue becomes the source of truth for
