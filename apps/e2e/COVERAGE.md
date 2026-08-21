@@ -349,13 +349,18 @@ done column on its own when that branch is merged.
      the race between the render and the click. The constraint itself is git's and stays — so the
      scenario asserts the refusal, then does what it asks: moves off the branch and creates the
      worktree, which is also the state a card is in when someone comes back to it days later.
-  2. **The board's branch actions don't invalidate what the graph reads.** `apiCreateAndCheckoutBranch`
-     moves HEAD for real, but nothing invalidates the `branches` query — the toolbar kept reading
+  2. **The board's branch actions didn't invalidate what the graph reads.** `apiCreateAndCheckoutBranch`
+     moved HEAD for real, but nothing invalidated the `branches` query — the toolbar kept reading
      `main` ten seconds after the checkout, with `staleTime: 5_000` and no refetch trigger, because
-     the graph mounted while the cached data was still fresh. Both scenarios therefore reload the app
-     before reading the indicator, and say so at the step: without it the merge scenario would pick a
-     palette entry named after the wrong branch and still pass, which is the failure mode worth
-     naming.
+     the graph mounted while the cached data was still fresh. Both scenarios worked around it with a
+     reload. **Fixed 2026-08-21**: `refreshAfterHeadMove` (extracted from `useBranchCheckout`, so
+     there is one definition of what a moved HEAD invalidates) now runs after the card creates its
+     branch, and the card's _checkout_ goes through `useSwitchBranch` like every other branch picker
+     — which also gets it the undo entry and the stash prompt it never had. The reloads are gone, and
+     each scenario now reads the branch indicator straight after leaving the board: that assertion is
+     what would catch the staleness coming back. It matters most in the merge scenario, where the
+     palette entry is named after the branch the app believes it is on — a stale toolbar would merge
+     in the wrong direction and still pass.
 
 ### Recovering a board its repository lost (`board-recovery.feature`) ✅
 
@@ -854,13 +859,14 @@ DOM value:
 
 - **An action taken in one view may leave another reading stale data — and a step there will
   faithfully assert it.** Found 2026-08-21 driving the board's "create a branch for this card":
-  the checkout is real (`rev-parse` proves it on disk) but nothing invalidates the `branches` query,
-  so the toolbar still named the previous branch ten seconds later, on the graph. A scenario that
-  crosses views has to make the app re-read — `board-card-branch.feature` reloads, and says at the
-  step why — or it can end up driving a palette entry named after a branch the repository has already
-  left. The general shape: **a view switch is not a refresh**, and `staleTime: 5_000`
-  (`lib/queryClient.ts`) means "recently fetched" beats "the world changed" whenever the change came
-  from somewhere that didn't invalidate.
+  the checkout was real (`rev-parse` proved it on disk) but nothing invalidated the `branches` query,
+  so the toolbar still named the previous branch ten seconds later, on the graph. Fixed in the app
+  rather than worked around in the suite (`lib/repoRefresh.ts`'s `refreshAfterHeadMove`), and
+  `board-card-branch.feature` now asserts the branch indicator across the view switch instead of
+  reloading around it. The general shape is what to keep: **a view switch is not a refresh**, and
+  `staleTime: 5_000` (`lib/queryClient.ts`) means "recently fetched" beats "the world changed"
+  whenever the change came from somewhere that didn't invalidate — so a scenario crossing views is
+  where this class of bug surfaces, and it surfaces as a step asserting the old value quite happily.
 
 - **A step that starts an action has to wait for it to land, or the next step acts on the old
   state — and the failure is reported against the wrong feature.** The full run of 2026-08-21 had

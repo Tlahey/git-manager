@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import useSWR from 'swr'
 import type { GitWorktree } from '@git-manager/git-types'
 import { apiListWorktrees } from '../../../api/worktree.api'
@@ -27,6 +28,7 @@ export function useWorktreeBranches(repoPath: string) {
     apiListWorktrees(repoPath)
   )
   const worktrees: GitWorktree[] = data ?? []
+  const revalidateWorktrees = useCallback(() => void mutate(), [mutate])
 
   return {
     /**
@@ -38,12 +40,15 @@ export function useWorktreeBranches(repoPath: string) {
       return worktrees.find((worktree) => worktree.branch === branch) ?? null
     },
     /**
-     * Re-reads the list. The caller for it is the card's own "Create branch", which **checks the
-     * new branch out** — the answer to "where is this branch" changes with that click, and without
-     * a re-read the section would go on offering a worktree for a branch this very worktree has
-     * just taken. That is the whole sequence this hook exists for, so leaving it to the next mount
-     * would leave it wrong exactly when it is read.
+     * Re-reads the list, explicitly.
+     *
+     * Two callers, and neither can wait for a mount: the card's own "Create branch" **checks the new
+     * branch out**, so the answer changes with that very click; and opening a card asks a question
+     * whose answer may have changed in another view entirely (a checkout from the graph frees the
+     * branch again). A mount-time revalidation covers neither reliably — switching back to the board
+     * remounts it, but within SWR's deduping window that revalidation is dropped, and the section
+     * then refuses a worktree for a branch nothing holds any more. An explicit mutate is not deduped.
      */
-    revalidateWorktrees: () => void mutate(),
+    revalidateWorktrees,
   }
 }

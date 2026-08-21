@@ -11,6 +11,10 @@ import { defaultArchiveColumnId } from '../lib/sprintStats'
  * read one off the render it's called from. A card tracking a GitHub issue is not silently wrong
  * for it: its "done" is the issue's own state, which git-manager doesn't drive either way.
  *
+ * Answers **how many cards it moved**, which is what tells its caller whether anything on screen is
+ * now out of date: this runs outside React and writes straight to the backend, so a board being
+ * looked at has no way of hearing about it otherwise (see `BoardMergeCompletion`).
+ *
  * **Best-effort, per board and per card.** A merge that already landed must not look like it failed
  * because one board's ref is momentarily locked or one card's revision went stale under it — either
  * is caught and skipped rather than aborting the sweep, so a problem with one card or board never
@@ -20,7 +24,8 @@ import { defaultArchiveColumnId } from '../lib/sprintStats'
 export async function markCardsDoneForMergedBranch(
   repoPath: string,
   branch: string
-): Promise<void> {
+): Promise<number> {
+  let moved = 0
   const boards = await localBoardBackend.listBoards(repoPath)
   for (const board of boards) {
     const doneColumnId = defaultArchiveColumnId(board.columns)
@@ -44,10 +49,13 @@ export async function markCardsDoneForMergedBranch(
           { columnId: doneColumnId },
           card.revision
         )
+        moved += 1
       } catch {
         // Stale revision, or the board changed under us — the next merge (or the user, by hand)
         // gets another chance; nothing here is worth surfacing an error for.
       }
     }
   }
+
+  return moved
 }

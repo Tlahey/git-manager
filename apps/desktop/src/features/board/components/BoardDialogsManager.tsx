@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import type { BoardCard } from '@git-manager/git-types'
 import type { BoardData } from '../hooks/useBoardData'
-import { apiCreateAndCheckoutBranch, apiCheckoutBranch } from '../../../api/git.api'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiCreateAndCheckoutBranch } from '../../../api/git.api'
 import { CloseSprintDialog } from './CloseSprintDialog'
 import { BoardCardDialog } from './BoardCardDialog'
 import { BoardSearchDialog } from './BoardSearchDialog'
@@ -24,6 +26,8 @@ import { useCardHistory } from '../hooks/useCardHistory'
 import { useWorktreeBranches } from '../hooks/useWorktreeBranches'
 import { apiGetCardHistory } from '../api/local-board.api'
 import { useOpenPrCreateForBranch } from '../../../hooks/useOpenPrCreateForBranch'
+import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
+import { refreshAfterHeadMove } from '../../../lib/repoRefresh'
 import type { BoardDialogs } from '../stores/boardDialogs.store'
 
 interface BoardDialogsManagerProps {
@@ -107,6 +111,20 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
   // worktree at a time, and this card's own "Create branch" checks it out here — see
   // `useWorktreeBranches`, and `createWorktreeForCard` for the authoritative re-check.
   const { worktreeHolding, revalidateWorktrees } = useWorktreeBranches(repoPath)
+  // Moving HEAD from a card is still moving HEAD: the toolbar, the branch list and the graph all
+  // read where it is, and nothing else here would tell them it changed (`refreshAfterHeadMove`).
+  const queryClient = useQueryClient()
+  // Checking a card's branch out is the same gesture every branch picker performs, so it goes
+  // through the same hook: the base project rather than a linked worktree on screen, the stash
+  // prompt when the tree is dirty, an undo entry, and the refresh above.
+  const { switchBranch } = useSwitchBranch()
+  // Asked again each time a card record opens: whether its branch is free is a fact about the whole
+  // repository, and the thing that frees it — a checkout from the graph — happens where this feature
+  // cannot see it. Cheap (`git worktree list`), and the answer is read the moment the record paints.
+  const openCardId = editingCard?.id
+  useEffect(() => {
+    if (openCardId) revalidateWorktrees()
+  }, [openCardId, revalidateWorktrees])
   const openPrCreateForBranch = useOpenPrCreateForBranch()
   /** Guards the branch check here rather than inside `useOpenPrCreateForBranch` itself, the same
    * shape `onCreateWorktree` below already uses — the hook is generic over any branch, so "does
@@ -295,18 +313,22 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
           historyLoading={historyLoading}
           onCreateBranch={async () => {
             const branchName = branchNameForCard(editingCard.title)
+            // Created and checked out as one correlated action, so ⌘Z takes back both — see
+            // `apiCreateAndCheckoutBranch`. The refresh is this caller's, since that API deliberately
+            // leaves the cache to whoever is holding one.
             await apiCreateAndCheckoutBranch(repoPath, branchName, 'HEAD')
             await updateCard(editingCard, { linkedBranch: branchName })
+            await refreshAfterHeadMove(queryClient, repoPath)
             // This repository is now standing on the branch it just made, which is precisely what
             // stops a worktree being created for it — so the section has to be told, or it would
             // offer the next button in the one state that button cannot work in.
             revalidateWorktrees()
           }}
-          onCheckoutBranch={() =>
-            editingCard.linkedBranch
-              ? apiCheckoutBranch(repoPath, editingCard.linkedBranch)
-              : Promise.resolve()
-          }
+          onCheckoutBranch={async () => {
+            if (!editingCard.linkedBranch) return
+            await switchBranch(editingCard.linkedBranch)
+            revalidateWorktrees()
+          }}
           onUnlinkBranch={() => updateCard(editingCard, { linkedBranch: null })}
           onCreatePr={
             canUseRemote && editingCard.linkedBranch ? () => openPrForCard(editingCard) : undefined

@@ -51,12 +51,11 @@ Feature: Kanban board — from a card to a branch, and back when it merges
     And I create a branch for the card
     Then the card record refuses a worktree while the branch is checked out
     When I close the card record
-    # The reload is a workaround, not a gesture, and it is here for a real bug worth keeping in
-    # sight: the board's branch actions check out through the API layer without invalidating the
-    # queries the toolbar and graph read, so until something else refetches them the app still names
-    # the branch it was on before (COVERAGE.md records it). Everything after the reload is real.
-    And I reload the application
     And I open the commit graph
+    # No reload in between: creating the branch from the card refreshes what depends on HEAD, so the
+    # graph's own chrome names the branch the board just checked out. That was a real bug until
+    # 2026-08-21 — the toolbar went on naming the previous branch — and this is the assertion that
+    # would catch it coming back.
     Then the branch indicator reads "card/package-the-app"
     When I check out the "main" branch
     And I open the board
@@ -82,11 +81,10 @@ Feature: Kanban board — from a card to a branch, and back when it merges
     # one rather than an "already up to date" no-op, and no fixture can carry a branch this scenario
     # only names once it has created it.
     Given the branch "card/ship-the-exporter" has its own commit "feat: export the report"
-    # Same reload as the worktree scenario above, for the same missing invalidation — and it matters
-    # more here: the palette's merge entry is named after the branch the app *believes* it is on, so
-    # a stale toolbar would have this scenario merge in the wrong direction and still pass.
-    When I reload the application
-    And I open the commit graph
+    # Read before anything is merged, and load-bearing: the palette's merge entry is named after the
+    # branch the app *believes* it is on, so a stale toolbar would have this scenario merge in the
+    # wrong direction and still pass.
+    When I open the commit graph
     Then the branch indicator reads "card/ship-the-exporter"
     When I check out the "main" branch
     And I open the command palette
