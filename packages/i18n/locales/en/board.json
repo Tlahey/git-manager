@@ -136,6 +136,7 @@
   "card.worktree.none": "No worktree linked",
   "card.worktree.create": "Create worktree",
   "card.worktree.unlink": "Unlink",
+  "card.worktree.branchInUse": "This branch is checked out at {{path}}. A branch can only be in one worktree at a time — switch that checkout to another branch first.",
   "createBoard.title": "New board",
   "createBoard.nameLabel": "Name",
   "createBoard.namePlaceholder": "e.g. Sprint 12",

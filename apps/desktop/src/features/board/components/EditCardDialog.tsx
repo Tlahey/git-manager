@@ -55,6 +55,7 @@ export function EditCardDialog({
   onCreatePr,
   onCreateWorktree,
   onUnlinkWorktree,
+  branchCheckedOutAt,
   onUntrack,
   onOpenCard,
 }: EditProps) {
@@ -169,6 +170,7 @@ export function EditCardDialog({
               onCreatePr={onCreatePr}
               onCreateWorktree={onCreateWorktree}
               onUnlinkWorktree={onUnlinkWorktree}
+              branchCheckedOutAt={branchCheckedOutAt}
               onUntrack={onUntrack}
               readOnly={readOnly}
             />

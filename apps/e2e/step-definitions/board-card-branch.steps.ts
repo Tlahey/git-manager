@@ -95,6 +95,28 @@ Then(/^the card record shows a linked worktree$/, async () => {
   await expect($('[data-testid="board-card-unlink-worktree"]')).toBeDisplayed()
 })
 
+/**
+ * The refusal the card gives while its own branch is the checked-out one.
+ *
+ * Asserted on the shape rather than the sentence — the message names the path, and the suite runs in
+ * the app's default language, so matching the copy would pin this to one locale for no gain. What
+ * matters is that the action is refused *and* explained: a disabled button with nothing next to it
+ * is the same dead end, just quieter.
+ */
+Then(/^the card record refuses a worktree while the branch is checked out$/, async () => {
+  const blocked = $('[data-testid="board-card-worktree-blocked"]')
+  await blocked.waitForDisplayed({ timeout: 15000 })
+  // By the repository's own directory name, not its full path: git canonicalises `/tmp` to
+  // `/private/tmp` on macOS, so the path in the message and the one this suite recorded are the same
+  // place spelled two ways. The name is in both, and in every locale.
+  const repoName = getActiveRepoPath().split('/').filter(Boolean).pop() ?? ''
+  const said = (await blocked.getText()).trim()
+  if (!said.includes(repoName)) {
+    throw new Error(`the refusal never names where the branch is checked out — it reads "${said}"`)
+  }
+  await expect($('[data-testid="board-card-create-worktree"]')).toBeDisabled()
+})
+
 // ─── What git says ─────────────────────────────────────────────────────────
 
 Then(/^the branch "([^"]*)" exists in the repository$/, async (branch: string) => {

@@ -18,6 +18,8 @@ interface CardMetaSidebarProps {
   onCreatePr?: () => void
   onCreateWorktree?: () => Promise<unknown>
   onUnlinkWorktree?: () => Promise<unknown>
+  /** Where the card's branch is already checked out, if it is — see `BoardCardBranchSection`. */
+  branchCheckedOutAt?: string
   /** Severs the link to a tracked GitHub issue — see `CardTrackingSection`. */
   onUntrack?: () => Promise<unknown>
   readOnly?: boolean
@@ -43,6 +45,7 @@ export function CardMetaSidebar({
   onCreatePr,
   onCreateWorktree,
   onUnlinkWorktree,
+  branchCheckedOutAt,
   onUntrack,
   readOnly,
 }: CardMetaSidebarProps) {
@@ -76,6 +79,7 @@ export function CardMetaSidebar({
         onCreatePr={onCreatePr}
         onCreateWorktree={onCreateWorktree}
         onUnlinkWorktree={onUnlinkWorktree}
+        branchCheckedOutAt={branchCheckedOutAt}
         readOnly={readOnly}
       />
 

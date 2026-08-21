@@ -336,14 +336,19 @@ done column on its own when that branch is merged.
   merged from the **graph** through the ⌘K palette exactly as `merge-branches.feature` does, and the
   card is then read back on the board. Nothing on the board is touched between the two: the sweep is
   `BoardMergeCompletion` listening for `apiMergeBranch`'s event, mounted once in `App`.
-- **Two real constraints found here, both left as they are and pinned by the scenarios:**
+- **Two real constraints found here, both pinned by the scenarios:**
   1. **A worktree cannot be created for the branch the repository is standing on** — git refuses a
      second checkout of the same branch (`fatal: 'card/x' is already used by worktree at …`). Since
-     creating a card's branch _checks it out_, the section's two buttons cannot be used one after the
-     other: "Create worktree" right after "Create branch" always fails. The scenario moves off the
-     branch first, which is the state a card is in when someone comes back to it later. Worth fixing
-     in the product (the button could check out elsewhere first, or say why it can't) — flagged, not
-     fixed here.
+     creating a card's branch _checks it out_, the section's two buttons sat one above the other in
+     the one state the second could never work in: "Create worktree" right after "Create branch"
+     always failed, and all the user got was git's own `fatal:` line in a toast.
+     **Fixed 2026-08-21**: the section now knows where a branch is checked out
+     (`useWorktreeBranches`, re-read as part of the create-branch click, since that click is what
+     changes the answer), disables the action and says where the branch is; and
+     `createWorktreeForCard` refuses in the same words rather than letting the call reach git, for
+     the race between the render and the click. The constraint itself is git's and stays — so the
+     scenario asserts the refusal, then does what it asks: moves off the branch and creates the
+     worktree, which is also the state a card is in when someone comes back to it days later.
   2. **The board's branch actions don't invalidate what the graph reads.** `apiCreateAndCheckoutBranch`
      moves HEAD for real, but nothing invalidates the `branches` query — the toolbar kept reading
      `main` ten seconds after the checkout, with `staleTime: 5_000` and no refetch trigger, because

@@ -136,6 +136,7 @@
   "card.worktree.none": "Aucune worktree liée",
   "card.worktree.create": "Créer une worktree",
   "card.worktree.unlink": "Délier",
+  "card.worktree.branchInUse": "Cette branche est déjà extraite dans {{path}}. Une branche ne peut vivre que dans une seule worktree à la fois — basculez d'abord cette copie sur une autre branche.",
   "createBoard.title": "Nouveau tableau",
   "createBoard.nameLabel": "Nom",
   "createBoard.namePlaceholder": "ex. Sprint 12",

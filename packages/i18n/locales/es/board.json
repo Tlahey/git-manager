@@ -136,6 +136,7 @@
   "card.worktree.none": "Ningún árbol de trabajo vinculado",
   "card.worktree.create": "Crear árbol de trabajo",
   "card.worktree.unlink": "Desvincular",
+  "card.worktree.branchInUse": "Esta rama ya está activa en {{path}}. Una rama solo puede estar en un árbol de trabajo a la vez: cambia primero esa copia a otra rama.",
   "createBoard.title": "Nuevo tablero",
   "createBoard.nameLabel": "Nombre",
   "createBoard.namePlaceholder": "p. ej. Sprint 12",

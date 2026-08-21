@@ -21,6 +21,7 @@ import { columnMoveTargetsFor, moveTargetsFor } from '../lib/cardMoveTargets'
 import { linkWrite, unlinkWrite, type DisplayedLinkKind, type ResolvedLink } from '../lib/cardLinks'
 import { useCardComments } from '../hooks/useCardComments'
 import { useCardHistory } from '../hooks/useCardHistory'
+import { useWorktreeBranches } from '../hooks/useWorktreeBranches'
 import { apiGetCardHistory } from '../api/local-board.api'
 import { useOpenPrCreateForBranch } from '../../../hooks/useOpenPrCreateForBranch'
 import type { BoardDialogs } from '../stores/boardDialogs.store'
@@ -102,6 +103,10 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
     isLocalBoard ? editingCard : null,
     (card) => apiGetCardHistory(repoPath, card.boardId, card.id)
   )
+  // Which worktree holds which branch, for the card's worktree action: git allows a branch in one
+  // worktree at a time, and this card's own "Create branch" checks it out here — see
+  // `useWorktreeBranches`, and `createWorktreeForCard` for the authoritative re-check.
+  const { worktreeHolding, revalidateWorktrees } = useWorktreeBranches(repoPath)
   const openPrCreateForBranch = useOpenPrCreateForBranch()
   /** Guards the branch check here rather than inside `useOpenPrCreateForBranch` itself, the same
    * shape `onCreateWorktree` below already uses — the hook is generic over any branch, so "does
@@ -292,6 +297,10 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
             const branchName = branchNameForCard(editingCard.title)
             await apiCreateAndCheckoutBranch(repoPath, branchName, 'HEAD')
             await updateCard(editingCard, { linkedBranch: branchName })
+            // This repository is now standing on the branch it just made, which is precisely what
+            // stops a worktree being created for it — so the section has to be told, or it would
+            // offer the next button in the one state that button cannot work in.
+            revalidateWorktrees()
           }}
           onCheckoutBranch={() =>
             editingCard.linkedBranch
@@ -306,6 +315,7 @@ export function BoardDialogsManager({ repoPath, data, dialogs }: BoardDialogsMan
             editingCard.linkedBranch ? () => createWorktreeForCard(editingCard) : undefined
           }
           onUnlinkWorktree={() => unlinkWorktree(editingCard)}
+          branchCheckedOutAt={worktreeHolding(editingCard.linkedBranch)?.path}
           onUntrack={editingCard.sourceIssue ? () => untrackCard(editingCard) : undefined}
           columns={activeBoard?.columns}
           boardName={activeBoard?.name}

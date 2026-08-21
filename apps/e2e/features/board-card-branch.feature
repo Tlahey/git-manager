@@ -37,10 +37,10 @@ Feature: Kanban board — from a card to a branch, and back when it merges
   # and it is only offered once a branch is linked, since a worktree without the branch that owns it
   # is not a state a card can represent.
   #
-  # The repository has to be standing somewhere else first: a worktree is a *second* checkout of a
-  # branch, and git refuses one for the branch the main worktree is already on. Creating a card's
-  # branch checks it out, so the two buttons cannot be used one after the other — see COVERAGE.md's
-  # note on that; this scenario drives the state a card comes back to days later instead.
+  # A worktree is a *second* checkout of a branch, and git allows a branch in one worktree at a time,
+  # so the branch has to be free: creating a card's branch checks it out here, which is exactly what
+  # then stands in the way. The card says so rather than offering a button whose only outcome is
+  # git's own `fatal:` — asserted below — and the scenario then does what the message asks.
   Scenario: A card's branch can be given a worktree of its own
     Given no worktree is left over for the branch "card/package-the-app"
     And the "feature-branches" fixture repository is opened
@@ -49,7 +49,8 @@ Feature: Kanban board — from a card to a branch, and back when it merges
     And I add a card titled "Package the app" to the "In progress" column
     And I open the card "Package the app"
     And I create a branch for the card
-    And I close the card record
+    Then the card record refuses a worktree while the branch is checked out
+    When I close the card record
     # The reload is a workaround, not a gesture, and it is here for a real bug worth keeping in
     # sight: the board's branch actions check out through the API layer without invalidating the
     # queries the toolbar and graph read, so until something else refetches them the app still names
