@@ -5,21 +5,20 @@ import { Button, Spinner, cn } from '@git-manager/ui'
 import type { BoardColumn, BoardComment, BoardTag, CardHistoryEntry } from '@git-manager/git-types'
 import { AttachmentTextarea } from './AttachmentTextarea'
 import { CardContentSection } from './CardContentSection'
-import { CardActivityCommentRow } from './CardActivityCommentRow'
 import { CardActivityCommentThread } from './CardActivityCommentThread'
 import { CardActivityHistoryRow } from './CardActivityHistoryRow'
 import { buildActivityTimeline } from '../lib/cardActivityTimeline'
 import { buildCommentThreads } from '../lib/commentThreads'
 
-type ActivityTab = 'all' | 'comments' | 'history'
-const TABS: ActivityTab[] = ['all', 'comments', 'history']
+type ActivityTab = 'comments' | 'history'
+const TABS: ActivityTab[] = ['comments', 'history']
 
 interface CardActivitySectionProps {
   comments: BoardComment[]
   commentsLoading?: boolean
   onSubmit: (body: string, parentCommentId?: string) => Promise<unknown>
   /** Whether replying to a comment is offered at all — the reply action only ever shows in the
-   * Comments tab (never the flat "All" tab), and only when this is true. Local-board only. */
+   * Comments tab, and only when this is true. Local-board only. */
   repliesEnabled?: boolean
   repoPath: string
   attachmentUrlPrefix?: string
@@ -35,9 +34,8 @@ interface CardActivitySectionProps {
 
 /**
  * The card's activity feed — comments and git-derived history in one timeline, tabbed the way
- * Jira's own Activity panel is (All / Comments / History), rather than as two separate collapsible
- * sections. "All" interleaves both by real time; "Comments" and "History" are the same timeline
- * filtered down to one kind.
+ * Jira's own Activity panel is (Comments / History), rather than as two separate collapsible
+ * sections.
  */
 export function CardActivitySection({
   comments,
@@ -55,23 +53,17 @@ export function CardActivitySection({
   const { t } = useTranslation('board')
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
-  const [tab, setTab] = useState<ActivityTab>('all')
+  const [tab, setTab] = useState<ActivityTab>('comments')
   const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(null)
 
   const hasHistory = history !== undefined
   const timeline = buildActivityTimeline(comments, history ?? [])
   const commentThreads = buildCommentThreads(comments)
   const activeTab: ActivityTab = hasHistory ? tab : 'comments'
-  const items = timeline.filter((item) => {
-    if (activeTab === 'all') return true
-    return activeTab === 'comments' ? item.type === 'comment' : item.type === 'history'
-  })
-  const loading =
-    activeTab === 'history'
-      ? historyLoading
-      : activeTab === 'comments'
-        ? commentsLoading
-        : commentsLoading || historyLoading
+  const items = timeline.filter((item) =>
+    activeTab === 'comments' ? item.type === 'comment' : item.type === 'history'
+  )
+  const loading = activeTab === 'history' ? historyLoading : commentsLoading
 
   async function submit() {
     if (!draft.trim() || pending) return
@@ -88,18 +80,9 @@ export function CardActivitySection({
     }
   }
 
-  const emptyLabel =
-    activeTab === 'history'
-      ? t('card.history.empty')
-      : activeTab === 'comments'
-        ? t('card.comments.empty')
-        : t('card.activity.empty.all')
+  const emptyLabel = activeTab === 'history' ? t('card.history.empty') : t('card.comments.empty')
   const loadingLabel =
-    activeTab === 'history'
-      ? t('card.history.loading')
-      : activeTab === 'comments'
-        ? t('card.comments.loading')
-        : t('card.activity.loading.all')
+    activeTab === 'history' ? t('card.history.loading') : t('card.comments.loading')
 
   return (
     <CardContentSection
@@ -129,11 +112,7 @@ export function CardActivitySection({
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               )}
             >
-              {key === 'all'
-                ? t('card.activity.tabs.all')
-                : key === 'comments'
-                  ? t('card.comments.label')
-                  : t('card.history.label')}
+              {key === 'comments' ? t('card.comments.label') : t('card.history.label')}
             </button>
           ))}
         </div>
@@ -164,21 +143,14 @@ export function CardActivitySection({
         ) : (
           <ul className="space-y-2">
             {items.map((item) =>
-              item.type === 'comment' ? (
-                <CardActivityCommentRow
-                  key={`comment-${item.comment.id}`}
-                  comment={item.comment}
-                  repoPath={repoPath}
-                  replyingToAuthor={item.replyingToAuthor}
-                />
-              ) : (
+              item.type === 'history' ? (
                 <CardActivityHistoryRow
                   key={`history-${item.entry.oid}`}
                   entry={item.entry}
                   columns={columns}
                   tags={tags}
                 />
-              )
+              ) : null
             )}
           </ul>
         )}

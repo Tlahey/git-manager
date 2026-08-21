@@ -17,7 +17,7 @@ const MAX_INDENT_DEPTH = 6
 const INDENT_PX = 14
 
 /** Recursive renderer for the activity panel's "Comments" tab — a card's replies nested under their
- * parent, arbitrarily deep, unlike the "All" tab which stays flat (see `CardActivitySection`). */
+ * parent, arbitrarily deep. */
 export function CardActivityCommentThread({
   node,
   depth,

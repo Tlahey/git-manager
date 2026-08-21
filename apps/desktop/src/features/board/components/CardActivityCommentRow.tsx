@@ -9,11 +9,6 @@ interface CardActivityCommentRowProps {
   /** Present only in the "Comments" tab, and only when the card's comments support replies
    * (`CardActivitySection`'s `repliesEnabled`) — undefined hides the affordance entirely. */
   onReply?: () => void
-  /** Present only in the "All" tab, for a reply — the author of the comment this one replies to,
-   * rendered as a small "↳ replying to @author" annotation rather than visual nesting (nesting is
-   * reserved for the Comments tab's `commentThreads.ts`, since the "All" tab interleaves comments
-   * with unrelated history rows that a nested thread would sit awkwardly between). */
-  replyingToAuthor?: string
 }
 
 function formatCommentDate(iso: string): string {
@@ -22,16 +17,15 @@ function formatCommentDate(iso: string): string {
 }
 
 /**
- * One row of the activity feed's "All"/"Comments" view — a card's discussion is append-only, so
- * there is no edit or delete affordance here, matching `EditCardDialog`'s rule that a card patch
- * must never be able to rewrite what someone else wrote. The reply action is the one exception,
- * and it's additive rather than a mutation: it never touches another comment's `body`/`author`.
+ * One row of the activity feed's "Comments" view — a card's discussion is append-only, so there is
+ * no edit or delete affordance here, matching `EditCardDialog`'s rule that a card patch must never
+ * be able to rewrite what someone else wrote. The reply action is the one exception, and it's
+ * additive rather than a mutation: it never touches another comment's `body`/`author`.
  */
 export function CardActivityCommentRow({
   comment,
   repoPath,
   onReply,
-  replyingToAuthor,
 }: CardActivityCommentRowProps) {
   const { t } = useTranslation('board')
   return (
@@ -60,11 +54,6 @@ export function CardActivityCommentRow({
           </Button>
         )}
       </div>
-      {replyingToAuthor && (
-        <p className="mb-1 text-[10px] text-muted-foreground">
-          {t('card.comments.replyPointer', { author: replyingToAuthor })}
-        </p>
-      )}
       <MarkdownRenderer content={comment.body} repoPath={repoPath} authored />
     </li>
   )
