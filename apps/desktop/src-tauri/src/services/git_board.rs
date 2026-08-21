@@ -28,11 +28,20 @@
 //! a mismatch surfaces as `AppError::BoardConflict` (mapped from `GIT_EMODIFIED`) rather than silently
 //! overwriting a write that landed in between.
 //!
-//! Backup: every mutation also mirrors the resulting board+cards to
-//! `~/.git-manager/boards/<repo-slug>/<board-id>.json` (see `sync_backup`) — a disaster-recovery cache
-//! for the case the whole repository is deleted and re-cloned. The ref above lives in the repo's
-//! *shared* `.git` object/ref store, so it survives removing a linked `git worktree`; it does **not**
-//! survive deleting/re-cloning the repository itself, which is exactly the gap this mirror covers.
+//! Backup: every mutation also mirrors the resulting board+cards into a **second, dedicated bare git
+//! repo** at `~/.git-manager/boards/<repo-slug>/<board-id>.git` (see `sync_backup`/`write_mirror_commit`)
+//! — a disaster-recovery cache for the case the whole repository is deleted and re-cloned. The ref
+//! above lives in the repo's *shared* `.git` object/ref store, so it survives removing a linked `git
+//! worktree`; it does **not** survive deleting/re-cloning the repository itself, which is exactly the
+//! gap this mirror covers. Like the primary ref, the mirror is one full-state commit per mutation
+//! (#414) rather than an overwritten file, so it carries real history — but `restore_board_backup`
+//! still only ever recovers the mirror's *latest* commit, exactly like before #414: every mirror commit
+//! is a whole-board snapshot, so checking out an older one would silently roll back every other card
+//! touched since, which is a real hazard with several tickets worked in parallel. The richer history is
+//! raw material for a future per-card recovery (diffing one card's path across mirror commits, the way
+//! `card_history` already does on the primary ref below) — not something exposed yet. A pre-#414
+//! install's flat `<board-id>.json` is read once as a fallback (`BoardBackup`) if no `.git` mirror
+//! exists yet, and is deleted the first time a live mutation writes a fresh bare-repo commit.
 //! `delete_board` removes the mirror too — an intentional deletion must not resurrect the board via
 //! the "recoverable board" restore flow, which exists for accidental loss, not as an undo for this.
 
@@ -1424,8 +1433,14 @@ pub fn card_history(
     Ok(entries)
 }
 
-// ─── Disaster-recovery backup (~/.git-manager/boards/<repo-slug>/<board-id>.json) ─────────────────
+// ─── Disaster-recovery backup (~/.git-manager/boards/<repo-slug>/<board-id>.git) ───────────────────
 
+const MIRROR_BRANCH: &str = "refs/heads/main";
+const MIRROR_COMMIT_MESSAGE: &str = "git-manager: board backup sync";
+
+/// The pre-#414 mirror format: one flat JSON file overwritten on every mutation, with no history.
+/// Read-only now — a fallback for boards last backed up before the switch to the bare-repo mirror
+/// below (see `sync_backup`'s doc comment).
 #[derive(Debug, Serialize, Deserialize)]
 struct BoardBackup {
     board: Board,
@@ -1455,29 +1470,122 @@ fn backup_dir(repo: &Repository) -> Option<PathBuf> {
     Some(backups_root()?.join(repo_slug(&repo_root(repo))))
 }
 
+/// Path of the bare-repo mirror (#414).
+fn mirror_repo_path(repo: &Repository, board_id: &str) -> Option<PathBuf> {
+    Some(backup_dir(repo)?.join(format!("{board_id}.git")))
+}
+
+/// Path of the legacy flat-JSON mirror (pre-#414) — read-only fallback now, see `BoardBackup`.
 fn backup_path(repo: &Repository, board_id: &str) -> Option<PathBuf> {
     Some(backup_dir(repo)?.join(format!("{board_id}.json")))
 }
 
-/// Mirrors the board's current state to disk. Best-effort: the git-object mutation that triggered
-/// this has already succeeded by the time this runs, and a backup failure (e.g. a read-only home
-/// directory) must not turn that success into an error the caller has to handle.
+/// Opens the bare-repo mirror if one exists for this board — `None` if it was never created (a fresh
+/// install, or a board still only backed by the legacy JSON mirror).
+fn open_mirror_repo(repo: &Repository, board_id: &str) -> Option<Repository> {
+    let path = mirror_repo_path(repo, board_id)?;
+    Repository::open_bare(&path).ok()
+}
+
+/// Reads the mirror's current state straight off `MIRROR_BRANCH`'s tip tree, reusing the same
+/// tree-reading helpers the primary ref uses below — `read_board_json`/`read_cards` take any
+/// repo/tree, not specifically the source repo's.
+fn read_mirror_state(mirror_repo: &Repository) -> Result<Option<(Board, Vec<BoardCard>)>, String> {
+    let Ok(reference) = mirror_repo.find_reference(MIRROR_BRANCH) else {
+        return Ok(None);
+    };
+    let commit = reference.peel_to_commit().map_err(AppError::Git)?;
+    let tree = commit.tree().map_err(AppError::Git)?;
+    let board = read_board_json(mirror_repo, &tree)?;
+    let cards = read_cards(mirror_repo, &tree)?;
+    Ok(Some((board, cards)))
+}
+
+/// Writes one more full-state commit to the board's bare-repo mirror, creating it on first use.
+///
+/// Every mutation rebuilds the mirror's tree **from scratch** (`board.json` + one blob per current
+/// card) rather than diffing it against the mirror's own previous tree: `board`/`cards` here are
+/// already the full current state (just read off the primary ref by the caller), so starting empty is
+/// simpler than a diff and drops a removed card's blob automatically, with no separate tracking.
+/// Signature and message are deliberately generic (not the source mutation's own message) — this
+/// history is raw material for a future feature, not a browsable log yet; see the module doc comment
+/// for why restoring from it is still all-or-nothing.
+fn write_mirror_commit(
+    repo: &Repository,
+    board_id: &str,
+    board: &Board,
+    cards: &[BoardCard],
+) -> Result<(), String> {
+    let mirror_path = mirror_repo_path(repo, board_id).ok_or_else(|| {
+        String::from(AppError::Unknown(
+            "could not resolve home directory".to_string(),
+        ))
+    })?;
+    if let Some(parent) = mirror_path.parent() {
+        fs::create_dir_all(parent).map_err(AppError::Io)?;
+    }
+    let mirror_repo = if mirror_path.exists() {
+        Repository::open_bare(&mirror_path).map_err(AppError::Git)?
+    } else {
+        let mirror_repo = Repository::init_bare(&mirror_path).map_err(AppError::Git)?;
+        // `init_bare`'s HEAD defaults to `refs/heads/master`, a branch this mirror never creates
+        // (every commit below targets `MIRROR_BRANCH` explicitly). Pointing HEAD at it is not needed
+        // by anything this module reads — only by a person opening the mirror with plain `git` to
+        // poke at it, where an unresolved HEAD would otherwise make `log`/`show HEAD:...` fail.
+        mirror_repo.set_head(MIRROR_BRANCH).map_err(AppError::Git)?;
+        mirror_repo
+    };
+
+    let mut tb = mirror_repo.treebuilder(None).map_err(AppError::Git)?;
+    insert_board_json(&mirror_repo, &mut tb, board)?;
+    let mut tree_oid = tb.write().map_err(AppError::Git)?;
+    for card in cards {
+        let tree = mirror_repo.find_tree(tree_oid).map_err(AppError::Git)?;
+        tree_oid = write_card_blob(&mirror_repo, &tree, card)?;
+    }
+    let tree = mirror_repo.find_tree(tree_oid).map_err(AppError::Git)?;
+
+    let parent_commit = mirror_repo
+        .find_reference(MIRROR_BRANCH)
+        .ok()
+        .and_then(|r| r.peel_to_commit().ok());
+    let sig = get_git_signature(repo)?;
+    let parents: Vec<&git2::Commit> = parent_commit.iter().collect();
+    mirror_repo
+        .commit(
+            Some(MIRROR_BRANCH),
+            &sig,
+            &sig,
+            MIRROR_COMMIT_MESSAGE,
+            &tree,
+            &parents,
+        )
+        .map_err(AppError::Git)?;
+    Ok(())
+}
+
+/// Mirrors the board's current state into `~/.git-manager/boards/<repo-slug>/<board-id>.git`.
+/// Best-effort: the git-object mutation that triggered this has already succeeded by the time this
+/// runs, and a backup failure (e.g. a read-only home directory) must not turn that success into an
+/// error the caller has to handle.
 fn sync_backup(repo: &Repository, board_id: &str) {
     let Ok((board, cards)) = get_board(repo, board_id) else {
         return;
     };
-    let Some(path) = backup_path(repo, board_id) else {
+    if write_mirror_commit(repo, board_id, &board, &cards).is_err() {
         return;
-    };
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
     }
-    if let Ok(json) = serde_json::to_vec_pretty(&BoardBackup { board, cards }) {
-        let _ = fs::write(path, json);
+    // The bare-repo mirror now holds this board's current state, superseding whatever the legacy
+    // flat-JSON mirror (pre-#414) still had on disk — nothing left in it is worth keeping.
+    if let Some(legacy_path) = backup_path(repo, board_id) {
+        let _ = fs::remove_file(legacy_path);
     }
 }
 
 fn remove_backup(repo: &Repository, board_id: &str) {
+    if let Some(path) = mirror_repo_path(repo, board_id) {
+        let _ = fs::remove_dir_all(path);
+    }
     if let Some(path) = backup_path(repo, board_id) {
         let _ = fs::remove_file(path);
     }
@@ -1494,15 +1602,46 @@ pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<Board>, String> 
         return Ok(Vec::new());
     };
 
-    let mut recoverable = Vec::new();
+    let mut mirror_ids = HashSet::new();
+    let mut legacy_ids = HashSet::new();
     for entry in entries.flatten() {
         let path = entry.path();
         let Some(board_id) = path.file_stem().and_then(|s| s.to_str()) else {
             continue;
         };
+        match path.extension().and_then(|e| e.to_str()) {
+            Some("git") if path.is_dir() => {
+                mirror_ids.insert(board_id.to_string());
+            }
+            Some("json") => {
+                legacy_ids.insert(board_id.to_string());
+            }
+            _ => {}
+        }
+    }
+
+    let mut recoverable = Vec::new();
+    for board_id in &mirror_ids {
         if read_state(repo, board_id)?.is_some() {
             continue;
         }
+        let Some(mirror_repo) = open_mirror_repo(repo, board_id) else {
+            continue;
+        };
+        let Ok(Some((board, _))) = read_mirror_state(&mirror_repo) else {
+            continue;
+        };
+        recoverable.push(board);
+    }
+    // A board only ever falls back to the legacy file if its mirror hasn't migrated yet — once
+    // `sync_backup` has written a bare-repo commit for it, the JSON is stale and gets removed anyway.
+    for board_id in legacy_ids.difference(&mirror_ids) {
+        if read_state(repo, board_id)?.is_some() {
+            continue;
+        }
+        let Some(path) = backup_path(repo, board_id) else {
+            continue;
+        };
         let Ok(bytes) = fs::read(&path) else {
             continue;
         };
@@ -1514,29 +1653,43 @@ pub fn list_recoverable_boards(repo: &Repository) -> Result<Vec<Board>, String> 
     Ok(recoverable)
 }
 
-/// Recreates a board's ref + a fresh initial commit from its disaster-recovery backup. Recovers
-/// current state, not the original commit-by-commit history — an explicit, visible trade-off (see
-/// the module doc comment) rather than the silent full data loss that not having this at all would be.
+/// Recreates a board's ref + a fresh initial commit from its disaster-recovery backup — the bare-repo
+/// mirror if one exists for this board, the legacy flat-JSON mirror otherwise. Recovers current state,
+/// not the original commit-by-commit history: every mirror commit is a whole-board snapshot, so
+/// restoring an older one would silently roll back every other card changed since — an explicit,
+/// visible trade-off (see the module doc comment) rather than the silent full data loss that not
+/// having this at all would be.
 pub fn restore_board_backup(repo: &Repository, board_id: &str) -> Result<Board, String> {
-    let path = backup_path(repo, board_id).ok_or_else(|| {
-        String::from(AppError::Unknown(
-            "could not resolve home directory".to_string(),
-        ))
-    })?;
-    let bytes = fs::read(&path).map_err(AppError::Io)?;
-    let backup: BoardBackup = serde_json::from_slice(&bytes)
-        .map_err(|e| String::from(AppError::Unknown(format!("corrupt board backup: {e}"))))?;
-
     if read_state(repo, board_id)?.is_some() {
         return Err(String::from(AppError::BoardAlreadyExists(
             board_id.to_string(),
         )));
     }
 
+    let (board, cards) = match open_mirror_repo(repo, board_id) {
+        Some(mirror_repo) => read_mirror_state(&mirror_repo)?.ok_or_else(|| {
+            String::from(AppError::Unknown(
+                "board backup mirror has no commits".to_string(),
+            ))
+        })?,
+        None => {
+            let path = backup_path(repo, board_id).ok_or_else(|| {
+                String::from(AppError::Unknown(
+                    "could not resolve home directory".to_string(),
+                ))
+            })?;
+            let bytes = fs::read(&path).map_err(AppError::Io)?;
+            let backup: BoardBackup = serde_json::from_slice(&bytes).map_err(|e| {
+                String::from(AppError::Unknown(format!("corrupt board backup: {e}")))
+            })?;
+            (backup.board, backup.cards)
+        }
+    };
+
     let mut tb = repo.treebuilder(None).map_err(AppError::Git)?;
-    insert_board_json(repo, &mut tb, &backup.board)?;
+    insert_board_json(repo, &mut tb, &board)?;
     let mut tree_oid = tb.write().map_err(AppError::Git)?;
-    for card in &backup.cards {
+    for card in &cards {
         let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
         tree_oid = write_card_blob(repo, &tree, card)?;
     }
@@ -2410,6 +2563,107 @@ mod tests {
 
         // Restored, so no longer "recoverable" — it has a live ref again.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Every mutation's mirror write is a real commit into the bare-repo mirror (#414), not an
+    /// overwrite — so the mirror's own history grows exactly like the primary ref's.
+    #[test]
+    fn mutations_grow_the_bare_repo_mirrors_own_history() {
+        let (dir, repo) = init_repo("mirror-history");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        let card = create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Task".to_string(),
+                prefix: "GM".to_string(),
+                kind: "task".to_string(),
+                source_issue: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        update_card(
+            &repo,
+            &board.id,
+            &card.id,
+            BoardCardPatch {
+                title: Some("Renamed".to_string()),
+                ..Default::default()
+            },
+            &card.revision,
+        )
+        .unwrap();
+
+        let mirror_repo = open_mirror_repo(&repo, &board.id).expect("mirror repo should exist");
+        let mut revwalk = mirror_repo.revwalk().unwrap();
+        revwalk.push_ref(MIRROR_BRANCH).unwrap();
+        assert_eq!(revwalk.count(), 3);
+
+        let (board_state, cards) = read_mirror_state(&mirror_repo).unwrap().unwrap();
+        assert_eq!(board_state.id, board.id);
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].title, "Renamed");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A board backed up before #414 (flat JSON, no `.git` mirror) must still be found and restorable
+    /// through the legacy fallback — nothing to migrate proactively, since there's no live board to
+    /// read a fresher state from.
+    #[test]
+    fn a_legacy_json_only_backup_is_still_recoverable_and_restorable() {
+        let (dir, repo) = init_repo("legacy-backup");
+        let board = board_with(&repo, "Legacy board", vec![column("todo", 0)]);
+        create_card(
+            &repo,
+            &board.id,
+            "todo",
+            NewBoardCard {
+                title: "Old task".to_string(),
+                prefix: "GM".to_string(),
+                kind: "task".to_string(),
+                source_issue: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        // Replace whatever `sync_backup` just wrote with a hand-written legacy-format file, and drop
+        // the bare-repo mirror entirely — simulating an install that never got past the old format.
+        let mirror_path = mirror_repo_path(&repo, &board.id).unwrap();
+        std::fs::remove_dir_all(&mirror_path).ok();
+        let legacy_path = backup_path(&repo, &board.id).unwrap();
+        let (board_state, cards) = get_board(&repo, &board.id).unwrap();
+        let legacy_json = serde_json::to_vec_pretty(&BoardBackup {
+            board: board_state,
+            cards,
+        })
+        .unwrap();
+        std::fs::write(&legacy_path, legacy_json).unwrap();
+
+        repo.find_reference(&board_ref_name(&board.id))
+            .unwrap()
+            .delete()
+            .unwrap();
+        assert!(list_boards(&repo).unwrap().is_empty());
+
+        let recoverable = list_recoverable_boards(&repo).unwrap();
+        assert_eq!(recoverable.len(), 1);
+        assert_eq!(recoverable[0].id, board.id);
+
+        let restored = restore_board_backup(&repo, &board.id).unwrap();
+        assert_eq!(restored.name, "Legacy board");
+        let (_, cards) = get_board(&repo, &board.id).unwrap();
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].title, "Old task");
+
+        // Restoring re-syncs the mirror, which migrates the board onto the bare-repo format.
+        assert!(mirror_repo_path(&repo, &board.id).unwrap().exists());
+        assert!(!legacy_path.exists());
 
         std::fs::remove_dir_all(&dir).ok();
     }
