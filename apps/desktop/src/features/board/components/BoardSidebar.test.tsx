@@ -127,4 +127,20 @@ describe('BoardSidebar', () => {
 
     expect(screen.getByTestId('board-sidebar-item-b0')).toBeInTheDocument()
   })
+
+  it('surfaces boards recoverable from the disaster-recovery mirror', () => {
+    useBoardData.mockReturnValue(
+      makeBoardData({ boards: [], activeBoard: null, recoverableBoards: [makeBoard({ id: 'b1' })] })
+    )
+    render(<BoardSidebar repoPath="/repo" />)
+
+    expect(screen.getByTestId('recoverable-boards-banner')).toBeInTheDocument()
+  })
+
+  it('shows no recovery banner when there is nothing to recover', () => {
+    useBoardData.mockReturnValue(makeBoardData({ boards: [], activeBoard: null }))
+    render(<BoardSidebar repoPath="/repo" />)
+
+    expect(screen.queryByTestId('recoverable-boards-banner')).not.toBeInTheDocument()
+  })
 })

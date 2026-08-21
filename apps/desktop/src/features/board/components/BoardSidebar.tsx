@@ -8,6 +8,7 @@ import { useBoardData } from '../hooks/useBoardData'
 import { useBoardControlsStore } from '../stores/boardControls.store'
 import { useBoardDialogsStore } from '../stores/boardDialogs.store'
 import { useSidebarSearchStore } from '../../../stores/sidebarSearch.store'
+import { RecoverableBoardsBanner } from './RecoverableBoardsBanner'
 
 interface BoardSidebarProps {
   repoPath: string
@@ -27,7 +28,8 @@ interface BoardSidebarProps {
  */
 export function BoardSidebar({ repoPath }: BoardSidebarProps) {
   const { t } = useTranslation('board')
-  const { boards, boardsLoading, activeBoard, setActiveBoard } = useBoardData(repoPath)
+  const { boards, boardsLoading, activeBoard, setActiveBoard, recoverableBoards, restoreBoard } =
+    useBoardData(repoPath)
 
   const boardFilter = useBoardControlsStore((s) => s.boardFilter)
   const setBoardFilter = useBoardControlsStore((s) => s.setBoardFilter)
@@ -89,6 +91,8 @@ export function BoardSidebar({ repoPath }: BoardSidebarProps) {
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+
+      <RecoverableBoardsBanner boards={recoverableBoards} onRestore={restoreBoard} />
 
       {/* Filters the list below it, and only that: boards by name. Finding a *ticket* is the
           toolbar's search (⌘F), which looks across every board — so neither control narrows

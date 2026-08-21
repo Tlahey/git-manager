@@ -98,6 +98,9 @@ export function makeBoardData(overrides: Partial<BoardData> = {}): BoardData {
     loadComments: vi.fn().mockResolvedValue([]),
     addIssueToBoard: vi.fn().mockResolvedValue(undefined),
     trackedIssueNumbers: [],
+    recoverableBoards: [],
+    recoverableBoardsLoading: false,
+    restoreBoard: vi.fn().mockResolvedValue(makeBoard()),
     refresh: vi.fn(),
     ...overrides,
   }

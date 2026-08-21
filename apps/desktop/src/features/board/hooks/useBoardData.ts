@@ -6,6 +6,7 @@ import { useBoardActions } from './useBoardActions'
 import { useBoardCardActions } from './useBoardCardActions'
 import { useCardIssueTracking } from './useCardIssueTracking'
 import { useCardTagCreation } from './useCardTagCreation'
+import { useRecoverableBoards } from './useRecoverableBoards'
 import { reportWriteFailures } from './reportWriteFailures'
 
 /**
@@ -60,6 +61,11 @@ export function useBoardData(repoPath: string) {
     backendFor,
     revalidateLists,
   })
+  const recovery = useRecoverableBoards({
+    repoPath,
+    setActiveBoard: catalog.setActiveBoard,
+    revalidateLists,
+  })
 
   // Every action, wrapped once so a failed write is reported rather than lost — see the module.
   // Wrapping the whole returned object rather than each function means a mutation added later is
@@ -80,6 +86,9 @@ export function useBoardData(repoPath: string) {
       loadComments: tracking.loadComments,
       addIssueToBoard: tracking.addIssueToBoard,
       trackedIssueNumbers: tracking.trackedIssueNumbers,
+      recoverableBoards: recovery.recoverableBoards,
+      recoverableBoardsLoading: recovery.recoverableBoardsLoading,
+      restoreBoard: recovery.restoreBoard,
       refresh: () => void detail.mutateDetail(),
     },
     t('write.failed')
