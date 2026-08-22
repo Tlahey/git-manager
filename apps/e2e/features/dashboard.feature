@@ -73,6 +73,23 @@ Feature: Your projects at a glance
     And no error notification is displayed
 
   @doc @screenshots
+  Scenario: Color-coding a section for a quicker scan down the dashboard
+    Each section's "..." menu ends in a row of colour swatches — a purely visual tag for picking a
+    section out at a glance on a dashboard with several of them, unrelated to what it actually
+    contains. Picking one colours the section's header immediately; the crossed-out circle clears
+    it back to the neutral default.
+    Given the app language is English
+    And AI features are turned off
+    And the "showcase" and "feature-branches" fixture repositories are listed in the dashboard
+    When I open the dashboard
+    And I color the "all" dashboard section "emerald"
+    Then the "all" dashboard section is colored "emerald"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-color"
+    When I color the "all" dashboard section "none"
+    Then the "all" dashboard section is not colored
+
+  @doc @screenshots
   Scenario: Each row reports its branch and what is waiting in it
     Every row carries the state of its repository without opening it: the
     branch it is on, and counters for what is staged, changed but unstaged,
