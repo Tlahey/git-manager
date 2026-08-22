@@ -117,10 +117,17 @@ export function useBoardActions({ repoPath, catalog, detail, backendFor }: Board
   }
 
   /** `deleteCards` decides whether the board's tickets are erased with it or survive it — the two
-   * backends mean different things by that, both documented on {@link BoardBackend.deleteBoard}. */
+   * backends mean different things by that, both documented on {@link BoardBackend.deleteBoard}.
+   *
+   * `mutateDetail()` matters specifically for the "keep" branch: the backend archives every card
+   * server-side in the same write, but `revalidateLists()` only re-reads the *board* list — without
+   * this, this board's own cards query stays on its pre-deletion cache, and reopening the tombstoned
+   * board (via "Show deleted") would still show them sitting in their old columns instead of in the
+   * archive. */
   async function deleteBoard(board: Board, deleteCards = true): Promise<void> {
     await backendFor(board.source).deleteBoard(repoPath, board.id, deleteCards)
     revalidateLists()
+    void mutateDetail()
     if (activeBoard?.id === board.id) {
       const next = boards.find((b) => b.id !== board.id)
       if (next) setActiveBoard(next.id)

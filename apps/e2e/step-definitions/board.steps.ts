@@ -248,6 +248,74 @@ When(/^I select the "([^"]*)" sprint$/, async (name: string) => {
   })
 })
 
+When(/^I delete the board$/, async () => {
+  await $('[data-testid="board-delete-button"]').click()
+  await $('[data-testid="delete-board-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// The checkbox is checked by default (erasure is what deleting a board has always done) — this
+// opts out into the other branch: the tickets are archived rather than destroyed, and the board
+// is kept, read-only, so they still have one.
+When(/^I keep the board's cards instead of deleting them$/, async () => {
+  await clickViaJs('delete-board-delete-cards')
+})
+
+When(/^I confirm deleting the board$/, async () => {
+  await $('[data-testid="delete-board-confirm"]').click()
+  await $('[data-testid="delete-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
+})
+
+Then(/^the board "([^"]*)" is no longer listed$/, async (name: string) => {
+  await browser.waitUntil(
+    async () => {
+      const rows = await browser.execute((wanted: string) => {
+        const items = Array.from(document.querySelectorAll('[data-testid^="board-sidebar-item-"]'))
+        return items.some((el) => (el.textContent ?? '').includes(wanted))
+      }, name)
+      return !rows
+    },
+    { timeout: 10000, timeoutMsg: `the board sidebar still lists "${name}"` }
+  )
+})
+
+When(/^I show deleted boards$/, async () => {
+  await clickViaJs('board-show-deleted')
+})
+
+// Same lookup `I select the "X" sprint` uses, kept as its own step rather than reused verbatim: a
+// plain deleted board is not a sprint, and this scenario never closes one.
+When(/^I select the "([^"]*)" board$/, async (name: string) => {
+  const rowTestId = await browser.execute((wanted: string) => {
+    const rows = Array.from(document.querySelectorAll('[data-testid^="board-sidebar-item-"]'))
+    const hit = rows.find((el) => (el.textContent ?? '').includes(wanted))
+    return hit ? hit.getAttribute('data-testid') : null
+  }, name)
+  if (!rowTestId) throw new Error(`the board sidebar lists no "${name}"`)
+  await $(`[data-testid="${rowTestId}"]`).click()
+  await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+    timeout: 10000,
+    timeoutMsg: `the board sidebar never switched to "${name}"`,
+  })
+})
+
+Then(/^the board shows it was deleted$/, async () => {
+  await $('[data-testid="board-deleted-banner"]').waitForDisplayed({ timeout: 10000 })
+})
+
+Then(/^the archived card "([^"]*)" is listed$/, async (title: string) => {
+  await $('[data-testid="board-archived-button"]').click()
+  await $('[data-testid="archived-cards-dialog"]').waitForDisplayed({ timeout: 10000 })
+  const found = await browser.waitUntil(
+    async () =>
+      browser.execute((wanted: string) => {
+        const rows = Array.from(document.querySelectorAll('li[data-testid^="archived-card-"]'))
+        return rows.some((el) => (el.textContent ?? '').includes(wanted))
+      }, title),
+    { timeout: 10000, timeoutMsg: `no archived card titled "${title}"` }
+  )
+  expect(found).toBe(true)
+})
+
 // ─── What the user sees ────────────────────────────────────────────────────
 
 Then(/^the board "([^"]*)" is shown$/, async (name: string) => {
