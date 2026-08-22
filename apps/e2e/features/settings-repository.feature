@@ -99,6 +99,29 @@ Feature: Repository-specific settings
     And a full-window screenshot is saved as "doc-run-task"
 
   @doc @screenshots
+  Scenario: Editing or removing a saved task
+    Nothing about a saved task is fixed: reopening it for editing turns it back into the same two
+    fields it was created from, prefilled with what's already saved — and removing it needs no
+    confirmation, since nothing beyond the toolbar's Launch button depends on it.
+    Given the app language is English
+    And AI features are turned off
+    And the "package-health" fixture repository is opened
+    When I open the settings
+    And I open the "run" repository settings tab
+    And I start adding a repository task
+    And I name the repository task "Build"
+    And I pick the task command suggestion "build"
+    And I save the repository task
+    And I edit the repository task
+    And I name the repository task "Build the app"
+    And I save the repository task
+    Then the repository task "Build the app" is saved
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-run-task-edit"
+    When I delete the repository task
+    Then the repository has no saved tasks
+
+  @doc @screenshots
   Scenario: Choosing which task the Launch button's primary click runs
     With more than one task saved, the first one saved is the default until you say otherwise —
     starring a different task moves the primary click to it, and the arrow menu keeps every task

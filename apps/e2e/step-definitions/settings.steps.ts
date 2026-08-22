@@ -618,6 +618,28 @@ When(/^I save the repository task$/, async () => {
   await save.click()
 })
 
+// This scenario only ever has one saved task, so a plain `$(...)` lookup is enough — unlike the
+// default-task scenario below, which needs to tell rows apart by name.
+When(/^I edit the repository task$/, async () => {
+  const edit = $('[data-testid="run-tasks-edit"]')
+  await edit.waitForClickable({ timeout: 10000 })
+  await edit.click()
+})
+
+Then(/^the repository task "([^"]*)" is saved$/, async (name: string) => {
+  await expect($('[data-testid="run-tasks-name-value"]')).toHaveText(name)
+})
+
+When(/^I delete the repository task$/, async () => {
+  const del = $('[data-testid="run-tasks-delete"]')
+  await del.waitForClickable({ timeout: 10000 })
+  await del.click()
+})
+
+Then(/^the repository has no saved tasks$/, async () => {
+  await expect($('[data-testid="run-tasks-empty"]')).toBeDisplayed()
+})
+
 // Rows are matched by their committed name rather than position — `run-tasks-default`/
 // `run-tasks-name-value` testids repeat once a second task exists, so a plain `$(...)` lookup
 // would always hit the first row.
