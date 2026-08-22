@@ -1,6 +1,14 @@
 import { execFileSync } from 'node:child_process'
 import { browser, expect, $ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
+import { clickViaJs } from '../support/interactions.js'
+
+function activeRepoPath(): Promise<string | null> {
+  return browser.execute(() => {
+    const raw = localStorage.getItem('git-manager-repos-ui')
+    return raw ? (JSON.parse(raw).state.activeRepo as string) : null
+  })
+}
 
 // The WIP staging panel (WipStagingPanel) drives a real commit: type into the message box, click
 // Commit, which calls the real apiCreateCommit against the staged changes the stash-stack fixture
@@ -28,10 +36,7 @@ When(/^I commit the staged changes$/, async () => {
 // runs in Node, same as the fixture-build step), not a volatile UI value. The commit is async, so
 // poll until it lands. The active repo path is whatever the shared open-repo step seeded.
 Then(/^the repository HEAD commit subject is "([^"]*)"$/, async (expected: string) => {
-  const repoPath = await browser.execute(() => {
-    const raw = localStorage.getItem('git-manager-repos-ui')
-    return raw ? (JSON.parse(raw).state.activeRepo as string) : null
-  })
+  const repoPath = await activeRepoPath()
   expect(repoPath).toBeTruthy()
 
   const headSubject = () =>
@@ -43,4 +48,28 @@ Then(/^the repository HEAD commit subject is "([^"]*)"$/, async (expected: strin
     timeout: 15000,
     timeoutMsg: `HEAD subject never became "${expected}" (last: "${headSubject()}")`,
   })
+})
+
+// Ticking amend needs no staged file of its own (WipCommitForm's SplitButton is enabled with zero
+// staged files once `isAmend` is true) — this only drives the checkbox, the message-box prefill is
+// `useWipCommitPanel`'s own `handleToggleAmend` behaviour, asserted separately below.
+When(/^I turn on the amend-previous-commit option$/, async () => {
+  await clickViaJs('commit-amend-checkbox')
+})
+
+Then(/^the commit message box holds "([^"]*)"$/, async (expected: string) => {
+  await expect($('[data-testid="commit-message-input"]')).toHaveValue(expected)
+})
+
+// Proves the amend rewrote HEAD in place rather than stacking a new commit on top of it: the
+// commit *before* HEAD must still be the one that was there before the amend ever happened.
+Then(/^the commit before HEAD has the subject "([^"]*)"$/, async (expected: string) => {
+  const repoPath = await activeRepoPath()
+  expect(repoPath).toBeTruthy()
+  const subject = execFileSync(
+    'git',
+    ['-C', repoPath as string, 'log', '-1', '--pretty=%s', 'HEAD~1'],
+    { encoding: 'utf8' }
+  ).trim()
+  expect(subject).toBe(expected)
 })

@@ -46,6 +46,33 @@ Feature: Your projects at a glance
     Then the README source shows "# Showcase"
 
   @doc @screenshots
+  Scenario: Filtering, folding and hiding sections on the dashboard
+    Filtering by name narrows every section at once, live. Collapse and Expand fold every
+    section's rows away or back in one click, for the times only the headers and their counts
+    matter. Hiding a section from its own "..." menu takes it off the dashboard entirely — the
+    button that appears next to Collapse from that moment on is the only way back, one section or
+    all of them at once.
+    Given the app language is English
+    And AI features are turned off
+    And the "showcase" and "feature-branches" fixture repositories are listed in the dashboard
+    When I open the dashboard
+    And I filter the dashboard for "showcase"
+    Then the "showcase" project is shown on the dashboard
+    And the "feature-branches" project is not shown on the dashboard
+    When I clear the dashboard filter
+    And I collapse all dashboard sections
+    Then the "showcase" project is not shown on the dashboard
+    When I expand all dashboard sections
+    Then the "showcase" project is shown on the dashboard
+    When I hide the "all" dashboard section
+    Then the "all" dashboard section is not shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-sections"
+    When I restore the "all" dashboard section from the hidden sections menu
+    Then the "all" dashboard section is shown
+    And no error notification is displayed
+
+  @doc @screenshots
   Scenario: Each row reports its branch and what is waiting in it
     Every row carries the state of its repository without opening it: the
     branch it is on, and counters for what is staged, changed but unstaged,

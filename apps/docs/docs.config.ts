@@ -31,6 +31,15 @@ export const LANDING_PAGE_ROUTE = '/'
 export interface DocSection {
   title: string
   /** Feature slugs — the `.feature` basename — in the order they should appear. */
+  features?: string[]
+  /** Nested submenus, for a section broad enough that one flat list would bury its shape —
+   * see the GitHub section below. Rendered after `features`, in the order listed. */
+  subsections?: DocSubsection[]
+}
+
+export interface DocSubsection {
+  title: string
+  /** Feature slugs — the `.feature` basename — in the order they should appear. */
   features: string[]
 }
 
@@ -75,9 +84,11 @@ export const DOC_SECTIONS: DocSection[] = [
       'branch-create',
       'branch-rename',
       'branch-upstream',
+      'branch-cleanup',
       'tags',
       'stash-stack',
       'worktree',
+      'worktree-cleanup',
       'submodule',
       'detached-head',
     ],
@@ -116,23 +127,58 @@ export const DOC_SECTIONS: DocSection[] = [
       'ai-summary-search',
       'ai-explanation',
       'ai-code-review',
-      'ai-pr-description',
       'ai-commit-search',
       'action-journal',
     ],
   },
   {
     // Tracking the work rather than the code — one repository's own board, whose cards live in its
-    // `.git`. Sits just above Launchpad, which is the same concern read across every repository.
+    // `.git`. Sits just above GitHub's Launchpad submenu, which is the same concern read across
+    // every repository.
     // `board-cards` is the card record's own page — assignee/priority/due date/tags, relations
     // between cards, deleting and moving one — split out because `board.feature` is already the
     // board-level tour and a single page holding both would bury one under the other.
+    // `board-card-activity` follows it for the same reason: the record's third section (after
+    // fields and checklist) gets its own page rather than growing board-cards further.
+    // `board-card-branch` is the card's fourth section — the one no board hosted anywhere else can
+    // offer, since it needs the same git the board itself is stored in.
+    // `board-recovery` comes last: it is what you reach for after board.feature's own board is
+    // already lost, not a step of building or filling in one.
     title: 'Planning',
-    features: ['board', 'board-cards'],
+    features: [
+      'board',
+      'board-cards',
+      'board-card-activity',
+      'board-card-branch',
+      'board-recovery',
+    ],
   },
   {
-    title: 'Launchpad',
-    features: ['launchpad-prs', 'launchpad-organize', 'launchpad-issues', 'launchpad-commit-stats'],
+    // Everything a connected GitHub account unlocks, and nothing else does — Launchpad's four
+    // tabs, drafting a PR description (the one AI feature whose output is meant to leave the app
+    // onto GitHub itself — see ai-pr-description.feature), and the GitHub-Issues board. Split into
+    // submenus rather than one flat list because these are different journeys that only share the
+    // account behind them; a reader who wants one should not have to scan the others.
+    title: 'GitHub',
+    subsections: [
+      {
+        title: 'Launchpad',
+        features: [
+          'launchpad-prs',
+          'launchpad-organize',
+          'launchpad-issues',
+          'launchpad-commit-stats',
+        ],
+      },
+      {
+        title: 'Pull requests',
+        features: ['ai-pr-description'],
+      },
+      {
+        title: 'Board',
+        features: ['board-github'],
+      },
+    ],
   },
   {
     // The generator appends the "All achievements" reference page (rendered from
@@ -142,8 +188,21 @@ export const DOC_SECTIONS: DocSection[] = [
     features: ['rewards'],
   },
   {
+    // One page per settings tab, the way the GitHub group is one page per journey — a single
+    // "Settings" page holding all ten-plus scenarios stopped reading as a page and started
+    // reading as a dump. Flat, unlike GitHub's `subsections`: every entry here is already one
+    // page, so nesting each in its own one-item submenu would add a click to reach it for
+    // nothing — `subsections` earns its keep only when a submenu actually holds more than one
+    // page (Launchpad's four).
     title: 'Settings',
-    features: ['settings', 'settings-repository'],
+    features: [
+      'settings',
+      'settings-ai',
+      'settings-appearance',
+      'settings-integrations',
+      'settings-tools',
+      'settings-repository',
+    ],
   },
   {
     // Kept last so it sits right above the hand-curated "Help" section (the troubleshooting

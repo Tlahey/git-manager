@@ -10,8 +10,8 @@ Feature: Kanban board
 
   A local board is stored in the repository's own `.git`, on a hidden ref, one commit per
   change — so the board is versioned like everything else and never leaves the machine. A
-  repository with a connected GitHub account can host a shared board instead, whose cards
-  are real issues; everything below is the local one, which needs nothing set up.
+  repository with a connected GitHub account can host a [shared board](./board-github) instead,
+  whose cards are real issues; everything below is the local one, which needs nothing set up.
 
   @doc @screenshots
   Scenario: Creating a board for a repository
@@ -23,8 +23,8 @@ Feature: Kanban board
     Given the app language is English
     And the "feature-branches" fixture repository is opened
     When I open the board
-    And I create a board named "Sprint 12" with the card prefix "GM"
-    Then the board "Sprint 12" is shown
+    And I create a board named "Sprint 1" with the card prefix "GM"
+    Then the board "Sprint 1" is shown
     And the board shows the columns "To do, In progress, Done"
     And the repository stores 1 board in its own git history
     And the board history records "git-manager: create board"

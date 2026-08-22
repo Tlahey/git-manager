@@ -35,11 +35,11 @@ function activityRows(prefix: 'card-comment-' | 'card-history-entry-'): Promise<
 
 // ─── The tabs ──────────────────────────────────────────────────────────────
 
-// "All" / "Comments" / "History", named as they read on screen and resolved to the testid
+// "Comments" / "History", named as they read on screen and resolved to the testid
 // `CardActivitySection` keys them by. Clicked through the page for the same reason the rest of the
 // board's controls are: this provider's native click doesn't always reach a button rendered inside
 // a Radix dialog that has just re-rendered under it.
-When(/^I open the "(All|Comments|History)" activity tab$/, async (label: string) => {
+When(/^I open the "(Comments|History)" activity tab$/, async (label: string) => {
   const tab = `card-activity-tab-${label.toLowerCase()}`
   await clickViaJs(tab)
   await browser.waitUntil(
@@ -173,22 +173,6 @@ Then(
       timeout: 15000,
       timeoutMsg: `"${body}" is not threaded under "${parentBody}"`,
     })
-  }
-)
-
-Then(
-  /^the reply "([^"]*)" is marked as answering "([^"]*)"$/,
-  async (body: string, author: string) => {
-    await browser.waitUntil(
-      async () =>
-        (await activityRows('card-comment-')).some(
-          (text) => text.includes(body) && text.includes(`replying to ${author}`)
-        ),
-      {
-        timeout: 15000,
-        timeoutMsg: `no comment row reads "${body}" with a "replying to ${author}" annotation`,
-      }
-    )
   }
 )
 

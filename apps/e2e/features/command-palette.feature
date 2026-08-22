@@ -9,7 +9,9 @@ Feature: Command palette (⌘K)
   jumping to a settings section, and, once a commit is selected in the
   graph, that commit's own scoped actions (reset, revert, branch, tag,
   cherry-pick, stash apply/pop/drop) filtered to just what makes sense for
-  it.
+  it. The same dialog also finds things: ⌘P opens it narrowed to the
+  repository's tracked files, and pasting a commit's SHA into either mode
+  offers to jump straight to it in the graph.
 
   Background:
     Given the "rollback-history" fixture repository is opened
@@ -18,6 +20,41 @@ Feature: Command palette (⌘K)
     When I open the command palette
     And I run the command palette action "settings-ui_customization"
     Then the settings screen is shown
+
+  @doc @screenshots
+  Scenario: Jumping to a file from anywhere via the palette
+    ⌘P opens the same dialog narrowed to the repository's tracked files — no commit or settings
+    commands, just file names. Typing narrows the list live, and picking one opens its latest
+    committed version in the diff viewer with the file's own history alongside, whichever view you
+    were on when you pressed it.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
+    When I open the file search palette
+    And I type "counter" into the command palette
+    And the interface has settled
+    Then the command palette offers the file "counter.txt"
+    And a full-window screenshot is saved as "doc-file-palette"
+    When I pick "counter.txt" from the palette
+    Then the file "counter.txt" is open in the diff viewer
+
+  @doc @screenshots
+  Scenario: Jumping to a commit by pasting its SHA
+    Typing or pasting a commit's SHA — full or abbreviated, seven characters or more — into either
+    mode of the palette offers to focus it in the graph directly, without hunting for the row by
+    eye first. Picking that entry closes the palette, scrolls the row into view and selects it
+    exactly as a click would, so the commit's own scoped actions are one more ⌘K away.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
+    When I open the command palette
+    And I type the SHA of "HEAD~2" into the command palette
+    And the interface has settled
+    Then the command palette offers to focus that commit
+    And a full-window screenshot is saved as "doc-sha-lookup"
+    When I pick the SHA lookup result from the palette
+    And I open the command palette
+    Then the command palette shows commit actions for "HEAD~2"
 
   @doc @screenshots
   Scenario: Resetting to an earlier commit from the palette
@@ -203,13 +240,24 @@ Feature: Command palette (⌘K)
     And I run the command palette action "ref-pick-deleteBranch-feature/login"
     Then the branch "feature/login" exists
 
-  Scenario: Creating a patch file from a commit
-    Given the "rollback-history" fixture repository is opened
+  @doc @screenshots
+  Scenario: Exporting a commit as a patch file
+    "Create patch file from commit" writes the selected commit out as a plain `.patch` file — the
+    same format `git format-patch` produces — for sharing a change with anyone, push access or
+    not. Cmd-clicking a second commit first offers the same action worded for the whole selection
+    instead, and the file it writes holds one patch per commit, in order.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
-    And I run the command palette action "commit-create-patch"
-    And I choose "e2e-commit.patch" in the save dialog
-    Then the patch file "e2e-commit.patch" holds a diff
+    And I type "patch" into the command palette
+    And the interface has settled
+    Then the command palette shows commit actions for "HEAD~1"
+    And a full-window screenshot is saved as "doc-patch-from-commit"
+    When I pick "Create patch file from commit" from the palette
+    And I choose "doc-commit.patch" in the save dialog
+    Then the patch file "doc-commit.patch" holds a diff
     And no error notification is displayed
 
   # The multi-selection variant: Cmd+click a second row, then the palette's "create patch from the

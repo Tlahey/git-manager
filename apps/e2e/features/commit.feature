@@ -30,6 +30,28 @@ Feature: Committing staged changes
     And the commit graph is shown
     And a full-window screenshot is saved as "doc-commit-written"
 
+  @doc @screenshots
+  Scenario: Amending the previous commit rewrites it instead of stacking a new one
+    Ticking "Amend previous commit" needs no staged file of its own — it fills the message box
+    with the commit it's about to replace, ready to edit, and confirming rewrites that commit in
+    place rather than adding a new one on top of it.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
+    When I select the working-tree changes in the graph
+    And I enter the commit message "chore: bump service version to api-v2"
+    And I commit the staged changes
+    Then the repository HEAD commit subject is "chore: bump service version to api-v2"
+    When I select the working-tree changes in the graph
+    And I turn on the amend-previous-commit option
+    Then the commit message box holds "chore: bump service version to api-v2"
+    When I enter the commit message "chore: bump service version to api-v3"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-commit-amend"
+    And I commit the staged changes
+    Then the repository HEAD commit subject is "chore: bump service version to api-v3"
+    And the commit before HEAD has the subject "base: add config"
+
   Scenario: Undoing a commit restores the previous HEAD and redo re-applies it
     When I select the working-tree changes in the graph
     And I enter the commit message "test: commit staged changes via e2e"

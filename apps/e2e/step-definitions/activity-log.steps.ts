@@ -35,6 +35,18 @@ Then(/^the activity log does not show a "([^"]*)" entry$/, async (command: strin
   await expect($(`[data-testid="activity-log-row"][data-command="${command}"]`)).not.toBeExisting()
 })
 
+Then(/^the activity log shows a "([^"]*)" entry$/, async (command: string) => {
+  await expect($(`[data-testid="activity-log-row"][data-command="${command}"]`)).toBeExisting()
+})
+
+Then(/^the activity log scope is "(application|repository)"$/, async (scope: string) => {
+  await expect($(`[data-testid="activity-scope-${scope}"]`)).toHaveAttribute('aria-pressed', 'true')
+})
+
+When(/^I switch the activity log scope to "(application|repository)"$/, async (scope: string) => {
+  await $(`[data-testid="activity-scope-${scope}"]`).click()
+})
+
 When(/^I open the "([^"]*)" activity log entry$/, async (command: string) => {
   const row = $(`[data-testid="activity-log-row"][data-command="${command}"]`)
   await row.waitForDisplayed({ timeout: 10000 })

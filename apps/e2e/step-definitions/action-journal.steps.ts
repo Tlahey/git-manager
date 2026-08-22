@@ -52,6 +52,25 @@ When(/^I open the filtered action$/, async () => {
   await $('[data-testid="action-detail-panel"]').waitForDisplayed({ timeout: 10000 })
 })
 
+When(/^I click the copy-commands button$/, async () => {
+  await $('[data-testid="action-copy-commands"]').click()
+})
+
+// `handleCopy` only calls `setCopied(true)` after `navigator.clipboard.writeText` itself resolves
+// (`ActionDetailPanel.tsx`), so this proves the write actually succeeded rather than just that the
+// button was clicked — reading the OS clipboard back isn't attempted here, the same boundary
+// terminal.steps.ts's own note draws around this WebKit build's clipboard support.
+Then(/^the copy-commands button confirms the copy$/, async () => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute(() => {
+        const button = document.querySelector('[data-testid="action-copy-commands"]')
+        return button?.querySelector('.text-tone-success') !== null
+      }),
+    { timeout: 5000, timeoutMsg: 'the copy button never showed its confirmation state' }
+  )
+})
+
 When(/^I click the explain-action button$/, async () => {
   const button = $('[data-testid="action-explain"]')
   await button.waitForEnabled({ timeout: 10000 })

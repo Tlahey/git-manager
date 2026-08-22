@@ -40,3 +40,17 @@ Feature: The commit graph
     And the interface has settled
     Then the commit details panel is shown
     And a full-window screenshot is saved as "doc-commit-details"
+
+  @doc @screenshots
+  Scenario: Filtering the graph with ⌘F
+    ⌘F opens a small search bar floating over the graph and steps through the commits matching
+    what you type — by subject, body, author name or email, or SHA — without hiding the rest of
+    the history the way a filter would. The counter says which match you're on and how many there
+    are in total; Enter and the arrows step forward, Shift+Enter back.
+    When I open the commit search panel
+    And I search the commit graph for "notification"
+    And the interface has settled
+    Then the commit search shows "1/5"
+    And a full-window screenshot is saved as "doc-commit-search"
+    When I go to the next commit search match
+    Then the commit search shows "2/5"

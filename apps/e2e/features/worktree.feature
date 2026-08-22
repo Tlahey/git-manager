@@ -38,10 +38,19 @@ Feature: Worktree management
     And the fixture repo has a worktree at that path on disk
     And a full-window screenshot is saved as "doc-worktree-sidebar"
 
+  @doc @screenshots
   Scenario: Removing an existing worktree
+    Removing a worktree works the same way in reverse from adding one: a click on its row in the
+    sidebar opens a confirmation, since removing a worktree removes the folder it checked out —
+    nothing happens until you confirm it.
+    Given the app language is English
+    And AI features are turned off
+    And the "worktree-repo" fixture repository is opened
     When I expand the "worktrees" sidebar section
     And I click the remove button for the linked worktree
-    And I confirm the remove-worktree dialog
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-worktree-remove-confirm"
+    When I confirm the remove-worktree dialog
     Then the sidebar no longer lists a worktree for branch "feature/login"
     And the fixture repo no longer has the linked worktree on disk
 
@@ -78,12 +87,20 @@ Feature: Worktree management
     Then the graph marks the linked worktree as having an agent at work
     And a full-window screenshot is saved as "doc-worktree-agent-activity"
 
+  @doc @screenshots
   Scenario: Removing a dirty worktree requires forcing
-    Given the linked worktree has uncommitted changes
+    A worktree with uncommitted changes doesn't remove quietly: the dialog warns you first, and the
+    force checkbox has to be ticked before confirming does anything — one extra, deliberate step
+    for the same reason a hard reset asks for one.
+    Given the app language is English
+    And AI features are turned off
+    And the linked worktree has uncommitted changes
     When I reload the application
     And I expand the "worktrees" sidebar section
     And I click the remove button for the linked worktree
     Then the remove-worktree dialog warns about uncommitted changes
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-worktree-remove-dirty"
     When I check the force-remove checkbox
     And I confirm the remove-worktree dialog
     Then the fixture repo no longer has the linked worktree on disk

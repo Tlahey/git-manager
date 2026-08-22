@@ -266,6 +266,60 @@ When(/^I open the command palette$/, async () => {
   await $('[data-testid="command-palette-input"]').waitForDisplayed({ timeout: 10000 })
 })
 
+// ⌘P's own open — the files-only mode the comment above warns not to substitute in for ⌘K.
+When(/^I open the file search palette$/, async () => {
+  await browser.keys([META, 'p'])
+  await $('[data-testid="command-palette-input"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// `useFileLookupCommands` gives every result the static id `file-lookup-<path>`, so this is the
+// same "find a rendered item, then read its own testid" probe `I pick "…" from the palette` uses —
+// scoped to the file-lookup group rather than every group, since that step already covers the
+// general case once a result exists.
+Then(/^the command palette offers the file "([^"]*)"$/, async (name: string) => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute((wanted: string) => {
+        const items = Array.from(
+          document.querySelectorAll('[data-testid^="command-item-file-lookup-"]')
+        )
+        return items.some((el) => (el.querySelector('span')?.textContent ?? '').trim() === wanted)
+      }, name),
+    { timeout: 10000, timeoutMsg: `the palette never offered the file "${name}"` }
+  )
+})
+
+// The diff viewer's own filename header (`DiffToolbar`'s `diff-header-name`) — the same element a
+// reader sees, so this is what proves ⌘P actually opened the file rather than just closing the
+// palette on it.
+Then(/^the file "([^"]*)" is open in the diff viewer$/, async (name: string) => {
+  await expect($('[data-testid="diff-header-name"]')).toHaveText(name)
+})
+
+// SHA lookup shares the palette's one input with every other mode, so typing a real ref's resolved
+// SHA is the whole step — `useCommitLookupCommands` only activates once the query matches
+// `SHA_PATTERN`, which is why a symbolic ref like `HEAD~2` cannot be typed directly.
+When(/^I type the SHA of "([^"]*)" into the command palette$/, async (ref: string) => {
+  const repoPath = activeRepoPath()
+  const sha = execFileSync('git', ['-C', repoPath, 'rev-parse', ref], { encoding: 'utf8' }).trim()
+  const input = $('[data-testid="command-palette-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(sha)
+})
+
+// The lookup command's id is static (`lookup-focus-commit`) regardless of which SHA triggered it,
+// unlike the file-lookup group above — so, unlike a file result, this one never needs the
+// label-matching probe at all.
+Then(/^the command palette offers to focus that commit$/, async () => {
+  await $('[data-testid="command-item-lookup-focus-commit"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I pick the SHA lookup result from the palette$/, async () => {
+  const item = $('[data-testid="command-item-lookup-focus-commit"]')
+  await item.waitForDisplayed({ timeout: 10000 })
+  await item.click()
+})
+
 // Run a palette command by its stable id (`command-item-<id>`). cmdk fires onSelect on click; the
 // palette then closes itself and runs the command.
 //

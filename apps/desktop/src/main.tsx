@@ -15,6 +15,7 @@ import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
 import { useGameStore } from './stores/game.store'
+import { resetMockRemoteBoards } from './features/board/api/mock-remote-board.api'
 import { hideAppSplash } from './lib/appSplash'
 import { shortOid as toShortOid } from './lib/shortOid'
 import '@git-manager/ui/globals.css'
@@ -59,6 +60,13 @@ if (import.meta.env.VITE_E2E === 'true') {
   // clearing the persisted game-store key alone leaves the previous scenario's toast on screen
   // (4.5s lifetime, i.e. well into the next scenario), where it bleeds into visual captures.
   ;(window as unknown as { __e2eGameStore: typeof useGameStore }).__e2eGameStore = useGameStore
+  // Exposed so the suite's `Before` hook can clear the GitHub-board fixture double between
+  // scenarios (`mock-remote-board.api.ts`'s own doc comment explains why it exists at all): the app
+  // window is shared across the whole run, so a board created by one scenario would otherwise still
+  // be there — with a stale revision — for the next one to trip over.
+  ;(
+    window as unknown as { __e2eResetMockRemoteBoards: typeof resetMockRemoteBoards }
+  ).__e2eResetMockRemoteBoards = resetMockRemoteBoards
 }
 
 // Read the configuration off disk before anything reads it, then initialize i18n with the persisted
