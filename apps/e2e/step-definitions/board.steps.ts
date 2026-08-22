@@ -91,6 +91,16 @@ Then(/^the board offers no way to close it$/, async () => {
   await expect($('[data-testid="board-close-sprint-button"]')).not.toBeExisting()
 })
 
+// Only on a GitHub-backed board (BoardToolbar.tsx's `canUseRemote`) — screenshot-only coverage,
+// see board-github.feature's own note on why this goes no further than opening the dialog.
+When(/^I click the add-issue button$/, async () => {
+  await $('[data-testid="board-add-issue-button"]').click()
+})
+
+Then(/^the add-issue dialog is shown$/, async () => {
+  await $('[data-testid="add-issue-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
 // ─── Cards ─────────────────────────────────────────────────────────────────
 
 async function addCard(columnName: string, title: string, kind?: string): Promise<void> {
