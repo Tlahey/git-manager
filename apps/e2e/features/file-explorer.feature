@@ -37,15 +37,28 @@ Feature: Browse the repository's files
     And I close the file explorer
     Then the file explorer is no longer shown
 
+  @doc @screenshots
   Scenario: Filtering the tree narrows it to the matching file
-    # `login.txt` only exists on feature/login, so on main the tree has exactly one file to filter
-    # — which makes "the filter excluded it" distinguishable from "it was never there".
+    The search field above the tree filters it live, by name — useful the moment a repository has
+    more files than fit on screen at once. A query that matches nothing says so, rather than
+    leaving the tree just looking empty.
     When I open the file explorer
     Then the file tree sidebar lists "app.txt"
+    # `login.txt` only exists on feature/login, so on main the tree has exactly one file to filter
+    # — which makes "the filter excluded it" distinguishable from "it was never there".
     When I filter the file tree by "nothing-matches-this"
     Then the file tree sidebar does not list "app.txt"
+    And the file tree sidebar reports no matches
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-file-tree-filter"
 
+  @doc @screenshots
   Scenario: The tree sidebar can be hidden and stays recoverable
+    The tree takes up room a wide file deserves once you already know your way around a
+    repository. Hiding it gives that space back to the file list and the preview, and the
+    toolbar's own panel toggle — not a control local to this view — is what brings it back.
     When I open the file explorer
     And I hide the file tree sidebar
     Then the file tree sidebar is hidden
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-file-tree-hidden"

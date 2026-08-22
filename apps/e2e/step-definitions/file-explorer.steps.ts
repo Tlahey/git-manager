@@ -56,6 +56,10 @@ Then(/^the file tree sidebar does not list "([^"]*)"$/, async (path: string) => 
   await expect($(`[data-testid="file-tree-node-${path}"]`)).not.toBeExisting()
 })
 
+Then(/^the file tree sidebar reports no matches$/, async () => {
+  await $('[data-testid="file-tree-empty"]').waitForDisplayed({ timeout: 10000 })
+})
+
 Then(/^the file tree sidebar is shown$/, async () => {
   await expect($('[data-testid="file-tree-sidebar"]')).toBeDisplayed()
 })
