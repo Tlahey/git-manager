@@ -1,5 +1,5 @@
 @board-cards
-Feature: Kanban board — the card record and the board's own shape
+Feature: The card record and the board's own shape
 
   What `board.feature` deliberately leaves out: everything *inside* a card — its checklist, its
   discussion, the fields of its side panel, its relations to other cards — and everything that

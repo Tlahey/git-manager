@@ -1,5 +1,5 @@
 @board-github
-Feature: Kanban board — backed by GitHub Issues
+Feature: Backed by GitHub Issues
 
   A repository with a connected GitHub account can create a board whose cards are real GitHub
   issues, shared with the team, instead of commits in this clone's own `.git` — see
