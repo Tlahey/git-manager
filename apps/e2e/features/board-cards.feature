@@ -239,6 +239,25 @@ Feature: The card record and the board's own shape
     And no error notification is displayed
 
   @doc @screenshots
+  Scenario: A board's Definition-of-Done template pre-fills every new card's checklist
+    Board settings hold a Definition-of-Done template alongside the name and the tag palette:
+    items added there show up, empty and unchecked, on every card created from then on — a
+    standing checklist for what "done" means on this board, instead of a blank one every time.
+    Given the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I open the board settings
+    And I add the DoD template item "Tests pass"
+    And I add the DoD template item "Docs updated"
+    And I save the board settings
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-dod-template"
+    When I add a card titled "Ship the release" to the "To do" column
+    Then the card "Ship the release" stores "Tests pass" as still to do
+    And the card "Ship the release" stores "Docs updated" as still to do
+    And no error notification is displayed
+
+  @doc @screenshots
   Scenario: Duplicating a card copies everything it is, minus its discussion
     Duplicate copies the description, checklist, assignee, priority, due date, tags and blocking
     onto a fresh ticket right after the original — everything the card *is*. Its comments do not
