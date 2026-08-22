@@ -59,6 +59,26 @@ Feature: Appearance
     And the "dark" theme card matches the visual snapshot "theme-card-dark"
 
   @doc @screenshots
+  Scenario: Customizing the integrated terminal's background and text colors
+    The terminal's background and text are their own pair of colour pickers, independent of
+    whichever theme is active — a live preview updates as soon as either changes, and Reset puts
+    both back to the app's own defaults in one click.
+    Given the app language is English
+    And AI features are turned off
+    And the git-manager application is running
+    When I open the settings
+    And I open the "ui_customization" settings tab
+    And I set the terminal background color to "#1a2b3c"
+    And I set the terminal foreground color to "#ffcc00"
+    Then the terminal background color is "#1a2b3c"
+    And the terminal foreground color is "#ffcc00"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-terminal-colors"
+    When I reset the terminal colors
+    Then the terminal background color is "#000000"
+    And the terminal foreground color is "#e4e4e7"
+
+  @doc @screenshots
   Scenario: A theme dropped into the themes folder shows up alongside the built-in ones
     Themes are not limited to the ones that ship with the app: any `.css` file
     placed in `~/.git-manager/themes` becomes a theme of its own, named after

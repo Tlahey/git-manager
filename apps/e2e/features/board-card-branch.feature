@@ -1,5 +1,5 @@
 @board-branch
-Feature: Kanban board — from a card to a branch, and back when it merges
+Feature: From a card to a branch, and back when it merges
 
   The one thing a board hosted anywhere else cannot do: start the work from the ticket. A card's
   record carries a branch section — create the branch this card is about, check it out, give it a

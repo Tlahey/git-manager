@@ -54,6 +54,27 @@ Feature: General
     Then the rewards setting is "off"
 
   @doc @screenshots
+  Scenario: Configuring background auto-fetch
+    The app quietly re-fetches the active repository on a timer of its own, even while the window
+    doesn't have focus — useful for a repository left open and unattended, so a branch that moved
+    upstream surfaces on its own instead of waiting for a manual Fetch. Turning the interval to 0
+    disables it; whether that automatic fetch also prunes gone-remote branches is a separate
+    choice, independent of what a manual fetch does.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "general" settings tab
+    And I set the auto-fetch interval to "5" minutes
+    And I turn off automatic pruning on auto-fetch
+    And I reload the application
+    And I open the settings
+    And I open the "general" settings tab
+    Then the auto-fetch interval is "5" minutes
+    And automatic pruning on auto-fetch is off
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-auto-fetch"
+
+  @doc @screenshots
   Scenario: Switching the interface language takes effect immediately
     The language dropdown at the top of the General section drives the same i18next instance
     every screen renders through, so picking a new language re-renders the whole app's copy on

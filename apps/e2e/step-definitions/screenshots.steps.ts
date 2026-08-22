@@ -6,6 +6,7 @@ import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { seedSettings } from '../support/settings.js'
+import { getActiveRepoPath } from '../support/activeRepo.js'
 
 // W3C WebDriver key value for Meta (Command on macOS), U+E03D — same pattern as
 // command-palette.steps.ts / undo-redo.steps.ts.
@@ -62,6 +63,70 @@ Then(/^the commit search shows "([^"]*)"$/, async (label: string) => {
 
 When(/^I go to the next commit search match$/, async () => {
   await $('[data-testid="commit-search-next"]').click()
+})
+
+When(/^I open the author filter$/, async () => {
+  await $('[data-testid="author-filter-trigger"]').click()
+  await $('[data-testid="author-filter-popover"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I filter the graph by author "([^"]*)"$/, async (name: string) => {
+  const optionTestId = await browser.execute((wanted: string) => {
+    const options = Array.from(document.querySelectorAll('[data-testid^="author-filter-option-"]'))
+    const hit = options.find((el) => (el.textContent ?? '').includes(wanted))
+    return hit ? hit.getAttribute('data-testid') : null
+  }, name)
+  if (!optionTestId) throw new Error(`no author option matches "${name}"`)
+  await $(`[data-testid="${optionTestId}"]`).click()
+})
+
+// `(\d+)` arrives already coerced to a number by the Cucumber step-matcher, whatever the regex
+// itself looks like — hence `String(...)` rather than trusting the parameter's declared type.
+Then(/^the author filter shows "(\d+)" selected$/, async (count: number) => {
+  const text = await $('[data-testid="author-filter-count"]').getText()
+  expect(text.trim()).toBe(String(count))
+})
+
+When(/^I clear the author filter$/, async () => {
+  await $('[data-testid="author-filter-clear"]').click()
+})
+
+/** The oid of the commit with this exact subject, read straight from git — deterministic and
+ *  independent of whatever order the graph renders rows in. */
+function commitOidBySubject(subject: string): string {
+  const repoPath = getActiveRepoPath()
+  const log = execFileSync('git', ['-C', repoPath, 'log', '--all', '--format=%H%x09%s'], {
+    encoding: 'utf8',
+  })
+  const line = log.split('\n').find((l) => l.slice(41) === subject && l.includes('\t'))
+  if (!line) throw new Error(`no commit with subject "${subject}" in ${repoPath}`)
+  return line.slice(0, 40)
+}
+
+// A dimmed row's message carries `italic` (`GraphRowCell.tsx`) — the same visual cue ⌘F's search
+// and the author filter both apply through `isRowDimmed`, and the one observable signal either
+// leaves behind: dimming never hides a row, so there is no count to assert instead.
+async function messageIsDimmed(oid: string): Promise<boolean> {
+  return browser.execute((testId: string) => {
+    const row = document.querySelector(`[data-testid="${testId}"]`)
+    return !!row?.querySelector('span.italic')
+  }, `graph-row-${oid}`)
+}
+
+Then(/^the commit "([^"]*)" is dimmed$/, async (subject: string) => {
+  const oid = commitOidBySubject(subject)
+  await browser.waitUntil(async () => messageIsDimmed(oid), {
+    timeout: 10000,
+    timeoutMsg: `the commit "${subject}" is not dimmed`,
+  })
+})
+
+Then(/^the commit "([^"]*)" is not dimmed$/, async (subject: string) => {
+  const oid = commitOidBySubject(subject)
+  await browser.waitUntil(async () => !(await messageIsDimmed(oid)), {
+    timeout: 10000,
+    timeoutMsg: `the commit "${subject}" is still dimmed`,
+  })
 })
 
 Then(/^a full-window screenshot is saved as "([^"]*)"$/, async (name: string) => {

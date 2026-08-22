@@ -13,6 +13,7 @@ import {
   disableAppConfigFile,
   disableKeychain,
 } from './support/isolatedAppState.js'
+import { installFakePackageManager } from './support/fakePackageManager.js'
 import {
   resetRunReport,
   startSession,
@@ -93,6 +94,9 @@ export const config: WebdriverIO.Config = {
     // $HOME above does nothing for it: without this, connecting an account in a scenario would write
     // into the developer's own credentials.
     disableKeychain()
+    // …and a fake `pnpm` ahead of any real one on PATH, so the package-updates page's "outdated"/
+    // "update" shell-outs are deterministic and offline too — see support/fakePackageManager.ts.
+    process.env.PATH = `${installFakePackageManager()}:${process.env.PATH ?? ''}`
     // Drop the previous run's per-scenario timings; workers append to it as they go.
     resetRunReport()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })

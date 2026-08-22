@@ -1,5 +1,5 @@
 @board-recovery
-Feature: Kanban board — recovering a board its repository lost
+Feature: Recovering a board its repository lost
 
   A local board lives on a hidden ref inside the repository, and those refs are never pushed. So a
   repository that is deleted and cloned again comes back without a single board, and looks exactly

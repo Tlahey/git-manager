@@ -50,3 +50,36 @@ Feature: The interface at a glance
     And the interface has settled
     Then the footer reports the AI provider status
     And a screenshot of the "app-footer" area is saved as "doc-app-footer"
+
+  @doc @screenshots
+  Scenario: Copying the repository path and branch, and jumping to the changelog, from the footer
+    The repository name and the branch name each copy themselves in one click, without opening
+    anything — useful for pasting a path into another app or a branch name into a commit message
+    by hand. The version pill on the right is a shortcut into the same Changelog tab the sidebar
+    reaches, not a separate page.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
+    When I click the footer's copy-path button
+    Then the footer's copy-path button confirms the copy
+    When I click the footer's copy-branch button
+    Then the footer's copy-branch button confirms the copy
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-footer-utilities"
+    When I click the footer's version button
+    Then the changelog shows at least one release entry
+
+  @doc @screenshots
+  Scenario: Searching the in-app keyboard shortcuts reference
+    The footer's keyboard icon opens the same shortcuts this page lists, searchable by what they
+    do or by the keys themselves — so "undo" finds ⌘Z without having to already know which
+    category it's filed under.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
+    When I open the keyboard shortcuts panel
+    And I search the shortcuts panel for "undo"
+    Then the shortcuts panel shows the shortcut "Undo the last Git action"
+    And the shortcuts panel does not show the shortcut "Open Settings"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-keyboard-shortcuts"

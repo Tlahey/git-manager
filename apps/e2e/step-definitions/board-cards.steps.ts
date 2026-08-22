@@ -820,6 +820,13 @@ When(/^I save the board settings$/, async () => {
   await $('[data-testid="board-settings-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
 })
 
+// `card-dod-add-input` is DodChecklistEditor's own testid, shared by every mount of it (a card's
+// own checklist, the new-card form, the board's template) — safe to query unscoped here since the
+// settings dialog is modal and no other DoD editor is on screen while it's open.
+When(/^I add the DoD template item "([^"]*)"$/, async (text: string) => {
+  await typeAndCommit('card-dod-add-input', text)
+})
+
 Then(/^the board offers the card prefixes "([^"]*)"$/, async (expected: string) => {
   const wanted = expected.split(',').map((prefix) => prefix.trim())
   try {

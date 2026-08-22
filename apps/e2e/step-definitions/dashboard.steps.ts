@@ -182,3 +182,35 @@ When(
     await $(`[data-testid="dashboard-restore-section-${sectionId}"]`).click()
   }
 )
+
+// The colour swatches live inline inside the section's own "..." menu (SectionColorPicker, see
+// RepoSectionHeader.tsx) rather than a separate popover, and picking one deliberately does not
+// close it (its own `stopPropagation`) — so a *second* pick in the same scenario finds the menu
+// still open, and re-triggering `openMenuViaJs` would toggle it shut instead of opening it.
+When(
+  /^I color the "([^"]*)" dashboard section "([^"]*)"$/,
+  async (sectionId: string, color: string) => {
+    const swatch = $(`[data-testid="dashboard-color-${sectionId}-${color}"]`)
+    if (!(await swatch.isExisting())) await openMenuViaJs(`dashboard-section-menu-${sectionId}`)
+    await swatch.click()
+  }
+)
+
+// `data-color` on the section header itself is real applied state (RepoSectionHeader.tsx), not
+// just the picker's own pressed button.
+Then(
+  /^the "([^"]*)" dashboard section is colored "([^"]*)"$/,
+  async (sectionId: string, color: string) => {
+    await expect($(`[data-testid="dashboard-section-header-${sectionId}"]`)).toHaveAttribute(
+      'data-color',
+      color
+    )
+  }
+)
+
+Then(/^the "([^"]*)" dashboard section is not colored$/, async (sectionId: string) => {
+  await expect($(`[data-testid="dashboard-section-header-${sectionId}"]`)).toHaveAttribute(
+    'data-color',
+    'none'
+  )
+})

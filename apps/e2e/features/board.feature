@@ -156,3 +156,28 @@ Feature: Kanban board
     And I restore the card "Rework the onboarding" from the archive
     Then the "To do" column holds 1 card
     And no error notification is displayed
+
+  @doc @screenshots
+  Scenario: Deleting a board while keeping its cards
+    Deleting a board is not locally undoable, and its tickets can't be left without one — so the
+    dialog asks which happens to them. Archiving them instead of deleting keeps the board itself
+    around too, tombstoned rather than removed: it drops out of the list but stays reachable, read
+    only, once "Show deleted" is switched on.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 1" with the card prefix "GM"
+    And I add a card titled "Ship the release" to the "To do" column
+    And I delete the board
+    And I keep the board's cards instead of deleting them
+    And I confirm deleting the board
+    Then the board shows it was deleted
+    When I create a board named "Backlog" with the card prefix "BL"
+    Then the board "Sprint 1" is no longer listed
+    When I show deleted boards
+    And I select the "Sprint 1" board
+    Then the board shows it was deleted
+    And the "To do" column holds 0 cards
+    And the archived card "Ship the release" is listed
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-delete"

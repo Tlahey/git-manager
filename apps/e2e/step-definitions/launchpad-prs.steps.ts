@@ -63,3 +63,21 @@ When(/^I open the "([^"]*)" pull request$/, async (id: string) => {
   await $(`[data-testid="pr-open-in-app-${id}"]`).click()
   await $('[data-testid="launchpad-pr-panel"]').waitForDisplayed({ timeout: 10000 })
 })
+
+// The toolbar's search and collapse/expand-all sit above the inner tab bar (LaunchpadToolbar.tsx)
+// and apply to whichever tab is active — see launchpadControls.store.ts.
+When(/^I search the launchpad for "([^"]*)"$/, async (query: string) => {
+  await $('[data-testid="launchpad-global-search"]').setValue(query)
+})
+
+When(/^I clear the launchpad search$/, async () => {
+  await $('[data-testid="launchpad-global-search"]').setValue('')
+})
+
+When(/^I collapse all launchpad groups$/, async () => {
+  await $('[data-testid="launchpad-collapse-all"]').click()
+})
+
+When(/^I expand all launchpad groups$/, async () => {
+  await $('[data-testid="launchpad-expand-all"]').click()
+})

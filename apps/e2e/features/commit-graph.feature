@@ -54,3 +54,20 @@ Feature: The commit graph
     And a full-window screenshot is saved as "doc-commit-search"
     When I go to the next commit search match
     Then the commit search shows "2/5"
+
+  @doc @screenshots
+  Scenario: Filtering the graph by author
+    The funnel in the Author column header narrows attention to one or more people's own work,
+    without hiding anything else the way ⌘F's search does not either — every commit stays in the
+    graph, and everyone but the selected authors just dims, so the shape of history around their
+    commits is still there to read.
+    Given the "feature-branches" fixture repository is opened
+    When I open the author filter
+    And I filter the graph by author "Marie Dubois"
+    Then the author filter shows "1" selected
+    And the commit "chore: extend app on main" is not dimmed
+    And the commit "chore: initial app" is dimmed
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-author-filter"
+    When I clear the author filter
+    Then the commit "chore: initial app" is not dimmed

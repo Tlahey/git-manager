@@ -36,10 +36,20 @@ Feature: File blame and history
     Then the blame gutter shows at least one author avatar
     And a full-window screenshot is saved as "doc-blame-gutter"
 
+  @doc @screenshots
   Scenario: Blame mode annotates lines with the commit name
+    The gutter avatars answer "who" at a glance; blame mode adds "which commit" next to it — a
+    column naming the commit that last touched each line, right in the editor, for when the
+    avatar alone isn't enough to place the change in history.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
+    And I open the diff for "app.txt" at "HEAD"
     When I switch to the File view
     And I enable blame mode
+    And the interface has settled
     Then the blame column shows a commit annotation
+    And a full-window screenshot is saved as "doc-blame-mode"
 
   @doc @screenshots
   Scenario: Selecting a history version shows that version in the diff

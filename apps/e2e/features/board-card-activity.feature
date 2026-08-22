@@ -1,5 +1,5 @@
 @board-activity
-Feature: Kanban board — a card's activity feed
+Feature: A card's activity feed
 
   The third thing a card record holds, after its fields and its checklist: the Activity panel, tabbed
   into "Comments" — the discussion on its own, threaded, a reply nested under what it answers — and

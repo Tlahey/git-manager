@@ -77,7 +77,14 @@ Feature: Command palette (⌘K)
     When I confirm the reset
     Then the repository HEAD commit subject is "chore: bump counter to 2"
 
+  @doc @screenshots
   Scenario: Soft-resetting to an earlier commit keeps the change staged
+    Mixed is only one of the three modes reset offers. Soft moves the branch
+    pointer back without touching the working tree or the index at all, so
+    everything the commits after the target point changed comes back as a
+    staged change — ready to re-commit differently, rather than lost.
+    Given the app language is English
+    And AI features are turned off
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
@@ -86,14 +93,27 @@ Feature: Command palette (⌘K)
     When I confirm the reset
     Then the repository HEAD commit subject is "chore: bump counter to 3"
     And the working tree has staged changes
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-reset-soft"
 
+  @doc @screenshots
   Scenario: Hard-resetting requires typing RESET to confirm
+    Hard is the mode that throws work away — it moves the branch pointer back
+    and overwrites both the index and the working tree to match, discarding
+    every change the commits after the target point made. Because there is no
+    undo for that, the confirm button stays disabled until you type the word
+    "RESET" into the dialog, the same friction the toolbar's own Reset button
+    requires.
+    Given the app language is English
+    And AI features are turned off
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
     When I run the command palette action "commit-reset-hard"
     Then the reset dialog is shown
     And the reset confirm button is disabled
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-reset-hard"
     When I type "RESET" into the reset confirmation input
     Then the reset confirm button is enabled
     When I confirm the reset

@@ -34,6 +34,7 @@ Feature: Comparing two branches
     And the interface has settled
     And a full-window screenshot is saved as "doc-compare-branches"
 
+  @doc @screenshots
   Scenario: Swapping sides reverses which branch each change comes from
     Diffing "main" against "feature/diverged" or the other way around is not
     the same question, and the backend has to be asked again — not just have
@@ -44,13 +45,18 @@ Feature: Comparing two branches
     When I swap the compared sides
     Then the file "shared.txt" in the compare view shows 0 additions and 1 deletion
     And the file "app.txt" in the compare view shows 1 addition and 0 deletions
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-compare-branches-swap"
 
+  @doc @screenshots
   Scenario: Re-picking a side through the branch picker loads a real diff
     Opening the dialog on two identical refs is a safe starting point — no
     backend call is even made — until one side is re-picked through the
     dialog's own branch selects, the same control a user would drive by hand.
     When I compare "main" with "main"
     Then the compare branches dialog reports the two sides are identical
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-compare-branches-identical"
     When I pick "feature/diverged" as the compare head
     Then the compare branches diff includes the file "shared.txt"
     And the compare branches diff includes the file "app.txt"

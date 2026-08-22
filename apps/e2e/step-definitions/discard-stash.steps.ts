@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { $, browser, expect } from '@wdio/globals'
 import { Then, When } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
+import { clickViaJs } from '../support/interactions.js'
 
 // Steps for the two destructive/parking flows that had no coverage: discarding one file's
 // working-tree changes, and creating a stash from the toolbar (plus renaming one afterwards).
@@ -108,4 +109,39 @@ When(/^I rename the newest stash to "([^"]*)"$/, async (message: string) => {
   await submit.waitForEnabled({ timeout: 10000 })
   await submit.click()
   await expect(input).not.toBeDisplayed()
+})
+
+// The WIP staging panel's own Stash tab (WipStagingPanel.tsx / WipStashForm.tsx) — distinct from
+// the toolbar's Stash button, which reads the graph row's own message field instead.
+When(/^I switch the staging panel to the stash tab$/, async () => {
+  await $('[data-testid="tab-stash"]').click()
+  await $('[data-testid="stash-message-input"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I type "([^"]*)" into the stash message field$/, async (message: string) => {
+  await $('[data-testid="stash-message-input"]').setValue(message)
+})
+
+// The checkbox's real `<input>` is a full-size transparent overlay (Checkbox.tsx) — a plain click
+// can land outside WebDriver's idea of "displayed"; clickViaJs sidesteps that, same as the commit
+// panel's own amend checkbox.
+When(/^I uncheck the include-untracked-files option$/, async () => {
+  await clickViaJs('stash-untracked-checkbox')
+})
+
+When(/^I submit the stash form$/, async () => {
+  const button = $('[data-testid="stash-submit-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^the file "([^"]*)" is untracked in the working tree$/, async (filePath: string) => {
+  const repoPath = getActiveRepoPath()
+  await browser.waitUntil(
+    () =>
+      execFileSync('git', ['-C', repoPath, 'status', '--porcelain', '--', filePath], {
+        encoding: 'utf8',
+      }).startsWith('??'),
+    { timeout: 10000, timeoutMsg: `expected "${filePath}" to still be untracked` }
+  )
 })

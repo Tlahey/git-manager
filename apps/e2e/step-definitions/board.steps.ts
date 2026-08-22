@@ -1,9 +1,10 @@
 import { browser, expect, $, $$ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
-import { clickViaJs, openMenuViaJs } from '../support/interactions'
+import { clickViaJs, openMenuViaJs, setNativeSelectValue } from '../support/interactions'
 import {
   activeBoardName,
   BOARD_REF_GLOB,
+  boardRefNamed,
   boardRefs,
   cardTestId,
   cardTestIdOrThrow,
@@ -12,6 +13,7 @@ import {
   columnIdByName,
   git,
   openCard,
+  storedBoard,
   storedCards,
 } from '../support/board'
 
@@ -89,6 +91,16 @@ Then(/^the board offers no way to close it$/, async () => {
   await expect($('[data-testid="board-close-sprint-button"]')).not.toBeExisting()
 })
 
+// Only on a GitHub-backed board (BoardToolbar.tsx's `canUseRemote`) — screenshot-only coverage,
+// see board-github.feature's own note on why this goes no further than opening the dialog.
+When(/^I click the add-issue button$/, async () => {
+  await $('[data-testid="board-add-issue-button"]').click()
+})
+
+Then(/^the add-issue dialog is shown$/, async () => {
+  await $('[data-testid="add-issue-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
 // ─── Cards ─────────────────────────────────────────────────────────────────
 
 async function addCard(columnName: string, title: string, kind?: string): Promise<void> {
@@ -162,6 +174,47 @@ When(/^I archive the card "([^"]*)"$/, async (title: string) => {
     timeoutMsg: `the card "${title}" is still on the board after being archived`,
   })
 })
+
+When(/^I duplicate the card "([^"]*)"$/, async (title: string) => {
+  await openCard(title)
+  // Same reasoning as archiving above: the dialog's own `⋯` rather than the card face's shared,
+  // hover-only trigger.
+  await openMenuViaJs('card-dialog-actions-menu')
+  const duplicate = $('[data-testid="card-action-duplicate"]')
+  await duplicate.waitForDisplayed({ timeout: 10000 })
+  await duplicate.click()
+  await closeDialog('board-card-dialog')
+})
+
+When(/^I archive all cards in the "([^"]*)" column$/, async (columnName: string) => {
+  const columnId = await columnIdByName(columnName)
+  await openMenuViaJs(`board-column-${columnId}-menu`)
+  const archiveAll = $('[data-testid="column-action-archive-all"]')
+  await archiveAll.waitForDisplayed({ timeout: 10000 })
+  await archiveAll.click()
+  const confirm = $('[data-testid="archive-column-confirm"]')
+  await confirm.waitForDisplayed({ timeout: 10000 })
+  await confirm.click()
+  await $('[data-testid="archive-column-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
+})
+
+When(
+  /^I move all cards in the "([^"]*)" column to the "([^"]*)" board$/,
+  async (columnName: string, boardName: string) => {
+    const columnId = await columnIdByName(columnName)
+    await openMenuViaJs(`board-column-${columnId}-menu`)
+    const moveAll = $('[data-testid="column-action-move-all"]')
+    await moveAll.waitForDisplayed({ timeout: 10000 })
+    await moveAll.click()
+    await $('[data-testid="move-column-dialog"]').waitForDisplayed({ timeout: 10000 })
+    // The board's *id* is what the picker's options carry, and it is generated per write — read
+    // back from the stored board of that name, same as `I move the card to the "X" board`.
+    const target = storedBoard(boardRefNamed(boardName))
+    await setNativeSelectValue('move-column-target-board', target.id)
+    await $('[data-testid="move-column-submit"]').click()
+    await $('[data-testid="move-column-dialog"]').waitForExist({ reverse: true, timeout: 20000 })
+  }
+)
 
 When(/^I restore the card "([^"]*)" from the archive$/, async (title: string) => {
   await $('[data-testid="board-archived-button"]').click()
@@ -246,6 +299,74 @@ When(/^I select the "([^"]*)" sprint$/, async (name: string) => {
     timeout: 10000,
     timeoutMsg: `the board sidebar never switched to "${name}"`,
   })
+})
+
+When(/^I delete the board$/, async () => {
+  await $('[data-testid="board-delete-button"]').click()
+  await $('[data-testid="delete-board-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// The checkbox is checked by default (erasure is what deleting a board has always done) — this
+// opts out into the other branch: the tickets are archived rather than destroyed, and the board
+// is kept, read-only, so they still have one.
+When(/^I keep the board's cards instead of deleting them$/, async () => {
+  await clickViaJs('delete-board-delete-cards')
+})
+
+When(/^I confirm deleting the board$/, async () => {
+  await $('[data-testid="delete-board-confirm"]').click()
+  await $('[data-testid="delete-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
+})
+
+Then(/^the board "([^"]*)" is no longer listed$/, async (name: string) => {
+  await browser.waitUntil(
+    async () => {
+      const rows = await browser.execute((wanted: string) => {
+        const items = Array.from(document.querySelectorAll('[data-testid^="board-sidebar-item-"]'))
+        return items.some((el) => (el.textContent ?? '').includes(wanted))
+      }, name)
+      return !rows
+    },
+    { timeout: 10000, timeoutMsg: `the board sidebar still lists "${name}"` }
+  )
+})
+
+When(/^I show deleted boards$/, async () => {
+  await clickViaJs('board-show-deleted')
+})
+
+// Same lookup `I select the "X" sprint` uses, kept as its own step rather than reused verbatim: a
+// plain deleted board is not a sprint, and this scenario never closes one.
+When(/^I select the "([^"]*)" board$/, async (name: string) => {
+  const rowTestId = await browser.execute((wanted: string) => {
+    const rows = Array.from(document.querySelectorAll('[data-testid^="board-sidebar-item-"]'))
+    const hit = rows.find((el) => (el.textContent ?? '').includes(wanted))
+    return hit ? hit.getAttribute('data-testid') : null
+  }, name)
+  if (!rowTestId) throw new Error(`the board sidebar lists no "${name}"`)
+  await $(`[data-testid="${rowTestId}"]`).click()
+  await browser.waitUntil(async () => (await activeBoardName()).includes(name), {
+    timeout: 10000,
+    timeoutMsg: `the board sidebar never switched to "${name}"`,
+  })
+})
+
+Then(/^the board shows it was deleted$/, async () => {
+  await $('[data-testid="board-deleted-banner"]').waitForDisplayed({ timeout: 10000 })
+})
+
+Then(/^the archived card "([^"]*)" is listed$/, async (title: string) => {
+  await $('[data-testid="board-archived-button"]').click()
+  await $('[data-testid="archived-cards-dialog"]').waitForDisplayed({ timeout: 10000 })
+  const found = await browser.waitUntil(
+    async () =>
+      browser.execute((wanted: string) => {
+        const rows = Array.from(document.querySelectorAll('li[data-testid^="archived-card-"]'))
+        return rows.some((el) => (el.textContent ?? '').includes(wanted))
+      }, title),
+    { timeout: 10000, timeoutMsg: `no archived card titled "${title}"` }
+  )
+  expect(found).toBe(true)
 })
 
 // ─── What the user sees ────────────────────────────────────────────────────

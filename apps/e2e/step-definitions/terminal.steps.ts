@@ -1,6 +1,7 @@
 import { $, browser, expect } from '@wdio/globals'
-import { Then, When } from '@wdio/cucumber-framework'
+import { Given, Then, When } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
+import { forceLiveSettings } from '../support/settings.js'
 
 // The integrated terminal, end to end: a real PTY spawned by `terminal_open`, keystrokes routed
 // through xterm's `onData` → `terminal_write`, and the process's own output coming back over the
@@ -90,4 +91,44 @@ Then(/^the terminal output contains the repository path$/, async () => {
     timeoutMsg: `the terminal never printed a path containing "${repoName}"`,
   })
   expect(repoName.length).toBeGreaterThan(0)
+})
+
+When(/^I open a new terminal tab$/, async () => {
+  const button = $('[data-testid="terminal-new-tab"]')
+  await button.waitForClickable({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^the terminal panel has (\d+) tabs?$/, async (count: string) => {
+  await browser.waitUntil(
+    async () =>
+      (await browser.execute(
+        () => document.querySelectorAll('[data-testid^="terminal-tab-"]').length
+      )) === Number(count),
+    { timeout: 10000, timeoutMsg: `expected ${count} terminal tab(s)` }
+  )
+})
+
+// Takes effect immediately (no reload) via the live-store debug hook — the launch button reads
+// `settings.externalTools.agentLaunchCommand` on every click, so a `seedSettings` write (which only
+// lands after a reload) would leave the app still holding the factory default (`'claude'`) for the
+// rest of the scenario.
+Given(/^the agent launch command is set to "([^"]*)"$/, async (command: string) => {
+  await forceLiveSettings({ externalTools: { agentLaunchCommand: command } })
+})
+
+When(/^I click the launch-agent button$/, async () => {
+  const button = $('[data-testid="terminal-launch-agent"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+// The sparkle "review" button (`TerminalTab.tsx`) only renders once the backend's own busy/idle
+// poll (`useTerminalActivity`, every 2s) has observed the session's command start and then end —
+// see the feature's own `sleep` in the launched command, long enough to guarantee at least one
+// poll lands while it's still the foreground process.
+When(/^I review the finished terminal session's changes$/, async () => {
+  const review = $('[data-testid^="terminal-review-"]')
+  await review.waitForClickable({ timeout: 20000 })
+  await review.click()
 })

@@ -70,7 +70,13 @@ export const DOC_SECTIONS: DocSection[] = [
     // Pure reading — nothing here changes the repository. compare-branches lives here rather
     // than with branches: comparing is how you read two of them, not an action on one.
     title: 'Reading your repository',
-    features: ['commit-graph', 'file-explorer', 'blame-history', 'compare-branches'],
+    features: [
+      'commit-graph',
+      'file-explorer',
+      'blame-history',
+      'compare-branches',
+      'compare-to-workdir',
+    ],
   },
   {
     // undo-redo lives here rather than with branches: it is the safety net over the actions this
@@ -101,6 +107,7 @@ export const DOC_SECTIONS: DocSection[] = [
       'rebase-conflict',
       'rebase-progress',
       'interactive-rebase',
+      'commit-reorder',
       'fixup-autosquash',
       'merge-commit-actions',
     ],
@@ -111,9 +118,10 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     // The repository-scoped tools: diagnosis (bisect), portability (patches), and the built-in
-    // terminal and package overview.
+    // terminal and package overview. `package-health-updates` follows `package-health` since it's
+    // the one destination inside that same tool reaching the network.
     title: 'Toolbox',
-    features: ['bisect', 'patch-workspace', 'terminal', 'package-health'],
+    features: ['bisect', 'patch-workspace', 'terminal', 'package-health', 'package-health-updates'],
   },
   {
     // Ordered by how the features feed each other: composing commits, then the briefings pair

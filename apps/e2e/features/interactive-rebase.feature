@@ -67,12 +67,19 @@ Feature: Interactive rebase editor (reword / squash / drop)
     And the repository log holds 4 commits
     And the working file "counter.txt" holds the line "counter=3"
 
+  @doc @screenshots
   Scenario: Squashing the two newest commits combines them into one
+    ⌘-clicking a second row adds it to the selection rather than replacing it, so squashing two
+    (or more) commits is one selection and one click — the combined commit keeps both original
+    messages rather than picking one and discarding the other's context.
+    Given the app language is English
     When I open the interactive rebase editor from the "HEAD~1" commit
     And I select the rebase step "chore: bump counter to 3"
     And I add the rebase step "chore: bump counter to 4" to the selection
     And I squash the selected rebase steps keeping both messages
-    And I start the interactive rebase
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-interactive-rebase-squash"
+    When I start the interactive rebase
     Then the repository HEAD commit subject contains "chore: bump counter to 3"
     And the repository HEAD commit message contains "chore: bump counter to 4"
     And the repository log holds 4 commits

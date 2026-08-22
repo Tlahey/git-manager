@@ -105,6 +105,19 @@ describe('useBoardActions', () => {
     expect(setActiveBoard).not.toHaveBeenCalled()
   })
 
+  /** The "keep cards" branch archives every card server-side in the same write (see
+   * `git_board.rs::delete_board`'s own doc comment), but `revalidateLists` only re-reads the board
+   * list — without this, reopening the tombstoned board via "Show deleted" would still read its
+   * cards' pre-deletion cache and show them sitting in their old columns instead of archived. */
+  it('refreshes the deleted board’s own cards, not just the board list', async () => {
+    backend.deleteBoard.mockResolvedValue(undefined)
+    const only = makeBoard({ id: 'b1' })
+    const { result, mutateDetail } = renderActions(only, [only])
+
+    await result.current.deleteBoard(only, false)
+    expect(mutateDetail).toHaveBeenCalled()
+  })
+
   /** The cards changed, so the open board has to be refetched — the identifiers are on them, not on
    * the board. */
   it('refreshes after numbering the cards that had no identifier', async () => {

@@ -1,5 +1,5 @@
 @board-github
-Feature: Kanban board — backed by GitHub Issues
+Feature: Backed by GitHub Issues
 
   A repository with a connected GitHub account can create a board whose cards are real GitHub
   issues, shared with the team, instead of commits in this clone's own `.git` — see
@@ -28,3 +28,24 @@ Feature: Kanban board — backed by GitHub Issues
     And the interface has settled
     And a full-window screenshot is saved as "doc-board-github"
     And no error notification is displayed
+
+  # Screenshot only: browsing and picking from the repository's real open issues, and the write
+  # that follows (`useCardIssueTracking.addIssueToBoard`), both need a real connected GitHub
+  # account — the one thing this suite cannot fake (see command-mocking.feature's own note on
+  # `github_api_request` calls the app's own click triggers, which `browser.tauri.mock` can't
+  # intercept, and the suite's deliberate avoidance of hitting the real, anonymous GitHub API).
+  # This documents that the entry point exists without exercising what is behind it.
+  @doc @screenshots
+  Scenario: Opening the dialog to add an existing GitHub issue to the board
+    "Add issue", next to New Card on a GitHub board's toolbar, searches the repository's open
+    issues — or accepts a pasted issue number or URL for one you already know, including a closed
+    one the search wouldn't otherwise offer — and tracks whichever you pick as a card instead of
+    creating a new one.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a GitHub board named "Support triage" with the card prefix "SUP"
+    And I click the add-issue button
+    Then the add-issue dialog is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-add-issue"

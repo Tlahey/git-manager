@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { $, browser } from '@wdio/globals'
+import { $, browser, expect } from '@wdio/globals'
 import { Then, When } from '@wdio/cucumber-framework'
 
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -30,6 +30,46 @@ Then(/^the footer reports the AI provider status$/, async () => {
     timeout: 10000,
     timeoutMsg: 'the footer AI pill never reported the provider as connected',
   })
+})
+
+When(/^I click the footer's copy-path button$/, async () => {
+  await $('[data-testid="footer-copy-path-button"]').click()
+})
+
+When(/^I click the footer's copy-branch button$/, async () => {
+  await $('[data-testid="footer-copy-branch-button"]').click()
+})
+
+// `CopyToClipboard` only renders the success `Tag` once `navigator.clipboard.writeText` itself
+// resolves — same proof-of-actual-write reasoning as the Action Journal's own copy button.
+Then(/^the footer's copy-path button confirms the copy$/, async () => {
+  await browser.waitUntil(
+    () =>
+      browser.execute(
+        () =>
+          document
+            .querySelector('[data-testid="footer-copy-path-button"]')
+            ?.querySelector('.text-tone-success') !== null
+      ),
+    { timeout: 5000, timeoutMsg: 'the copy-path button never showed its confirmation state' }
+  )
+})
+
+Then(/^the footer's copy-branch button confirms the copy$/, async () => {
+  await browser.waitUntil(
+    () =>
+      browser.execute(
+        () =>
+          document
+            .querySelector('[data-testid="footer-copy-branch-button"]')
+            ?.querySelector('.text-tone-success') !== null
+      ),
+    { timeout: 5000, timeoutMsg: 'the copy-branch button never showed its confirmation state' }
+  )
+})
+
+When(/^I click the footer's version button$/, async () => {
+  await $('[data-testid="footer-version-button"]').click()
 })
 
 // The Run split button only mounts once the active repo has at least one task configured (see
@@ -64,4 +104,24 @@ When(/^I open the toolbar Launch menu$/, async () => {
 Then(/^the toolbar Launch menu lists the task "([^"]*)"$/, async (name: string) => {
   const item = $(`//div[@role="menuitem"][contains(., "${name}")]`)
   await item.waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I open the keyboard shortcuts panel$/, async () => {
+  await $('[data-testid="footer-shortcuts-button"]').click()
+  await $('[data-testid="shortcuts-search-input"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I search the shortcuts panel for "([^"]*)"$/, async (query: string) => {
+  await $('[data-testid="shortcuts-search-input"]').setValue(query)
+})
+
+// Individual shortcut rows carry no testid of their own — the dialog's own text is asserted
+// against instead, the same way `Footer.tsx`'s `filteredShortcuts` narrows the whole list.
+Then(/^the shortcuts panel shows the shortcut "([^"]*)"$/, async (description: string) => {
+  await expect($('[role="dialog"]')).toHaveText(description, { containing: true })
+})
+
+Then(/^the shortcuts panel does not show the shortcut "([^"]*)"$/, async (description: string) => {
+  const text = await $('[role="dialog"]').getText()
+  expect(text).not.toContain(description)
 })
