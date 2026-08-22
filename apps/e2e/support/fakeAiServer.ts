@@ -227,6 +227,36 @@ export async function startFakeAiServer(
             return
           }
 
+          // Upgrade-risk feature: echoes the package name and the first file `buildUsage`
+          // (packages/ai's upgradeRisk.ts) listed under "Files importing it:" back as the one
+          // affected location, rather than a fixed fake path — so the answer only ever names a
+          // file the scan actually found, which is what `verifyUpgradeRiskPaths` keeps.
+          if (schemaName === 'upgrade_risk') {
+            const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+            const packageName = /^Package: (.+)$/m.exec(userMessage)?.[1] ?? 'the dependency'
+            const filesBlock = /Files importing it:\n((?:- .+\n?)+)/.exec(userMessage)
+            const files = filesBlock
+              ? [...filesBlock[1].matchAll(/^- (.+)$/gm)].map((m) => m[1])
+              : []
+            const where = files.slice(0, 1)
+            const result = {
+              changes: [
+                {
+                  change: `${packageName}'s default export signature changed.`,
+                  affectsUs: where.length > 0,
+                  where,
+                  note:
+                    where.length > 0 ? 'This repository imports the default export directly.' : '',
+                },
+              ],
+              risk: where.length > 0 ? 'medium' : 'low',
+              summary: `Review ${packageName}'s default export before upgrading.`,
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(result) } }] }))
+            return
+          }
+
           // Commit-recompose feature: the only completion feature with no `schema` (see the option's
           // own doc comment) — its answer is the raw replacement message text, not a JSON envelope,
           // so it is matched by the absence of a schema name rather than by one.
