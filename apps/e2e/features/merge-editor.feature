@@ -71,12 +71,20 @@ Feature: Three-way merge editor
     When I open the merge editor for "dependency-manifest.txt"
     Then the merge editor matches the visual snapshot "merge-editor"
 
+  @doc @screenshots
   Scenario: Auto-merging then resolving the remaining conflicts writes the merged result to disk
+    "Apply non-conflicting changes" is the wand icon in the toolbar: one click resolves every
+    block where only one side actually changed something, which on a real conflicted file is most
+    of it. What survives is the handful of blocks both sides genuinely touched — pick a side from
+    each remaining gap the same way as always, and the apply button enables the moment none are
+    left undecided.
     Given the "rebase-conflict" fixture repository is opened
     When I click the conflicted file "dependency-manifest.txt" to resolve it
     And I click the merge editor auto-merge wand
     And I accept the right side for every remaining conflicting block
     Then the merge apply button is enabled
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-merge-auto-merge"
     When I click the merge editor apply button
     Then the file "dependency-manifest.txt" is staged and no longer conflicted
     # Wand-resolved modifications (both sides):
