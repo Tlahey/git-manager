@@ -361,6 +361,51 @@ Then(/^the active theme is "([^"]*)"$/, async (themeId: string) => {
   )
 })
 
+// A native `<input type="color">` takes neither `setValue` nor a plain assignment reliably on
+// this driver — same workaround as every other controlled input this suite writes through the
+// prototype's setter (the board card's due-date input, the summary panel's day input): its value
+// is always a lowercase 7-char hex string per the HTML spec, which is what makes the literal in
+// the feature file also the value read back below.
+async function setColorInput(testid: string, hex: string) {
+  await $(`[data-testid="${testid}"]`).waitForExist({ timeout: 10000 })
+  await browser.execute(
+    (id: string, value: string) => {
+      const input = document.querySelector(`[data-testid="${id}"]`) as HTMLInputElement | null
+      if (!input) throw new Error(`the "${id}" color input is not on screen`)
+      // A direct property-setter write triggers no focus event, so — unlike a real click — nothing
+      // scrolls the settings panel to it on its own; without this a doc screenshot taken right
+      // after would still show whatever was on screen before this step ran.
+      input.scrollIntoView({ block: 'center' })
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    },
+    testid,
+    hex
+  )
+}
+
+When(/^I set the terminal background color to "([^"]*)"$/, async (hex: string) => {
+  await setColorInput('appearance-terminal-bg', hex)
+})
+
+When(/^I set the terminal foreground color to "([^"]*)"$/, async (hex: string) => {
+  await setColorInput('appearance-terminal-fg', hex)
+})
+
+Then(/^the terminal background color is "([^"]*)"$/, async (hex: string) => {
+  await expect($('[data-testid="appearance-terminal-bg"]')).toHaveValue(hex)
+})
+
+Then(/^the terminal foreground color is "([^"]*)"$/, async (hex: string) => {
+  await expect($('[data-testid="appearance-terminal-fg"]')).toHaveValue(hex)
+})
+
+When(/^I reset the terminal colors$/, async () => {
+  await $('[data-testid="appearance-terminal-reset"]').click()
+})
+
 /**
  * Picks an application icon.
  *
