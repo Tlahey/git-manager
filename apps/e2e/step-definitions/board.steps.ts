@@ -35,7 +35,12 @@ When(/^I open the board$/, async () => {
   await $('[data-testid="create-board-button"]').waitForDisplayed({ timeout: 15000 })
 })
 
-async function createBoard(name: string, prefix: string, standing?: boolean): Promise<void> {
+async function createBoard(
+  name: string,
+  prefix: string,
+  standing?: boolean,
+  remote?: boolean
+): Promise<void> {
   await $('[data-testid="create-board-button"]').click()
   await $('[data-testid="create-board-dialog"]').waitForDisplayed({ timeout: 10000 })
   await $('[data-testid="board-name-input"]').setValue(name)
@@ -44,6 +49,10 @@ async function createBoard(name: string, prefix: string, standing?: boolean): Pr
   // gate).
   if (standing) await clickViaJs('board-iteration-input')
   await $('[data-testid="board-prefix-input"]').setValue(prefix)
+  // "Local" is selected by default; picking "GitHub" needs a connected account or the
+  // `VITE_MOCK_GITHUB` fixture double (`useBoardBackends.ts`) — off in a release build, on by
+  // default in this e2e build (`.env.e2e`).
+  if (remote) await clickViaJs('board-backend-remote')
   await $('[data-testid="create-board-submit"]').click()
   await $('[data-testid="create-board-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
   // The new board becomes the active one (`useBoardActions.createBoard`), so its columns are what
@@ -59,6 +68,13 @@ When(
   /^I create a board named "([^"]*)" with the card prefix "([^"]*)"$/,
   async (name: string, prefix: string) => {
     await createBoard(name, prefix)
+  }
+)
+
+When(
+  /^I create a GitHub board named "([^"]*)" with the card prefix "([^"]*)"$/,
+  async (name: string, prefix: string) => {
+    await createBoard(name, prefix, false, true)
   }
 )
 
@@ -239,6 +255,22 @@ Then(/^the board "([^"]*)" is shown$/, async (name: string) => {
     timeout: 15000,
     timeoutMsg: `the board on screen is not "${name}"`,
   })
+})
+
+// The sidebar row's subtitle (`BoardSidebar`'s `backend.remote`/`backend.local`), concatenated onto
+// the name in `activeBoardName()`'s plain `textContent` read — see that helper's own doc comment for
+// why nothing on a board row has a stable testid to read the two apart by instead.
+Then(/^the board "([^"]*)" is a GitHub board$/, async (name: string) => {
+  await browser.waitUntil(
+    async () => {
+      const text = await activeBoardName()
+      return text.includes(name) && text.includes('GitHub')
+    },
+    {
+      timeout: 15000,
+      timeoutMsg: `the board on screen is not "${name}" backed by GitHub`,
+    }
+  )
 })
 
 Then(/^the board shows the columns "([^"]*)"$/, async (expected: string) => {

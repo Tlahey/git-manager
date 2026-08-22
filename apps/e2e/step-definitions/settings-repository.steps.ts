@@ -58,3 +58,55 @@ Then(/^the repository theme override is "([^"]*)"$/, async (themeId: string) => 
 Then(/^the global theme setting shows as overridden$/, async () => {
   await $('[data-testid="overridden-badge-theme"]').waitForDisplayed({ timeout: 10000 })
 })
+
+When(/^I start adding a worktree default file$/, async () => {
+  const add = $('[data-testid="worktree-df-add"]')
+  await add.waitForClickable({ timeout: 15000 })
+  await add.click()
+})
+
+// A controlled input (WorktreeDefaultFilesSetting) — set through the native value setter and fire
+// an `input` event so React's onChange sees it, same as settings.steps.ts's `fillControlledInput`.
+// The save (check) icon only renders once `useDefaultFileMatchCounts`' debounced backend lookup
+// reports at least one match, so the caller must wait for it rather than clicking immediately.
+When(/^I set the default file pattern to "([^"]*)"$/, async (pattern: string) => {
+  const input = $('[data-testid="worktree-df-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await browser.execute((v: string) => {
+    const el = document.querySelector('[data-testid="worktree-df-input"]') as HTMLInputElement
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    setter.call(el, v)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, pattern)
+})
+
+When(/^I save the worktree default file$/, async () => {
+  const save = $('[data-testid="worktree-df-save"]')
+  await save.waitForClickable({ timeout: 15000 })
+  await save.click()
+})
+
+Then(/^the worktree default files list includes "([^"]*)"$/, async (pattern: string) => {
+  const wrapper = $('[data-testid="worktree-df-list"]')
+  await wrapper.waitForDisplayed({ timeout: 10000 })
+  await expect(wrapper).toHaveText(pattern, { containing: true })
+})
+
+// Rows are matched by their committed pattern rather than position, the same reasoning as
+// settings.steps.ts's run-task rows: `worktree-df-delete`/`worktree-df-value` testids repeat once
+// more than one line exists.
+When(/^I delete the worktree default file "([^"]*)"$/, async (pattern: string) => {
+  await browser.execute((value: string) => {
+    const row = Array.from(document.querySelectorAll('[data-testid="worktree-df-row"]')).find(
+      (r) => r.querySelector('[data-testid="worktree-df-value"]')?.textContent === value
+    )
+    if (!row) throw new Error(`no worktree default-file row with pattern "${value}"`)
+    const del = row.querySelector('[data-testid="worktree-df-delete"]') as HTMLElement | null
+    if (!del) throw new Error(`row "${value}" has no delete button`)
+    del.click()
+  }, pattern)
+})
+
+Then(/^the worktree default files list is empty$/, async () => {
+  await $('[data-testid="worktree-df-empty"]').waitForDisplayed({ timeout: 10000 })
+})

@@ -61,11 +61,28 @@ export function useWipCommitPanel(
   function handleToggleAmend(checked: boolean) {
     setIsAmend(checked)
     if (checked && !commitMessage.trim()) {
-      const logData = queryClient.getQueryData<{ nodes?: GitGraphNode[] }>(['git-log', repoPath])
-      if (logData?.nodes) {
+      // `useGitLog` caches the plain `GitGraphNode[]` under `['git-log', repoPath, opts]`, and
+      // `opts` (limit, soloBranches, headHasWip…) varies by caller — a plain `getQueryData` with
+      // just `[repoPath]` never exact-matches any of them. `findAll` with a partial key matches
+      // every git-log query cached for this repo regardless of its `opts`, the same way this
+      // file's own `invalidateQueries({ queryKey: ['git-log', repoPath] })` calls already do.
+      // More than one can be cached at once (the live graph's own query, plus one an earlier
+      // render left behind and nothing observes anymore) — invalidation never refetches an
+      // inactive query, so a stale one can sit right next to the current one. Taking the most
+      // recently updated non-empty result, rather than just the first found, is what keeps this
+      // from occasionally prefilling an older HEAD.
+      const nodes = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['git-log', repoPath] })
+        .filter(
+          (query) => Array.isArray(query.state.data) && (query.state.data as unknown[]).length > 0
+        )
+        .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0]?.state.data as
+        GitGraphNode[] | undefined
+      if (nodes) {
         const headNode =
-          logData.nodes.find((n) => n.refs?.some((r) => r.type === 'HEAD')) ||
-          logData.nodes.find((n) => n.commit.oid !== 'WIP')
+          nodes.find((n) => n.refs?.some((r) => r.type === 'HEAD')) ||
+          nodes.find((n) => n.commit.oid !== 'WIP')
         if (headNode?.commit) {
           setCommitMessage(headNode.commit.message || headNode.commit.subject || '')
         }

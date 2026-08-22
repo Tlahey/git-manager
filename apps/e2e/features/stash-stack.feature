@@ -44,9 +44,17 @@ Feature: Stash list
     And a full-window screenshot is saved as "doc-stash-created"
     And no error notification is displayed
 
+  @doc @screenshots
   Scenario: Renaming a stash rewrites its message
-    Given the "stash-stack" fixture repository is opened
+    A stash's message is editable the same way a commit's own is: select it, click the message to
+    turn it into an input, and confirm. Nothing else about the stash changes — it stays the same
+    entry at the same position in the stack, just under a name that says why you kept it.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     When I expand the "stashes" sidebar section
     And I rename the newest stash to "reviewed: keep for later"
     Then the newest stash is named "reviewed: keep for later"
     And the repository has 2 stashes
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-stash-renamed"

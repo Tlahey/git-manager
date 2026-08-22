@@ -5,9 +5,13 @@ import type { ProcessedFileItem } from '../../../components/common/CommitFileLis
 
 const fetchQuery = vi.fn()
 const invalidateQueries = vi.fn()
-const getQueryData = vi.fn()
+const findAllQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ fetchQuery, invalidateQueries, getQueryData }),
+  useQueryClient: () => ({
+    fetchQuery,
+    invalidateQueries,
+    getQueryCache: () => ({ findAll: findAllQueries }),
+  }),
 }))
 vi.mock('swr', () => ({ mutate: vi.fn() }))
 
@@ -82,11 +86,17 @@ function node(commit: Partial<GitCommit>, refs: Partial<GitRef>[] = []): GitGrap
   return { commit: { oid: 'head', ...commit }, refs } as GitGraphNode
 }
 
+/** A cached `git-log` `Query` object, as `queryClient.getQueryCache().findAll(...)` returns it —
+ *  only the two fields `handleToggleAmend` reads. */
+function cachedLog(nodes: GitGraphNode[], dataUpdatedAt = 0) {
+  return { state: { data: nodes, dataUpdatedAt } }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   llmStatus.current = 'idle'
   fetchQuery.mockResolvedValue(status())
-  getQueryData.mockReturnValue(undefined)
+  findAllQueries.mockReturnValue([])
   mocked.apiGetPendingOperation.mockResolvedValue(null)
 })
 
@@ -152,15 +162,18 @@ describe('useWipCommitPanel — classic commit', () => {
     expect(result.current.isAmend).toBe(false)
   })
 
+  // `findAll` returns one `Query` per cached `git-log` entry for this repo, whatever `opts` each
+  // was fetched with (see `handleToggleAmend`'s own comment on why a partial match is required).
+  // One entry is enough for most of these.
   it('prefills the empty message with the HEAD commit when amend is switched on', () => {
-    getQueryData.mockReturnValue({
-      nodes: [
+    findAllQueries.mockReturnValue([
+      cachedLog([
         node({ message: 'WIP', oid: 'WIP' }),
         node({ message: 'feat: previous commit\n\nbody', subject: 'feat: previous commit' }, [
           { type: 'HEAD' },
         ]),
-      ],
-    })
+      ]),
+    ])
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleToggleAmend(true))
 
@@ -169,9 +182,9 @@ describe('useWipCommitPanel — classic commit', () => {
   })
 
   it('falls back to the subject when the HEAD commit has no full message', () => {
-    getQueryData.mockReturnValue({
-      nodes: [node({ message: '', subject: 'feat: subject only' }, [{ type: 'HEAD' }])],
-    })
+    findAllQueries.mockReturnValue([
+      cachedLog([node({ message: '', subject: 'feat: subject only' }, [{ type: 'HEAD' }])]),
+    ])
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleToggleAmend(true))
 
@@ -179,14 +192,30 @@ describe('useWipCommitPanel — classic commit', () => {
   })
 
   it('leaves a message the user already typed untouched when amend is switched on', () => {
-    getQueryData.mockReturnValue({
-      nodes: [node({ message: 'feat: previous commit' }, [{ type: 'HEAD' }])],
-    })
+    findAllQueries.mockReturnValue([
+      cachedLog([node({ message: 'feat: previous commit' }, [{ type: 'HEAD' }])]),
+    ])
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.setCommitMessage('my own message'))
     act(() => result.current.handleToggleAmend(true))
 
     expect(result.current.commitMessage).toBe('my own message')
+  })
+
+  // A regression test for a real bug: an inactive query (e.g. one an earlier render's `useGitLog`
+  // left behind with different `opts`, nothing observes anymore) is never refetched by
+  // `invalidateQueries` and can sit in the cache holding a HEAD from before the last commit. Taking
+  // the first match rather than the most recently updated one prefilled the message with that
+  // stale commit instead of the real HEAD.
+  it('prefers the most recently updated cached log over a stale one', () => {
+    findAllQueries.mockReturnValue([
+      cachedLog([node({ message: 'stale: before the last commit' }, [{ type: 'HEAD' }])], 1000),
+      cachedLog([node({ message: 'feat: the real HEAD' }, [{ type: 'HEAD' }])], 2000),
+    ])
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => result.current.handleToggleAmend(true))
+
+    expect(result.current.commitMessage).toBe('feat: the real HEAD')
   })
 
   it('pushes a stash and refreshes on handleStash', async () => {

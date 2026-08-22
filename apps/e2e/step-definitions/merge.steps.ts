@@ -85,6 +85,66 @@ Then(/^the merge editor offers to auto-merge the non-conflicting blocks$/, async
   await expect($('[data-testid="merge-wand-btn"]')).toBeDisplayed()
 })
 
+// ─── Toolbar filters (whitespace, highlight, collapse-unchanged, recalculate) ──────────────────
+// Shared with the plain (non-conflict) diff viewer — `@git-manager/editor`'s `ConflictResolver` —
+// so a scenario here covers both. The dropdown menu's own items carry no testid (see
+// `HeaderDropdown.tsx`'s doc comment: only the trigger does), so they're matched by their exact
+// visible label, clicked in-page like the command palette's own label-matching steps.
+
+async function pickHeaderDropdownOption(label: string): Promise<void> {
+  const clicked = await browser.execute((wanted: string) => {
+    const match = Array.from(document.querySelectorAll('button')).find(
+      (button) => (button.textContent ?? '').trim() === wanted
+    )
+    if (!match) return false
+    ;(match as HTMLButtonElement).click()
+    return true
+  }, label)
+  if (!clicked) throw new Error(`No dropdown option is labelled "${label}"`)
+}
+
+When(/^I set the whitespace mode to "([^"]*)"$/, async (label: string) => {
+  await $('[data-testid="merge-whitespace-dropdown-btn"]').click()
+  await pickHeaderDropdownOption(label)
+})
+
+Then(/^the whitespace mode is "([^"]*)"$/, async (label: string) => {
+  await expect($('[data-testid="merge-whitespace-dropdown-btn"]')).toHaveText(label)
+})
+
+When(/^I set the highlight mode to "([^"]*)"$/, async (label: string) => {
+  await $('[data-testid="merge-highlight-dropdown-btn"]').click()
+  await pickHeaderDropdownOption(label)
+})
+
+Then(/^the highlight mode is "([^"]*)"$/, async (label: string) => {
+  await expect($('[data-testid="merge-highlight-dropdown-btn"]')).toHaveText(label)
+})
+
+// On by default (`ConflictResolver`'s `defaultCollapseUnchanged`) — every unchanged fragment
+// between blocks starts folded away, one click from the whole file.
+When(/^I turn off collapsing unchanged regions$/, async () => {
+  await $('[data-testid="merge-collapse-unchanged-btn"]').click()
+})
+
+Then(/^unchanged regions are collapsed$/, async () => {
+  await expect($('[data-testid="merge-collapse-unchanged-btn"]')).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+})
+
+Then(/^unchanged regions are not collapsed$/, async () => {
+  await expect($('[data-testid="merge-collapse-unchanged-btn"]')).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  )
+})
+
+When(/^I click the recalculate-diff button$/, async () => {
+  await $('[data-testid="merge-recalc-btn"]').click()
+})
+
 // The merge editor content (file path, conflict count, the three Monaco panes) is fixture-stable
 // — no shas/dates. Give Monaco a beat to finish laying out all panes + syntax highlighting.
 Then(/^the merge editor matches the visual snapshot "([^"]*)"$/, async (tag: string) => {

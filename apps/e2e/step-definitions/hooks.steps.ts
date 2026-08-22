@@ -94,6 +94,19 @@ Before(async () => {
   // which is what the comment above `applyBaseline` is protective of.
   clearBoardMirrors()
 
+  // The GitHub-board fixture double (`mock-remote-board.api.ts`) lives in the app's own module
+  // state, not in a store `applyBaseline` reaches — so, like the mirrors above, it survives across
+  // scenarios in this shared window unless cleared explicitly. Best-effort: the bridge only exists
+  // once the app has rendered at least once, which a scenario at the very start of a run may not
+  // have done yet.
+  await browser
+    .execute(() => {
+      const reset = (window as unknown as { __e2eResetMockRemoteBoards?: () => void })
+        .__e2eResetMockRemoteBoards
+      reset?.()
+    })
+    .catch(() => {})
+
   // Belt to the After hook's braces: if the previous scenario still left the session on a dead
   // window handle (every path there re-anchors on `main`, but none of them can be guaranteed to
   // have run — a killed worker, a hook that itself threw), the first execute here would die with

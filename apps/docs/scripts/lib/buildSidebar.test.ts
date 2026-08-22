@@ -57,4 +57,71 @@ describe('buildSidebar', () => {
       },
     ])
   })
+
+  it("nests a subsection under its parent section, after any of the parent's own features", () => {
+    const sections = [
+      {
+        title: 'GitHub',
+        subsections: [
+          { title: 'Launchpad', features: ['launchpad-prs'] },
+          { title: 'Pull requests', features: ['ai-pr-description'] },
+        ],
+      },
+    ]
+    const groups = buildSidebar(
+      [
+        feature('launchpad-prs', 'Your pull requests'),
+        feature('ai-pr-description', 'Drafting a PR description'),
+      ],
+      sections,
+      'More features'
+    )
+    expect(groups).toEqual([
+      {
+        text: 'GitHub',
+        items: [
+          {
+            text: 'Launchpad',
+            items: [{ text: 'Your pull requests', link: '/docs/features/launchpad-prs' }],
+          },
+          {
+            text: 'Pull requests',
+            items: [
+              { text: 'Drafting a PR description', link: '/docs/features/ai-pr-description' },
+            ],
+          },
+        ],
+      },
+    ])
+  })
+
+  it('drops an empty subsection rather than rendering it, and the parent too if every subsection is empty', () => {
+    const sections = [
+      {
+        title: 'GitHub',
+        subsections: [
+          { title: 'Launchpad', features: ['launchpad-prs'] },
+          { title: 'Pull requests', features: ['ai-pr-description'] },
+        ],
+      },
+    ]
+    const groups = buildSidebar(
+      [feature('launchpad-prs', 'Your pull requests')],
+      sections,
+      'More features'
+    )
+    expect(groups).toEqual([
+      {
+        text: 'GitHub',
+        items: [
+          {
+            text: 'Launchpad',
+            items: [{ text: 'Your pull requests', link: '/docs/features/launchpad-prs' }],
+          },
+        ],
+      },
+    ])
+
+    expect(buildSidebar([], sections, 'More features')).toEqual([])
+  })
 })

@@ -81,11 +81,18 @@ Feature: Tagging a commit
     # The local copy is untouched: the two deletions are separate actions on purpose.
     And the local tag "v1.0" still exists
 
+  @doc @screenshots
   Scenario: Deleting a local tag leaves the remote's copy alone
-    Given the "remote-ahead" fixture repository is opened
+    The two deletions are deliberately separate, the other way round from the one above: removing
+    your local copy, from "Delete a local tag…" in the palette, never reaches the remote — the tag
+    you already pushed stays exactly where it is until you delete it there too.
+    Given the app language is English
+    And the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-deleteTag"
-    And I run the command palette action "ref-pick-deleteTag-v1.0"
+    And I pick "Delete a local tag…" from the palette
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-tag-delete-local"
+    When I pick "v1.0" from the palette
     Then the local tag "v1.0" no longer exists
     And the remote "origin" has the tag "v1.0"
     And no error notification is displayed

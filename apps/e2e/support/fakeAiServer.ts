@@ -71,7 +71,10 @@ export async function startFakeAiServer(
   const server = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/v1/models') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ data: [{ id: 'fake-model' }] }))
+      // `max_model_len` is non-standard (omlx's own extension — see `ai_model_info.rs`'s
+      // `served_max_model_len`), but it's the only context-window signal a non-Ollama provider can
+      // give: `/api/show`/`/api/ps` 404 against this server, same as any real OpenAI-compatible one.
+      res.end(JSON.stringify({ data: [{ id: 'fake-model', max_model_len: 128000 }] }))
       return
     }
 

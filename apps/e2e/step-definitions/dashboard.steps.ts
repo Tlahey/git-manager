@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { browser, $, expect } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { navigateAndSettle } from '../support/navigation'
+import { openMenuViaJs } from '../support/interactions'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -128,3 +129,56 @@ Then(/^the "([^"]*)" row reports a clean working tree$/, async (name: string) =>
   await row.waitForDisplayed({ timeout: 15000 })
   await expect(row.$('[data-testid="repo-row-clean"]')).toBeDisplayed()
 })
+
+// ─── Toolbar: search, collapse/expand-all, hidden sections ─────────────────
+
+When(/^I filter the dashboard for "([^"]*)"$/, async (text: string) => {
+  await $('[data-testid="dashboard-search"]').setValue(text)
+})
+
+When(/^I clear the dashboard filter$/, async () => {
+  await $('[data-testid="dashboard-search"]').setValue('')
+})
+
+Then(/^the "([^"]*)" project is shown on the dashboard$/, async (name: string) => {
+  await repoRow(name).waitForDisplayed({ timeout: 10000 })
+})
+
+Then(/^the "([^"]*)" project is not shown on the dashboard$/, async (name: string) => {
+  await repoRow(name).waitForDisplayed({ timeout: 10000, reverse: true })
+})
+
+When(/^I collapse all dashboard sections$/, async () => {
+  await $('[data-testid="dashboard-collapse-all"]').click()
+})
+
+When(/^I expand all dashboard sections$/, async () => {
+  await $('[data-testid="dashboard-expand-all"]').click()
+})
+
+// "all" / "favorites" / "recent" / "open" — DASHBOARD_SECTION_IDS in dashboard.store.ts. Both
+// menus are Radix `DropdownMenuTrigger`s, which open on `pointerdown` rather than `click` — see
+// `openMenuViaJs`'s own doc comment.
+When(/^I hide the "([^"]*)" dashboard section$/, async (sectionId: string) => {
+  await openMenuViaJs(`dashboard-section-menu-${sectionId}`)
+  await $(`[data-testid="dashboard-section-menu-${sectionId}-hide"]`).click()
+})
+
+Then(/^the "([^"]*)" dashboard section is not shown$/, async (sectionId: string) => {
+  await $(`[data-testid="dashboard-section-${sectionId}"]`).waitForExist({
+    timeout: 10000,
+    reverse: true,
+  })
+})
+
+Then(/^the "([^"]*)" dashboard section is shown$/, async (sectionId: string) => {
+  await $(`[data-testid="dashboard-section-${sectionId}"]`).waitForExist({ timeout: 10000 })
+})
+
+When(
+  /^I restore the "([^"]*)" dashboard section from the hidden sections menu$/,
+  async (sectionId: string) => {
+    await openMenuViaJs('dashboard-hidden-sections')
+    await $(`[data-testid="dashboard-restore-section-${sectionId}"]`).click()
+  }
+)

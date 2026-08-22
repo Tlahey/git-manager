@@ -2,10 +2,14 @@ import { mkdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { browser, $ } from '@wdio/globals'
+import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { seedSettings } from '../support/settings.js'
+
+// W3C WebDriver key value for Meta (Command on macOS), U+E03D — same pattern as
+// command-palette.steps.ts / undo-redo.steps.ts.
+const META = String.fromCharCode(0xe03d)
 
 // Marketing captures land in the repo docs, not in __visual__: they are meant
 // to be committed and embedded (README, landing page), not pixel-compared.
@@ -36,6 +40,28 @@ When(/^I select the newest commit in the graph$/, async () => {
   const row = $('[data-testid^="graph-row-"]')
   await row.waitForDisplayed({ timeout: 10000 })
   await row.click()
+})
+
+// ⌘F over the plain graph — the floating panel that steps through matches (`CommitSearchPanel`),
+// not the sidebar's tree filter (⌥⌘F) or the AI-powered search panel (⇧⌘F).
+When(/^I open the commit search panel$/, async () => {
+  await browser.keys([META, 'f'])
+  await $('[data-testid="commit-search-panel"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I search the commit graph for "([^"]*)"$/, async (query: string) => {
+  const input = $('[data-testid="commit-search-panel-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(query)
+})
+
+// `commit-search-count` renders `<active>/<total>` once the query is non-empty (CommitSearchPanel).
+Then(/^the commit search shows "([^"]*)"$/, async (label: string) => {
+  await expect($('[data-testid="commit-search-count"]')).toHaveText(label)
+})
+
+When(/^I go to the next commit search match$/, async () => {
+  await $('[data-testid="commit-search-next"]').click()
 })
 
 Then(/^a full-window screenshot is saved as "([^"]*)"$/, async (name: string) => {

@@ -8,7 +8,9 @@ Feature: Behind the scenes — the Action Journal
   Opened from the footer's graduation-cap button (or the command palette), the journal is the app's
   own behaviour as the subject — not the repository's contents, so it needs no git data of its own:
   every command was already recorded as it ran, and this reads that log back. Every row shows the
-  real command line with no model configured at all; asking "Explain" is what turns it into a lesson.
+  real command line with no model configured at all; asking "Explain" is what turns it into a
+  lesson, and the copy icon beside it takes the raw commands as-is, for pasting into a terminal or a
+  bug report.
 
   @doc @screenshots
   Scenario: Explaining the commands behind a recent action
@@ -26,7 +28,9 @@ Feature: Behind the scenes — the Action Journal
     When I open the action journal
     And I filter the action journal for "action journal e2e marker"
     And I open the filtered action
-    And I click the explain-action button
+    And I click the copy-commands button
+    Then the copy-commands button confirms the copy
+    When I click the explain-action button
     Then the action explanation shows a finished explanation
     And the interface has settled
     And a full-window screenshot is saved as "doc-action-journal"

@@ -35,6 +35,32 @@ Feature: Three-way merge editor
     And the merge editor offers to auto-merge the non-conflicting blocks
     And a full-window screenshot is saved as "doc-merge-editor"
 
+  @doc @screenshots
+  Scenario: Filtering the diff by whitespace, highlight mode, and unfolding everything
+    The same toolbar that resolves conflicts also decides how the diff itself reads. "Do not
+    ignore" is the default; pointing it at "Ignore whitespace" hides changes that are only
+    reindentation, so what's left is what actually changed. The highlight mode chooses whether an
+    edit is marked word by word or by the whole line it sits on. Unchanged fragments between
+    blocks are collapsed away from the moment the editor opens — one click on the fold icon gets
+    the whole file back, for the times a change only makes sense next to what didn't change.
+    Given the app language is English
+    And AI features are turned off
+    When I open the merge editor for "dependency-manifest.txt"
+    Then the whitespace mode is "Do not ignore"
+    And the highlight mode is "Highlight words"
+    And unchanged regions are collapsed
+    When I turn off collapsing unchanged regions
+    Then unchanged regions are not collapsed
+    When I set the whitespace mode to "Ignore whitespace"
+    Then the whitespace mode is "Ignore whitespace"
+    When I set the highlight mode to "Highlight lines"
+    Then the highlight mode is "Highlight lines"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-merge-toolbar"
+    When I click the recalculate-diff button
+    Then the merge editor is shown
+    And no error notification is displayed
+
   Scenario: The merge editor opens for a conflicted file
     When I open the merge editor for "dependency-manifest.txt"
     Then the merge editor is shown

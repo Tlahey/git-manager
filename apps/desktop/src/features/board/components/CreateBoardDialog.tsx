@@ -157,7 +157,11 @@ export function CreateBoardDialog({
               disabled={pending}
             >
               <label className="flex cursor-pointer items-start gap-2 text-xs">
-                <RadioGroupItem value="local" className="mt-0.5" />
+                <RadioGroupItem
+                  value="local"
+                  className="mt-0.5"
+                  data-testid="board-backend-local"
+                />
                 <span>
                   <span className="block font-medium text-foreground">
                     {t('createBoard.localLabel')}
@@ -170,7 +174,12 @@ export function CreateBoardDialog({
               <label
                 className={`flex items-start gap-2 text-xs ${canUseRemote ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
               >
-                <RadioGroupItem value="remote" disabled={!canUseRemote} className="mt-0.5" />
+                <RadioGroupItem
+                  value="remote"
+                  disabled={!canUseRemote}
+                  className="mt-0.5"
+                  data-testid="board-backend-remote"
+                />
                 <span>
                   <span className="block font-medium text-foreground">
                     {t('createBoard.remoteLabel')}

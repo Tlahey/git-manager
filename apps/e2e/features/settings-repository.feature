@@ -42,6 +42,24 @@ Feature: Repository-specific settings
     And a full-window screenshot is saved as "doc-settings-repository-override"
 
   @doc @screenshots
+  Scenario: Choosing which files new worktrees start with
+    A worktree created from this repository starts as a fresh checkout — untracked files like a
+    local `.env` don't exist in it. A pattern added here copies any matching file from the main
+    worktree into every worktree created afterwards, so a second checkout isn't missing what the
+    first one has.
+    Given the "package-health" fixture repository is opened
+    When I open the settings
+    And I open the "worktree" repository settings tab
+    And I start adding a worktree default file
+    And I set the default file pattern to "package.json"
+    And I save the worktree default file
+    Then the worktree default files list includes "package.json"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-worktree-default-files"
+    When I delete the worktree default file "package.json"
+    Then the worktree default files list is empty
+
+  @doc @screenshots
   Scenario: The repository's own scripts are suggested when adding a task
     Tasks are the commands you start from the app rather than retyping in a
     terminal — a build, a test run, a dev server. You name them yourself, and
@@ -79,3 +97,32 @@ Feature: Repository-specific settings
     And the interface has settled
     Then the toolbar Launch menu lists the task "Build"
     And a full-window screenshot is saved as "doc-run-task"
+
+  @doc @screenshots
+  Scenario: Choosing which task the Launch button's primary click runs
+    With more than one task saved, the first one saved is the default until you say otherwise —
+    starring a different task moves the primary click to it, and the arrow menu keeps every task
+    reachable either way.
+    Given the app language is English
+    And AI features are turned off
+    And the "package-health" fixture repository is opened
+    When I open the settings
+    And I open the "run" repository settings tab
+    And I start adding a repository task
+    And I name the repository task "Build"
+    And I pick the task command suggestion "build"
+    And I save the repository task
+    And I start adding a repository task
+    And I name the repository task "Test"
+    And I pick the task command suggestion "test"
+    And I save the repository task
+    And I go back from the settings
+    Then the toolbar Launch button's primary action runs the task "Build"
+    When I open the settings
+    And I open the "run" repository settings tab
+    And I set the repository task "Test" as the default
+    Then the repository task "Test" is the default
+    And I go back from the settings
+    Then the toolbar Launch button's primary action runs the task "Test"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-run-task-default"

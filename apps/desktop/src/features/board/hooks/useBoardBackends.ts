@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import type { BoardSource } from '@git-manager/git-types'
 import { useRepoGitHub, type OwnerRepo } from '../../../hooks/useRepoGitHub'
+import { useDevFlagsStore } from '../../../stores/devFlags.store'
 import { localBoardBackend } from '../api/local-board.api'
 import { createRemoteBoardBackend } from '../api/remote-board.api'
+import { mockRemoteBoardBackend } from '../api/mock-remote-board.api'
 import type { BoardBackend } from '../api/boardBackend'
 
 export interface BoardBackends {
@@ -25,14 +27,19 @@ export interface BoardBackends {
  */
 export function useBoardBackends(repoPath: string): BoardBackends {
   const { ownerRepo, accountId } = useRepoGitHub(repoPath)
+  const mockGitHub = useDevFlagsStore((s) => s.mockGitHub)
 
-  const remoteBackend = useMemo(
-    () =>
-      ownerRepo && accountId
-        ? createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, accountId)
-        : null,
-    [ownerRepo, accountId]
-  )
+  const remoteBackend = useMemo(() => {
+    if (ownerRepo && accountId)
+      return createRemoteBoardBackend(ownerRepo.owner, ownerRepo.repo, accountId)
+    // No connected account: offer the in-memory fixture double instead of hiding the option, the
+    // same way `useGitHubData` falls back to `mockPRs` for the Launchpad — gated on the same flag,
+    // for the same reason (a non-interactive e2e/docs run, or a developer previewing the feature,
+    // with no real GitHub account to connect). See `mock-remote-board.api.ts`'s own doc comment for
+    // why the real backend cannot be exercised by the e2e suite at all.
+    if (mockGitHub) return mockRemoteBoardBackend
+    return null
+  }, [ownerRepo, accountId, mockGitHub])
 
   function backendFor(source: BoardSource): BoardBackend {
     if (source === 'local') return localBoardBackend

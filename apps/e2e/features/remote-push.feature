@@ -54,12 +54,20 @@ Feature: Pushing to a remote
     And no error notification is displayed
 
   # Reached through the palette rather than the branch context menu, which WebDriver cannot open.
+  @doc @screenshots
   Scenario: Deleting a remote branch removes it on the remote
-    Given the "remote-ahead" fixture repository is opened
+    "Delete a remote branch…" removes a branch from everyone's view of the remote, not just yours
+    — which is why it asks for confirmation the local "Delete a local branch…" doesn't. Your own
+    copy is untouched either way; the two deletions are separate actions, same as a tag's are.
+    Given the app language is English
+    And AI features are turned off
+    And the "remote-ahead" fixture repository is opened
     When I open the command palette
-    And I run the command palette action "ref-deleteRemoteBranch"
-    And I run the command palette action "ref-pick-deleteRemoteBranch-origin/feature/diverged"
+    And I pick "Delete a remote branch…" from the palette
+    And I pick "origin/feature/diverged" from the palette
     Then the remote branch deletion dialog is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-remote-branch-delete"
     When I confirm the remote branch deletion
     Then the remote "origin" no longer has the branch "feature/diverged"
     And no error notification is displayed

@@ -117,6 +117,41 @@ Then(/^the row height setting is "([^"]*)"$/, async (value: string) => {
   await expect(radio).toBeChecked()
 })
 
+const LANGUAGE_CODES: Record<string, string> = { English: 'en', French: 'fr', Spanish: 'es' }
+
+// WDIO's own `selectByAttribute` picks the right <option> in the WebView but, on this WKWebView
+// driver, doesn't reliably raise a 'change' event React's synthetic listener picks up — same fix
+// as ai-pr-description.steps.ts's/activity-log.steps.ts's own `setNativeSelectValue`.
+async function setNativeSelectValue(testid: string, value: string) {
+  await browser.execute(
+    (id: string, val: string) => {
+      const el = document.querySelector(`[data-testid="${id}"]`) as HTMLSelectElement | null
+      if (!el) throw new Error(`setNativeSelectValue: no element with data-testid="${id}"`)
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype,
+        'value'
+      )!.set!
+      setter.call(el, val)
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    },
+    testid,
+    value
+  )
+}
+
+// The dropdown calls `i18next.changeLanguage` directly (GeneralSection.tsx) rather than going
+// through a store subscription, so this is the ONE thing in the running app that a settings-store
+// reset (the suite's per-scenario baseline) does not undo — a scenario that switches language must
+// switch back to English itself before it ends, or every scenario after it in this shared window
+// inherits the wrong copy.
+When(/^I select "(English|French|Spanish)" as the interface language$/, async (label: string) => {
+  await setNativeSelectValue('language-select', LANGUAGE_CODES[label])
+})
+
+Then(/^the interface language label reads "([^"]*)"$/, async (text: string) => {
+  await expect($('[data-testid="setting-language"]')).toHaveText(text, { containing: true })
+})
+
 // A full remount — this scenario isn't switching repos/fixtures, just proving a settings value
 // survives a fresh mount by reading back from the same `git-manager-settings` localStorage key
 // the persisted store writes to. Navigated with a stamp rather than `location.reload()`: a title
@@ -150,6 +185,33 @@ Then(/^the AI provider connection status is reported$/, async () => {
   const reportsAKnownState =
     className.includes('text-tone-danger') || className.includes('text-tone-success')
   expect(reportsAKnownState).toBe(true)
+})
+
+When(/^I click the AI context window check button$/, async () => {
+  const button = $('[data-testid="ai-context-check-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+// The suite-wide fake AI server (`fakeAiServer.ts`) answers `/v1/models` with a
+// `max_model_len` for `fake-model` — the one signal a non-Ollama provider can give
+// (`ai_model_info.rs`'s `served_max_model_len`); `/api/show`/`/api/ps` 404 against it, which
+// `ai_model_info.rs` treats as "nothing to report" rather than a failure.
+Then(
+  /^the context window check reports that the model serves (\d+) tokens$/,
+  async (served: string) => {
+    const result = $('[data-testid="ai-context-check-result"]')
+    await result.waitForDisplayed({ timeout: 15000 })
+    await expect(result).toHaveText(served, { containing: true })
+  }
+)
+
+When(/^I apply the suggested context window$/, async () => {
+  await $('[data-testid="ai-context-apply-button"]').click()
+})
+
+Then(/^the context window setting is "([^"]*)"$/, async (value: string) => {
+  await expect($('[data-testid="ai-context-tokens-input"]')).toHaveValue(value)
 })
 
 // `Switch` renders its real <input> as a full-size transparent overlay (`opacity-0`), which this
@@ -356,6 +418,33 @@ Then(/^the GitHub login options are shown again$/, async () => {
   await expect($('[data-testid="github-device-flow-card"]')).not.toBeDisplayed()
 })
 
+When(/^I click the login-with-PAT button$/, async () => {
+  const button = $('[data-testid="github-login-pat-button"]')
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+})
+
+When(/^I enter the PAT "([^"]*)"$/, async (token: string) => {
+  await $('[data-testid="github-pat-input"]').setValue(token)
+})
+
+When(/^I submit the PAT$/, async () => {
+  await $('[data-testid="github-pat-submit-button"]').click()
+})
+
+// This hits the REAL github_connect_token command against api.github.com — same precedent as the
+// device-code request above: an invalid token deterministically fails GitHub's own auth check, so
+// no local mock or real account is needed to observe the rejection.
+Then(/^a GitHub connection error is shown$/, async () => {
+  const alert = $('[data-testid="github-error-message"]')
+  await alert.waitForDisplayed({ timeout: 15000 })
+  expect((await alert.getText()).trim().length).toBeGreaterThan(0)
+})
+
+When(/^I go back to the GitHub login options$/, async () => {
+  await $('[data-testid="github-back-to-choice-button"]').click()
+})
+
 When(/^I search settings for "([^"]*)"$/, async (query: string) => {
   const input = $('[data-testid="settings-search"]')
   await input.waitForDisplayed({ timeout: 10000 })
@@ -528,6 +617,44 @@ When(/^I save the repository task$/, async () => {
   }
   await save.click()
 })
+
+// Rows are matched by their committed name rather than position — `run-tasks-default`/
+// `run-tasks-name-value` testids repeat once a second task exists, so a plain `$(...)` lookup
+// would always hit the first row.
+When(/^I set the repository task "([^"]*)" as the default$/, async (name: string) => {
+  await browser.execute((taskName: string) => {
+    const row = Array.from(document.querySelectorAll('[data-testid="run-tasks-row"]')).find(
+      (r) => r.querySelector('[data-testid="run-tasks-name-value"]')?.textContent === taskName
+    )
+    if (!row) throw new Error(`no run task row named "${taskName}"`)
+    const star = row.querySelector('[data-testid="run-tasks-default"]') as HTMLElement | null
+    if (!star) throw new Error(`row "${taskName}" has no default star button`)
+    star.click()
+  }, name)
+})
+
+Then(/^the repository task "([^"]*)" is the default$/, async (name: string) => {
+  const isDefault = await browser.execute((taskName: string) => {
+    const row = Array.from(document.querySelectorAll('[data-testid="run-tasks-row"]')).find(
+      (r) => r.querySelector('[data-testid="run-tasks-name-value"]')?.textContent === taskName
+    )
+    return row?.querySelector('[data-testid="run-tasks-default"]')?.getAttribute('aria-pressed')
+  }, name)
+  expect(isDefault).toBe('true')
+})
+
+// `RunButton`'s primary click's aria-label/tooltip carries the default task's own name
+// (`toolbar.runTask`), so reading it back proves which task actually launches, not just which
+// row's star is lit.
+Then(
+  /^the toolbar Launch button's primary action runs the task "([^"]*)"$/,
+  async (name: string) => {
+    const button = $('[data-testid="toolbar-run-button-primary"]')
+    await button.waitForDisplayed({ timeout: 10000 })
+    const label = await button.getAttribute('aria-label')
+    expect(label).toContain(name)
+  }
+)
 
 Then(/^the external tools section offers editor and terminal pickers$/, async () => {
   for (const id of ['externalEditor-select', 'externalTerminal-select']) {
