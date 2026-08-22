@@ -56,7 +56,11 @@ Feature: Repository-specific settings
     Then the worktree default files list includes "package.json"
     And the interface has settled
     And a full-window screenshot is saved as "doc-worktree-default-files"
-    When I delete the worktree default file "package.json"
+    When I edit the worktree default file
+    And I set the default file pattern to "pnpm-lock.yaml"
+    And I save the worktree default file
+    Then the worktree default files list includes "pnpm-lock.yaml"
+    When I delete the worktree default file "pnpm-lock.yaml"
     Then the worktree default files list is empty
 
   @doc @screenshots

@@ -86,6 +86,14 @@ When(/^I save the worktree default file$/, async () => {
   await save.click()
 })
 
+// Only one line exists at the point this scenario edits it, so a plain `$(...)` lookup is enough —
+// unlike the delete step below, which has to tell rows apart once more than one exists.
+When(/^I edit the worktree default file$/, async () => {
+  const edit = $('[data-testid="worktree-df-edit"]')
+  await edit.waitForClickable({ timeout: 10000 })
+  await edit.click()
+})
+
 Then(/^the worktree default files list includes "([^"]*)"$/, async (pattern: string) => {
   const wrapper = $('[data-testid="worktree-df-list"]')
   await wrapper.waitForDisplayed({ timeout: 10000 })
