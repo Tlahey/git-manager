@@ -4,10 +4,11 @@ Feature: The card record and the board's own shape
   What `board.feature` deliberately leaves out: everything *inside* a card — its checklist, its
   discussion, the fields of its side panel, its relations to other cards — and everything that
   reshapes the board around it: its columns, its settings, deleting a card, moving one to another
-  sprint. A few scenarios here are curated onto the board's documentation page alongside
-  `board.feature`'s own — the card's side-panel fields, its relations, deleting it and moving it to
-  another sprint — the rest exist purely to catch a regression and stay untagged, since a scenario
-  written to pin a bug is not automatically a tour of the feature.
+  sprint. Most scenarios here are curated onto the board's documentation page alongside
+  `board.feature`'s own — the card's side-panel fields, its relations, its columns, its settings,
+  deleting a card and moving one to another sprint — the rest exist purely to catch a regression
+  and stay untagged, since a scenario written to pin a bug is not automatically a tour of the
+  feature.
 
   Every scenario starts from a repository with no board at all, and builds the one it needs through
   the UI — the only way a board comes into being. The assertions end on the repository's own git
@@ -168,7 +169,11 @@ Feature: The card record and the board's own shape
     And a full-window screenshot is saved as "doc-card-relations"
     And no error notification is displayed
 
+  @doc @screenshots
   Scenario: A column added to the board takes cards like any other
+    The three starting columns are a default, not a fixed shape — the Columns button adds, removes
+    and reorders them, and flags whichever one means "done" so the board's own definition of
+    finished follows it. A new column takes cards exactly like To do or In progress always could.
     Given the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
@@ -182,13 +187,15 @@ Feature: The card record and the board's own shape
     When I add a card titled "Review the migration" to the "In review" column
     Then the "In review" column holds 1 card
     And the card "Review the migration" is stored in the "In review" column
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-columns"
     And no error notification is displayed
 
-  # The board only renders a card into a column that exists, so a card left behind in a removed one
-  # would be invisible: not on the board, not in the archive, not reachable by searching. Removing a
-  # column therefore re-homes its cards into the first remaining one, in the same commit — the rule
-  # `move_cards_to_board` already applies when a card lands on a board without its column.
+  @doc @screenshots
   Scenario: Removing a column does not swallow the cards that were in it
+    The board only renders a card into a column that exists, so a card left behind in a removed
+    one would be invisible: not on the board, not in the archive, not reachable by searching.
+    Removing a column re-homes its cards into the first remaining one instead, in the same commit.
     Given the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
@@ -200,12 +207,15 @@ Feature: The card record and the board's own shape
     And the card "Draft the release notes" is shown on the board
     And the "To do" column holds 1 card
     And the card "Draft the release notes" is stored in the "To do" column
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-columns-removed"
     And no error notification is displayed
 
-  # A card carries its own prefix, which is what lets its identifier survive a move to another board
-  # — so editing the board's list of prefixes never touches a card. `GM-1` stays `GM-1` after the
-  # board stops offering `GM` at all, and the next card drawn from `OPS` starts its own sequence.
+  @doc @screenshots
   Scenario: Renaming the board and its prefix leaves the existing cards' identifiers alone
+    A card carries its own prefix, which is what lets its identifier survive a move to another
+    board — so editing the board's list of prefixes never touches a card. `GM-1` stays `GM-1`
+    after the board stops offering `GM` at all, and the next card drawn from `OPS` starts fresh.
     Given the "feature-branches" fixture repository is opened
     When I open the board
     And I create a board named "Sprint 12" with the card prefix "GM"
@@ -224,6 +234,8 @@ Feature: The card record and the board's own shape
     And the card "Cut the release" is identified as "GM-1"
     When I add a card titled "Rotate the signing key" to the "To do" column
     Then the card "Rotate the signing key" is identified as "OPS-1"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-settings"
     And no error notification is displayed
 
   # Deleting is the one card action nothing undoes, so the confirmation offers the reversible
