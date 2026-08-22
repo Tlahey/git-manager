@@ -32,6 +32,46 @@ Then(/^the footer reports the AI provider status$/, async () => {
   })
 })
 
+When(/^I click the footer's copy-path button$/, async () => {
+  await $('[data-testid="footer-copy-path-button"]').click()
+})
+
+When(/^I click the footer's copy-branch button$/, async () => {
+  await $('[data-testid="footer-copy-branch-button"]').click()
+})
+
+// `CopyToClipboard` only renders the success `Tag` once `navigator.clipboard.writeText` itself
+// resolves — same proof-of-actual-write reasoning as the Action Journal's own copy button.
+Then(/^the footer's copy-path button confirms the copy$/, async () => {
+  await browser.waitUntil(
+    () =>
+      browser.execute(
+        () =>
+          document
+            .querySelector('[data-testid="footer-copy-path-button"]')
+            ?.querySelector('.text-tone-success') !== null
+      ),
+    { timeout: 5000, timeoutMsg: 'the copy-path button never showed its confirmation state' }
+  )
+})
+
+Then(/^the footer's copy-branch button confirms the copy$/, async () => {
+  await browser.waitUntil(
+    () =>
+      browser.execute(
+        () =>
+          document
+            .querySelector('[data-testid="footer-copy-branch-button"]')
+            ?.querySelector('.text-tone-success') !== null
+      ),
+    { timeout: 5000, timeoutMsg: 'the copy-branch button never showed its confirmation state' }
+  )
+})
+
+When(/^I click the footer's version button$/, async () => {
+  await $('[data-testid="footer-version-button"]').click()
+})
+
 // The Run split button only mounts once the active repo has at least one task configured (see
 // RunButton.tsx) — its appearance IS the assertion that a saved task reached the toolbar.
 Then(/^the toolbar shows the Launch button$/, async () => {
