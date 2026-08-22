@@ -117,6 +117,23 @@ Then(/^the row height setting is "([^"]*)"$/, async (value: string) => {
   await expect(radio).toBeChecked()
 })
 
+When(/^I set the auto-fetch interval to "([^"]*)" minutes$/, async (minutes: string) => {
+  await fillControlledInput('settings-auto-fetch-interval', minutes)
+})
+
+Then(/^the auto-fetch interval is "([^"]*)" minutes$/, async (minutes: string) => {
+  await expect($('[data-testid="settings-auto-fetch-interval"]')).toHaveValue(minutes)
+})
+
+When(/^I turn off automatic pruning on auto-fetch$/, async () => {
+  await clickViaJs('settings-auto-prune')
+})
+
+Then(/^automatic pruning on auto-fetch is off$/, async () => {
+  const checkbox = $('[data-testid="settings-auto-prune"]')
+  await expect(checkbox).not.toBeChecked()
+})
+
 const LANGUAGE_CODES: Record<string, string> = { English: 'en', French: 'fr', Spanish: 'es' }
 
 // WDIO's own `selectByAttribute` picks the right <option> in the WebView but, on this WKWebView

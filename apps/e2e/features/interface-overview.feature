@@ -50,3 +50,18 @@ Feature: The interface at a glance
     And the interface has settled
     Then the footer reports the AI provider status
     And a screenshot of the "app-footer" area is saved as "doc-app-footer"
+
+  @doc @screenshots
+  Scenario: Searching the in-app keyboard shortcuts reference
+    The footer's keyboard icon opens the same shortcuts this page lists, searchable by what they
+    do or by the keys themselves — so "undo" finds ⌘Z without having to already know which
+    category it's filed under.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
+    When I open the keyboard shortcuts panel
+    And I search the shortcuts panel for "undo"
+    Then the shortcuts panel shows the shortcut "Undo the last Git action"
+    And the shortcuts panel does not show the shortcut "Open Settings"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-keyboard-shortcuts"

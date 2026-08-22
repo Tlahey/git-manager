@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { $, browser } from '@wdio/globals'
+import { $, browser, expect } from '@wdio/globals'
 import { Then, When } from '@wdio/cucumber-framework'
 
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -64,4 +64,24 @@ When(/^I open the toolbar Launch menu$/, async () => {
 Then(/^the toolbar Launch menu lists the task "([^"]*)"$/, async (name: string) => {
   const item = $(`//div[@role="menuitem"][contains(., "${name}")]`)
   await item.waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I open the keyboard shortcuts panel$/, async () => {
+  await $('[data-testid="footer-shortcuts-button"]').click()
+  await $('[data-testid="shortcuts-search-input"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I search the shortcuts panel for "([^"]*)"$/, async (query: string) => {
+  await $('[data-testid="shortcuts-search-input"]').setValue(query)
+})
+
+// Individual shortcut rows carry no testid of their own — the dialog's own text is asserted
+// against instead, the same way `Footer.tsx`'s `filteredShortcuts` narrows the whole list.
+Then(/^the shortcuts panel shows the shortcut "([^"]*)"$/, async (description: string) => {
+  await expect($('[role="dialog"]')).toHaveText(description, { containing: true })
+})
+
+Then(/^the shortcuts panel does not show the shortcut "([^"]*)"$/, async (description: string) => {
+  const text = await $('[role="dialog"]').getText()
+  expect(text).not.toContain(description)
 })
