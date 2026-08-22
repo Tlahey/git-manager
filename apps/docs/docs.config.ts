@@ -70,7 +70,13 @@ export const DOC_SECTIONS: DocSection[] = [
     // Pure reading — nothing here changes the repository. compare-branches lives here rather
     // than with branches: comparing is how you read two of them, not an action on one.
     title: 'Reading your repository',
-    features: ['commit-graph', 'file-explorer', 'blame-history', 'compare-branches'],
+    features: [
+      'commit-graph',
+      'file-explorer',
+      'blame-history',
+      'compare-branches',
+      'compare-to-workdir',
+    ],
   },
   {
     // undo-redo lives here rather than with branches: it is the safety net over the actions this
