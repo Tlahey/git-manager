@@ -25,3 +25,27 @@ Feature: Semantic commit search
     Then the commit search cites the commit "feat: add login screen"
     And the interface has settled
     And a full-window screenshot is saved as "doc-ai-commit-search"
+
+  @doc @screenshots
+  Scenario: Reopening a past search restores its own question, without asking again
+    Every search this repository has been asked is kept below the results, newest first — a
+    search is one model call per commit, so a question already answered shouldn't have to be paid
+    for twice. Asking a new question always shows the new one; reopening an older entry swaps
+    straight back to exactly what it found, with nothing spent to get there.
+    Given the app language is English
+    And the AI provider is pointed at a fake server
+    And the "feature-branches" fixture repository is opened
+    When I check out the "feature/login" branch
+    And I open the AI commit search panel
+    And I ask the commit search "Has the login screen been added recently?"
+    Then the commit search cites the commit "feat: add login screen"
+    When I ask the commit search "What changed in the build config?"
+    Then the commit search shows the asked question "What changed in the build config?"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-ai-commit-search-history"
+    When I reopen the commit search history entry "Has the login screen been added recently?"
+    Then the commit search shows the asked question "Has the login screen been added recently?"
+    When I remove the commit search history entry "What changed in the build config?"
+    Then the commit search history does not list "What changed in the build config?"
+    When I clear the commit search history
+    Then the commit search history is empty

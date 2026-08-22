@@ -55,3 +55,79 @@ Then(/^the commit search cites the commit "([^"]*)"$/, async (subject: string) =
     timeoutMsg: `commit search matches never cited "${subject}"`,
   })
 })
+
+Then(/^the commit search shows the asked question "([^"]*)"$/, async (question: string) => {
+  const asked = $('[data-testid="commit-search-asked"]')
+  await browser.waitUntil(
+    async () => (await asked.isExisting()) && (await asked.getText()).includes(question),
+    {
+      timeout: 10000,
+      timeoutMsg: `the commit search panel never showed the question "${question}"`,
+    }
+  )
+})
+
+/** The history row (CommitSearchHistoryList.tsx) whose text includes `question` — ids are minted
+ *  per run, so a row is found by its visible question rather than by a testid known ahead of time.
+ *  Every OTHER testid this component renders also starts with "commit-search-history-" (the clear
+ *  button, the empty state, each row's own remove button), so those are excluded explicitly. */
+async function findHistoryRowId(question: string): Promise<string> {
+  const testId = await browser.execute((wanted: string) => {
+    const rows = Array.from(
+      document.querySelectorAll('[data-testid^="commit-search-history-"]')
+    ).filter((el) => {
+      const id = el.getAttribute('data-testid') ?? ''
+      return (
+        id !== 'commit-search-history-clear' &&
+        id !== 'commit-search-history-empty' &&
+        !id.startsWith('commit-search-history-remove-')
+      )
+    })
+    const hit = rows.find((el) => (el.textContent ?? '').includes(wanted))
+    return hit ? hit.getAttribute('data-testid') : null
+  }, question)
+  if (!testId) throw new Error(`no commit search history entry matches "${question}"`)
+  return testId.replace('commit-search-history-', '')
+}
+
+When(/^I reopen the commit search history entry "([^"]*)"$/, async (question: string) => {
+  const id = await findHistoryRowId(question)
+  // The row's own unlabelled "open" button is the first `<button>` inside it, ahead of the
+  // labelled remove button (CommitSearchHistoryList.tsx's JSX order).
+  await $(`[data-testid="commit-search-history-${id}"] button`).click()
+})
+
+When(/^I remove the commit search history entry "([^"]*)"$/, async (question: string) => {
+  const id = await findHistoryRowId(question)
+  await $(`[data-testid="commit-search-history-remove-${id}"]`).click()
+})
+
+Then(/^the commit search history does not list "([^"]*)"$/, async (question: string) => {
+  await browser.waitUntil(
+    async () => {
+      const testId = await browser.execute((wanted: string) => {
+        const rows = Array.from(
+          document.querySelectorAll('[data-testid^="commit-search-history-"]')
+        ).filter((el) => {
+          const id = el.getAttribute('data-testid') ?? ''
+          return (
+            id !== 'commit-search-history-clear' &&
+            id !== 'commit-search-history-empty' &&
+            !id.startsWith('commit-search-history-remove-')
+          )
+        })
+        return rows.some((el) => (el.textContent ?? '').includes(wanted))
+      }, question)
+      return !testId
+    },
+    { timeout: 10000, timeoutMsg: `"${question}" is still listed in the commit search history` }
+  )
+})
+
+When(/^I clear the commit search history$/, async () => {
+  await $('[data-testid="commit-search-history-clear"]').click()
+})
+
+Then(/^the commit search history is empty$/, async () => {
+  await $('[data-testid="commit-search-history-empty"]').waitForDisplayed({ timeout: 10000 })
+})
