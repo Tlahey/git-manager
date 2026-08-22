@@ -29,3 +29,21 @@ Feature: Summary search
     Then the summary search cites the "daily-summary" repository
     And the interface has settled
     And a full-window screenshot is saved as "doc-summary-search"
+
+  @doc @screenshots
+  Scenario: Generating and deleting a briefing straight from the panel
+    The panel does not need the dashboard's own briefing card: picking a day in its own field and
+    pressing the little AI icon runs the exact same generation, so a project you have never opened
+    from the dashboard still gets a briefing you can read right here — and one click removes it
+    again once you no longer need it archived.
+    Given the app language is English
+    And the AI provider is pointed at a fake server
+    And the "daily-summary" fixture repository is opened
+    And the interface has settled
+    When I open the summaries panel from the AI menu
+    And I pick the previous working day in the summaries day picker
+    And I generate the briefing from the panel
+    Then the summaries panel shows a briefing for that day
+    And a full-window screenshot is saved as "doc-summaries-panel"
+    When I delete that briefing
+    Then the summaries panel shows its empty state
