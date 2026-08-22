@@ -25,6 +25,25 @@ Feature: Your pull requests
     And the "waiting" launchpad tab shows the pull request "pr-4"
     And the "waiting" launchpad tab does not show the pull request "pr-2"
 
+  @doc @screenshots
+  Scenario: Searching across the active tab, and folding every group at once
+    The search box above the tabs filters whichever list is on screen by title, author or repo —
+    one box that follows you from tab to tab instead of a filter each has to relearn. Collapse and
+    expand-all fold or unfold every group of the active tab in one click, for scrolling past a
+    list you already know rather than opening each group in turn.
+    Given the app language is English
+    When I open the launchpad
+    And I search the launchpad for "Memory leak"
+    Then the "prs" launchpad tab shows the pull request "pr-2"
+    And the "prs" launchpad tab does not show the pull request "pr-1"
+    When I clear the launchpad search
+    And I collapse all launchpad groups
+    Then the "prs" launchpad tab does not show the pull request "pr-1"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-launchpad-toolbar"
+    When I expand all launchpad groups
+    Then the "prs" launchpad tab shows the pull request "pr-1"
+
   # "Selecting a PR opens its detail panel" is documented in the content plan as blocked, not
   # written here: the panel itself opens (no crash, no token needed for that much), but
   # PrDetailCenter's usePrDetail only fires its fetch when a real GitHub token is present — no
