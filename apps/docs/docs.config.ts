@@ -111,9 +111,10 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     // The repository-scoped tools: diagnosis (bisect), portability (patches), and the built-in
-    // terminal and package overview.
+    // terminal and package overview. `package-health-updates` follows `package-health` since it's
+    // the one destination inside that same tool reaching the network.
     title: 'Toolbox',
-    features: ['bisect', 'patch-workspace', 'terminal', 'package-health'],
+    features: ['bisect', 'patch-workspace', 'terminal', 'package-health', 'package-health-updates'],
   },
   {
     // Ordered by how the features feed each other: composing commits, then the briefings pair
