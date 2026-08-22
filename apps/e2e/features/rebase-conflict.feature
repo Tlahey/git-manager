@@ -38,10 +38,19 @@ Feature: Rebase conflict resolution
     Then the conflict resolution panel is not shown
     And the repository HEAD commit subject contains "theirs: add theirs-metrics"
 
+  @doc @screenshots
   Scenario: Skipping the conflicting commit completes the rebase without it
+    Skip is for when the commit that stopped the rebase isn't worth resolving at all — it drops
+    that one commit from the plan entirely and moves straight on to whatever comes after it,
+    rather than making you fix a conflict just to throw the result away.
+    Given the app language is English
+    And AI features are turned off
+    And the "rebase-conflict" fixture repository is opened
     When I skip the rebase step
     Then the conflict resolution panel is not shown
     And the repository HEAD commit subject contains "ours: add metrics/tracing addons"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-rebase-conflict-skip"
 
   Scenario: Resolving the conflict and continuing completes the rebase
     Given the conflicted file is resolved on disk
