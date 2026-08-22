@@ -5,12 +5,19 @@ Feature: AI provider
   context window it's trusted to hold — the one setting nothing in the protocol lets the app verify
   on its own, unlike the connection itself.
 
+  @doc @screenshots
   Scenario: Testing the AI provider connection reports a definitive status
+    "Test Connection" is a real, one-shot check against the URL above it — not a shortcut that
+    just assumes the provider is reachable because a model id is filled in. It reports one of two
+    definite outcomes, connected or not, rather than leaving the field in limbo while you wait to
+    find out the hard way, the next time a feature tries to call the model and fails.
     Given the git-manager application is running
     When I open the settings
     And I open the "local_ai" settings tab
     And I click the AI provider test connection button
     Then the AI provider connection status is reported
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-ai-connection"
 
   @doc @screenshots
   Scenario: Checking a declared context window against what the model actually serves
