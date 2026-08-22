@@ -70,10 +70,19 @@ Feature: Working tree staging
     And I unstage the file "config.yml"
     Then the file "config.yml" is not staged
 
+  @doc @screenshots
   Scenario: Bulk-staging all unstaged files
+    Each zone's header carries its own "stage all"/"unstage all" button, for when the change
+    really is one unit of work and sorting file by file would just be busywork — one click moves
+    every unstaged file into the next commit at once.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     When I select the working-tree changes in the graph
     And I stage all unstaged files
     Then the file "IN_PROGRESS.md" is staged
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-staging-bulk-stage"
 
   @doc @screenshots
   Scenario: Discarding a file's changes throws them away
@@ -92,7 +101,15 @@ Feature: Working tree staging
     Then the file "config.yml" has no working-tree changes
     And no error notification is displayed
 
+  @doc @screenshots
   Scenario: Bulk-unstaging all staged files
+    The staged zone carries the same button in reverse: unstage everything at once to start the
+    sorting over, rather than clicking each file back down one at a time.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     When I select the working-tree changes in the graph
     And I unstage all staged files
     Then the file "config.yml" is not staged
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-staging-bulk-unstage"
