@@ -238,6 +238,50 @@ Feature: The card record and the board's own shape
     And a full-window screenshot is saved as "doc-board-settings"
     And no error notification is displayed
 
+  @doc @screenshots
+  Scenario: Duplicating a card copies everything it is, minus its discussion
+    Duplicate copies the description, checklist, assignee, priority, due date, tags and blocking
+    onto a fresh ticket right after the original — everything the card *is*. Its comments do not
+    travel: a discussion happened on one card, and reproducing it under a new one would attribute
+    words to a conversation that never took place there.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Update the changelog" to the "To do" column
+    And I duplicate the card "Update the changelog"
+    Then the card "Update the changelog (copy)" is shown on the board
+    And the "To do" column holds 2 cards
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-card-duplicate"
+    And no error notification is displayed
+
+  @doc @screenshots
+  Scenario: Archiving or moving a whole column's cards at once
+    A column's own "⋯" menu acts on every live card in it at once, for the two things worth doing
+    to a stage of work rather than one ticket at a time: archiving it away, or moving it whole onto
+    another board — "In progress" lands on "In progress" there too, matched by the column itself.
+    Given the app language is English
+    And the "feature-branches" fixture repository is opened
+    When I open the board
+    And I create a board named "Sprint 12" with the card prefix "GM"
+    And I add a card titled "Draft the release notes" to the "In progress" column
+    And I add a card titled "Update the changelog" to the "In progress" column
+    And I create a board named "Sprint 13" with the card prefix "GM"
+    And I select the "Sprint 12" sprint
+    When I move all cards in the "In progress" column to the "Sprint 13" board
+    Then the "In progress" column holds 0 cards
+    When I select the "Sprint 13" sprint
+    Then the "In progress" column holds 2 cards
+    When I select the "Sprint 12" sprint
+    And I add a card titled "Cut the release" to the "To do" column
+    And I add a card titled "Sign the build" to the "To do" column
+    And I archive all cards in the "To do" column
+    Then the "To do" column holds 0 cards
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-board-column-bulk-actions"
+    And no error notification is displayed
+
   # Deleting is the one card action nothing undoes, so the confirmation offers the reversible
   # neighbour someone reaching for it usually wanted: archiving, which takes the card off the board
   # and keeps every word of it.

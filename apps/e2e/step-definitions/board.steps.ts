@@ -1,9 +1,10 @@
 import { browser, expect, $, $$ } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
-import { clickViaJs, openMenuViaJs } from '../support/interactions'
+import { clickViaJs, openMenuViaJs, setNativeSelectValue } from '../support/interactions'
 import {
   activeBoardName,
   BOARD_REF_GLOB,
+  boardRefNamed,
   boardRefs,
   cardTestId,
   cardTestIdOrThrow,
@@ -12,6 +13,7 @@ import {
   columnIdByName,
   git,
   openCard,
+  storedBoard,
   storedCards,
 } from '../support/board'
 
@@ -162,6 +164,47 @@ When(/^I archive the card "([^"]*)"$/, async (title: string) => {
     timeoutMsg: `the card "${title}" is still on the board after being archived`,
   })
 })
+
+When(/^I duplicate the card "([^"]*)"$/, async (title: string) => {
+  await openCard(title)
+  // Same reasoning as archiving above: the dialog's own `⋯` rather than the card face's shared,
+  // hover-only trigger.
+  await openMenuViaJs('card-dialog-actions-menu')
+  const duplicate = $('[data-testid="card-action-duplicate"]')
+  await duplicate.waitForDisplayed({ timeout: 10000 })
+  await duplicate.click()
+  await closeDialog('board-card-dialog')
+})
+
+When(/^I archive all cards in the "([^"]*)" column$/, async (columnName: string) => {
+  const columnId = await columnIdByName(columnName)
+  await openMenuViaJs(`board-column-${columnId}-menu`)
+  const archiveAll = $('[data-testid="column-action-archive-all"]')
+  await archiveAll.waitForDisplayed({ timeout: 10000 })
+  await archiveAll.click()
+  const confirm = $('[data-testid="archive-column-confirm"]')
+  await confirm.waitForDisplayed({ timeout: 10000 })
+  await confirm.click()
+  await $('[data-testid="archive-column-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
+})
+
+When(
+  /^I move all cards in the "([^"]*)" column to the "([^"]*)" board$/,
+  async (columnName: string, boardName: string) => {
+    const columnId = await columnIdByName(columnName)
+    await openMenuViaJs(`board-column-${columnId}-menu`)
+    const moveAll = $('[data-testid="column-action-move-all"]')
+    await moveAll.waitForDisplayed({ timeout: 10000 })
+    await moveAll.click()
+    await $('[data-testid="move-column-dialog"]').waitForDisplayed({ timeout: 10000 })
+    // The board's *id* is what the picker's options carry, and it is generated per write — read
+    // back from the stored board of that name, same as `I move the card to the "X" board`.
+    const target = storedBoard(boardRefNamed(boardName))
+    await setNativeSelectValue('move-column-target-board', target.id)
+    await $('[data-testid="move-column-submit"]').click()
+    await $('[data-testid="move-column-dialog"]').waitForExist({ reverse: true, timeout: 20000 })
+  }
+)
 
 When(/^I restore the card "([^"]*)" from the archive$/, async (title: string) => {
   await $('[data-testid="board-archived-button"]').click()
