@@ -26,15 +26,27 @@ Feature: Notifications
     And the notification unread badge reads "1"
     And a full-window screenshot is saved as "doc-notifications"
 
+  @doc @screenshots
   Scenario: Marking all as read clears the unread badge
+    "Mark all as read" clears the count without touching the list itself — the notifications you
+    haven't dealt with are still there to scroll back through, just no longer flagged as new.
+    Given the app language is English
     When I open the notification tray
     And I mark all notifications as read
     Then the notification unread badge is not shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-notifications-marked-read"
 
+  @doc @screenshots
   Scenario: Clearing all notifications empties the tray
+    "Clear all" is the other one: it empties the tray outright, for once everything in it has
+    genuinely been dealt with and there's nothing left worth scrolling back to.
+    Given the app language is English
     When I open the notification tray
     And I clear all notifications
     Then the notification tray is empty
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-notifications-cleared"
 
   @doc @screenshots
   Scenario: Choosing where notifications appear
