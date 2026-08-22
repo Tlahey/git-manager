@@ -84,18 +84,32 @@ Feature: Rebase progress view
     When I toggle the conflicted files panel
     Then the conflict resolution panel is shown
 
+  @doc @screenshots
   Scenario: Continuing from the progress view advances the rebase to the next step
+    Once the conflicted file is actually resolved on disk, Continue moves the rebase to its next
+    step — replaying whichever commit comes after the one that just stopped it. That may finish
+    the plan outright, or, as here, stop again further down where a different commit collides
+    with something else: the rail is what makes a rebase that pauses more than once still
+    readable, since each pause shows exactly which step it's on and which have already landed.
+    # Step 3 collides with nothing, but step 4's changelog edit does — the rebase stops again
+    # further down the plan, which is exactly what the rail is for.
     Given the conflicted "settings.conf" is resolved on disk
     When I reload the application
     Then the rebase progress view is shown
     When I continue the rebase from the progress view
-    # Step 3 collides with nothing, but step 4's changelog edit does — the rebase stops again
-    # further down the plan, which is exactly what the rail is for.
     Then the rebase progress view reports "Step 4 of 6"
     And rebase step 2 is marked "done"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-rebase-progress-continue"
 
+  @doc @screenshots
   Scenario: Aborting from the progress view ends the rebase and restores the graph
+    Abort gives up on the plan entirely and puts the branch back exactly where it started — the
+    replayed commits and the one that stopped it are all undone, and the content view returns to
+    the ordinary graph as if the rebase had never been asked for.
     When I abort the rebase from the progress view
     Then the rebase progress view is not shown
     And the commit graph is shown
     And the repository HEAD commit subject contains "chore: leftover scratch setting"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-rebase-progress-abort"
