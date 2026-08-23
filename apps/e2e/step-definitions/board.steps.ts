@@ -91,14 +91,28 @@ Then(/^the board offers no way to close it$/, async () => {
   await expect($('[data-testid="board-close-sprint-button"]')).not.toBeExisting()
 })
 
-// Only on a GitHub-backed board (BoardToolbar.tsx's `canUseRemote`) — screenshot-only coverage,
-// see board-github.feature's own note on why this goes no further than opening the dialog.
+// Only on a GitHub-backed board (BoardToolbar.tsx's `canUseRemote`).
 When(/^I click the add-issue button$/, async () => {
   await $('[data-testid="board-add-issue-button"]').click()
 })
 
 Then(/^the add-issue dialog is shown$/, async () => {
   await $('[data-testid="add-issue-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// The dialog lists the repo's open issues with no search needed (AddIssueDialog.tsx) — a scenario
+// only has to type a query when it needs to narrow a fixture with more than one issue in it.
+When(/^I select the add-issue result "(\d+)"$/, async (issueNumber: string) => {
+  const option = $(`[data-testid="add-issue-option-${issueNumber}"]`)
+  await option.waitForDisplayed({ timeout: 10000 })
+  await option.click()
+})
+
+When(/^I confirm the add-issue selection$/, async () => {
+  const submit = $('[data-testid="add-issue-submit"]')
+  await submit.waitForEnabled({ timeout: 10000 })
+  await submit.click()
+  await $('[data-testid="add-issue-dialog"]').waitForExist({ reverse: true, timeout: 15000 })
 })
 
 // ─── Cards ─────────────────────────────────────────────────────────────────

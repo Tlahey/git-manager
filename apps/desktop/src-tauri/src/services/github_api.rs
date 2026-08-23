@@ -56,6 +56,35 @@ fn guard_url(url: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Rewrites an already-`guard_url`-approved request to a local fake server, for the e2e suite's
+/// GitHub API mock mode (see `docs/architecture/2026-08-e2e-github-api-mock-mode.md`).
+///
+/// Runs strictly after `guard_url`: the frontend must still name a literal `https://api.github.com/…`
+/// URL, so the anti-exfiltration guarantee that check exists for is untouched. This only decides
+/// where that already-approved request actually goes on the wire, and only in an `e2e` build — the
+/// `#[cfg(not(feature = "e2e"))]` twin below is the identity function and never reads the env var, so
+/// a release binary carries no code path that could be pointed anywhere but `api.github.com`.
+///
+/// Reads the env var fresh on every call rather than caching it, matching
+/// `credential_store::active_backend_kind`'s own reasoning: cheap, and it means the e2e suite only
+/// has to set it once before the app starts, with nothing here needing to coordinate further.
+#[cfg(feature = "e2e")]
+fn e2e_redirect(url: &str) -> String {
+    match std::env::var("GIT_MANAGER_GITHUB_API_BASE_URL") {
+        Ok(base) if !base.trim().is_empty() => url.replacen(
+            API_ORIGIN,
+            &format!("{}/", base.trim().trim_end_matches('/')),
+            1,
+        ),
+        _ => url.to_string(),
+    }
+}
+
+#[cfg(not(feature = "e2e"))]
+fn e2e_redirect(url: &str) -> String {
+    url.to_string()
+}
+
 /// Performs one authenticated (or anonymous) GitHub API call.
 ///
 /// `account_id` absent means an anonymous request — a handful of reads (a public repo's default
@@ -75,12 +104,13 @@ pub async fn request(
     accept: Option<&str>,
 ) -> Result<GithubApiResponse, AppError> {
     guard_url(url)?;
+    let effective_url = e2e_redirect(url);
 
     let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
         .map_err(|_| AppError::InvalidInput(format!("Unsupported HTTP method: {method}")))?;
 
     let mut req = http_client(30)?
-        .request(method, url)
+        .request(method, effective_url.as_str())
         .header("Accept", accept.unwrap_or(DEFAULT_ACCEPT))
         .header("User-Agent", USER_AGENT);
 
@@ -230,5 +260,74 @@ mod tests {
         assert!(guard_url("http://api.github.com/user").is_err());
         // github.com is not api.github.com: the OAuth endpoints there have their own commands.
         assert!(guard_url("https://github.com/login/oauth/access_token").is_err());
+    }
+
+    // Guards a real env var for the duration of one test — `std::env` is process-global, and Rust
+    // runs unit tests on multiple threads by default, so two tests touching the same variable
+    // without serializing would race. A `Mutex` held for the closure's duration is enough because
+    // every test that reads `GIT_MANAGER_GITHUB_API_BASE_URL` goes through this helper.
+    #[cfg(feature = "e2e")]
+    fn with_env_var<T>(value: Option<&str>, f: impl FnOnce() -> T) -> T {
+        use std::sync::Mutex;
+        static ENV_LOCK: Mutex<()> = Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        match value {
+            Some(v) => std::env::set_var("GIT_MANAGER_GITHUB_API_BASE_URL", v),
+            None => std::env::remove_var("GIT_MANAGER_GITHUB_API_BASE_URL"),
+        }
+        let result = f();
+        std::env::remove_var("GIT_MANAGER_GITHUB_API_BASE_URL");
+        result
+    }
+
+    #[cfg(feature = "e2e")]
+    #[test]
+    fn e2e_redirect_rewrites_only_the_origin_when_the_env_var_is_set() {
+        with_env_var(Some("http://127.0.0.1:4567"), || {
+            assert_eq!(
+                e2e_redirect("https://api.github.com/repos/octocat/demo/pulls/1"),
+                "http://127.0.0.1:4567/repos/octocat/demo/pulls/1"
+            );
+        });
+    }
+
+    #[cfg(feature = "e2e")]
+    #[test]
+    fn e2e_redirect_strips_a_trailing_slash_on_the_configured_base() {
+        with_env_var(Some("http://127.0.0.1:4567/"), || {
+            assert_eq!(
+                e2e_redirect("https://api.github.com/graphql"),
+                "http://127.0.0.1:4567/graphql"
+            );
+        });
+    }
+
+    #[cfg(feature = "e2e")]
+    #[test]
+    fn e2e_redirect_is_a_no_op_when_the_env_var_is_unset_or_blank() {
+        with_env_var(None, || {
+            assert_eq!(
+                e2e_redirect("https://api.github.com/user"),
+                "https://api.github.com/user"
+            );
+        });
+        with_env_var(Some("   "), || {
+            assert_eq!(
+                e2e_redirect("https://api.github.com/user"),
+                "https://api.github.com/user"
+            );
+        });
+    }
+
+    // Outside the `e2e` feature, `e2e_redirect` must be the identity function — this is the
+    // guarantee a release binary relies on, so it is asserted with no feature flag at all rather
+    // than only under `not(feature = "e2e")`, which `cargo test` already runs by default.
+    #[cfg(not(feature = "e2e"))]
+    #[test]
+    fn e2e_redirect_is_always_the_identity_function_outside_e2e_builds() {
+        assert_eq!(
+            e2e_redirect("https://api.github.com/user/repos"),
+            "https://api.github.com/user/repos"
+        );
     }
 }
