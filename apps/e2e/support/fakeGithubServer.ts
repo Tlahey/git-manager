@@ -281,24 +281,27 @@ export async function startFakeGithubServer(
       }
 
       // GET /search/issues?q=... — backs the Launchpad's cross-repo issue list
-      // (`fetchGitHubRepoIssues`) and, for `is:pr`, its PR-list equivalent. Both narrow with a
-      // `repo:owner/repo` qualifier this suite always includes, so that's the only part parsed;
-      // `items` need a `repository_url` because `rawToMockIssue`/`rawToMockPR` derive `fullName`
-      // from it for a search result, unlike the single-repo REST endpoints below.
+      // (`fetchGitHubRepoIssues`, one `repo:owner/repo` qualifier per saved project the search
+      // is:issue+repo:a/b+repo:c/d — decoded to space-separated by URLSearchParams) and, for
+      // `is:pr`, its PR-list equivalent. Every matching repo's fixtures are pooled, not just the
+      // first qualifier, so a scenario that saves more than one project gets results from all of
+      // them, matching the real "every repo you've added" behavior. `items` need a
+      // `repository_url` because `rawToMockIssue`/`rawToMockPR` derive `fullName` from it for a
+      // search result, unlike the single-repo REST endpoints below.
       if (req.method === 'GET' && pathname === '/search/issues') {
         const q = url.searchParams.get('q') ?? ''
-        const repoQualifier = /repo:(\S+)/.exec(q)?.[1]
+        const repoQualifiers = [...q.matchAll(/repo:(\S+)/g)].map((m) => m[1])
         const isPr = /\bis:pr\b/.test(q)
-        const repoFixturesForSearch = repoQualifier ? fixtures.repos[repoQualifier] : undefined
-        const pool = isPr
-          ? (repoFixturesForSearch?.openPulls ?? [])
-          : (repoFixturesForSearch?.openIssues ?? [])
-        const items = pool.map((item) => ({
-          ...item,
-          repository_url: repoQualifier
-            ? `https://api.github.com/repos/${repoQualifier}`
-            : undefined,
-        }))
+        const items = repoQualifiers.flatMap((repoKey) => {
+          const repoFixturesForSearch = fixtures.repos[repoKey]
+          const pool = isPr
+            ? (repoFixturesForSearch?.openPulls ?? [])
+            : (repoFixturesForSearch?.openIssues ?? [])
+          return pool.map((item) => ({
+            ...item,
+            repository_url: `https://api.github.com/repos/${repoKey}`,
+          }))
+        })
         sendJson(res, 200, { items })
         return
       }
