@@ -1,6 +1,6 @@
 [package]
 name = "git-manager"
-version = "0.3.0"
+version = "0.4.0"
 description = "Git Manager Desktop"
 authors = ["git-manager"]
 license = "MIT"

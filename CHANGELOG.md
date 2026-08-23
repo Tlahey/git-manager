@@ -8,6 +8,34 @@ on Settings → Changelog (and via the version badge in the footer).
 
 _Auto-populated at release time from the merged pull requests since the last tag, via the GitHub release notes API — see tools/release/cut-release.sh._
 
+## [0.4.0] - 2026-08-23
+
+## What's Changed
+* fix(release): format the version bump, and point at the real bundle dir by @Tlahey in https://github.com/Tlahey/git-manager/pull/401
+* fix(e2e): repair UI-drift regressions, root-cause settings-seed bug, document the board by @Tlahey in https://github.com/Tlahey/git-manager/pull/402
+* feat: close the loop from board task to merge (worktree, agent launch, review, PR, auto-done) by @Tlahey in https://github.com/Tlahey/git-manager/pull/403
+* feat(appearance): let the app wear a chosen icon, without the launch flicker by @Tlahey in https://github.com/Tlahey/git-manager/pull/404
+* chore(credentials): format the secret storage modules with rustfmt by @Tlahey in https://github.com/Tlahey/git-manager/pull/405
+* chore(tooling): keep prettier out of the .claude directory by @Tlahey in https://github.com/Tlahey/git-manager/pull/406
+* fix(board): render a card's markdown instead of printing its markers by @Tlahey in https://github.com/Tlahey/git-manager/pull/407
+* fix(ui): add cursor-pointer to clickable rows missing it by @Tlahey in https://github.com/Tlahey/git-manager/pull/408
+* docs(notch): record the release-build validation of the NSPanel conversion by @Tlahey in https://github.com/Tlahey/git-manager/pull/409
+* feat(board): extend ticket search to the card description by @Tlahey in https://github.com/Tlahey/git-manager/pull/410
+* chore(deps): bump tauri-nspanel to its objc2-based rev by @Tlahey in https://github.com/Tlahey/git-manager/pull/411
+* feat(board): add per-card history to the card dialog by @Tlahey in https://github.com/Tlahey/git-manager/pull/412
+* feat(board): let a comment reply to another comment (threading) by @Tlahey in https://github.com/Tlahey/git-manager/pull/416
+* feat(board): back the disaster-recovery mirror with a bare git repo by @Tlahey in https://github.com/Tlahey/git-manager/pull/417
+* fix(notch): stop dismissing on a body click, focus the app on every action by @Tlahey in https://github.com/Tlahey/git-manager/pull/418
+* feat(board): surface recoverable boards from the disaster-recovery mirror by @Tlahey in https://github.com/Tlahey/git-manager/pull/419
+* feat(board): drop the "All" activity tab, default to Comments by @Tlahey in https://github.com/Tlahey/git-manager/pull/420
+* test(e2e): cover the board features that shipped without scenarios, and fix the three bugs they found by @Tlahey in https://github.com/Tlahey/git-manager/pull/421
+* docs(e2e): expand generated documentation with GitHub grouping and new coverage by @Tlahey in https://github.com/Tlahey/git-manager/pull/422
+* test(e2e): add deterministic coverage for package updates + AI upgrade-risk report by @Tlahey in https://github.com/Tlahey/git-manager/pull/423
+* docs(e2e): document 4 more command palette actions by @Tlahey in https://github.com/Tlahey/git-manager/pull/424
+
+
+**Full Changelog**: https://github.com/Tlahey/git-manager/compare/v0.3.0...v0.4.0
+
 ## [0.3.0] - 2026-08-12
 
 ## What's Changed
