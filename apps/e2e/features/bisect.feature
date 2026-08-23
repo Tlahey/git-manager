@@ -80,11 +80,20 @@ Feature: Git bisect
     Then the first bad commit is "feat: commit 5 (introduces bug)"
     And a full-window screenshot is saved as "doc-bisect-result"
 
+  @doc @screenshots
   Scenario: Aborting a bisect ends the session
+    A bisect doesn't have to run to the end: aborting at any point checks the branch back out
+    where it was before the first "good"/"bad" pick and closes the session, no different from
+    never having started one.
+    Given the app language is English
+    And AI features are turned off
+    And the "bisect-history" fixture repository is opened
     When I start a bisect from the tools menu
     And I pick the "HEAD" commit as the "bad" commit
     And I pick the "v1.0.0" commit as the "good" commit
     And I start the bisect
     Then a bisect is in progress
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-bisect-abort"
     When I abort the bisect
     Then no bisect is in progress

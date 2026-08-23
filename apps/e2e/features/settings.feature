@@ -33,26 +33,6 @@ Feature: General
     And I open the "notifications" settings tab
     Then the settings screen matches the visual snapshot "settings-notifications"
 
-  Scenario: Toggling the row height setting persists across a reload
-    Given the git-manager application is running
-    When I open the settings
-    And I open the "ui_customization" settings tab
-    And I select the "small" row height
-    And I reload the application
-    And I open the settings
-    And I open the "ui_customization" settings tab
-    Then the row height setting is "small"
-
-  Scenario: Toggling the rewards setting persists across a reload
-    Given the git-manager application is running
-    When I open the settings
-    And I open the "rewards" settings tab
-    And I toggle the rewards setting off
-    And I reload the application
-    And I open the settings
-    And I open the "rewards" settings tab
-    Then the rewards setting is "off"
-
   @doc @screenshots
   Scenario: Configuring background auto-fetch
     The app quietly re-fetches the active repository on a timer of its own, even while the window
@@ -66,6 +46,10 @@ Feature: General
     And I open the "general" settings tab
     And I set the auto-fetch interval to "5" minutes
     And I turn off automatic pruning on auto-fetch
+    # The checkbox click writes through a raw DOM event (clickViaJs), with no wait built in the way
+    # a controlled text input's own settle has — reloading right after it raced the persisted-state
+    # write often enough to be a real, if intermittent, failure: settle before reloading.
+    And the interface has settled
     And I reload the application
     And I open the settings
     And I open the "general" settings tab
@@ -73,6 +57,39 @@ Feature: General
     And automatic pruning on auto-fetch is off
     And the interface has settled
     And a full-window screenshot is saved as "doc-auto-fetch"
+
+  @doc @screenshots
+  Scenario: Toggling the row height setting persists across a reload
+    A denser graph fits more history on screen at once; the choice is remembered the same way
+    every other setting is, reload and restart included.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "ui_customization" settings tab
+    And I select the "small" row height
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-row-height"
+    And I reload the application
+    And I open the settings
+    And I open the "ui_customization" settings tab
+    Then the row height setting is "small"
+
+  @doc @screenshots
+  Scenario: Toggling the rewards setting persists across a reload
+    The achievements-and-rewards layer — themes and gamification unlocked by using the app — is
+    entirely optional; turning it off is a real setting, not just hiding the trophy page, and it
+    stays off across a reload the same way any other choice here does.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "rewards" settings tab
+    And I toggle the rewards setting off
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-rewards"
+    And I reload the application
+    And I open the settings
+    And I open the "rewards" settings tab
+    Then the rewards setting is "off"
 
   @doc @screenshots
   Scenario: Switching the interface language takes effect immediately

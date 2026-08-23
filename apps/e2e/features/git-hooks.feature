@@ -64,8 +64,13 @@ Feature: Repository hooks
   # The resolution path most real projects are actually on, and the one nothing covered
   # end-to-end: husky keeps its hooks in the working tree and points `core.hooksPath` at them,
   # so a lookup that only knew about `.git/hooks` would find nothing and silently run none.
+  @doc
   Scenario: Hooks installed husky-style through core.hooksPath run just the same
-    Given the "hooks-husky" fixture repository is opened
+    A hook doesn't have to live in `.git/hooks` to run: a repository whose `core.hooksPath` points
+    somewhere else — the way husky, lefthook and similar tools set themselves up — gets exactly
+    the same treatment, so a project managing its hooks that way isn't silently skipped.
+    Given the app language is English
+    And the "hooks-husky" fixture repository is opened
     And the notch queue is being recorded
     When I select the working-tree changes in the graph
     And I stage the file "trip-precommit.txt"
