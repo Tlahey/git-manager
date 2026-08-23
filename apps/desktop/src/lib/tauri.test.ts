@@ -468,13 +468,6 @@ const cases: {
     args: { path: '/repo', oid: 'abc', filePath: 'a.ts' },
   },
   {
-    name: 'isCommitOnCurrentBranch',
-    call: () => tauri.isCommitOnCurrentBranch('/repo', 'abc'),
-    command: 'is_commit_on_current_branch',
-    args: { path: '/repo', oid: 'abc' },
-  },
-
-  {
     name: 'fetchRemote',
     call: () => tauri.fetchRemote('/repo', 'origin', true),
     command: 'fetch_remote',

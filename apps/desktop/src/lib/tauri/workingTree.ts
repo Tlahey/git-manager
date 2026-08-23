@@ -78,10 +78,6 @@ export const getFileRawContents = (
 export const getCommitFileVsWorkdir = (path: string, oid: string, filePath: string) =>
   invoke<RawFileDiffContents>('get_commit_file_vs_workdir', { path, oid, filePath })
 
-/** Whether `oid` is HEAD or one of its ancestors (i.e. on the current branch). */
-export const isCommitOnCurrentBranch = (path: string, oid: string) =>
-  invoke<boolean>('is_commit_on_current_branch', { path, oid })
-
 // ─── Patch ────────────────────────────────────────────────────────────────────
 
 export const createPatch = (path: string, oid: string, destPath: string) =>

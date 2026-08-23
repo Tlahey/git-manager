@@ -35,14 +35,6 @@ pub async fn get_tag_containing_commit(
     git_branch::first_tag_containing_commit(&repo, &oid).map_err(Into::into)
 }
 
-/// Reports whether `oid` belongs to the current branch's history (HEAD or one
-/// of its ancestors) — used to enable fixup only on rebasable commits.
-#[tauri::command]
-pub async fn is_commit_on_current_branch(path: String, oid: String) -> Result<bool, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_branch::is_commit_on_current_branch(&repo, &oid).map_err(Into::into)
-}
-
 /// Creates a new local branch pointing at `from_ref` (a branch name, "HEAD", or an OID), without
 /// checking it out.
 #[tauri::command]
