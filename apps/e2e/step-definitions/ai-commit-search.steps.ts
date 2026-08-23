@@ -38,6 +38,10 @@ When(/^I open the AI commit search panel$/, async () => {
   await $('[data-testid="ai-commit-search-panel"]').waitForDisplayed({ timeout: 10000 })
 })
 
+When(/^I turn on quick commit search$/, async () => {
+  await clickViaJs('commit-search-quick')
+})
+
 When(/^I ask the commit search "([^"]*)"$/, async (question: string) => {
   const input = $('[data-testid="commit-search-question"]')
   await input.waitForDisplayed({ timeout: 10000 })
@@ -54,6 +58,10 @@ Then(/^the commit search cites the commit "([^"]*)"$/, async (subject: string) =
     timeout: 20000,
     timeoutMsg: `commit search matches never cited "${subject}"`,
   })
+})
+
+Then(/^the commit search shows the quick-mode badge$/, async () => {
+  await $('[data-testid="commit-search-quick-badge"]').waitForDisplayed({ timeout: 10000 })
 })
 
 Then(/^the commit search shows the asked question "([^"]*)"$/, async (question: string) => {

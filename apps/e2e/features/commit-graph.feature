@@ -42,6 +42,37 @@ Feature: The commit graph
     And a full-window screenshot is saved as "doc-commit-details"
 
   @doc @screenshots
+  Scenario: Selecting several commits shows their combined diff
+    Cmd-clicking a second row turns the single commit panel into a merged one for the whole
+    selection: the commits listed in order, and one file list for everything they touched between
+    them — a file two of them both edited shows up once, with its net change across the range,
+    not twice.
+    Given the "rollback-history" fixture repository is opened
+    When I select the "HEAD~2" commit in the graph
+    And I add the "HEAD~1" commit to the graph selection
+    Then the multi-commit panel shows 2 commits selected
+    And the multi-commit panel lists "counter.txt" as a changed file
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-multi-commit-diff"
+
+  @doc @screenshots
+  Scenario: Opening a commit on GitHub, resolved from the repository's own remote
+    Every commit's palette entry offers a link to that same commit on GitHub — resolved from the
+    repository's own "origin" remote rather than a separate setup step. Nothing configured (or
+    configured to somewhere that isn't GitHub) surfaces a clear error instead of a dead click; a
+    real GitHub remote turns the same entry into the exact commit's page.
+    Given the "feature-branches" fixture repository is opened
+    When I select the newest commit in the graph
+    And I open the command palette
+    And I pick "Open commit on GitHub" from the palette
+    Then an error notification reading "No GitHub remote configured for this repository" is displayed
+    When the repository's "origin" remote is set to "https://github.com/octocat/hello-world.git"
+    And I open the command palette
+    Then the palette offers "Open commit on GitHub"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-open-on-github"
+
+  @doc @screenshots
   Scenario: Filtering the graph with ⌘F
     ⌘F opens a small search bar floating over the graph and steps through the commits matching
     what you type — by subject, body, author name or email, or SHA — without hiding the rest of

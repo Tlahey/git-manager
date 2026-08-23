@@ -827,3 +827,21 @@ When(/^I choose "([^"]*)" in the save dialog$/, async (fileName: string) => {
   await $('[data-testid="e2e-folder-picker-input"]').setValue(join(tmpdir(), fileName))
   await $('[data-testid="e2e-folder-picker-confirm"]').click()
 })
+
+// ─── Settings: Board (auto-sync of .git-manager/board.json) ────────────────────────────────────
+
+When(/^I turn on board auto-sync$/, async () => {
+  await clickViaJs('settings-board-autosync-enabled')
+})
+
+Then(/^board auto-sync is on$/, async () => {
+  await expect($('[data-testid="settings-board-autosync-enabled"]')).toBeChecked()
+})
+
+When(/^I set the board auto-sync interval to "([^"]*)" minutes$/, async (minutes: string) => {
+  await fillControlledInput('settings-board-autosync-interval', minutes)
+})
+
+Then(/^the board auto-sync interval is "([^"]*)" minutes$/, async (minutes: string) => {
+  await expect($('[data-testid="settings-board-autosync-interval"]')).toHaveValue(minutes)
+})

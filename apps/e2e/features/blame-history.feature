@@ -52,6 +52,19 @@ Feature: File blame and history
     And a full-window screenshot is saved as "doc-blame-mode"
 
   @doc @screenshots
+  Scenario: The version bar names the release a commit first shipped in
+    A commit whose history reaches a tag gets it named in the version bar, right next to its SHA
+    — the oldest such tag, the first release the commit actually shipped in. A commit with no tag
+    reachable from it yet shows nothing here, since it hasn't shipped in anything.
+    Given the app language is English
+    And AI features are turned off
+    And the "remote-ahead" fixture repository is opened
+    And I open the diff for "app.txt" at "main"
+    Then the version bar names the release "v0.9"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-diff-version-tag"
+
+  @doc @screenshots
   Scenario: Selecting a history version shows that version in the diff
     Opening a file's history lists every commit that touched it, newest
     first, same as the graph. Selecting an older version swaps the diff to

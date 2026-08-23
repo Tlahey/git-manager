@@ -56,7 +56,10 @@ export function MultiCommitDetailsPanel({
   const count = nodes.length
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
+    <div
+      data-testid="multi-commit-panel"
+      className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl"
+    >
       {/* ── HEADER ── */}
       <div
         data-testid="multi-commit-panel-header"

@@ -231,6 +231,28 @@ When(/^I add the "([^"]*)" commit to the graph selection$/, async (ref: string) 
   )
 })
 
+// GraphSidePanelSlot swaps to MultiCommitDetailsPanel as soon as `selectedCommitOids` holds two or
+// more entries — the same store field the selection steps above poll — so no extra action is
+// needed to open it.
+Then(/^the multi-commit panel shows (\d+) commits? selected$/, async (count: string) => {
+  await expect($('[data-testid="multi-commit-panel-header"]')).toHaveText(
+    `${count} commits selected`,
+    { containing: true }
+  )
+})
+
+// `useCommitsMergedDiff` spans `baseOid^..headOid`, so a file every selected commit touched shows
+// up once here with its net change across the range, not once per commit — this is what proves the
+// panel merged the diffs rather than just listing the commits.
+Then(/^the multi-commit panel lists "([^"]*)" as a changed file$/, async (path: string) => {
+  const panel = $('[data-testid="multi-commit-panel"]')
+  await panel.waitForDisplayed({ timeout: 10000 })
+  await browser.waitUntil(async () => (await panel.getText()).includes(path), {
+    timeout: 10000,
+    timeoutMsg: `the multi-commit panel never listed "${path}" as a changed file`,
+  })
+})
+
 /**
  * A multi-commit patch file: `create_commits_patch` concatenates one `git format-patch -1` mbox
  * per commit, so the number of mbox "From <sha> ..." separators IS the number of commits covered —
@@ -310,6 +332,31 @@ When(/^I type the SHA of "([^"]*)" into the command palette$/, async (ref: strin
 // The lookup command's id is static (`lookup-focus-commit`) regardless of which SHA triggered it,
 // unlike the file-lookup group above — so, unlike a file result, this one never needs the
 // label-matching probe at all.
+// `get_commit_web_url` reads the remote straight off disk on every call (git_remote::list_remotes),
+// so this needs no reload for the palette's next open to see it — unlike settings, which live in a
+// store the app rehydrates from.
+When(
+  /^the repository's "([^"]*)" remote is set to "([^"]*)"$/,
+  async (name: string, url: string) => {
+    const repoPath = activeRepoPath()
+    execFileSync('git', ['-C', repoPath, 'remote', 'add', name, url])
+  }
+)
+
+// Same label-matching probe "I pick … from the palette" uses (first `<span>` of a
+// `command-item-*` row is the title), but presence-only: picking this one for real would call
+// `apiOpenUrl` and open a real browser, which a scenario here must never do.
+Then(/^the palette offers "([^"]*)"$/, async (label: string) => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute((wanted: string) => {
+        const items = Array.from(document.querySelectorAll('[data-testid^="command-item-"]'))
+        return items.some((el) => (el.querySelector('span')?.textContent ?? '').trim() === wanted)
+      }, label),
+    { timeout: 10000, timeoutMsg: `the palette never offered "${label}"` }
+  )
+})
+
 Then(/^the command palette offers to focus that commit$/, async () => {
   await $('[data-testid="command-item-lookup-focus-commit"]').waitForDisplayed({ timeout: 10000 })
 })

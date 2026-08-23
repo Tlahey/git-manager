@@ -89,3 +89,12 @@ Then(/^the diff shows the version SHA bar$/, async () => {
   await $('[data-testid="diff-version-bar"]').waitForDisplayed({ timeout: 10000 })
   await expect($('[data-testid="diff-version-sha"]')).toBeDisplayed()
 })
+
+// `get_tag_containing_commit` reads local tags straight off disk (no GitHub remote needed) — the
+// oldest one whose history reaches the commit on screen. Presence and its name only: clicking it
+// would call `apiOpenUrl` and open a real browser, which no scenario here should ever do.
+Then(/^the version bar names the release "([^"]*)"$/, async (tagName: string) => {
+  const badge = $('[data-testid="diff-version-tag"]')
+  await badge.waitForDisplayed({ timeout: 10000 })
+  await expect(badge).toHaveText(tagName, { containing: true })
+})

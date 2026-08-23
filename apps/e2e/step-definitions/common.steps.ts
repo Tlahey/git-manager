@@ -46,3 +46,11 @@ Then(/^no error notification is displayed$/, async () => {
     await browser.pause(200)
   }
 })
+
+// The positive counterpart of the assertion above, for the scenarios that expect a specific
+// error (e.g. a deliberately unconfigured remote) rather than none at all.
+Then(/^an error notification reading "([^"]*)" is displayed$/, async (message: string) => {
+  const toast = $('[data-testid="toast"][data-variant="error"]')
+  await toast.waitForDisplayed({ timeout: 10000 })
+  await expect(toast).toHaveText(message, { containing: true })
+})

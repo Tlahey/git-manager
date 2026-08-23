@@ -211,6 +211,7 @@ export const DOC_SECTIONS: DocSection[] = [
       'settings-integrations',
       'settings-tools',
       'settings-repository',
+      'settings-board',
     ],
   },
   {
