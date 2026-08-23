@@ -8,10 +8,16 @@ import {
   type FakeAiServerHandle,
 } from './support/fakeAiServer.ts'
 import {
+  startFakeGithubServer,
+  SUITE_WIDE_FAKE_GITHUB_PORT,
+  type FakeGithubServerHandle,
+} from './support/fakeGithubServer.ts'
+import {
   useIsolatedHome,
   isolatedAppBinary,
   disableAppConfigFile,
   disableKeychain,
+  redirectGithubApi,
   clearIsolatedWebKitStore,
 } from './support/isolatedAppState.js'
 import { installFakePackageManager } from './support/fakePackageManager.js'
@@ -80,6 +86,7 @@ const visualService: Services.ServiceEntry = [
 // their own scripted responses (ai-generation.feature, daily-summary.feature) still start their
 // own per-scenario fake server on an ephemeral port, same as before.
 let suiteWideAiServer: FakeAiServerHandle | undefined
+let suiteWideGithubServer: FakeGithubServerHandle | undefined
 
 export const config: WebdriverIO.Config = {
   runner: 'local',
@@ -106,9 +113,16 @@ export const config: WebdriverIO.Config = {
     // Drop the previous run's per-scenario timings; workers append to it as they go.
     resetRunReport()
     suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })
+    // GitHub's base URL has no settings-based equivalent of the AI provider URL (see
+    // `services/github_api.rs`'s `e2e_redirect` and its own doc comment), so this has to be a fixed
+    // port set before the app is spawned rather than a per-scenario server — see
+    // fakeGithubServer.ts's own doc comment for the process-boundary reasoning.
+    suiteWideGithubServer = await startFakeGithubServer({ port: SUITE_WIDE_FAKE_GITHUB_PORT })
+    redirectGithubApi(suiteWideGithubServer.url)
   },
   onComplete: async function () {
     await suiteWideAiServer?.stop()
+    await suiteWideGithubServer?.stop()
     // Aggregates what the workers recorded into REPORT.md and prints the headline. See
     // support/runReport.ts for why it times scenarios itself instead of trusting result.duration.
     writeRunReport()

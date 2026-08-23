@@ -16,6 +16,7 @@ source and is what a PR is checked against.
 | [Panels & interaction](./2026-07-panels-interaction-refactor.md)              | Panel/menu/anchoring duplication                                   | All 14 actions done (2026-07-03)                              |
 | [Notification system](./2026-07-notification-system-refactor.md)              | Notification registry + tray and hide-on-close delivery            | Both parts done (2026-07-03)                                  |
 | [Code audit](./2026-08-code-audit.md)                                         | Full-repo mapping, risk zones and the god-file split that followed | Executed (2026-08-02) — a point-in-time artifact, not a spec  |
+| [e2e GitHub API mock mode](./2026-08-e2e-github-api-mock-mode.md)             | Mechanism choice for faking GitHub responses in e2e (issue #425)   | Implemented (2026-08) — all three issue #425 scenarios done   |
 
 ## Naming
 

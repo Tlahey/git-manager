@@ -62,3 +62,21 @@ Feature: Cleaning up finished branches in bulk
     Then the branch-remove-my-merged dialog reports nothing to remove
     And the interface has settled
     And a full-window screenshot is saved as "doc-branch-remove-my-merged"
+
+  @doc @screenshots @github-mock
+  Scenario: Removing only your own merged branches once an account is connected
+    With an account connected, "mine" is read from the merged pull request's real author, so the
+    same menu entry now finds and offers your own finished branch.
+    Given the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server has a merged pull request "99" on branch "finished/exporter" authored by "octocat" in "octocat/demo-repo"
+    And I reload the application
+    And the remote is fetched with prune
+    When I open the branch actions menu
+    And I pick "Remove my merged branches" from the branch actions menu
+    Then the branch-remove-merged dialog lists "finished/exporter" as removable
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-branch-remove-my-merged-connected"
+    When I confirm the branch-remove-merged dialog
+    Then the branch "finished/exporter" no longer exists in the repository
+    And no error notification is displayed

@@ -104,6 +104,21 @@ export function disableKeychain(): void {
 }
 
 /**
+ * Points every GitHub API call the app makes at a local fake server instead of the real
+ * `api.github.com` — the e2e-only redirect `services/github_api.rs`'s `e2e_redirect` performs after
+ * its own `guard_url` has validated the frontend's request, so this changes nothing about *what* the
+ * app asks for, only where the answer comes from. See
+ * `docs/architecture/2026-08-e2e-github-api-mock-mode.md` for why this is a Rust-side env var rather
+ * than a repointable setting the way the AI provider URL is.
+ *
+ * Must be set before the app process is spawned, same as {@link disableKeychain} — the app reads it
+ * per-request, but only ever inherits it from the environment it was launched in.
+ */
+export function redirectGithubApi(url: string): void {
+  process.env.GIT_MANAGER_GITHUB_API_BASE_URL = url
+}
+
+/**
  * Runs the suite against a copy of the built binary under a different name, and returns its path.
  *
  * This is what isolates **localStorage** — every persisted zustand slice: the theme, saved

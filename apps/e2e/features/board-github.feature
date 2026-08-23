@@ -29,13 +29,12 @@ Feature: Backed by GitHub Issues
     And a full-window screenshot is saved as "doc-board-github"
     And no error notification is displayed
 
-  # Screenshot only: browsing and picking from the repository's real open issues, and the write
-  # that follows (`useCardIssueTracking.addIssueToBoard`), both need a real connected GitHub
-  # account — the one thing this suite cannot fake (see command-mocking.feature's own note on
-  # `github_api_request` calls the app's own click triggers, which `browser.tauri.mock` can't
-  # intercept, and the suite's deliberate avoidance of hitting the real, anonymous GitHub API).
-  # This documents that the entry point exists without exercising what is behind it.
-  @doc @screenshots
+  # Picking a real open issue and confirming it now runs the actual `useCardIssueTracking.
+  # addIssueToBoard` write, via the e2e GitHub API mock mode (issue #425,
+  # `docs/architecture/2026-08-e2e-github-api-mock-mode.md`) rather than the `mockGitHub` fixture
+  # double `useBoardBackends.ts` otherwise falls back to for an account-less repo — this scenario
+  # connects a (fake) account specifically so it exercises the real remote board backend.
+  @doc @screenshots @github-mock
   Scenario: Opening the dialog to add an existing GitHub issue to the board
     "Add issue", next to New Card on a GitHub board's toolbar, searches the repository's open
     issues — or accepts a pasted issue number or URL for one you already know, including a closed
@@ -43,9 +42,17 @@ Feature: Backed by GitHub Issues
     creating a new one.
     Given the app language is English
     And the "feature-branches" fixture repository is opened
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server has an open issue "7" titled "Investigate login timeout" in "octocat/demo-repo"
+    And I reload the application
     When I open the board
     And I create a GitHub board named "Support triage" with the card prefix "SUP"
     And I click the add-issue button
     Then the add-issue dialog is shown
     And the interface has settled
     And a full-window screenshot is saved as "doc-board-add-issue"
+    When I select the add-issue result "7"
+    And I confirm the add-issue selection
+    Then the card "Investigate login timeout" is shown on the board
+    And no error notification is displayed
