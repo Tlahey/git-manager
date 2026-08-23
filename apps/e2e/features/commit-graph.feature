@@ -27,6 +27,21 @@ Feature: The commit graph
     And a full-window screenshot is saved as "doc-commit-graph"
 
   @doc @screenshots
+  Scenario: Hiding a column from the graph header
+    Right-clicking the header opens a menu of every column, a checkmark against the ones
+    currently shown — hiding one is a click, and bringing it back is the same click again. At
+    least one column always stays visible, so the header can never disappear entirely.
+    When I right-click the graph header
+    Then the column menu is shown
+    When I hide the "sha" column
+    Then the graph header does not show the "SHA" column
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-graph-columns"
+    When I right-click the graph header
+    And I show the "sha" column
+    Then the graph header shows the "SHA" column
+
+  @doc @screenshots
   Scenario: Inspect a single commit
     Selecting a row opens the commit details panel next to the graph: the full
     message, the author and committer, the parents, and the list of files the

@@ -684,3 +684,49 @@ Then(/^the file "([^"]*)" exists in the working tree$/, async (filePath: string)
     timeoutMsg: `expected "${filePath}" to exist in the working tree at ${repoPath}`,
   })
 })
+
+// ─── Graph header: the column-visibility context menu ───────────────────────────────────────────
+
+// HeaderColumnsMenu.tsx is `@git-manager/ui`'s Radix ContextMenu — a DOM-rendered popup, unlike the
+// graph ROW's context menu (a real native OS menu via nativeMenu.api.ts, which WebDriver genuinely
+// cannot open, see the multi-select/compare-parent comments above). Radix opens on the browser's
+// own `contextmenu` event, so a synthetic one dispatched at the trigger's own position is enough —
+// no coordinates a real right-click wouldn't also produce.
+When(/^I right-click the graph header$/, async () => {
+  await browser.execute(() => {
+    const el = document.querySelector('[data-testid="graph-header-row"]')
+    if (!el) throw new Error('no graph-header-row element')
+    const rect = el.getBoundingClientRect()
+    el.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: rect.left + 10,
+        clientY: rect.top + rect.height / 2,
+      })
+    )
+  })
+  await $('[data-testid="graph-columns-menu"]').waitForDisplayed({ timeout: 10000 })
+})
+
+Then(/^the column menu is shown$/, async () => {
+  await expect($('[data-testid="graph-columns-menu"]')).toBeDisplayed()
+})
+
+When(/^I (?:hide|show) the "([^"]*)" column$/, async (key: string) => {
+  await $(`[data-testid="graph-columns-menu-item-${key}"]`).click()
+})
+
+// The label, not the column key: what a reader sees in the header is "SHA"/"Author"/…, and this is
+// the assertion a `@doc` scenario reads.
+Then(/^the graph header does not show the "([^"]*)" column$/, async (label: string) => {
+  await $(`[data-testid="graph-header-row"]`).$(`span*=${label}`).waitForExist({
+    timeout: 10000,
+    reverse: true,
+  })
+})
+
+Then(/^the graph header shows the "([^"]*)" column$/, async (label: string) => {
+  await $(`[data-testid="graph-header-row"]`).$(`span*=${label}`).waitForExist({ timeout: 10000 })
+})
