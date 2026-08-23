@@ -416,6 +416,14 @@ When(/^I reset the terminal colors$/, async () => {
  */
 When(/^I select the "([^"]*)" application icon$/, async (iconId: string) => {
   await clickViaJs(`app-icon-card-${iconId}`)
+  // The list is its own scroll container (`app-icon-list`, `max-h-[300px] overflow-y-auto`) below
+  // a tall theme grid, so a doc screenshot taken right after this step would still show whatever
+  // was on screen before the click — same reason setColorInput scrolls its own input into view.
+  await browser.execute((id: string) => {
+    document
+      .querySelector(`[data-testid="app-icon-card-${id}"]`)
+      ?.scrollIntoView({ block: 'center' })
+  }, iconId)
 })
 
 // The radio's checked state, not the card's ring: the ring is a class, and a class can be applied by

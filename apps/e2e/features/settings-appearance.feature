@@ -26,17 +26,20 @@ Feature: Appearance
     Then the active theme is "dark"
     And a full-window screenshot is saved as "doc-settings-theme"
 
-  # The icon the app wears in the Dock is a setting like any other, and the only part of it this
-  # suite can see is the setting: WebDriver captures the webview, never the Dock. So this asserts the
-  # picked card is the selected one and that it still is after a reload — the same shape as the row
-  # height and the theme — and puts the default back at the end, since the choice outlives the
-  # scenario the way the theme's would.
+  @doc @screenshots
   Scenario: Choosing another application icon keeps it across a reload
-    Given the git-manager application is running
+    Eight icon styles are available for the Dock, picked from the same list this screenshot shows —
+    the choice is a setting like any other, so it is still applied the next time the app opens,
+    reload or restart included. WebDriver only ever sees the webview, never the Dock itself, so this
+    page shows the picker rather than the Dock icon it controls.
+    Given the app language is English
+    And the git-manager application is running
     When I open the settings
     And I open the "ui_customization" settings tab
     And I select the "line" application icon
     Then the "line" application icon is selected
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-app-icon"
     When I reload the application
     And I open the settings
     And I open the "ui_customization" settings tab
