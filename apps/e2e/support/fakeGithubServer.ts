@@ -280,6 +280,29 @@ export async function startFakeGithubServer(
         return
       }
 
+      // GET /search/issues?q=... — backs the Launchpad's cross-repo issue list
+      // (`fetchGitHubRepoIssues`) and, for `is:pr`, its PR-list equivalent. Both narrow with a
+      // `repo:owner/repo` qualifier this suite always includes, so that's the only part parsed;
+      // `items` need a `repository_url` because `rawToMockIssue`/`rawToMockPR` derive `fullName`
+      // from it for a search result, unlike the single-repo REST endpoints below.
+      if (req.method === 'GET' && pathname === '/search/issues') {
+        const q = url.searchParams.get('q') ?? ''
+        const repoQualifier = /repo:(\S+)/.exec(q)?.[1]
+        const isPr = /\bis:pr\b/.test(q)
+        const repoFixturesForSearch = repoQualifier ? fixtures.repos[repoQualifier] : undefined
+        const pool = isPr
+          ? (repoFixturesForSearch?.openPulls ?? [])
+          : (repoFixturesForSearch?.openIssues ?? [])
+        const items = pool.map((item) => ({
+          ...item,
+          repository_url: repoQualifier
+            ? `https://api.github.com/repos/${repoQualifier}`
+            : undefined,
+        }))
+        sendJson(res, 200, { items })
+        return
+      }
+
       const repoMatch = matchRepoPath(pathname)
       if (!repoMatch) {
         notFound(res)
@@ -333,6 +356,19 @@ export async function startFakeGithubServer(
       // card list from, so a label added below is visible to the very next call of this same route.
       if (req.method === 'GET' && rest.length === 1 && rest[0] === 'issues') {
         sendJson(res, 200, repoFixtures?.openIssues ?? [])
+        return
+      }
+
+      // GET /repos/:owner/:repo/issues/:number — the single-issue detail endpoint (`useIssueDetail`,
+      // "Mirrors usePrDetail"), distinct from the list above.
+      if (req.method === 'GET' && rest.length === 2 && rest[0] === 'issues') {
+        const number = Number(rest[1])
+        const issue = repoFixtures?.openIssues?.find((i) => i.number === number)
+        if (!issue) {
+          notFound(res)
+          return
+        }
+        sendJson(res, 200, issue)
         return
       }
 

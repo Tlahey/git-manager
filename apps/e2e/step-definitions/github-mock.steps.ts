@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process'
+import { basename } from 'node:path'
 import { browser } from '@wdio/globals'
 import { Given, After } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
 import { seedSettings, forceLiveSettings } from '../support/settings'
+import { navigateAndSettle } from '../support/navigation'
 import { configureFakeGithubFixtures, resetFakeGithubFixtures } from '../support/fakeGithubServer'
 import type { FakePr, FakeIssue } from '../support/fakeGithubServer'
 
@@ -31,6 +33,52 @@ Given(/^the repository has a GitHub remote "([^"]*)"$/, async (ownerRepo: string
     'gh-mock',
     `https://github.com/${ownerRepo}.git`,
   ])
+})
+
+/**
+ * Registers the already-opened fixture repo in the dashboard's saved-projects list
+ * (`git-manager-repos`'s `savedRepos`) — a dev fixture is deliberately kept out of that persisted
+ * list (it must never leak into a real `pnpm dev` session), but `useGitHubRepoIssues` (the
+ * Launchpad's cross-repo issue list) only fetches for saved repos, so a scenario that needs a real
+ * GitHub round trip there has to add itself explicitly.
+ *
+ * Same retry-and-verify shape as `daily-summary.steps.ts`'s equivalent seed, for the same reason:
+ * the previous reload's `apiOpenRepo` resolution can still be in flight when this write lands, and
+ * its own `setRepoCache` call makes zustand-persist rewrite the whole `git-manager-repos` snapshot
+ * from memory — silently clobbering a `savedRepos` seed written a moment too early.
+ */
+Given(/^the repository is a saved project$/, async () => {
+  const repoPath = getActiveRepoPath()
+  const name = basename(repoPath)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const stamp = `saved-project-${Date.now()}-${attempt}`
+    const origin = await browser.execute(() => window.location.origin)
+    await browser.execute(
+      (path: string, repoName: string) => {
+        localStorage.setItem(
+          'git-manager-repos',
+          JSON.stringify({
+            state: { savedRepos: [{ path, name: repoName, pinned: false }], discoveredRepos: [] },
+            version: 0,
+          })
+        )
+      },
+      repoPath,
+      name
+    )
+    await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
+    const seedSurvived = await browser.execute((path: string) => {
+      try {
+        const raw = localStorage.getItem('git-manager-repos')
+        const saved = raw ? JSON.parse(raw)?.state?.savedRepos : null
+        return Array.isArray(saved) && saved.some((r: { path?: string }) => r?.path === path)
+      } catch {
+        return false
+      }
+    }, repoPath)
+    if (seedSurvived) return
+  }
+  throw new Error('Seeding the repository into git-manager-repos was clobbered on every attempt')
 })
 
 /**

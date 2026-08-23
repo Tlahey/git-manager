@@ -18,8 +18,20 @@ Feature: Issue triage
     And the interface has settled
     And a full-window screenshot is saved as "doc-launchpad-issues"
 
-  # Opening an issue's detail panel is documented in the content plan as blocked, not written here:
-  # IssueDetailCenter's useIssueDetail is a straight copy of usePrDetail (its own doc comment says
-  # "Mirrors usePrDetail") — it only fetches with a real GitHub token, no hasToken-false fallback,
-  # so the panel is left on "Loading issue…" forever. Same limitation as launchpad-prs.feature's
-  # blocked sub-part and pr-graph.feature.
+  @doc @screenshots @github-mock
+  Scenario: Opening an issue's detail panel
+    Selecting an issue opens the same conversation view a pull request does: the description,
+    comments, and a sidebar for status, assignees, labels and a linked local branch.
+    Given the "feature-branches" fixture repository is opened
+    And the repository is a saved project
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server has an open issue "7" titled "Investigate login timeout" in "octocat/demo-repo"
+    When I open the launchpad
+    And I select the "issues" launchpad tab
+    And I open the issue "7" in "octocat/demo-repo"
+    Then the issue detail panel shows the title "Investigate login timeout"
+    And the issue meta sidebar is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-launchpad-issue-detail"
+    And no error notification is displayed
