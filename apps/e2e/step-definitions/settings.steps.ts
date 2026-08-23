@@ -574,6 +574,16 @@ Then(/^the sponsor button is shown$/, async () => {
   await $('[data-testid="support-sponsor-button"]').waitForDisplayed({ timeout: 10000 })
 })
 
+// Presence only, never a click: "Check for updates" hits the real `tauri-plugin-updater` endpoint
+// (a genuine GitHub releases URL, see tauri.conf.json) with no e2e override, and whether it finds
+// an update depends on what's actually published there right now — not something a regression
+// scenario can pin down. `sidebar-updater-version` alone is enough to prove the app read its own
+// bundled version (apiGetAppVersion) and rendered it, which needs no network at all.
+Then(/^the current app version is shown$/, async () => {
+  await $('[data-testid="sidebar-updater-version"]').waitForDisplayed({ timeout: 10000 })
+  await $('[data-testid="sidebar-updater-check"]').waitForDisplayed({ timeout: 10000 })
+})
+
 // "Unreleased" is always present (CHANGELOG.md's own convention, see ChangelogSection.tsx) —
 // asserting its testid rather than a specific version number keeps this stable across releases.
 Then(/^the changelog shows at least one release entry$/, async () => {

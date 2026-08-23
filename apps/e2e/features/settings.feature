@@ -132,6 +132,19 @@ Feature: General
     And a full-window screenshot is saved as "doc-settings-support"
 
   @doc @screenshots
+  Scenario: The current version and an update check sit below every settings tab
+    Pinned at the very bottom of the side panel, below every section and the Support link, is the
+    app's own version and a button to check for a newer one — reachable whichever tab is open,
+    since it's the one thing that never depends on what you're configuring. An update, once found,
+    downloads and installs in place, ending in a one-click restart.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    Then the current app version is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-updater"
+
+  @doc @screenshots
   Scenario: The changelog tab lists recent release entries
     Settings → Changelog renders the project's own release notes — the same file published with
     every release — so what changed and when is one click away, without leaving the app.
