@@ -124,3 +124,20 @@ Feature: Your projects at a glance
     And a full-window screenshot is saved as "doc-dashboard-bulk-pull"
     Then the "remote-behind" project's HEAD commit subject contains "teammate's follow-up commit"
     And no error notification is displayed
+
+  @doc @screenshots
+  Scenario: The dashboard before any repository has been opened
+    Before you've opened or scanned for a single repository, the dashboard is one screen rather
+    than four empty sections — a short explanation and the same "Open repository" action the
+    toolbar itself offers, with nothing to search, collapse or filter yet.
+    Given the app language is English
+    And AI features are turned off
+    And no repositories are known to the dashboard
+    When I open the dashboard
+    Then the dashboard shows its empty state
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-empty"
+    # Restores a populated dashboard: the shared app instance carries this state into whatever
+    # scenario — in this file or the next spec file the run reaches — opens the dashboard next
+    # without seeding its own repositories first.
+    When the "showcase" and "feature-branches" fixture repositories are listed in the dashboard

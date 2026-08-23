@@ -156,3 +156,25 @@ Then(/^the notification settings offer a switch per event$/, async () => {
   const toggles = await $$('[data-testid^="setting-notifyOn"]')
   expect(toggles.length).toBeGreaterThan(0)
 })
+
+/** "push" → `notifyOnPush`, "review-requested" → `notifyOnReviewRequested` — matches
+ *  NotificationSection.tsx's `EVENT_TOGGLES` keys (`notifyOn<PascalCase event name>`). */
+function eventToggleTestId(event: string): string {
+  const pascal = event
+    .split('-')
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join('')
+  return `setting-notifyOn${pascal}`
+}
+
+// The checkbox's own testid isn't unique per row (Checkbox carries none), so the click lands on
+// the enclosing `<label>` — same clickable-surface reasoning as the row-height radios and the app
+// icon cards elsewhere in this suite.
+When(/^I turn off the "([^"]*)" notification event$/, async (event: string) => {
+  await $(`[data-testid="${eventToggleTestId(event)}"]`).click()
+})
+
+Then(/^the "([^"]*)" notification event is off$/, async (event: string) => {
+  const checkbox = $(`[data-testid="${eventToggleTestId(event)}"] input[type="checkbox"]`)
+  await expect(checkbox).not.toBeChecked()
+})

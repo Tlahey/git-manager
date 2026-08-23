@@ -59,6 +59,23 @@ Given(
   }
 )
 
+// The empty state (`sections.totalKnownCount === 0`) needs BOTH `savedRepos` and `discoveredRepos`
+// gone — either one alone still leaves a repo the dashboard knows about. Open tabs are left
+// untouched: `totalKnownCount` never counts them, so a stray one from an earlier scenario can't
+// leak into this state visually (DashboardPage.tsx renders the empty state in place of every
+// section, `open` included, whenever this is true).
+Given(/^no repositories are known to the dashboard$/, async () => {
+  const stamp = `dashboard-empty-${Date.now()}`
+  const origin = await browser.execute(() => window.location.origin)
+  await browser.execute(() => {
+    localStorage.setItem(
+      'git-manager-repos',
+      JSON.stringify({ state: { savedRepos: [], discoveredRepos: [] }, version: 0 })
+    )
+  })
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
+})
+
 // "When I open the dashboard" is shared — defined once in daily-summary.steps.ts.
 
 When(/^I pin the "([^"]*)" project$/, async (name: string) => {
@@ -222,6 +239,10 @@ Then(
     )
   }
 )
+
+Then(/^the dashboard shows its empty state$/, async () => {
+  await $('[data-testid="dashboard-empty-state"]').waitForDisplayed({ timeout: 10000 })
+})
 
 Then(/^the "([^"]*)" dashboard section is not colored$/, async (sectionId: string) => {
   await expect($(`[data-testid="dashboard-section-header-${sectionId}"]`)).toHaveAttribute(

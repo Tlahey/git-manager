@@ -84,6 +84,8 @@ Feature: Notifications
     And the interface has settled
     Then the notification display options offer the notch card and the macOS banner
     And the notification settings offer a switch per event
+    When I turn off the "push" notification event
+    Then the "push" notification event is off
     And a full-window screenshot is saved as "doc-notification-delivery"
 
   # ── Why there is no screenshot OF the notch card ─────────────────────────────
