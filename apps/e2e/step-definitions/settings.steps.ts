@@ -515,6 +515,45 @@ When(/^I go back to the GitHub login options$/, async () => {
   await $('[data-testid="github-back-to-choice-button"]').click()
 })
 
+/**
+ * Seeds a connected GitHub account directly rather than driving a real login: `browser.tauri.mock`
+ * cannot intercept the app's own `invoke` calls on this Tauri version (see
+ * command-mocking.feature's own note), and a genuine device-flow/PAT login needs a human or a real
+ * token — neither available here. `settings.github` holds only the account's public half (the
+ * token would be in the keychain, which this account was never actually logged into), which is all
+ * the account list and the Disconnect button read.
+ */
+// Takes effect on the next load, same as every other seedSettings call — pair with
+// "I reload the application" right after, as the feature file does.
+Given(/^a GitHub account "([^"]*)" is connected$/, async (login: string) => {
+  await seedSettings({
+    github: {
+      accounts: [
+        {
+          id: login,
+          user: { login, name: null, email: null, avatarUrl: 'https://example.invalid/avatar.png' },
+        },
+      ],
+      activeAccountId: login,
+    },
+  })
+})
+
+Then(/^the GitHub account "([^"]*)" is shown$/, async (login: string) => {
+  await $(`[data-testid="github-account-item-${login}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I disconnect the GitHub account "([^"]*)"$/, async (login: string) => {
+  await $(`[data-testid="github-account-remove-${login}"]`).click()
+})
+
+Then(/^the GitHub account "([^"]*)" is no longer connected$/, async (login: string) => {
+  await $(`[data-testid="github-account-item-${login}"]`).waitForExist({
+    timeout: 10000,
+    reverse: true,
+  })
+})
+
 When(/^I search settings for "([^"]*)"$/, async (query: string) => {
   const input = $('[data-testid="settings-search"]')
   await input.waitForDisplayed({ timeout: 10000 })

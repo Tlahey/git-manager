@@ -10,37 +10,52 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
 const SCENARIOS_DIR = join(__dirname, '../../../tools/git-fixtures/scenarios')
 
-// Both repos are seeded into `savedRepos` in one write + one reload, rather than one step per
-// repo: two separate seed-then-reload calls would race the same lingering-page zustand-persist
-// clobber daily-summary.steps.ts's version of this works around with a retry loop — a single seed
-// sidesteps the race instead of retrying around it.
+/**
+ * Builds both fixtures, seeds them into `savedRepos` in one write, then reloads.
+ *
+ * One write for both repos rather than one step per repo: two separate seed-then-reload calls
+ * would race the same lingering-page zustand-persist clobber daily-summary.steps.ts's version of
+ * this works around with a retry loop — a single seed sidesteps the race instead of retrying
+ * around it.
+ */
+async function seedDashboardRepos(names: [string, string], pinned: boolean) {
+  for (const name of names) {
+    execFileSync('bash', [join(SCENARIOS_DIR, `${name}.sh`)], { stdio: 'inherit' })
+  }
+  const repos = names.map((name) => ({ path: join(FIXTURE_ROOT, name), name, pinned }))
+
+  const stamp = `dashboard-seed-${Date.now()}`
+  // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
+  // `location.href` assignment either tears the context down before the driver's response is
+  // sent (hanging the await for cucumber's 60s step timeout) or, deferred, fires mid-scenario
+  // later. The stamped wait below then proves the reload actually committed.
+  const origin = await browser.execute(() => window.location.origin)
+  await browser.execute((reposJson: string) => {
+    localStorage.setItem(
+      'git-manager-repos',
+      JSON.stringify({
+        state: { savedRepos: JSON.parse(reposJson), discoveredRepos: [] },
+        version: 0,
+      })
+    )
+  }, JSON.stringify(repos))
+  await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
+}
+
 Given(
   /^the "([^"]*)" and "([^"]*)" fixture repositories are listed in the dashboard$/,
   async (first: string, second: string) => {
-    execFileSync('bash', [join(SCENARIOS_DIR, `${first}.sh`)], { stdio: 'inherit' })
-    execFileSync('bash', [join(SCENARIOS_DIR, `${second}.sh`)], { stdio: 'inherit' })
-    const repos = [first, second].map((name) => ({
-      path: join(FIXTURE_ROOT, name),
-      name,
-      pinned: false,
-    }))
+    await seedDashboardRepos([first, second], false)
+  }
+)
 
-    const stamp = `dashboard-seed-${Date.now()}`
-    // Seed in one execute, then navigate through WebDriver (repo.steps.ts's pattern): an in-page
-    // `location.href` assignment either tears the context down before the driver's response is
-    // sent (hanging the await for cucumber's 60s step timeout) or, deferred, fires mid-scenario
-    // later. The stamped wait below then proves the reload actually committed.
-    const origin = await browser.execute(() => window.location.origin)
-    await browser.execute((reposJson: string) => {
-      localStorage.setItem(
-        'git-manager-repos',
-        JSON.stringify({
-          state: { savedRepos: JSON.parse(reposJson), discoveredRepos: [] },
-          version: 0,
-        })
-      )
-    }, JSON.stringify(repos))
-    await navigateAndSettle(`${origin}/?e2e=${stamp}`, stamp)
+// Pinned rather than merely listed: only Favorites, Recent and Open get the section-wide
+// Fetch/Pull/editor toolbar (RepoSectionHeader's `showRepoTools`) — "All repositories" deliberately
+// doesn't, so a stray click there can't fetch or pull dozens of repos at once (useSectionActions.ts).
+Given(
+  /^the "([^"]*)" and "([^"]*)" fixture repositories are pinned on the dashboard$/,
+  async (first: string, second: string) => {
+    await seedDashboardRepos([first, second], true)
   }
 )
 
@@ -214,3 +229,53 @@ Then(/^the "([^"]*)" dashboard section is not colored$/, async (sectionId: strin
     'none'
   )
 })
+
+// ─── Section-wide bulk actions: checkbox selection, Fetch/Pull over the checked rows ────────────
+
+When(
+  /^I select the "([^"]*)" and "([^"]*)" projects on the dashboard$/,
+  async (first: string, second: string) => {
+    for (const name of [first, second]) {
+      await repoRow(name).$('[data-testid="repo-row-checkbox"]').click()
+    }
+  }
+)
+
+Then(/^the favorites section reports (\d+) selected$/, async (count: string) => {
+  await expect($('[data-testid="dashboard-section-selected-count-favorites"]')).toHaveText(
+    `${count} selected`
+  )
+})
+
+// The trigger is a Radix `DropdownMenuTrigger`, which opens on `pointerdown` — a driver `.click()`
+// leaves it shut (see `openMenuViaJs`'s own doc comment).
+When(/^I pull the favorites section with the "([^"]*)" strategy$/, async (strategy: string) => {
+  await openMenuViaJs('dashboard-section-pull-favorites')
+  await $(`[data-testid="dashboard-section-pull-favorites-${strategy}"]`).click()
+  // Sequential per useBulkRepoAction.ts, so this can take a couple of seconds for two repos —
+  // wait for the run to leave its busy state rather than the fixed settle timeout below.
+  await $('[data-testid="dashboard-section-progress-favorites"]').waitForExist({
+    timeout: 15000,
+    reverse: true,
+  })
+})
+
+Then(
+  /^the "([^"]*)" project's HEAD commit subject contains "([^"]*)"$/,
+  async (name: string, expected: string) => {
+    const subject = execFileSync('git', [
+      '-C',
+      join(FIXTURE_ROOT, name),
+      'log',
+      '-1',
+      '--pretty=%s',
+    ])
+      .toString()
+      .trim()
+    if (!subject.includes(expected)) {
+      throw new Error(
+        `expected "${name}"'s HEAD commit subject to contain "${expected}", got "${subject}"`
+      )
+    }
+  }
+)
