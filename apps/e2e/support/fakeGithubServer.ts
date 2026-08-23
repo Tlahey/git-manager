@@ -280,6 +280,32 @@ export async function startFakeGithubServer(
         return
       }
 
+      // GET /search/issues?q=... — backs the Launchpad's cross-repo issue list
+      // (`fetchGitHubRepoIssues`, one `repo:owner/repo` qualifier per saved project the search
+      // is:issue+repo:a/b+repo:c/d — decoded to space-separated by URLSearchParams) and, for
+      // `is:pr`, its PR-list equivalent. Every matching repo's fixtures are pooled, not just the
+      // first qualifier, so a scenario that saves more than one project gets results from all of
+      // them, matching the real "every repo you've added" behavior. `items` need a
+      // `repository_url` because `rawToMockIssue`/`rawToMockPR` derive `fullName` from it for a
+      // search result, unlike the single-repo REST endpoints below.
+      if (req.method === 'GET' && pathname === '/search/issues') {
+        const q = url.searchParams.get('q') ?? ''
+        const repoQualifiers = [...q.matchAll(/repo:(\S+)/g)].map((m) => m[1])
+        const isPr = /\bis:pr\b/.test(q)
+        const items = repoQualifiers.flatMap((repoKey) => {
+          const repoFixturesForSearch = fixtures.repos[repoKey]
+          const pool = isPr
+            ? (repoFixturesForSearch?.openPulls ?? [])
+            : (repoFixturesForSearch?.openIssues ?? [])
+          return pool.map((item) => ({
+            ...item,
+            repository_url: `https://api.github.com/repos/${repoKey}`,
+          }))
+        })
+        sendJson(res, 200, { items })
+        return
+      }
+
       const repoMatch = matchRepoPath(pathname)
       if (!repoMatch) {
         notFound(res)
@@ -333,6 +359,19 @@ export async function startFakeGithubServer(
       // card list from, so a label added below is visible to the very next call of this same route.
       if (req.method === 'GET' && rest.length === 1 && rest[0] === 'issues') {
         sendJson(res, 200, repoFixtures?.openIssues ?? [])
+        return
+      }
+
+      // GET /repos/:owner/:repo/issues/:number — the single-issue detail endpoint (`useIssueDetail`,
+      // "Mirrors usePrDetail"), distinct from the list above.
+      if (req.method === 'GET' && rest.length === 2 && rest[0] === 'issues') {
+        const number = Number(rest[1])
+        const issue = repoFixtures?.openIssues?.find((i) => i.number === number)
+        if (!issue) {
+          notFound(res)
+          return
+        }
+        sendJson(res, 200, issue)
         return
       }
 

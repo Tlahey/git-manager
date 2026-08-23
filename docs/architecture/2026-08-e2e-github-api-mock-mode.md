@@ -87,6 +87,16 @@ Two mocking mechanisms were considered at that same choke point:
   `@github-mock` — its own `After` hook resets both the server's fixtures and the seeded account,
   since this suite shares one app window across every feature and a leftover account silently
   changes what unrelated scenarios (e.g. the Launchpad's demo-data fallback) see.
+- **First reuse, confirming the infra generalizes**: `apps/e2e/features/launchpad-issues.feature`'s
+  "Opening an issue's detail panel" — `IssueDetailCenter`/`useIssueDetail` are, per their own doc
+  comment, "a straight copy of `usePrDetail`", so this needed only two more REST routes
+  (`GET /search/issues`, `GET /repos/:owner/:repo/issues/:number`) added to `fakeGithubServer.ts`,
+  no changes to the redirect or the account-seeding steps. The one new wrinkle: the Launchpad's
+  cross-repo issue list (`useGitHubRepoIssues`) only fetches for repos in the dashboard's saved-
+  projects list, which a dev fixture is deliberately kept out of — a new
+  `Given the repository is a saved project` step seeds `git-manager-repos` directly, reusing
+  `daily-summary.steps.ts`'s retry-and-verify shape for the same reason it exists there (a lingering
+  page's own `setRepoCache` can otherwise clobber the seed).
 
 ## Alternatives rejected
 
