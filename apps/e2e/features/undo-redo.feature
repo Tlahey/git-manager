@@ -32,6 +32,27 @@ Feature: Undo and redo a branch checkout
     Then the branch indicator reads "feature/login"
     And a full-window screenshot is saved as "doc-undo-redo"
 
+  @doc @screenshots
+  Scenario: Scrubbing the timeline previews an earlier state before committing to it
+    The clock icon next to Undo/Redo opens a scrubber over the whole history of undoable actions,
+    not just the last one: dragging it back — or picking a step from the list beside it — previews
+    that point read-only, with a hint saying exactly what Validate would apply from here. Nothing
+    in the repository actually changes until that click.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
+    Then the branch indicator reads "main"
+    When I check out the "feature/login" branch
+    Then the branch indicator reads "feature/login"
+    When I open the undo timeline
+    Then the timeline scrubber is shown
+    When I scrub the timeline back one step
+    Then the timeline hint reads "undo 1"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-timeline-scrubber"
+    When I validate the timeline
+    Then the branch indicator reads "main"
+
   Scenario: Undoing a reset restores HEAD and redo re-applies it
     Given the "rollback-history" fixture repository is opened
     When I select the "HEAD~2" commit in the graph
