@@ -12,6 +12,7 @@ import {
   isolatedAppBinary,
   disableAppConfigFile,
   disableKeychain,
+  clearIsolatedWebKitStore,
 } from './support/isolatedAppState.js'
 import { installFakePackageManager } from './support/fakePackageManager.js'
 import {
@@ -83,9 +84,14 @@ let suiteWideAiServer: FakeAiServerHandle | undefined
 export const config: WebdriverIO.Config = {
   runner: 'local',
   onPrepare: async function () {
-    // Before anything can touch the app's storage: own $HOME for the Rust-side state (activity log,
-    // AI logs, summaries, user themes). Pairs with the renamed binary above, which covers
-    // localStorage. See support/isolatedAppState.ts.
+    // First, and before $HOME is touched: `clearIsolatedWebKitStore` resolves the *real* home
+    // directory via `os.homedir()`, which itself reads `$HOME` on POSIX — calling it after
+    // `useIsolatedHome()` below would have it resolve the scratch home instead and silently clear
+    // nothing. See its own doc comment for what it clears and why.
+    clearIsolatedWebKitStore()
+    // Before anything else can touch the app's storage: own $HOME for the Rust-side state
+    // (activity log, AI logs, summaries, user themes). Pairs with the renamed binary above, which
+    // covers localStorage. See support/isolatedAppState.ts.
     useIsolatedHome()
     // …and no configuration file at all, so the suite's localStorage seeds are the app's only
     // persisted state and no run can read or write the developer's `~/.git-manager/settings.json`.

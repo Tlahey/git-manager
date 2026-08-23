@@ -46,10 +46,6 @@ Feature: General
     And I open the "general" settings tab
     And I set the auto-fetch interval to "5" minutes
     And I turn off automatic pruning on auto-fetch
-    # The checkbox click writes through a raw DOM event (clickViaJs), with no wait built in the way
-    # a controlled text input's own settle has — reloading right after it raced the persisted-state
-    # write often enough to be a real, if intermittent, failure: settle before reloading.
-    And the interface has settled
     And I reload the application
     And I open the settings
     And I open the "general" settings tab

@@ -1,8 +1,25 @@
 import { symlinkSync, rmSync as rmFile, mkdirSync, rmSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, basename } from 'node:path'
+import { homedir } from 'node:os'
 
 /** Scratch home the whole run lives in, next to the git fixtures. */
 const E2E_HOME = '/tmp/git-manager-e2e-home'
+
+/** The process name {@link isolatedAppBinary} runs the suite under — see its own doc comment for
+ *  why WebKit keys its on-disk store off this rather than `$HOME` or the bundle identifier. */
+const ISOLATED_PROCESS_NAME = 'git-manager-e2e'
+
+/**
+ * The real, developer-machine home directory, captured at module load — before
+ * {@link useIsolatedHome} can overwrite `$HOME` for the rest of the run.
+ *
+ * `os.homedir()` itself reads `$HOME` on POSIX, so calling it *after* `useIsolatedHome()` (as
+ * {@link clearIsolatedWebKitStore} originally did) silently resolves the scratch home instead —
+ * the function then finds nothing to delete under it and does nothing, no error, no isolation.
+ * A module-level constant makes that mistake impossible to reintroduce by only reordering two
+ * calls in `wdio.conf.ts`.
+ */
+const REAL_HOME = homedir()
 
 /**
  * Gives the run its own `$HOME`, so everything the Rust side keys off it is isolated and starts
@@ -22,6 +39,32 @@ export function useIsolatedHome(): string {
   mkdirSync(E2E_HOME, { recursive: true })
   process.env.HOME = E2E_HOME
   return E2E_HOME
+}
+
+/**
+ * Clears WebKit's own on-disk store for the isolated e2e process, before it can carry state from
+ * one run into the next.
+ *
+ * {@link useIsolatedHome} resets `$HOME` and {@link isolatedAppBinary} runs the suite under a
+ * renamed process so it never touches the developer's real `~/Library/WebKit/git-manager` — but
+ * WebKit resolves that directory from the real macOS user profile, ignoring the `$HOME` env
+ * override, so wiping the scratch home does nothing for the isolated process's *own* store at
+ * `~/Library/WebKit/git-manager-e2e` (and its sibling in `~/Library/Caches`). Confirmed on disk:
+ * both survive across separate `wdio run` invocations, so a persisted boolean setting toggled in
+ * one run is still whatever that run left it as when the next one starts — which showed up as an
+ * alternating pass/fail on a settings checkbox assertion, because each run's own "turn it off"
+ * click was relative to the previous run's leftover value rather than a real default.
+ *
+ * Deletes only a path whose final segment is exactly {@link ISOLATED_PROCESS_NAME}, so a typo or a
+ * future refactor here can't reach for the developer's own `git-manager` (no `-e2e` suffix)
+ * entries sitting right next to these.
+ */
+export function clearIsolatedWebKitStore(): void {
+  for (const dir of [join(REAL_HOME, 'Library', 'WebKit'), join(REAL_HOME, 'Library', 'Caches')]) {
+    const target = join(dir, ISOLATED_PROCESS_NAME)
+    if (basename(target) !== ISOLATED_PROCESS_NAME) continue
+    rmSync(target, { recursive: true, force: true })
+  }
 }
 
 /**
