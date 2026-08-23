@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { browser, $ } from '@wdio/globals'
+import { browser, $, expect } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
 import { openMenuViaJs } from '../support/interactions'
@@ -77,6 +77,14 @@ When(/^I confirm the branch-remove-merged dialog$/, async () => {
   const button = $('[data-testid="branch-remove-merged-confirm-button"]')
   await button.waitForEnabled({ timeout: 10000 })
   await button.click()
+})
+
+// "Mine" scope reuses RemoveMergedBranchesDialog's own testid (`mineOnly` only changes what it
+// shows) — without a real connected account, nothing ever carries a PR author to match against,
+// so the confirm button never enables and the "no GitHub" hint explains why.
+Then(/^the branch-remove-my-merged dialog reports nothing to remove$/, async () => {
+  await $('[data-testid="branch-remove-merged-github-hint"]').waitForDisplayed({ timeout: 10000 })
+  await expect($('[data-testid="branch-remove-merged-confirm-button"]')).not.toBeEnabled()
 })
 
 Then(/^the branch "([^"]*)" no longer exists in the repository$/, async (branchName: string) => {
