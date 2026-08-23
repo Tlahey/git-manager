@@ -48,21 +48,35 @@ Feature: Interactive rebase editor (reword / squash / drop)
     And the repository log holds 4 commits
     And the working file "counter.txt" holds the line "counter=4"
 
+  @doc @screenshots
   Scenario: Rewording a commit rewrites its message in history
+    Selecting a single row and typing a new message is the plainest edit the plan offers — the
+    commit itself is untouched otherwise, at whatever position in the range it started at, only
+    the message changes.
+    Given the app language is English
     When I open the interactive rebase editor from the "HEAD~2" commit
     And I select the rebase step "chore: bump counter to 3"
     And I reword the selected rebase step to "chore: bump counter to three"
-    And I start the interactive rebase
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-interactive-rebase-reword"
+    When I start the interactive rebase
     Then the repository log lists the subject "chore: bump counter to three"
     And the repository log does not list the subject "chore: bump counter to 3"
     And the repository log holds 5 commits
     And the working file "counter.txt" holds the line "counter=4"
 
+  @doc @screenshots
   Scenario: Dropping the tip commit removes it from history
+    Marking a row as dropped removes that commit from history outright when the plan runs — the
+    rest of the range replays exactly as if it had never existed, one less commit for a change
+    that turned out not to be worth keeping.
+    Given the app language is English
     When I open the interactive rebase editor from the "HEAD~1" commit
     And I select the rebase step "chore: bump counter to 4"
     And I mark the selected rebase step as dropped
-    And I start the interactive rebase
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-interactive-rebase-drop"
+    When I start the interactive rebase
     Then the repository HEAD commit subject contains "chore: bump counter to 3"
     And the repository log holds 4 commits
     And the working file "counter.txt" holds the line "counter=3"

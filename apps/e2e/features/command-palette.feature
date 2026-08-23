@@ -141,13 +141,22 @@ Feature: Command palette (⌘K)
     When I confirm the revert
     Then the repository HEAD commit subject contains "chore: bump counter to 4"
 
+  @doc @screenshots
   Scenario: Creating a branch from an earlier commit via the palette
+    Branching doesn't require checking out the commit first: select any commit in the graph, open
+    the palette, and "Create branch" starts a new one pointed at exactly that commit, wherever it
+    sits in history, leaving the branch you're actually on untouched.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I select the "HEAD~1" commit in the graph
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
     When I run the command palette action "commit-branch"
     Then the create branch dialog is shown
     When I enter the branch name "feature/from-palette"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-branch-from-palette"
     And I confirm the branch creation
     Then the branch "feature/from-palette" points at the commit "chore: bump counter to 3"
 
@@ -171,10 +180,17 @@ Feature: Command palette (⌘K)
     When I pick "Cherry-pick this commit" from the palette
     Then the commit "feat: add login screen" is reachable from "main"
 
+  @doc @screenshots
   Scenario: Dropping a stash via the palette
-    Given the "stash-stack" fixture repository is opened
+    Drop is the one of the three that doesn't restore anything — it discards the stash outright,
+    for the times a saved pile of changes turned out not to be worth keeping.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     When I select the "stash@{0}" commit in the graph
     And I open the command palette
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-stash-drop"
     When I run the command palette action "stash-drop"
     Then the repository has 1 stash
 
@@ -199,11 +215,19 @@ Feature: Command palette (⌘K)
     Then the repository has 2 stashes
     And the file "notes.txt" exists in the working tree
 
+  @doc @screenshots
   Scenario: Popping a stash via the palette removes it and restores its changes
-    Given the "stash-stack" fixture repository is opened
+    Pop is Apply and Drop in one step: it restores the stash's changes to the working tree and
+    removes the stash itself in the same action, for the common case of reusing a stash exactly
+    once and having no reason to keep it around afterward.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     And the working tree starts clean
     When I select the "stash@{0}" commit in the graph
     And I open the command palette
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-stash-pop"
     When I run the command palette action "stash-pop"
     Then the repository has 1 stash
     And the file "notes.txt" exists in the working tree
@@ -284,12 +308,20 @@ Feature: Command palette (⌘K)
   # N selected commits" entry (commit-create-patch-selection, fed by the store's
   # `selectedCommitOids` mirror). Asserted by counting the mbox separators in the written file —
   # two commits in, two patches out — which the single-commit check above can't distinguish.
+  @doc @screenshots
   Scenario: Creating a patch file from a multi-commit selection
-    Given the "rollback-history" fixture repository is opened
+    Cmd-clicking a second commit turns the same palette entry into the whole selection's own
+    action — one file, one patch per commit in order, for sharing a short feature branch as a set
+    of patches instead of one commit at a time.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I select the "HEAD~2" commit in the graph
     And I add the "HEAD~1" commit to the graph selection
     And I open the command palette
-    And I run the command palette action "commit-create-patch-selection"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-patch-from-selection"
+    When I run the command palette action "commit-create-patch-selection"
     And I choose "e2e-selection.patch" in the save dialog
     Then the patch file "e2e-selection.patch" holds patches for 2 commits
     And no error notification is displayed

@@ -416,6 +416,14 @@ When(/^I reset the terminal colors$/, async () => {
  */
 When(/^I select the "([^"]*)" application icon$/, async (iconId: string) => {
   await clickViaJs(`app-icon-card-${iconId}`)
+  // The list is its own scroll container (`app-icon-list`, `max-h-[300px] overflow-y-auto`) below
+  // a tall theme grid, so a doc screenshot taken right after this step would still show whatever
+  // was on screen before the click — same reason setColorInput scrolls its own input into view.
+  await browser.execute((id: string) => {
+    document
+      .querySelector(`[data-testid="app-icon-card-${id}"]`)
+      ?.scrollIntoView({ block: 'center' })
+  }, iconId)
 })
 
 // The radio's checked state, not the card's ring: the ring is a class, and a class can be applied by
@@ -507,6 +515,45 @@ When(/^I go back to the GitHub login options$/, async () => {
   await $('[data-testid="github-back-to-choice-button"]').click()
 })
 
+/**
+ * Seeds a connected GitHub account directly rather than driving a real login: `browser.tauri.mock`
+ * cannot intercept the app's own `invoke` calls on this Tauri version (see
+ * command-mocking.feature's own note), and a genuine device-flow/PAT login needs a human or a real
+ * token — neither available here. `settings.github` holds only the account's public half (the
+ * token would be in the keychain, which this account was never actually logged into), which is all
+ * the account list and the Disconnect button read.
+ */
+// Takes effect on the next load, same as every other seedSettings call — pair with
+// "I reload the application" right after, as the feature file does.
+Given(/^a GitHub account "([^"]*)" is connected$/, async (login: string) => {
+  await seedSettings({
+    github: {
+      accounts: [
+        {
+          id: login,
+          user: { login, name: null, email: null, avatarUrl: 'https://example.invalid/avatar.png' },
+        },
+      ],
+      activeAccountId: login,
+    },
+  })
+})
+
+Then(/^the GitHub account "([^"]*)" is shown$/, async (login: string) => {
+  await $(`[data-testid="github-account-item-${login}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I disconnect the GitHub account "([^"]*)"$/, async (login: string) => {
+  await $(`[data-testid="github-account-remove-${login}"]`).click()
+})
+
+Then(/^the GitHub account "([^"]*)" is no longer connected$/, async (login: string) => {
+  await $(`[data-testid="github-account-item-${login}"]`).waitForExist({
+    timeout: 10000,
+    reverse: true,
+  })
+})
+
 When(/^I search settings for "([^"]*)"$/, async (query: string) => {
   const input = $('[data-testid="settings-search"]')
   await input.waitForDisplayed({ timeout: 10000 })
@@ -525,6 +572,16 @@ Then(/^the "([^"]*)" settings tab is not shown$/, async (section: string) => {
 
 Then(/^the sponsor button is shown$/, async () => {
   await $('[data-testid="support-sponsor-button"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// Presence only, never a click: "Check for updates" hits the real `tauri-plugin-updater` endpoint
+// (a genuine GitHub releases URL, see tauri.conf.json) with no e2e override, and whether it finds
+// an update depends on what's actually published there right now — not something a regression
+// scenario can pin down. `sidebar-updater-version` alone is enough to prove the app read its own
+// bundled version (apiGetAppVersion) and rendered it, which needs no network at all.
+Then(/^the current app version is shown$/, async () => {
+  await $('[data-testid="sidebar-updater-version"]').waitForDisplayed({ timeout: 10000 })
+  await $('[data-testid="sidebar-updater-check"]').waitForDisplayed({ timeout: 10000 })
 })
 
 // "Unreleased" is always present (CHANGELOG.md's own convention, see ChangelogSection.tsx) —
@@ -779,4 +836,22 @@ When(/^I choose "([^"]*)" in the save dialog$/, async (fileName: string) => {
   await dialog.waitForDisplayed({ timeout: 15000 })
   await $('[data-testid="e2e-folder-picker-input"]').setValue(join(tmpdir(), fileName))
   await $('[data-testid="e2e-folder-picker-confirm"]').click()
+})
+
+// ─── Settings: Board (auto-sync of .git-manager/board.json) ────────────────────────────────────
+
+When(/^I turn on board auto-sync$/, async () => {
+  await clickViaJs('settings-board-autosync-enabled')
+})
+
+Then(/^board auto-sync is on$/, async () => {
+  await expect($('[data-testid="settings-board-autosync-enabled"]')).toBeChecked()
+})
+
+When(/^I set the board auto-sync interval to "([^"]*)" minutes$/, async (minutes: string) => {
+  await fillControlledInput('settings-board-autosync-interval', minutes)
+})
+
+Then(/^the board auto-sync interval is "([^"]*)" minutes$/, async (minutes: string) => {
+  await expect($('[data-testid="settings-board-autosync-interval"]')).toHaveValue(minutes)
 })

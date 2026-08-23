@@ -11,7 +11,6 @@ import {
   snapshotWorktree,
   type WorktreeSnapshot,
   getTagContainingCommit,
-  isCommitOnCurrentBranch,
   getTags,
   createBranch,
   renameBranch,
@@ -159,10 +158,6 @@ export async function apiGetBranches(path: string, includeRemote = true) {
 
 export async function apiGetTagContainingCommit(path: string, oid: string) {
   return getTagContainingCommit(path, oid)
-}
-
-export async function apiIsCommitOnCurrentBranch(path: string, oid: string) {
-  return isCommitOnCurrentBranch(path, oid)
 }
 
 export async function apiGetTags(path: string) {

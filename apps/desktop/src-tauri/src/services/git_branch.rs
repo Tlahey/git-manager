@@ -206,22 +206,6 @@ pub fn first_tag_containing_commit(
     Ok(best.map(|(_, name)| name))
 }
 
-/// Reports whether `target_oid` is part of the current branch's history, i.e. whether the commit
-/// is HEAD or one of its ancestors. Used to only enable fixup on commits that are actually
-/// rebasable from HEAD.
-pub fn is_commit_on_current_branch(repo: &Repository, target_oid: &str) -> Result<bool, AppError> {
-    let target = Oid::from_str(target_oid)
-        .map_err(|_| AppError::Unknown(format!("Invalid OID: {target_oid}")))?;
-    let head_oid = match repo.head().ok().and_then(|h| h.target()) {
-        Some(oid) => oid,
-        None => return Ok(false),
-    };
-    if head_oid == target {
-        return Ok(true);
-    }
-    Ok(repo.graph_descendant_of(head_oid, target).unwrap_or(false))
-}
-
 /// Creates a new local branch pointing at `from_ref`, without checking it out.
 /// `from_ref` accepts any revspec git2 can resolve (branch name, "HEAD", full OID).
 pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<(), AppError> {

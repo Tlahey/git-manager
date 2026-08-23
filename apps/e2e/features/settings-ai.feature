@@ -36,12 +36,20 @@ Feature: AI provider
     When I apply the suggested context window
     Then the context window setting is "128000"
 
+  @doc @screenshots
   Scenario: The AI provider dropdown offers Ollama and the generic OpenAI-compatible entry
-    Given the git-manager application is running
+    Every AI feature runs against whichever provider is picked here — Ollama, for a fully local
+    model with nothing leaving the machine, or the generic OpenAI-compatible entry for any other
+    server that speaks the same protocol, self-hosted or not. Neither is a named cloud vendor:
+    what each one talks to is the URL typed in below it, not a fixed address the app already knows.
+    Given the app language is English
+    And the git-manager application is running
     When I open the settings
     And I open the "local_ai" settings tab
     Then the "ollama" AI provider option is enabled
     And the "openai-compatible" AI provider option is enabled
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-ai-providers"
 
   Scenario: Turning AI off hides the whole provider configuration
     Given the git-manager application is running

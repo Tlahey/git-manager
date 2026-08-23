@@ -27,6 +27,21 @@ Feature: The commit graph
     And a full-window screenshot is saved as "doc-commit-graph"
 
   @doc @screenshots
+  Scenario: Hiding a column from the graph header
+    Right-clicking the header opens a menu of every column, a checkmark against the ones
+    currently shown — hiding one is a click, and bringing it back is the same click again. At
+    least one column always stays visible, so the header can never disappear entirely.
+    When I right-click the graph header
+    Then the column menu is shown
+    When I hide the "sha" column
+    Then the graph header does not show the "SHA" column
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-graph-columns"
+    When I right-click the graph header
+    And I show the "sha" column
+    Then the graph header shows the "SHA" column
+
+  @doc @screenshots
   Scenario: Inspect a single commit
     Selecting a row opens the commit details panel next to the graph: the full
     message, the author and committer, the parents, and the list of files the
@@ -40,6 +55,37 @@ Feature: The commit graph
     And the interface has settled
     Then the commit details panel is shown
     And a full-window screenshot is saved as "doc-commit-details"
+
+  @doc @screenshots
+  Scenario: Selecting several commits shows their combined diff
+    Cmd-clicking a second row turns the single commit panel into a merged one for the whole
+    selection: the commits listed in order, and one file list for everything they touched between
+    them — a file two of them both edited shows up once, with its net change across the range,
+    not twice.
+    Given the "rollback-history" fixture repository is opened
+    When I select the "HEAD~2" commit in the graph
+    And I add the "HEAD~1" commit to the graph selection
+    Then the multi-commit panel shows 2 commits selected
+    And the multi-commit panel lists "counter.txt" as a changed file
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-multi-commit-diff"
+
+  @doc @screenshots
+  Scenario: Opening a commit on GitHub, resolved from the repository's own remote
+    Every commit's palette entry offers a link to that same commit on GitHub — resolved from the
+    repository's own "origin" remote rather than a separate setup step. Nothing configured (or
+    configured to somewhere that isn't GitHub) surfaces a clear error instead of a dead click; a
+    real GitHub remote turns the same entry into the exact commit's page.
+    Given the "feature-branches" fixture repository is opened
+    When I select the newest commit in the graph
+    And I open the command palette
+    And I pick "Open commit on GitHub" from the palette
+    Then an error notification reading "No GitHub remote configured for this repository" is displayed
+    When the repository's "origin" remote is set to "https://github.com/octocat/hello-world.git"
+    And I open the command palette
+    Then the palette offers "Open commit on GitHub"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-open-on-github"
 
   @doc @screenshots
   Scenario: Filtering the graph with ⌘F

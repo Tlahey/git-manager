@@ -41,3 +41,21 @@ Feature: Integrations
     Then a GitHub connection error is shown
     When I go back to the GitHub login options
     Then the GitHub login options are shown again
+
+  @doc @screenshots
+  Scenario: Disconnecting a GitHub account
+    Removing an account here forgets it everywhere: the entry disappears from this list and its
+    token is deleted from the keychain in the same click, rather than just hiding a name the app
+    still remembers. Launchpad, drafting a PR and a GitHub-backed board all lose whatever that
+    account gave them access to the moment it goes.
+    Given the app language is English
+    And a GitHub account "octocat-e2e" is connected
+    When I reload the application
+    And I open the settings
+    And I open the "integrations" settings tab
+    Then the GitHub account "octocat-e2e" is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-github-account"
+    When I disconnect the GitHub account "octocat-e2e"
+    Then the GitHub account "octocat-e2e" is no longer connected
+    And no error notification is displayed

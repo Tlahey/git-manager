@@ -1,5 +1,5 @@
 import { browser, $ } from '@wdio/globals'
-import { When } from '@wdio/cucumber-framework'
+import { When, Then } from '@wdio/cucumber-framework'
 
 // W3C WebDriver key values, inlined to avoid depending on the `webdriverio` package (only
 // `@wdio/globals` is a direct dependency here). Meta = Command on macOS; Shift for the redo chord.
@@ -56,4 +56,36 @@ When(/^I undo the last action$/, async () => {
 
 When(/^I redo the last undone action$/, async () => {
   await browser.keys([META, SHIFT, 'z'])
+})
+
+// The clock icon (`toolbar-timeline-button`, GraphToolbarActions.tsx) opens TimelineBar's
+// scrubber overlay — only enabled once there is at least one undoable/redoable step.
+When(/^I open the undo timeline$/, async () => {
+  await $('[data-testid="toolbar-timeline-button"]').click()
+})
+
+Then(/^the timeline scrubber is shown$/, async () => {
+  await $('[data-testid="timeline-scrubber"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I scrub the timeline back one step$/, async () => {
+  await $('[data-testid="timeline-scrubber-prev"]').click()
+})
+
+// The hint line (TimelineBar.tsx's `hint`) reads e.g. "Apply = undo 1 action(s)" — matched by
+// substring so this doesn't depend on the exact "action(s)" phrasing.
+Then(/^the timeline hint reads "([^"]*)"$/, async (expected: string) => {
+  const scrubber = $('[data-testid="timeline-scrubber"]')
+  await browser.waitUntil(
+    async () => (await scrubber.getText()).toLowerCase().includes(expected.toLowerCase()),
+    {
+      timeout: 10000,
+      timeoutMsg: `the timeline scrubber never showed a hint containing "${expected}"`,
+    }
+  )
+})
+
+When(/^I validate the timeline$/, async () => {
+  await $('[data-testid="timeline-scrubber-validate"]').click()
+  await $('[data-testid="timeline-scrubber"]').waitForExist({ reverse: true, timeout: 15000 })
 })

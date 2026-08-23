@@ -13,7 +13,7 @@ export function HeaderColumnsMenu() {
   const visibleCount = COLUMN_ORDER.filter((k) => columns[k].visible).length
 
   return (
-    <ContextMenuContent className="w-52">
+    <ContextMenuContent className="w-52" data-testid="graph-columns-menu">
       <ContextMenuLabel>{t('gitTree.columns.menuTitle')}</ContextMenuLabel>
       {COLUMN_ORDER.map((key) => {
         const isVisible = columns[key].visible
@@ -22,6 +22,7 @@ export function HeaderColumnsMenu() {
         return (
           <ContextMenuItem
             key={key}
+            data-testid={`graph-columns-menu-item-${key}`}
             disabled={disabled}
             onSelect={() => setVisibility(key, !isVisible)}
           >

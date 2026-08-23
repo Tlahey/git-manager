@@ -227,6 +227,55 @@ export async function startFakeAiServer(
             return
           }
 
+          // Quick-mode commit search, first narrowing: one call over every commit's *message* —
+          // no diff, no file list. Each candidate line is `- <shortOid> (<date>, <author>)
+          // <subject>` (commitQuickScan.ts's `commitLine`); the one shortlisted is whichever
+          // carries "add login screen" in its subject, the same login commit `commit_relevance`
+          // above keys on, so quick mode still surfaces it without ever seeing its diff.
+          if (schemaName === 'commit_quick_scan') {
+            const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+            const hit = /^- (\S+) \([^)]*\) .*add login screen.*$/m.exec(userMessage)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        matches: hit
+                          ? [{ shortOid: hit[1], reason: 'Message mentions the login screen.' }]
+                          : [],
+                      }),
+                    },
+                  },
+                ],
+              })
+            )
+            return
+          }
+
+          // Quick-mode commit search, second narrowing: one call per shortlisted commit's *paths*
+          // (commitFileScan.ts) — no diff either. Each line is `- <path> (<status>)`; kept path is
+          // whichever is "login.txt", so the survivor still reaches the same `commit_relevance`
+          // verdict above once file-by-file reading resumes.
+          if (schemaName === 'commit_file_scan') {
+            const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+            const hasLoginFile = /^- login\.txt \(/m.test(userMessage)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({ paths: hasLoginFile ? ['login.txt'] : [] }),
+                    },
+                  },
+                ],
+              })
+            )
+            return
+          }
+
           // Upgrade-risk feature: echoes the package name and the first file `buildUsage`
           // (packages/ai's upgradeRisk.ts) listed under "Files importing it:" back as the one
           // affected location, rather than a fixed fake path — so the answer only ever names a

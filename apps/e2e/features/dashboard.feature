@@ -105,3 +105,39 @@ Feature: Your projects at a glance
     And the "feature-branches" row reports a clean working tree
     And the interface has settled
     And a full-window screenshot is saved as "doc-dashboard-status"
+
+  @doc @screenshots
+  Scenario: Fetching or pulling several repositories at once from a section
+    Checking a row's box turns every action in the section's header into a bulk one — the "N
+    selected" count next to them is what says so, and every other row still targets the whole
+    section when nothing is checked. Fetch and Pull work the same way here as they do on the
+    toolbar of an open repository, just run over every checked repository in turn: one unreachable
+    remote never stops the others.
+    Given the app language is English
+    And AI features are turned off
+    And the "remote-behind" and "remote-ahead" fixture repositories are pinned on the dashboard
+    When I open the dashboard
+    And I select the "remote-behind" and "remote-ahead" projects on the dashboard
+    Then the favorites section reports 2 selected
+    When I pull the favorites section with the "fast-forward-if-possible" strategy
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-bulk-pull"
+    Then the "remote-behind" project's HEAD commit subject contains "teammate's follow-up commit"
+    And no error notification is displayed
+
+  @doc @screenshots
+  Scenario: The dashboard before any repository has been opened
+    Before you've opened or scanned for a single repository, the dashboard is one screen rather
+    than four empty sections — a short explanation and the same "Open repository" action the
+    toolbar itself offers, with nothing to search, collapse or filter yet.
+    Given the app language is English
+    And AI features are turned off
+    And no repositories are known to the dashboard
+    When I open the dashboard
+    Then the dashboard shows its empty state
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard-empty"
+    # Restores a populated dashboard: the shared app instance carries this state into whatever
+    # scenario — in this file or the next spec file the run reaches — opens the dashboard next
+    # without seeding its own repositories first.
+    When the "showcase" and "feature-branches" fixture repositories are listed in the dashboard

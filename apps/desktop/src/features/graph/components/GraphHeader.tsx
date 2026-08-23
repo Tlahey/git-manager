@@ -110,6 +110,7 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
       <ContextMenuTrigger asChild>
         <div
           ref={rowRef}
+          data-testid="graph-header-row"
           className="flex h-7 shrink-0 items-stretch border-b border-border bg-muted/40 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase select-none"
         >
           {columns.map((col, idx) => {

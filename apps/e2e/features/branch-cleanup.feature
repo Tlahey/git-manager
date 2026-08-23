@@ -48,3 +48,17 @@ Feature: Cleaning up finished branches in bulk
     And a full-window screenshot is saved as "doc-branch-remove-merged"
     When I confirm the branch-remove-merged dialog
     Then the branch "finished/exporter" no longer exists in the repository
+
+  @doc @screenshots
+  Scenario: Narrowing bulk cleanup to your own merged branches
+    A third menu entry — "Remove my merged branches", offered for worktrees too — narrows the
+    same cleanup to branches whose merged pull request was authored by the signed-in GitHub
+    account, so clearing out your own finished work never also offers a teammate's. "Mine" can
+    only be read from a real pull request's author, so without a connected account there is
+    nothing to match against and the dialog says so rather than guessing.
+    Given the remote is fetched with prune
+    When I open the branch actions menu
+    And I pick "Remove my merged branches" from the branch actions menu
+    Then the branch-remove-my-merged dialog reports nothing to remove
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-branch-remove-my-merged"

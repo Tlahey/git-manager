@@ -208,7 +208,10 @@ export function DashboardPage() {
 
         <main className="flex-1 space-y-5 overflow-y-auto p-6">
           {sections.totalKnownCount === 0 ? (
-            <div className="mx-auto mt-12 flex max-w-lg flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border/60 bg-card/20 p-6 text-muted-foreground shadow-xs">
+            <div
+              data-testid="dashboard-empty-state"
+              className="mx-auto mt-12 flex max-w-lg flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border/60 bg-card/20 p-6 text-muted-foreground shadow-xs"
+            >
               <OctopusMascot size={150} label={t('dashboard.title')} />
               <p className="text-center text-xs leading-relaxed">{t('dashboard.noAllRepos')}</p>
               <div className="flex gap-2">
