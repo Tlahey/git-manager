@@ -87,6 +87,38 @@ Feature: The commit graph
     And the interface has settled
     And a full-window screenshot is saved as "doc-open-on-github"
 
+  @doc @screenshots @github-mock
+  Scenario: A commit's linked pull request shows as a badge
+    A commit whose SHA has a pull request on GitHub gets a badge in its details panel linking
+    straight to it — the PR's number and title, with a distinct icon once it's merged.
+    Given the "feature-branches" fixture repository is opened
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server has a pull request "42" titled "Fix flaky test" for the newest commit in "octocat/demo-repo"
+    And I reload the application
+    When I select the newest commit in the graph
+    And the interface has settled
+    Then the commit details panel is shown
+    And the commit's pull request badge shows "#42" titled "Fix flaky test"
+    And the commit's pull request badge shows it as open
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-commit-pr-badge"
+    And no error notification is displayed
+
+  @github-mock
+  Scenario: A commit's linked merged pull request shows as merged in the badge
+    Given the "feature-branches" fixture repository is opened
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server has a merged pull request "42" titled "Fix flaky test" for the newest commit in "octocat/demo-repo"
+    And I reload the application
+    When I select the newest commit in the graph
+    And the interface has settled
+    Then the commit details panel is shown
+    And the commit's pull request badge shows "#42" titled "Fix flaky test"
+    And the commit's pull request badge shows it as merged
+    And no error notification is displayed
+
   @doc @screenshots
   Scenario: Filtering the graph with ⌘F
     ⌘F opens a small search bar floating over the graph and steps through the commits matching
