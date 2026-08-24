@@ -59,6 +59,28 @@ Given(
   }
 )
 
+// No localStorage seed here, unlike the sibling steps above: the point of the scan scenario is
+// that `scan_repos` itself is what populates `discoveredRepos`, so these fixtures start on disk
+// only, exactly as an unwatched folder would for a real user.
+Given(
+  /^the "([^"]*)" and "([^"]*)" fixture repositories exist on disk$/,
+  async (first: string, second: string) => {
+    for (const name of [first, second]) {
+      execFileSync('bash', [join(SCENARIOS_DIR, `${name}.sh`)], { stdio: 'inherit' })
+    }
+  }
+)
+
+When(/^I click the scan-repos button$/, async () => {
+  const button = $('[data-testid="scan-repos-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+// "I choose "<path>" in the folder picker" and "the "X" project is shown on the dashboard" are
+// both shared — see new-tab.steps.ts and this file's own step below, respectively. Real builds
+// show the native OS folder dialog there instead (see pickFolder.ts), which WebDriver can't drive.
+
 // The empty state (`sections.totalKnownCount === 0`) needs BOTH `savedRepos` and `discoveredRepos`
 // gone — either one alone still leaves a repo the dashboard knows about. Open tabs are left
 // untouched: `totalKnownCount` never counts them, so a stray one from an earlier scenario can't

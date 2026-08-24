@@ -42,6 +42,24 @@ Feature: Integrations
     When I go back to the GitHub login options
     Then the GitHub login options are shown again
 
+  @doc @screenshots @github-mock
+  Scenario: Connecting GitHub with a valid personal access token
+    A token GitHub actually recognizes succeeds immediately — the account appears in the list the
+    moment its login is known, the same list Disconnect and every account-scoped feature (the
+    Launchpad, drafting a PR, a GitHub-backed board) read from.
+    Given the app language is English
+    And the git-manager application is running
+    When I reload the application
+    And the GitHub mock server accepts the token "fake-e2e-valid-token" as "octocat"
+    And I open the settings
+    And I open the "integrations" settings tab
+    And I click the login-with-PAT button
+    When I enter the PAT "fake-e2e-valid-token"
+    And I submit the PAT
+    Then the GitHub account "octocat" is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-github-pat-connected"
+
   @doc @screenshots
   Scenario: Disconnecting a GitHub account
     Removing an account here forgets it everywhere: the entry disappears from this list and its

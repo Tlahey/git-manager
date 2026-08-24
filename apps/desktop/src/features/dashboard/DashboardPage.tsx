@@ -15,10 +15,10 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
 } from 'lucide-react'
-import { open } from '@tauri-apps/plugin-dialog'
 import { OctopusMascot } from '@git-manager/mascot'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
 import { apiScanRepos } from '../../api/repo.api'
+import { pickFolder } from '../../lib/pickFolder'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useDashboardStore } from './stores/dashboard.store'
 import { useOpenRepository } from '../../hooks/useOpenRepository'
@@ -77,8 +77,8 @@ export function DashboardPage() {
     setError(null)
     setScanning(true)
     try {
-      const selected = await open({ directory: true, multiple: false })
-      if (!selected || typeof selected !== 'string') return
+      const selected = await pickFolder()
+      if (!selected) return
       // Scan directories up to depth 4
       const paths = await apiScanRepos(selected, 4)
       for (const repoPath of paths) {
@@ -153,6 +153,7 @@ export function DashboardPage() {
               {t('dashboard.clone')}
             </Button>
             <Button
+              data-testid="scan-repos-button"
               size="sm"
               variant="outline"
               onClick={handleScanRepos}

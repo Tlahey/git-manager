@@ -71,11 +71,16 @@ Two mocking mechanisms were considered at that same choke point:
   AI server, it also has to be reconfigurable from a worker process it doesn't share memory with (see
   its own doc comment) — `POST /__configure`/`POST /__reset` are a small control plane the server
   answers over the same loopback connection every real request uses.
-- `fetch_user`/`connect_account` (the device-flow/PAT login path) are deliberately **not** redirected
-  — existing scenarios in `settings.steps.ts` already hit real `api.github.com`/`github.com` for those
-  (device code request, invalid-PAT rejection) and rely on that being real, deterministic network
-  behavior. Only the general-purpose `request()` path (everything routed through
-  `github_api_request`) is affected.
+- **Update (2026-08-24, issue #436):** `fetch_user` (the PAT/device-flow login path's `GET /user` and
+  `GET /user/emails` calls) is now also redirected — it calls `e2e_redirect` directly rather than
+  going through `request()`/`github_api_request`, since it runs before there is an account id to
+  attach a token under. `github_device_code`/`github_poll_token` (`commands/github.rs`, the
+  `github.com` OAuth-host calls) remain un-redirected: they're a different origin from
+  `api.github.com`, out of `guard_url`'s allowlist entirely, and the existing invalid-device-code
+  coverage has no need of a fake response. `fakeGithubServer.ts`'s `/user` route answers 401 by
+  default (matching real GitHub's response to a token it doesn't recognize) so the existing
+  invalid-PAT scenario (`settings-integrations.feature`) stays deterministic without a fixture, and
+  only returns a profile once a scenario configures one via `/__configure`.
 - **All three scenarios are implemented**: the PR detail view (`apps/e2e/features/pr-detail-view.feature`,
   opened via the toolbar's real pull-request status tag), "add issue to board"
   (`apps/e2e/features/board-github.feature`'s second scenario, exercising the real remote board

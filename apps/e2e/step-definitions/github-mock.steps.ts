@@ -114,6 +114,31 @@ Given(/^a GitHub account "([^"]*)" is connected with a fake API token$/, async (
 })
 
 /**
+ * Configures the fake server to recognize `token` as `login`'s — the one fixture that drives the
+ * real PAT-submit UI flow to *success* (`settings-integrations.feature`'s "Connecting GitHub with
+ * a valid personal access token"), unlike the step above, which shortcuts straight to a connected
+ * account for scenarios that only need one already in place. `fetch_user` is redirected here the
+ * same way `github_api_request` is (`services/github_api.rs`) — see
+ * `docs/architecture/2026-08-e2e-github-api-mock-mode.md`'s 2026-08-24 update.
+ */
+Given(
+  /^the GitHub mock server accepts the token "([^"]*)" as "([^"]*)"$/,
+  async (token: string, login: string) => {
+    await configureFakeGithubFixtures({
+      users: {
+        [token]: {
+          login,
+          id: 1,
+          avatar_url: 'https://example.invalid/avatar.png',
+          name: null,
+          email: null,
+        },
+      },
+    })
+  }
+)
+
+/**
  * One open pull request, with every sub-resource `PrDetailCenter`'s default (files panel open) render
  * needs already filled with an empty-but-valid answer — comments, mergeability, review threads, and
  * per-file viewed state — so a scenario only has to say what's *interesting* about its PR rather than

@@ -143,13 +143,33 @@ export interface FakeRepoFixtures {
   >
 }
 
+/** The profile `GET /user`/`GET /user/emails` answer with for a configured token — backs
+ * `github_connect_token`'s login flow (`services/github_api.rs::fetch_user`), the one caller that
+ * authenticates before there is an account id to key a repo fixture by. */
+export interface FakeGithubUser {
+  login: string
+  id: number
+  avatar_url: string
+  name?: string | null
+  email?: string | null
+}
+
 export interface FakeGithubFixtures {
   /** Keyed `"owner/repo"`. */
   repos: Record<string, FakeRepoFixtures>
+  /** Keyed by the raw bearer token a scenario configures — real GitHub resolves `/user` from the
+   * token in the `Authorization` header, not from any URL parameter, so this is keyed the same
+   * way. A token with no entry answers 401, matching a real revoked/unrecognized token and keeping
+   * the existing invalid-PAT scenario deterministic without needing a fixture of its own. */
+  users: Record<string, FakeGithubUser>
 }
 
+/** What {@link configureFakeGithubFixtures} takes — every field of {@link FakeGithubFixtures} is
+ * optional here since a scenario only ever supplies the one kind of fixture it needs. */
+export type FakeGithubFixturesInput = Partial<FakeGithubFixtures>
+
 function emptyFixtures(): FakeGithubFixtures {
-  return { repos: {} }
+  return { repos: {}, users: {} }
 }
 
 let fixtures: FakeGithubFixtures = emptyFixtures()
@@ -374,9 +394,12 @@ export async function startFakeGithubServer(
 
       if (req.method === 'POST' && pathname === '/__configure') {
         const body = await readBody(req)
-        const incoming = JSON.parse(body) as FakeGithubFixtures
+        const incoming = JSON.parse(body) as FakeGithubFixturesInput
         for (const [key, repo] of Object.entries(incoming.repos ?? {})) {
           fixtures.repos[key] = { ...fixtures.repos[key], ...repo }
+        }
+        for (const [token, user] of Object.entries(incoming.users ?? {})) {
+          fixtures.users = { ...fixtures.users, [token]: user }
         }
         sendJson(res, 200, { ok: true })
         return
@@ -417,6 +440,27 @@ export async function startFakeGithubServer(
           }))
         })
         sendJson(res, 200, { items })
+        return
+      }
+
+      // GET /user, GET /user/emails — the PAT/device-flow login path (`fetch_user`), which
+      // authenticates by bearer token rather than by owner/repo, so it's matched before
+      // `matchRepoPath` and looked up in `fixtures.users` rather than `fixtures.repos`. A token
+      // with no configured user answers 401, exactly like a real revoked/invalid token — see
+      // `FakeGithubFixtures.users`'s own doc comment for why that's the default rather than 200.
+      if (req.method === 'GET' && (pathname === '/user' || pathname === '/user/emails')) {
+        const auth = req.headers.authorization ?? ''
+        const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : ''
+        const user = token ? fixtures.users?.[token] : undefined
+        if (!user) {
+          sendJson(res, 401, { message: 'Bad credentials' })
+          return
+        }
+        if (pathname === '/user/emails') {
+          sendJson(res, 200, [{ email: user.email ?? '', primary: true, verified: true }])
+          return
+        }
+        sendJson(res, 200, user)
         return
       }
 
@@ -828,7 +872,7 @@ export async function startFakeGithubServer(
  * in a different OS process than the server itself (see this module's own doc comment), hence a real
  * HTTP round-trip rather than a direct call. */
 export async function configureFakeGithubFixtures(
-  fixturesToApply: FakeGithubFixtures
+  fixturesToApply: FakeGithubFixturesInput
 ): Promise<void> {
   const res = await fetch(`${SUITE_WIDE_FAKE_GITHUB_URL}/__configure`, {
     method: 'POST',
