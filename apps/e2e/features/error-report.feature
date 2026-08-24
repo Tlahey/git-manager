@@ -64,3 +64,15 @@ Feature: Reporting a problem
     And I open the "fetch_remote" activity log entry
     And I report the selected activity log entry
     Then the error report shows a duplicate of the previously filed issue
+
+  Scenario: Reporting a crash from the top-level error boundary
+    A render-phase crash replaces the whole window with the app's last-resort fallback, which
+    mounts its own separate instance of the same dialog — reached along a path the log-based flow
+    above never takes, with no correlated action to show since nothing failed through the backend.
+    Given the git-manager application is running
+    And the app language is English
+    When I force a render crash
+    Then the crash screen is shown
+    When I click the crash screen's report button
+    Then the report dialog shows what will be sent
+    And the report dialog has no correlated activity block

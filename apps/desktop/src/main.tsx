@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { AppErrorBoundary } from './components/app-error-boundary/AppErrorBoundary'
+import { E2ECrashTrigger } from './components/app-error-boundary/E2ECrashTrigger'
 import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWindow'
 import { FixupCommitWindow } from './components/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
@@ -15,6 +16,7 @@ import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
 import { useGameStore } from './stores/game.store'
+import { useE2eCrashStore } from './stores/e2eCrash.store'
 import { resetMockRemoteBoards } from './features/board/api/mock-remote-board.api'
 import { useIssueFiltersStore } from './features/graph/stores/issueFilters.store'
 import { usePrFiltersStore } from './features/graph/stores/prFilters.store'
@@ -78,6 +80,11 @@ if (import.meta.env.VITE_E2E === 'true') {
   ).__e2eIssueFiltersStore = useIssueFiltersStore
   ;(window as unknown as { __e2ePrFiltersStore: typeof usePrFiltersStore }).__e2ePrFiltersStore =
     usePrFiltersStore
+  // Exposed for the crash-screen e2e scenario: flipping this store's flag makes `E2ECrashTrigger`
+  // throw during its next render, the only way to deliberately reach `AppErrorBoundary`'s own
+  // `ErrorReportDialog` mount from outside (see git-manager#439 and E2ECrashTrigger.tsx).
+  ;(window as unknown as { __e2eCrashStore: typeof useE2eCrashStore }).__e2eCrashStore =
+    useE2eCrashStore
 }
 
 // Read the configuration off disk before anything reads it, then initialize i18n with the persisted
@@ -176,7 +183,10 @@ e2eSetup
       // uncaught commit-phase error otherwise unmounts everything under #root (seen on WKWebView
       // as "NotFoundError: The object can not be found here" during full e2e runs).
       <React.StrictMode>
-        <AppErrorBoundary>{content}</AppErrorBoundary>
+        <AppErrorBoundary>
+          {import.meta.env.VITE_E2E === 'true' && <E2ECrashTrigger />}
+          {content}
+        </AppErrorBoundary>
       </React.StrictMode>
     )
     if (!isAppWindow) requestAnimationFrame(hideAppSplash)
