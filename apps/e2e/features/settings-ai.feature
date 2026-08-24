@@ -51,6 +51,52 @@ Feature: AI provider
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-ai-providers"
 
+  @doc @screenshots
+  Scenario: Setting commit instructions and a commit pattern persists across a reload
+    The AI Features tab, not the provider tab, is where a commit message's style is shaped: free-
+    text instructions the model is told to follow, and a regex the generated subject line must
+    match. Both feed the same commit-message-generation feature the provider tab only configures
+    the connection for, and both are saved and restored like every other setting.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "ai_features" settings tab
+    And I set the commit instructions to "Always mention the ticket number."
+    And I set the commit pattern to "^[A-Z]+-\d+: .+"
+    And I reload the application
+    And I open the settings
+    And I open the "ai_features" settings tab
+    Then the commit instructions are "Always mention the ticket number."
+    And the commit pattern is "^[A-Z]+-\d+: .+"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-ai-commit"
+
+  @doc @screenshots
+  Scenario: Configuring the daily summary settings persists across a reload
+    The daily briefing on the Launchpad — a "yesterday / today" summary the app can generate on
+    its own — has its own on/off switch, separate from AI as a whole: turning it off hides the two
+    finer controls underneath, whether it generates automatically and whether it also saves a copy
+    into the repository, rather than merely disabling them. Each setting stays as set across a
+    reload like the rest of Settings.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "ai_features" settings tab
+    And I turn off the daily summary feature
+    Then automatic daily summary generation is not shown
+    When I turn on the daily summary feature
+    And I turn off automatic daily summary generation
+    And I turn on saving the daily summary to the repository
+    And I reload the application
+    And I open the settings
+    And I open the "ai_features" settings tab
+    Then the daily summary feature is on
+    And automatic daily summary generation is off
+    And saving the daily summary to the repository is on
+    And the daily summary folder button is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-daily-summary"
+
   Scenario: Turning AI off hides the whole provider configuration
     Given the git-manager application is running
     When I open the settings

@@ -264,6 +264,7 @@
   "settings.appearance.rowHeight.info.scope": "N'affecte que le graphe des commits — les panneaux latéraux, les listes de fichiers et la barre latérale gardent leurs propres dimensions.",
   "settings.info.aria": "Plus d'informations : {{label}}",
   "settings.language.title": "Langue de l'interface",
+  "settings.advanced.title": "Indexation & Recherche",
   "settings.advanced.scanDepth": "Profondeur de scan",
   "settings.advanced.reset": "Réinitialiser tous les paramètres",
   "settings.advanced.resetConfirm": "Tous vos paramètres seront perdus. Continuer ?",
