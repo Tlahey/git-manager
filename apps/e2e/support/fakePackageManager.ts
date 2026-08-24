@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -40,10 +41,21 @@ export interface FakeOutdatedState {
  *
  * Installed once for the whole run (`onPrepare`, alongside `useIsolatedHome`) since `PATH` is only
  * read once, at the shared app process's launch.
+ *
+ * Everything except `outdated`/`update` passes straight through to the real `pnpm` this function
+ * resolves *before* the fake one goes on `PATH` (querying `PATH` again from inside the generated
+ * script would just find itself). Without this, every other real pnpm call this suite's app
+ * process makes — `prepare_dependency_patch`/`commit_dependency_patch` shelling out to
+ * `pnpm patch`/`patch-commit`, or a fixture script's own `pnpm install` — would silently no-op
+ * (exit 0, do nothing) instead of either working or failing loudly, which is a landmine for
+ * anything added here later. `pnpm-dependency.sh` (issue #436's dependency-patch-flow fixture) is
+ * what surfaced this: its `pnpm install` "succeeded" without ever writing a lockfile.
  */
 export function installFakePackageManager(): string {
   rmSync(FAKE_BIN_DIR, { recursive: true, force: true })
   mkdirSync(FAKE_BIN_DIR, { recursive: true })
+
+  const realPnpmPath = execSync('command -v pnpm', { encoding: 'utf8' }).trim()
 
   const scriptPath = join(FAKE_BIN_DIR, 'pnpm')
   writeFileSync(
@@ -51,6 +63,7 @@ export function installFakePackageManager(): string {
     `#!/usr/bin/env node
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -92,7 +105,8 @@ if (command === 'outdated') {
   process.stdout.write(\`updated \${names.join(', ')}\\n\`)
   process.exit(0)
 } else {
-  process.exit(0)
+  const result = spawnSync('${realPnpmPath}', args, { stdio: 'inherit' })
+  process.exit(result.status ?? 1)
 }
 `,
     'utf8'

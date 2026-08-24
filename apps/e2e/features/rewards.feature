@@ -110,3 +110,14 @@ Feature: Rewards / gamification
     When I open the autosquash preview
     And I confirm the autosquash
     Then the notch celebrates the achievement "History Architect"
+
+  Scenario: Unlocking every other achievement unlocks the "Absolute Git Master" composite trophy
+    The platinum trophy isn't tied to any action of its own — it completes the moment every other
+    achievement in the cabinet does, a second after whatever real action finished the set, so its
+    own celebration never collides with the "normal" one that triggered it.
+    Given the app language is English
+    And every achievement except "platinum_trophy" is already unlocked
+    And the "stash-stack" fixture repository is opened
+    And the notch queue is being recorded
+    When I switch to the launchpad tab
+    Then the notch celebrates the achievement "Absolute Git Master"

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, appendFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, expect, $ } from '@wdio/globals'
@@ -120,5 +120,45 @@ Then(
   (filePath: string, line: string) => {
     const content = readFileSync(join(getActiveRepoPath(), filePath), 'utf8')
     expect(content.split('\n')).toContain(line)
+  }
+)
+
+// ── Dependency ───────────────────────────────────────────────────────────
+
+// `prepareDependencyPatch` (services/dependency_patch.rs) diffs the live `node_modules/<name>`
+// copy against a pristine one `pnpm patch` materialises fresh — so the panel only has something
+// to show once the installed copy actually differs from what pnpm installed, exactly like a real
+// user who edited a dependency in place. `pnpm-dependency` installs `left-pad@1.3.0` for real (see
+// that fixture script's own comment on why this one isn't offline).
+Given(/^the installed "([^"]*)" dependency has an uncommitted edit$/, async (name: string) => {
+  const file = join(getActiveRepoPath(), 'node_modules', name, 'index.js')
+  appendFileSync(file, '\n// e2e-patched\n')
+})
+
+When(/^I select the "([^"]*)" dependency to patch$/, async (name: string) => {
+  const testId = `patch-dep-${name}`
+  await $(`[data-testid="${testId}"]`).waitForDisplayed({ timeout: 10000 })
+  await clickViaJs(testId)
+})
+
+// `selectDep` shells out to the real `pnpm patch` (materialising a pristine copy from pnpm's
+// store) before the diff — and thus this button — is ready, so this needs pnpm's own latency
+// budget, not the suite's usual 10s.
+Then(/^the dependency patch confirm button is enabled$/, async () => {
+  await $('[data-testid="patch-dep-confirm"]').waitForEnabled({ timeout: 20000 })
+})
+
+When(/^I click the dependency patch confirm button$/, async () => {
+  await clickViaJs('patch-dep-confirm')
+})
+
+Then(
+  /^a real dependency patch file exists for "([^"]*)@([^"]*)"$/,
+  (name: string, version: string) => {
+    const repoPath = getActiveRepoPath()
+    expect(existsSync(join(repoPath, 'patches', `${name}@${version}.patch`))).toBe(true)
+    const workspaceYaml = readFileSync(join(repoPath, 'pnpm-workspace.yaml'), 'utf8')
+    expect(workspaceYaml).toContain('patchedDependencies')
+    expect(workspaceYaml).toContain(`${name}@${version}`)
   }
 )

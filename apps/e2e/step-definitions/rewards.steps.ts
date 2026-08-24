@@ -1,9 +1,13 @@
-import { appendFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { waitForRecordedCard } from '../support/notchRecording'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const ACHIEVEMENTS_JSON_PATH = join(__dirname, '../../desktop/src/stores/achievements.json')
 
 // Achievements persist in `git-manager-game-store` (zustand persist) across the whole session,
 // like a real user profile — this suite's many prior commits (across every feature/run) may have
@@ -37,6 +41,68 @@ Then(/^the notch celebrates the achievement "([^"]*)"$/, async (title: string) =
   // card that arrived without them would still pass a title-only assertion.
   expect(card.tier).toBeTruthy()
   expect(card.badge).toContain('XP')
+})
+
+/**
+ * Seeds every achievement except `platinum_trophy` as already unlocked, matching exactly the
+ * shape `game.store.ts`'s own `merge()` reads back (`{...definition, unlocked, unlockedAt}` per
+ * id) — read from `achievements.json` itself rather than a hand-maintained duplicate list, so
+ * this can't drift when a new achievement is added there.
+ *
+ * `CompositeRule.matches` (`lib/rewards/rules/CompositeRule.ts`) only checks the *current*
+ * achievements state — it ignores which event triggered the check — and `rewardEngine.ts`'s
+ * `processEvent` re-evaluates every composite rule on a second pass after ANY event, regardless
+ * of what (if anything) unlocked in the first pass. So once every other achievement is already
+ * unlocked, literally any real `AppEvent` — not necessarily one tied to a specific achievement —
+ * is what completes the set and unlocks `platinum_trophy` a second later (`game.store.ts` defers
+ * a composite unlock by 1s so its toast doesn't collide with the "normal" one that just fired).
+ *
+ * Takes effect on the next load, like every other localStorage seed here — pair with reopening
+ * the fixture repository right after.
+ */
+Given(/^every achievement except "platinum_trophy" is already unlocked$/, async () => {
+  const definitions = JSON.parse(readFileSync(ACHIEVEMENTS_JSON_PATH, 'utf8')) as Array<
+    Record<string, unknown>
+  >
+  const unlockedAt = Date.now()
+  const seeded = definitions.map((definition) =>
+    definition.id === 'platinum_trophy'
+      ? { ...definition, unlocked: false, unlockedAt: undefined }
+      : { ...definition, unlocked: true, unlockedAt }
+  )
+  await browser.execute((achievementsJson: string) => {
+    const raw = localStorage.getItem('git-manager-game-store')
+    const data = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+    data.state = { ...data.state, achievements: JSON.parse(achievementsJson) }
+    localStorage.setItem('git-manager-game-store', JSON.stringify(data))
+  }, JSON.stringify(seeded))
+})
+
+// Same store-bridge switch as "I open the rewards tab" below — deliberately NOT the standalone
+// "I open the launchpad" step (launchpad-prs.steps.ts), which reloads the whole app first. That
+// reload is there for launchpad.feature's own scenarios, which have no fixture-open step of their
+// own to force the app's first cold render — but a reload here would also wipe the live,
+// non-persisted "the notch queue is being recorded" subscription this scenario needs to still be
+// listening when `setActiveTab` raises `open_launchpad`.
+When(/^I switch to the launchpad tab$/, async () => {
+  await browser.waitUntil(
+    async () =>
+      await browser.execute(() => {
+        const store = (
+          window as unknown as {
+            __e2eRepoUIStore?: { getState: () => { setActiveTab: (id: string) => void } }
+          }
+        ).__e2eRepoUIStore
+        if (!store) return false
+        store.getState().setActiveTab('pull-requests')
+        return true
+      }),
+    {
+      timeout: 10000,
+      timeoutMsg: '__e2eRepoUIStore never became available to switch to the launchpad tab',
+    }
+  )
+  await $('[data-testid="manual-refresh-button"]').waitForDisplayed({ timeout: 15000 })
 })
 
 // The Rewards tab (TabBar.tsx's `PinnedTab`) carries no testid to click, so this switches through
@@ -108,31 +174,4 @@ Then(/^the shell-history baseline has been read$/, async () => {
 
 When(/^I run "([^"]*)" in the shell$/, async (command: string) => {
   appendFileSync(zshHistoryFile, `${command}\n`)
-})
-
-// Same store-bridge switch as "I open the rewards tab" above — deliberately NOT the standalone
-// "I open the launchpad" step (launchpad-prs.steps.ts), which reloads the whole app first. That
-// reload is there for launchpad.feature's own scenarios, which have no fixture-open step of their
-// own to force the app's first cold render — but a reload here would also wipe the live,
-// non-persisted "the notch queue is being recorded" subscription this scenario needs to still be
-// listening when `setActiveTab` raises `open_launchpad`.
-When(/^I switch to the launchpad tab$/, async () => {
-  await browser.waitUntil(
-    async () =>
-      await browser.execute(() => {
-        const store = (
-          window as unknown as {
-            __e2eRepoUIStore?: { getState: () => { setActiveTab: (id: string) => void } }
-          }
-        ).__e2eRepoUIStore
-        if (!store) return false
-        store.getState().setActiveTab('pull-requests')
-        return true
-      }),
-    {
-      timeout: 10000,
-      timeoutMsg: '__e2eRepoUIStore never became available to switch to the launchpad tab',
-    }
-  )
-  await $('[data-testid="manual-refresh-button"]').waitForDisplayed({ timeout: 15000 })
 })

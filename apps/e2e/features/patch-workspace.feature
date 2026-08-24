@@ -45,3 +45,24 @@ Feature: Patch workflows
     When I click the patch apply confirm button
     Then the patch workspace closes
     And the working tree file "app.txt" contains the line "line 3"
+
+  @doc @screenshots
+  Scenario: Capturing an edit to an installed dependency as a patch
+    Tools → Patch → Dependency captures a change already made straight in `node_modules` — pnpm
+    can't see an in-place edit there itself, so this walks it through pnpm's own patch workflow:
+    picking the dependency diffs it against a pristine copy, and confirming writes a `.patch` file
+    under `patches/` and wires it into `patchedDependencies`, so the edit survives a reinstall
+    exactly as if `pnpm patch`/`patch-commit` had been run by hand.
+    Given the app language is English
+    And AI features are turned off
+    And the "pnpm-dependency" fixture repository is opened
+    And the installed "left-pad" dependency has an uncommitted edit
+    When I open the tools menu
+    And I click the Patch "Dependency" menu item
+    And I select the "left-pad" dependency to patch
+    Then the dependency patch confirm button is enabled
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-patch-dependency"
+    When I click the dependency patch confirm button
+    Then the patch workspace closes
+    And a real dependency patch file exists for "left-pad@1.3.0"
