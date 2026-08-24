@@ -38,6 +38,10 @@ Feature: Rewards / gamification
     And the interface has settled
     And a full-window screenshot is saved as "doc-rewards-tab"
 
+  # Not @doc: the generator renders one steps list per Scenario Outline, with the raw <command>/
+  # <title> placeholders left unsubstituted rather than one of the fourteen real examples — the
+  # prose paragraph above already explains the mechanism, and a page showing literal angle
+  # brackets would read as broken rather than documented.
   Scenario Outline: Running a themed git command in the terminal unlocks its achievement
     Fourteen of the app's achievements are tied to specific git plumbing and porcelain commands —
     not typed into the app's own integrated terminal, but observed in the ordinary shell history
@@ -111,6 +115,7 @@ Feature: Rewards / gamification
     And I confirm the autosquash
     Then the notch celebrates the achievement "History Architect"
 
+  @doc
   Scenario: Unlocking every other achievement unlocks the "Absolute Git Master" composite trophy
     The platinum trophy isn't tied to any action of its own — it completes the moment every other
     achievement in the cabinet does, a second after whatever real action finished the set, so its

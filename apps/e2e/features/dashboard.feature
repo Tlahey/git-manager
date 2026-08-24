@@ -125,6 +125,7 @@ Feature: Your projects at a glance
     Then the "remote-behind" project's HEAD commit subject contains "teammate's follow-up commit"
     And no error notification is displayed
 
+  @doc
   Scenario: Scanning a folder discovers the repositories inside it
     "Scan folder" is the other way onto the dashboard besides opening or cloning one repository at
     a time: pick a parent folder and every repository it contains — up to 4 levels deep — is added

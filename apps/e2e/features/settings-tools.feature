@@ -41,6 +41,7 @@ Feature: External tools & SSH
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-ssh-keygen"
 
+  @doc
   Scenario: Browsing to an already-existing SSH key shows its public key content
     The SSH tab isn't only for generating a fresh key pair — pointing it at a key that already
     exists on disk reads and displays that key's public content the same way.
