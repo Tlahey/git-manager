@@ -1,3 +1,6 @@
+import { appendFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { waitForRecordedCard } from '../support/notchRecording'
@@ -66,4 +69,43 @@ Then(/^the "([^"]*)" achievement is shown as unlocked$/, async (id: string) => {
   const card = $(`[data-testid="achievement-card-${id}"]`)
   await card.waitForDisplayed({ timeout: 10000 })
   await expect(card).toHaveText('Earned on', { containing: true })
+})
+
+/**
+ * The 14 `terminal_keyword` achievements watch a real shell history file, not the app's own
+ * integrated terminal — `checkTerminalHistory()` in game.store.ts polls `get_terminal_commands`,
+ * which reads `$HOME/.zsh_history`/`.bash_history` (see `TerminalKeywordRule.ts`,
+ * `lib/rewards/terminalHistory.ts`). The suite runs under an isolated `$HOME`
+ * (`isolatedAppState.ts`), so writing there cannot touch a developer's real shell history.
+ *
+ * Crediting a command requires two *separate* reads of the file: the first read of a history file
+ * always baselines it silently (see `terminalHistory.ts`'s module doc — otherwise opening the
+ * Rewards tab would hand out trophies for commands typed weeks earlier), and only a line appended
+ * after that baseline is reported as a `terminal_command` event. So this always writes one
+ * unrelated line first, waits for the poll that already runs on tab-mount to observe it, and only
+ * then appends the real command line.
+ */
+const zshHistoryFile = join(homedir(), '.zsh_history')
+
+Given(/^the shell history already holds an unrelated git command$/, async () => {
+  writeFileSync(zshHistoryFile, 'git log --e2e-history-baseline\n')
+})
+
+// `checkTerminalHistory()` fires once, immediately, on RewardsTab mount — this waits for that
+// first read (rather than a fixed sleep) by reading the same persisted snapshot the poll writes to.
+Then(/^the shell-history baseline has been read$/, async () => {
+  await browser.waitUntil(
+    () =>
+      browser.execute(() => {
+        const raw = window.localStorage.getItem('git-manager-game-store')
+        if (!raw) return false
+        const snapshot = JSON.parse(raw)?.state?.terminalHistorySnapshot
+        return Array.isArray(snapshot?.['.zsh_history'])
+      }),
+    { timeout: 10000, timeoutMsg: 'the shell-history baseline was never read' }
+  )
+})
+
+When(/^I run "([^"]*)" in the shell$/, async (command: string) => {
+  appendFileSync(zshHistoryFile, `${command}\n`)
 })

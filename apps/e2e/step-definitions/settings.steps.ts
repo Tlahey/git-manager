@@ -468,6 +468,31 @@ Then(/^a real SSH key pair exists at the generated path$/, () => {
   expect(existsSync(`${generatedSshKeyPath}.pub`)).toBe(true)
 })
 
+// Covers `read_ssh_public_key`'s other path: a key that already exists on disk (as opposed to one
+// this same suite just generated above). Written straight to a scratch dir rather than reusing a
+// real key, and seeded into settings so the SSH tab loads it via `useSshPublicKey` on mount.
+let existingSshPubKeyContent = ''
+
+Given(/^an existing SSH key pair is already on disk$/, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'git-manager-e2e-ssh-existing-'))
+  const privateKeyPath = join(dir, 'id_e2e_existing')
+  const publicKeyPath = `${privateKeyPath}.pub`
+  existingSshPubKeyContent =
+    'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleE2eFixtureKeyDoNotUse test@git-manager-e2e'
+  writeFileSync(
+    privateKeyPath,
+    '-----BEGIN OPENSSH PRIVATE KEY-----\ne2e-fixture-not-a-real-key\n-----END OPENSSH PRIVATE KEY-----\n'
+  )
+  writeFileSync(publicKeyPath, `${existingSshPubKeyContent}\n`)
+  await seedSettings({ ssh: { privateKeyPath, publicKeyPath, useSystemAgent: true } })
+})
+
+Then(/^the SSH public key content matches the key on disk$/, async () => {
+  const content = $('[data-testid="ssh-pubkey-content"]')
+  await content.waitForDisplayed({ timeout: 10000 })
+  await expect(content).toHaveText(existingSshPubKeyContent)
+})
+
 // `theme-card-<id>` is keyed on the theme's raw id (AppearanceSection.tsx), not its translated
 // label — this app defaults to French, so the label-derived testid this used to carry
 // (`theme-card-sombre` for "dark") would have made the step fragile across locales/translation

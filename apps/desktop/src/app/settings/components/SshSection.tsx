@@ -209,7 +209,10 @@ export function SshSection() {
 
         {pubKeyContent ? (
           <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <p className="line-clamp-4 font-mono text-[10px] leading-relaxed break-all text-muted-foreground select-all">
+            <p
+              className="line-clamp-4 font-mono text-[10px] leading-relaxed break-all text-muted-foreground select-all"
+              data-testid="ssh-pubkey-content"
+            >
               {pubKeyContent}
             </p>
           </div>

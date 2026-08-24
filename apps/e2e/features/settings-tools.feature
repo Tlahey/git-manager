@@ -40,3 +40,14 @@ Feature: External tools & SSH
     And a real SSH key pair exists at the generated path
     And the interface has settled
     And a full-window screenshot is saved as "doc-settings-ssh-keygen"
+
+  Scenario: Browsing to an already-existing SSH key shows its public key content
+    The SSH tab isn't only for generating a fresh key pair — pointing it at a key that already
+    exists on disk reads and displays that key's public content the same way.
+    Given the app language is English
+    And an existing SSH key pair is already on disk
+    And the git-manager application is running
+    When I reload the application
+    And I open the settings
+    And I open the "ssh" settings tab
+    Then the SSH public key content matches the key on disk
