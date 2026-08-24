@@ -10,6 +10,10 @@ Feature: The card record and the board's own shape
   and stay untagged, since a scenario written to pin a bug is not automatically a tour of the
   feature.
 
+  A card's description and its comments also take images, dropped or pasted straight in: each one
+  is written into the repository's own `.git-manager/attachments/` folder and referenced from the
+  text, with no external image host involved (`board-card-attachments.feature`).
+
   Every scenario starts from a repository with no board at all, and builds the one it needs through
   the UI — the only way a board comes into being. The assertions end on the repository's own git
   ref (`refs/git-manager/board/<id>/state`), because a render the backend never agreed to would

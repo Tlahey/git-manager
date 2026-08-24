@@ -14,13 +14,21 @@ Feature: Committing working-tree changes as directory batches
     Given the "stash-stack" fixture repository is opened
     And the working tree also has changes in "src" and "docs"
 
+  @doc @screenshots
   Scenario: Generating and committing directory batches creates one commit per top-level directory
+    Batch mode splits the working tree the mechanical way — one group per top-level directory
+    touched, decided by the paths themselves rather than by asking a model to plan the split. Turn
+    it on, generate a message for every group at once, and commit them all: each directory lands as
+    its own commit, with its own AI-drafted message, without hand-picking files into separate stages
+    first.
     Given the app language is English
     And the AI provider is pointed at a fake server
     When I select the working-tree changes in the graph
     And I toggle WIP batch mode on
     And I click the generate-all-batches button
     Then every WIP batch group has a generated message
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-wip-directory-batch"
     When I click the commit-all-batches button
     Then the repository has one commit per changed top-level directory
     And no error notification is displayed

@@ -19,11 +19,23 @@ Feature: Managing the commit graph sidebar's saved issue filters
     And I reload the application
     And I expand the "issues" sidebar section
 
+  @doc @screenshots
   Scenario: Creating a saved issue filter adds it to the sidebar
+    The Issues section of the sidebar lists this repository's GitHub issues, searchable with the
+    same query syntax GitHub itself uses. Save a search you find yourself typing again — "Needs
+    triage", "assigned to me", whatever slice matters — and it becomes its own sub-group underneath,
+    one click away instead of a query to retype.
     When I create a saved issue filter named "Needs triage" with the query "is:open label:triage"
     Then the sidebar shows a saved issue filter named "Needs triage"
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-saved-filter-created"
 
+  @doc
   Scenario: Editing, reordering and deleting a saved issue filter through its store
+    A saved filter can be renamed, reordered among the others, or removed — all from the "…" button
+    on its own row. Renaming keeps the filter and its query exactly as they were, only the label
+    changes; reordering only changes where it sits in the list; deleting is the only one that is not
+    reversible.
     When I create a saved issue filter named "Blocked" with the query "is:open label:blocked"
     And I create a saved issue filter named "Follow-up" with the query "is:open label:follow-up"
     Then the sidebar shows a saved issue filter named "Blocked"
