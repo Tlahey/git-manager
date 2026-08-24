@@ -161,7 +161,7 @@ async fn fetch_user(token: &str) -> Result<GitHubUserInfo, AppError> {
     let client = http_client(15)?;
 
     let user_res = client
-        .get("https://api.github.com/user")
+        .get(e2e_redirect("https://api.github.com/user"))
         .header("Accept", DEFAULT_ACCEPT)
         .header("Authorization", format!("Bearer {token}"))
         .header("User-Agent", USER_AGENT)
@@ -190,7 +190,7 @@ async fn fetch_user(token: &str) -> Result<GitHubUserInfo, AppError> {
     // The primary address is often not on the public profile, so it takes a second call. Best
     // effort: a token without `user:email` still gives a perfectly usable account.
     let emails_res = client
-        .get("https://api.github.com/user/emails")
+        .get(e2e_redirect("https://api.github.com/user/emails"))
         .header("Accept", DEFAULT_ACCEPT)
         .header("Authorization", format!("Bearer {token}"))
         .header("User-Agent", USER_AGENT)
