@@ -503,9 +503,18 @@ When(/^I assign the card to "([^"]*)"$/, async (name: string) => {
     async () => {
       await $('[data-testid="card-assignee-field"]').waitForDisplayed({ timeout: 10000 })
       await $('[data-testid="card-assignee-search"]').setValue(name)
-      // A repository with no connected GitHub account has no directory to pick from, so a typed
-      // name is offered as itself — which is the path a local board actually takes.
-      await $('[data-testid="card-assignee-use-name"]').click()
+      // A real connected account fetches the repo's actual assignable users and offers a matching
+      // one as a pickable row (`card-assignee-option-<login>`); a repository with no account has no
+      // directory to pick from, so a typed name is offered as itself instead
+      // (`card-assignee-use-name`) — the path a local board always takes. Give the fetch a moment
+      // to resolve before deciding which one applies, rather than racing it.
+      const option = $(`[data-testid="card-assignee-option-${name}"]`)
+      const optionAppeared = await option.waitForExist({ timeout: 800 }).catch(() => false)
+      if (optionAppeared) {
+        await option.click()
+      } else {
+        await $('[data-testid="card-assignee-use-name"]').click()
+      }
     },
     // The picker closes on picking, so the row is back to its value alone.
     async () => (await textOf('card-meta-assignee'))?.includes(name) === true

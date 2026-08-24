@@ -60,6 +60,7 @@ export interface FakeIssue {
   html_url: string
   state: 'open' | 'closed'
   user?: { login: string; avatar_url: string }
+  assignees?: { login: string; avatar_url: string }[]
   labels?: { name: string; color?: string }[]
   created_at?: string
   updated_at?: string
@@ -189,6 +190,17 @@ function findPrByNumber(
     repoFixtures?.openPulls?.find((p) => p.number === number) ??
     repoFixtures?.closedPulls?.find((p) => p.number === number)
   )
+}
+
+/** GitHub numbers issues and PRs from one repo-wide sequence, so a freshly-created issue's number
+ * has to look past every other fixture kind already seeded for the repo, not just `openIssues`. */
+function nextIssueNumber(repoFixtures: FakeRepoFixtures | undefined): number {
+  const numbers = [
+    ...(repoFixtures?.openPulls ?? []),
+    ...(repoFixtures?.closedPulls ?? []),
+    ...(repoFixtures?.openIssues ?? []),
+  ].map((entity) => entity.number)
+  return numbers.length > 0 ? Math.max(...numbers) + 1 : 1
 }
 
 function handleGraphQL(body: string, res: http.ServerResponse): void {
@@ -432,6 +444,53 @@ export async function startFakeGithubServer(
         return
       }
 
+      // POST /repos/:owner/:repo/issues — creates a new issue, e.g. a GitHub-backed board's
+      // `createCard`. Unlike every other route, the repo may not have been configured at all yet
+      // (a board scenario connects an account and creates a card without ever seeding a PR/issue
+      // fixture first), so this initializes `fixtures.repos[key]` on demand rather than 404ing.
+      if (req.method === 'POST' && rest.length === 1 && rest[0] === 'issues') {
+        const body = await readBody(req)
+        const { title = '', body: text = null } = JSON.parse(body) as {
+          title?: string
+          body?: string | null
+        }
+        const key = `${owner}/${repo}`
+        const target = (fixtures.repos[key] ??= {})
+        const number = nextIssueNumber(target)
+        const issue: FakeIssue = {
+          number,
+          title,
+          body: text,
+          html_url: `https://github.com/${owner}/${repo}/issues/${number}`,
+          state: 'open',
+          user: { login: 'octocat', avatar_url: 'https://example.invalid/octocat.png' },
+          assignees: [],
+          labels: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          comments: 0,
+        }
+        target.openIssues = [...(target.openIssues ?? []), issue]
+        sendJson(res, 201, issue)
+        return
+      }
+
+      // PATCH /repos/:owner/:repo/issues/:number — title/body/state edits (mirrors the pulls PATCH
+      // above), reused by `useIssueEdit`, close/reopen, and a board's own title/description writes.
+      if (req.method === 'PATCH' && rest.length === 2 && rest[0] === 'issues') {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const patch = JSON.parse(body) as Partial<FakeIssue>
+        const issue = repoFixtures?.openIssues?.find((i) => i.number === number)
+        if (!issue) {
+          notFound(res)
+          return
+        }
+        Object.assign(issue, patch)
+        sendJson(res, 200, issue)
+        return
+      }
+
       // POST /repos/:owner/:repo/issues/:number/labels — mutates the matching issue or PR in place
       // (they share the same number space), so the next read reflects it with no extra seeding.
       if (
@@ -594,7 +653,8 @@ export async function startFakeGithubServer(
         return
       }
 
-      // POST/DELETE /repos/:owner/:repo/issues/:number/assignees
+      // POST/DELETE /repos/:owner/:repo/issues/:number/assignees — applies to a plain issue (a
+      // board card) just as much as a PR, so this looks up across both via `findEntityByNumber`.
       if (
         (req.method === 'POST' || req.method === 'DELETE') &&
         rest.length === 3 &&
@@ -604,9 +664,9 @@ export async function startFakeGithubServer(
         const number = Number(rest[1])
         const body = await readBody(req)
         const { assignees = [] } = JSON.parse(body) as { assignees?: string[] }
-        const pr = findPrByNumber(repoFixtures, number)
-        if (pr) {
-          const byLogin = new Map((pr.assignees ?? []).map((u) => [u.login, u]))
+        const entity = findEntityByNumber(repoFixtures, number)
+        if (entity) {
+          const byLogin = new Map((entity.assignees ?? []).map((u) => [u.login, u]))
           if (req.method === 'POST') {
             for (const login of assignees) {
               byLogin.set(login, { login, avatar_url: 'https://example.invalid/avatar.png' })
@@ -614,9 +674,9 @@ export async function startFakeGithubServer(
           } else {
             for (const login of assignees) byLogin.delete(login)
           }
-          pr.assignees = [...byLogin.values()]
+          entity.assignees = [...byLogin.values()]
         }
-        sendJson(res, 200, pr ?? {})
+        sendJson(res, 200, entity ?? {})
         return
       }
 

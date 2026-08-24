@@ -9,7 +9,12 @@ Feature: Backed by GitHub Issues
   label of its own — so the board and github.com stay in agreement rather than the app hiding
   state in a private encoding.
 
-  @doc @screenshots
+  # Connecting a (fake) account before creating the board means it runs against the real remote
+  # board backend (`remote-board.api.ts`/`remoteBoardOps.ts`/`remoteCardOps.ts`) via the e2e GitHub
+  # API mock mode (issue #425), not the `mockGitHub` fixture double `useBoardBackends.ts` otherwise
+  # falls back to for an account-less repo — board creation, card creation (a real issue), priority
+  # (a real label) and assignment (a real GitHub assignee) all round-trip through the fake server.
+  @doc @screenshots @github-mock
   Scenario: Creating a board backed by GitHub issues
     Choosing "GitHub" instead of "Local" when creating a board is the whole of the choice: the same
     dialog, the same fields afterwards — a card is added, assigned and prioritised exactly the way
@@ -17,12 +22,16 @@ Feature: Backed by GitHub Issues
     shared with the team rather than private to this clone.
     Given the app language is English
     And the "feature-branches" fixture repository is opened
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And the GitHub mock server "octocat/demo-repo" has an assignable user "hubot"
+    And I reload the application
     When I open the board
     And I create a GitHub board named "Support triage" with the card prefix "SUP"
     Then the board "Support triage" is a GitHub board
     When I add a card titled "Investigate login timeout" to the "To do" column
     And I open the card "Investigate login timeout"
-    And I assign the card to "Marie Dubois"
+    And I assign the card to "hubot"
     And I set the card priority to "High"
     Then the card "Investigate login timeout" is identified as "SUP-1"
     And the interface has settled
