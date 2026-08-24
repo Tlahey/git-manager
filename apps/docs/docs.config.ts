@@ -176,6 +176,7 @@ export const DOC_SECTIONS: DocSection[] = [
           'launchpad-prs',
           'launchpad-organize',
           'launchpad-issues',
+          'issue-actions',
           'launchpad-commit-stats',
         ],
       },
