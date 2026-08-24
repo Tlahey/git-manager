@@ -59,3 +59,40 @@ Then(/^the activity log detail shows the error for "([^"]*)"$/, async (command: 
   await expect(detail).toHaveText(command, { containing: true })
   await expect(detail).toHaveText('error', { containing: true })
 })
+
+// Only rendered when the open entry's action has more than one correlated line
+// (`ActivityLogDetail.tsx`'s `traceableId`) — the scenario picks `checkout_branch` from a
+// create-and-checkout gesture specifically because that pair is guaranteed to qualify.
+When(/^I trace the activity log entry$/, async () => {
+  const button = $('[data-testid="activity-detail-trace"]')
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+})
+
+When(/^I clear the activity log trace$/, async () => {
+  await $('[data-testid="activity-trace-clear"]').click()
+})
+
+Then(/^the activity trace chip is shown$/, async () => {
+  await expect($('[data-testid="activity-trace-chip"]')).toBeDisplayed()
+})
+
+Then(/^the activity trace chip is not shown$/, async () => {
+  await expect($('[data-testid="activity-trace-chip"]')).not.toBeExisting()
+})
+
+When(/^I search the activity log for "([^"]*)"$/, async (query: string) => {
+  await $('[data-testid="activity-filter-input"]').setValue(query)
+})
+
+When(/^I click the activity log open-folder button$/, async () => {
+  await $('[data-testid="activity-open-folder"]').click()
+})
+
+When(/^I click the activity log open-AI-folder button$/, async () => {
+  await $('[data-testid="activity-open-ai-folder"]').click()
+})
+
+Then(/^the activity logs page is still shown$/, async () => {
+  await expect($('[data-testid="activity-logs-page"]')).toBeDisplayed()
+})

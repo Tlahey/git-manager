@@ -20,6 +20,20 @@ import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
  * was already toasted): the user has been told once, so {@link run} bails out silently. */
 class CheckoutDeferredError extends Error {}
 
+/** One menu action's id — the vocabulary {@link useRefDrop}'s `runRefDropAction` and the e2e
+ * bridge (`RefDropContext.tsx`) share, since the native drop menu itself is unclickable by
+ * WebDriver (a real OS menu, not a DOM element). */
+export type RefDropActionId =
+  | 'fast-forward'
+  | 'merge'
+  | 'rebase'
+  | 'interactive-rebase'
+  | 'push'
+  | 'reset-soft'
+  | 'reset-mixed'
+  | 'reset-hard'
+  | 'start-pr'
+
 /** Human-readable name for a ref — strips the remote prefix (`origin/main` → `main`). */
 function displayName(ref: GitRef): string {
   if (ref.type === 'remote') {
@@ -85,14 +99,81 @@ export function useRefDrop(repoPath: string) {
     }
   }
 
-  function handleDrop(source: GitRef, target: GitRef) {
+  /**
+   * Runs one drop-menu action against `source`/`target` directly — the same body each menu item's
+   * `onClick` runs, factored out so it has a caller other than a real (WebDriver-unclickable)
+   * native menu. `handleDrop` is the only production caller; the e2e bridge in `RefDropContext.tsx`
+   * is the other.
+   */
+  function runRefDropAction(actionId: RefDropActionId, source: GitRef, target: GitRef) {
     const sourceName = displayName(source)
     const targetName = displayName(target)
     const remote = remoteOf(target)
+    const params = { source: sourceName, target: targetName, remote }
 
+    switch (actionId) {
+      case 'fast-forward':
+        void run(
+          () => apiFastForwardBranch(repoPath, source.shortName, target.shortName),
+          t('gitTree.dragDrop.fastForwarded', params)
+        )
+        return
+      case 'merge':
+        void run(
+          () => apiMergeBranch(repoPath, source.shortName, target.shortName),
+          t('gitTree.dragDrop.merged', params)
+        )
+        return
+      case 'rebase':
+        void run(
+          async () => {
+            await ensureCheckedOut(source.shortName)
+            await apiRebaseOntoCommit(repoPath, target.commitOid)
+          },
+          t('gitTree.dragDrop.rebased', params)
+        )
+        return
+      case 'interactive-rebase':
+        void run(async () => {
+          await ensureCheckedOut(source.shortName)
+          await openRebaseWindow(repoPath, target.commitOid)
+        })
+        return
+      case 'push':
+        void run(
+          () => apiPushBranchTo(repoPath, source.shortName, targetName, remote),
+          t('gitTree.dragDrop.pushed', params)
+        )
+        return
+      case 'reset-soft':
+      case 'reset-mixed':
+      case 'reset-hard':
+        void run(
+          async () => {
+            await ensureCheckedOut(source.shortName)
+            await apiResetToCommit(
+              repoPath,
+              target.commitOid,
+              actionId.slice('reset-'.length) as 'soft' | 'mixed' | 'hard'
+            )
+          },
+          t('gitTree.dragDrop.reset', params)
+        )
+        return
+      case 'start-pr':
+        openPrCreateWith(sourceName, targetName)
+        return
+    }
+  }
+
+  function handleDrop(source: GitRef, target: GitRef) {
     const sourceIsBranch = source.type === 'branch'
     const targetIsBranch = target.type === 'branch'
-    const params = { source: sourceName, target: targetName, remote }
+    const params = {
+      source: displayName(source),
+      target: displayName(target),
+      remote: remoteOf(target),
+    }
 
     void showNativeMenu(
       buildRefDropMenuSpec(
@@ -104,48 +185,18 @@ export function useRefDrop(repoPath: string) {
           prEnabled: source.type !== 'tag' && target.type !== 'tag',
         },
         {
-          onFastForward: () =>
-            void run(
-              () => apiFastForwardBranch(repoPath, source.shortName, target.shortName),
-              t('gitTree.dragDrop.fastForwarded', params)
-            ),
-          onMerge: () =>
-            void run(
-              () => apiMergeBranch(repoPath, source.shortName, target.shortName),
-              t('gitTree.dragDrop.merged', params)
-            ),
-          onRebase: () =>
-            void run(
-              async () => {
-                await ensureCheckedOut(source.shortName)
-                await apiRebaseOntoCommit(repoPath, target.commitOid)
-              },
-              t('gitTree.dragDrop.rebased', params)
-            ),
-          onInteractiveRebase: () =>
-            void run(async () => {
-              await ensureCheckedOut(source.shortName)
-              await openRebaseWindow(repoPath, target.commitOid)
-            }),
-          onPush: () =>
-            void run(
-              () => apiPushBranchTo(repoPath, source.shortName, targetName, remote),
-              t('gitTree.dragDrop.pushed', params)
-            ),
-          onReset: (mode) =>
-            void run(
-              async () => {
-                await ensureCheckedOut(source.shortName)
-                await apiResetToCommit(repoPath, target.commitOid, mode)
-              },
-              t('gitTree.dragDrop.reset', params)
-            ),
-          onStartPr: () => openPrCreateWith(sourceName, targetName),
+          onFastForward: () => runRefDropAction('fast-forward', source, target),
+          onMerge: () => runRefDropAction('merge', source, target),
+          onRebase: () => runRefDropAction('rebase', source, target),
+          onInteractiveRebase: () => runRefDropAction('interactive-rebase', source, target),
+          onPush: () => runRefDropAction('push', source, target),
+          onReset: (mode) => runRefDropAction(`reset-${mode}`, source, target),
+          onStartPr: () => runRefDropAction('start-pr', source, target),
         },
         t
       )
     )
   }
 
-  return { handleDrop }
+  return { handleDrop, runRefDropAction }
 }

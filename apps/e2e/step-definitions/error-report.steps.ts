@@ -41,3 +41,25 @@ Then(/^the report dialog hides the repository path$/, async () => {
   await expect(body).not.toContain('/tmp/git-manager-fixtures')
   await expect(body).toContain('<repo:')
 })
+
+When(/^I describe the report as "([^"]*)"$/, async (description: string) => {
+  await $('[data-testid="error-report-description"]').setValue(description)
+})
+
+When(/^I submit the error report$/, async () => {
+  const button = $('[data-testid="error-report-submit"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^the error report shows a created issue link$/, async () => {
+  await $('[data-testid="error-report-view-issue"]').waitForDisplayed({ timeout: 15000 })
+})
+
+// `apiFindReportedIssue` is keyed on the same fingerprint the first report's body was stamped
+// with — this is the duplicate-detection half of the feature's two "load-bearing" mechanisms
+// (see the feature README), proven by actually reproducing the same failure twice rather than
+// hand-seeding a fixture issue with a guessed marker.
+Then(/^the error report shows a duplicate of the previously filed issue$/, async () => {
+  await $('[data-testid="error-report-duplicate"]').waitForDisplayed({ timeout: 15000 })
+})

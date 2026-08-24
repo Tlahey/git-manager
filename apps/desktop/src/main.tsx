@@ -16,6 +16,8 @@ import { useBisectUIStore } from './stores/bisectUI.store'
 import { useNotchQueueStore } from './stores/notchQueue.store'
 import { useGameStore } from './stores/game.store'
 import { resetMockRemoteBoards } from './features/board/api/mock-remote-board.api'
+import { useIssueFiltersStore } from './features/graph/stores/issueFilters.store'
+import { usePrFiltersStore } from './features/graph/stores/prFilters.store'
 import { hideAppSplash } from './lib/appSplash'
 import { shortOid as toShortOid } from './lib/shortOid'
 import '@git-manager/ui/globals.css'
@@ -67,6 +69,15 @@ if (import.meta.env.VITE_E2E === 'true') {
   ;(
     window as unknown as { __e2eResetMockRemoteBoards: typeof resetMockRemoteBoards }
   ).__e2eResetMockRemoteBoards = resetMockRemoteBoards
+  // Exposed for the saved-filter e2e steps: edit/delete/reorder are only reachable through
+  // `useSavedFilterMenu`'s native OS menu, which WebDriver cannot click (same class of problem as
+  // `__e2eRepoUIStore`'s `pendingGraphAction` bridge) — this lets a step call the store action a
+  // real menu click would have called, then assert the resulting DOM/persisted state.
+  ;(
+    window as unknown as { __e2eIssueFiltersStore: typeof useIssueFiltersStore }
+  ).__e2eIssueFiltersStore = useIssueFiltersStore
+  ;(window as unknown as { __e2ePrFiltersStore: typeof usePrFiltersStore }).__e2ePrFiltersStore =
+    usePrFiltersStore
 }
 
 // Read the configuration off disk before anything reads it, then initialize i18n with the persisted
