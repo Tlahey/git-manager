@@ -371,11 +371,62 @@ export async function startFakeGithubServer(
       const { owner, repo, rest } = repoMatch
       const repoFixtures = fixtures.repos[`${owner}/${repo}`]
 
+      // GET /repos/:owner/:repo — repo details, currently only read for its `default_branch`
+      // (`fetchRepoDefaultBranch`, the create-PR form's base-branch default). No fixture to
+      // configure it: every scenario using this so far picks its own base explicitly instead of
+      // relying on the default, so a fixed answer is enough.
+      if (req.method === 'GET' && rest.length === 0) {
+        sendJson(res, 200, { default_branch: 'main' })
+        return
+      }
+
       // GET /repos/:owner/:repo/pulls?state=open|closed
       if (req.method === 'GET' && rest.length === 1 && rest[0] === 'pulls') {
         const state = url.searchParams.get('state') ?? 'open'
         const list = state === 'closed' ? repoFixtures?.closedPulls : repoFixtures?.openPulls
         sendJson(res, 200, list ?? [])
+        return
+      }
+
+      // POST /repos/:owner/:repo/pulls — creates a new PR (`usePrCreateFlow`/`usePrPublishFlow`).
+      // Like the issue-create route, the repo may not have been configured at all yet.
+      if (req.method === 'POST' && rest.length === 1 && rest[0] === 'pulls') {
+        const body = await readBody(req)
+        const input = JSON.parse(body) as {
+          title?: string
+          head?: string
+          base?: string
+          body?: string
+          draft?: boolean
+        }
+        const key = `${owner}/${repo}`
+        const target = (fixtures.repos[key] ??= {})
+        const numbers = [...(target.openPulls ?? []), ...(target.closedPulls ?? [])].map(
+          (p) => p.number
+        )
+        const number = numbers.length > 0 ? Math.max(...numbers) + 1 : 1
+        const pr: FakePr = {
+          number,
+          node_id: `pr-node-${number}`,
+          title: input.title ?? '',
+          body: input.body ?? null,
+          html_url: `https://github.com/${owner}/${repo}/pull/${number}`,
+          state: 'open',
+          draft: !!input.draft,
+          merged_at: null,
+          user: { login: 'octocat', avatar_url: 'https://example.invalid/octocat.png' },
+          requested_reviewers: [],
+          assignees: [],
+          labels: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          base: { ref: input.base },
+          head: { ref: input.head },
+          mergeable: true,
+          mergeable_state: 'clean',
+        }
+        target.openPulls = [...(target.openPulls ?? []), pr]
+        sendJson(res, 201, pr)
         return
       }
 
