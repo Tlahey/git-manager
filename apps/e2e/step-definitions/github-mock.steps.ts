@@ -314,6 +314,58 @@ Given(
   }
 )
 
+/** Links an open PR to the fixture repo's actual current HEAD commit — the commit-graph's PR badge
+ * (`useCommitPullRequest`) is looked up by real SHA, unlike every other fixture here, which a
+ * scenario picks a number for itself. Reads the real SHA off disk rather than asking the scenario
+ * for one, since a fixture repo's HEAD isn't something a `.feature` file should have to know. */
+Given(
+  /^the GitHub mock server has a pull request "(\d+)" titled "([^"]*)" for the newest commit in "([^"]*)"$/,
+  async (numberStr: string, title: string, ownerRepo: string) => {
+    const number = Number(numberStr)
+    const sha = execFileSync('git', ['-C', getActiveRepoPath(), 'rev-parse', 'HEAD'])
+      .toString()
+      .trim()
+    const pr: FakePr = {
+      number,
+      title,
+      html_url: `https://github.com/${ownerRepo}/pull/${number}`,
+      state: 'open',
+      draft: false,
+      merged_at: null,
+      created_at: '2026-08-01T00:00:00Z',
+      updated_at: '2026-08-02T00:00:00Z',
+    }
+    await configureFakeGithubFixtures({
+      repos: { [ownerRepo]: { openPulls: [pr], commitPulls: { [sha]: [number] } } },
+    })
+  }
+)
+
+/** Same as above, but merged — for the badge's other icon/colour variant
+ * (`CommitHeaderInfo.tsx`'s `commitPr.merged` branch). */
+Given(
+  /^the GitHub mock server has a merged pull request "(\d+)" titled "([^"]*)" for the newest commit in "([^"]*)"$/,
+  async (numberStr: string, title: string, ownerRepo: string) => {
+    const number = Number(numberStr)
+    const sha = execFileSync('git', ['-C', getActiveRepoPath(), 'rev-parse', 'HEAD'])
+      .toString()
+      .trim()
+    const pr: FakePr = {
+      number,
+      title,
+      html_url: `https://github.com/${ownerRepo}/pull/${number}`,
+      state: 'closed',
+      draft: false,
+      merged_at: '2026-08-03T00:00:00Z',
+      created_at: '2026-08-01T00:00:00Z',
+      updated_at: '2026-08-03T00:00:00Z',
+    }
+    await configureFakeGithubFixtures({
+      repos: { [ownerRepo]: { closedPulls: [pr], commitPulls: { [sha]: [number] } } },
+    })
+  }
+)
+
 // So one scenario's fixtures (a specific PR/issue number, a specific title) can never leak into the
 // next — the server is suite-wide and outlives any single scenario (see fakeGithubServer.ts). This
 // also has to undo "a GitHub account ... is connected with a fake API token": the suite drives one

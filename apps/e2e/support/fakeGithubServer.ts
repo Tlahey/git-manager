@@ -125,6 +125,11 @@ export interface FakeRepoFixtures {
   assignableUsers?: { login: string; avatar_url: string }[]
   /** Candidate pool for the label edit popover (`GET .../labels`). */
   repoLabels?: { name: string; color?: string; description?: string | null }[]
+  /** Commit SHA → PR numbers, backing `GET .../commits/:sha/pulls` (the commit-graph's PR badge,
+   * `useCommitPullRequest`). Keyed by the real SHA a fixture repo's commit actually has, since —
+   * unlike every other fixture here — GitHub resolves this one by content, not by a number a
+   * scenario picks itself. */
+  commitPulls?: Record<string, number[]>
 }
 
 export interface FakeGithubFixtures {
@@ -397,6 +402,25 @@ export async function startFakeGithubServer(
       if (req.method === 'GET' && rest.length === 3 && rest[0] === 'pulls' && rest[2] === 'files') {
         const number = Number(rest[1])
         sendJson(res, 200, repoFixtures?.files?.[number] ?? [])
+        return
+      }
+
+      // GET /repos/:owner/:repo/commits/:sha/pulls — the commit-graph's PR badge
+      // (`useCommitPullRequest`). An empty array (never a 404) is the real API's own answer for a
+      // commit with no linked PR, which `fetchCommitPullRequest`/`fetchCommitMergedPullRequestForBranch`
+      // both already treat identically to a 404 — so fixtures need only ever populate the hit case.
+      if (
+        req.method === 'GET' &&
+        rest.length === 3 &&
+        rest[0] === 'commits' &&
+        rest[2] === 'pulls'
+      ) {
+        const sha = rest[1]
+        const numbers = repoFixtures?.commitPulls?.[sha] ?? []
+        const prs = numbers
+          .map((n) => findPrByNumber(repoFixtures, n))
+          .filter((pr): pr is FakePr => pr !== undefined)
+        sendJson(res, 200, prs)
         return
       }
 
