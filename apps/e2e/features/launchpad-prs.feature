@@ -45,8 +45,11 @@ Feature: Your pull requests
     Then the "prs" launchpad tab shows the pull request "pr-1"
 
   # "Selecting a PR opens its detail panel" is documented in the content plan as blocked, not
-  # written here: the panel itself opens (no crash, no token needed for that much), but
-  # PrDetailCenter's usePrDetail only fires its fetch when a real GitHub token is present — no
-  # hasToken-false fallback the way useGitHubData has one — so the panel is left showing "Loading
-  # pull request…" forever. Same limitation pr-graph.feature already documents for the graph's own
-  # PR surface. Confirmed by driving it end to end rather than assumed from reading the hook.
+  # written here, for THIS file's scenarios specifically: they use the demo-data fallback with no
+  # account connected, and PrDetailCenter's usePrDetail only fires its fetch when a real GitHub
+  # token is present — no hasToken-false fallback the way useGitHubData has one — so the panel would
+  # be left showing "Loading pull request…" forever. Same limitation pr-graph.feature already
+  # documents for the graph's own PR surface. The limitation itself is no longer unaddressed,
+  # though: `pr-detail-view.feature` and `pr-actions.feature` cover the exact same panel end to end
+  # once a real account + the e2e GitHub API mock mode (`@github-mock`, issue #425) supply the token
+  # this file's plain `@launchpad` scenarios deliberately don't seed.
