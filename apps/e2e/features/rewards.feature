@@ -37,3 +37,32 @@ Feature: Rewards / gamification
     Then the "commit_1" achievement is shown as unlocked
     And the interface has settled
     And a full-window screenshot is saved as "doc-rewards-tab"
+
+  Scenario Outline: Running a themed git command in the terminal unlocks its achievement
+    Fourteen of the app's achievements are tied to specific git plumbing and porcelain commands —
+    not typed into the app's own integrated terminal, but observed in the ordinary shell history
+    file any terminal writes to. The first time one of these commands shows up there while Git
+    Manager is open, its themed achievement unlocks.
+    Given the app language is English
+    And the shell history already holds an unrelated git command
+    When I open the rewards tab
+    And the shell-history baseline has been read
+    And I run "<command>" in the shell
+    Then the notch celebrates the achievement "<title>"
+
+    Examples:
+      | command                                           | title                |
+      | git status                                        | Status Inspector     |
+      | git log --oneline                                 | Local Historian      |
+      | git diff                                           | Code Watcher         |
+      | git branch --all                                   | Branch Explorer      |
+      | git stash list                                     | Stash Inspector      |
+      | git bisect start                                   | Dichotomy Detective  |
+      | git cherry-pick abc1234                            | Precise Picker       |
+      | git rebase -i HEAD~3                               | Time Surgeon         |
+      | git worktree list                                  | Advanced Multitasker |
+      | git submodule status                               | Matryoshka Inspector |
+      | git filter-branch --force                          | History Rewriter     |
+      | git verify-pack -v .git/objects/pack/pack-e2e.idx  | Repository Archivist |
+      | git write-tree                                     | Chief Plumber        |
+      | git cat-file -p HEAD                               | Raw Object Inspector |
