@@ -366,6 +366,35 @@ Given(
   }
 )
 
+/** Reviewer/checks rollup for one PR — the sidebar's hover card (`fetchPrReviewSummary`). Fixed
+ * shape (one approving reviewer, green checks) rather than parameterized, matching the rest of this
+ * file's fixture steps: a scenario states which PR needs a summary, not what the summary contains. */
+Given(
+  /^the GitHub mock server has a review summary for pull request "(\d+)" in "([^"]*)"$/,
+  async (numberStr: string, ownerRepo: string) => {
+    const number = Number(numberStr)
+    await configureFakeGithubFixtures({
+      repos: {
+        [ownerRepo]: {
+          reviewSummaries: {
+            [number]: {
+              reviewDecision: 'APPROVED',
+              reviewers: [
+                {
+                  login: 'hubot',
+                  avatarUrl: 'https://example.invalid/hubot.png',
+                  state: 'APPROVED',
+                },
+              ],
+              checksState: 'SUCCESS',
+            },
+          },
+        },
+      },
+    })
+  }
+)
+
 // So one scenario's fixtures (a specific PR/issue number, a specific title) can never leak into the
 // next — the server is suite-wide and outlives any single scenario (see fakeGithubServer.ts). This
 // also has to undo "a GitHub account ... is connected with a fake API token": the suite drives one

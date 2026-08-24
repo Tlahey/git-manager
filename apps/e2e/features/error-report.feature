@@ -38,3 +38,29 @@ Feature: Reporting a problem
     And the report dialog hides the repository path
     And the interface has settled
     And a full-window screenshot is saved as "doc-error-report"
+
+  @github-mock
+  Scenario: Submitting a report files a new issue, and reporting the same failure again finds it
+    The fingerprint stamped into the first report's body is what the second lookup searches for —
+    proving both of the feature's "load-bearing" mechanisms (the README's own words) end to end: a
+    real issue gets filed, and the next reporter of the same failure lands on it instead of a copy.
+    Reloading between the two reports is deliberate: the same-session "already reported" guard
+    (`errorReportStore`) would otherwise mask the real cross-session duplicate lookup this proves.
+    Given the "stash-stack" fixture repository is opened
+    And the app language is English
+    And the repository has a GitHub remote "octocat/demo-repo"
+    And a GitHub account "octocat" is connected with a fake API token
+    And I reload the application
+    When I click the toolbar fetch button
+    And I open the activity logs from the report button
+    And I open the "fetch_remote" activity log entry
+    And I report the selected activity log entry
+    And I describe the report as "network was down"
+    And I submit the error report
+    Then the error report shows a created issue link
+    When I reload the application
+    And I click the toolbar fetch button
+    And I open the activity logs from the report button
+    And I open the "fetch_remote" activity log entry
+    And I report the selected activity log entry
+    Then the error report shows a duplicate of the previously filed issue

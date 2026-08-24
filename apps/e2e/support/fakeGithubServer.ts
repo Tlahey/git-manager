@@ -131,6 +131,16 @@ export interface FakeRepoFixtures {
    * unlike every other fixture here — GitHub resolves this one by content, not by a number a
    * scenario picks itself. */
   commitPulls?: Record<string, number[]>
+  /** Per-PR-number reviewer/checks rollup, backing the sidebar's hover card
+   * (`fetchPrReviewSummary`'s `latestOpinionatedReviews`/`commits.statusCheckRollup` query). */
+  reviewSummaries?: Record<
+    number,
+    {
+      reviewDecision?: string | null
+      reviewers?: { login: string; avatarUrl: string; state: string }[]
+      checksState?: string | null
+    }
+  >
 }
 
 export interface FakeGithubFixtures {
@@ -258,6 +268,36 @@ function handleGraphQL(body: string, res: http.ServerResponse): void {
             reviewDecision: m.reviewDecision ?? null,
             viewerCanMergeAsAdmin: m.viewerCanMergeAsAdmin ?? false,
             commits: { nodes: [{ commit: { statusCheckRollup: { contexts: { nodes: [] } } } }] },
+          },
+        },
+      },
+    })
+    return
+  }
+
+  if (query.includes('latestOpinionatedReviews')) {
+    const summary = repoFixtures?.reviewSummaries?.[number ?? -1]
+    sendJson(res, 200, {
+      data: {
+        repository: {
+          pullRequest: {
+            reviewDecision: summary?.reviewDecision ?? null,
+            latestOpinionatedReviews: {
+              nodes: (summary?.reviewers ?? []).map((r) => ({
+                state: r.state,
+                author: { login: r.login, avatarUrl: r.avatarUrl },
+              })),
+            },
+            reviewRequests: { nodes: [] },
+            commits: {
+              nodes: [
+                {
+                  commit: {
+                    statusCheckRollup: summary?.checksState ? { state: summary.checksState } : null,
+                  },
+                },
+              ],
+            },
           },
         },
       },

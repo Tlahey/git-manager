@@ -43,3 +43,47 @@ Feature: The Activity log
     And the activity log shows a "fetch_remote" entry
     And the interface has settled
     And a full-window screenshot is saved as "doc-activity-log-scope"
+
+  Scenario: Tracing a multi-step action narrows the log to just its own operations
+    Creating and checking out a branch is one user gesture but two backend calls sharing a
+    correlation id — the trace chip narrows the stream down to just those, hiding everything else
+    the app did around it.
+    Given the "rollback-history" fixture repository is opened
+    And the app language is English
+    When I select the "HEAD~1" commit in the graph
+    And I open the command palette
+    And I run the command palette action "commit-branch"
+    Then the create branch dialog is shown
+    When I enter the branch name "feature/traced"
+    And I confirm the branch creation
+    Then the branch "feature/traced" exists
+    When I open the activity logs
+    And I open the "checkout_branch" activity log entry
+    And I trace the activity log entry
+    Then the activity trace chip is shown
+    And the activity log shows a "create_branch" entry
+    And the activity log shows a "checkout_branch" entry
+    And the activity log does not show a "get_repo_status" entry
+    When I clear the activity log trace
+    Then the activity trace chip is not shown
+    And the activity log shows a "get_repo_status" entry
+
+  Scenario: Searching the activity log by free text narrows the stream
+    Given the "stash-stack" fixture repository is opened
+    And the app language is English
+    When I click the toolbar fetch button
+    And I open the activity logs
+    And I search the activity log for "fetch_remote"
+    Then the activity log shows a "fetch_remote" entry
+    And the activity log does not show a "get_repo_status" entry
+
+  Scenario: Opening the log folders doesn't break the page
+    The two folder buttons hand off to the OS file browser — nothing in the app's own window
+    changes, so this only proves the click is wired up and doesn't crash the page.
+    Given the "stash-stack" fixture repository is opened
+    And the app language is English
+    When I open the activity logs
+    And I click the activity log open-folder button
+    And I click the activity log open-AI-folder button
+    Then the activity logs page is still shown
+    And no error notification is displayed
