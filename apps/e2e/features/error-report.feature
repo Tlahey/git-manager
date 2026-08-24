@@ -39,13 +39,12 @@ Feature: Reporting a problem
     And the interface has settled
     And a full-window screenshot is saved as "doc-error-report"
 
-  @github-mock
+  @github-mock @doc @screenshots
   Scenario: Submitting a report files a new issue, and reporting the same failure again finds it
-    The fingerprint stamped into the first report's body is what the second lookup searches for —
-    proving both of the feature's "load-bearing" mechanisms (the README's own words) end to end: a
-    real issue gets filed, and the next reporter of the same failure lands on it instead of a copy.
-    Reloading between the two reports is deliberate: the same-session "already reported" guard
-    (`errorReportStore`) would otherwise mask the real cross-session duplicate lookup this proves.
+    Filing a report doesn't just post it and forget: a fingerprint of the failure goes into the
+    issue body, and the next time you report that same failure, the app searches for that
+    fingerprint first — so two people (or one person twice) hitting the same bug land on one issue
+    instead of a pile of duplicates GitHub then has to be de-duplicated by hand.
     Given the "stash-stack" fixture repository is opened
     And the app language is English
     And the repository has a GitHub remote "octocat/demo-repo"
@@ -64,6 +63,8 @@ Feature: Reporting a problem
     And I open the "fetch_remote" activity log entry
     And I report the selected activity log entry
     Then the error report shows a duplicate of the previously filed issue
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-error-report-duplicate"
 
   @doc @screenshots
   Scenario: Reporting a crash from the top-level error boundary

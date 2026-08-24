@@ -80,6 +80,8 @@ Feature: The Activity log
     Then the activity log shows a "fetch_remote" entry
     And the activity log does not show a "get_repo_status" entry
 
+  # Not @doc: the scenario's own prose says what it is — a smoke test proving the click is wired
+  # up, not a flow with anything on screen worth showing a reader.
   Scenario: Opening the log folders doesn't break the page
     The two folder buttons hand off to the OS file browser — nothing in the app's own window
     changes, so this only proves the click is wired up and doesn't crash the page.
