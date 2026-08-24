@@ -102,6 +102,7 @@ export const DOC_SECTIONS: DocSection[] = [
   {
     title: 'When Git gets in the way',
     features: [
+      'ref-drop',
       'merge-branches',
       'merge-target',
       'merge-editor',
@@ -132,6 +133,7 @@ export const DOC_SECTIONS: DocSection[] = [
     features: [
       'ai-generation',
       'ai-commit-recompose',
+      'wip-directory-batch',
       'daily-summary',
       'ai-summary-search',
       'ai-explanation',
@@ -177,12 +179,23 @@ export const DOC_SECTIONS: DocSection[] = [
           'launchpad-organize',
           'launchpad-issues',
           'issue-actions',
+          // Not the Issues tab above — the commit graph's own sidebar section, listing this one
+          // repository's issues. Placed here anyway: it is still a GitHub-issues journey, gated on
+          // the same connected account, and a reader following this group to learn about issues
+          // should find it rather than stumble onto it under "Reading your repository".
+          'saved-filters-graph',
           'launchpad-commit-stats',
         ],
       },
       {
         title: 'Pull requests',
-        features: ['pr-detail-view', 'pr-actions', 'pr-creation', 'ai-pr-description'],
+        features: [
+          'pr-review-hover',
+          'pr-detail-view',
+          'pr-actions',
+          'pr-creation',
+          'ai-pr-description',
+        ],
       },
       {
         title: 'Board',
