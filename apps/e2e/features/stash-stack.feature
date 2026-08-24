@@ -79,6 +79,7 @@ Feature: Stash list
     And the interface has settled
     And a full-window screenshot is saved as "doc-stash-renamed"
 
+  @doc
   Scenario: Undoing a stash pop restores the stash
     Popping a stash from the command palette goes through the same undo history as any other
     action: ⌘Z brings the stash right back, at the same message and the same changes it had before
@@ -99,6 +100,7 @@ Feature: Stash list
     When I undo the last action
     Then the repository has 2 stashes
 
+  @doc
   Scenario: Undoing a stash drop restores the stash
     Dropping a stash is undoable too — the deleted stash comes back exactly as it was, without
     needing a reflog to find it.

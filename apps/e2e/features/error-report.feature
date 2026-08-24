@@ -65,6 +65,7 @@ Feature: Reporting a problem
     And I report the selected activity log entry
     Then the error report shows a duplicate of the previously filed issue
 
+  @doc @screenshots
   Scenario: Reporting a crash from the top-level error boundary
     A render-phase crash replaces the whole window with the app's last-resort fallback, which
     mounts its own separate instance of the same dialog — reached along a path the log-based flow
@@ -76,3 +77,5 @@ Feature: Reporting a problem
     When I click the crash screen's report button
     Then the report dialog shows what will be sent
     And the report dialog has no correlated activity block
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-error-report-crash"

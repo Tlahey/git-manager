@@ -44,6 +44,7 @@ Feature: The Activity log
     And the interface has settled
     And a full-window screenshot is saved as "doc-activity-log-scope"
 
+  @doc @screenshots
   Scenario: Tracing a multi-step action narrows the log to just its own operations
     Creating and checking out a branch is one user gesture but two backend calls sharing a
     correlation id — the trace chip narrows the stream down to just those, hiding everything else
@@ -64,6 +65,8 @@ Feature: The Activity log
     And the activity log shows a "create_branch" entry
     And the activity log shows a "checkout_branch" entry
     And the activity log does not show a "get_repo_status" entry
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-activity-log-trace"
     When I clear the activity log trace
     Then the activity trace chip is not shown
     And the activity log shows a "get_repo_status" entry
