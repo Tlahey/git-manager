@@ -1,4 +1,4 @@
-import { $, $$, expect } from '@wdio/globals'
+import { $, $$, browser, expect } from '@wdio/globals'
 import { When, Then } from '@wdio/cucumber-framework'
 
 When(/^I open the activity logs from the report button$/, async () => {
@@ -62,4 +62,38 @@ Then(/^the error report shows a created issue link$/, async () => {
 // hand-seeding a fixture issue with a guessed marker.
 Then(/^the error report shows a duplicate of the previously filed issue$/, async () => {
   await $('[data-testid="error-report-duplicate"]').waitForDisplayed({ timeout: 15000 })
+})
+
+// Flips `window.__e2eCrashStore` (exposed by `main.tsx`, only in an e2e build), which makes
+// `E2ECrashTrigger` throw on its next render — the only way to deliberately reach
+// `AppErrorBoundary`'s fallback from outside the app. See E2ECrashTrigger.tsx / git-manager#439.
+When(/^I force a render crash$/, async () => {
+  await browser.execute(() => {
+    const store = (
+      window as unknown as { __e2eCrashStore?: { getState: () => { trigger: () => void } } }
+    ).__e2eCrashStore
+    if (!store) throw new Error('__e2eCrashStore is not exposed on window')
+    store.getState().trigger()
+  })
+})
+
+Then(/^the crash screen is shown$/, async () => {
+  await $('[data-testid="app-error-boundary"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I click the crash screen's report button$/, async () => {
+  const button = $('[data-testid="app-crash-report"]')
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+  await $('[data-testid="error-report-dialog"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// The crash draft carries the last activity log entries as context, but no `correlationLabel` —
+// unlike every entry the log-based flow reports, which always names the action it came from. That
+// absence is what makes this mount path distinguishable from the one `error-report.feature`'s
+// other scenarios already cover.
+Then(/^the report dialog has no correlated activity block$/, async () => {
+  const preview = $('[data-testid="error-report-preview"]')
+  const body = await preview.getText()
+  await expect(body).not.toContain('action:')
 })
