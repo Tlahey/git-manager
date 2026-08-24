@@ -22,6 +22,18 @@ When(/^I open the autosquash preview$/, async () => {
   })
 })
 
+When(/^I confirm the autosquash$/, async () => {
+  const button = $('[data-testid="autosquash-confirm-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+  // apiRunAutosquash's onClose() only fires once the rebase actually finished — the dialog
+  // going away is the real "the squash ran" signal, not just a click having landed.
+  await $('[data-testid="autosquash-preview-dialog"]').waitForExist({
+    reverse: true,
+    timeout: 15000,
+  })
+})
+
 Then(/^the preview groups the commit "([^"]*)"$/, async (subject: string) => {
   const groups = $('[data-testid="autosquash-preview-groups"]')
   expect(await groups.getText()).toContain(subject)

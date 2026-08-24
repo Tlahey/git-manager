@@ -109,3 +109,30 @@ Then(/^the shell-history baseline has been read$/, async () => {
 When(/^I run "([^"]*)" in the shell$/, async (command: string) => {
   appendFileSync(zshHistoryFile, `${command}\n`)
 })
+
+// Same store-bridge switch as "I open the rewards tab" above — deliberately NOT the standalone
+// "I open the launchpad" step (launchpad-prs.steps.ts), which reloads the whole app first. That
+// reload is there for launchpad.feature's own scenarios, which have no fixture-open step of their
+// own to force the app's first cold render — but a reload here would also wipe the live,
+// non-persisted "the notch queue is being recorded" subscription this scenario needs to still be
+// listening when `setActiveTab` raises `open_launchpad`.
+When(/^I switch to the launchpad tab$/, async () => {
+  await browser.waitUntil(
+    async () =>
+      await browser.execute(() => {
+        const store = (
+          window as unknown as {
+            __e2eRepoUIStore?: { getState: () => { setActiveTab: (id: string) => void } }
+          }
+        ).__e2eRepoUIStore
+        if (!store) return false
+        store.getState().setActiveTab('pull-requests')
+        return true
+      }),
+    {
+      timeout: 10000,
+      timeoutMsg: '__e2eRepoUIStore never became available to switch to the launchpad tab',
+    }
+  )
+  await $('[data-testid="manual-refresh-button"]').waitForDisplayed({ timeout: 15000 })
+})
