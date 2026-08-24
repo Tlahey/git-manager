@@ -8,14 +8,16 @@ import type { BoardBackend } from './boardBackend'
  * {@link createRemoteBoardBackend} (`remote-board.api.ts`), used only when `VITE_MOCK_GITHUB` is on
  * and the repository has no real connected account (see `useBoardBackends.ts`).
  *
- * The real remote backend cannot be exercised by the e2e suite at all: every one of its methods is a
- * `github_api_request` Tauri call, and this Tauri build cannot intercept an `invoke()` the *app's own*
- * click triggers — `browser.tauri.mock` only reaches a command called directly through the test
- * bridge (see `apps/e2e/README.md`'s "Mocking real Tauri commands" section). Hitting the real,
- * anonymous GitHub API from a docs-generation run was ruled out too: rate-limited, non-deterministic,
- * and the one outbound network dependency the whole suite is built to avoid. So this board is
- * offered to the UI as a `source: 'remote'` board precisely as far as an e2e run can see: same
- * dialog, same fields, same "GitHub" badge — reads and writes just never leave this module.
+ * The real remote backend *can* be exercised by the e2e suite — the e2e GitHub API mock mode (issue
+ * #425, `docs/architecture/2026-08-e2e-github-api-mock-mode.md`) redirects `github_api_request`'s
+ * outbound HTTP call itself, in Rust, to a local fake server, rather than trying to intercept the
+ * `invoke()` the app's own click triggers (which is what `browser.tauri.mock` genuinely cannot do —
+ * see `apps/e2e/README.md`'s "Mocking real Tauri commands" section, and `board-github.feature`'s
+ * `@github-mock` scenarios for the working alternative). This double now exists for one narrower
+ * reason instead: it is what `mockGitHub` gives a *real* `pnpm dev` session (or an e2e scenario that
+ * deliberately has no connected account) so the "GitHub" board option is stylable/testable without
+ * needing a GitHub account at all — same dialog, same fields, same "GitHub" badge, reads and writes
+ * just never leave this module.
  *
  * Kept in memory only, and keyed by repository path — a page reload starts over, the same as every
  * other dev fixture (`lib/devFixtures/index.ts`), and switching repositories never shows one
