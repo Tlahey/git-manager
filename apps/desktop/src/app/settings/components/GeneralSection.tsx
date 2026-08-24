@@ -86,6 +86,7 @@ export function GeneralSection() {
             {t('settings.git.defaultName')}
           </label>
           <Input
+            data-testid="git-identity-name-input"
             value={git.defaultAuthorName}
             onChange={(e) => updateGit({ defaultAuthorName: e.target.value })}
             className="h-8 text-xs"
@@ -97,6 +98,7 @@ export function GeneralSection() {
             {t('settings.git.defaultEmail')}
           </label>
           <Input
+            data-testid="git-identity-email-input"
             type="email"
             value={git.defaultAuthorEmail}
             onChange={(e) => updateGit({ defaultAuthorEmail: e.target.value })}
@@ -207,7 +209,7 @@ export function GeneralSection() {
       >
         <Separator className="mb-4" />
         <h4 className="text-xs font-semibold text-foreground">
-          <Highlight text="Indexation & Recherche" />
+          <Highlight text={t('settings.advanced.title')} />
         </h4>
 
         <div className="space-y-1.5">
@@ -218,6 +220,7 @@ export function GeneralSection() {
             tags={advanced.scanExclusions}
             onChange={(tags) => updateAdvanced({ scanExclusions: tags })}
             placeholder="node_modules, dist…"
+            testId="scan-exclusions-tags"
           />
         </div>
 
@@ -226,6 +229,7 @@ export function GeneralSection() {
             {t('settings.advanced.scanDepth')}
           </label>
           <Input
+            data-testid="max-scan-depth-input"
             type="number"
             min={1}
             max={10}

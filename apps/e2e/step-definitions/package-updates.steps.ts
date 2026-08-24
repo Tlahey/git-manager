@@ -101,3 +101,32 @@ When(/^I run the upgrade risk report$/, async () => {
 Then(/^the upgrade risk report names the affected file "([^"]*)"$/, async (path: string) => {
   await expect($('[data-testid="upgrade-risk-where"]')).toHaveText(path, { containing: true })
 })
+
+// A Radix Dialog (SidePanelOverlay) — its backdrop genuinely covers the row underneath, not just a
+// driver visibility quirk, so a row action behind it has to wait for it to close first.
+When(/^I close the release notes panel$/, async () => {
+  await browser.keys(['Escape'])
+  await $('[data-testid="package-changelog-panel"]').waitForExist({
+    timeout: 10000,
+    reverse: true,
+  })
+})
+
+// Crossing a major asks for confirmation instead of updating on the first click (PackageUpdateRow's
+// `requestLatest`) — this drives that path rather than the in-range one `update-in-range` covers.
+When(/^I update "([^"]*)" to the latest version$/, async (name: string) => {
+  const row = await findRowByPackage(name)
+  const button = row.$('[data-testid="update-latest"]')
+  await button.waitForClickable({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^a major-version update confirmation is shown$/, async () => {
+  await $('[data-testid="major-confirm"]').waitForDisplayed({ timeout: 10000 })
+})
+
+When(/^I confirm the major-version update$/, async () => {
+  const button = $('[data-testid="major-confirm-accept"]')
+  await button.waitForClickable({ timeout: 10000 })
+  await button.click()
+})

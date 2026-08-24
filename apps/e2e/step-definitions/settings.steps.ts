@@ -134,6 +134,66 @@ Then(/^automatic pruning on auto-fetch is off$/, async () => {
   await expect(checkbox).not.toBeChecked()
 })
 
+When(/^I set the git identity name to "([^"]*)"$/, async (name: string) => {
+  await fillControlledInput('git-identity-name-input', name)
+})
+
+Then(/^the git identity name is "([^"]*)"$/, async (name: string) => {
+  await expect($('[data-testid="git-identity-name-input"]')).toHaveValue(name)
+})
+
+When(/^I set the git identity email to "([^"]*)"$/, async (email: string) => {
+  await fillControlledInput('git-identity-email-input', email)
+})
+
+Then(/^the git identity email is "([^"]*)"$/, async (email: string) => {
+  await expect($('[data-testid="git-identity-email-input"]')).toHaveValue(email)
+})
+
+When(/^I set the initial graph commit count to "([^"]*)"$/, async (count: string) => {
+  await fillControlledInput('settings-initial-graph-commits', count)
+})
+
+Then(/^the initial graph commit count is "([^"]*)"$/, async (count: string) => {
+  await expect($('[data-testid="settings-initial-graph-commits"]')).toHaveValue(count)
+})
+
+When(/^I turn off lazy-loading graph commits$/, async () => {
+  await clickViaJs('settings-lazy-load-graph-commits')
+})
+
+Then(/^lazy-loading graph commits is off$/, async () => {
+  await expect($('[data-testid="settings-lazy-load-graph-commits"]')).not.toBeChecked()
+})
+
+When(/^I add "([^"]*)" to the scan exclusions$/, async (pattern: string) => {
+  const input = $('[data-testid="scan-exclusions-tags-input"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(pattern)
+  await browser.keys('Enter')
+})
+
+Then(/^the scan exclusions include "([^"]*)"$/, async (pattern: string) => {
+  const wrapper = $('[data-testid="scan-exclusions-tags"]')
+  await wrapper.waitForDisplayed({ timeout: 10000 })
+  await expect(wrapper).toHaveText(pattern, { containing: true })
+})
+
+When(/^I set the max scan depth to "([^"]*)"$/, async (depth: string) => {
+  await fillControlledInput('max-scan-depth-input', depth)
+})
+
+Then(/^the max scan depth is "([^"]*)"$/, async (depth: string) => {
+  await expect($('[data-testid="max-scan-depth-input"]')).toHaveValue(depth)
+})
+
+// `GIT_MANAGER_NO_CONFIG` (how the whole suite runs, per settings.store.ts's own doc comment)
+// switches the config file off, so the section shows `config-file-disabled` rather than a path
+// here — the section itself (ConfigFileSetting) is what this step is really after.
+Then(/^the app configuration file setting is shown$/, async () => {
+  await expect($('[data-testid="setting-config-file"]')).toBeDisplayed()
+})
+
 const LANGUAGE_CODES: Record<string, string> = { English: 'en', French: 'fr', Spanish: 'es' }
 
 // WDIO's own `selectByAttribute` picks the right <option> in the WebView but, on this WKWebView
@@ -275,6 +335,76 @@ Then(
     }
   }
 )
+
+// The commit-instructions field is a <textarea>, not an <input> — HTMLInputElement's native value
+// setter (fillControlledInput's) doesn't apply to it, same reasoning as interactive-rebase.steps.ts's
+// reword textarea.
+async function fillControlledTextarea(testid: string, value: string) {
+  await $(`[data-testid="${testid}"]`).waitForDisplayed({ timeout: 10000 })
+  await browser.execute(
+    (id: string, v: string) => {
+      const el = document.querySelector(`[data-testid="${id}"]`) as HTMLTextAreaElement | null
+      if (!el) throw new Error(`no textarea with data-testid="${id}"`)
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(el, v)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    },
+    testid,
+    value
+  )
+}
+
+When(/^I set the commit instructions to "([^"]*)"$/, async (text: string) => {
+  await fillControlledTextarea('commit-instructions-input', text)
+})
+
+Then(/^the commit instructions are "([^"]*)"$/, async (text: string) => {
+  await expect($('[data-testid="commit-instructions-input"]')).toHaveValue(text)
+})
+
+When(/^I set the commit pattern to "([^"]*)"$/, async (pattern: string) => {
+  await fillControlledInput('commit-pattern-input', pattern)
+})
+
+Then(/^the commit pattern is "([^"]*)"$/, async (pattern: string) => {
+  await expect($('[data-testid="commit-pattern-input"]')).toHaveValue(pattern)
+})
+
+// Unconditional clicks below, not a check-then-toggle like `I toggle the AI setting (on|off)` —
+// each scenario using these knows the settings-store default it starts from (enabled: true,
+// autoGenerate: true, saveToRepo: false), the same assumption `I turn off automatic pruning on
+// auto-fetch` makes about its own checkbox's default.
+When(/^I turn (?:on|off) the daily summary feature$/, async () => {
+  await clickViaJs('daily-summary-enabled-toggle')
+})
+
+Then(/^the daily summary feature is on$/, async () => {
+  await expect($('[data-testid="daily-summary-enabled-toggle"]')).toBeChecked()
+})
+
+Then(/^automatic daily summary generation is not shown$/, async () => {
+  expect(await $('[data-testid="daily-summary-auto-toggle"]').isExisting()).toBe(false)
+})
+
+When(/^I turn off automatic daily summary generation$/, async () => {
+  await clickViaJs('daily-summary-auto-toggle')
+})
+
+Then(/^automatic daily summary generation is off$/, async () => {
+  await expect($('[data-testid="daily-summary-auto-toggle"]')).not.toBeChecked()
+})
+
+When(/^I turn on saving the daily summary to the repository$/, async () => {
+  await clickViaJs('daily-summary-save-to-repo-toggle')
+})
+
+Then(/^saving the daily summary to the repository is on$/, async () => {
+  await expect($('[data-testid="daily-summary-save-to-repo-toggle"]')).toBeChecked()
+})
+
+Then(/^the daily summary folder button is shown$/, async () => {
+  await expect($('[data-testid="daily-summary-open-folder"]')).toBeDisplayed()
+})
 
 // The checkbox's real `<input>` is deliberately kept `opacity-0` rather than `sr-only` (see
 // checkbox.tsx's doc comment) so it stays the actual hit area under the painted box sibling —

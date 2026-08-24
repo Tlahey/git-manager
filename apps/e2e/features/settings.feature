@@ -55,6 +55,37 @@ Feature: General
     And a full-window screenshot is saved as "doc-auto-fetch"
 
   @doc @screenshots
+  Scenario: Configuring git identity, graph loading, and index scan settings persists across a reload
+    The General section covers more than the toggles above: the name and email new commits are
+    authored as, how many commits the graph loads up front (and whether it keeps lazily loading
+    past that), and which paths the workspace-wide file scan skips and how deep it descends. All of
+    it is saved the same way as everything else here — immediately, with nothing to click to commit
+    it — and the app's own configuration file is shown at the bottom for whoever wants to look at
+    what got written.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "general" settings tab
+    And I set the git identity name to "Ada Lovelace"
+    And I set the git identity email to "ada@example.com"
+    And I set the initial graph commit count to "1500"
+    And I turn off lazy-loading graph commits
+    And I add "coverage" to the scan exclusions
+    And I set the max scan depth to "5"
+    And I reload the application
+    And I open the settings
+    And I open the "general" settings tab
+    Then the git identity name is "Ada Lovelace"
+    And the git identity email is "ada@example.com"
+    And the initial graph commit count is "1500"
+    And lazy-loading graph commits is off
+    And the scan exclusions include "coverage"
+    And the max scan depth is "5"
+    And the app configuration file setting is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-general-git-scan"
+
+  @doc @screenshots
   Scenario: Toggling the row height setting persists across a reload
     A denser graph fits more history on screen at once; the choice is remembered the same way
     every other setting is, reload and restart included.

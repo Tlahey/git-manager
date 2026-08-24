@@ -264,6 +264,7 @@
   "settings.appearance.rowHeight.info.scope": "Affects the commit graph only — side panels, file lists and the sidebar keep their own sizing.",
   "settings.info.aria": "More information: {{label}}",
   "settings.language.title": "Interface language",
+  "settings.advanced.title": "Indexing & Search",
   "settings.advanced.scanDepth": "Scan depth",
   "settings.advanced.reset": "Reset all settings",
   "settings.advanced.resetConfirm": "All your settings will be lost. Continue?",

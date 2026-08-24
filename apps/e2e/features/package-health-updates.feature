@@ -16,9 +16,10 @@ Feature: Checking for dependency updates, and what an upgrade would break
   @doc @screenshots
   Scenario: Updating a dependency, then assessing what a bigger one would break
     An in-range update needs one click and no confirmation — the declared range already allows it.
-    "chalk"'s only available move crosses a major, so instead of updating it this scenario asks the
-    AI assessment what that would break here: it reads the release notes against the files that
-    actually import the package, and says whether the change lands on code this repo has.
+    "chalk"'s only available move crosses a major: before taking it, this scenario asks the AI
+    assessment what that would break here (it reads the release notes against the files that
+    actually import the package, and says whether the change lands on code this repo has), then
+    takes the major update anyway — which, crossing a major, asks for confirmation first.
     Given the app language is English
     And the "package-health" fixture repository is opened
     And the repository has outdated dependencies ready for the updates demo
@@ -31,5 +32,10 @@ Feature: Checking for dependency updates, and what an upgrade would break
     When I view the release notes for "chalk"
     And I run the upgrade risk report
     Then the upgrade risk report names the affected file "packages/ui/src/index.ts"
+    When I close the release notes panel
+    And I update "chalk" to the latest version
+    Then a major-version update confirmation is shown
+    When I confirm the major-version update
+    Then the updates page no longer lists "chalk"
     And the interface has settled
     And a full-window screenshot is saved as "doc-package-updates"

@@ -59,6 +59,38 @@ Then(/^the global theme setting shows as overridden$/, async () => {
   await $('[data-testid="overridden-badge-theme"]').waitForDisplayed({ timeout: 10000 })
 })
 
+When(/^I override the repository's commit instructions$/, async () => {
+  const button = $('[data-testid="repo-override-commitInstructions-override"]')
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+})
+
+// A <textarea>, not the <input> `repo-theme-select`/protected-branches steps above deal with —
+// same native-setter-plus-event fix as settings.steps.ts's `fillControlledTextarea`.
+When(/^I set the repository commit instructions to "([^"]*)"$/, async (text: string) => {
+  const input = $('[data-testid="repo-commit-instructions"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await browser.execute((value: string) => {
+    const el = document.querySelector(
+      '[data-testid="repo-commit-instructions"]'
+    ) as HTMLTextAreaElement | null
+    if (!el) throw new Error('repo-commit-instructions textarea disappeared')
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+    setter.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, text)
+})
+
+Then(/^the repository commit instructions override is "([^"]*)"$/, async (text: string) => {
+  await expect($('[data-testid="repo-commit-instructions"]')).toHaveValue(text)
+})
+
+Then(/^the global commit instructions setting shows as overridden$/, async () => {
+  await $('[data-testid="overridden-badge-commitInstructions"]').waitForDisplayed({
+    timeout: 10000,
+  })
+})
+
 When(/^I start adding a worktree default file$/, async () => {
   const add = $('[data-testid="worktree-df-add"]')
   await add.waitForClickable({ timeout: 15000 })

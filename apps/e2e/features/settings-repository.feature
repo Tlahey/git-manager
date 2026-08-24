@@ -42,6 +42,21 @@ Feature: Repository-specific settings
     And a full-window screenshot is saved as "doc-settings-repository-override"
 
   @doc @screenshots
+  Scenario: Overriding the per-repo commit instructions shows as overridden on the global AI Features page
+    Commit style mirrors theme the same way: switching it to Override seeds the textarea from the
+    current effective value, and the global AI Features page then shows an "(overridden)" badge
+    next to that same field, so it's clear the repository isn't reading it any more.
+    When I open the settings
+    And I open the "ai_commit" repository settings tab
+    And I override the repository's commit instructions
+    And I set the repository commit instructions to "Reference the Jira ticket."
+    Then the repository commit instructions override is "Reference the Jira ticket."
+    When I open the "ai_features" settings tab
+    Then the global commit instructions setting shows as overridden
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-repository-ai-commit"
+
+  @doc @screenshots
   Scenario: Choosing which files new worktrees start with
     A worktree created from this repository starts as a fresh checkout — untracked files like a
     local `.env` don't exist in it. A pattern added here copies any matching file from the main
