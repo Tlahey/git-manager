@@ -29,6 +29,8 @@ export interface FakeGithubServerHandle {
 /** Minimal shape covering every field the frontend's `GhRawPR` reads (see `github-pulls.api.ts`). */
 export interface FakePr {
   number: number
+  /** GraphQL global node id — required by the draft-toggle mutations, which carry no owner/repo. */
+  node_id?: string
   title: string
   body?: string | null
   html_url: string
@@ -119,6 +121,10 @@ export interface FakeRepoFixtures {
     number,
     { pullRequestId: string; viewedByPath?: Record<string, string> }
   >
+  /** Candidate pool for the reviewer/assignee edit popover (`GET .../assignees`). */
+  assignableUsers?: { login: string; avatar_url: string }[]
+  /** Candidate pool for the label edit popover (`GET .../labels`). */
+  repoLabels?: { name: string; color?: string; description?: string | null }[]
 }
 
 export interface FakeGithubFixtures {
@@ -159,8 +165,37 @@ function notFound(res: http.ServerResponse): void {
   sendJson(res, 404, { message: 'Not Found (fake GitHub server: no fixture configured)' })
 }
 
+/** Finds the fixture entity a given issue/PR number refers to — a PR and an issue share the same
+ * number space on GitHub, and several write endpoints (labels, assignees) apply to either shape.
+ * Checked in this order since a PR is also technically an issue but not vice versa. */
+function findEntityByNumber(
+  repoFixtures: FakeRepoFixtures | undefined,
+  number: number
+): FakePr | FakeIssue | undefined {
+  return (
+    repoFixtures?.openPulls?.find((p) => p.number === number) ??
+    repoFixtures?.closedPulls?.find((p) => p.number === number) ??
+    repoFixtures?.openIssues?.find((i) => i.number === number)
+  )
+}
+
+/** Same lookup, scoped to pull requests only — for PR-only fields (`requested_reviewers`, `draft`,
+ * `merged_at`) that a plain `FakeIssue` doesn't carry. */
+function findPrByNumber(
+  repoFixtures: FakeRepoFixtures | undefined,
+  number: number
+): FakePr | undefined {
+  return (
+    repoFixtures?.openPulls?.find((p) => p.number === number) ??
+    repoFixtures?.closedPulls?.find((p) => p.number === number)
+  )
+}
+
 function handleGraphQL(body: string, res: http.ServerResponse): void {
-  let parsed: { query?: string; variables?: { owner?: string; repo?: string; number?: number } }
+  let parsed: {
+    query?: string
+    variables?: { owner?: string; repo?: string; number?: number; id?: string }
+  }
   try {
     parsed = JSON.parse(body)
   } catch {
@@ -168,8 +203,30 @@ function handleGraphQL(body: string, res: http.ServerResponse): void {
     return
   }
   const { query = '', variables = {} } = parsed
-  const { owner, repo, number } = variables
+  const { owner, repo, number, id: nodeId } = variables
   const repoFixtures = owner && repo ? fixtures.repos[`${owner}/${repo}`] : undefined
+
+  // The draft-toggle mutations carry no owner/repo — only the PR's global node id — so this has to
+  // search every repo's pull requests rather than scoping to `repoFixtures` like the queries below.
+  if (
+    query.includes('convertPullRequestToDraft') ||
+    query.includes('markPullRequestReadyForReview')
+  ) {
+    const draft = query.includes('convertPullRequestToDraft')
+    let pr: FakePr | undefined
+    for (const repoFx of Object.values(fixtures.repos)) {
+      pr =
+        repoFx.openPulls?.find((p) => p.node_id === nodeId) ??
+        repoFx.closedPulls?.find((p) => p.node_id === nodeId)
+      if (pr) break
+    }
+    if (pr) pr.draft = draft
+    const mutationName = draft ? 'convertPullRequestToDraft' : 'markPullRequestReadyForReview'
+    sendJson(res, 200, {
+      data: { [mutationName]: { pullRequest: { isDraft: pr?.draft ?? draft } } },
+    })
+    return
+  }
 
   // Distinguishing substrings unique to each query this suite issues — same technique
   // `fakeAiServer.ts` uses to tell completion features apart by JSON schema name.
@@ -245,10 +302,10 @@ function handleGraphQL(body: string, res: http.ServerResponse): void {
  * `docs/architecture/2026-08-e2e-github-api-mock-mode.md` for why this exists as a real local HTTP
  * server rather than a mock injected at the IPC layer.
  *
- * Covers exactly the endpoints the currently-unblocked scenarios need (the PR detail view, and
- * adding an existing issue to a GitHub-backed board) — not a general GitHub API simulator. Extend
- * {@link FakeRepoFixtures}/the request handler here when a new scenario needs another endpoint,
- * the same way `fakeAiServer.ts` grew one branch per AI feature.
+ * Covers exactly the endpoints the currently-unblocked scenarios need (the PR detail view and its
+ * write actions, and adding an existing issue to a GitHub-backed board) — not a general GitHub API
+ * simulator. Extend {@link FakeRepoFixtures}/the request handler here when a new scenario needs
+ * another endpoint, the same way `fakeAiServer.ts` grew one branch per AI feature.
  */
 export async function startFakeGithubServer(
   options: { port?: number } = {}
@@ -375,8 +432,8 @@ export async function startFakeGithubServer(
         return
       }
 
-      // POST /repos/:owner/:repo/issues/:number/labels — mutates the matching issue in place, the
-      // same way a real repository would, so the board's next read reflects it with no extra seeding.
+      // POST /repos/:owner/:repo/issues/:number/labels — mutates the matching issue or PR in place
+      // (they share the same number space), so the next read reflects it with no extra seeding.
       if (
         req.method === 'POST' &&
         rest.length === 3 &&
@@ -386,13 +443,192 @@ export async function startFakeGithubServer(
         const number = Number(rest[1])
         const body = await readBody(req)
         const { labels: newLabels = [] } = JSON.parse(body) as { labels?: string[] }
-        const issue = repoFixtures?.openIssues?.find((i) => i.number === number)
-        if (issue) {
-          const existing = new Set((issue.labels ?? []).map((l) => l.name))
+        const entity = findEntityByNumber(repoFixtures, number)
+        if (entity) {
+          const existing = new Set((entity.labels ?? []).map((l) => l.name))
           for (const name of newLabels) existing.add(name)
-          issue.labels = [...existing].map((name) => ({ name }))
+          entity.labels = [...existing].map((name) => ({ name }))
         }
-        sendJson(res, 200, issue?.labels ?? newLabels.map((name) => ({ name })))
+        sendJson(res, 200, entity?.labels ?? newLabels.map((name) => ({ name })))
+        return
+      }
+
+      // DELETE /repos/:owner/:repo/issues/:number/labels/:name — the removeLabel counterpart.
+      if (
+        req.method === 'DELETE' &&
+        rest.length === 4 &&
+        rest[0] === 'issues' &&
+        rest[2] === 'labels'
+      ) {
+        const number = Number(rest[1])
+        const labelName = decodeURIComponent(rest[3])
+        const entity = findEntityByNumber(repoFixtures, number)
+        if (entity) entity.labels = (entity.labels ?? []).filter((l) => l.name !== labelName)
+        sendJson(res, 200, entity?.labels ?? [])
+        return
+      }
+
+      // POST /repos/:owner/:repo/issues/:number/comments — appends rather than replaces, so a
+      // scenario can post through the real UI and see it survive the following refetch.
+      if (
+        req.method === 'POST' &&
+        rest.length === 3 &&
+        rest[0] === 'issues' &&
+        rest[2] === 'comments'
+      ) {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const { body: text = '' } = JSON.parse(body) as { body?: string }
+        if (!repoFixtures) {
+          notFound(res)
+          return
+        }
+        const comment: FakeComment = {
+          id: (repoFixtures.comments?.[number]?.length ?? 0) + 1,
+          body: text,
+          html_url: `https://github.com/${owner}/${repo}/pull/${number}#issuecomment`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user: { login: 'octocat', avatar_url: 'https://example.invalid/octocat.png' },
+        }
+        repoFixtures.comments = repoFixtures.comments ?? {}
+        repoFixtures.comments[number] = [...(repoFixtures.comments[number] ?? []), comment]
+        sendJson(res, 201, comment)
+        return
+      }
+
+      // POST /repos/:owner/:repo/pulls/:number/reviews — reflects the review's verdict onto
+      // `mergeability.reviewDecision`, the field `PrChecksBox`'s review row actually reads.
+      if (
+        req.method === 'POST' &&
+        rest.length === 3 &&
+        rest[0] === 'pulls' &&
+        rest[2] === 'reviews'
+      ) {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const { event = 'COMMENT' } = JSON.parse(body) as { event?: string }
+        const m = repoFixtures?.mergeability?.[number]
+        if (m) {
+          m.reviewDecision =
+            event === 'APPROVE'
+              ? 'APPROVED'
+              : event === 'REQUEST_CHANGES'
+                ? 'CHANGES_REQUESTED'
+                : (m.reviewDecision ?? null)
+        }
+        sendJson(res, 200, { id: 1, state: event })
+        return
+      }
+
+      // PUT /repos/:owner/:repo/pulls/:number/merge
+      if (req.method === 'PUT' && rest.length === 3 && rest[0] === 'pulls' && rest[2] === 'merge') {
+        const number = Number(rest[1])
+        const pr = findPrByNumber(repoFixtures, number)
+        if (pr) {
+          pr.merged_at = new Date().toISOString()
+          pr.state = 'closed'
+        }
+        sendJson(res, 200, {
+          sha: 'mergedsha0000000000000000000000000000',
+          merged: true,
+          message: 'Pull Request successfully merged',
+        })
+        return
+      }
+
+      // PATCH /repos/:owner/:repo/pulls/:number — title/body/state edits.
+      if (req.method === 'PATCH' && rest.length === 2 && rest[0] === 'pulls') {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const patch = JSON.parse(body) as Partial<FakePr>
+        const pr = findPrByNumber(repoFixtures, number)
+        if (!pr) {
+          notFound(res)
+          return
+        }
+        Object.assign(pr, patch)
+        sendJson(res, 200, pr)
+        return
+      }
+
+      // PUT /repos/:owner/:repo/pulls/:number/update-branch — simulates GitHub completing the
+      // update by clearing the BEHIND status, so the UI's "Update branch" row has an observable
+      // before/after once the write's refetch lands.
+      if (
+        req.method === 'PUT' &&
+        rest.length === 3 &&
+        rest[0] === 'pulls' &&
+        rest[2] === 'update-branch'
+      ) {
+        const number = Number(rest[1])
+        const m = repoFixtures?.mergeability?.[number]
+        if (m) m.mergeStateStatus = 'CLEAN'
+        sendJson(res, 202, { message: 'Updating pull request branch.' })
+        return
+      }
+
+      // POST/DELETE /repos/:owner/:repo/pulls/:number/requested_reviewers
+      if (
+        (req.method === 'POST' || req.method === 'DELETE') &&
+        rest.length === 3 &&
+        rest[0] === 'pulls' &&
+        rest[2] === 'requested_reviewers'
+      ) {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const { reviewers = [] } = JSON.parse(body) as { reviewers?: string[] }
+        const pr = findPrByNumber(repoFixtures, number)
+        if (pr) {
+          const byLogin = new Map((pr.requested_reviewers ?? []).map((u) => [u.login, u]))
+          if (req.method === 'POST') {
+            for (const login of reviewers) {
+              byLogin.set(login, { login, avatar_url: 'https://example.invalid/avatar.png' })
+            }
+          } else {
+            for (const login of reviewers) byLogin.delete(login)
+          }
+          pr.requested_reviewers = [...byLogin.values()]
+        }
+        sendJson(res, 200, pr ?? {})
+        return
+      }
+
+      // POST/DELETE /repos/:owner/:repo/issues/:number/assignees
+      if (
+        (req.method === 'POST' || req.method === 'DELETE') &&
+        rest.length === 3 &&
+        rest[0] === 'issues' &&
+        rest[2] === 'assignees'
+      ) {
+        const number = Number(rest[1])
+        const body = await readBody(req)
+        const { assignees = [] } = JSON.parse(body) as { assignees?: string[] }
+        const pr = findPrByNumber(repoFixtures, number)
+        if (pr) {
+          const byLogin = new Map((pr.assignees ?? []).map((u) => [u.login, u]))
+          if (req.method === 'POST') {
+            for (const login of assignees) {
+              byLogin.set(login, { login, avatar_url: 'https://example.invalid/avatar.png' })
+            }
+          } else {
+            for (const login of assignees) byLogin.delete(login)
+          }
+          pr.assignees = [...byLogin.values()]
+        }
+        sendJson(res, 200, pr ?? {})
+        return
+      }
+
+      // GET /repos/:owner/:repo/assignees — the reviewer/assignee edit popover's candidate pool.
+      if (req.method === 'GET' && rest.length === 1 && rest[0] === 'assignees') {
+        sendJson(res, 200, repoFixtures?.assignableUsers ?? [])
+        return
+      }
+
+      // GET /repos/:owner/:repo/labels — the label edit popover's candidate pool.
+      if (req.method === 'GET' && rest.length === 1 && rest[0] === 'labels') {
+        sendJson(res, 200, repoFixtures?.repoLabels ?? [])
         return
       }
 

@@ -6,7 +6,7 @@ import { getActiveRepoPath } from '../support/activeRepo'
 import { seedSettings, forceLiveSettings } from '../support/settings'
 import { navigateAndSettle } from '../support/navigation'
 import { configureFakeGithubFixtures, resetFakeGithubFixtures } from '../support/fakeGithubServer'
-import type { FakePr, FakeIssue } from '../support/fakeGithubServer'
+import type { FakePr, FakeIssue, FakeComment, FakeReviewThread } from '../support/fakeGithubServer'
 
 /**
  * Shared setup for scenarios exercising the e2e GitHub API mock mode (issue #425,
@@ -126,6 +126,9 @@ Given(
     const number = Number(numberStr)
     const pr: FakePr = {
       number,
+      // Same id `filesViewedState.pullRequestId` below uses — required by the draft-toggle
+      // GraphQL mutations, which key off this rather than owner/repo/number.
+      node_id: `pr-node-${number}`,
       title,
       body: 'Fixture pull request body.',
       html_url: `https://github.com/${ownerRepo}/pull/${number}`,
@@ -218,6 +221,96 @@ Given(
       comments: 0,
     }
     await configureFakeGithubFixtures({ repos: { [ownerRepo]: { openIssues: [issue] } } })
+  }
+)
+
+/** Adds one issue-style comment to an already-seeded PR — for scenarios reading `usePrComments`.
+ * Replaces (not appends to) that PR's comments, so it should follow the "open pull request" step,
+ * whose empty `comments: {[number]: []}` this then overrides with the one comment given here. */
+Given(
+  /^the GitHub mock server pull request "(\d+)" in "([^"]*)" has a comment "([^"]*)" from "([^"]*)"$/,
+  async (numberStr: string, ownerRepo: string, body: string, login: string) => {
+    const number = Number(numberStr)
+    const comment: FakeComment = {
+      id: 1,
+      body,
+      html_url: `https://github.com/${ownerRepo}/pull/${number}#issuecomment-1`,
+      created_at: '2026-08-01T00:00:00Z',
+      updated_at: '2026-08-01T00:00:00Z',
+      user: { login, avatar_url: 'https://example.invalid/avatar.png' },
+    }
+    await configureFakeGithubFixtures({
+      repos: { [ownerRepo]: { comments: { [number]: [comment] } } },
+    })
+  }
+)
+
+/** Adds one unresolved review thread to an already-seeded PR — for `usePrReviewThreads`/
+ * `PrCodeSuggestions`, which only render once there is at least one unresolved thread. */
+Given(
+  /^the GitHub mock server pull request "(\d+)" in "([^"]*)" has an unresolved review thread on "([^"]*)" from "([^"]*)" saying "([^"]*)"$/,
+  async (numberStr: string, ownerRepo: string, path: string, login: string, text: string) => {
+    const number = Number(numberStr)
+    const thread: FakeReviewThread = {
+      id: `thread-${number}-1`,
+      isResolved: false,
+      isOutdated: false,
+      path,
+      line: 1,
+      author: login,
+      bodyText: text,
+      url: `https://github.com/${ownerRepo}/pull/${number}#discussion_r1`,
+    }
+    await configureFakeGithubFixtures({
+      repos: { [ownerRepo]: { reviewThreads: { [number]: [thread] } } },
+    })
+  }
+)
+
+/** Marks an already-seeded PR as behind its base branch — for the "Update branch" action
+ * (`PrChecksBox`'s `pr-checks-behind` row only renders when `mergeStateStatus` is `BEHIND`). */
+Given(
+  /^the GitHub mock server pull request "(\d+)" in "([^"]*)" is behind its base branch$/,
+  async (numberStr: string, ownerRepo: string) => {
+    const number = Number(numberStr)
+    await configureFakeGithubFixtures({
+      repos: {
+        [ownerRepo]: {
+          mergeability: {
+            [number]: {
+              mergeable: 'MERGEABLE',
+              mergeStateStatus: 'BEHIND',
+              reviewDecision: null,
+              viewerCanMergeAsAdmin: false,
+            },
+          },
+        },
+      },
+    })
+  }
+)
+
+/** One candidate in the repo's assignable-users pool — the reviewer/assignee edit popover's
+ * candidate list (`fetchAssignableUsers`, `GET .../assignees`). */
+Given(
+  /^the GitHub mock server "([^"]*)" has an assignable user "([^"]*)"$/,
+  async (ownerRepo: string, login: string) => {
+    await configureFakeGithubFixtures({
+      repos: {
+        [ownerRepo]: {
+          assignableUsers: [{ login, avatar_url: 'https://example.invalid/avatar.png' }],
+        },
+      },
+    })
+  }
+)
+
+/** One candidate in the repo's label pool — the label edit popover's candidate list
+ * (`fetchRepoLabels`, `GET .../labels`). */
+Given(
+  /^the GitHub mock server "([^"]*)" has a label "([^"]*)"$/,
+  async (ownerRepo: string, name: string) => {
+    await configureFakeGithubFixtures({ repos: { [ownerRepo]: { repoLabels: [{ name }] } } })
   }
 )
 

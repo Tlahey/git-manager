@@ -181,7 +181,7 @@ export const DOC_SECTIONS: DocSection[] = [
       },
       {
         title: 'Pull requests',
-        features: ['pr-detail-view', 'ai-pr-description'],
+        features: ['pr-detail-view', 'pr-actions', 'ai-pr-description'],
       },
       {
         title: 'Board',
