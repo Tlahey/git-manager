@@ -59,3 +59,15 @@ Feature: Rebase conflict resolution
     When I continue the rebase
     Then the conflict resolution panel is not shown
     And the commit "ours: add metrics/tracing addons, bump http-client/database-driver/retry-policy/auth-provider, drop old-widget/legacy-cache/legacy-session" is reachable from "HEAD"
+
+  @merge
+  Scenario: Resolving a binary conflict by keeping one side
+    A binary file can't be merged line by line, so its conflict editor skips the block-by-block
+    resolver entirely and offers just two buttons — keep ours, keep theirs — writing the chosen
+    side's raw bytes to disk and staging them.
+    Given the app language is English
+    And the "rebase-conflict-binary" fixture repository is opened
+    When I click the conflicted file "asset.bin" to resolve its binary conflict
+    Then the binary conflict keep-ours/keep-theirs buttons are shown
+    When I keep the "ours" side of the binary conflict
+    Then the file "asset.bin" is resolved with the "ours" side's bytes

@@ -78,3 +78,36 @@ Feature: Stash list
     And the repository has 2 stashes
     And the interface has settled
     And a full-window screenshot is saved as "doc-stash-renamed"
+
+  Scenario: Undoing a stash pop restores the stash
+    Popping a stash from the command palette goes through the same undo history as any other
+    action: ⌘Z brings the stash right back, at the same message and the same changes it had before
+    it was applied and removed.
+    Given the app language is English
+    And the "stash-stack" fixture repository is opened
+    Then the repository has 2 stashes
+    # The fixture leaves a staged edit to config.yml on top of both stashes (deliberately, to
+    # cover stash-vs-working-tree conflicts elsewhere) — the newest stash touches the same file at
+    # the same position, so popping it straight onto that leftover would conflict rather than
+    # apply. Discarding it first restores the exact tree the stash was taken against.
+    When I select the working-tree changes in the graph
+    And I discard the changes to "config.yml"
+    And I select the "stash@{0}" commit in the graph
+    And I open the command palette
+    And I run the command palette action "stash-pop"
+    Then the repository has 1 stash
+    When I undo the last action
+    Then the repository has 2 stashes
+
+  Scenario: Undoing a stash drop restores the stash
+    Dropping a stash is undoable too — the deleted stash comes back exactly as it was, without
+    needing a reflog to find it.
+    Given the app language is English
+    And the "stash-stack" fixture repository is opened
+    Then the repository has 2 stashes
+    When I select the "stash@{0}" commit in the graph
+    And I open the command palette
+    And I run the command palette action "stash-drop"
+    Then the repository has 1 stash
+    When I undo the last action
+    Then the repository has 2 stashes

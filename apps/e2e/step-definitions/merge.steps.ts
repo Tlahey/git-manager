@@ -6,6 +6,7 @@ import { browser, expect, $, $$ } from '@wdio/globals'
 import { Given, When, Then, After } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
 import { navigateAndSettle } from '../support/navigation.js'
+import { getActiveRepoPath } from '../support/activeRepo.js'
 
 // The embedded provider shares ONE app instance across features, run sequentially. This feature
 // navigates that shared window to the merge route, so it must hand it back on the main route or
@@ -359,6 +360,70 @@ When(/^I click the merge editor apply button$/, async () => {
     { timeout: 10000, timeoutMsg: 'Did not return to a single window after applying the merge' }
   )
 })
+
+// Binary conflicts skip the block-by-block editor entirely (ConflictMergeWindow.tsx renders just
+// two buttons for `view.isBinary`), so this mirrors "I click the conflicted file … to resolve it"
+// above up to opening the real second window, but waits on `keep-ours-button` instead of
+// `merge-accept-left` — the text-only readiness signal that never appears for a binary view.
+When(
+  /^I click the conflicted file "([^"]*)" to resolve its binary conflict$/,
+  async (filePath: string) => {
+    const before = await browser.getWindowHandles()
+    mainWindowHandle = before[0]
+    const row = $(`[data-testid="file-tree-file-${filePath}"]`)
+    await row.waitForDisplayed({ timeout: 10000 })
+    await row.click()
+    await browser.waitUntil(async () => (await browser.getWindowHandles()).length > before.length, {
+      timeout: 10000,
+      timeoutMsg: 'The merge editor window never opened',
+    })
+    const after = await browser.getWindowHandles()
+    mergeWindowHandle = after.find((h) => !before.includes(h))!
+    await browser.switchToWindow(mergeWindowHandle)
+    await $('[data-testid="merge-editor-window"]').waitForDisplayed({ timeout: 20000 })
+    await $('[data-testid="keep-ours-button"]').waitForDisplayed({ timeout: 20000 })
+  }
+)
+
+Then(/^the binary conflict keep-ours\/keep-theirs buttons are shown$/, async () => {
+  await ensureMergeWindow()
+  await expect($('[data-testid="keep-ours-button"]')).toBeDisplayed()
+  await expect($('[data-testid="keep-theirs-button"]')).toBeDisplayed()
+})
+
+// handleKeepSide writes the chosen side's raw bytes to disk and stages them (resolve_conflict_binary),
+// then closes this real second window — same close-then-switch-back sequence as the apply button.
+When(/^I keep the "(ours|theirs)" side of the binary conflict$/, async (side: string) => {
+  await ensureMergeWindow()
+  await clickViaJs(`keep-${side}-button`)
+  await browser.pause(500)
+  await browser.switchToWindow(mainWindowHandle)
+  await browser.waitUntil(
+    async () => {
+      const handles = await browser.getWindowHandles()
+      return handles.length === 1 && handles[0] === mainWindowHandle
+    },
+    {
+      timeout: 10000,
+      timeoutMsg: 'Did not return to a single window after resolving the binary conflict',
+    }
+  )
+})
+
+// The exact bytes each side of rebase-conflict-binary.sh writes to asset.bin — read back raw
+// (latin1 maps each byte to one code point losslessly) rather than utf8, which would corrupt the
+// embedded NUL and any non-ASCII byte.
+Then(
+  /^the file "([^"]*)" is resolved with the "(ours|theirs)" side's bytes$/,
+  (filePath: string, side: string) => {
+    const repoPath = getActiveRepoPath()
+    const status = execFileSync('git', ['-C', repoPath, 'status', '--porcelain']).toString()
+    expect(status).not.toContain(`UU ${filePath}`)
+    const expected = side === 'ours' ? 'OURS\x00asset-v2-ours' : 'THEIRS\x00asset-v2-theirs'
+    const actual = readFileSync(join(repoPath, filePath), 'latin1')
+    expect(actual).toBe(expected)
+  }
+)
 
 Then(/^the file "([^"]*)" is staged and no longer conflicted$/, (filePath: string) => {
   const status = execFileSync('git', ['-C', currentRepoPath, 'status', '--porcelain']).toString()
