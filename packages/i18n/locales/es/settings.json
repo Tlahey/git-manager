@@ -264,6 +264,7 @@
   "settings.appearance.rowHeight.info.scope": "Solo afecta al grafo de commits — los paneles laterales, las listas de archivos y la barra lateral mantienen su propio tamaño.",
   "settings.info.aria": "Más información: {{label}}",
   "settings.language.title": "Idioma de la interfaz",
+  "settings.advanced.title": "Indexación y búsqueda",
   "settings.advanced.scanDepth": "Profundidad de escaneo",
   "settings.advanced.reset": "Restablecer todos los ajustes",
   "settings.advanced.resetConfirm": "Se perderán todos tus ajustes. ¿Continuar?",

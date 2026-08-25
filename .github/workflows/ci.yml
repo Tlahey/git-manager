@@ -1,0 +1,69 @@
+name: CI
+
+# The only automated gate on a pull request. Kept deliberately minimal and cheap: no e2e suite here
+# (219 wdio scenarios against a real Tauri window — stays a manual `pnpm test:e2e` run, see #449).
+# Split in two jobs so the expensive macOS runner is only paid for the job that actually needs it —
+# the frontend checks need no Rust toolchain and run on a plain ubuntu-latest runner.
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  frontend:
+    name: Typecheck, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
+          cache: pnpm
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint (includes translation:check)
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+  rust:
+    name: Clippy & fmt
+    # apps/desktop/src-tauri has a target."cfg(target_os = "macos")" dependency block (the notch
+    # NSPanel integration), so this cannot build on a Linux runner.
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install macOS system dependencies
+        run: brew install pkg-config openssl libssh2
+
+      - name: Clippy
+        working-directory: apps/desktop/src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Format check
+        working-directory: apps/desktop/src-tauri
+        run: cargo fmt --check
