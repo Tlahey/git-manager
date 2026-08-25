@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { ensureSyntaxTree } from '@codemirror/language'
 import { markdownDecorations } from './markdownDecorations'
 import {
   AlertTitleWidget,
@@ -13,11 +14,18 @@ import {
 
 /** `cursor` defaults to the very start, so the assertions are about a line nobody is editing. */
 function state(doc: string, cursor = 0) {
-  return EditorState.create({
+  const editorState = EditorState.create({
     doc,
     extensions: [markdown({ base: markdownLanguage })],
     selection: { anchor: cursor },
   })
+  // A bare state created via `EditorState.create` (no `EditorView`) never gets the idle-callback
+  // background parsing a real editor would give it, so `syntaxTree()` inside `markdownDecorations`
+  // can see a tree that Lezer's bounded parse budget cut off before finishing — on a loaded CI
+  // runner this was intermittently incomplete, failing a different assertion on every retry.
+  // Force the parse to completion once here so every test sees the same, fully-parsed tree.
+  ensureSyntaxTree(editorState, editorState.doc.length, 10000)
+  return editorState
 }
 
 interface Decorated {
