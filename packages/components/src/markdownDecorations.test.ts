@@ -1,7 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { beforeAll, describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { ensureSyntaxTree } from '@codemirror/language'
 import { markdownDecorations } from './markdownDecorations'
 import {
   AlertTitleWidget,
@@ -14,18 +13,11 @@ import {
 
 /** `cursor` defaults to the very start, so the assertions are about a line nobody is editing. */
 function state(doc: string, cursor = 0) {
-  const editorState = EditorState.create({
+  return EditorState.create({
     doc,
     extensions: [markdown({ base: markdownLanguage })],
     selection: { anchor: cursor },
   })
-  // A bare state created via `EditorState.create` (no `EditorView`) never gets the idle-callback
-  // background parsing a real editor would give it, so `syntaxTree()` inside `markdownDecorations`
-  // can see a tree that Lezer's bounded parse budget cut off before finishing — on a loaded CI
-  // runner this was intermittently incomplete, failing a different assertion on every retry.
-  // Force the parse to completion once here so every test sees the same, fully-parsed tree.
-  ensureSyntaxTree(editorState, editorState.doc.length, 10000)
-  return editorState
 }
 
 interface Decorated {
@@ -72,6 +64,20 @@ function classesOf(doc: string, text: string, cursor?: number): string[] {
 }
 
 describe('markdownDecorations', () => {
+  // On a CPU-constrained CI runner, the very first parse Lezer ever does in a fresh worker can
+  // land on the wrong side of its internal timing budget and come back incomplete — reproduced in
+  // CI as whichever test happened to run first failing an assertion that an identical, later call
+  // with the same input satisfies every time (never reproduced locally, and it wasn't the same
+  // assertion failing on every CI run — a heading marker one run, a task-checkbox count the next).
+  // Paying that one-off cold start here, outside any assertion, on a doc that touches most of the
+  // constructs this file exercises, means the first real test sees a fully warmed parser like
+  // every other test does.
+  beforeAll(() => {
+    decorated(
+      '# H\n\nsome **strong** text\n\n- [x] done\n- [ ] todo\n\n> quoted\n\n![shot](a.png)\n\n---\n\n```ts\nconst a = 1\n```\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n'
+    )
+  })
+
   it('styles a heading and hides its marker', () => {
     const { hidden } = decorated('para\n\n## Title')
 
