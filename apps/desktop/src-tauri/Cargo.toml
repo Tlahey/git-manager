@@ -44,7 +44,7 @@ portable-pty = "0.8"
 # this whole arrangement exists to prevent.
 keyring = { version = "3", default-features = false, features = ["apple-native"] }
 # AES-GCM and SHA-2 for the encrypted local vault backend (`~/.git-manager/vault.enc`).
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 sha2 = "0.10"
 
 # WebdriverIO E2E testing support (behind the "e2e" feature, see docs/architecture — this
