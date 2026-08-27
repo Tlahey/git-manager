@@ -2,7 +2,7 @@
 
 `git-manager` is a 100% local desktop app: it talks to the local filesystem, the user's own git repositories, and — only when explicitly configured — a local Ollama instance or an OpenAI-compatible AI endpoint, plus the GitHub API for forge integration. It never phones home and has no telemetry.
 
-That said, it does handle sensitive material: SSH keys, GitHub/GitLab/Bitbucket tokens, and AI provider API keys, all stored via the OS keychain (see `credential_store.rs`). Vulnerabilities in this area — credential leakage, keychain misuse, unsafe shell-out, path traversal, etc. — are taken seriously.
+That said, it does handle sensitive material: SSH keys, GitHub/GitLab/Bitbucket tokens, and AI provider API keys. By default these are stored in an AES-256-GCM encrypted local vault (`~/.git-manager/vault.enc`, owner-only permissions) rather than the OS keychain, to avoid repeated keychain prompts on unsigned builds; the OS keychain remains available as an alternate backend (see `credential_store/`). Vulnerabilities in this area — credential leakage, vault/keychain misuse, unsafe shell-out, path traversal, etc. — are taken seriously.
 
 ## Supported Versions
 
