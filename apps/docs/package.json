@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@cucumber/gherkin": "^42.0.0",
-    "@cucumber/messages": "^34.2.0",
+    "@cucumber/messages": "^34.2.1",
     "@git-manager/config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
