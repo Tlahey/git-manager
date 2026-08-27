@@ -87,7 +87,7 @@ mac-notification-sys = "0.6"
 # Read-only introspection of the native window (opacity, background, view stack) so a
 # translucent theme that renders opaque can be diagnosed from the log instead of guessed
 # at. Same versions window-vibrancy already pulls in, so this adds no new compilation.
-objc2 = "0.5.2"
+objc2 = "0.6.4"
 objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   "std",
   "NSResponder",
