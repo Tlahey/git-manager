@@ -4,14 +4,53 @@ name: CI
 # (219 wdio scenarios against a real Tauri window — stays a manual `pnpm test:e2e` run, see #449).
 # Split in two jobs so the expensive macOS runner is only paid for the job that actually needs it —
 # the frontend checks need no Rust toolchain and run on a plain ubuntu-latest runner.
+#
+# `changes` gates the expensive steps (typecheck, test, clippy, fmt) on whether they'd actually
+# exercise anything: a PR touching only workflow YAML or docs/README doesn't need a Rust compile or
+# a full vitest run. Lint and the prettier format check stay unconditional in the frontend job —
+# they're cheap and are what catches formatting/i18n issues in docs and config changes too. Job
+# names are kept stable (`Typecheck, lint, test` / `Clippy & fmt`) since main's ruleset requires
+# them by name — renaming a job here means updating the required status checks too.
 on:
   pull_request:
     branches:
       - main
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'apps/desktop/src/**'
+              - 'apps/desktop/*.{ts,tsx,js,mjs,cjs,json}'
+              - 'apps/desktop/index.html'
+              - 'apps/docs/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '**/tsconfig*.json'
+            rust:
+              - 'apps/desktop/src-tauri/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
   frontend:
     name: Typecheck, lint, test
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,17 +68,24 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm typecheck
-
       - name: Lint (includes translation:check)
         run: pnpm lint
 
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        if: needs.changes.outputs.frontend == 'true'
+        run: pnpm typecheck
+
       - name: Test
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm test
 
   rust:
     name: Clippy & fmt
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     # apps/desktop/src-tauri has a target."cfg(target_os = "macos")" dependency block (the notch
     # NSPanel integration), so this cannot build on a Linux runner.
     runs-on: macos-14
