@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # pnpm workspace root — Dependabot resolves apps/* and packages/* from pnpm-workspace.yaml.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  # Cargo.lock lives at the workspace root (apps/desktop/src-tauri is the sole member).
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
