@@ -165,7 +165,7 @@ export function ResetDialog({
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
-            Cancel
+            {t('rollback.reset.cancel')}
           </Button>
           <Button
             size="sm"

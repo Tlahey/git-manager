@@ -3,12 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('../../api/git.api', () => ({ apiGetCommitsBetween: vi.fn(), apiResetToCommit: vi.fn() }))
 
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
@@ -42,9 +36,7 @@ beforeEach(() => {
 describe('ResetDialog — commits list', () => {
   it('shows the affected commit count and list once loaded', async () => {
     renderDialog()
-    await waitFor(() =>
-      expect(screen.getByText('rollback.reset.commitsAffected:{"count":1}')).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText('1 commit(s) will be undone:')).toBeInTheDocument())
     expect(screen.getByText('Commit A')).toBeInTheDocument()
   })
 })
@@ -52,54 +44,56 @@ describe('ResetDialog — commits list', () => {
 describe('ResetDialog — mode selection', () => {
   it('defaults to "mixed"', () => {
     renderDialog()
-    expect(screen.getByRole('radio', { name: 'rollback.reset.mixed' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Mixed — keep changes unstaged' })).toBeChecked()
   })
 
   it('respects a custom initialMode', () => {
     renderDialog({ initialMode: 'soft' })
-    expect(screen.getByRole('radio', { name: 'rollback.reset.soft' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Soft — keep changes staged' })).toBeChecked()
   })
 
   it('does not show the hard-reset warning/confirm field outside hard mode', () => {
     renderDialog()
-    expect(
-      screen.queryByPlaceholderText('rollback.reset.hardConfirmPlaceholder')
-    ).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Type RESET to confirm')).not.toBeInTheDocument()
   })
 
   it('shows the hard-reset warning and confirm field once hard is selected', async () => {
     const user = userEvent.setup()
     renderDialog()
-    await user.click(screen.getByRole('radio', { name: 'rollback.reset.hard' }))
-    expect(screen.getByText('rollback.reset.hardWarning')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('rollback.reset.hardConfirmPlaceholder')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Hard — DISCARD all changes' }))
+    expect(
+      screen.getByText('This action is irreversible. All uncommitted changes will be lost.')
+    ).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Type RESET to confirm')).toBeInTheDocument()
   })
 })
 
 describe('ResetDialog — confirmation gating', () => {
   it('enables confirm immediately for soft/mixed resets', () => {
     renderDialog({ initialMode: 'mixed' })
-    expect(screen.getByRole('button', { name: 'rollback.reset.confirm' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Apply reset' })).toBeEnabled()
   })
 
   it('disables confirm for hard reset until "RESET" is typed exactly', async () => {
     const user = userEvent.setup()
     renderDialog({ initialMode: 'hard' })
-    const confirmButton = screen.getByRole('button', { name: 'rollback.reset.confirm' })
+    const confirmButton = screen.getByRole('button', { name: 'Apply reset' })
     expect(confirmButton).toBeDisabled()
 
-    await user.type(screen.getByPlaceholderText('rollback.reset.hardConfirmPlaceholder'), 'reset')
+    await user.type(screen.getByPlaceholderText('Type RESET to confirm'), 'reset')
     expect(confirmButton).toBeDisabled()
 
-    await user.clear(screen.getByPlaceholderText('rollback.reset.hardConfirmPlaceholder'))
-    await user.type(screen.getByPlaceholderText('rollback.reset.hardConfirmPlaceholder'), 'RESET')
+    await user.clear(screen.getByPlaceholderText('Type RESET to confirm'))
+    await user.type(screen.getByPlaceholderText('Type RESET to confirm'), 'RESET')
     expect(confirmButton).toBeEnabled()
   })
 
   it('disables confirm entirely on a protected branch, regardless of mode', () => {
     renderDialog({ protectedBranches: ['main'], currentBranch: 'main' })
-    expect(screen.getByText('rollback.protected.branch:{"branch":"main"}')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'rollback.reset.confirm' })).toBeDisabled()
+    expect(
+      screen.getByText('Branch main is protected. Change settings to proceed.')
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apply reset' })).toBeDisabled()
   })
 })
 
@@ -111,7 +105,7 @@ describe('ResetDialog — confirming the reset', () => {
     const user = userEvent.setup()
     renderDialog({ initialMode: 'soft', onSuccess, onClose })
 
-    await user.click(screen.getByRole('button', { name: 'rollback.reset.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Apply reset' }))
 
     expect(mockedResetToCommit).toHaveBeenCalledWith('/repo', 'target1', 'soft')
     await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
@@ -122,8 +116,8 @@ describe('ResetDialog — confirming the reset', () => {
     mockedResetToCommit.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderDialog({ initialMode: 'hard' })
-    await user.type(screen.getByPlaceholderText('rollback.reset.hardConfirmPlaceholder'), 'RESET')
-    await user.click(screen.getByRole('button', { name: 'rollback.reset.confirm' }))
+    await user.type(screen.getByPlaceholderText('Type RESET to confirm'), 'RESET')
+    await user.click(screen.getByRole('button', { name: 'Apply reset' }))
     expect(mockedResetToCommit).toHaveBeenCalledWith('/repo', 'target1', 'hard')
   })
 
@@ -132,7 +126,7 @@ describe('ResetDialog — confirming the reset', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ initialMode: 'mixed', onClose })
-    await user.click(screen.getByRole('button', { name: 'rollback.reset.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Apply reset' }))
 
     expect(await screen.findByText(/reset failed/)).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()

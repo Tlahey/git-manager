@@ -179,7 +179,7 @@ export function CommitHeaderInfo({
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Subject
+                    {t('commitHeaderInfo.subjectLabel')}
                   </span>
                   <span
                     data-testid="commit-subject-counter"
@@ -190,7 +190,7 @@ export function CommitHeaderInfo({
                         : 'text-muted-foreground'
                     )}
                   >
-                    {72 - editSubject.length} chars remaining
+                    {t('commitHeaderInfo.charsRemaining', { count: 72 - editSubject.length })}
                   </span>
                 </div>
                 <Input
@@ -199,19 +199,19 @@ export function CommitHeaderInfo({
                   value={editSubject}
                   onChange={(e) => setEditSubject(e.target.value)}
                   maxLength={72}
-                  placeholder="Commit subject..."
+                  placeholder={t('commitHeaderInfo.subjectPlaceholder')}
                   className="h-8 font-mono text-xs font-bold"
                 />
               </div>
               <div className="space-y-1">
                 <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Description
+                  {t('commitHeaderInfo.descriptionLabel')}
                 </span>
                 <Textarea
                   data-testid="commit-body-textarea"
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
-                  placeholder="Commit description (optional)..."
+                  placeholder={t('commitHeaderInfo.descriptionPlaceholder')}
                   rows={4}
                   className="resize-none font-mono text-xs"
                 />
@@ -249,7 +249,7 @@ export function CommitHeaderInfo({
                 if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true)
               }}
               className="group cursor-pointer space-y-2 rounded-lg border border-border/30 bg-muted/15 p-3 transition-all hover:border-primary/50 hover:bg-accent/15"
-              title="Click to edit commit message (amend)"
+              title={t('commitHeaderInfo.editCommitMessage')}
             >
               <div className="flex items-start justify-between gap-2">
                 <h4

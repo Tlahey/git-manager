@@ -135,13 +135,13 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
             <label className="flex cursor-pointer items-center gap-2 select-none">
               <Checkbox checked={shallow} onChange={(e) => setShallow(e.target.checked)} />
               <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
-                Shallow clone
+                {t('cloneDialog.shallowClone')}
               </span>
             </label>
             <label className="flex cursor-pointer items-center gap-2 select-none">
               <Checkbox checked={sparse} onChange={(e) => setSparse(e.target.checked)} />
               <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
-                Sparse checkout
+                {t('cloneDialog.sparseCheckout')}
               </span>
             </label>
           </div>

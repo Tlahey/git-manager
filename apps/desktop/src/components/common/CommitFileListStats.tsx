@@ -30,10 +30,10 @@ export function CommitFileListStats({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-          Stats Summary
+          {t('commitFileList.statsSummary')}
         </span>
         <span className="rounded border border-border/40 bg-muted/65 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-          {filteredCount} {filteredCount === 1 ? 'file' : 'files'} changed
+          {t('commitFileList.filesChanged', { count: filteredCount })}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5 rounded-md border border-border/20 bg-muted/5 p-2">

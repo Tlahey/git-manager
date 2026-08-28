@@ -122,7 +122,7 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isRunning}>
-            Cancel
+            {t('fixup.autosquash.cancel')}
           </Button>
           <Button
             data-testid="autosquash-confirm-button"
