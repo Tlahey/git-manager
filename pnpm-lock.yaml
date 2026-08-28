@@ -326,8 +326,8 @@ importers:
         specifier: ^42.0.0
         version: 42.0.0
       '@cucumber/messages':
-        specifier: ^34.2.0
-        version: 34.2.0
+        specifier: ^34.2.1
+        version: 34.2.1
       '@git-manager/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -1413,8 +1413,8 @@ packages:
   '@cucumber/messages@26.0.1':
     resolution: {integrity: sha512-DIxSg+ZGariumO+Lq6bn4kOUIUET83A4umrnWmidjGFl8XxkBieUZtsmNbLYgH/gnsmP07EfxxdTr0hOchV1Sg==}
 
-  '@cucumber/messages@34.2.0':
-    resolution: {integrity: sha512-6X6T1TApmbQNqxC0Oh3GcnLU+gfE5fp+cEXE/ml6+Ldx76Q6BDmkgM5vagSSDXP+vetPV2Fb0kWVeP7QIR6+Aw==}
+  '@cucumber/messages@34.2.1':
+    resolution: {integrity: sha512-aj2iCAG9ZOpMVcMxcgShifv5fbR96b7SMgdWcPXXh2QbFp7OEcAnQ5MC5YfWUDSDasmw7FU5NJEsOrXdTQOU1A==}
 
   '@cucumber/tag-expressions@6.1.0':
     resolution: {integrity: sha512-+3DwRumrCJG27AtzCIL37A/X+A/gSfxOPLg8pZaruh5SLumsTmpvilwroVWBT2fPzmno/tGXypeK5a7NHU4RzA==}
@@ -9836,7 +9836,7 @@ snapshots:
 
   '@cucumber/gherkin@42.0.0':
     dependencies:
-      '@cucumber/messages': 34.2.0
+      '@cucumber/messages': 34.2.1
 
   '@cucumber/html-formatter@21.6.0(@cucumber/messages@24.1.0)':
     dependencies:
@@ -9867,7 +9867,7 @@ snapshots:
       reflect-metadata: 0.2.2
       uuid: 10.0.0
 
-  '@cucumber/messages@34.2.0': {}
+  '@cucumber/messages@34.2.1': {}
 
   '@cucumber/tag-expressions@6.1.0': {}
 
