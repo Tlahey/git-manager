@@ -58,7 +58,7 @@ export function useGitHubData(): GitHubData {
 
   const { data, error, mutate, isValidating } = useSWR(
     swrKey,
-    async ([_, tok, user]) => {
+    async ([, tok, user]) => {
       // 1. Fetch lists
       const [prSearch, reviewSearch] = await Promise.all([
         fetchGitHubPRs(user, tok),

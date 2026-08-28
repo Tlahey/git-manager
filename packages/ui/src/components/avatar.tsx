@@ -22,8 +22,14 @@ export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
 const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ src, alt, fallback, size, square = false, className, style, ...props }, ref) => {
     const [imgError, setImgError] = React.useState(false)
-    // Reset the error when the source changes so a new URL gets a fresh attempt.
-    React.useEffect(() => setImgError(false), [src])
+    // Reset the error when the source changes so a new URL gets a fresh attempt. Adjusted during
+    // render (rather than an effect) so a src change doesn't cost an extra render showing the
+    // fallback for the previous src's error.
+    const [prevSrc, setPrevSrc] = React.useState(src)
+    if (src !== prevSrc) {
+      setPrevSrc(src)
+      setImgError(false)
+    }
 
     const resolvedSrc = src ?? undefined
     const showImage = Boolean(resolvedSrc) && !imgError

@@ -226,10 +226,17 @@ export function Tooltip({
   // Callers disable a tooltip precisely when it has stopped being the relevant thing to show (the
   // pointer moved onto a child with its own tooltip, the trigger's action became unavailable…), and
   // leaving a stale bubble on screen until the pointer happens to exit is the wrong reading of it.
+  // `show` is adjusted right here during render (rather than in an effect) to avoid the extra render
+  // an effect would cost; cancelling the pending timer, an actual side effect and not a ref read
+  // for rendering purposes, stays in the effect below.
+  const [prevDisabled, setPrevDisabled] = useState(disabled)
+  if (disabled !== prevDisabled) {
+    setPrevDisabled(disabled)
+    if (disabled) setShow(false)
+  }
+
   useEffect(() => {
-    if (!disabled) return
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setShow(false)
+    if (disabled && timerRef.current) clearTimeout(timerRef.current)
   }, [disabled])
 
   // Clean up timer on unmount

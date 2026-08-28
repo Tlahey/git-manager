@@ -53,7 +53,7 @@ export function usePullRequests({
 
   const { data, error } = useSWR<PullRequest[], Error>(
     swrKey,
-    async ([_, owner, repo, tok]) => {
+    async ([, owner, repo, tok]) => {
       const raw = await fetchRepoPRs(owner, repo, tok ?? undefined)
       return raw.map(rawToPullRequest)
     },
