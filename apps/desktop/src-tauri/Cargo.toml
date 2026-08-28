@@ -71,12 +71,14 @@ tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 # Bumped 2026-08 (#385) from `18ffb9a`, which predated the plugin's own migration off the legacy
 # `objc` 0.2 stack (cocoa, objc_id, objc-foundation, block — the last of which was already warning
 # future-incompatible). This rev is entirely `objc2`-based, so that stack is gone from the build; it
-# still pulls its own `objc2`/`objc2-app-kit`/`objc2-foundation` (0.6.x/0.3.x), one minor series
-# ahead of the 0.5.x/0.2.x this crate depends on directly elsewhere in this file — an ordinary
-# version straddle Cargo resolves on its own, not the kind of duplicate legacy stack this comment
-# used to describe. The plugin's own API changed with it: panel conversion now goes through the
-# `tauri_panel!`/`panel!` macros (see the `NotchPanel` definition in commands/window.rs) rather than
-# a bare `to_panel()`.
+# pulls its own `objc2`/`objc2-app-kit`/`objc2-foundation` (0.6.x/0.3.x), matching what this crate
+# depends on directly below (bumped together 2026-08 — `objc2` alone was bumped first and briefly
+# left the app-kit/foundation crates a minor series behind, which doesn't resolve as an ordinary
+# version straddle the way an isolated dependency like this plugin does: window.rs/app_icon.rs pass
+# `objc2_app_kit`/`objc2_foundation` types straight into `objc2` trait bounds in the same call, so a
+# mismatched pair fails to compile rather than merely duplicating in the build). The plugin's own API
+# changed with the rev bump: panel conversion now goes through the `tauri_panel!`/`panel!` macros
+# (see the `NotchPanel` definition in commands/window.rs) rather than a bare `to_panel()`.
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", rev = "a3122e894383aa068ec5365a42994e3ac94ba1b6" }
 window-vibrancy = "0.5"
 # Clickable notifications. tauri-plugin-notification can only *show* one on desktop (its
@@ -87,8 +89,8 @@ mac-notification-sys = "0.6"
 # Read-only introspection of the native window (opacity, background, view stack) so a
 # translucent theme that renders opaque can be diagnosed from the log instead of guessed
 # at. Same versions window-vibrancy already pulls in, so this adds no new compilation.
-objc2 = "0.5.2"
-objc2-app-kit = { version = "0.2.2", default-features = false, features = [
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
   "std",
   "NSResponder",
   "NSWindow",
@@ -119,7 +121,7 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
 # NSRect/NSEdgeInsets, the return types of the NSScreen geometry methods above. Same version
 # NSScreen's own "NSScreen" feature already pulls in transitively; declared directly because the
 # types are named in commands/window.rs, not just used through it.
-objc2-foundation = { version = "0.2.2", default-features = false, features = [
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "std",
   "NSGeometry",
   # NSData/NSString — the icon bytes and the bundle path handed to AppKit in services/app_icon.rs.
