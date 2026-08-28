@@ -1,23 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { FILE_STATUS_LETTER, FILE_STATUS_COLOR } from '../../lib/fileStatusStyle'
-import { FilePathLabel } from './FilePathLabel'
-import { Input, Tag, ToggleGroup, Tooltip, cn } from '@git-manager/ui'
-import {
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  RotateCcw,
-  FolderTree,
-  List,
-  Search,
-  X,
-  Plus,
-  Minus,
-  Pencil,
-  ArrowRight,
-  Check,
-} from 'lucide-react'
+import { cn } from '@git-manager/ui'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../api/git.api'
 import {
   useFileTree,
@@ -27,6 +10,10 @@ import {
   type TreeNode,
 } from '@git-manager/components'
 import { FileTreeNode } from './FileTreeNode'
+import { CommitFileListStats } from './CommitFileListStats'
+import { CommitFileListSearchBar } from './CommitFileListSearchBar'
+import { CommitFileListHeader } from './CommitFileListHeader'
+import { CommitFileListRow } from './CommitFileListRow'
 import type { FileTreeRowContext } from './fileTreeRowContext'
 
 export interface ProcessedFileItem {
@@ -207,182 +194,36 @@ export function CommitFileList({
         collapsible ? 'overflow-hidden rounded-lg border border-border/40' : 'space-y-4'
       )}
     >
-      {/* Global Statistics Summary */}
       {!hideStats && bodyVisible && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-              Stats Summary
-            </span>
-            <span className="rounded border border-border/40 bg-muted/65 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-              {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 rounded-md border border-border/20 bg-muted/5 p-2">
-            {fileStats.added > 0 && (
-              <Tag
-                tone="success"
-                title={`${fileStats.added} ${t('commitDetails.stats.added') || 'added'}`}
-              >
-                <Plus className="h-3 w-3" />
-                {fileStats.added}
-              </Tag>
-            )}
-            {fileStats.modified > 0 && (
-              <Tag
-                tone="warning"
-                title={`${fileStats.modified} ${t('commitDetails.stats.modified') || 'modified'}`}
-              >
-                <Pencil className="h-3 w-3" />
-                {fileStats.modified}
-              </Tag>
-            )}
-            {fileStats.deleted > 0 && (
-              <Tag
-                tone="danger"
-                title={`${fileStats.deleted} ${t('commitDetails.stats.deleted') || 'deleted'}`}
-              >
-                <Minus className="h-3 w-3" />
-                {fileStats.deleted}
-              </Tag>
-            )}
-            {fileStats.renamed > 0 && (
-              <Tag
-                tone="info"
-                title={`${fileStats.renamed} ${t('commitDetails.stats.renamed') || 'renamed'}`}
-              >
-                <ArrowRight className="h-3 w-3" />
-                {fileStats.renamed}
-              </Tag>
-            )}
-            {processedFiles.length === 0 && (
-              <span className="text-[10px] text-muted-foreground/60 italic">{noChangesLabel}</span>
-            )}
-          </div>
-        </div>
+        <CommitFileListStats
+          fileStats={fileStats}
+          filteredCount={filteredFiles.length}
+          isEmpty={processedFiles.length === 0}
+          emptyMessage={noChangesLabel}
+        />
       )}
 
-      {/* Search bar inside files */}
       {!hideSearch && bodyVisible && (
-        <div className="relative">
-          <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder={t('commitDetails.searchFiles') || 'Filter files...'}
-            value={fileSearchQuery}
-            onChange={(e) => setFileSearchQuery(e.target.value)}
-            className="h-8 pl-8 font-mono text-xs"
-          />
-          {fileSearchQuery && (
-            <button
-              onClick={() => setFileSearchQuery('')}
-              className="absolute top-2.5 right-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        <CommitFileListSearchBar value={fileSearchQuery} onChange={setFileSearchQuery} />
       )}
 
       {/* FILES TREE OR LIST VIEW */}
       <div className={collapsible ? '' : 'space-y-2'}>
-        <div
-          onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
-          className={cn(
-            'flex items-center justify-between transition-colors',
-            collapsible
-              ? 'cursor-pointer bg-muted/15 px-3 py-2 select-none hover:bg-muted/25'
-              : 'rounded-lg border border-border/30 bg-muted/10 p-1.5'
-          )}
-          role={collapsible ? 'button' : undefined}
-          tabIndex={collapsible ? 0 : undefined}
-          onKeyDown={
-            collapsible
-              ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') setCollapsed((c) => !c)
-                }
-              : undefined
-          }
-          data-testid={collapsible ? 'file-list-zone-header' : undefined}
-        >
-          <div className="flex items-center gap-2 pl-1">
-            {collapsible &&
-              (collapsed ? (
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              ))}
-            <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase select-none">
-              {title ?? t('commitFileList.modifications')}
-            </span>
-            {onBulkStage && hoverStage && (
-              <Tooltip
-                content={
-                  hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
-                }
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onBulkStage()
-                  }}
-                  className={cn(
-                    'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border transition-colors',
-                    hoverStage === 'add'
-                      ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                      : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                  )}
-                  aria-label={
-                    hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
-                  }
-                  data-testid={bulkStageTestId}
-                >
-                  {hoverStage === 'add' ? (
-                    <Plus className="h-2.5 w-2.5" />
-                  ) : (
-                    <Minus className="h-2.5 w-2.5" />
-                  )}
-                </button>
-              </Tooltip>
-            )}
-            {bodyVisible && viewMode === 'tree' && allFolderPaths.size > 0 && (
-              <>
-                <span className="text-[10px] text-muted-foreground/30 select-none">•</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleToggleExpandAll()
-                  }}
-                  className="cursor-pointer text-[10px] font-semibold text-primary hover:underline"
-                >
-                  {buttonState === 'expand'
-                    ? t('commitDetails.expandAll')
-                    : t('commitDetails.collapseAll')}
-                </button>
-              </>
-            )}
-          </div>
-          {/* Always rendered (even collapsed) so the header row's height stays constant —
-              `invisible` hides it without collapsing its box, avoiding layout shift on toggle. */}
-          <div className={cn(!bodyVisible && 'invisible')} onClick={(e) => e.stopPropagation()}>
-            <ToggleGroup
-              value={viewMode}
-              onValueChange={setViewMode}
-              options={[
-                {
-                  value: 'tree',
-                  icon: <FolderTree className="h-3.5 w-3.5" />,
-                  label: t('commitDetails.viewModeTree') || 'Tree structure',
-                },
-                {
-                  value: 'list',
-                  icon: <List className="h-3.5 w-3.5" />,
-                  label: t('commitDetails.viewModeList') || 'Flat list',
-                },
-              ]}
-            />
-          </div>
-        </div>
+        <CommitFileListHeader
+          title={title ?? t('commitFileList.modifications')}
+          collapsible={collapsible}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
+          bodyVisible={bodyVisible}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          showExpandCollapseAll={allFolderPaths.size > 0}
+          expandCollapseButtonState={buttonState}
+          onToggleExpandAll={handleToggleExpandAll}
+          hoverStage={hoverStage}
+          onBulkStage={onBulkStage}
+          bulkStageTestId={bulkStageTestId}
+        />
 
         {/* Tree rendering */}
         {bodyVisible && viewMode === 'tree' && (
@@ -412,139 +253,7 @@ export function CommitFileList({
               </p>
             ) : (
               filteredFiles.map((file) => (
-                <div
-                  key={file.path}
-                  className="group/file flex w-full min-w-0 cursor-pointer items-center justify-between rounded px-2 py-1 text-xs transition-colors hover:bg-accent"
-                  onClick={() =>
-                    onSelectFileDiff?.({
-                      path: file.path,
-                      staged: file.staged,
-                      oid: isWip ? undefined : commitOid,
-                    })
-                  }
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      onSelectFileDiff?.({
-                        path: file.path,
-                        staged: file.staged,
-                        oid: isWip ? undefined : commitOid,
-                      })
-                    }
-                  }}
-                >
-                  {/* Left: Stage checkbox (WIP), File Icon and Consecutive Path Display */}
-                  <div className="mr-4 flex min-w-0 flex-1 items-center">
-                    {!hoverStage && isWip && (
-                      <Tooltip
-                        content={
-                          file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
-                        }
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (file.staged) handleUnstage(file.path)
-                            else handleStage(file.path)
-                          }}
-                          className={cn(
-                            'mr-1.5 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
-                            file.staged
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
-                          )}
-                          aria-label={
-                            file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')
-                          }
-                        >
-                          ✓
-                        </button>
-                      </Tooltip>
-                    )}
-                    <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                    {file.viewed && (
-                      <Check
-                        className="mr-1.5 h-3 w-3 shrink-0 text-emerald-500"
-                        data-testid={`file-list-viewed-${file.path}`}
-                      />
-                    )}
-                    <div className="flex min-w-0 flex-1 items-center overflow-hidden font-mono text-[11px] leading-tight select-text">
-                      <FilePathLabel path={file.path} />
-                    </div>
-                  </div>
-
-                  {/* Right: Stats, Status Letter, WIP Actions */}
-                  <div
-                    className="flex shrink-0 items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {file.additions !== undefined && file.deletions !== undefined && (
-                      <span className="flex shrink-0 scale-90 items-center gap-0.5 text-[10px] text-muted-foreground/70 select-none">
-                        <span className="text-green-500">+{file.additions}</span>
-                        <span className="text-red-500">-{file.deletions}</span>
-                      </span>
-                    )}
-
-                    <span
-                      className={cn(
-                        FILE_STATUS_COLOR[file.status],
-                        'min-w-[12px] shrink-0 text-center text-xs font-bold select-none'
-                      )}
-                    >
-                      {FILE_STATUS_LETTER[file.status]}
-                    </span>
-
-                    {isWip && (
-                      <Tooltip content={t('actions.discardChanges')}>
-                        <button
-                          onClick={() => handleDiscard(file.path)}
-                          data-testid={`file-discard-${file.path}`}
-                          className={cn(
-                            'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
-                            hoverStage && 'opacity-0 group-hover/file:opacity-100'
-                          )}
-                          aria-label={t('actions.discardChanges')}
-                        >
-                          <RotateCcw className="h-2.5 w-2.5" />
-                        </button>
-                      </Tooltip>
-                    )}
-
-                    {hoverStage && isWip && (
-                      <Tooltip
-                        content={
-                          hoverStage === 'add'
-                            ? t('commitFileList.stage')
-                            : t('commitFileList.unstage')
-                        }
-                      >
-                        <button
-                          onClick={() =>
-                            hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path)
-                          }
-                          className={cn(
-                            'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
-                            hoverStage === 'add'
-                              ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
-                              : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                          )}
-                          aria-label={
-                            hoverStage === 'add'
-                              ? t('commitFileList.stage')
-                              : t('commitFileList.unstage')
-                          }
-                        >
-                          {hoverStage === 'add' ? (
-                            <Plus className="h-2.5 w-2.5" />
-                          ) : (
-                            <Minus className="h-2.5 w-2.5" />
-                          )}
-                        </button>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
+                <CommitFileListRow key={file.path} file={file} ctx={rowContext} />
               ))
             )}
           </div>
