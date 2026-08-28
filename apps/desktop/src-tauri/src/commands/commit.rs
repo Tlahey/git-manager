@@ -3,9 +3,9 @@ use crate::hook_progress;
 use crate::models::{GitDiff, GitDiffFile};
 use crate::services::{git_commit, git_diff};
 use git2::{DiffOptions, Oid, Repository};
-use serde::Serialize;
 
 pub use crate::services::git_commit::{CommitResult, DiscardResult};
+pub use crate::services::git_diff::RawFileDiffContents;
 
 // ─── stage_file ───────────────────────────────────────────────────────────────
 
@@ -248,13 +248,9 @@ async fn workdir_diff(path: String) -> Result<GitDiff, String> {
     .map_err(|e| format!("diff task failed to complete: {e}"))?
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RawFileDiffContents {
-    pub original: String,
-    pub modified: String,
-}
-
+/// Returns a file's raw content on both sides of the diff view (staged, unstaged, or from a
+/// historical commit). See `git_diff::raw_file_contents` for the resolution rules and `base_oid`'s
+/// multi-commit-range meaning.
 #[tauri::command]
 pub async fn get_file_raw_contents(
     path: String,
@@ -264,81 +260,15 @@ pub async fn get_file_raw_contents(
     base_oid: Option<String>,
 ) -> Result<RawFileDiffContents, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-
-    let original = if let Some(ref oid_str) = oid {
-        // For a merged range the "before" side is the oldest selected commit's first parent
-        // (`base_oid`); otherwise it's this commit's own first parent.
-        let base_oid_str = base_oid.as_ref().unwrap_or(oid_str);
-        let base_commit_oid = Oid::from_str(base_oid_str).map_err(AppError::Git)?;
-        let commit = repo.find_commit(base_commit_oid).map_err(AppError::Git)?;
-        if commit.parent_count() > 0 {
-            let parent = commit.parent(0).map_err(AppError::Git)?;
-            get_file_content_from_tree(&repo, &parent.tree().map_err(AppError::Git)?, &file_path)?
-        } else {
-            String::new()
-        }
-    } else if staged {
-        if let Ok(head) = repo.head() {
-            if let Ok(resolved) = head.resolve() {
-                if let Ok(commit) = resolved.peel_to_commit() {
-                    get_file_content_from_tree(
-                        &repo,
-                        &commit.tree().map_err(AppError::Git)?,
-                        &file_path,
-                    )
-                    .unwrap_or_default()
-                } else {
-                    String::new()
-                }
-            } else {
-                String::new()
-            }
-        } else {
-            String::new()
-        }
-    } else {
-        get_file_content_from_index(&repo, &file_path).unwrap_or_else(|_| {
-            if let Ok(head) = repo.head() {
-                if let Ok(resolved) = head.resolve() {
-                    if let Ok(commit) = resolved.peel_to_commit() {
-                        if let Ok(tree) = commit.tree() {
-                            get_file_content_from_tree(&repo, &tree, &file_path).unwrap_or_default()
-                        } else {
-                            String::new()
-                        }
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                }
-            } else {
-                String::new()
-            }
-        })
-    };
-
-    let modified = if let Some(ref oid_str) = oid {
-        let commit_oid = Oid::from_str(oid_str).map_err(AppError::Git)?;
-        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-        get_file_content_from_tree(&repo, &commit.tree().map_err(AppError::Git)?, &file_path)?
-    } else if staged {
-        get_file_content_from_index(&repo, &file_path).unwrap_or_default()
-    } else {
-        let full_path = std::path::Path::new(&path).join(&file_path);
-        match std::fs::read(&full_path) {
-            Ok(bytes) => {
-                if let Ok(content) = std::str::from_utf8(&bytes) {
-                    content.to_string()
-                } else {
-                    String::from("[Binary Content]")
-                }
-            }
-            Err(_) => String::new(),
-        }
-    };
-
-    Ok(RawFileDiffContents { original, modified })
+    git_diff::raw_file_contents(
+        &repo,
+        &path,
+        &file_path,
+        staged,
+        oid.as_deref(),
+        base_oid.as_deref(),
+    )
+    .map_err(Into::into)
 }
 
 /// Returns the target commit's version of `file_path` (left) and the current
@@ -355,58 +285,9 @@ pub async fn get_commit_file_vs_workdir(
 ) -> Result<RawFileDiffContents, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-
-        let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
-        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-        let tree = commit.tree().map_err(AppError::Git)?;
-        let original = get_file_content_from_tree(&repo, &tree, &file_path)?;
-
-        let full_path = std::path::Path::new(&path).join(&file_path);
-        let modified = match std::fs::read(&full_path) {
-            Ok(bytes) => match std::str::from_utf8(&bytes) {
-                Ok(content) => content.to_string(),
-                Err(_) => String::from("[Binary Content]"),
-            },
-            Err(_) => String::new(),
-        };
-
-        Ok(RawFileDiffContents { original, modified })
+        git_diff::commit_file_vs_workdir(&repo, &path, &oid, &file_path)
     })
     .await
     .map_err(|e| format!("diff task failed to complete: {e}"))?
-}
-
-fn get_file_content_from_tree(
-    repo: &Repository,
-    tree: &git2::Tree,
-    file_path: &str,
-) -> Result<String, String> {
-    if let Ok(entry) = tree.get_path(std::path::Path::new(file_path)) {
-        if let Ok(blob) = repo.find_blob(entry.id()) {
-            if blob.is_binary() {
-                return Ok(String::from("[Binary Content]"));
-            }
-            if let Ok(content) = std::str::from_utf8(blob.content()) {
-                return Ok(content.to_string());
-            }
-        }
-    }
-    Ok(String::new())
-}
-
-fn get_file_content_from_index(repo: &Repository, file_path: &str) -> Result<String, String> {
-    let index = repo.index().map_err(AppError::Git)?;
-    if let Some(entry) = index.get_path(std::path::Path::new(file_path), 0) {
-        if let Ok(blob) = repo.find_blob(entry.id) {
-            if blob.is_binary() {
-                return Ok(String::from("[Binary Content]"));
-            }
-            if let Ok(content) = std::str::from_utf8(blob.content()) {
-                return Ok(content.to_string());
-            }
-        }
-    }
-    Err(String::from(AppError::Unknown(format!(
-        "File not found in index: {file_path}"
-    ))))
+    .map_err(Into::into)
 }

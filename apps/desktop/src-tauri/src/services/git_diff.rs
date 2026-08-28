@@ -2,6 +2,7 @@ use crate::error::AppError;
 use crate::models::{GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine};
 use crate::services::git_ref_resolve::resolve_first_ref;
 use git2::{DiffOptions, Oid, Repository};
+use serde::Serialize;
 use std::cell::RefCell;
 
 /// Walks a `git2::Diff` and appends one `GitDiffFile` (with hunks/lines) per delta into `files`.
@@ -286,6 +287,138 @@ pub fn diff_commit_to_workdir(repo: &Repository, oid: &str) -> Result<GitDiff, A
         .map_err(AppError::Git)?;
 
     build_diff(diff).map_err(AppError::Git)
+}
+
+// ─── Raw file content resolution ────────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawFileDiffContents {
+    pub original: String,
+    pub modified: String,
+}
+
+/// A blob's text content, or `"[Binary Content]"` for a binary blob, or `None` if the blob can't
+/// be found or isn't valid UTF-8.
+fn blob_text(repo: &Repository, blob_id: Oid) -> Option<String> {
+    let blob = repo.find_blob(blob_id).ok()?;
+    if blob.is_binary() {
+        return Some("[Binary Content]".to_string());
+    }
+    std::str::from_utf8(blob.content())
+        .ok()
+        .map(|s| s.to_string())
+}
+
+/// A tree's version of `file_path`, or an empty string when the tree has no such entry — not an
+/// error, just "there is no such version" (a file added since that tree, e.g. at a repo's root
+/// commit).
+fn file_content_in_tree(repo: &Repository, tree: &git2::Tree, file_path: &str) -> String {
+    tree.get_path(std::path::Path::new(file_path))
+        .ok()
+        .and_then(|entry| blob_text(repo, entry.id()))
+        .unwrap_or_default()
+}
+
+/// The index's (staged) version of `file_path`. `None` when the file isn't staged, distinct from
+/// an empty string so callers can fall back to another source (HEAD) rather than showing "no
+/// content" for a file that simply isn't in the index yet.
+fn file_content_in_index(repo: &Repository, file_path: &str) -> Option<String> {
+    let index = repo.index().ok()?;
+    let entry = index.get_path(std::path::Path::new(file_path), 0)?;
+    blob_text(repo, entry.id)
+}
+
+/// `HEAD`'s tree, or `None` on a brand new repository with no commits yet.
+fn head_tree(repo: &Repository) -> Option<git2::Tree<'_>> {
+    repo.head().ok()?.peel_to_commit().ok()?.tree().ok()
+}
+
+/// Resolves the two sides of the raw-content diff view: `original` is the "before" version — the
+/// target commit's parent, HEAD, or nothing on a repo's first commit — and `modified` is the
+/// "after" version — the target commit, the index, or the literal file on disk.
+///
+/// `base_oid`, when present with `oid`, scopes `original` to a multi-commit range: it becomes the
+/// oldest selected commit's first-parent tree rather than `oid`'s own — matching
+/// `merged_commits_diff`'s `base_oid^..head_oid` semantics for the multi-select diff panel.
+///
+/// Every branch below falls back to an empty string rather than propagating an error when a
+/// version genuinely doesn't exist (no earlier commit, file not yet staged, nothing at HEAD on a
+/// fresh repo): those are legitimate "no such version" answers, not hidden failures. A real error
+/// (an unreadable object, a malformed oid) already stops the function earlier, at
+/// `Oid::from_str`/`find_commit`/`tree()`, which do propagate.
+pub fn raw_file_contents(
+    repo: &Repository,
+    repo_path: &str,
+    file_path: &str,
+    staged: bool,
+    oid: Option<&str>,
+    base_oid: Option<&str>,
+) -> Result<RawFileDiffContents, AppError> {
+    let original = if let Some(oid_str) = oid {
+        let base_commit_oid = Oid::from_str(base_oid.unwrap_or(oid_str)).map_err(AppError::Git)?;
+        let commit = repo.find_commit(base_commit_oid).map_err(AppError::Git)?;
+        match commit.parent(0) {
+            Ok(parent) => {
+                file_content_in_tree(repo, &parent.tree().map_err(AppError::Git)?, file_path)
+            }
+            Err(_) => String::new(),
+        }
+    } else if staged {
+        head_tree(repo)
+            .map(|tree| file_content_in_tree(repo, &tree, file_path))
+            .unwrap_or_default()
+    } else {
+        file_content_in_index(repo, file_path).unwrap_or_else(|| {
+            head_tree(repo)
+                .map(|tree| file_content_in_tree(repo, &tree, file_path))
+                .unwrap_or_default()
+        })
+    };
+
+    let modified = if let Some(oid_str) = oid {
+        let commit_oid = Oid::from_str(oid_str).map_err(AppError::Git)?;
+        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+        file_content_in_tree(repo, &commit.tree().map_err(AppError::Git)?, file_path)
+    } else if staged {
+        file_content_in_index(repo, file_path).unwrap_or_default()
+    } else {
+        read_workdir_file(repo_path, file_path)
+    };
+
+    Ok(RawFileDiffContents { original, modified })
+}
+
+/// The target commit's version of `file_path` (left) and the current working-tree version (right)
+/// — the fixup "Commit changes" diff. Unlike `raw_file_contents`, `original` is the file at `oid`'s
+/// own tree (not its parent), so the diff shows how the working copy differs from the fixup
+/// target.
+pub fn commit_file_vs_workdir(
+    repo: &Repository,
+    repo_path: &str,
+    oid: &str,
+    file_path: &str,
+) -> Result<RawFileDiffContents, AppError> {
+    let commit_oid = Oid::from_str(oid).map_err(AppError::Git)?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+    let tree = commit.tree().map_err(AppError::Git)?;
+    let original = file_content_in_tree(repo, &tree, file_path);
+    let modified = read_workdir_file(repo_path, file_path);
+
+    Ok(RawFileDiffContents { original, modified })
+}
+
+/// Reads a file straight off disk (not through git at all) — the literal working-tree contents,
+/// used for the "modified" side of an unstaged/uncommitted comparison. `"[Binary Content]"` for
+/// non-UTF-8 bytes, an empty string if the file can't be read (deleted, permissions).
+fn read_workdir_file(repo_path: &str, file_path: &str) -> String {
+    match std::fs::read(std::path::Path::new(repo_path).join(file_path)) {
+        Ok(bytes) => match std::str::from_utf8(&bytes) {
+            Ok(content) => content.to_string(),
+            Err(_) => String::from("[Binary Content]"),
+        },
+        Err(_) => String::new(),
+    }
 }
 
 #[cfg(test)]
@@ -607,6 +740,92 @@ mod tests {
         assert!(paths.contains(&"a.txt"));
         assert!(paths.contains(&"b.txt"));
         assert!(paths.contains(&"c.txt"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn raw_file_contents_of_a_commit_compares_against_its_parent() {
+        let (dir, _c1, _c2, c3) = linear_repo("raw-commit");
+        let repo = Repository::open(&dir).unwrap();
+        let result = raw_file_contents(
+            &repo,
+            dir.to_str().unwrap(),
+            "b.txt",
+            false,
+            Some(&c3.to_string()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.original, "b");
+        assert_eq!(result.modified, "bb");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn raw_file_contents_of_a_root_commit_has_no_original() {
+        let (dir, c1, _c2, _c3) = linear_repo("raw-root-commit");
+        let repo = Repository::open(&dir).unwrap();
+        let result = raw_file_contents(
+            &repo,
+            dir.to_str().unwrap(),
+            "a.txt",
+            false,
+            Some(&c1.to_string()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.original, "");
+        assert_eq!(result.modified, "a");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn raw_file_contents_staged_reads_head_then_index() {
+        let dir = temp_dir("raw-staged");
+        let repo = Repository::init(&dir).unwrap();
+        commit_to(&repo, "c1", tree_of(&repo, &[("a.txt", "a")]), &[]);
+
+        // Stage a modification to a.txt.
+        std::fs::write(dir.join("a.txt"), "a-staged").unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(std::path::Path::new("a.txt")).unwrap();
+        index.write().unwrap();
+
+        let result =
+            raw_file_contents(&repo, dir.to_str().unwrap(), "a.txt", true, None, None).unwrap();
+        assert_eq!(result.original, "a");
+        assert_eq!(result.modified, "a-staged");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn raw_file_contents_unstaged_reads_working_tree_and_falls_back_to_head() {
+        let dir = temp_dir("raw-unstaged");
+        let repo = Repository::init(&dir).unwrap();
+        commit_to(&repo, "c1", tree_of(&repo, &[("a.txt", "a")]), &[]);
+
+        // Edit on disk without staging.
+        std::fs::write(dir.join("a.txt"), "a-edited").unwrap();
+
+        let result =
+            raw_file_contents(&repo, dir.to_str().unwrap(), "a.txt", false, None, None).unwrap();
+        // Not staged, so `original` falls back through the (empty) index to HEAD.
+        assert_eq!(result.original, "a");
+        assert_eq!(result.modified, "a-edited");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn commit_file_vs_workdir_compares_the_commits_own_tree_to_disk() {
+        let (dir, _c1, c2, _c3) = linear_repo("commit-vs-workdir");
+        // Edit b.txt on disk beyond what any commit recorded.
+        std::fs::write(dir.join("b.txt"), "b-in-progress").unwrap();
+        let repo = Repository::open(&dir).unwrap();
+
+        let result =
+            commit_file_vs_workdir(&repo, dir.to_str().unwrap(), &c2.to_string(), "b.txt").unwrap();
+        assert_eq!(result.original, "b");
+        assert_eq!(result.modified, "b-in-progress");
         std::fs::remove_dir_all(&dir).ok();
     }
 }
