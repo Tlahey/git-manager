@@ -139,7 +139,10 @@ export function PresentedNotch({
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const { window: win } = placementFor(preset, model)
 
+  // Deferred getter, not a render-time read: see createElementNotchHost's doc comment on why
+  // `element` stays a function instead of a node.
   const host = useMemo(
+    // oxlint-disable-next-line react/refs
     () => createElementNotchHost({ element: () => surfaceRef.current, onClose: onClosed }),
     [onClosed]
   )

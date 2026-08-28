@@ -24,7 +24,6 @@ export function usePrefersReducedMotion(): boolean {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
     const list = window.matchMedia(QUERY)
     const onChange = (event: MediaQueryListEvent) => setReduced(event.matches)
-    setReduced(list.matches)
     list.addEventListener('change', onChange)
     return () => list.removeEventListener('change', onChange)
   }, [])
