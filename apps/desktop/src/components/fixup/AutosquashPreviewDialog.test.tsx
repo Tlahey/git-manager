@@ -3,13 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
-
 const { toastSuccess, toastError, toastWarning } = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -60,9 +53,7 @@ describe('AutosquashPreviewDialog', () => {
       { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1', 'sha2'] },
     ])
     renderDialog()
-    await waitFor(() =>
-      expect(screen.getByText('fixup.autosquash.summary:{"count":2}')).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText('2 commit(s) will be merged')).toBeInTheDocument())
     expect(screen.getByText('Add feature')).toBeInTheDocument()
     expect(screen.getByText('fixup! sha1')).toBeInTheDocument()
     expect(screen.getByText('fixup! sha2')).toBeInTheDocument()
@@ -70,10 +61,8 @@ describe('AutosquashPreviewDialog', () => {
 
   it('disables confirm while there are no fixup groups', async () => {
     renderDialog()
-    await waitFor(() =>
-      expect(screen.getByText('fixup.autosquash.summary:{"count":0}')).toBeInTheDocument()
-    )
-    expect(screen.getByRole('button', { name: 'fixup.autosquash.confirm' })).toBeDisabled()
+    await waitFor(() => expect(screen.getByText('0 commit(s) will be merged')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Apply autosquash' })).toBeDisabled()
   })
 
   it('enables confirm once groups are present', async () => {
@@ -82,7 +71,7 @@ describe('AutosquashPreviewDialog', () => {
     ])
     renderDialog()
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'fixup.autosquash.confirm' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Apply autosquash' })).toBeEnabled()
     )
   })
 
@@ -96,12 +85,12 @@ describe('AutosquashPreviewDialog', () => {
     const user = userEvent.setup()
     renderDialog({ onClose })
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'fixup.autosquash.confirm' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Apply autosquash' })).toBeEnabled()
     )
 
-    await user.click(screen.getByRole('button', { name: 'fixup.autosquash.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Apply autosquash' }))
 
-    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('fixup.autosquash.success'))
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Autosquash completed'))
     expect(mocked.apiRunAutosquash).toHaveBeenCalledWith('/repo')
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -116,13 +105,13 @@ describe('AutosquashPreviewDialog', () => {
     const user = userEvent.setup()
     renderDialog({ onClose })
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'fixup.autosquash.confirm' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Apply autosquash' })).toBeEnabled()
     )
 
-    await user.click(screen.getByRole('button', { name: 'fixup.autosquash.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Apply autosquash' }))
 
     await waitFor(() =>
-      expect(toastWarning).toHaveBeenCalledWith('gitTree.contextMenu.rebaseConflict')
+      expect(toastWarning).toHaveBeenCalledWith('Rebase paused — resolve conflicts to continue')
     )
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -136,10 +125,10 @@ describe('AutosquashPreviewDialog', () => {
     const user = userEvent.setup()
     renderDialog({ onClose })
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'fixup.autosquash.confirm' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Apply autosquash' })).toBeEnabled()
     )
 
-    await user.click(screen.getByRole('button', { name: 'fixup.autosquash.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Apply autosquash' }))
 
     await waitFor(() => expect(screen.getByText(/autosquash failed/)).toBeInTheDocument())
     expect(toastError).toHaveBeenCalledWith(expect.stringContaining('autosquash failed'))

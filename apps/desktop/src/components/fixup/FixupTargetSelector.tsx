@@ -131,7 +131,7 @@ export function FixupTargetSelector({
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
-            Cancel
+            {t('fixup.cancel')}
           </Button>
           <Button size="sm" onClick={handleConfirm} disabled={!selectedOid || isLoading}>
             {isLoading && <Spinner className="mr-1 h-3 w-3" />}

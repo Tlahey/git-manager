@@ -8,6 +8,7 @@ import {
   Archive as ArchiveIcon,
   Terminal as TerminalIcon,
 } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { NumberBadge, cn } from '@git-manager/ui'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../../hooks/useBranches'
@@ -61,6 +62,7 @@ export function SidebarRail({
   githubAccountId,
   onOpenSection,
 }: SidebarRailProps) {
+  const { t } = useTranslation('git')
   const { data: branches = [] } = useBranches(repoPath)
   const localCount = branches.filter((b) => !b.isRemote).length
   const remoteCount = branches.filter((b) => b.isRemote).length
@@ -102,32 +104,32 @@ export function SidebarRail({
       <div className="flex w-full flex-1 flex-col py-1">
         <RailIcon
           icon={<HardDrive className="h-4 w-4" />}
-          label="Local"
+          label={t('sidebarRail.local')}
           count={localCount}
           onClick={() => onOpenSection('local')}
         />
         <RailIcon
           icon={<Globe className="h-4 w-4" />}
-          label="Remotes"
+          label={t('sidebarRail.remotes')}
           count={remoteCount}
           onClick={() => onOpenSection('remotes')}
         />
         <RailIcon
           icon={<GitPullRequest className="h-4 w-4" />}
-          label="Pull Requests"
+          label={t('sidebarRail.pullRequests')}
           count={allPrs.length}
           onClick={() => onOpenSection('prs')}
         />
         <RailIcon
           icon={<TagIcon className="h-4 w-4" />}
-          label="Tags"
+          label={t('sidebarRail.tags')}
           count={tags.length}
           onClick={() => onOpenSection('tags')}
         />
         {stashes.length > 0 && (
           <RailIcon
             icon={<ArchiveIcon className="h-4 w-4 text-violet-400" />}
-            label="Stashes"
+            label={t('sidebarRail.stashes')}
             count={stashes.length}
             onClick={() => onOpenSection('stashes')}
           />
@@ -135,7 +137,7 @@ export function SidebarRail({
         {submodules.length > 0 && (
           <RailIcon
             icon={<GitFork className="h-4 w-4" />}
-            label="Submodules"
+            label={t('sidebarRail.submodules')}
             count={submodules.length}
             onClick={() => onOpenSection('submodules')}
           />
@@ -153,7 +155,7 @@ export function SidebarRail({
                 )}
               />
             }
-            label="Terminals"
+            label={t('sidebarRail.terminals')}
             count={sessions.length}
             onClick={() => onOpenSection('terminals')}
           />
