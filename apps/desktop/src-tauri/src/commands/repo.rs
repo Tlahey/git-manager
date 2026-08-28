@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::models::*;
 use crate::services::git_repo::build_git_repo;
+use crate::services::git_status;
 use crate::state::AppState;
 use git2::Repository;
 use std::path::PathBuf;
@@ -140,79 +141,7 @@ pub async fn get_repo_status(path: String) -> Result<GitStatus, String> {
 
 fn get_repo_status_blocking(path: String) -> Result<GitStatus, String> {
     let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path))?;
-
-    let mut opts = git2::StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true);
-
-    let statuses = repo.statuses(Some(&mut opts)).map_err(AppError::Git)?;
-
-    let mut staged = Vec::new();
-    let mut unstaged = Vec::new();
-    let mut untracked = Vec::new();
-    let mut conflicted = Vec::new();
-
-    for entry in statuses.iter() {
-        let path = entry.path().unwrap_or("").to_string();
-        let status = entry.status();
-
-        if status.contains(git2::Status::CONFLICTED) {
-            conflicted.push(path.clone());
-            continue;
-        }
-
-        if status.contains(git2::Status::WT_NEW) {
-            untracked.push(path.clone());
-            continue;
-        }
-
-        // Index (staged)
-        if status.intersects(
-            git2::Status::INDEX_NEW
-                | git2::Status::INDEX_MODIFIED
-                | git2::Status::INDEX_DELETED
-                | git2::Status::INDEX_RENAMED,
-        ) {
-            let kind = if status.contains(git2::Status::INDEX_NEW) {
-                "added"
-            } else if status.contains(git2::Status::INDEX_DELETED) {
-                "deleted"
-            } else if status.contains(git2::Status::INDEX_RENAMED) {
-                "renamed"
-            } else {
-                "modified"
-            };
-            staged.push(GitStatusEntry {
-                path: path.clone(),
-                status: kind.to_string(),
-                old_path: None,
-            });
-        }
-
-        // Worktree (unstaged)
-        if status.intersects(
-            git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_RENAMED,
-        ) {
-            let kind = if status.contains(git2::Status::WT_DELETED) {
-                "deleted"
-            } else if status.contains(git2::Status::WT_RENAMED) {
-                "renamed"
-            } else {
-                "modified"
-            };
-            unstaged.push(GitStatusEntry {
-                path: path.clone(),
-                status: kind.to_string(),
-                old_path: None,
-            });
-        }
-    }
-
-    Ok(GitStatus {
-        staged,
-        unstaged,
-        untracked,
-        conflicted,
-    })
+    git_status::classify_statuses(&repo).map_err(Into::into)
 }
 
 /// Reports the multi-step git operation the repo is in the middle of (`merge`, `rebase`,
@@ -311,42 +240,13 @@ fn get_repo_summary_blocking(path: String) -> Result<GitRepoSummary, String> {
 
     let is_detached = repo.head_detached().unwrap_or(false);
 
-    // Get status counts
-    let mut opts = git2::StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true);
-    let statuses = repo.statuses(Some(&mut opts)).ok();
-
-    let mut staged_count = 0;
-    let mut unstaged_count = 0;
-    let mut untracked_count = 0;
-    let mut conflicted_count = 0;
-
-    if let Some(statuses) = statuses {
-        for entry in statuses.iter() {
-            let status = entry.status();
-            if status.contains(git2::Status::CONFLICTED) {
-                conflicted_count += 1;
-                continue;
-            }
-            if status.contains(git2::Status::WT_NEW) {
-                untracked_count += 1;
-                continue;
-            }
-            if status.intersects(
-                git2::Status::INDEX_NEW
-                    | git2::Status::INDEX_MODIFIED
-                    | git2::Status::INDEX_DELETED
-                    | git2::Status::INDEX_RENAMED,
-            ) {
-                staged_count += 1;
-            }
-            if status.intersects(
-                git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_RENAMED,
-            ) {
-                unstaged_count += 1;
-            }
-        }
-    }
+    // Status counts, from the same classification `get_repo_status` uses — see `git_status`'s
+    // doc comment for why the two views must never each carry their own copy of these rules.
+    let status = git_status::classify_statuses(&repo).ok();
+    let staged_count = status.as_ref().map_or(0, |s| s.staged.len());
+    let unstaged_count = status.as_ref().map_or(0, |s| s.unstaged.len());
+    let untracked_count = status.as_ref().map_or(0, |s| s.untracked.len());
+    let conflicted_count = status.as_ref().map_or(0, |s| s.conflicted.len());
 
     // Get ahead/behind counts for current HEAD branch vs upstream
     let mut ahead_count = 0;
