@@ -93,7 +93,7 @@ pub fn apply_runtime_icon(app_handle: &AppHandle, icon_name: &str) -> Result<(),
     #[cfg(target_os = "macos")]
     {
         let apply_dock_icon = move || {
-            use objc2::ClassType;
+            use objc2::AnyThread;
             use objc2_app_kit::{NSApplication, NSImage};
             use objc2_foundation::NSData;
 
@@ -147,7 +147,7 @@ const CUSTOM_ICON_FILE: &str = "Icon\r";
 /// the flicker this exists to remove.
 #[cfg(target_os = "macos")]
 pub fn persist_bundle_icon(icon_name: &str) -> Result<(), String> {
-    use objc2::ClassType;
+    use objc2::AnyThread;
     use objc2_app_kit::{NSImage, NSWorkspace};
     use objc2_foundation::{NSData, NSString};
 
@@ -166,13 +166,11 @@ pub fn persist_bundle_icon(icon_name: &str) -> Result<(), String> {
         )
     };
 
-    let applied = unsafe {
-        NSWorkspace::sharedWorkspace().setIcon_forFile_options(
-            image.as_deref(),
-            &bundle_path,
-            objc2_app_kit::NSWorkspaceIconCreationOptions::empty(),
-        )
-    };
+    let applied = NSWorkspace::sharedWorkspace().setIcon_forFile_options(
+        image.as_deref(),
+        &bundle_path,
+        objc2_app_kit::NSWorkspaceIconCreationOptions::empty(),
+    );
 
     if applied {
         Ok(())

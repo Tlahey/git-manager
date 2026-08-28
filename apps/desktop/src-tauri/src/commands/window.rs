@@ -189,7 +189,13 @@ fn clear_webview_backdrop(window: &WebviewWindow) {
         for i in 0..subviews.count() {
             let view = subviews.objectAtIndex(i);
             let obj: &AnyObject = &*(Retained::as_ptr(&view) as *const AnyObject);
-            if !obj.class().name().contains("WebView") {
+            if !obj
+                .class()
+                .name()
+                .to_str()
+                .unwrap_or("")
+                .contains("WebView")
+            {
                 continue;
             }
             // respondsToSelector, because underPageBackgroundColor is macOS 12+.
@@ -327,7 +333,7 @@ fn strip_material_tint(window: &WebviewWindow) -> usize {
         let Some(effect_view) = content.viewWithTag(BLUR_VIEW_TAG) else {
             return 0;
         };
-        let layer: Option<Retained<AnyObject>> = objc2::msg_send_id![&*effect_view, layer];
+        let layer: Option<Retained<AnyObject>> = objc2::msg_send![&*effect_view, layer];
         let Some(layer) = layer else {
             return 0;
         };
@@ -343,7 +349,7 @@ unsafe fn mute_tint_siblings(layer: &objc2::runtime::AnyObject) -> usize {
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
 
-    let sublayers: Option<Retained<AnyObject>> = objc2::msg_send_id![layer, sublayers];
+    let sublayers: Option<Retained<AnyObject>> = objc2::msg_send![layer, sublayers];
     let Some(sublayers) = sublayers else {
         return 0;
     };
@@ -351,8 +357,8 @@ unsafe fn mute_tint_siblings(layer: &objc2::runtime::AnyObject) -> usize {
 
     let mut has_backdrop = false;
     for i in 0..count {
-        let sub: Retained<AnyObject> = objc2::msg_send_id![&*sublayers, objectAtIndex: i];
-        if is_backdrop_layer_class(sub.class().name()) {
+        let sub: Retained<AnyObject> = objc2::msg_send![&*sublayers, objectAtIndex: i];
+        if is_backdrop_layer_class(sub.class().name().to_str().unwrap_or("")) {
             has_backdrop = true;
             break;
         }
@@ -364,8 +370,8 @@ unsafe fn mute_tint_siblings(layer: &objc2::runtime::AnyObject) -> usize {
         let _: () = objc2::msg_send![transaction, begin];
         let _: () = objc2::msg_send![transaction, setDisableActions: true];
         for i in 0..count {
-            let sub: Retained<AnyObject> = objc2::msg_send_id![&*sublayers, objectAtIndex: i];
-            if !is_backdrop_layer_class(sub.class().name()) {
+            let sub: Retained<AnyObject> = objc2::msg_send![&*sublayers, objectAtIndex: i];
+            if !is_backdrop_layer_class(sub.class().name().to_str().unwrap_or("")) {
                 let opacity: f32 = objc2::msg_send![&*sub, opacity];
                 if opacity != 0.0 {
                     let _: () = objc2::msg_send![&*sub, setOpacity: 0.0f32];
@@ -378,7 +384,7 @@ unsafe fn mute_tint_siblings(layer: &objc2::runtime::AnyObject) -> usize {
     }
 
     for i in 0..count {
-        let sub: Retained<AnyObject> = objc2::msg_send_id![&*sublayers, objectAtIndex: i];
+        let sub: Retained<AnyObject> = objc2::msg_send![&*sublayers, objectAtIndex: i];
         muted += mute_tint_siblings(&sub);
     }
     muted
@@ -454,7 +460,13 @@ fn count_effect_views(window: &WebviewWindow) -> usize {
         for i in 0..subviews.count() {
             let view = subviews.objectAtIndex(i);
             let obj: &AnyObject = &*(Retained::as_ptr(&view) as *const AnyObject);
-            if obj.class().name().contains("NSVisualEffectView") {
+            if obj
+                .class()
+                .name()
+                .to_str()
+                .unwrap_or("")
+                .contains("NSVisualEffectView")
+            {
                 count += 1;
             }
         }
@@ -582,8 +594,7 @@ pub fn is_app_active() -> bool {
         let Some(mtm) = MainThreadMarker::new() else {
             return true;
         };
-        // SAFETY: a read-only property, on the main thread the marker proves this call is on.
-        unsafe { NSApplication::sharedApplication(mtm).isActive() }
+        NSApplication::sharedApplication(mtm).isActive()
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -874,8 +885,8 @@ fn read_notch_metrics() -> Option<NotchMetrics> {
     // than importing the crate's own binding, which is exactly what this exists to avoid indexing
     // into) is safe.
     unsafe {
-        let screens: Retained<AnyObject> = objc2::msg_send_id![objc2::class!(NSScreen), screens];
-        let screen: Option<Retained<AnyObject>> = objc2::msg_send_id![&*screens, firstObject];
+        let screens: Retained<AnyObject> = objc2::msg_send![objc2::class!(NSScreen), screens];
+        let screen: Option<Retained<AnyObject>> = objc2::msg_send![&*screens, firstObject];
         let screen = screen?;
 
         let insets: NSEdgeInsets = objc2::msg_send![&*screen, safeAreaInsets];
