@@ -28,6 +28,27 @@
 
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
 
+    // The 1.80.0 bump added these six to the "react" plugin's own correctness category, which the
+    // blanket `"correctness": "error"` setting above picked up automatically — turning them into
+    // ~150 new hard errors overnight, spread across apps/desktop, packages/editor and
+    // packages/components, none of it caused by anything in that dependency bump itself. All six
+    // are React Compiler readiness checks (does this codebase's imperative code shape survive
+    // auto-memoization) — this codebase doesn't run React Compiler, and the overwhelming majority
+    // of hits are legitimate, long-standing imperative-ref patterns (Monaco/DOM handles written
+    // from event callbacks, ref bundles lazily initialized once, `Date.now()` read in an event
+    // handler misattributed to render) or fixture code in `*.test.tsx`, not real bugs. `warn` so a
+    // real regression is still visible without blocking every PR until a dedicated pass (worth
+    // doing, but as its own change — see the `typescript/no-floating-promises` precedent below).
+    "react/immutability": "warn",
+    "react/incompatible-library": "warn",
+    "react/preserve-manual-memoization": "warn",
+    "react/purity": "warn",
+    "react/refs": "warn",
+    "react/set-state-in-effect": "warn",
+    // Same story, scoped to the one file it hit: a test fixture reassigns an outer `let` to swap
+    // fake Monaco instances between assertions, which is exactly what a test double is for.
+    "react/globals": "warn",
+
     "typescript/adjacent-overload-signatures": "error",
     "typescript/ban-ts-comment": "error",
     "typescript/consistent-indexed-object-style": "error",
