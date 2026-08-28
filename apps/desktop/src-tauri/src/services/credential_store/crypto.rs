@@ -4,8 +4,8 @@
 //! with a hardware/machine-scoped seed to ensure credentials remain securely encrypted
 //! at rest in `~/.git-manager/vault.enc` without requiring interactive macOS password prompts.
 
-use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
-use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::{Aead, Generate, KeyInit, Nonce};
+use aes_gcm::{Aes256Gcm, Key};
 use sha2::{Digest, Sha256};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -38,9 +38,7 @@ pub fn derive_vault_key(base_dir: &Path) -> Result<[u8; 32], AppError> {
             ))
         })?;
 
-        let mut random_seed = [0u8; 32];
-        use aes_gcm::aead::rand_core::RngCore;
-        OsRng.fill_bytes(&mut random_seed);
+        let random_seed: [u8; 32] = Generate::generate();
 
         let mut options = OpenOptions::new();
         options.write(true).create_new(true);
@@ -78,8 +76,8 @@ pub fn derive_vault_key(base_dir: &Path) -> Result<[u8; 32], AppError> {
 /// Encrypts plaintext bytes using AES-256-GCM with a freshly generated random nonce.
 /// Format: `[12-byte nonce || ciphertext + 16-byte auth tag]`
 pub fn encrypt_payload(plaintext: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, AppError> {
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(key));
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(*key));
+    let nonce = Nonce::<Aes256Gcm>::generate();
 
     let ciphertext = cipher
         .encrypt(&nonce, plaintext)
@@ -100,8 +98,9 @@ pub fn decrypt_payload(data: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, AppError>
     }
 
     let (nonce_bytes, ciphertext) = data.split_at(NONCE_LEN);
-    let nonce = Nonce::from_slice(nonce_bytes);
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(key));
+    let nonce = <&Nonce<Aes256Gcm>>::try_from(nonce_bytes)
+        .map_err(|_| AppError::Unknown("Encrypted vault data has an invalid nonce".to_string()))?;
+    let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(*key));
 
     cipher
         .decrypt(nonce, ciphertext)
