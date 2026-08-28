@@ -8,6 +8,7 @@ import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { CommitFileList } from '../../../components/common/CommitFileList'
 import type { ProcessedFileItem } from '../../../components/common/CommitFileList'
 import type { ActiveDiffFile } from '../../../stores/repoUI.store'
+import { formatDateTimeLong } from '../../../lib/relativeDate'
 
 interface MultiCommitDetailsPanelProps {
   /** The selected real commits, ordered newest-first (as they appear in the graph). */
@@ -15,16 +16,6 @@ interface MultiCommitDetailsPanelProps {
   repoPath: string
   onSelectFileDiff?: (file: ActiveDiffFile) => void
   onClose?: () => void
-}
-
-function formatShortDate(timestamp: number, locale: string): string {
-  return new Date(timestamp * 1000).toLocaleString(locale, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export function MultiCommitDetailsPanel({
@@ -133,7 +124,7 @@ export function MultiCommitDetailsPanel({
                       </span>
                       <span className="truncate text-[10px] text-muted-foreground/70">
                         {commit.author.name} ·{' '}
-                        {formatShortDate(commit.author.timestamp, i18n.language)}
+                        {formatDateTimeLong(commit.author.timestamp, i18n.language)}
                       </span>
                     </div>
                     <code className="shrink-0 rounded border border-border/40 bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
