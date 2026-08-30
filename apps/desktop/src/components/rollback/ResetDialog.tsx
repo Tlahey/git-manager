@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
+import { isProtectedBranch } from '../../lib/protectedBranch'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'
 
@@ -47,7 +48,7 @@ export function ResetDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isProtected = currentBranch !== '' && protectedBranches.includes(currentBranch)
+  const isProtected = isProtectedBranch(currentBranch, protectedBranches)
 
   const { data: commits = [], isLoading: isLoadingCommits } = useQuery({
     queryKey: ['commits-between', repoPath, 'HEAD', targetOid],

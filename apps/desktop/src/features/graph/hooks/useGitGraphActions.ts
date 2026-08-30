@@ -17,6 +17,7 @@ import { useBranches } from '../../../hooks/useBranches'
 import { useBranchCheckout } from '../../../hooks/useBranchCheckout'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
+import { isProtectedBranch } from '../../../lib/protectedBranch'
 import { descendantsOnCurrentBranch } from '../lib/descendantsOnCurrentBranch'
 import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
 import { useCommitRowActions } from './useCommitRowActions'
@@ -244,7 +245,7 @@ export function useGitGraphActions({
           aiEnabled,
           primaryShortOid: clickedNode?.commit.shortOid ?? '',
           descendantCount: descendantsOnCurrentBranch(nodes, oid, currentBranchTip?.commit.oid),
-          isOnProtectedBranch: currentBranch !== null && protectedBranches.includes(currentBranch),
+          isOnProtectedBranch: isProtectedBranch(currentBranch, protectedBranches),
         },
         {
           onCheckout: () => commitActions.checkoutDetached(oid),
