@@ -7,6 +7,7 @@ import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { apiCreateAndCheckoutBranch, apiPushBranch, apiCreateCommit } from '../api/git.api'
 import { runActivity } from '../lib/activityCorrelation'
+import { isProtectedBranch } from '../lib/protectedBranch'
 import { createPullRequest, fetchRepoDefaultBranch, type GhRawPR } from '../api/github.api'
 
 /** Which entry-point variant applies for the current branch. `unavailable` = not a GitHub repo,
@@ -38,7 +39,7 @@ export function usePrPublishFlow(repoPath: string) {
 
   const currentBranch = repo?.head ?? null
   const isDetached = repo?.isDetached ?? false
-  const isProtected = currentBranch != null && protectedBranches.includes(currentBranch)
+  const isProtected = isProtectedBranch(currentBranch, protectedBranches)
 
   const mode: PrPublishMode =
     !ownerRepo || !accountId || !currentBranch || isDetached
