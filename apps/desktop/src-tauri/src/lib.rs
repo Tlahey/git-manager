@@ -15,6 +15,7 @@ use commands::ai::{
     get_ai_commit_scan, get_ai_context, get_model_context_limits,
 };
 use commands::app_icon::set_app_icon;
+use commands::app_launch::{open_in_editor, open_in_terminal, reveal_path_in_finder};
 use commands::bisect::{
     bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
 };
@@ -47,6 +48,7 @@ use commands::credentials::{delete_credential, has_credential, store_credential}
 use commands::daily_summary::{
     delete_daily_summary, list_daily_summaries, open_daily_summaries_dir, save_daily_summary,
 };
+use commands::files::{get_repo_files, list_tracked_files};
 use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
@@ -79,11 +81,11 @@ use commands::remote::{
     push_tag, remove_remote,
 };
 use commands::repo::{
-    clone_repo, get_pending_operation, get_repo_files, get_repo_readme, get_repo_status,
-    get_repo_summary, get_terminal_commands, init_repo, list_tracked_files, open_in_editor,
-    open_in_terminal, open_repo, reveal_path_in_finder, scan_repos,
+    clone_repo, get_pending_operation, get_repo_readme, get_repo_status, get_repo_summary,
+    init_repo, open_repo, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
+use commands::shell_history::get_terminal_commands;
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
 use commands::stash::{
     edit_stash_message, stash_apply, stash_drop, stash_list, stash_pop, stash_push, stash_store,
