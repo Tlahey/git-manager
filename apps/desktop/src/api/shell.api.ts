@@ -1,6 +1,10 @@
-import { invoke } from '@tauri-apps/api/core'
 import type { ProjectCommand, TerminalHistorySource } from '@git-manager/git-types'
-import { getProjectCommands, getTerminalCommands, runTaskInTerminal } from '../lib/tauri'
+import {
+  getProjectCommands,
+  getTerminalCommands,
+  openInTerminal,
+  runTaskInTerminal,
+} from '../lib/tauri'
 
 export async function apiOpenUrl(url: string): Promise<void> {
   try {
@@ -14,7 +18,7 @@ export async function apiOpenUrl(url: string): Promise<void> {
 
 export async function apiOpenTerminal(path: string, command: string): Promise<void> {
   try {
-    await invoke('open_in_terminal', { path, command })
+    await openInTerminal(path, command)
   } catch (err) {
     console.error('Failed to open terminal:', err)
   }
