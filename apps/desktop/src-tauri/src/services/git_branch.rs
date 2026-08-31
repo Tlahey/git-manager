@@ -395,6 +395,34 @@ pub fn rename_branch(repo: &Repository, old_name: &str, new_name: &str) -> Resul
     Ok(())
 }
 
+/// Which git command `fast_forward_branch` should run to move `target` up to `source`.
+/// See [`fast_forward_strategy`] for how this is decided.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FastForwardStrategy {
+    /// `target` is the branch currently checked out: `git merge --ff-only <source>` also updates
+    /// the working tree to match.
+    MergeCurrentBranch,
+    /// `target` isn't the checked-out branch: moving the ref directly (`git branch -f`) is safe
+    /// and avoids touching a working tree that has nothing to do with `target`.
+    MoveBranchRef,
+}
+
+/// Decides how `fast_forward_branch` should advance `target` up to `source`, given the branch
+/// currently checked out (`None` if HEAD is detached or unreadable). Mirrors `git`'s own
+/// distinction: fast-forwarding the branch that's actually checked out has to update the working
+/// tree too, so it goes through `merge --ff-only`; fast-forwarding any other branch is a plain ref
+/// move with no working tree to touch.
+///
+/// Pulled out of the command so the decision is testable without shelling out or touching
+/// `tauri::AppHandle` — the ancestor check and the git calls this drives still need both and stay
+/// in `commands/branch.rs`.
+pub fn fast_forward_strategy(current_branch: Option<&str>, target: &str) -> FastForwardStrategy {
+    match current_branch {
+        Some(current) if current == target => FastForwardStrategy::MergeCurrentBranch,
+        _ => FastForwardStrategy::MoveBranchRef,
+    }
+}
+
 /// Sets local branch `branch_name`'s upstream to `upstream` — the git2 equivalent of
 /// `git branch --set-upstream-to=<upstream> <branch_name>`. `upstream` is a remote-tracking
 /// branch's short name (e.g. `origin/main`), matching what `Branch::set_upstream` expects (see
@@ -589,6 +617,32 @@ mod tests {
         assert_eq!(upstream.name().unwrap(), Some("origin/feature-old"));
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── fast_forward_strategy ──────────────────────────────────────────────
+
+    #[test]
+    fn fast_forward_strategy_merges_when_target_is_checked_out() {
+        assert_eq!(
+            fast_forward_strategy(Some("main"), "main"),
+            FastForwardStrategy::MergeCurrentBranch
+        );
+    }
+
+    #[test]
+    fn fast_forward_strategy_moves_the_ref_when_target_is_not_checked_out() {
+        assert_eq!(
+            fast_forward_strategy(Some("main"), "feature"),
+            FastForwardStrategy::MoveBranchRef
+        );
+    }
+
+    #[test]
+    fn fast_forward_strategy_moves_the_ref_when_head_is_detached() {
+        assert_eq!(
+            fast_forward_strategy(None, "feature"),
+            FastForwardStrategy::MoveBranchRef
+        );
     }
 
     // ─── set_branch_upstream ────────────────────────────────────────────────
