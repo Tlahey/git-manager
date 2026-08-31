@@ -97,7 +97,7 @@ describe('usePackageHealth hooks', () => {
     renderHook(() => usePackageChangelog('/repo', null, '1.0.0', '2.0.0'), { wrapper })
     expect(apiGetPackageChangelog).not.toHaveBeenCalled()
 
-    renderHook(() => usePackageChangelog('/repo', 'react', '18.2.0', '19.0.0', 'ghp_x'), {
+    renderHook(() => usePackageChangelog('/repo', 'react', '18.2.0', '19.0.0', 'octocat'), {
       wrapper,
     })
 
@@ -107,7 +107,7 @@ describe('usePackageHealth hooks', () => {
         'react',
         '18.2.0',
         '19.0.0',
-        'ghp_x'
+        'octocat'
       )
     )
   })

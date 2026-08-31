@@ -12,8 +12,7 @@
 //! `(from, to]`. When nothing matches we say so and hand back the releases URL
 //! rather than pretending the package has no history.
 
-use crate::error::AppError;
-use reqwest::Client;
+use crate::services::github_api;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -259,35 +258,29 @@ fn select_releases(
 
 /// Release notes for `name` between the installed version and the target one.
 ///
-/// `token` is optional: public repos work unauthenticated, just against a lower
-/// rate limit. A repo we can't resolve or reach yields an empty changelog rather
-/// than an error — the update itself doesn't depend on this.
+/// `account_id` is optional and is never a secret itself — it is a GitHub login, resolved to the
+/// actual token server-side via [`github_api::request`] (which in turn reads
+/// `services/credential_store.rs` by account id, same as every other authenticated GitHub call the
+/// app makes). Public repos work unauthenticated, just against a lower rate limit, which is why
+/// `account_id` being absent is not an error. A repo we can't resolve, an account whose credential
+/// went missing, or a request that fails for any other reason all yield the base (near-empty)
+/// changelog rather than an error — the update itself doesn't depend on this, so nothing here should
+/// ever block it.
+///
+/// Goes through `github_api::request` rather than its own `reqwest::Client` — this call targets
+/// `https://api.github.com/…`, exactly the origin that module's URL allowlist already exists to
+/// guard, so routing here is a straight fit with no need to widen that guard.
 pub async fn fetch_changelog(
     repo_path: &str,
     name: &str,
     from: &str,
     to: &str,
-    token: Option<String>,
+    account_id: Option<String>,
 ) -> Result<PackageChangelog, String> {
     let Some((owner, repo)) = resolve_repository(repo_path, name) else {
         return Ok(empty_changelog());
     };
     let releases_url = format!("https://github.com/{owner}/{repo}/releases");
-
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(AppError::Http)?;
-
-    let mut request = client
-        .get(format!(
-            "https://api.github.com/repos/{owner}/{repo}/releases?per_page=100"
-        ))
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("User-Agent", "git-manager-desktop");
-    if let Some(token) = token.filter(|t| !t.is_empty()) {
-        request = request.header("Authorization", format!("Bearer {token}"));
-    }
 
     let base = PackageChangelog {
         repository: Some(format!("{owner}/{repo}")),
@@ -295,13 +288,25 @@ pub async fn fetch_changelog(
         ..empty_changelog()
     };
 
-    let Ok(response) = request.send().await else {
+    let api_url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
+    let Ok(response) = github_api::request(
+        account_id.as_deref(),
+        &api_url,
+        "GET",
+        None,
+        Some("application/vnd.github.v3+json"),
+    )
+    .await
+    else {
+        // Covers both a network failure and an account whose stored credential is missing —
+        // `github_api::request` errors on the latter rather than silently downgrading to
+        // anonymous, but a package's changelog isn't worth surfacing that as a hard error.
         return Ok(base);
     };
-    if !response.status().is_success() {
+    if !response.ok {
         return Ok(base);
     }
-    let Ok(payload) = response.json::<serde_json::Value>().await else {
+    let Ok(payload) = serde_json::from_str::<serde_json::Value>(&response.body) else {
         return Ok(base);
     };
     let Some(items) = payload.as_array() else {
@@ -459,5 +464,73 @@ mod tests {
         let parsed = read_release(&real).unwrap();
         assert_eq!(parsed.tag, "v2.0.0");
         assert_eq!(parsed.body, "notes");
+    }
+
+    // ─── fetch_changelog ────────────────────────────────────────────────────
+    //
+    // These exercise the offline-decidable branches only. A genuine authenticated (or
+    // unauthenticated) *success* round trip goes all the way through `github_api::request`'s real
+    // `reqwest` call to `api.github.com`, and this codebase has no HTTP-mocking dependency to fake
+    // that — `services/github_api.rs`'s own test module draws the same line, testing `guard_url` and
+    // `e2e_redirect` but never `request()`'s actual network path. What *is* fully testable offline,
+    // and is exactly the regression this module's `account_id` rename guards against, is that a
+    // resolvable repo paired with an account whose credential cannot be found degrades to the base
+    // changelog rather than erroring or (the original bug) sending the account id itself as a token.
+
+    fn write_installed_package(dir: &Path, name: &str, repository: &str) {
+        let pkg = dir.join("node_modules").join(name);
+        fs::create_dir_all(&pkg).unwrap();
+        fs::write(
+            pkg.join("package.json"),
+            format!(r#"{{"version":"1.0.0","repository":"{repository}"}}"#),
+        )
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_unresolvable_repository_returns_the_empty_changelog_without_any_network_call() {
+        let dir = tmp("fetch-unresolved");
+
+        let result = fetch_changelog(dir.to_str().unwrap(), "ghost", "1.0.0", "2.0.0", None)
+            .await
+            .unwrap();
+
+        assert_eq!(result, empty_changelog());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn an_account_with_no_stored_credential_degrades_to_the_base_changelog() {
+        let dir = tmp("fetch-missing-credential");
+        write_installed_package(&dir, "acme-thing", "acme/thing");
+
+        // No test in this suite ever stores a credential under this id, on any backend, so the
+        // lookup inside `github_api::request` is guaranteed to fail before any HTTP request is
+        // attempted — this is what keeps the test deterministic and offline.
+        let account_id = format!(
+            "gm-test-no-such-package-changelog-account-{}",
+            std::process::id()
+        );
+
+        let result = fetch_changelog(
+            dir.to_str().unwrap(),
+            "acme-thing",
+            "1.0.0",
+            "2.0.0",
+            Some(account_id),
+        )
+        .await
+        .unwrap();
+
+        // Degrades gracefully rather than erroring or crashing: the repository still resolved
+        // (offline, from the manifest), but no releases came back because the request never sent.
+        assert_eq!(result.repository, Some("acme/thing".to_string()));
+        assert_eq!(
+            result.releases_url,
+            Some("https://github.com/acme/thing/releases".to_string())
+        );
+        assert!(result.releases.is_empty());
+        assert!(!result.matched);
+        fs::remove_dir_all(&dir).ok();
     }
 }

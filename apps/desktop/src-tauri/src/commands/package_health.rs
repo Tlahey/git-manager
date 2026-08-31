@@ -36,15 +36,19 @@ pub async fn check_outdated_packages(
 
 /// Release notes between the installed version and the update target. Best-effort:
 /// a package with no resolvable GitHub repo yields an empty changelog, not an error.
+///
+/// `account_id` is a GitHub login, never a token — `fetch_changelog` resolves the real
+/// credential server-side by account id via `services/credential_store.rs`, the same as every
+/// other authenticated GitHub call the app makes.
 #[tauri::command]
 pub async fn get_package_changelog(
     path: String,
     name: String,
     from: String,
     to: String,
-    token: Option<String>,
+    account_id: Option<String>,
 ) -> Result<PackageChangelog, String> {
-    package_changelog::fetch_changelog(&path, &name, &from, &to, token).await
+    package_changelog::fetch_changelog(&path, &name, &from, &to, account_id).await
 }
 
 /// What this repo imports from a dependency — the usage surface an upgrade-risk

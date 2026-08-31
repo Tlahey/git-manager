@@ -54,11 +54,11 @@ export function usePackageChangelog(
   name: string | null,
   from: string,
   to: string,
-  token?: string
+  accountId?: string
 ) {
   return useSWR(
     repoPath && name ? ['package-changelog', repoPath, name, from, to] : null,
-    () => apiGetPackageChangelog(repoPath as string, name as string, from, to, token),
+    () => apiGetPackageChangelog(repoPath as string, name as string, from, to, accountId),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
 }
