@@ -389,6 +389,22 @@ pub fn raw_file_contents(
     Ok(RawFileDiffContents { original, modified })
 }
 
+/// A file's raw text content at a specific commit — the graph's read-only "open this file as it
+/// was in this commit" action. Delegates blob resolution to `file_content_in_tree`/`blob_text`, so
+/// a path that doesn't exist in that tree reads as "no such version" (empty string) and a binary
+/// blob reads as `"[Binary Content]"` — the same graceful behavior every other raw-content reader
+/// in this module already has, rather than hard-erroring on a missing path or non-UTF8 content.
+pub fn commit_file_content(
+    repo: &Repository,
+    oid: &str,
+    file_path: &str,
+) -> Result<String, AppError> {
+    let commit_oid = Oid::from_str(oid).map_err(AppError::Git)?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+    let tree = commit.tree().map_err(AppError::Git)?;
+    Ok(file_content_in_tree(repo, &tree, file_path))
+}
+
 /// The target commit's version of `file_path` (left) and the current working-tree version (right)
 /// — the fixup "Commit changes" diff. Unlike `raw_file_contents`, `original` is the file at `oid`'s
 /// own tree (not its parent), so the diff shows how the working copy differs from the fixup
