@@ -2,7 +2,7 @@ use crate::error::AppError;
 use crate::hook_progress;
 use crate::models::{GitDiff, GitDiffFile};
 use crate::services::{git_commit, git_diff};
-use git2::{DiffOptions, Oid, Repository};
+use git2::{DiffOptions, Repository};
 
 pub use crate::services::git_commit::{CommitResult, DiscardResult};
 pub use crate::services::git_diff::RawFileDiffContents;
@@ -196,37 +196,9 @@ fn commit_diff_blocking(
     base_oid: Option<&str>,
 ) -> Result<GitDiff, String> {
     let repo = Repository::open(path).map_err(AppError::Git)?;
-    let commit_oid = Oid::from_str(oid_str).map_err(AppError::Git)?;
-    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-
-    let commit_tree = commit.tree().map_err(AppError::Git)?;
-    // The "before" side: for a merged range it's the oldest selected commit's first parent;
-    // otherwise it's this commit's own first parent.
-    let base_commit = match base_oid {
-        Some(b) => repo
-            .find_commit(Oid::from_str(b).map_err(AppError::Git)?)
-            .map_err(AppError::Git)?,
-        None => commit.clone(),
-    };
-    let parent_tree = if base_commit.parent_count() > 0 {
-        let parent = base_commit.parent(0).map_err(AppError::Git)?;
-        Some(parent.tree().map_err(AppError::Git)?)
-    } else {
-        None
-    };
-
-    let mut diff_opts = DiffOptions::new();
-    diff_opts.context_lines(3).ignore_whitespace_change(false);
-
-    let diff = repo
-        .diff_tree_to_tree(
-            parent_tree.as_ref(),
-            Some(&commit_tree),
-            Some(&mut diff_opts),
-        )
-        .map_err(AppError::Git)?;
-
-    git_diff::build_diff(diff).map_err(|e| AppError::Git(e).into())
+    // With no base_oid, the "before" side is this commit's own first parent — the same
+    // reading as a merged range whose base and head are the same commit.
+    git_diff::merged_commits_diff(&repo, base_oid.unwrap_or(oid_str), oid_str).map_err(Into::into)
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
