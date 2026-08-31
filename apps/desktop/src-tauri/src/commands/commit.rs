@@ -2,7 +2,7 @@ use crate::error::AppError;
 use crate::hook_progress;
 use crate::models::{GitDiff, GitDiffFile};
 use crate::services::{git_commit, git_diff};
-use git2::{DiffOptions, Repository};
+use git2::Repository;
 
 pub use crate::services::git_commit::{CommitResult, DiscardResult};
 pub use crate::services::git_diff::RawFileDiffContents;
@@ -133,20 +133,7 @@ pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
 
 fn get_staged_diff_blocking(path: &str) -> Result<GitDiff, String> {
     let repo = Repository::open(path).map_err(AppError::Git)?;
-
-    let head_tree = match repo.head() {
-        Ok(head_ref) => {
-            let head_commit = head_ref.peel_to_commit().map_err(AppError::Git)?;
-            Some(head_commit.tree().map_err(AppError::Git)?)
-        }
-        Err(_) => None, // No commits yet on a brand new repo
-    };
-
-    let diff = repo
-        .diff_tree_to_index(head_tree.as_ref(), None, None)
-        .map_err(AppError::Git)?;
-
-    git_diff::build_diff(diff).map_err(|e| AppError::Git(e).into())
+    git_diff::staged_diff(&repo).map_err(Into::into)
 }
 
 // ─── get_file_diff ────────────────────────────────────────────────────────────
@@ -207,14 +194,7 @@ fn commit_diff_blocking(
 async fn workdir_diff(path: String) -> Result<GitDiff, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        let mut opts = DiffOptions::new();
-        opts.include_untracked(false);
-
-        let diff = repo
-            .diff_index_to_workdir(None, Some(&mut opts))
-            .map_err(AppError::Git)?;
-
-        git_diff::build_diff(diff).map_err(|e| AppError::Git(e).into())
+        git_diff::unstaged_diff(&repo).map_err(Into::into)
     })
     .await
     .map_err(|e| format!("diff task failed to complete: {e}"))?

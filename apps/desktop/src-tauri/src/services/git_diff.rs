@@ -272,6 +272,39 @@ pub fn commit_diff(
     Ok(finalize(files.into_inner()))
 }
 
+/// Diffs the index against `HEAD`'s tree — the staged files' diff shown in the commit panel.
+/// `HEAD` has no tree yet on a brand new repository with no commits, in which case the index is
+/// diffed against nothing, so every staged file reads as added.
+pub fn staged_diff(repo: &Repository) -> Result<GitDiff, AppError> {
+    let head_tree = match repo.head() {
+        Ok(head_ref) => {
+            let head_commit = head_ref.peel_to_commit().map_err(AppError::Git)?;
+            Some(head_commit.tree().map_err(AppError::Git)?)
+        }
+        Err(_) => None, // No commits yet on a brand new repo
+    };
+
+    let diff = repo
+        .diff_tree_to_index(head_tree.as_ref(), None, None)
+        .map_err(AppError::Git)?;
+
+    build_diff(diff).map_err(AppError::Git)
+}
+
+/// Diffs the index against the literal working directory — the unstaged changes' diff shown in
+/// the commit panel. Untracked files are deliberately excluded; the status view surfaces those
+/// separately.
+pub fn unstaged_diff(repo: &Repository) -> Result<GitDiff, AppError> {
+    let mut opts = DiffOptions::new();
+    opts.include_untracked(false);
+
+    let diff = repo
+        .diff_index_to_workdir(None, Some(&mut opts))
+        .map_err(AppError::Git)?;
+
+    build_diff(diff).map_err(AppError::Git)
+}
+
 /// Diffs a commit's tree directly against the literal working directory (not the index),
 /// so uncommitted changes on top of that commit show up alongside its own historical delta.
 pub fn diff_commit_to_workdir(repo: &Repository, oid: &str) -> Result<GitDiff, AppError> {
