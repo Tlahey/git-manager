@@ -141,7 +141,8 @@ pub async fn merge_branch(
 /// Advances branch `target` up to `source` (fast-forward only — rejected if `target` isn't an
 /// ancestor of `source`). If `target` is the current branch, `git merge --ff-only` also updates the
 /// working tree; otherwise the ref is moved without touching the worktree (`git branch -f`, safe
-/// since `target` isn't checked out).
+/// since `target` isn't checked out) — see `git_branch::fast_forward_strategy` for that decision,
+/// pulled out as a pure function since it needs neither the shell nor `AppHandle`.
 #[tauri::command]
 pub async fn fast_forward_branch(
     path: String,
@@ -174,20 +175,28 @@ pub async fn fast_forward_branch(
         .output()
         .await
         .map_err(|e| AppError::Unknown(e.to_string()))?;
-    let current_branch = String::from_utf8_lossy(&current.stdout).trim().to_string();
+    let current_branch = current
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&current.stdout).trim().to_string());
 
-    let output = if current.status.success() && current_branch == target {
-        app.shell()
-            .command("git")
-            .args(["-C", &path, "merge", "--ff-only", &source])
-            .output()
-            .await
-    } else {
-        app.shell()
-            .command("git")
-            .args(["-C", &path, "branch", "-f", &target, &source])
-            .output()
-            .await
+    let strategy = git_branch::fast_forward_strategy(current_branch.as_deref(), &target);
+
+    let output = match strategy {
+        git_branch::FastForwardStrategy::MergeCurrentBranch => {
+            app.shell()
+                .command("git")
+                .args(["-C", &path, "merge", "--ff-only", &source])
+                .output()
+                .await
+        }
+        git_branch::FastForwardStrategy::MoveBranchRef => {
+            app.shell()
+                .command("git")
+                .args(["-C", &path, "branch", "-f", &target, &source])
+                .output()
+                .await
+        }
     }
     .map_err(|e| AppError::Unknown(e.to_string()))?;
 
