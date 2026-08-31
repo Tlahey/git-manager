@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import type { BoardCard, BoardCardPatch, BoardTag } from '@git-manager/git-types'
+import { formatExactDate } from '../../../lib/relativeDate'
 import { CardTrackingSection } from './CardTrackingSection'
 import { CardSidebarPanel } from './CardSidebarPanel'
 import { CardPinnedPanel } from './CardPinnedPanel'
@@ -49,7 +50,7 @@ export function CardMetaSidebar({
   onUntrack,
   readOnly,
 }: CardMetaSidebarProps) {
-  const { t } = useTranslation('board')
+  const { t, i18n } = useTranslation('board')
 
   return (
     <div data-testid="card-meta-sidebar" className="space-y-3 p-3">
@@ -93,7 +94,9 @@ export function CardMetaSidebar({
         date that is simply wrong on every card ever edited.
       */}
       <p data-testid="card-meta-timestamps" className="px-3 text-[10px] text-muted-foreground">
-        {t('card.meta.updatedAt', { date: new Date(card.updatedAt).toLocaleString() })}
+        {t('card.meta.updatedAt', {
+          date: formatExactDate(new Date(card.updatedAt).getTime() / 1000, i18n.language),
+        })}
       </p>
     </div>
   )

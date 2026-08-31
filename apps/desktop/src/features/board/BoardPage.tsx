@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner } from '@git-manager/ui'
 import { Kanban } from 'lucide-react'
 import type { BoardCard } from '@git-manager/git-types'
+import { formatShortDate } from '../../lib/relativeDate'
 import { useBoardData } from './hooks/useBoardData'
 import { useBoardControlsStore } from './stores/boardControls.store'
 import { useBoardDialogsStore } from './stores/boardDialogs.store'
@@ -27,7 +28,7 @@ interface BoardPageProps {
  * lets a button up there open a dialog rendered down here.
  */
 export function BoardPage({ repoPath }: BoardPageProps) {
-  const { t } = useTranslation('board')
+  const { t, i18n } = useTranslation('board')
   const data = useBoardData(repoPath)
   const {
     boards,
@@ -150,7 +151,10 @@ export function BoardPage({ repoPath }: BoardPageProps) {
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   {t('deleteBoard.deletedOn', {
-                    date: new Date(activeBoard.deletedAt).toLocaleDateString(),
+                    date: formatShortDate(
+                      new Date(activeBoard.deletedAt).getTime() / 1000,
+                      i18n.language
+                    ),
                   })}
                 </p>
               </div>
@@ -165,7 +169,10 @@ export function BoardPage({ repoPath }: BoardPageProps) {
                 {activeBoard.closedAt && (
                   <p className="text-[11px] text-muted-foreground">
                     {t('sprint.closedOn', {
-                      date: new Date(activeBoard.closedAt).toLocaleDateString(),
+                      date: formatShortDate(
+                        new Date(activeBoard.closedAt).getTime() / 1000,
+                        i18n.language
+                      ),
                     })}
                   </p>
                 )}

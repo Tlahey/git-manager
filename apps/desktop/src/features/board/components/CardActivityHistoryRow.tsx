@@ -2,16 +2,13 @@ import { Copy } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import type { BoardColumn, BoardTag, CardHistoryEntry } from '@git-manager/git-types'
 import { copyWithToast } from '../../../lib/clipboard'
+import { formatExactDate } from '../../../lib/relativeDate'
 import { describeCardFieldChange, type CardFieldChangeDisplay } from '../lib/cardHistoryChange'
 
 interface CardActivityHistoryRowProps {
   entry: CardHistoryEntry
   columns: BoardColumn[]
   tags: BoardTag[]
-}
-
-function formatEntryDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString()
 }
 
 interface LongTextColumnProps {
@@ -106,7 +103,7 @@ function FieldChange({
  * "old value → new value" per changed field), rather than a single natural-language sentence.
  */
 export function CardActivityHistoryRow({ entry, columns, tags }: CardActivityHistoryRowProps) {
-  const { t } = useTranslation('board')
+  const { t, i18n } = useTranslation('board')
 
   return (
     <li
@@ -115,7 +112,7 @@ export function CardActivityHistoryRow({ entry, columns, tags }: CardActivityHis
     >
       <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
         <span className="font-medium text-foreground">{entry.authorName}</span>
-        <span>{formatEntryDate(entry.timestamp)}</span>
+        <span>{formatExactDate(entry.timestamp, i18n.language)}</span>
       </div>
       {entry.kind === 'created' ? (
         <p className="text-[11px] text-foreground">{t('card.history.created')}</p>

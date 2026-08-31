@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Alert, Button, Spinner } from '@git-manager/ui'
 import { History } from 'lucide-react'
 import type { Board, RecoverableBoard } from '@git-manager/git-types'
+import { formatExactDate } from '../../../lib/relativeDate'
 
 interface RecoverableBoardsBannerProps {
   boards: RecoverableBoard[]
@@ -11,9 +12,9 @@ interface RecoverableBoardsBannerProps {
 
 /** The board's own last-changed stamp, as a date *and* a time: several clones of the same repository
  * lost on the same day is exactly the case this line exists to disambiguate. */
-function formatChangedAt(iso: string): string {
+function formatChangedAt(iso: string, locale: string): string {
   const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? iso : formatExactDate(date.getTime() / 1000, locale)
 }
 
 /**
@@ -32,7 +33,7 @@ function formatChangedAt(iso: string): string {
  * twice concurrently would race two "recreate the ref" writes against each other.
  */
 export function RecoverableBoardsBanner({ boards, onRestore }: RecoverableBoardsBannerProps) {
-  const { t } = useTranslation('board')
+  const { t, i18n } = useTranslation('board')
   const [restoringId, setRestoringId] = useState<string | null>(null)
 
   if (boards.length === 0) return null
@@ -64,7 +65,7 @@ export function RecoverableBoardsBanner({ boards, onRestore }: RecoverableBoards
                 >
                   {t('recoverable.detail', {
                     count: cardCount,
-                    date: formatChangedAt(board.updatedAt),
+                    date: formatChangedAt(board.updatedAt, i18n.language),
                   })}
                 </span>
               </span>
