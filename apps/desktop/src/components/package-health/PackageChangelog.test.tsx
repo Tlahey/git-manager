@@ -121,4 +121,56 @@ describe('PackageChangelog', () => {
       'Could not load the release notes'
     )
   })
+
+  /**
+   * `accountId` is a GitHub login, never a token — the component must forward it
+   * as-is so the real credential can be resolved server-side by that id.
+   */
+  it('forwards the connected account id to the changelog request', async () => {
+    apiGetPackageChangelog.mockResolvedValue({
+      repository: 'facebook/react',
+      releasesUrl: null,
+      matched: false,
+      releases: [],
+    })
+    renderIsolated(
+      <PackageChangelog
+        repoPath="/repo"
+        name="react"
+        from="18.2.0"
+        to="19.0.0"
+        accountId="octocat"
+      />
+    )
+
+    await screen.findByTestId('changelog-empty')
+
+    expect(apiGetPackageChangelog).toHaveBeenCalledWith(
+      '/repo',
+      'react',
+      '18.2.0',
+      '19.0.0',
+      'octocat'
+    )
+  })
+
+  it('works with no account connected, unauthenticated', async () => {
+    apiGetPackageChangelog.mockResolvedValue({
+      repository: 'facebook/react',
+      releasesUrl: null,
+      matched: false,
+      releases: [],
+    })
+    renderChangelog()
+
+    await screen.findByTestId('changelog-empty')
+
+    expect(apiGetPackageChangelog).toHaveBeenCalledWith(
+      '/repo',
+      'react',
+      '18.2.0',
+      '19.0.0',
+      undefined
+    )
+  })
 })

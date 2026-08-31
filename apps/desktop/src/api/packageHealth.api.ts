@@ -26,17 +26,19 @@ export async function apiCheckOutdatedPackages(path: string, packageManager: str
 }
 
 /**
- * Release notes between the installed version and the update target. `token` is
- * optional — public repos resolve unauthenticated, just at a lower rate limit.
+ * Release notes between the installed version and the update target. `accountId`
+ * is optional — public repos resolve unauthenticated, just at a lower rate limit.
+ * It names a connected GitHub account (a login), never a token: the real credential
+ * is resolved server-side, in Rust, from that id.
  */
 export async function apiGetPackageChangelog(
   path: string,
   name: string,
   from: string,
   to: string,
-  token?: string
+  accountId?: string
 ) {
-  return getPackageChangelog(path, name, from, to, token)
+  return getPackageChangelog(path, name, from, to, accountId)
 }
 
 /**

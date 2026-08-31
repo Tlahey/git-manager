@@ -53,7 +53,7 @@ describe('packageHealth.api', () => {
     expect(mocked.checkOutdatedPackages).toHaveBeenCalledWith(PATH, 'pnpm')
   })
 
-  it('apiGetPackageChangelog passes the version range and token through', async () => {
+  it('apiGetPackageChangelog passes the version range and account id through', async () => {
     mocked.getPackageChangelog.mockResolvedValue({
       repository: 'facebook/react',
       releasesUrl: null,
@@ -61,14 +61,33 @@ describe('packageHealth.api', () => {
       matched: false,
     })
 
-    await api.apiGetPackageChangelog(PATH, 'react', '18.2.0', '19.0.0', 'ghp_x')
+    await api.apiGetPackageChangelog(PATH, 'react', '18.2.0', '19.0.0', 'octocat')
 
     expect(mocked.getPackageChangelog).toHaveBeenCalledWith(
       PATH,
       'react',
       '18.2.0',
       '19.0.0',
-      'ghp_x'
+      'octocat'
+    )
+  })
+
+  it('apiGetPackageChangelog works with no account connected', async () => {
+    mocked.getPackageChangelog.mockResolvedValue({
+      repository: 'facebook/react',
+      releasesUrl: null,
+      releases: [],
+      matched: false,
+    })
+
+    await api.apiGetPackageChangelog(PATH, 'react', '18.2.0', '19.0.0')
+
+    expect(mocked.getPackageChangelog).toHaveBeenCalledWith(
+      PATH,
+      'react',
+      '18.2.0',
+      '19.0.0',
+      undefined
     )
   })
 

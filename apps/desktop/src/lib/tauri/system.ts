@@ -19,14 +19,14 @@ export const getPackageChangelog = (
   name: string,
   from: string,
   to: string,
-  token?: string
+  accountId?: string
 ) =>
   invoke<import('@git-manager/git-types').PackageChangelog>('get_package_changelog', {
     path,
     name,
     from,
     to,
-    token,
+    accountId,
   })
 
 export const scanPackageUsage = (path: string, name: string) =>
