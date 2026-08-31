@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const invoke = vi.fn()
-vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invoke(...args) }))
 vi.mock('../lib/tauri', () => ({
   getTerminalCommands: vi.fn(),
   runTaskInTerminal: vi.fn(),
   getProjectCommands: vi.fn(),
+  openInTerminal: vi.fn(),
 }))
 
 import * as tauri from '../lib/tauri'
@@ -27,18 +26,15 @@ describe('apiGetTerminalCommands', () => {
 })
 
 describe('apiOpenTerminal', () => {
-  it('invokes "open_in_terminal" with path/command', async () => {
-    invoke.mockResolvedValue(undefined)
+  it('delegates to openInTerminal with path/command', async () => {
+    mocked.openInTerminal.mockResolvedValue(undefined)
     await api.apiOpenTerminal('/repo/a', '/Applications/iTerm.app')
-    expect(invoke).toHaveBeenCalledWith('open_in_terminal', {
-      path: '/repo/a',
-      command: '/Applications/iTerm.app',
-    })
+    expect(mocked.openInTerminal).toHaveBeenCalledWith('/repo/a', '/Applications/iTerm.app')
   })
 
   it('logs and swallows the error instead of throwing when the backend call fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    invoke.mockRejectedValue(new Error('no terminal'))
+    mocked.openInTerminal.mockRejectedValue(new Error('no terminal'))
     await expect(api.apiOpenTerminal('/repo/a', '/Applications/iTerm.app')).resolves.toBeUndefined()
     expect(errorSpy).toHaveBeenCalled()
   })

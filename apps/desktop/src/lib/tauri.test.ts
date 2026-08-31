@@ -746,6 +746,12 @@ const cases: {
     args: { path: '/repo', command: '/Applications/Visual Studio Code.app' },
   },
   {
+    name: 'openInTerminal',
+    call: () => tauri.openInTerminal('/repo', '/Applications/iTerm.app'),
+    command: 'open_in_terminal',
+    args: { path: '/repo', command: '/Applications/iTerm.app' },
+  },
+  {
     name: 'getRepoReadme',
     call: () => tauri.getRepoReadme('/repo'),
     command: 'get_repo_readme',
