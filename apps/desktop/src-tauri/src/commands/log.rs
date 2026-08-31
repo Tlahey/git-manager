@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::models::GitDiff;
 use crate::services::{git_diff, git_graph, git_log};
-use git2::{Oid, Repository};
+use git2::Repository;
 
 pub use crate::services::git_graph::{HeadOverride, LogGraphNode};
 
@@ -167,7 +167,7 @@ pub async fn compare_refs(
     .map_err(Into::into)
 }
 
-/// Returns a file's raw content at a given commit
+/// Returns a file's raw content at a given commit. See `git_diff::commit_file_content`.
 #[tauri::command]
 pub async fn get_commit_file(
     path: String,
@@ -175,19 +175,5 @@ pub async fn get_commit_file(
     file_path: String,
 ) -> Result<String, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
-    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-    let tree = commit.tree().map_err(AppError::Git)?;
-
-    let entry = tree
-        .get_path(std::path::Path::new(&file_path))
-        .map_err(AppError::Git)?;
-
-    let blob = repo.find_blob(entry.id()).map_err(AppError::Git)?;
-
-    let content = std::str::from_utf8(blob.content())
-        .map_err(|_| AppError::Unknown("File content is not valid UTF-8".to_string()))?
-        .to_string();
-
-    Ok(content)
+    git_diff::commit_file_content(&repo, &oid, &file_path).map_err(Into::into)
 }
