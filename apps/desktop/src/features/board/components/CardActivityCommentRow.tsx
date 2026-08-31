@@ -2,6 +2,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Avatar, Button } from '@git-manager/ui'
 import type { BoardComment } from '@git-manager/git-types'
 import { MarkdownRenderer } from '../../../components/markdown/MarkdownRenderer'
+import { formatExactDate } from '../../../lib/relativeDate'
 
 interface CardActivityCommentRowProps {
   comment: BoardComment
@@ -11,9 +12,9 @@ interface CardActivityCommentRowProps {
   onReply?: () => void
 }
 
-function formatCommentDate(iso: string): string {
+function formatCommentDate(iso: string, locale: string): string {
   const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? iso : formatExactDate(date.getTime() / 1000, locale)
 }
 
 /**
@@ -27,7 +28,7 @@ export function CardActivityCommentRow({
   repoPath,
   onReply,
 }: CardActivityCommentRowProps) {
-  const { t } = useTranslation('board')
+  const { t, i18n } = useTranslation('board')
   return (
     <li
       className="rounded border border-border/60 bg-background px-2 py-1.5"
@@ -40,7 +41,7 @@ export function CardActivityCommentRow({
           className="h-4 w-4 text-[8px]"
         />
         <span className="font-medium text-foreground">{comment.author}</span>
-        <span>{formatCommentDate(comment.createdAt)}</span>
+        <span>{formatCommentDate(comment.createdAt, i18n.language)}</span>
         {onReply && (
           <Button
             type="button"
