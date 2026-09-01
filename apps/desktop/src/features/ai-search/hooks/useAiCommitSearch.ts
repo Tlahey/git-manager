@@ -197,11 +197,27 @@ export function useAiCommitSearch(repoPath: string) {
    * "what has landed so far, in history order".
    */
   const ordered = useRef<(ScannedCommit | undefined)[]>([])
+  /**
+   * Identifies which invocation of `search` is *the* run, mirroring `useAiStream`'s `requestId`.
+   *
+   * `cancelSearch` flips `phase` to `'cancelled'` synchronously, well before the abandoned scan's
+   * `mapConcurrently` loop has actually observed `cancelledRef` (it only polls every ~100ms) — so a
+   * new `search()` call can start, and reset `cancelledRef`/`ordered` out from under the old run,
+   * while the old run is still executing. Every closure `search` creates captures this run's own id
+   * at the top and checks it via `isStale` before reading `cancelledRef` or writing `ordered`/state,
+   * so a superseded run's late reads and writes are dropped rather than un-cancelling itself or
+   * landing in the new run's results.
+   */
+  const runIdRef = useRef(0)
 
   const search = useCallback(
     async (question: string, options: AiCommitSearchOptions) => {
       const trimmed = question.trim()
       if (!trimmed) return
+
+      const runId = ++runIdRef.current
+      /** Whether a newer `search()` has since started, making this run's remaining work moot. */
+      const isStale = () => runIdRef.current !== runId
 
       cancelledRef.current = false
       ordered.current = []
@@ -219,10 +235,12 @@ export function useAiCommitSearch(repoPath: string) {
       try {
         scan = await apiGetAiCommitScan(repoPath, options.maxCommits)
       } catch (err) {
+        if (isStale()) return
         setScanning(false)
         setScanError(String(err))
         return
       }
+      if (isStale()) return
       setTruncated(scan.truncated)
       setOldestEpoch(scan.oldestEpoch)
 
@@ -230,6 +248,7 @@ export function useAiCommitSearch(repoPath: string) {
       try {
         scanned = options.mode === 'quick' ? await runQuickScan(scan) : await runDeepScan(scan)
       } catch (err) {
+        if (isStale()) return
         setScanning(false)
         setProgress(null)
         if (err instanceof SummaryRunCancelled) setCancelled(true)
@@ -291,8 +310,11 @@ export function useAiCommitSearch(repoPath: string) {
         const results = commitScan.commits.map(
           (commit) => byOid.get(commit.shortOid) ?? skipped([commit])[0]
         )
-        ordered.current = results
-        setResults(results)
+        // A superseded run must not stomp the new run's `ordered` array with its own results.
+        if (!isStale()) {
+          ordered.current = results
+          setResults(results)
+        }
         return results
       }
 
@@ -357,10 +379,15 @@ export function useAiCommitSearch(repoPath: string) {
             // completion order, and a list that showed them that way would shuffle history under
             // the user while the scan runs.
             onResult: (result, index) => {
+              // A superseded run's verdicts must never land at indices of the new run's `ordered`.
+              if (isStale()) return
               ordered.current[index] = result
               setResults(ordered.current.filter((r): r is ScannedCommit => r !== undefined))
             },
-            shouldCancel: () => cancelledRef.current,
+            // `isStale` keeps a superseded run reporting itself as cancelled even after a newer
+            // `search()` call resets `cancelledRef` — without it, that reset silently un-cancels the
+            // abandoned scan (see the doc comment on `runIdRef`).
+            shouldCancel: () => cancelledRef.current || isStale(),
             // What makes "stop" mean stop. Both of the scan's calls — the per-file verdict and the
             // quick mode's per-commit narrowing — are dispatched under ids `scanCommits` tracks, and
             // this is how it hands them back to the backend. Without it the poll above could only
@@ -376,6 +403,9 @@ export function useAiCommitSearch(repoPath: string) {
         )
       }
 
+      // A superseded run must not start (or be seen to start) the answering phase for a question the
+      // panel has already moved on from.
+      if (isStale()) return
       setScanning(false)
       setProgress({ phase: 'composing', completed: 0, total: 1 })
 
@@ -413,6 +443,7 @@ export function useAiCommitSearch(repoPath: string) {
           ),
         {
           onComplete: (rawAnswer) => {
+            if (isStale()) return
             setProgress(null)
             // Stored clean: a remembered run must not carry a model's deliberation forever.
             const answer = stripReasoning(rawAnswer)
@@ -444,6 +475,7 @@ export function useAiCommitSearch(repoPath: string) {
           },
         }
       )
+      if (isStale()) return
       setProgress(null)
     },
     [repoPath, aiConnection, language, contextTokens, run, addRun]

@@ -566,6 +566,61 @@ describe('useAiCommitSearch', () => {
     expect(result.current.phase).toBe('cancelled')
   })
 
+  /**
+   * The exact race from issue #502: `cancelSearch` flips `phase` to `'cancelled'` synchronously,
+   * well before the abandoned scan's polling loop (~100ms) has actually observed the cancel. If a
+   * second `search()` starts in that window, it used to reset the same shared `cancelledRef`/
+   * `ordered` refs the first run still reads and writes through — silently un-cancelling the first
+   * run and letting its late-arriving verdict land in the second run's results.
+   */
+  it('never lets a cancelled run’s late result reach a search started right after it', async () => {
+    mockedScan
+      .mockResolvedValueOnce(scan([commit({ shortOid: 'stale' })]))
+      .mockResolvedValueOnce(scan([commit({ shortOid: 'fresh', oid: 'b'.repeat(40) })]))
+
+    let resolveStale!: (value: unknown) => void
+    mockedJudge.mockImplementation(
+      (_connection: unknown, input: { commit: { shortOid: string } }) => {
+        if (input.commit.shortOid === 'stale') {
+          return new Promise((resolve) => {
+            resolveStale = resolve
+          })
+        }
+        return Promise.resolve({ relevant: true, finding: 'about the fresh work', files: [] })
+      }
+    )
+
+    const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+
+    let staleSearch!: Promise<void>
+    await act(async () => {
+      staleSearch = result.current.search('Question A?', options)
+      await waitFor(() => expect(mockedJudge).toHaveBeenCalledTimes(1))
+    })
+
+    // Cancel while the stale commit's verdict is still in flight, then immediately start a new
+    // search — before the abandoned scan's poll has had a chance to notice the cancel.
+    await act(async () => {
+      await result.current.cancel()
+      await result.current.search('Question B?', options)
+    })
+
+    expect(result.current.askedQuestion).toBe('Question B?')
+    expect(result.current.results.map((r) => r.commit.shortOid)).toEqual(['fresh'])
+
+    // The abandoned run's in-flight call finally answers, normally rather than by rejecting — its
+    // callback must be a no-op now that a newer run has superseded it, not a write into the new
+    // run's results.
+    await act(async () => {
+      resolveStale({ relevant: true, finding: 'a stale finding', files: [] })
+      await staleSearch
+    })
+
+    expect(result.current.askedQuestion).toBe('Question B?')
+    expect(result.current.results.map((r) => r.commit.shortOid)).toEqual(['fresh'])
+    expect(result.current.results.some((r) => r.commit.shortOid === 'stale')).toBe(false)
+  })
+
   it('clears the visible run without touching the saved history', async () => {
     const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
     await act(async () => {
