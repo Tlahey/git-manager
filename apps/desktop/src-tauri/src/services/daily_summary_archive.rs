@@ -72,6 +72,26 @@ fn front_matter_value(markdown: &str, key: &str) -> Option<String> {
         .map(|(_, value)| value.trim().to_string())
 }
 
+/// Validates that `date` is safe to use verbatim as a filename stem.
+///
+/// `date` is documented as coming from the frontend's own clock — a plain `YYYY-MM-DD` string —
+/// but nothing enforced that before this check existed: `write_summary`/`write_in_repo_copy` used
+/// it straight in `dir.join(format!("{date}{FILE_SUFFIX}"))`, unlike the sibling `delete_summary`,
+/// which already refuses a path outside the archive root. Since the target directory may not exist
+/// yet on this call (it's created via `fs::create_dir_all` right before the write), a
+/// canonicalize-based containment check isn't available here — canonicalize requires the path to
+/// already exist. A component-based check is both sufficient and simpler: a well-formed date has no
+/// path separator and no `..`, so rejecting either closes the escape without needing the directory
+/// to pre-exist.
+fn validate_date(date: &str) -> Result<(), AppError> {
+    if date.is_empty() || date.contains('/') || date.contains('\\') || date.contains("..") {
+        return Err(AppError::InvalidInput(format!(
+            "Invalid summary date: {date}"
+        )));
+    }
+    Ok(())
+}
+
 /// Writes today's briefing for one repository, then prunes anything past the retention window.
 ///
 /// `date` is supplied by the caller (the frontend owns the local clock, exactly as it does for the
@@ -83,6 +103,8 @@ pub fn write_summary(
     markdown: &str,
     also_in_repo: bool,
 ) -> Result<String, AppError> {
+    validate_date(date)?;
+
     let root = summaries_root()
         .ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
     let dir = root.join(repo_slug(repo_path));
@@ -103,6 +125,8 @@ pub fn write_summary(
 
 /// Writes the optional in-repository copy and makes sure git ignores it locally.
 fn write_in_repo_copy(repo_path: &str, date: &str, markdown: &str) -> Result<(), AppError> {
+    validate_date(date)?;
+
     let dir = Path::new(repo_path).join(IN_REPO_DIR).join("summaries");
     fs::create_dir_all(&dir)?;
     fs::write(dir.join(format!("{date}{FILE_SUFFIX}")), markdown)?;
@@ -291,6 +315,50 @@ mod tests {
     fn delete_refuses_paths_outside_the_archive() {
         let err = delete_summary("/etc/passwd").unwrap_err();
         assert!(matches!(err, AppError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn validate_date_rejects_traversal_and_separators_but_allows_a_plain_date() {
+        assert!(validate_date("2026-07-27").is_ok());
+        assert!(validate_date("../../../etc/cron.d/evil").is_err());
+        assert!(validate_date("..").is_err());
+        assert!(validate_date("sub/dir").is_err());
+        assert!(validate_date("sub\\dir").is_err());
+        assert!(validate_date("").is_err());
+    }
+
+    // `write_summary` itself resolves `app_data_dir()` (`$HOME/.git-manager`), which mutating in a
+    // test would race with every other test in the binary — see `app_config.rs`'s test module
+    // comment for the same constraint. `write_in_repo_copy` takes `repo_path` directly and never
+    // touches `app_data_dir()`, so it exercises the same `validate_date` gate without that risk;
+    // `validate_date`'s own test above covers the check in isolation for both callers.
+    #[test]
+    fn write_in_repo_copy_rejects_a_traversing_date_and_writes_nothing_outside_the_repo() {
+        let repo_path = std::env::temp_dir().join(format!(
+            "gm-test-archive-in-repo-escape-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&repo_path).unwrap();
+
+        let err =
+            write_in_repo_copy(repo_path.to_str().unwrap(), "../../evil", "# pwned").unwrap_err();
+        assert!(matches!(err, AppError::InvalidInput(_)));
+        assert!(!repo_path.join("evil.md").exists());
+        assert!(!repo_path.parent().unwrap().join("evil.md").exists());
+
+        // An ordinary date still works exactly as before.
+        write_in_repo_copy(repo_path.to_str().unwrap(), "2026-07-27", "# ok").unwrap();
+        assert!(repo_path
+            .join(IN_REPO_DIR)
+            .join("summaries")
+            .join("2026-07-27.md")
+            .exists());
+
+        fs::remove_dir_all(&repo_path).ok();
     }
 
     #[test]
