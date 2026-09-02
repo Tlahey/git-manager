@@ -48,6 +48,11 @@ export const createTag = (path: string, name: string, fromRef: string, message?:
 
 export const deleteTag = (path: string, name: string) => invoke<void>('delete_tag', { path, name })
 
+/** Re-points tag `name` at `oid` (lightweight, or annotated if `message` is given) — delete+create
+ * as a single IPC round trip, so nothing can crash between the two on the frontend side. */
+export const recreateTag = (path: string, name: string, oid: string, message?: string) =>
+  invoke<void>('recreate_tag', { path, name, oid, message })
+
 /** Deletes tag `tagName` on `remote` (default "origin") — `git push origin :refs/tags/<name>`. */
 export const deleteRemoteTag = (path: string, tagName: string, remote?: string) =>
   invoke<void>('delete_remote_tag', { path, tagName, remote })

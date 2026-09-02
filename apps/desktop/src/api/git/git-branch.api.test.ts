@@ -14,18 +14,28 @@ vi.mock('../../lib/tauri', async () => {
     createBranch: vi.fn(),
     setBranchUpstream: vi.fn(),
     createTag: vi.fn(),
+    deleteTag: vi.fn(),
+    recreateTag: vi.fn(),
     getTags: vi.fn(),
     pinObject: vi.fn(),
     snapshotWorktree: vi.fn(),
     getRepoSummary: vi.fn(),
     resolveRevision: vi.fn(),
     mergeBranch: vi.fn(),
+    // Only used by `withPriorRedoTail` below, to build a redo tail for the clearRedo-only actions:
+    // creating a commit then undoing it — the undo store's real executeUndo() calls resetToCommit
+    // to reverse a 'commit'-type entry.
+    createCommit: vi.fn(),
+    resetToCommit: vi.fn(),
   }
 })
 
 import * as tauri from '../../lib/tauri'
 import * as api from './git-branch.api'
 import { appEventBus, type AppEvent } from '../../lib/appEventBus'
+// apiCreateCommit builds the prior redo tail `withPriorRedoTail` below undoes — a genuine
+// cross-domain setup, not a layering bypass (mirrors git-rebase.api.test.ts's own use of it).
+import { apiCreateCommit } from '../git.api'
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 
@@ -68,6 +78,17 @@ beforeEach(() => {
 
 function historyOf(path: string) {
   return useUndoHistoryStore.getState().byRepo[path]
+}
+
+/** Builds a redo tail for `path` (via a commit + undo) so a clearRedo-only action's effect on it
+ * is actually observable — see git-rebase.api.test.ts's identical helper. */
+async function withPriorRedoTail(path: string) {
+  mocked.getBranches.mockResolvedValue(headBranch('prev-sha'))
+  mocked.createCommit.mockResolvedValue({ oid: 'sha-1', shortOid: 'sha-1' })
+  mocked.resetToCommit.mockResolvedValue(undefined)
+  await apiCreateCommit(path, 'first')
+  await useUndoHistoryStore.getState().undo(path)
+  expect(useUndoHistoryStore.getState().canRedo(path)).toBe(true)
 }
 
 describe('apiCheckoutBranch', () => {
@@ -343,5 +364,73 @@ describe('apiCreateAndCheckoutBranch', () => {
 
     expect(mocked.createBranch).not.toHaveBeenCalled()
     expect(historyOf(path)).toBeUndefined()
+  })
+})
+
+// #510: apiAnnotateTag/apiMoveTag used to be `deleteTag` immediately followed by `createTag` — two
+// separate IPC round trips with nothing durable in between, and a retry after a partial failure was
+// self-defeating (retrying called `deleteTag` on an already-deleted tag, which errored before ever
+// reaching `createTag`). Both now go through a single `recreateTag` command instead, so there is no
+// longer a frontend-observable "deleted but not yet recreated" state to fall into, and retrying
+// after a failure is just calling the function again.
+describe('apiAnnotateTag', () => {
+  it('recreates the tag as annotated through a single recreateTag call, and clears redo', async () => {
+    const path = freshPath()
+    await withPriorRedoTail(path)
+    mocked.recreateTag.mockResolvedValue(undefined)
+
+    await api.apiAnnotateTag(path, 'v1.0', 'sha-1', 'release notes')
+
+    expect(mocked.recreateTag).toHaveBeenCalledWith(path, 'v1.0', 'sha-1', 'release notes')
+    // No separate delete/create pair from the frontend — that sequencing now lives entirely in
+    // the Rust command behind `recreateTag`.
+    expect(mocked.deleteTag).not.toHaveBeenCalled()
+    expect(mocked.createTag).not.toHaveBeenCalled()
+    expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
+  })
+
+  it('retrying after a simulated partial failure just re-issues the same call and succeeds', async () => {
+    const path = freshPath()
+    mocked.recreateTag.mockRejectedValueOnce(new Error('crashed mid-recreate'))
+
+    await expect(api.apiAnnotateTag(path, 'v1.0', 'sha-1', 'release notes')).rejects.toThrow()
+    // The failed attempt never called deleteTag directly — there is nothing for the frontend
+    // retry path to have left half-done.
+    expect(mocked.deleteTag).not.toHaveBeenCalled()
+
+    mocked.recreateTag.mockResolvedValueOnce(undefined)
+    await expect(
+      api.apiAnnotateTag(path, 'v1.0', 'sha-1', 'release notes')
+    ).resolves.toBeUndefined()
+
+    expect(mocked.recreateTag).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('apiMoveTag', () => {
+  it('recreates the tag lightweight (no message) through a single recreateTag call, and clears redo', async () => {
+    const path = freshPath()
+    await withPriorRedoTail(path)
+    mocked.recreateTag.mockResolvedValue(undefined)
+
+    await api.apiMoveTag(path, 'v1.0', 'sha-2')
+
+    expect(mocked.recreateTag).toHaveBeenCalledWith(path, 'v1.0', 'sha-2')
+    expect(mocked.deleteTag).not.toHaveBeenCalled()
+    expect(mocked.createTag).not.toHaveBeenCalled()
+    expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
+  })
+
+  it('retrying after a simulated partial failure just re-issues the same call and succeeds', async () => {
+    const path = freshPath()
+    mocked.recreateTag.mockRejectedValueOnce(new Error('crashed mid-recreate'))
+
+    await expect(api.apiMoveTag(path, 'v1.0', 'sha-2')).rejects.toThrow()
+    expect(mocked.deleteTag).not.toHaveBeenCalled()
+
+    mocked.recreateTag.mockResolvedValueOnce(undefined)
+    await expect(api.apiMoveTag(path, 'v1.0', 'sha-2')).resolves.toBeUndefined()
+
+    expect(mocked.recreateTag).toHaveBeenCalledTimes(2)
   })
 })
