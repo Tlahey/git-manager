@@ -182,4 +182,56 @@ describe('useAiGeneration — cancelling', () => {
     expect(result.current.status).toBe('cancelled')
     expect(result.current.error).toBeNull()
   })
+
+  /**
+   * The exact race from issue #504: `cancel` flips `status` to `'cancelled'` synchronously, well
+   * before the abandoned run's post-await guard (`if (cancelledRef.current) return`, right after the
+   * `compose` call) has actually observed the cancel. If a second `generate()` starts in that
+   * window, it used to reset the same shared `cancelledRef` the first run still reads — silently
+   * un-cancelling it and letting its late-arriving message overwrite whatever the second run wrote
+   * into the commit-message box.
+   */
+  it('never lets a cancelled generation’s late result reach a generate started right after it', async () => {
+    let settleStale: (d: CommitMessageDraft) => void = () => {}
+    mockedCompose
+      .mockImplementationOnce(
+        () =>
+          new Promise<CommitMessageDraft>((resolve) => {
+            settleStale = resolve
+          })
+      )
+      .mockResolvedValueOnce(draft('feat: the fresh message'))
+
+    const onMessage = vi.fn()
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+
+    act(() => {
+      void result.current.generate(onMessage)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Cancel while the stale run's compose call is still in flight, then immediately start a new
+    // run — before the abandoned run's post-await guard has had a chance to notice the cancel.
+    await act(async () => {
+      await result.current.cancel()
+      await result.current.generate(onMessage)
+    })
+
+    expect(onMessage).toHaveBeenCalledExactlyOnceWith('feat: the fresh message')
+    expect(result.current.status).toBe('done')
+
+    // The stale run's in-flight compose call finally answers — its callback must be a no-op now
+    // that a newer run has superseded it, not a write into the box the fresh run just filled.
+    await act(async () => {
+      settleStale(draft('feat: too late'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(onMessage).toHaveBeenCalledExactlyOnceWith('feat: the fresh message')
+    expect(onMessage).not.toHaveBeenCalledWith('feat: too late')
+    expect(result.current.status).toBe('done')
+  })
 })
