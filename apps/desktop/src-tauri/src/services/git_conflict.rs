@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::resolve_workdir_write_target;
 use git2::{IndexEntry, Oid, Repository};
 use std::path::Path;
 
@@ -45,6 +46,15 @@ pub(crate) enum ConflictShape {
     Rename,
 }
 
+/// The git tree-entry file mode for a symlink (`120000` in the usual octal notation git tools
+/// print). Used to catch a symlink-typed conflict entry independently of its blob *content* —
+/// `Blob::is_binary()` only sniffs bytes, and a symlink's blob is just its link-target string,
+/// which is never binary, so a typechange conflict (a tracked symlink on one side, an ordinary
+/// text file on the other — see issue #519) would otherwise sail through as plain text.
+fn is_symlink_mode(mode: u32) -> bool {
+    mode == 0o120000
+}
+
 /// Classifies a conflicted path's shape from its index entries — shared by the 3-way merge
 /// view (`git_merge_diff::get_merge_view`) and the resolve/write helpers below, so binary/
 /// delete/rename detection lives in exactly one place.
@@ -65,6 +75,13 @@ pub(crate) fn classify_conflict_shape(
         return Ok(ConflictShape::Rename);
     }
 
+    // A symlink-typed entry on either side (a symlink-vs-file typechange conflict) is routed to
+    // the same binary fallback UI as genuinely binary content — see `is_symlink_mode`'s doc
+    // comment. Checked before touching blob content at all.
+    if is_symlink_mode(our_entry.mode) || is_symlink_mode(their_entry.mode) {
+        return Ok(ConflictShape::Binary);
+    }
+
     let our_blob = repo.find_blob(our_entry.id).map_err(AppError::Git)?;
     let their_blob = repo.find_blob(their_entry.id).map_err(AppError::Git)?;
     if our_blob.is_binary() || their_blob.is_binary() {
@@ -80,6 +97,11 @@ pub(crate) fn classify_conflict_shape(
 
 /// Writes the resolved content to the working tree and stages it — clears the index conflict
 /// for this path exactly like `git_commit.rs::stage_file` does for an ordinary staged edit.
+///
+/// The target path is resolved via `resolve_workdir_write_target` rather than a raw join before
+/// writing (issue #519): a symlink-vs-file typechange conflict leaves the working tree's on-disk
+/// entry as the pre-existing OS-level symlink, and a plain `fs::write` would follow it, writing
+/// the resolved content through to wherever the symlink points — including outside the repo.
 pub fn resolve_conflict(
     repo: &Repository,
     repo_path: &str,
@@ -89,6 +111,9 @@ pub fn resolve_conflict(
     let (_, our_entry, their_entry) = find_conflict_entries(repo, file_path)?
         .ok_or_else(|| AppError::ConflictNotFound(file_path.to_string()))?;
     if let (Some(our_entry), Some(their_entry)) = (&our_entry, &their_entry) {
+        if is_symlink_mode(our_entry.mode) || is_symlink_mode(their_entry.mode) {
+            return Err(AppError::UnparseableConflict(file_path.to_string()));
+        }
         let our_blob = repo.find_blob(our_entry.id).map_err(AppError::Git)?;
         let their_blob = repo.find_blob(their_entry.id).map_err(AppError::Git)?;
         if our_blob.is_binary() || their_blob.is_binary() {
@@ -96,7 +121,11 @@ pub fn resolve_conflict(
         }
     }
 
-    let abs_path = Path::new(repo_path).join(file_path);
+    let abs_path = resolve_workdir_write_target(repo_path, file_path).ok_or_else(|| {
+        AppError::InvalidInput(format!(
+            "Refusing to resolve conflict for \"{file_path}\": the path escapes the repository"
+        ))
+    })?;
     std::fs::write(&abs_path, resolved_content).map_err(AppError::Io)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
@@ -108,6 +137,11 @@ pub fn resolve_conflict(
 
 /// Resolves a binary-file conflict by writing one side's raw blob bytes to the working tree
 /// and staging it.
+///
+/// The target path is resolved via `resolve_workdir_write_target` rather than a raw join before
+/// writing — same reasoning as `resolve_conflict` above (issue #519): the working-tree path may
+/// still be an on-disk symlink from an unresolved typechange conflict, and a plain `fs::write`
+/// would follow it outside the repo.
 pub fn resolve_conflict_binary(
     repo: &Repository,
     repo_path: &str,
@@ -126,7 +160,11 @@ pub fn resolve_conflict_binary(
     let blob = repo.find_blob(entry.id).map_err(AppError::Git)?;
     let content = blob.content().to_vec();
 
-    let abs_path = Path::new(repo_path).join(file_path);
+    let abs_path = resolve_workdir_write_target(repo_path, file_path).ok_or_else(|| {
+        AppError::InvalidInput(format!(
+            "Refusing to resolve conflict for \"{file_path}\": the path escapes the repository"
+        ))
+    })?;
     std::fs::write(&abs_path, content).map_err(AppError::Io)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
@@ -292,6 +330,37 @@ mod tests {
         Fixture { dir, repo }
     }
 
+    /// Ours replaces `f.txt` with a symlink (git file mode `120000`) pointing outside the repo,
+    /// theirs edits it normally — the issue #519 exploitation scenario: neither blob is binary
+    /// (a symlink's blob content is just the link-target string), so this is the case
+    /// `is_symlink_mode` exists to catch independently of `Blob::is_binary()`.
+    fn build_symlink_typechange_conflict(name: &str) -> Fixture {
+        let (dir, repo) = init_repo(name);
+        let base_oid = commit_file(&repo, &dir, "f.txt", b"line\n", "base");
+        {
+            let base_commit = repo.find_commit(base_oid).unwrap();
+            let parent_tree = base_commit.tree().unwrap();
+            let mut tb = repo.treebuilder(Some(&parent_tree)).unwrap();
+            let link_blob = repo.blob(b"../../../etc/passwd").unwrap();
+            tb.insert("f.txt", link_blob, 0o120000).unwrap();
+            let our_tree = repo.find_tree(tb.write().unwrap()).unwrap();
+            let sig = get_git_signature(&repo).unwrap();
+            let our_oid = repo
+                .commit(None, &sig, &sig, "our: symlink", &our_tree, &[&base_commit])
+                .unwrap();
+
+            let their_oid = side_commit(
+                &repo,
+                &base_commit,
+                "f.txt",
+                Some(b"theirs\n"),
+                "their change",
+            );
+            merge_into_index(&repo, our_oid, their_oid);
+        }
+        Fixture { dir, repo }
+    }
+
     #[test]
     fn find_conflict_entries_returns_none_for_a_clean_path() {
         let (dir, repo) = init_repo("find-none");
@@ -370,6 +439,17 @@ mod tests {
     }
 
     #[test]
+    fn classify_conflict_shape_returns_binary_for_a_symlink_typechange() {
+        let f = build_symlink_typechange_conflict("classify-symlink-typechange");
+
+        // Neither blob is binary (the symlink's blob is just a link-target string), so without
+        // the mode check this would incorrectly classify as `Text`.
+        let shape = classify_conflict_shape(&f.repo, "f.txt").unwrap();
+        assert!(matches!(shape, ConflictShape::Binary));
+        std::fs::remove_dir_all(&f.dir).ok();
+    }
+
+    #[test]
     fn resolve_conflict_writes_the_resolution_and_clears_the_conflict() {
         let f = build_text_conflict("resolve-text");
         let dir_str = f.dir.to_str().unwrap();
@@ -396,6 +476,16 @@ mod tests {
     }
 
     #[test]
+    fn resolve_conflict_rejects_a_symlink_typechange_conflict() {
+        let f = build_symlink_typechange_conflict("resolve-symlink-typechange-rejected");
+        let dir_str = f.dir.to_str().unwrap();
+
+        let err = resolve_conflict(&f.repo, dir_str, "f.txt", "text\n".to_string()).unwrap_err();
+        assert!(matches!(err, AppError::UnparseableConflict(p) if p == "f.txt"));
+        std::fs::remove_dir_all(&f.dir).ok();
+    }
+
+    #[test]
     fn resolve_conflict_errors_when_path_is_not_conflicted() {
         let (dir, repo) = init_repo("resolve-not-found");
         commit_file(&repo, &dir, "f.txt", b"line\n", "base");
@@ -404,6 +494,39 @@ mod tests {
         let err = resolve_conflict(&repo, dir_str, "f.txt", "whatever".to_string()).unwrap_err();
         assert!(matches!(err, AppError::ConflictNotFound(p) if p == "f.txt"));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The issue #519 exploitation scenario: the working-tree entry for a conflicted path is
+    /// still the pre-existing OS-level symlink (left there because git can't 3-way-merge a
+    /// symlink vs. a regular file), and it now points outside the repo. `resolve_conflict` must
+    /// refuse to write through it rather than overwriting whatever the symlink targets.
+    #[cfg(unix)]
+    #[test]
+    fn resolve_conflict_refuses_to_write_through_a_workdir_symlink_escaping_the_repo() {
+        let f = build_text_conflict("resolve-symlink-escape");
+        let dir_str = f.dir.to_str().unwrap();
+
+        let outside = std::env::temp_dir().join(format!(
+            "gm-test-conflict-outside-resolve-{}",
+            std::process::id()
+        ));
+        std::fs::write(&outside, "original outside content").unwrap();
+
+        // Simulate the on-disk state left by an unresolved symlink/file typechange conflict.
+        std::fs::remove_file(f.dir.join("f.txt")).unwrap();
+        std::os::unix::fs::symlink(&outside, f.dir.join("f.txt")).unwrap();
+
+        let err =
+            resolve_conflict(&f.repo, dir_str, "f.txt", "resolved\n".to_string()).unwrap_err();
+        assert!(matches!(err, AppError::InvalidInput(_)));
+        assert_eq!(
+            std::fs::read_to_string(&outside).unwrap(),
+            "original outside content",
+            "must not write through the symlink"
+        );
+
+        std::fs::remove_file(&outside).ok();
+        std::fs::remove_dir_all(&f.dir).ok();
     }
 
     #[test]
@@ -444,5 +567,56 @@ mod tests {
         let err = resolve_conflict_binary(&repo, dir_str, "f.txt", "ours").unwrap_err();
         assert!(matches!(err, AppError::ConflictNotFound(p) if p == "f.txt"));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Same scenario as `resolve_conflict_refuses_to_write_through_a_workdir_symlink_escaping_the_repo`,
+    /// for the binary-fallback write path.
+    #[cfg(unix)]
+    #[test]
+    fn resolve_conflict_binary_refuses_to_write_through_a_workdir_symlink_escaping_the_repo() {
+        let f = build_binary_conflict("resolve-binary-symlink-escape");
+        let dir_str = f.dir.to_str().unwrap();
+
+        let outside = std::env::temp_dir().join(format!(
+            "gm-test-conflict-outside-resolve-binary-{}",
+            std::process::id()
+        ));
+        std::fs::write(&outside, "original outside content").unwrap();
+
+        std::fs::remove_file(f.dir.join("f.txt")).unwrap();
+        std::os::unix::fs::symlink(&outside, f.dir.join("f.txt")).unwrap();
+
+        let err = resolve_conflict_binary(&f.repo, dir_str, "f.txt", "ours").unwrap_err();
+        assert!(matches!(err, AppError::InvalidInput(_)));
+        assert_eq!(
+            std::fs::read_to_string(&outside).unwrap(),
+            "original outside content",
+            "must not write through the symlink"
+        );
+
+        std::fs::remove_file(&outside).ok();
+        std::fs::remove_dir_all(&f.dir).ok();
+    }
+
+    /// An ordinary in-repo symlink (pointing at another file inside the same repo) must keep
+    /// working exactly as before — this is only about blocking an *escape*.
+    #[cfg(unix)]
+    #[test]
+    fn resolve_conflict_still_writes_through_an_in_repo_symlink() {
+        let f = build_text_conflict("resolve-symlink-inside-repo");
+        let dir_str = f.dir.to_str().unwrap();
+
+        std::fs::write(f.dir.join("real.txt"), "placeholder").unwrap();
+        std::fs::remove_file(f.dir.join("f.txt")).unwrap();
+        std::os::unix::fs::symlink(f.dir.join("real.txt"), f.dir.join("f.txt")).unwrap();
+
+        resolve_conflict(&f.repo, dir_str, "f.txt", "resolved\n".to_string()).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(f.dir.join("real.txt")).unwrap(),
+            "resolved\n"
+        );
+        assert!(!f.repo.index().unwrap().has_conflicts());
+        std::fs::remove_dir_all(&f.dir).ok();
     }
 }

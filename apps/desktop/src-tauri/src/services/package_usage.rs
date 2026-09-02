@@ -186,7 +186,44 @@ fn is_source_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-fn walk(dir: &Path, root: &Path, package: &str, usage: &mut PackageUsage, files: &mut Vec<String>) {
+/// True when `entry_path` is a symlink whose resolved target lies outside `canonical_root` — or
+/// can't be resolved at all (a dangling symlink), which is refused for the same reason
+/// `resolve_workdir_write_target` refuses a dangling symlink at the leaf rather than risking a
+/// silent escape.
+///
+/// `symlink_metadata` — unlike the plain `Path::is_dir()`/`fs::read_to_string` this walk otherwise
+/// uses — does not follow the link, so it correctly identifies the entry as a symlink *before*
+/// anything follows it (issue #520: an attacker-placed symlink with a source-like extension,
+/// pointing at one of the user's other local projects, would otherwise have its content read and
+/// forwarded into the upgrade-risk AI prompt). An ordinary directory or file, and a symlink that
+/// resolves inside the repo, both return `false` — this only blocks an escape.
+///
+/// Only the entry itself needs checking, not the whole chain: every entry `walk` visits is reached
+/// by joining a plain filename (from `read_dir`, which never yields `..` or an absolute override)
+/// onto a directory that was itself already verified safe before `walk` recursed into it — so an
+/// escaping intermediate directory is caught here, before `walk` ever descends into it, and never
+/// needs re-checking at each deeper level.
+fn symlink_escapes_root(entry_path: &Path, canonical_root: &Path) -> bool {
+    let Ok(metadata) = entry_path.symlink_metadata() else {
+        return true;
+    };
+    if !metadata.file_type().is_symlink() {
+        return false;
+    }
+    match entry_path.canonicalize() {
+        Ok(resolved) => !resolved.starts_with(canonical_root),
+        Err(_) => true,
+    }
+}
+
+fn walk(
+    dir: &Path,
+    root: &Path,
+    canonical_root: &Path,
+    package: &str,
+    usage: &mut PackageUsage,
+    files: &mut Vec<String>,
+) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -195,11 +232,15 @@ fn walk(dir: &Path, root: &Path, package: &str, usage: &mut PackageUsage, files:
         let name = entry.file_name();
         let name = name.to_string_lossy();
 
+        if symlink_escapes_root(&path, canonical_root) {
+            continue;
+        }
+
         if path.is_dir() {
             if SKIP_DIRS.contains(&name.as_ref()) || name.starts_with('.') {
                 continue;
             }
-            walk(&path, root, package, usage, files);
+            walk(&path, root, canonical_root, package, usage, files);
             continue;
         }
         if !is_source_file(&path) {
@@ -237,13 +278,16 @@ pub fn scan_usage(repo_path: &str, package: &str) -> Result<PackageUsage, String
     if !root.is_dir() {
         return Err(format!("{repo_path} is not a directory"));
     }
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve {repo_path}: {e}"))?;
 
     let mut usage = PackageUsage {
         name: package.to_string(),
         ..Default::default()
     };
     let mut files = Vec::new();
-    walk(root, root, package, &mut usage, &mut files);
+    walk(root, root, &canonical_root, package, &mut usage, &mut files);
 
     files.sort();
     usage.file_count = files.len();
@@ -450,6 +494,78 @@ mod tests {
     fn rejects_an_empty_package_name() {
         let dir = tmp("empty");
         assert!(scan_usage(dir.to_str().unwrap(), "  ").is_err());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── symlink containment (issue #520) ───────────────────────────────────
+
+    /// A symlinked *file* pointing outside the repo, with a source-like extension and content
+    /// that would trivially match the pre-filter, must never be read — its content (or even its
+    /// path) must not reach `usage` at all.
+    #[cfg(unix)]
+    #[test]
+    fn does_not_read_through_a_symlinked_file_escaping_the_repo() {
+        let outside = tmp("escape-file-outside");
+        write(
+            &outside,
+            "other-project.ts",
+            "import { useState } from 'react' // some other project's secret-ish content\n",
+        );
+
+        let dir = tmp("escape-file-repo");
+        std::os::unix::fs::symlink(outside.join("other-project.ts"), dir.join("linked.ts"))
+            .unwrap();
+
+        let usage = scan(&dir, "react");
+        assert_eq!(usage.file_count, 0, "must not follow the escaping symlink");
+        assert!(usage.files.is_empty());
+        assert!(usage.samples.is_empty());
+
+        fs::remove_dir_all(&outside).ok();
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A symlinked *directory* pointing outside the repo must never be recursed into — none of
+    /// the real files underneath it (which the walk never even lists) should show up.
+    #[cfg(unix)]
+    #[test]
+    fn does_not_recurse_into_a_symlinked_directory_escaping_the_repo() {
+        let outside = tmp("escape-dir-outside");
+        write(
+            &outside,
+            "nested/deep.ts",
+            "import { useState } from 'react'\n",
+        );
+
+        let dir = tmp("escape-dir-repo");
+        std::os::unix::fs::symlink(&outside, dir.join("linked-dir")).unwrap();
+
+        let usage = scan(&dir, "react");
+        assert_eq!(
+            usage.file_count, 0,
+            "must not recurse into the escaping symlinked directory"
+        );
+
+        fs::remove_dir_all(&outside).ok();
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A symlink (file or directory) that resolves *inside* the repo must keep working exactly
+    /// as before — this is only about blocking an escape, not about symlinks in general.
+    #[cfg(unix)]
+    #[test]
+    fn still_scans_through_a_symlink_that_stays_inside_the_repo() {
+        let dir = tmp("symlink-inside");
+        write(&dir, "real/a.ts", "import { useState } from 'react'\n");
+        std::os::unix::fs::symlink(dir.join("real"), dir.join("linked")).unwrap();
+
+        let usage = scan(&dir, "react");
+        // The real file is found once directly, and again through the in-repo symlinked
+        // directory — both are legitimate paths within the repo.
+        assert_eq!(usage.file_count, 2);
+        assert!(usage.files.contains(&"real/a.ts".to_string()));
+        assert!(usage.files.iter().any(|f| f.starts_with("linked/")));
+
         fs::remove_dir_all(&dir).ok();
     }
 }
