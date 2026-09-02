@@ -78,5 +78,5 @@ pub async fn stash_store(path: String, commit_oid: String, message: String) -> R
 #[tauri::command]
 pub async fn edit_stash_message(path: String, index: usize, message: String) -> Result<(), String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e).to_string())?;
-    git_stash::edit_stash_message(&mut repo, &path, index, &message)
+    git_stash::edit_stash_message(&mut repo, index, &message)
 }

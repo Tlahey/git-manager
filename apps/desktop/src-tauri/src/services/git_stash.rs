@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::models::GitStash;
 use crate::utils::get_git_signature;
-use git2::{Repository, StashFlags};
+use git2::{Oid, Repository, Signature, StashFlags};
 
 /// Creates a git stash
 pub fn stash_push(
@@ -101,48 +101,88 @@ pub fn run_stash_store(path: &str, commit_oid: &str, message: &str) -> Result<()
     Ok(())
 }
 
-/// Modifies the message of a stash at the given index
+/// Modifies the message of a stash at the given index.
+///
+/// Every stash the app knows about lives entirely in the reflog of `refs/stash` — `git2`'s
+/// `stash_foreach`/`stash_drop` and the `git stash` CLI all just read/write that one reflog, one
+/// entry per stash. Renaming an entry therefore never needs to touch a stash's *commit*, and
+/// (since renaming never changes which commit is on top of the stack) never needs to repoint
+/// `refs/stash` itself either — only that one entry's message text changes.
+///
+/// This is implemented entirely through `git2`'s in-memory `Reflog` object. `Repository::reflog`
+/// loads a copy of the on-disk reflog; `Reflog::append`/`remove` mutate only that in-memory copy,
+/// and `Reflog::write` is the *only* call that touches disk (a single atomic write, per its own
+/// doc comment). So the whole "clear it, then rebuild it" step happens off disk: every original
+/// entry is captured and its commit validated as still resolvable *before* the in-memory copy is
+/// cleared, and `write()` is the single disk mutation in the entire function, called only once
+/// every entry has been successfully re-appended in memory.
+///
+/// This used to be implemented by dropping the whole stack via `repo.stash_drop(0)` in a loop
+/// (each call an immediate, irreversible disk write) and then shelling out to `git stash store`
+/// once per stash to rebuild it, with no rollback if a `git stash store` call failed partway
+/// through — see #506, where that could permanently lose every stash not yet re-stored. The only
+/// residual risk left by this version is `write()` itself failing (e.g. a concurrent process
+/// holding the reflog's lock file): that is a single atomic operation rather than N sequential
+/// external process spawns, and per `git_reflog_write`'s contract it either fully replaces the
+/// on-disk reflog or leaves it untouched — there is no partially-written state for it to fail
+/// into.
 pub fn edit_stash_message(
     repo: &mut Repository,
-    path: &str,
     index: usize,
     message: &str,
 ) -> Result<(), String> {
-    // 1. Get the list of all stashes
-    let mut stashes_info = Vec::new();
-    let res = repo.stash_foreach(|idx, msg, commit_oid| {
-        stashes_info.push((idx, msg.to_string(), *commit_oid));
-        true
-    });
+    let mut reflog = repo.reflog("refs/stash").map_err(AppError::Git)?;
+    let len = reflog.len();
 
-    if let Err(e) = res {
-        return Err(AppError::Git(e).to_string());
-    }
-
-    // Sort stashes by index ascending
-    stashes_info.sort_by_key(|s| s.0);
-
-    if index >= stashes_info.len() {
+    if index >= len {
         return Err(format!(
             "Stash index {} out of range (total stashes: {})",
-            index,
-            stashes_info.len()
+            index, len
         ));
     }
 
-    // 2. Drop all stashes. By dropping index 0 repeatedly, we clear the entire stack.
-    for _ in 0..stashes_info.len() {
-        repo.stash_drop(0)
-            .map_err(|e| AppError::Git(e).to_string())?;
+    // Capture every entry, and validate its commit is still resolvable, before mutating
+    // anything — this is the dry-run precondition check: a missing/corrupt stash commit aborts
+    // the whole rename here, before the in-memory reflog is even cleared, let alone written.
+    struct Entry {
+        commit_oid: Oid,
+        committer: Signature<'static>,
+        message: String,
+    }
+    let mut entries = Vec::with_capacity(len);
+    for i in 0..len {
+        let raw_entry = reflog
+            .get(i)
+            .ok_or_else(|| format!("Failed to read stash reflog entry {i}"))?;
+        let commit_oid = raw_entry.id_new();
+        repo.find_commit(commit_oid).map_err(AppError::Git)?;
+
+        let new_message = if i == index {
+            message.to_string()
+        } else {
+            raw_entry.message().unwrap_or_default().to_string()
+        };
+        entries.push(Entry {
+            commit_oid,
+            committer: raw_entry.committer().to_owned(),
+            message: new_message,
+        });
     }
 
-    // 3. Re-create the stashes from bottom to top of the stack.
-    // Pushing in reverse order (bottom first) ensures they end up in their original stack position.
-    for &(idx, ref original_msg, commit_oid) in stashes_info.iter().rev() {
-        let msg_to_store = if idx == index { message } else { original_msg };
-
-        run_stash_store(path, &commit_oid.to_string(), msg_to_store)?;
+    // Only now that every entry has been validated: clear the in-memory reflog and rebuild it.
+    // Still entirely in-memory — nothing on disk changes until `write()` below.
+    for _ in 0..len {
+        reflog.remove(0, false).map_err(AppError::Git)?;
     }
+    // Re-append oldest to newest: `append` always adds the new top-of-stack entry, so replaying
+    // in that order reproduces the original stack order (index 0 = newest, same as before).
+    for entry in entries.iter().rev() {
+        reflog
+            .append(entry.commit_oid, &entry.committer, Some(&entry.message))
+            .map_err(AppError::Git)?;
+    }
+
+    reflog.write().map_err(AppError::Git)?;
 
     Ok(())
 }
@@ -351,7 +391,7 @@ mod tests {
         let before = list_stashes(&mut repo).unwrap();
         let target_oid = before[1].commit_oid.clone(); // "first", now at index 1
 
-        edit_stash_message(&mut repo, dir.to_str().unwrap(), 1, "renamed first").unwrap();
+        edit_stash_message(&mut repo, 1, "renamed first").unwrap();
 
         let after = list_stashes(&mut repo).unwrap();
         assert_eq!(after.len(), 2);
@@ -368,8 +408,63 @@ mod tests {
         std::fs::write(dir.join("a.txt"), "dirty\n").unwrap();
         stash_push(&mut repo, Some("wip"), false).unwrap();
 
-        let err = edit_stash_message(&mut repo, dir.to_str().unwrap(), 5, "renamed").unwrap_err();
+        let err = edit_stash_message(&mut repo, 5, "renamed").unwrap_err();
         assert!(err.contains("out of range"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Regression test for #506: a failure partway through the rename must not lose any
+    /// previously-existing stash. We simulate the kind of mid-rebuild failure that used to be
+    /// unrecoverable (a stash whose backing commit can't be resolved — e.g. pruned by a
+    /// concurrent `git gc`) by injecting a bogus reflog entry alongside two real stashes, then
+    /// assert the on-disk reflog still holds all three entries, untouched, after the rename call
+    /// fails.
+    #[test]
+    fn edit_stash_message_leaves_every_stash_intact_when_a_reflog_entry_is_unresolvable() {
+        let (dir, mut repo) = init_repo("edit-mid-failure");
+        commit_file(&repo, &dir, "a.txt", "base\n", "base");
+
+        std::fs::write(dir.join("a.txt"), "first change\n").unwrap();
+        stash_push(&mut repo, Some("first"), false).unwrap();
+        std::fs::write(dir.join("a.txt"), "second change\n").unwrap();
+        stash_push(&mut repo, Some("second"), false).unwrap();
+
+        // Inject a third reflog entry pointing at a commit oid that doesn't exist in the object
+        // database — `Reflog::append` doesn't validate the oid, so this reproduces a dangling
+        // stash entry without needing an actual `git stash store` failure.
+        let bogus_oid = Oid::from_str("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap();
+        let committer = get_git_signature(&repo).unwrap();
+        {
+            let mut reflog = repo.reflog("refs/stash").unwrap();
+            reflog
+                .append(bogus_oid, &committer, Some("corrupt entry"))
+                .unwrap();
+            reflog.write().unwrap();
+        }
+
+        assert_eq!(repo.reflog("refs/stash").unwrap().len(), 3);
+
+        let err = edit_stash_message(&mut repo, 1, "renamed second").unwrap_err();
+        assert!(!err.is_empty());
+
+        // Nothing was dropped: the reflog still has all 3 entries, with every original message
+        // (including the injected corrupt one) intact and unchanged.
+        let reflog = repo.reflog("refs/stash").unwrap();
+        assert_eq!(reflog.len(), 3);
+        let messages: Vec<String> = (0..reflog.len())
+            .map(|i| {
+                reflog
+                    .get(i)
+                    .unwrap()
+                    .message()
+                    .unwrap_or_default()
+                    .to_string()
+            })
+            .collect();
+        assert!(messages.iter().any(|m| m.contains("first")));
+        assert!(messages.iter().any(|m| m.contains("second")));
+        assert!(messages.iter().any(|m| m.contains("corrupt entry")));
+
         std::fs::remove_dir_all(&dir).ok();
     }
 }
