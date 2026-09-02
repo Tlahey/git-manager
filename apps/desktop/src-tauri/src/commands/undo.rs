@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::services::git_undo;
+use crate::utils::{resolve_workdir_file, resolve_workdir_write_target};
 use git2::Repository;
-use std::path::Path;
 
 pub use crate::services::git_undo::{FileSnapshotResult, WorktreeSnapshot};
 
@@ -30,6 +30,12 @@ pub async fn objects_exist(path: String, oids: Vec<String>) -> Result<Vec<bool>,
     git_undo::objects_exist(&repo, &oids)
 }
 
+/// Snapshots a working-tree file's current content as an orphan blob (before a discard).
+///
+/// Resolved via `resolve_workdir_file` before reading — an escaping path (e.g. a symlink pointing
+/// outside the repo) is treated the same as "nothing to snapshot" (`Ok(None)`), matching this
+/// command's existing contract for a missing file, rather than reading and blobbing a symlink
+/// target from outside the repo (see issue #515, the same bug class as #513's discard-time fix).
 #[tauri::command]
 pub async fn snapshot_file(
     path: String,
@@ -37,10 +43,19 @@ pub async fn snapshot_file(
     entry_id: String,
 ) -> Result<Option<FileSnapshotResult>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let full_path = Path::new(&path).join(&file_path);
+    let Some(full_path) = resolve_workdir_file(&path, &file_path) else {
+        return Ok(None);
+    };
     git_undo::snapshot_file(&repo, &full_path, &entry_id)
 }
 
+/// Rewrites a file to disk from an undo snapshot (a discard's "Undo" action).
+///
+/// Resolved via `resolve_workdir_write_target` before writing — it, unlike `resolve_workdir_file`,
+/// tolerates the target (and its parent directories) not existing yet, since restoring can recreate
+/// a file whose discard also removed its parent. An escaping path is refused outright (issue #515):
+/// if the path was replaced by a symlink pointing outside the repo between the discard and the
+/// undo, `fs::write` would otherwise follow it and overwrite an arbitrary file on disk.
 #[tauri::command]
 pub async fn restore_file_blob(
     path: String,
@@ -48,7 +63,11 @@ pub async fn restore_file_blob(
     blob_oid: String,
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let full_path = Path::new(&path).join(&file_path);
+    let full_path = resolve_workdir_write_target(&path, &file_path).ok_or_else(|| {
+        String::from(AppError::InvalidInput(format!(
+            "Refusing to restore \"{file_path}\": the path escapes the repository"
+        )))
+    })?;
     git_undo::restore_file_blob(&repo, &full_path, &blob_oid)
 }
 

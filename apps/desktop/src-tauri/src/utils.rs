@@ -174,6 +174,62 @@ pub fn resolve_workdir_file(repo_path: &str, file_path: &str) -> Option<PathBuf>
     }
 }
 
+/// Like `resolve_workdir_file`, but for a path about to be *written* rather than read — the target
+/// may legitimately not exist yet (restoring a file whose discard also deleted its parent
+/// directory; see `git_undo::restore_file_blob`, issue #515), so it cannot rely on
+/// `Path::canonicalize` alone, which requires every component to already exist.
+///
+/// - If something already sits at `repo_path`/`file_path` — a regular file, a directory, or a
+///   symlink, dangling or not — this defers entirely to `resolve_workdir_file`, which resolves the
+///   full symlink chain and checks containment. A symlink is therefore never written through: if it
+///   points inside the repo it resolves there and is returned as-is (so overwriting an in-repo
+///   symlink's target still works, matching a plain `fs::write`'s own behavior); if it points
+///   outside, or is dangling so it can't be canonicalized at all, this returns `None` and the write
+///   is refused rather than risking a create-through-dangling-symlink escape.
+/// - Otherwise (nothing at all exists at that exact path yet) this walks up to the closest
+///   *existing* ancestor directory, canonicalizes only that ancestor (walking its own symlink
+///   chain, so an intermediate symlinked directory is caught the same way), and requires it to lie
+///   inside the canonicalized repo root. The missing trailing components are then re-appended
+///   verbatim to the canonicalized ancestor, giving the caller a path it can safely
+///   `create_dir_all` + write to.
+///
+/// An ordinary new file under existing or not-yet-existing in-repo directories resolves exactly
+/// like a plain join; only an escape (via a symlink anywhere in the chain, or via a resolved `..`)
+/// is refused.
+pub fn resolve_workdir_write_target(repo_path: &str, file_path: &str) -> Option<PathBuf> {
+    let repo_root = Path::new(repo_path).canonicalize().ok()?;
+    let joined = repo_root.join(file_path);
+
+    if joined.symlink_metadata().is_ok() {
+        // Something already exists at this exact path (file, dir, or symlink) — resolve and
+        // contain-check it fully rather than special-casing it here.
+        return resolve_workdir_file(repo_path, file_path);
+    }
+
+    let mut existing_ancestor = joined.clone();
+    let mut trailing: Vec<std::ffi::OsString> = Vec::new();
+    loop {
+        if existing_ancestor.symlink_metadata().is_ok() {
+            break;
+        }
+        let parent = existing_ancestor.parent()?;
+        let name = existing_ancestor.file_name()?;
+        trailing.push(name.to_os_string());
+        existing_ancestor = parent.to_path_buf();
+    }
+
+    let canonical_ancestor = existing_ancestor.canonicalize().ok()?;
+    if !canonical_ancestor.starts_with(&repo_root) {
+        return None;
+    }
+
+    let mut result = canonical_ancestor;
+    for component in trailing.into_iter().rev() {
+        result.push(component);
+    }
+    Some(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,6 +353,114 @@ mod tests {
     fn resolve_workdir_file_returns_none_for_a_missing_path() {
         let dir = temp_dir("missing");
         assert!(resolve_workdir_file(dir.to_str().unwrap(), "nope.txt").is_none());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── resolve_workdir_write_target ──────────────────────────────────────────
+
+    #[test]
+    fn write_target_allows_a_brand_new_file_directly_in_the_repo() {
+        let dir = temp_dir("write-new-file");
+
+        let resolved = resolve_workdir_write_target(dir.to_str().unwrap(), "new.txt").unwrap();
+        assert_eq!(resolved, dir.canonicalize().unwrap().join("new.txt"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_target_allows_a_new_file_under_not_yet_existing_nested_dirs() {
+        let dir = temp_dir("write-nested");
+
+        let resolved =
+            resolve_workdir_write_target(dir.to_str().unwrap(), "nested/deeper/new.txt").unwrap();
+        assert_eq!(
+            resolved,
+            dir.canonicalize()
+                .unwrap()
+                .join("nested")
+                .join("deeper")
+                .join("new.txt")
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_target_overwrites_an_existing_in_repo_file() {
+        let dir = temp_dir("write-overwrite");
+        std::fs::write(dir.join("existing.txt"), "old").unwrap();
+
+        let resolved = resolve_workdir_write_target(dir.to_str().unwrap(), "existing.txt").unwrap();
+        assert_eq!(resolved, dir.canonicalize().unwrap().join("existing.txt"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_target_refuses_an_existing_symlink_escaping_the_repo() {
+        let outside = temp_dir("write-existing-symlink-outside-target");
+        std::fs::write(outside.join("victim.txt"), "original").unwrap();
+
+        let repo = temp_dir("write-existing-symlink-repo");
+        std::os::unix::fs::symlink(outside.join("victim.txt"), repo.join("notes.txt")).unwrap();
+
+        assert!(resolve_workdir_write_target(repo.to_str().unwrap(), "notes.txt").is_none());
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_target_refuses_a_dangling_symlink_at_the_leaf() {
+        // The exact issue #515 scenario: the path was a normal file, got discarded, and before
+        // undo runs something replaces it with a symlink pointing somewhere that does not (yet)
+        // exist — writing through it would still create the target file outside the repo.
+        let repo = temp_dir("write-dangling-symlink-repo");
+        let outside = temp_dir("write-dangling-symlink-outside");
+        let escape_target = outside.join("does-not-exist-yet.txt");
+
+        std::os::unix::fs::symlink(&escape_target, repo.join("notes.txt")).unwrap();
+
+        assert!(resolve_workdir_write_target(repo.to_str().unwrap(), "notes.txt").is_none());
+        assert!(
+            !escape_target.exists(),
+            "refusing the write must not create the symlink's target"
+        );
+
+        std::fs::remove_dir_all(&repo).ok();
+        std::fs::remove_dir_all(&outside).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_target_refuses_a_new_file_under_a_symlinked_intermediate_directory() {
+        let outside = temp_dir("write-symlinked-dir-outside");
+        let repo = temp_dir("write-symlinked-dir-repo");
+        std::os::unix::fs::symlink(&outside, repo.join("linked")).unwrap();
+
+        assert!(resolve_workdir_write_target(repo.to_str().unwrap(), "linked/new.txt").is_none());
+        assert!(
+            !outside.join("new.txt").exists(),
+            "refusing the write must not create anything through the symlinked directory"
+        );
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_target_follows_an_existing_symlink_that_stays_inside_the_repo() {
+        let dir = temp_dir("write-symlink-inside");
+        std::fs::write(dir.join("real.txt"), "old").unwrap();
+        std::os::unix::fs::symlink(dir.join("real.txt"), dir.join("link.txt")).unwrap();
+
+        let resolved = resolve_workdir_write_target(dir.to_str().unwrap(), "link.txt").unwrap();
+        assert_eq!(resolved, dir.canonicalize().unwrap().join("real.txt"));
+
         std::fs::remove_dir_all(&dir).ok();
     }
 }

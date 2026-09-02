@@ -8,6 +8,7 @@
 //! multiple templates live in a `PULL_REQUEST_TEMPLATE/` sub-directory of any of those three roots.
 //! A single top-level template takes precedence over a multi-template directory.
 
+use crate::utils::resolve_workdir_file;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -67,7 +68,19 @@ fn display_path(repo_root: &Path, file: &Path) -> String {
         .replace('\\', "/")
 }
 
-fn find_single_template(repo_root: &Path) -> Option<PrTemplateDetection> {
+/// Resolves a candidate path (already known to exist, from a `read_dir` listing) through
+/// `resolve_workdir_file`'s containment check before it is read — a candidate that is a symlink
+/// pointing outside the repo is treated as if it weren't a valid template at all (issue #517, same
+/// bug class as #512/#516), rather than following it and reading its target's content into the PR
+/// composer / AI PR-description feature. Returns `None` both when the candidate doesn't resolve
+/// relative to `repo_root` (should not happen — it was just listed from under it) and when it
+/// escapes.
+fn resolve_candidate(repo_root: &Path, repo_path: &str, candidate: &Path) -> Option<PathBuf> {
+    let relative = candidate.strip_prefix(repo_root).ok()?;
+    resolve_workdir_file(repo_path, &relative.to_string_lossy())
+}
+
+fn find_single_template(repo_root: &Path, repo_path: &str) -> Option<PrTemplateDetection> {
     for sub in TEMPLATE_ROOTS {
         let dir = if sub.is_empty() {
             repo_root.to_path_buf()
@@ -90,7 +103,10 @@ fn find_single_template(repo_root: &Path) -> Option<PrTemplateDetection> {
             .collect();
         matches.sort();
         for path in matches {
-            if let Ok(content) = fs::read_to_string(&path) {
+            let Some(resolved) = resolve_candidate(repo_root, repo_path, &path) else {
+                continue;
+            };
+            if let Ok(content) = fs::read_to_string(&resolved) {
                 if !content.trim().is_empty() {
                     return Some(PrTemplateDetection::Single {
                         source: display_path(repo_root, &path),
@@ -103,7 +119,7 @@ fn find_single_template(repo_root: &Path) -> Option<PrTemplateDetection> {
     None
 }
 
-fn find_multiple_templates(repo_root: &Path) -> Option<PrTemplateDetection> {
+fn find_multiple_templates(repo_root: &Path, repo_path: &str) -> Option<PrTemplateDetection> {
     for sub in TEMPLATE_ROOTS {
         let base = if sub.is_empty() {
             repo_root.to_path_buf()
@@ -142,7 +158,8 @@ fn find_multiple_templates(repo_root: &Path) -> Option<PrTemplateDetection> {
         let options: Vec<PrTemplateOption> = md_files
             .iter()
             .filter_map(|path| {
-                let content = fs::read_to_string(path).ok()?;
+                let resolved = resolve_candidate(repo_root, repo_path, path)?;
+                let content = fs::read_to_string(&resolved).ok()?;
                 if content.trim().is_empty() {
                     return None;
                 }
@@ -164,8 +181,8 @@ fn find_multiple_templates(repo_root: &Path) -> Option<PrTemplateDetection> {
 /// Scan a repo for a GitHub PR template. A single top-level file wins over a template directory.
 pub fn detect_pr_template(repo_path: &str) -> PrTemplateDetection {
     let root = Path::new(repo_path);
-    find_single_template(root)
-        .or_else(|| find_multiple_templates(root))
+    find_single_template(root, repo_path)
+        .or_else(|| find_multiple_templates(root, repo_path))
         .unwrap_or(PrTemplateDetection::None)
 }
 
@@ -283,6 +300,85 @@ mod tests {
             }
             other => panic!("expected Single, got {other:?}"),
         }
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── symlink escape (issue #517) ───────────────────────────────────────────
+
+    #[cfg(unix)]
+    #[test]
+    fn does_not_follow_a_single_template_symlink_escaping_the_repo() {
+        let outside = temp_repo("single-escape-target");
+        write(&outside, "secret.md", "top secret");
+
+        let dir = temp_repo("single-escape-repo");
+        fs::create_dir_all(dir.join(".github")).unwrap();
+        std::os::unix::fs::symlink(
+            outside.join("secret.md"),
+            dir.join(".github/PULL_REQUEST_TEMPLATE.md"),
+        )
+        .unwrap();
+
+        // No other candidate exists, so the escaping symlink must be skipped entirely rather
+        // than ever surfacing the secret's content.
+        assert_eq!(
+            detect_pr_template(dir.to_str().unwrap()),
+            PrTemplateDetection::None
+        );
+
+        fs::remove_dir_all(&outside).ok();
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn does_not_follow_a_multiple_template_symlink_escaping_the_repo() {
+        let outside = temp_repo("multiple-escape-target");
+        write(&outside, "secret.md", "top secret");
+
+        let dir = temp_repo("multiple-escape-repo");
+        write(&dir, ".github/PULL_REQUEST_TEMPLATE/bug.md", "bug");
+        std::os::unix::fs::symlink(
+            outside.join("secret.md"),
+            dir.join(".github/PULL_REQUEST_TEMPLATE/evil.md"),
+        )
+        .unwrap();
+
+        match detect_pr_template(dir.to_str().unwrap()) {
+            PrTemplateDetection::Multiple { options } => {
+                let names: Vec<_> = options.iter().map(|o| o.name.as_str()).collect();
+                assert_eq!(
+                    names,
+                    vec!["bug.md"],
+                    "the escaping symlink must be skipped, leaving only the ordinary template"
+                );
+                assert!(options.iter().all(|o| o.content != "top secret"));
+            }
+            other => panic!("expected Multiple, got {other:?}"),
+        }
+
+        fs::remove_dir_all(&outside).ok();
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follows_a_single_template_symlink_that_stays_inside_the_repo() {
+        let dir = temp_repo("single-inside-symlink");
+        write(&dir, "actual-template.md", "in-repo template");
+        std::os::unix::fs::symlink(
+            dir.join("actual-template.md"),
+            dir.join("PULL_REQUEST_TEMPLATE.md"),
+        )
+        .unwrap();
+
+        match detect_pr_template(dir.to_str().unwrap()) {
+            PrTemplateDetection::Single { content, .. } => {
+                assert_eq!(content, "in-repo template");
+            }
+            other => panic!("expected Single, got {other:?}"),
+        }
+
         fs::remove_dir_all(&dir).ok();
     }
 }

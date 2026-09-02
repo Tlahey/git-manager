@@ -3,6 +3,7 @@ use crate::models::*;
 use crate::services::git_repo::build_git_repo;
 use crate::services::git_status;
 use crate::state::AppState;
+use crate::utils::resolve_workdir_file;
 use git2::Repository;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
@@ -278,6 +279,38 @@ fn get_repo_summary_blocking(path: String) -> Result<GitRepoSummary, String> {
     })
 }
 
+const README_CANDIDATES: &[&str] = &[
+    "README.md",
+    "readme.md",
+    "README.markdown",
+    "README",
+    "Readme.md",
+    "README.txt",
+];
+
+/// Finds and reads the first matching README candidate under `path`.
+///
+/// Each candidate is resolved via `resolve_workdir_file` before reading — a candidate that is a
+/// symlink pointing outside the repo (e.g. `README.md -> ~/.ssh/id_rsa`, dropped into a folder the
+/// app merely knows about, not necessarily `git clone`d) is treated as if it weren't there at all
+/// and the next candidate is tried, rather than following the symlink and returning its target's
+/// content to the dashboard preview (issue #516, same bug class as #512). Split out from the
+/// `#[tauri::command]` itself so it can be unit-tested without an `AppHandle`.
+fn find_readme_content(path: &str) -> Result<String, AppError> {
+    for candidate in README_CANDIDATES {
+        let Some(resolved) = resolve_workdir_file(path, candidate) else {
+            continue;
+        };
+        if resolved.is_file() {
+            return std::fs::read_to_string(&resolved).map_err(AppError::Io);
+        }
+    }
+
+    Err(AppError::Unknown(
+        "No README file found in this repository".to_string(),
+    ))
+}
+
 /// Reads the repository's README file if there is one.
 #[tauri::command]
 pub async fn get_repo_readme(app: AppHandle, path: String) -> Result<String, String> {
@@ -290,24 +323,102 @@ pub async fn get_repo_readme(app: AppHandle, path: String) -> Result<String, Str
     // tab, so grant the asset scope here too rather than relying on `open_repo` having run.
     allow_repo_assets(&app, &path);
 
-    let candidates = [
-        "README.md",
-        "readme.md",
-        "README.markdown",
-        "README",
-        "Readme.md",
-        "README.txt",
-    ];
+    find_readme_content(&path).map_err(String::from)
+}
 
-    for candidate in &candidates {
-        let file_path = dir.join(candidate);
-        if file_path.exists() && file_path.is_file() {
-            match std::fs::read_to_string(&file_path) {
-                Ok(content) => return Ok(content),
-                Err(e) => return Err(AppError::Io(e).into()),
-            }
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "gm-test-repo-readme-{name}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
     }
 
-    Err(AppError::Unknown("No README file found in this repository".to_string()).into())
+    #[test]
+    fn finds_and_reads_an_ordinary_readme() {
+        let dir = temp_dir("ordinary");
+        std::fs::write(dir.join("README.md"), "# Hello").unwrap();
+
+        assert_eq!(
+            find_readme_content(dir.to_str().unwrap()).unwrap(),
+            "# Hello"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn errors_when_no_readme_candidate_exists() {
+        let dir = temp_dir("none");
+
+        assert!(find_readme_content(dir.to_str().unwrap()).is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn does_not_follow_a_readme_symlink_escaping_the_repo() {
+        let outside = temp_dir("escaping-target");
+        std::fs::write(outside.join("secret.txt"), "top secret").unwrap();
+
+        let repo = temp_dir("escaping-repo");
+        std::os::unix::fs::symlink(outside.join("secret.txt"), repo.join("README.md")).unwrap();
+
+        let result = find_readme_content(repo.to_str().unwrap());
+
+        // No other candidate exists either, so this must fall through to "not found" rather
+        // than ever surfacing the secret's content.
+        assert!(result.is_err());
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skips_an_escaping_symlink_candidate_and_falls_back_to_the_next_one() {
+        let outside = temp_dir("escaping-fallback-target");
+        std::fs::write(outside.join("secret.txt"), "top secret").unwrap();
+
+        let repo = temp_dir("escaping-fallback-repo");
+        // README.md (checked first) escapes the repo; README.markdown (checked later, and not
+        // just a case variant of the first — macOS's default APFS is case-insensitive, so
+        // "README.md"/"readme.md" would otherwise be the very same file) is ordinary.
+        std::os::unix::fs::symlink(outside.join("secret.txt"), repo.join("README.md")).unwrap();
+        std::fs::write(repo.join("README.markdown"), "ordinary readme").unwrap();
+
+        let content = find_readme_content(repo.to_str().unwrap()).unwrap();
+
+        assert_eq!(content, "ordinary readme");
+        assert_ne!(content, "top secret");
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follows_a_readme_symlink_that_stays_inside_the_repo() {
+        let dir = temp_dir("inside-symlink");
+        std::fs::write(dir.join("actual.md"), "in-repo content").unwrap();
+        std::os::unix::fs::symlink(dir.join("actual.md"), dir.join("README.md")).unwrap();
+
+        assert_eq!(
+            find_readme_content(dir.to_str().unwrap()).unwrap(),
+            "in-repo content"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }
