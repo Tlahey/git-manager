@@ -60,9 +60,27 @@ export function useAiGeneration(repoPath: string) {
    * watching a progress bar for, and it answers in a second or two.
    */
   const cancelledRef = useRef(false)
+  /**
+   * Identifies which invocation of `generate` is *the* run, mirroring `useAiStream`'s `requestId`
+   * and `useAiCommitSearch`'s `runIdRef` (added for the same race, #502).
+   *
+   * `cancel` flips `status` to `'cancelled'` synchronously, well before the abandoned run's map
+   * phase (`composeCommitMessageFromSummaries` → `mapConcurrently`) has actually observed
+   * `cancelledRef` — it only polls every ~100ms. A new `generate()` call started in that window used
+   * to reset the same `cancelledRef` the old run was still reading, silently un-cancelling it, so it
+   * would go on to call `onMessage` with stale content and overwrite whatever the new run wrote (or
+   * was still writing) into the commit-message box. Every closure `generate` creates captures this
+   * run's own id at the top and checks it via `isStale` before reading `cancelledRef` or writing
+   * state, so a superseded run's late reads and writes are dropped instead.
+   */
+  const runIdRef = useRef(0)
 
   const generate = useCallback(
     async (onMessage: (message: string) => void) => {
+      const runId = ++runIdRef.current
+      /** Whether a newer `generate()` has since started, making this run's remaining work moot. */
+      const isStale = () => runIdRef.current !== runId
+
       setValidation(null)
       setError(null)
       setStatus('generating')
@@ -71,6 +89,7 @@ export function useAiGeneration(repoPath: string) {
       try {
         // The package builds the prompt from the repo's staged changes; git2 stays in Rust.
         const context = await apiGetAiContext(repoPath, 'staged')
+        if (isStale()) return
         // A refusal rather than a thrown error: nothing failed, there is simply nothing to write a
         // message about.
         if (!context.diff.trim()) {
@@ -98,17 +117,24 @@ export function useAiGeneration(repoPath: string) {
             compose: (reduceInput) => summaryCommitMessageService.run(aiConnection, reduceInput),
           },
           {
-            onProgress: trackAiProgress(
-              fileSummaryFeature.id,
-              summaryCommitMessageFeature.id,
-              setProgress
-            ),
-            shouldCancel: () => cancelledRef.current,
+            onProgress: (progress) => {
+              // A superseded run's progress must not stomp the new run's progress bar.
+              if (isStale()) return
+              trackAiProgress(
+                fileSummaryFeature.id,
+                summaryCommitMessageFeature.id,
+                setProgress
+              )(progress)
+            },
+            // `isStale` keeps a superseded run reporting itself as cancelled even after a newer
+            // `generate()` call resets `cancelledRef` — without it, that reset silently un-cancels
+            // the abandoned run (see the doc comment on `runIdRef`).
+            shouldCancel: () => cancelledRef.current || isStale(),
             cancelCall: fileSummaryService.cancel,
             concurrency: aiConnection.concurrency,
           }
         )
-        if (cancelledRef.current) return
+        if (cancelledRef.current || isStale()) return
 
         const message = formatCommitMessage(draft)
         onMessage(message)
@@ -122,12 +148,16 @@ export function useAiGeneration(repoPath: string) {
           })
         )
       } catch (err) {
+        // A superseded run's failure (including a deliberate cancel of the file-summary calls) must
+        // not report anything against the current run's state.
+        if (isStale()) return
         // Cancelling is not a failure: the user asked for the box to be left alone.
         if (cancelledRef.current || err instanceof SummaryRunCancelled) return
         setStatus('error')
         setError(String(err))
       } finally {
-        setProgress(null)
+        // A superseded run's own progress bar clearing must not clear the new run's in-flight one.
+        if (!isStale()) setProgress(null)
       }
     },
     [repoPath, aiConnection, commitInstructions, commitPattern]
