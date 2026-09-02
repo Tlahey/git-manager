@@ -252,15 +252,19 @@ fn script_command(pm: &str, name: &str) -> String {
     }
 }
 
-/// Lists the runnable commands declared by the project at `path` (currently package.json scripts,
-/// translated to the detected package manager). Returns an empty list when there's no package.json.
-#[tauri::command]
-pub async fn get_project_commands(path: String) -> Result<Vec<ProjectCommand>, String> {
-    let repo = std::path::Path::new(&path);
-    let pkg = repo.join("package.json");
-    if !pkg.exists() {
+/// Pure sync core of `get_project_commands`, extracted so it's unit-testable without an async
+/// runtime (same reasoning as `commands/repo.rs::find_readme_content`).
+///
+/// The read is resolved via `resolve_workdir_file` rather than a raw join before reading (issue
+/// #521): a `package.json` that is, or has been replaced by, a symlink pointing outside the repo
+/// would otherwise have its target's content parsed as JSON and its `scripts` surfaced in the
+/// task editor's autocomplete — an escaping path is treated the same as "no package.json",
+/// matching this command's existing empty-list contract for a missing file.
+fn discover_project_commands(path: &str) -> Result<Vec<ProjectCommand>, String> {
+    let repo = std::path::Path::new(path);
+    let Some(pkg) = crate::utils::resolve_workdir_file(path, "package.json") else {
         return Ok(Vec::new());
-    }
+    };
     let content =
         std::fs::read_to_string(&pkg).map_err(|e| format!("Failed to read package.json: {e}"))?;
     let pm = detect_package_manager(repo);
@@ -274,6 +278,13 @@ pub async fn get_project_commands(path: String) -> Result<Vec<ProjectCommand>, S
         })
         .collect();
     Ok(commands)
+}
+
+/// Lists the runnable commands declared by the project at `path` (currently package.json scripts,
+/// translated to the detected package manager). Returns an empty list when there's no package.json.
+#[tauri::command]
+pub async fn get_project_commands(path: String) -> Result<Vec<ProjectCommand>, String> {
+    discover_project_commands(&path)
 }
 
 #[cfg(test)]
@@ -304,6 +315,97 @@ mod project_tests {
         assert_eq!(script_command("yarn", "dev"), "yarn dev");
         assert_eq!(script_command("npm", "dev"), "npm run dev");
         assert_eq!(script_command("bun", "dev"), "bun run dev");
+    }
+
+    // ─── discover_project_commands ──────────────────────────────────────────
+
+    fn temp_project_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "gm-test-tasks-{name}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn discover_project_commands_reads_an_ordinary_package_json() {
+        let repo = temp_project_dir("ordinary");
+        std::fs::write(
+            repo.join("package.json"),
+            r#"{"scripts":{"dev":"vite","build":"tsc"}}"#,
+        )
+        .unwrap();
+
+        let commands = discover_project_commands(repo.to_str().unwrap()).unwrap();
+        assert_eq!(commands.len(), 2);
+        assert!(commands.iter().any(|c| c.name == "dev"
+            && c.command == "npm run dev"
+            && c.detail.as_deref() == Some("vite")));
+
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[test]
+    fn discover_project_commands_returns_empty_when_no_package_json() {
+        let repo = temp_project_dir("missing");
+
+        let commands = discover_project_commands(repo.to_str().unwrap()).unwrap();
+        assert!(commands.is_empty());
+
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    /// Issue #521: a `package.json` replaced by a symlink pointing outside the repo must not have
+    /// its target's content read/parsed — the scan must behave exactly like "no package.json".
+    #[cfg(unix)]
+    #[test]
+    fn discover_project_commands_skips_a_symlinked_package_json_escaping_the_repo() {
+        let outside = temp_project_dir("outside-target");
+        std::fs::write(
+            outside.join("package.json"),
+            r#"{"scripts":{"leak-me":"echo should-not-be-read"}}"#,
+        )
+        .unwrap();
+
+        let repo = temp_project_dir("escaping-repo");
+        std::os::unix::fs::symlink(outside.join("package.json"), repo.join("package.json"))
+            .unwrap();
+
+        let commands = discover_project_commands(repo.to_str().unwrap()).unwrap();
+        assert!(
+            commands.is_empty(),
+            "must not surface scripts read through an escaping symlink"
+        );
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    /// An in-repo symlinked `package.json` (pointing at another file inside the same repo) must
+    /// keep working exactly as before — this is only about blocking an escape.
+    #[cfg(unix)]
+    #[test]
+    fn discover_project_commands_still_works_through_an_in_repo_symlink() {
+        let repo = temp_project_dir("symlink-inside");
+        std::fs::write(
+            repo.join("real-package.json"),
+            r#"{"scripts":{"dev":"vite"}}"#,
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(repo.join("real-package.json"), repo.join("package.json"))
+            .unwrap();
+
+        let commands = discover_project_commands(repo.to_str().unwrap()).unwrap();
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].name, "dev");
+
+        std::fs::remove_dir_all(&repo).ok();
     }
 }
 
