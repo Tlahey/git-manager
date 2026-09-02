@@ -254,8 +254,57 @@ pub fn create_tag_annotated(
 }
 
 /// Deletes a tag (lightweight or annotated) by its short name (without the `refs/tags/` prefix).
+///
+/// Idempotent: a tag that is already gone is treated as success rather than an error. `tag_delete`
+/// resolves `refs/tags/<name>` first (`retrieve_tag_reference` in libgit2's `tag.c`) and that lookup
+/// is what fails with `ErrorCode::NotFound` when the tag doesn't exist — any other error (a
+/// permissions/IO problem, a corrupt ref, etc.) still propagates. This matters for
+/// [`recreate_tag`]: without it, retrying after a `create_tag_*` failure that happened *after* a
+/// successful delete would error again on the now-nonexistent tag before ever reaching the create
+/// step — see #510.
 pub fn delete_tag(repo: &Repository, name: &str) -> Result<(), AppError> {
-    repo.tag_delete(name).map_err(AppError::Git)
+    match repo.tag_delete(name) {
+        Ok(()) => Ok(()),
+        Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(()),
+        Err(e) => Err(AppError::Git(e)),
+    }
+}
+
+/// Re-points an existing tag at `oid`, optionally attaching `message` — the tag equivalent of a
+/// fast-forward (`message: None`) or of turning a tag into an annotated one (`message: Some(..)`).
+/// git has no "move a tag" primitive: it is a delete followed by a re-create, done here as a single
+/// Rust call instead of the two separate IPC round trips (`delete_tag` then `create_tag`) the
+/// frontend used before #510. Collapsing them into one call removes the window where the app could
+/// crash *between* the two, which was the main way #510 could lose a tag with nothing left to
+/// rebuild it from.
+///
+/// The target `oid` is validated *before* anything is deleted — a plain precondition check, in the
+/// same "confirm-durable-first" spirit as #509's reflog rewrite for stash renames, though tags have
+/// no reflog-like structure to make this fully atomic. This still narrows the destructive window
+/// considerably: the common failure modes (a bad/stale `oid`, an I/O error hit while *resolving* it)
+/// are now caught before `delete_tag` runs at all.
+///
+/// **Residual risk**: `create_tag_lightweight`/`create_tag_annotated` can still fail *after*
+/// `delete_tag` has already succeeded (e.g. a signature/config problem building the annotated tag's
+/// commit object, or a disk error writing the new ref) — there is no atomic "replace what this ref
+/// points at" primitive for tags in git2/libgit2. If that happens, `delete_tag`'s idempotency above
+/// is what makes retrying this function actually work instead of erroring a second time on the
+/// already-deleted tag.
+pub fn recreate_tag(
+    repo: &Repository,
+    name: &str,
+    oid: &str,
+    message: Option<&str>,
+) -> Result<(), AppError> {
+    repo.revparse_single(oid)
+        .map_err(|_| AppError::Unknown(format!("Invalid reference: {oid}")))?;
+
+    delete_tag(repo, name)?;
+
+    match message {
+        Some(message) => create_tag_annotated(repo, name, oid, message),
+        None => create_tag_lightweight(repo, name, oid),
+    }
 }
 
 /// Checks out a local branch by name, or a raw commit by OID (detached HEAD). The OID fallback
@@ -520,11 +569,75 @@ mod tests {
     }
 
     #[test]
-    fn delete_tag_errors_when_tag_missing() {
+    fn delete_tag_is_idempotent_when_tag_missing() {
         let (dir, repo) = init_repo_with_commit("delete-missing");
 
-        assert!(delete_tag(&repo, "does-not-exist").is_err());
+        // Deleting a tag that was never there — or already deleted by an earlier, partially
+        // failed attempt — succeeds rather than erroring, so a retry of the calling operation
+        // (see `recreate_tag`) can proceed to the create step instead of failing again on the
+        // now-nonexistent tag. See #510.
+        assert!(delete_tag(&repo, "does-not-exist").is_ok());
 
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── recreate_tag ───────────────────────────────────────────────────────
+
+    #[test]
+    fn recreate_tag_moves_a_lightweight_tag_to_a_new_oid() {
+        let (dir, repo) = init_repo_with_commit("recreate-move");
+        create_tag_lightweight(&repo, "v1", "HEAD").unwrap();
+        let head_oid = repo.head().unwrap().peel_to_commit().unwrap().id();
+
+        recreate_tag(&repo, "v1", &head_oid.to_string(), None).unwrap();
+
+        let reference = repo.find_reference("refs/tags/v1").unwrap();
+        assert_eq!(reference.target().unwrap(), head_oid);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn recreate_tag_turns_a_lightweight_tag_into_an_annotated_one() {
+        let (dir, repo) = init_repo_with_commit("recreate-annotate");
+        create_tag_lightweight(&repo, "v1", "HEAD").unwrap();
+        let head_oid = repo.head().unwrap().peel_to_commit().unwrap().id();
+
+        recreate_tag(&repo, "v1", &head_oid.to_string(), Some("release notes")).unwrap();
+
+        let reference = repo.find_reference("refs/tags/v1").unwrap();
+        let tag = repo.find_tag(reference.target().unwrap()).unwrap();
+        assert_eq!(tag.message(), Some("release notes"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn recreate_tag_leaves_the_old_tag_intact_when_the_target_oid_is_invalid() {
+        let (dir, repo) = init_repo_with_commit("recreate-bad-oid");
+        create_tag_lightweight(&repo, "v1", "HEAD").unwrap();
+
+        let err = recreate_tag(&repo, "v1", "not-a-real-oid", None).unwrap_err();
+        assert!(matches!(err, AppError::Unknown(_)));
+
+        // The pre-check ran before anything was deleted: the original tag is still there.
+        assert!(repo.find_reference("refs/tags/v1").is_ok());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn recreate_tag_recovers_when_retried_after_the_old_tag_was_already_deleted() {
+        // Simulates the partial-failure scenario from #510: a first attempt's `delete_tag`
+        // already succeeded (e.g. the app crashed, or `create_tag_*` errored) before the retry.
+        let (dir, repo) = init_repo_with_commit("recreate-retry");
+        create_tag_lightweight(&repo, "v1", "HEAD").unwrap();
+        let head_oid = repo.head().unwrap().peel_to_commit().unwrap().id();
+        delete_tag(&repo, "v1").unwrap();
+        assert!(repo.find_reference("refs/tags/v1").is_err());
+
+        recreate_tag(&repo, "v1", &head_oid.to_string(), Some("recovered")).unwrap();
+
+        let reference = repo.find_reference("refs/tags/v1").unwrap();
+        let tag = repo.find_tag(reference.target().unwrap()).unwrap();
+        assert_eq!(tag.message(), Some("recovered"));
         std::fs::remove_dir_all(&dir).ok();
     }
 

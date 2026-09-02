@@ -31,7 +31,7 @@ use commands::board::{
 };
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
-    get_branches, get_tag_containing_commit, get_tags, merge_branch, rename_branch,
+    get_branches, get_tag_containing_commit, get_tags, merge_branch, recreate_tag, rename_branch,
     set_branch_upstream,
 };
 use commands::cherry_pick::cherry_pick_commit;
@@ -318,6 +318,7 @@ pub fn run() {
             delete_branch,
             rename_branch,
             delete_tag,
+            recreate_tag,
             get_tag_containing_commit,
             merge_branch,
             fast_forward_branch,

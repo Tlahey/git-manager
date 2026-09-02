@@ -59,11 +59,26 @@ pub async fn create_tag(
     .map_err(Into::into)
 }
 
-/// Deletes a tag (lightweight or annotated) by its short name.
+/// Deletes a tag (lightweight or annotated) by its short name. Idempotent — see
+/// [`git_branch::delete_tag`].
 #[tauri::command]
 pub async fn delete_tag(path: String, name: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_branch::delete_tag(&repo, &name).map_err(Into::into)
+}
+
+/// Re-points tag `name` at `oid` (lightweight, or annotated if `message` is given) in one call —
+/// the delete+create both happen server-side, closing the crash-between-IPC-calls window the
+/// previous two-command frontend pattern had. See [`git_branch::recreate_tag`].
+#[tauri::command]
+pub async fn recreate_tag(
+    path: String,
+    name: String,
+    oid: String,
+    message: Option<String>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::recreate_tag(&repo, &name, &oid, message.as_deref()).map_err(Into::into)
 }
 
 /// Checks out a local branch by name, or a raw commit by OID (detached HEAD). The OID fallback

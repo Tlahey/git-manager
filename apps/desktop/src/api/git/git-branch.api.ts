@@ -16,6 +16,7 @@ import {
   renameBranch,
   createTag,
   deleteTag,
+  recreateTag,
   deleteRemoteTag,
   pushTag,
   getTagWebUrl,
@@ -302,10 +303,12 @@ export async function apiDeleteTag(
  * Turns an existing tag into an annotated one by recreating it with `message` on the same commit
  * (`git tag -d` + `git tag -a`). A replacement rather than an in-place edit, so it clears the redo
  * stack instead of pushing an invertible entry.
+ *
+ * Goes through the single `recreateTag` command rather than a separate `deleteTag` + `createTag`
+ * pair of IPC calls — see {@link apiMoveTag}'s doc comment for why (#510).
  */
 export async function apiAnnotateTag(path: string, name: string, oid: string, message: string) {
-  await deleteTag(path, name)
-  await createTag(path, name, oid, message)
+  await recreateTag(path, name, oid, message)
   clearRedo(path)
 }
 
@@ -325,10 +328,19 @@ export async function apiPushTag(path: string, tagName: string, remote?: string)
  * git has no "move a tag" primitive: it is a delete followed by a re-create, which is exactly what
  * {@link apiAnnotateTag} already does to attach a message. Only the local tag moves; the remote
  * still holds the old target until the tag is force-pushed, which this deliberately does not do.
+ *
+ * The delete+create happens as a single `recreate_tag` Tauri command rather than the two separate
+ * `deleteTag`/`createTag` IPC round trips this used to make: a crash (or any other failure)
+ * between two `await`s on the frontend could previously leave the tag deleted with nothing
+ * recorded to rebuild it — no undo entry is pushed for this action, by design (a replacement
+ * rather than an in-place edit). Doing both steps inside one Rust call removes that window
+ * entirely; the (much narrower) residual risk of a failure *inside* that call, after its own
+ * internal delete has already succeeded, is documented on `git_branch::recreate_tag` — and
+ * `delete_tag` is idempotent, so retrying this function after such a failure recovers instead of
+ * erroring on the already-deleted tag. See #510.
  */
 export async function apiMoveTag(path: string, tagName: string, oid: string) {
-  await deleteTag(path, tagName)
-  await createTag(path, tagName, oid)
+  await recreateTag(path, tagName, oid)
   clearRedo(path)
 }
 
