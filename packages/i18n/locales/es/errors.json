@@ -39,6 +39,7 @@
   "report.reason.hookFailed": "Un hook del repositorio detuvo la operación. Su salida es el mensaje de error.",
   "report.reason.concurrentWrite": "Algo modificó los datos antes y la escritura se rechazó para no perder nada.",
   "report.reason.alreadyExists": "Ya existe algo con ese nombre.",
+  "report.reason.branchCheckedOutElsewhere": "La rama ya está registrada en otro árbol de trabajo (worktree) de este repositorio.",
   "report.reason.invalidInput": "El valor indicado se rechazó por no ser válido.",
   "report.reason.aiProvider": "El proveedor de IA no respondió. Comprueba que esté en ejecución y accesible.",
   "report.reason.network": "Un error de red o del servidor remoto, fuera del control de la aplicación.",

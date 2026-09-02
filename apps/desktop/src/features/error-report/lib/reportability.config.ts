@@ -51,6 +51,12 @@ const CLASSIFICATION: Record<string, Classification> = {
   TAG_ALREADY_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },
   WORKTREE_PATH_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },
   BOARD_ALREADY_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },
+  // A different worktree of this repository already has the branch checked out — a git rule the
+  // app enforces on purpose, not "already exists" (nothing named that is being created here).
+  BRANCH_CHECKED_OUT_ELSEWHERE: {
+    verdict: 'expected',
+    reasonKey: 'report.reason.branchCheckedOutElsewhere',
+  },
   // Rejected input. A frontend that sent something malformed is our bug, but the overwhelmingly
   // common case is a value the user typed, and the dialog's "report anyway" covers the rest.
   INVALID_INPUT: { verdict: 'expected', reasonKey: 'report.reason.invalidInput' },
@@ -72,6 +78,7 @@ const CLASSIFICATION: Record<string, Classification> = {
   CONFLICT_NOT_FOUND: { verdict: 'unclear', reasonKey: 'report.reason.refGone' },
   BOARD_NOT_FOUND: { verdict: 'unclear', reasonKey: 'report.reason.refGone' },
   CARD_NOT_FOUND: { verdict: 'unclear', reasonKey: 'report.reason.refGone' },
+  COMMENT_NOT_FOUND: { verdict: 'unclear', reasonKey: 'report.reason.refGone' },
 
   // ── Definitely ours ───────────────────────────────────────────────────────────────────────
   UNKNOWN: { verdict: 'bug', reasonKey: 'report.reason.unexpected' },
