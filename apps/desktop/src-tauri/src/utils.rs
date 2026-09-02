@@ -138,6 +138,42 @@ pub fn github_branch_url(remote_url: &str, branch_name: &str) -> Option<String> 
     ))
 }
 
+/// Safely resolves a repo-relative working-tree path, refusing anything that escapes `repo_path` —
+/// whether via `..` segments or via a symlink (including an ordinary-looking *untracked* symlink
+/// sitting in the working tree) that points outside it.
+///
+/// `std::fs::read` and `Path::is_file()`/`Path::exists()` all follow symlinks transparently, with
+/// no containment check of their own. An attacker who can place a file in a folder the user later
+/// opens as a repository (a downloaded archive, a shared folder — not necessarily a `git clone`) can
+/// drop an untracked symlink such as `notes.txt -> /Users/victim/.ssh/id_rsa`. It shows up as an
+/// ordinary untracked file everywhere the app lists working-tree entries, and any caller that reads
+/// its *content* via a plain join+read would silently read the target instead — see
+/// `git_diff::read_workdir_file` (issue #512: the target's content lands in the diff viewer, and
+/// from there can be sent to a configured AI provider) and `git_commit::discard_file_changes`
+/// (issue #513: the target's content is written as a durable git blob for the discard's undo
+/// snapshot — worse, since it survives the app closing). Every caller that reads a working-tree
+/// file's bytes from a path it did not just write itself must resolve it through this helper first.
+///
+/// Resolution is by full canonicalization (of both `repo_path` and the joined path), which walks
+/// the *entire* symlink chain and every `..` — so a symlink several hops deep, or nested inside an
+/// escaping symlinked directory, is caught exactly like a direct one. Returns `None` when:
+/// - `repo_path` itself fails to canonicalize (should not normally happen — the repo is open),
+/// - the joined path doesn't exist, or otherwise fails to canonicalize (deleted, permissions), or
+/// - it canonicalizes to something outside the canonicalized `repo_path`.
+///
+/// An ordinary file, and a symlink that resolves to a target *inside* the repo, both canonicalize to
+/// a path under `repo_path` and are returned unchanged — this only blocks escapes, not symlinks.
+pub fn resolve_workdir_file(repo_path: &str, file_path: &str) -> Option<PathBuf> {
+    let repo_root = Path::new(repo_path).canonicalize().ok()?;
+    let joined = repo_root.join(file_path);
+    let resolved = joined.canonicalize().ok()?;
+    if resolved.starts_with(&repo_root) {
+        Some(resolved)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,5 +219,84 @@ mod tests {
     #[test]
     fn repo_slug_sanitizes_unusual_directory_names() {
         assert!(repo_slug("/tmp/my repo!").starts_with("my-repo-"));
+    }
+
+    // ─── resolve_workdir_file ──────────────────────────────────────────────────
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "gm-test-utils-{name}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn resolve_workdir_file_accepts_an_ordinary_in_repo_file() {
+        let dir = temp_dir("ordinary");
+        std::fs::write(dir.join("a.txt"), "hello").unwrap();
+
+        let resolved = resolve_workdir_file(dir.to_str().unwrap(), "a.txt").unwrap();
+        assert_eq!(resolved, dir.canonicalize().unwrap().join("a.txt"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_workdir_file_follows_a_symlink_that_stays_inside_the_repo() {
+        let dir = temp_dir("symlink-inside");
+        std::fs::write(dir.join("real.txt"), "inside").unwrap();
+        std::os::unix::fs::symlink(dir.join("real.txt"), dir.join("link.txt")).unwrap();
+
+        let resolved = resolve_workdir_file(dir.to_str().unwrap(), "link.txt").unwrap();
+        assert_eq!(resolved, dir.canonicalize().unwrap().join("real.txt"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_workdir_file_refuses_a_symlink_escaping_the_repo() {
+        let outside = temp_dir("symlink-outside-target");
+        std::fs::write(outside.join("secret.txt"), "top secret").unwrap();
+
+        let repo = temp_dir("symlink-outside-repo");
+        std::os::unix::fs::symlink(outside.join("secret.txt"), repo.join("notes.txt")).unwrap();
+
+        assert!(resolve_workdir_file(repo.to_str().unwrap(), "notes.txt").is_none());
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[test]
+    fn resolve_workdir_file_refuses_a_dot_dot_escape() {
+        let outside = temp_dir("dotdot-outside");
+        std::fs::write(outside.join("secret.txt"), "top secret").unwrap();
+
+        let repo = temp_dir("dotdot-repo");
+        let escaping_relative = format!(
+            "../{}/secret.txt",
+            outside.file_name().unwrap().to_str().unwrap()
+        );
+
+        assert!(resolve_workdir_file(repo.to_str().unwrap(), &escaping_relative).is_none());
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+
+    #[test]
+    fn resolve_workdir_file_returns_none_for_a_missing_path() {
+        let dir = temp_dir("missing");
+        assert!(resolve_workdir_file(dir.to_str().unwrap(), "nope.txt").is_none());
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

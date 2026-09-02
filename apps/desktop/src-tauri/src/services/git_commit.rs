@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::services::git_hooks;
-use crate::utils::{get_git_signature, short_oid};
+use crate::utils::{get_git_signature, resolve_workdir_file, short_oid};
 use git2::{Repository, RepositoryState};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -10,7 +10,11 @@ use std::sync::{Arc, Mutex};
 #[serde(rename_all = "camelCase")]
 pub struct DiscardResult {
     /// OID of an orphan blob holding the file's contents before the discard (for undo).
-    /// `None` when the file wasn't on disk (e.g. already empty) or was a directory.
+    /// `None` when the file wasn't on disk (e.g. already empty), was a directory, or was a path
+    /// that escapes the repository (e.g. a symlink pointing outside it — see
+    /// `utils::resolve_workdir_file` / issue #513). In that last case the discard still proceeds;
+    /// it just cannot be undone through this snapshot, which is preferable to reading and
+    /// persisting a secret the symlink might point at.
     pub snapshot_blob_oid: Option<String>,
     pub was_untracked: bool,
     pub was_staged: bool,
@@ -85,12 +89,21 @@ pub fn discard_file_changes(
 
     // Snapshot the current contents (regular files only) before touching anything, so the
     // discard can be undone faithfully.
+    //
+    // The snapshot only reads through `resolve_workdir_file`, never through a plain join+`is_file`.
+    // An untracked symlink escaping the repo (e.g. `notes.txt -> ~/.ssh/id_rsa`) must not have its
+    // *target's* content read and blobbed here: unlike #512's display-only leak, a blob is written
+    // into `.git/objects/` and durably persists the secret even after the app closes (see issue
+    // #513). When the path escapes, the discard below still proceeds without a snapshot — this one
+    // discard just can't be undone, which is preferable to persisting the secret to make it
+    // undoable.
     let full_path = Path::new(repo_path).join(file_path);
-    let snapshot_blob_oid = if full_path.is_file() {
-        let bytes = std::fs::read(&full_path).map_err(AppError::Io)?;
-        Some(repo.blob(&bytes).map_err(AppError::Git)?.to_string())
-    } else {
-        None
+    let snapshot_blob_oid = match resolve_workdir_file(repo_path, file_path) {
+        Some(resolved) if resolved.is_file() => {
+            let bytes = std::fs::read(&resolved).map_err(AppError::Io)?;
+            Some(repo.blob(&bytes).map_err(AppError::Git)?.to_string())
+        }
+        _ => None,
     };
 
     if is_untracked {
@@ -604,6 +617,66 @@ mod tests {
         std::fs::write(repo.path().join("MERGE_HEAD"), "not-an-oid\n").unwrap();
 
         assert!(read_merge_parents(&repo).is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── Symlink escape (issue #513) ────────────────────────────────────────────
+    // An untracked symlink pointing outside the repo must not have its target's content read and
+    // persisted into a git blob for the discard's undo snapshot, while an ordinary in-repo symlink
+    // must keep behaving exactly as before (snapshot taken, discard succeeds).
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_of_a_symlink_escaping_the_repo_does_not_blob_the_target_content() {
+        let outside = std::env::temp_dir().join(format!(
+            "gm-commit-symlink-outside-target-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::create_dir_all(&outside).unwrap();
+        let secret = b"top secret key material";
+        std::fs::write(outside.join("secret.txt"), secret).unwrap();
+
+        let (dir, repo) = temp_repo("discard-symlink-outside");
+        std::os::unix::fs::symlink(outside.join("secret.txt"), dir.join("notes.txt")).unwrap();
+
+        let result = discard_file_changes(&repo, dir.to_str().unwrap(), "notes.txt").unwrap();
+
+        // No snapshot was taken for the escaping path...
+        assert!(result.snapshot_blob_oid.is_none());
+        assert!(result.was_untracked);
+        // ...and no blob holding the secret's content exists in the odb, confirming the content
+        // was never read and written at all (not merely that the oid wasn't returned).
+        let would_be_oid = git2::Oid::hash_object(git2::ObjectType::Blob, secret).unwrap();
+        assert!(!repo.odb().unwrap().exists(would_be_oid));
+        // The symlink itself is gone (unlinking it, not its target, is safe and expected).
+        assert!(!dir.join("notes.txt").exists());
+        assert!(outside.join("secret.txt").exists());
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_of_a_symlink_pointing_inside_the_repo_still_snapshots_normally() {
+        let (dir, repo) = temp_repo("discard-symlink-inside");
+        std::fs::write(dir.join("real.txt"), "in-repo content").unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("real.txt")).unwrap();
+        index.write().unwrap();
+        std::os::unix::fs::symlink(dir.join("real.txt"), dir.join("link.txt")).unwrap();
+
+        let result = discard_file_changes(&repo, dir.to_str().unwrap(), "link.txt").unwrap();
+
+        let blob_oid = result
+            .snapshot_blob_oid
+            .expect("an in-repo symlink target should still be snapshotted");
+        let blob = repo
+            .find_blob(git2::Oid::from_str(&blob_oid).unwrap())
+            .unwrap();
+        assert_eq!(blob.content(), b"in-repo content");
 
         std::fs::remove_dir_all(&dir).ok();
     }

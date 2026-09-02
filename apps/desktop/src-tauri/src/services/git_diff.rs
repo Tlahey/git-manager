@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::models::{GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine};
 use crate::services::git_ref_resolve::resolve_first_ref;
+use crate::utils::resolve_workdir_file;
 use git2::{DiffOptions, Oid, Repository};
 use serde::Serialize;
 use std::cell::RefCell;
@@ -459,9 +460,17 @@ pub fn commit_file_vs_workdir(
 
 /// Reads a file straight off disk (not through git at all) — the literal working-tree contents,
 /// used for the "modified" side of an unstaged/uncommitted comparison. `"[Binary Content]"` for
-/// non-UTF-8 bytes, an empty string if the file can't be read (deleted, permissions).
+/// non-UTF-8 bytes, an empty string if the file can't be read (deleted, permissions) **or if it
+/// escapes `repo_path`** — including via a symlink pointing outside the repo, which
+/// `std::fs::read` would otherwise follow transparently. See `utils::resolve_workdir_file`'s doc
+/// comment (issue #512): an untracked symlink such as `notes.txt -> ~/.ssh/id_rsa` looks like an
+/// ordinary untracked file, and without this check its target's content would be displayed here
+/// and could be forwarded to a configured AI provider by the "Explain these changes" feature.
 fn read_workdir_file(repo_path: &str, file_path: &str) -> String {
-    match std::fs::read(std::path::Path::new(repo_path).join(file_path)) {
+    let Some(resolved) = resolve_workdir_file(repo_path, file_path) else {
+        return String::new();
+    };
+    match std::fs::read(resolved) {
         Ok(bytes) => match std::str::from_utf8(&bytes) {
             Ok(content) => content.to_string(),
             Err(_) => String::from("[Binary Content]"),
@@ -875,6 +884,66 @@ mod tests {
             commit_file_vs_workdir(&repo, dir.to_str().unwrap(), &c2.to_string(), "b.txt").unwrap();
         assert_eq!(result.original, "b");
         assert_eq!(result.modified, "b-in-progress");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── Symlink escape (issue #512) ────────────────────────────────────────────
+    // An untracked symlink pointing outside the repo must not have its target's content read into
+    // the diff viewer (raw_file_contents / commit_file_vs_workdir both delegate to
+    // read_workdir_file), while an ordinary in-repo symlink must keep working exactly as before.
+
+    #[cfg(unix)]
+    #[test]
+    fn raw_file_contents_of_a_symlink_escaping_the_repo_does_not_leak_the_target() {
+        let outside = temp_dir("raw-symlink-outside-target");
+        std::fs::write(outside.join("secret.txt"), "top secret key material").unwrap();
+
+        let (dir, _c1, _c2, _c3) = linear_repo("raw-symlink-outside-repo");
+        std::os::unix::fs::symlink(outside.join("secret.txt"), dir.join("notes.txt")).unwrap();
+        let repo = Repository::open(&dir).unwrap();
+
+        let result =
+            raw_file_contents(&repo, dir.to_str().unwrap(), "notes.txt", false, None, None)
+                .unwrap();
+        assert_eq!(result.modified, "");
+        assert!(!result.modified.contains("top secret"));
+
+        std::fs::remove_dir_all(&outside).ok();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn raw_file_contents_of_a_symlink_pointing_inside_the_repo_still_reads_the_target() {
+        let (dir, _c1, _c2, _c3) = linear_repo("raw-symlink-inside-repo");
+        std::fs::write(dir.join("real.txt"), "in-repo content").unwrap();
+        std::os::unix::fs::symlink(dir.join("real.txt"), dir.join("link.txt")).unwrap();
+        let repo = Repository::open(&dir).unwrap();
+
+        let result =
+            raw_file_contents(&repo, dir.to_str().unwrap(), "link.txt", false, None, None).unwrap();
+        assert_eq!(result.modified, "in-repo content");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn commit_file_vs_workdir_of_a_symlink_escaping_the_repo_does_not_leak_the_target() {
+        let outside = temp_dir("commit-vs-workdir-symlink-outside-target");
+        std::fs::write(outside.join("secret.txt"), "top secret key material").unwrap();
+
+        let (dir, _c1, c2, _c3) = linear_repo("commit-vs-workdir-symlink-outside-repo");
+        std::os::unix::fs::symlink(outside.join("secret.txt"), dir.join("notes.txt")).unwrap();
+        let repo = Repository::open(&dir).unwrap();
+
+        let result =
+            commit_file_vs_workdir(&repo, dir.to_str().unwrap(), &c2.to_string(), "notes.txt")
+                .unwrap();
+        assert_eq!(result.modified, "");
+        assert!(!result.modified.contains("top secret"));
+
+        std::fs::remove_dir_all(&outside).ok();
         std::fs::remove_dir_all(&dir).ok();
     }
 }
