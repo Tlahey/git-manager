@@ -39,6 +39,7 @@
   "report.reason.hookFailed": "One of the repository's own hooks stopped the operation. Its output is the error.",
   "report.reason.concurrentWrite": "Something else changed the data first and the write was rejected to avoid losing it.",
   "report.reason.alreadyExists": "Something with that name already exists.",
+  "report.reason.branchCheckedOutElsewhere": "The branch is already checked out in another worktree of this repository.",
   "report.reason.invalidInput": "The value given was rejected as invalid.",
   "report.reason.aiProvider": "The AI provider did not answer. Check that it is running and reachable.",
   "report.reason.network": "A network or remote-server error, outside the app's control.",

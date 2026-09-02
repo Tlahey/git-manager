@@ -39,6 +39,7 @@
   "report.reason.hookFailed": "Un hook du dépôt a interrompu l'opération. Sa sortie est le message d'erreur.",
   "report.reason.concurrentWrite": "Quelque chose a modifié la donnée avant vous ; l'écriture a été refusée pour ne rien perdre.",
   "report.reason.alreadyExists": "Un élément portant ce nom existe déjà.",
+  "report.reason.branchCheckedOutElsewhere": "La branche est déjà extraite dans un autre arbre de travail (worktree) de ce dépôt.",
   "report.reason.invalidInput": "La valeur fournie a été refusée comme invalide.",
   "report.reason.aiProvider": "Le fournisseur IA n'a pas répondu. Vérifiez qu'il tourne et qu'il est joignable.",
   "report.reason.network": "Une erreur réseau ou du serveur distant, hors du contrôle de l'application.",

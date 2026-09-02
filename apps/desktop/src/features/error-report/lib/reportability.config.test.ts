@@ -1,7 +1,54 @@
 import { describe, it, expect } from 'vitest'
 import { classifyError } from './reportability.config'
 
+/**
+ * Every `code` string `AppError` can emit, per `From<AppError> for String` in
+ * `apps/desktop/src-tauri/src/error.rs`. Keep this list in sync with that match arm — adding an
+ * `AppError` variant there without adding it here (and to `CLASSIFICATION`) is exactly the gap
+ * this test exists to catch (see the exhaustiveness test below).
+ */
+const APP_ERROR_CODES = [
+  'GIT_ERROR',
+  'IO_ERROR',
+  'REPO_NOT_FOUND',
+  'BRANCH_NOT_FOUND',
+  'BRANCH_CHECKED_OUT_ELSEWHERE',
+  'COMMIT_NOT_FOUND',
+  'PROTECTED_BRANCH',
+  'TAG_ALREADY_EXISTS',
+  'WORKTREE_PATH_EXISTS',
+  'CONFLICT_NOT_FOUND',
+  'UNPARSEABLE_CONFLICT',
+  'BOARD_NOT_FOUND',
+  'BOARD_ALREADY_EXISTS',
+  'CARD_NOT_FOUND',
+  'COMMENT_NOT_FOUND',
+  'BOARD_CONFLICT',
+  'AI_PROVIDER_ERROR',
+  'AI_TIMEOUT',
+  'INVALID_INPUT',
+  'HTTP_ERROR',
+  'NOTIFICATION_FAILED',
+  'HOOK_FAILED',
+  'UNKNOWN',
+] as const
+
 describe('classifyError', () => {
+  it('has an explicit classification for every AppError code error.rs can emit', () => {
+    const unclassified = APP_ERROR_CODES.filter(
+      (code) => classifyError(code, 'operation').reasonKey === 'report.reason.unclassified'
+    )
+    expect(unclassified).toEqual([])
+  })
+
+  it('does not treat checking out a branch held by another worktree as a defect', () => {
+    expect(classifyError('BRANCH_CHECKED_OUT_ELSEWHERE', 'operation').verdict).toBe('expected')
+  })
+
+  it('leaves a missing comment unclear, like the other not-found refs', () => {
+    expect(classifyError('COMMENT_NOT_FOUND', 'operation').verdict).toBe('unclear')
+  })
+
   it('treats a UI crash as a bug whatever code is passed', () => {
     expect(classifyError(undefined, 'crash').verdict).toBe('bug')
     expect(classifyError('PROTECTED_BRANCH', 'crash').verdict).toBe('bug')
