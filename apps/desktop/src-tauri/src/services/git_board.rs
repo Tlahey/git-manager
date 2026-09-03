@@ -509,10 +509,13 @@ pub fn update_board_columns(
 /// one thing it is not is *gone*, which is the honest price of not destroying the work.
 pub fn delete_board(repo: &Repository, board_id: &str, delete_cards: bool) -> Result<(), String> {
     if delete_cards {
+        // Only remove the backup when a board actually existed under this id in this repo — a
+        // `board_id` that doesn't resolve to a live ref (a stale argument, a double-delete, a typo)
+        // must not still reach `remove_backup`'s filesystem delete for a board this call never found.
         if let Ok(mut reference) = repo.find_reference(&board_ref_name(board_id)) {
             reference.delete().map_err(AppError::Git)?;
+            remove_backup(repo, board_id);
         }
-        remove_backup(repo, board_id);
         return Ok(());
     }
 
@@ -1470,13 +1473,38 @@ fn backup_dir(repo: &Repository) -> Option<PathBuf> {
     Some(backups_root()?.join(repo_slug(&repo_root(repo))))
 }
 
-/// Path of the bare-repo mirror (#414).
+/// Whether `board_id` is safe to interpolate straight into a filename component.
+///
+/// `generate_id` (the only producer of a `board_id`, per its own doc comment: "short, label-safe id
+/// generation shared by boards and cards") always yields a plain lowercase-hex string with no path
+/// separator and no `.`, so anything containing one is not a real id this app ever generated —
+/// either a bug upstream or a directly-crafted IPC argument. `mirror_repo_path`/`backup_path` build
+/// a path by formatting `board_id` straight into a filename with no other check, and `remove_backup`
+/// then calls `fs::remove_dir_all`/`fs::remove_file` on the result, so a `board_id` containing `..`
+/// would otherwise be an arbitrary-path delete primitive.
+fn is_valid_board_id(board_id: &str) -> bool {
+    !board_id.is_empty()
+        && !board_id.contains('/')
+        && !board_id.contains('\\')
+        && !board_id.contains("..")
+}
+
+/// Path of the bare-repo mirror (#414). `None` for an invalid `board_id` — see `is_valid_board_id`
+/// — same as the existing `None` for "no home directory to resolve", so every caller already
+/// handles this defensively rather than treating it as an error.
 fn mirror_repo_path(repo: &Repository, board_id: &str) -> Option<PathBuf> {
+    if !is_valid_board_id(board_id) {
+        return None;
+    }
     Some(backup_dir(repo)?.join(format!("{board_id}.git")))
 }
 
 /// Path of the legacy flat-JSON mirror (pre-#414) — read-only fallback now, see `BoardBackup`.
+/// `None` for an invalid `board_id`, same reasoning as `mirror_repo_path`.
 fn backup_path(repo: &Repository, board_id: &str) -> Option<PathBuf> {
+    if !is_valid_board_id(board_id) {
+        return None;
+    }
     Some(backup_dir(repo)?.join(format!("{board_id}.json")))
 }
 
@@ -3581,6 +3609,77 @@ mod tests {
 
         // An intentional delete must not be recoverable — that flow exists for accidental loss.
         assert!(list_recoverable_boards(&repo).unwrap().is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn is_valid_board_id_rejects_traversal_and_separators_but_allows_a_generated_id() {
+        // What `generate_id` actually produces: lowercase hex, no separators.
+        assert!(is_valid_board_id("a1b2c3d4"));
+        assert!(!is_valid_board_id("../../../etc/passwd"));
+        assert!(!is_valid_board_id(".."));
+        assert!(!is_valid_board_id("a/b"));
+        assert!(!is_valid_board_id("a\\b"));
+        assert!(!is_valid_board_id(""));
+    }
+
+    #[test]
+    fn mirror_and_backup_paths_are_none_for_a_traversing_board_id() {
+        let (dir, repo) = init_repo("board-id-escape-paths");
+        board_with(&repo, "Board", vec![column("todo", 0)]);
+
+        assert!(mirror_repo_path(&repo, "../../evil").is_none());
+        assert!(backup_path(&repo, "../../evil").is_none());
+        // An ordinary id is unaffected by the fix.
+        assert!(mirror_repo_path(&repo, "a1b2c3d4").is_some());
+        assert!(backup_path(&repo, "a1b2c3d4").is_some());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_backup_with_a_traversing_board_id_deletes_nothing() {
+        let (dir, repo) = init_repo("board-id-escape-remove");
+        board_with(&repo, "Board", vec![column("todo", 0)]);
+
+        // Where an unsanitized `format!("{board_id}.git")` would land: `board_id` of
+        // `../escaped-sentinel` joined onto `<backups_root>/<repo-slug>/` and suffixed with `.git`
+        // resolves (at syscall time, once outside `is_valid_board_id`) to
+        // `<backups_root>/escaped-sentinel.git` — one level up from this repo's own backup dir.
+        let sentinel_dir = test_backups_root().join("escaped-sentinel.git");
+        std::fs::create_dir_all(&sentinel_dir).unwrap();
+        std::fs::write(sentinel_dir.join("marker.txt"), "keep me").unwrap();
+
+        remove_backup(&repo, "../escaped-sentinel");
+
+        assert!(
+            sentinel_dir.join("marker.txt").exists(),
+            "a traversing board_id must not delete anything outside the board's own backup dir"
+        );
+
+        std::fs::remove_dir_all(&sentinel_dir).ok();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn delete_board_skips_remove_backup_when_no_ref_was_found() {
+        let (dir, repo) = init_repo("delete-board-no-ref-skips-backup-removal");
+        let board = board_with(&repo, "Board", vec![column("todo", 0)]);
+        // The mirror backup now exists on disk for this board (created by `board_with`'s `sync_backup`).
+        assert!(mirror_repo_path(&repo, &board.id).unwrap().exists());
+
+        // A board id with no live ref in this repo (never created here, or already deleted) must not
+        // still reach `remove_backup`'s filesystem delete.
+        delete_board(&repo, "0000dead", true).unwrap();
+        assert!(
+            mirror_repo_path(&repo, &board.id).unwrap().exists(),
+            "an unrelated board_id's delete call must not touch this board's own backup"
+        );
+
+        // The real board's own delete still removes its backup as before.
+        delete_board(&repo, &board.id, true).unwrap();
+        assert!(!mirror_repo_path(&repo, &board.id).unwrap().exists());
 
         std::fs::remove_dir_all(&dir).ok();
     }

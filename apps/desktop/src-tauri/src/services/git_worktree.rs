@@ -104,6 +104,16 @@ pub fn count_default_file_matches(repo_path: &str, patterns: &[String]) -> Vec<u
 /// excluding anything in `.git/`. Shared by `copy_default_files` and `count_default_file_matches`
 /// so the preview count and the actual copy stay in lockstep. `glob::glob` only yields paths that
 /// exist, so a no-match (or malformed) pattern returns an empty vec.
+///
+/// `entry.strip_prefix(repo_root)` is a lexical check: it only verifies that `entry`'s leading
+/// components match `repo_root`, not that the resulting `rel` stays within it. A pattern
+/// containing `..` (e.g. `../../../etc/passwd`) still glob-matches — `repo_root.join(pattern)`
+/// puts the `..` components after `repo_root`, so `strip_prefix` succeeds and hands back a `rel`
+/// that itself contains `..`. `copy_default_files` then joins that `rel` onto both `repo_root` and
+/// `dest_root` and calls `std::fs::copy`, where the OS resolves the `..` at syscall time — a full
+/// arbitrary file read+write once outside this function. Rejecting any match whose `rel` contains
+/// a `ParentDir` component here closes that off for both callers; no canonicalization is needed
+/// since `entry` already came from `glob::glob`, which only yields paths that exist on disk.
 fn match_default_files(repo_root: &Path, pattern: &str) -> Vec<String> {
     let trimmed = pattern.trim();
     if trimmed.is_empty() {
@@ -129,6 +139,16 @@ fn match_default_files(repo_root: &Path, pattern: &str) -> Vec<String> {
             Ok(rel) => rel,
             Err(_) => continue,
         };
+        // Reject a `..`-containing pattern: `strip_prefix` only checks the leading components, so
+        // a match like `../../../etc/passwd` still passes it while `rel` still escapes `repo_root`.
+        // Once this holds, `dest_root.join(&rel)` in `copy_default_files` can't escape `dest_root`
+        // either, since `rel` is guaranteed free of `..`/absolute components by construction.
+        if rel
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            continue;
+        }
         if rel.components().any(|c| c.as_os_str() == ".git") {
             continue;
         }
@@ -594,5 +614,53 @@ mod tests {
 
         std::fs::remove_dir_all(&src).ok();
         std::fs::remove_dir_all(&dest).ok();
+    }
+
+    #[test]
+    fn copy_default_files_rejects_patterns_that_escape_the_repo_via_parent_dir() {
+        let root = std::env::temp_dir().join(format!("gm-test-wt-escape-{}", std::process::id()));
+        let src = root.join("src");
+        let dest = root.join("dest");
+        std::fs::remove_dir_all(&root).ok();
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+
+        // A secret sitting next to the repo, outside both `src` and `dest`.
+        std::fs::write(root.join("secret.txt"), "TOP SECRET").unwrap();
+        // An ordinary in-repo file that a legitimate pattern should still reach.
+        std::fs::write(src.join(".env"), "SAFE=1").unwrap();
+
+        let patterns = vec!["../secret.txt".to_string(), ".env*".to_string()];
+        let result =
+            copy_default_files(src.to_str().unwrap(), dest.to_str().unwrap(), &patterns).unwrap();
+
+        // The escaping pattern must not be able to read (or write) anything outside `src`/`dest`.
+        assert!(!dest.join("secret.txt").exists());
+        assert!(!dest.parent().unwrap().join("secret.txt.copy").exists());
+        assert!(result.copied.iter().all(|p| !p.contains("..")));
+        assert_eq!(result.skipped, vec!["../secret.txt".to_string()]);
+
+        // An ordinary, non-escaping pattern is unaffected by the fix.
+        assert!(dest.join(".env").exists());
+        assert!(result.copied.contains(&".env".to_string()));
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn count_default_file_matches_does_not_count_escaping_patterns() {
+        let root =
+            std::env::temp_dir().join(format!("gm-test-wt-count-escape-{}", std::process::id()));
+        let src = root.join("src");
+        std::fs::remove_dir_all(&root).ok();
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("secret.txt"), "x").unwrap();
+        std::fs::write(src.join(".env"), "x").unwrap();
+
+        let patterns = vec!["../secret.txt".to_string(), ".env*".to_string()];
+        let counts = count_default_file_matches(src.to_str().unwrap(), &patterns);
+        assert_eq!(counts, vec![0, 1]);
+
+        std::fs::remove_dir_all(&root).ok();
     }
 }
