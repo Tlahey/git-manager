@@ -82,6 +82,22 @@ describe('IssueDetailCenter', () => {
     expect(screen.getByText('Loading issue…')).toBeInTheDocument()
   })
 
+  it('shows an error state with a retry button instead of hanging when the fetch fails', async () => {
+    const user = userEvent.setup()
+    const refresh = vi.fn()
+    mockedDetail.mockReturnValue({
+      issue: undefined,
+      isLoading: false,
+      error: new Error('boom'),
+      refresh,
+    })
+    renderCenter()
+    expect(screen.getByText("Couldn't load this issue.")).toBeInTheDocument()
+    expect(screen.queryByText('Loading issue…')).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('issue-detail-retry'))
+    expect(refresh).toHaveBeenCalled()
+  })
+
   it('renders the title, body, state, the comment thread and the metadata sidebar', () => {
     mockDetail(raw())
     renderCenter()

@@ -62,6 +62,21 @@ describe('PrDetailCenter', () => {
     expect(screen.getByText('pr.view.loading')).toBeInTheDocument()
   })
 
+  it('shows an error state with a retry button instead of hanging when the fetch fails', async () => {
+    const mutate = vi.fn()
+    usePrDetailMock.mockReturnValue({
+      pr: undefined,
+      isLoading: false,
+      error: new Error('boom'),
+      mutate,
+    })
+    render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
+    expect(screen.getByText('pr.view.error')).toBeInTheDocument()
+    expect(screen.queryByText('pr.view.loading')).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByTestId('pr-detail-retry'))
+    expect(mutate).toHaveBeenCalled()
+  })
+
   it('renders the PR title, meta, description and merge/comment blocks', () => {
     usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false, error: null, mutate: vi.fn() })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)

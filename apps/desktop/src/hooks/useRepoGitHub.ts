@@ -29,6 +29,12 @@ export const RepoGitHubOverrideContext = createContext<OwnerRepo | null>(null)
 export function useRepoGitHub(repoPath: string | null): {
   ownerRepo: OwnerRepo | null
   accountId: string | null
+  /** Error from resolving the repo's remotes (swallowed otherwise, leaving `ownerRepo` silently
+   * `null`) — surfaced so a consumer whose own fetch depends on `ownerRepo` can tell "still
+   * resolving" apart from "resolution failed" instead of hanging with no explanation. */
+  remotesError: unknown
+  /** True while the remotes lookup itself is in flight (irrelevant when `override` is set). */
+  isResolvingRemotes: boolean
 } {
   const override = useContext(RepoGitHubOverrideContext)
   const githubSettings = useSettingsStore((s) => s.settings.github)
@@ -36,12 +42,16 @@ export function useRepoGitHub(repoPath: string | null): {
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
   const accountId = activeAccount?.id ?? null
 
-  const { data: remotes } = useSWR(
+  const {
+    data: remotes,
+    error: remotesError,
+    isLoading: isResolvingRemotes,
+  } = useSWR(
     !override && repoPath ? ['repo-remotes', repoPath] : null,
     () => apiGetRemotes(repoPath as string),
     { revalidateOnFocus: false, revalidateIfStale: false }
   )
 
   const ownerRepo = override ?? (remotes ? firstGitHubOwnerRepo(remotes.map((r) => r.url)) : null)
-  return { ownerRepo, accountId }
+  return { ownerRepo, accountId, remotesError, isResolvingRemotes }
 }
