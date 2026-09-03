@@ -655,13 +655,13 @@ const cases: {
     name: 'autosquashPreview',
     call: () => tauri.autosquashPreview('/repo'),
     command: 'autosquash_preview',
-    args: { path: '/repo' },
+    args: { path: '/repo', excludeOids: [] },
   },
   {
     name: 'runAutosquash',
     call: () => tauri.runAutosquash('/repo'),
     command: 'run_autosquash',
-    args: { path: '/repo' },
+    args: { path: '/repo', excludeOids: [] },
   },
 
   {

@@ -17,12 +17,19 @@ pub struct FixupInfo {
     pub target_subject: String,
 }
 
+#[derive(Serialize, Clone, PartialEq, Eq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FixupRef {
+    pub oid: String,
+    pub short_oid: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutosquashGroup {
     pub base_oid: String,
     pub base_subject: String,
-    pub fixups: Vec<String>, // short OIDs
+    pub fixups: Vec<FixupRef>,
 }
 
 #[derive(Serialize, Clone)]
@@ -266,18 +273,37 @@ pub fn list_pending_fixups(repo: &Repository) -> Result<Vec<FixupInfo>, String> 
 pub fn group_into_autosquash(fixups: &[FixupInfo]) -> Vec<AutosquashGroup> {
     let mut groups: Vec<AutosquashGroup> = Vec::new();
     for fixup in fixups {
+        let fixup_ref = FixupRef {
+            oid: fixup.fixup_oid.clone(),
+            short_oid: fixup.fixup_short_oid.clone(),
+        };
         if let Some(group) = groups.iter_mut().find(|g| g.base_oid == fixup.target_oid) {
-            group.fixups.push(fixup.fixup_short_oid.clone());
+            group.fixups.push(fixup_ref);
         } else {
             groups.push(AutosquashGroup {
                 base_oid: fixup.target_oid.clone(),
                 base_subject: fixup.target_subject.clone(),
-                fixups: vec![fixup.fixup_short_oid.clone()],
+                fixups: vec![fixup_ref],
             });
         }
     }
 
     groups
+}
+
+// ─── exclude_fixups ─────────────────────────────────────────────────────────
+
+/// Drops fixups the user has chosen to ignore (by full OID) — e.g. a stray `fixup!` commit
+/// sitting deep in history whose subject happens to collide with an old, unrelated commit's.
+/// `run_autosquash` derives its rebase base from the *oldest* pending fixup's target, so a
+/// coincidental match like that would otherwise drag the whole rebase back to it; this is the
+/// one place both `autosquash_preview` and `run_autosquash` filter before doing anything else,
+/// so the preview and the actual squash always agree on what's pending.
+pub fn exclude_fixups(fixups: Vec<FixupInfo>, exclude_oids: &[String]) -> Vec<FixupInfo> {
+    fixups
+        .into_iter()
+        .filter(|f| !exclude_oids.iter().any(|oid| oid == &f.fixup_oid))
+        .collect()
 }
 
 #[cfg(test)]
@@ -297,6 +323,10 @@ mod tests {
         }
     }
 
+    fn short_oids(group: &AutosquashGroup) -> Vec<String> {
+        group.fixups.iter().map(|f| f.short_oid.clone()).collect()
+    }
+
     #[test]
     fn empty_fixup_list_produces_no_groups() {
         let groups = group_into_autosquash(&[]);
@@ -310,7 +340,7 @@ mod tests {
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].base_oid, "deadbeef");
         assert_eq!(groups[0].base_subject, "feat: add thing");
-        assert_eq!(groups[0].fixups, vec!["abc1234".to_string()]);
+        assert_eq!(short_oids(&groups[0]), vec!["abc1234".to_string()]);
     }
 
     #[test]
@@ -323,7 +353,7 @@ mod tests {
         let groups = group_into_autosquash(&fixups);
         assert_eq!(groups.len(), 1);
         assert_eq!(
-            groups[0].fixups,
+            short_oids(&groups[0]),
             vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]
         );
     }
@@ -340,9 +370,12 @@ mod tests {
         let groups = group_into_autosquash(&fixups);
         assert_eq!(groups.len(), 2);
         assert_eq!(groups[0].base_oid, "target-a");
-        assert_eq!(groups[0].fixups, vec!["f1".to_string(), "f3".to_string()]);
+        assert_eq!(
+            short_oids(&groups[0]),
+            vec!["f1".to_string(), "f3".to_string()]
+        );
         assert_eq!(groups[1].base_oid, "target-b");
-        assert_eq!(groups[1].fixups, vec!["f2".to_string()]);
+        assert_eq!(short_oids(&groups[1]), vec!["f2".to_string()]);
     }
 
     #[test]
@@ -358,7 +391,30 @@ mod tests {
         let groups = group_into_autosquash(&fixups);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].base_subject, "feat: original subject");
-        assert_eq!(groups[0].fixups, vec!["f1".to_string(), "f2".to_string()]);
+        assert_eq!(
+            short_oids(&groups[0]),
+            vec!["f1".to_string(), "f2".to_string()]
+        );
+    }
+
+    // ── `exclude_fixups` ───────────────────────────────────────────────────────
+
+    #[test]
+    fn exclude_fixups_drops_a_matching_full_oid() {
+        let fixups = vec![
+            fixup_info("f1", "target-a", "feat: a"),
+            fixup_info("f2", "target-b", "feat: b"),
+        ];
+        let kept = exclude_fixups(fixups, &["f1-full".to_string()]);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].fixup_short_oid, "f2");
+    }
+
+    #[test]
+    fn exclude_fixups_is_a_no_op_with_no_exclusions() {
+        let fixups = vec![fixup_info("f1", "target-a", "feat: a")];
+        let kept = exclude_fixups(fixups, &[]);
+        assert_eq!(kept.len(), 1);
     }
 
     // ── Repo fixtures for `list_pending_fixups` / `check_fixup_target` / `create_fixup_commit` ──

@@ -77,6 +77,11 @@ export const SECTION_SCHEMAS = {
     hiddenStashes: z.record(z.string(), z.array(z.string())),
     hiddenTags: z.record(z.string(), z.array(z.string())),
     hiddenBranches: z.record(z.string(), z.array(z.string())),
+    // Optional: the first field added to this section after the config file already shipped.
+    // A file written before it exists must still validate, or every other field in the section
+    // (savedRepos included) would be reset the first time it's read back — see `validate.ts`,
+    // which resets a section wholesale when it fails its schema, not field by field.
+    hiddenFixups: z.record(z.string(), z.array(z.string())).optional(),
   }),
 
   /** What was open when the app was last closed: the tabs, and which one was in front. */

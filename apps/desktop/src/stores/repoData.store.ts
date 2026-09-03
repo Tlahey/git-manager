@@ -75,6 +75,18 @@ interface RepoDataState {
    * the toggles ran in.
    */
   setBranchesHidden: (repoPath: string, branchNames: string[], hidden: boolean) => void
+  /**
+   * Fixup commits ignored by the user, per repo, keyed by the fixup commit's full OID.
+   *
+   * Unlike `hiddenTags`/`hiddenBranches` this isn't just a label toggle: an ignored fixup is
+   * dropped server-side too (see `apiAutosquashPreview`/`apiRunAutosquash`), because
+   * `run_autosquash` derives its rebase base from the *oldest* pending fixup — a stray old
+   * `fixup!` commit whose subject coincidentally matches some ancient commit would otherwise
+   * drag the whole rebase back to it. Keyed by full OID rather than short OID (unlike the other
+   * `hidden*` maps) because that's the identity `run_autosquash` actually filters on.
+   */
+  hiddenFixups: Record<string, string[]>
+  toggleFixupVisibility: (repoPath: string, fixupOid: string) => void
 
   addRepo: (repo: GitRepo) => void
   /** Moves `path` to the front of `recentRepoPaths` (called whenever a repo is opened in a tab). */
@@ -103,6 +115,7 @@ export const useRepoDataStore = create<RepoDataState>()(
       hiddenStashes: {},
       hiddenTags: {},
       hiddenBranches: {},
+      hiddenFixups: {},
 
       toggleStashVisibility: (repoPath, oid) =>
         set((state) => {
@@ -144,6 +157,17 @@ export const useRepoDataStore = create<RepoDataState>()(
             : current.filter((x) => !touched.has(x))
           return {
             hiddenBranches: { ...state.hiddenBranches, [repoPath]: next },
+          }
+        }),
+
+      toggleFixupVisibility: (repoPath, fixupOid) =>
+        set((state) => {
+          const current = state.hiddenFixups[repoPath] || []
+          const next = current.includes(fixupOid)
+            ? current.filter((x) => x !== fixupOid)
+            : [...current, fixupOid]
+          return {
+            hiddenFixups: { ...state.hiddenFixups, [repoPath]: next },
           }
         }),
 
@@ -247,6 +271,7 @@ export const useRepoDataStore = create<RepoDataState>()(
         hiddenStashes: state.hiddenStashes || {},
         hiddenTags: state.hiddenTags || {},
         hiddenBranches: state.hiddenBranches || {},
+        hiddenFixups: state.hiddenFixups || {},
       }),
     }
   )

@@ -25,6 +25,7 @@ beforeEach(() => {
     wipMessages: {},
     hiddenStashes: {},
     hiddenBranches: {},
+    hiddenFixups: {},
   })
   useRepoUIStore.setState({ openTabs: [], activeRepo: null, activeTab: DASHBOARD_TAB })
   localStorage.clear()
@@ -84,6 +85,15 @@ describe('useRepoDataStore — cache/wip/stash visibility', () => {
     expect(useRepoDataStore.getState().hiddenStashes['/repo/a']).toEqual(['stash1'])
     useRepoDataStore.getState().toggleStashVisibility('/repo/a', 'stash1')
     expect(useRepoDataStore.getState().hiddenStashes['/repo/a']).toEqual([])
+  })
+
+  it('toggleFixupVisibility hides then reveals a fixup oid for a repo, scoped by repo path', () => {
+    useRepoDataStore.getState().toggleFixupVisibility('/repo/a', 'fixup-oid-1')
+    expect(useRepoDataStore.getState().hiddenFixups['/repo/a']).toEqual(['fixup-oid-1'])
+    expect(useRepoDataStore.getState().hiddenFixups['/repo/b']).toBeUndefined()
+
+    useRepoDataStore.getState().toggleFixupVisibility('/repo/a', 'fixup-oid-1')
+    expect(useRepoDataStore.getState().hiddenFixups['/repo/a']).toEqual([])
   })
 })
 
