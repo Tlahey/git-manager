@@ -20,6 +20,7 @@ vi.mock('../../api/git.api', () => ({
 }))
 
 import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
+import { useRepoDataStore } from '../../stores/repoData.store'
 import { AutosquashPreviewDialog } from './AutosquashPreviewDialog'
 
 const mocked = {
@@ -45,12 +46,20 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocked.apiAutosquashPreview.mockResolvedValue([])
   mocked.apiGetRebaseState.mockResolvedValue({ kind: 'idle' })
+  useRepoDataStore.setState({ hiddenFixups: {} })
 })
 
 describe('AutosquashPreviewDialog', () => {
   it('shows the group summary and per-group fixups once loaded', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([
-      { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1', 'sha2'] },
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [
+          { oid: 'sha1-full', shortOid: 'sha1' },
+          { oid: 'sha2-full', shortOid: 'sha2' },
+        ],
+      },
     ])
     renderDialog()
     await waitFor(() => expect(screen.getByText('2 commit(s) will be merged')).toBeInTheDocument())
@@ -67,7 +76,11 @@ describe('AutosquashPreviewDialog', () => {
 
   it('enables confirm once groups are present', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([
-      { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1'] },
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [{ oid: 'sha1-full', shortOid: 'sha1' }],
+      },
     ])
     renderDialog()
     await waitFor(() =>
@@ -77,7 +90,11 @@ describe('AutosquashPreviewDialog', () => {
 
   it('runs the autosquash, invalidates related queries, and toasts success on a clean finish', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([
-      { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1'] },
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [{ oid: 'sha1-full', shortOid: 'sha1' }],
+      },
     ])
     mocked.apiRunAutosquash.mockResolvedValue(undefined)
     mocked.apiGetRebaseState.mockResolvedValue({ kind: 'idle' })
@@ -91,13 +108,17 @@ describe('AutosquashPreviewDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Apply autosquash' }))
 
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Autosquash completed'))
-    expect(mocked.apiRunAutosquash).toHaveBeenCalledWith('/repo')
+    expect(mocked.apiRunAutosquash).toHaveBeenCalledWith('/repo', [])
     expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('toasts a warning (but still closes) when the run pauses on a conflict', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([
-      { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1'] },
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [{ oid: 'sha1-full', shortOid: 'sha1' }],
+      },
     ])
     mocked.apiRunAutosquash.mockResolvedValue(undefined)
     mocked.apiGetRebaseState.mockResolvedValue({ kind: 'conflict' })
@@ -118,7 +139,11 @@ describe('AutosquashPreviewDialog', () => {
 
   it('shows an inline error and keeps the dialog open when the run fails', async () => {
     mocked.apiAutosquashPreview.mockResolvedValue([
-      { baseOid: 'base1', baseSubject: 'Add feature', fixups: ['sha1'] },
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [{ oid: 'sha1-full', shortOid: 'sha1' }],
+      },
     ])
     mocked.apiRunAutosquash.mockRejectedValue(new Error('autosquash failed'))
     const onClose = vi.fn()
@@ -148,5 +173,28 @@ describe('AutosquashPreviewDialog', () => {
   it('does not fetch the preview when closed', () => {
     renderDialog({ open: false })
     expect(mocked.apiAutosquashPreview).not.toHaveBeenCalled()
+  })
+
+  it('skipping a fixup persists it as hidden and re-fetches the preview excluding it', async () => {
+    mocked.apiAutosquashPreview.mockResolvedValue([
+      {
+        baseOid: 'base1',
+        baseSubject: 'Add feature',
+        fixups: [{ oid: 'sha1-full', shortOid: 'sha1' }],
+      },
+    ])
+    const user = userEvent.setup()
+    renderDialog()
+    await waitFor(() => expect(screen.getByText('fixup! sha1')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Ignore this fixup' }))
+
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "This fixup won't be suggested again for this repository."
+    )
+    expect(useRepoDataStore.getState().hiddenFixups['/repo']).toEqual(['sha1-full'])
+    await waitFor(() =>
+      expect(mocked.apiAutosquashPreview).toHaveBeenLastCalledWith('/repo', ['sha1-full'])
+    )
   })
 })

@@ -414,6 +414,8 @@
   "fixup.autosquash.success": "Autosquash terminé",
   "fixup.autosquash.warning": "Attention : si certains commits ont déjà été poussés, un push forcé sera nécessaire.",
   "fixup.autosquash.cancel": "Annuler",
+  "fixup.autosquash.skip": "Ignorer ce fixup",
+  "fixup.autosquash.skipped": "Ce fixup ne sera plus proposé pour ce dépôt.",
   "worktree.title": "Worktrees",
   "worktree.add": "Nouveau worktree",
   "worktree.open": "Ouvrir",

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -16,6 +16,7 @@ vi.mock('./AutosquashPreviewDialog', () => ({
 }))
 
 import { apiGetPendingFixups } from '../../api/git.api'
+import { useRepoDataStore } from '../../stores/repoData.store'
 import { PendingFixupsBanner } from './PendingFixupsBanner'
 
 const mockedApi = apiGetPendingFixups as unknown as ReturnType<typeof vi.fn>
@@ -30,6 +31,10 @@ function renderBanner(repoPath = '/repo') {
 }
 
 describe('PendingFixupsBanner', () => {
+  beforeEach(() => {
+    useRepoDataStore.setState({ hiddenFixups: {} })
+  })
+
   it('renders nothing when there are no pending fixups', async () => {
     mockedApi.mockResolvedValue([])
     const { container } = renderBanner()
@@ -41,6 +46,24 @@ describe('PendingFixupsBanner', () => {
     mockedApi.mockResolvedValue([{ oid: 'a' }, { oid: 'b' }])
     renderBanner()
     await waitFor(() => expect(screen.getByText('fixup.pending:{"count":2}')).toBeInTheDocument())
+  })
+
+  it('excludes fixups the user has ignored for this repo', async () => {
+    mockedApi.mockResolvedValue([
+      { fixupOid: 'a-full', fixupShortOid: 'a' },
+      { fixupOid: 'b-full', fixupShortOid: 'b' },
+    ])
+    useRepoDataStore.setState({ hiddenFixups: { '/repo': ['a-full'] } })
+    renderBanner()
+    await waitFor(() => expect(screen.getByText('fixup.pending:{"count":1}')).toBeInTheDocument())
+  })
+
+  it('renders nothing when every pending fixup has been ignored', async () => {
+    mockedApi.mockResolvedValue([{ fixupOid: 'a-full', fixupShortOid: 'a' }])
+    useRepoDataStore.setState({ hiddenFixups: { '/repo': ['a-full'] } })
+    const { container } = renderBanner()
+    await waitFor(() => expect(mockedApi).toHaveBeenCalled())
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('opens the autosquash dialog when clicked', async () => {

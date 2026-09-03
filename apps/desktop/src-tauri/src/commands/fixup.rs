@@ -48,10 +48,17 @@ pub async fn get_pending_fixups(path: String) -> Result<Vec<FixupInfo>, String> 
 // ─── autosquash_preview ───────────────────────────────────────────────────────
 
 /// Groups fixup commits with their base commits for preview.
+/// `exclude_oids` is the caller's per-repo "ignore this fixup" list (full OIDs) — see
+/// `run_autosquash` for why an excluded fixup must be dropped before grouping, not just hidden
+/// in the UI.
 #[tauri::command]
-pub async fn autosquash_preview(path: String) -> Result<Vec<AutosquashGroup>, String> {
+pub async fn autosquash_preview(
+    path: String,
+    exclude_oids: Vec<String>,
+) -> Result<Vec<AutosquashGroup>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     let fixups = git_fixup::list_pending_fixups(&repo)?;
+    let fixups = git_fixup::exclude_fixups(fixups, &exclude_oids);
     Ok(git_fixup::group_into_autosquash(&fixups))
 }
 
@@ -66,12 +73,22 @@ pub async fn autosquash_preview(path: String) -> Result<Vec<AutosquashGroup>, St
 /// `err_unless_paused` and the `rebase-progress` event so the existing rebase-state UI
 /// (conflict banner / resolution panel) picks it up instead of leaving the repo mid-rebase
 /// with no indication in the app that anything is waiting on the user.
+///
+/// `exclude_oids` (full OIDs) drops fixups the user dismissed from the pending list before the
+/// base commit below is picked — the base is the *oldest* remaining fixup's target, so a stray
+/// old `fixup!` commit with a coincidentally-matching target subject would otherwise drag the
+/// rebase back to it and replay far more history than intended.
 #[tauri::command]
-pub async fn run_autosquash(path: String, app: tauri::AppHandle) -> Result<(), String> {
+pub async fn run_autosquash(
+    path: String,
+    exclude_oids: Vec<String>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
 
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     let fixups = git_fixup::list_pending_fixups(&repo)?;
+    let fixups = git_fixup::exclude_fixups(fixups, &exclude_oids);
     if fixups.is_empty() {
         return Ok(());
     }

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@git-manager/ui'
 import { Wrench } from 'lucide-react'
 import { apiGetPendingFixups } from '../../api/git.api'
+import { useRepoDataStore } from '../../stores/repoData.store'
 import { AutosquashPreviewDialog } from './AutosquashPreviewDialog'
 
 interface PendingFixupsBannerProps {
@@ -13,13 +14,21 @@ interface PendingFixupsBannerProps {
 export function PendingFixupsBanner({ repoPath }: PendingFixupsBannerProps) {
   const { t } = useTranslation('git')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const hiddenFixups = useRepoDataStore((s) => s.hiddenFixups[repoPath])
 
-  const { data: fixups = [] } = useQuery({
+  const { data: allFixups = [] } = useQuery({
     queryKey: ['pending-fixups', repoPath],
     queryFn: () => apiGetPendingFixups(repoPath),
     enabled: !!repoPath,
     staleTime: 30_000,
   })
+
+  // Ignored fixups (see AutosquashPreviewDialog's skip action) are excluded here too, not just
+  // server-side in the autosquash preview/run — otherwise the banner would keep nagging about a
+  // fixup the user already chose to leave alone.
+  const fixups = hiddenFixups?.length
+    ? allFixups.filter((f) => !hiddenFixups.includes(f.fixupOid))
+    : allFixups
 
   if (fixups.length === 0) return null
 

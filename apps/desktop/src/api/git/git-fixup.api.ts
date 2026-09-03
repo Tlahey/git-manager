@@ -53,11 +53,11 @@ export async function apiCreateFixupCommit(path: string, targetOid: string, mess
   return result
 }
 
-export async function apiAutosquashPreview(path: string) {
-  return autosquashPreview(path)
+export async function apiAutosquashPreview(path: string, excludeOids: string[] = []) {
+  return autosquashPreview(path, excludeOids)
 }
 
-export async function apiRunAutosquash(path: string) {
+export async function apiRunAutosquash(path: string, excludeOids: string[] = []) {
   openActivitySession(path, 'rebase')
   return runActivity('git.autosquash', async () => {
     let previousOid: string | null = null
@@ -68,7 +68,7 @@ export async function apiRunAutosquash(path: string) {
       previousOid = null
     }
 
-    const result = await callCommand('autosquash', () => runAutosquash(path))
+    const result = await callCommand('autosquash', () => runAutosquash(path, excludeOids))
 
     // Same conflict-pause caveat as apiRunInteractiveRebase: `run_autosquash` shells out to
     // `git rebase -i --autosquash` and pauses gracefully (err_unless_paused) instead of erroring,

@@ -4,13 +4,16 @@ import {
   Button,
   Spinner,
   toast,
+  Tooltip,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
+import { EyeOff } from 'lucide-react'
 import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
+import { useRepoDataStore } from '../../stores/repoData.store'
 import { useState } from 'react'
 
 interface AutosquashPreviewDialogProps {
@@ -24,12 +27,20 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
   const queryClient = useQueryClient()
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const hiddenFixups = useRepoDataStore((s) => s.hiddenFixups[repoPath]) ?? []
+  const toggleFixupVisibility = useRepoDataStore((s) => s.toggleFixupVisibility)
 
   const { data: groups = [], isLoading } = useQuery({
-    queryKey: ['autosquash-preview', repoPath],
-    queryFn: () => apiAutosquashPreview(repoPath),
+    queryKey: ['autosquash-preview', repoPath, hiddenFixups],
+    queryFn: () => apiAutosquashPreview(repoPath, hiddenFixups),
     enabled: open,
   })
+
+  function handleSkip(fixupOid: string) {
+    toggleFixupVisibility(repoPath, fixupOid)
+    queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
+    toast.success(t('fixup.autosquash.skipped'))
+  }
 
   const totalFixups = groups.reduce((acc, g) => acc + g.fixups.length, 0)
 
@@ -37,7 +48,7 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
     setIsRunning(true)
     setError(null)
     try {
-      await apiRunAutosquash(repoPath)
+      await apiRunAutosquash(repoPath, hiddenFixups)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
@@ -97,13 +108,24 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
                   <p className="truncate text-xs font-medium text-foreground">
                     {group.baseSubject}
                   </p>
-                  {group.fixups.map((sha) => (
+                  {group.fixups.map((fixup) => (
                     <div
-                      key={sha}
+                      key={fixup.oid}
                       className="flex items-center gap-2 pl-3 text-xs text-muted-foreground"
                     >
                       <span className="h-px w-3 bg-border" />
-                      <code className="font-mono">fixup! {sha}</code>
+                      <code className="flex-1 font-mono">fixup! {fixup.shortOid}</code>
+                      <Tooltip content={t('fixup.autosquash.skip')}>
+                        <button
+                          type="button"
+                          data-testid="autosquash-skip-fixup"
+                          aria-label={t('fixup.autosquash.skip')}
+                          className="shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                          onClick={() => handleSkip(fixup.oid)}
+                        >
+                          <EyeOff className="h-3 w-3" />
+                        </button>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>

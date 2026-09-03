@@ -78,10 +78,15 @@ export interface FixupInfo {
   targetSubject: string
 }
 
+export interface FixupRef {
+  oid: string
+  shortOid: string
+}
+
 export interface AutosquashGroup {
   baseOid: string
   baseSubject: string
-  fixups: string[]
+  fixups: FixupRef[]
 }
 
 export const createFixupCommit = (path: string, targetOid: string, message?: string) =>
@@ -109,10 +114,11 @@ export const checkFixupTarget = (path: string, targetOid: string) =>
 export const getPendingFixups = (path: string) =>
   invoke<FixupInfo[]>('get_pending_fixups', { path })
 
-export const autosquashPreview = (path: string) =>
-  invoke<AutosquashGroup[]>('autosquash_preview', { path })
+export const autosquashPreview = (path: string, excludeOids: string[] = []) =>
+  invoke<AutosquashGroup[]>('autosquash_preview', { path, excludeOids })
 
-export const runAutosquash = (path: string) => invoke<void>('run_autosquash', { path })
+export const runAutosquash = (path: string, excludeOids: string[] = []) =>
+  invoke<void>('run_autosquash', { path, excludeOids })
 
 // ─── Cherry-pick ──────────────────────────────────────────────────────────────
 

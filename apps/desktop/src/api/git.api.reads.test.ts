@@ -124,7 +124,7 @@ describe('stage/unstage — appEventBus interoperability', () => {
 
 describe('read-only pass-throughs', () => {
   it.each([
-    ['apiAutosquashPreview', 'autosquashPreview', [PATH]],
+    ['apiAutosquashPreview', 'autosquashPreview', [PATH, ['abc-full']]],
     ['apiGetPendingFixups', 'getPendingFixups', [PATH]],
     ['apiGetCommitsBetween', 'getCommitsBetween', [PATH, 'from', 'to']],
     ['apiCreatePatch', 'createPatch', [PATH, 'oid1', '/tmp/out.patch']],
