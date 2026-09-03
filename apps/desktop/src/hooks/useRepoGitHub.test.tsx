@@ -45,4 +45,13 @@ describe('useRepoGitHub', () => {
     expect(result.current.ownerRepo).toBeNull()
     expect(apiGetRemotes).not.toHaveBeenCalled()
   })
+
+  it('surfaces a failed remotes lookup as remotesError rather than swallowing it', async () => {
+    apiGetRemotes.mockRejectedValue(new Error('not a repo'))
+    const { result } = renderHook(() => useRepoGitHub('/local/path'), {
+      wrapper: wrapper(null),
+    })
+    await waitFor(() => expect(result.current.remotesError).toBeInstanceOf(Error))
+    expect(result.current.ownerRepo).toBeNull()
+  })
 })

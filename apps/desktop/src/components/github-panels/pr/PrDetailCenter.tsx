@@ -1,11 +1,12 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Tooltip } from '@git-manager/ui'
+import { Button, Spinner, Tooltip } from '@git-manager/ui'
 import {
   ChevronLeft,
   ExternalLink,
   GitPullRequest,
   PanelRightClose,
   PanelRightOpen,
+  TriangleAlert,
 } from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
@@ -32,7 +33,7 @@ interface PrDetailCenterProps {
  * The PR's changed files are a separate always-visible panel, not part of this view. */
 export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterProps) {
   const { t } = useTranslation('git')
-  const { pr, isLoading } = usePrDetail(repoPath, prNumber)
+  const { pr, isLoading, error, mutate } = usePrDetail(repoPath, prNumber)
   const { ownerRepo } = useRepoGitHub(repoPath)
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const togglePrFiles = useRepoUIStore((s) => s.togglePrFiles)
@@ -82,7 +83,20 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
         </Tooltip>
       </div>
 
-      {isLoading || !pr ? (
+      {error && !pr ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+          <TriangleAlert className="h-4 w-4 text-tone-danger" />
+          <span className="text-xs text-muted-foreground">{t('pr.view.error')}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => mutate()}
+            data-testid="pr-detail-retry"
+          >
+            {t('pr.view.retry')}
+          </Button>
+        </div>
+      ) : isLoading || !pr ? (
         <div className="flex flex-1 items-center justify-center gap-2">
           <Spinner className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{t('pr.view.loading')}</span>

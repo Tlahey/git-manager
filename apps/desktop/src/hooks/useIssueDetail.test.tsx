@@ -45,4 +45,30 @@ describe('useIssueDetail', () => {
     renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
   })
+
+  it('surfaces a remotes-resolution error instead of hanging with no signal', () => {
+    mocked.useRepoGitHub.mockReturnValue({
+      ownerRepo: null,
+      accountId: 'acct',
+      remotesError: new Error('could not read remotes'),
+      isResolvingRemotes: false,
+    })
+    const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
+    expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeInstanceOf(Error)
+  })
+
+  it('reports a "no GitHub remote" error once resolution settles with nothing found', () => {
+    mocked.useRepoGitHub.mockReturnValue({
+      ownerRepo: null,
+      accountId: 'acct',
+      remotesError: undefined,
+      isResolvingRemotes: false,
+    })
+    const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
+    expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeInstanceOf(Error)
+  })
 })

@@ -13,7 +13,7 @@ export function usePrDetail(
   error: unknown
   mutate: () => void
 } {
-  const { ownerRepo, accountId } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId, remotesError, isResolvingRemotes } = useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
     prNumber != null && ownerRepo && accountId
@@ -27,5 +27,16 @@ export function usePrDetail(
     { revalidateOnFocus: false, refreshInterval: 30_000 }
   )
 
-  return { pr: data, isLoading, error, mutate: () => void mutate() }
+  // `ownerRepo` resolves asynchronously from the repo's remotes; once that lookup has settled with
+  // no GitHub remote found, the SWR key above stays `null` forever and this fetch never even starts
+  // — so without this, `isLoading`/`error` would both stay falsy and the caller spins indefinitely.
+  const noGitHubRemote = prNumber != null && !!accountId && !isResolvingRemotes && !ownerRepo
+
+  return {
+    pr: data,
+    isLoading: isLoading || (prNumber != null && !!accountId && isResolvingRemotes),
+    error:
+      remotesError ?? error ?? (noGitHubRemote ? new Error('No GitHub remote found') : undefined),
+    mutate: () => void mutate(),
+  }
 }
