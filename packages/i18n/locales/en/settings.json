@@ -151,6 +151,7 @@
   "settings.github.patPlaceholder": "Enter your Personal Access Token (PAT)",
   "settings.github.addPatButton": "Add token",
   "settings.github.patLabel": "PAT Token",
+  "settings.github.patScopeHint": "On an organization repository, prefer a fine-grained token scoped to just that repository, with Contents (read-only), Issues (read and write), Pull requests (read and write) and Checks (read-only) — unlike the \"Login\" button above, this avoids requesting full access to every private repository the account can see.",
   "settings.github.backToAuthOptions": "Back to options",
   "settings.github.openOnGitHub": "Open on GitHub",
   "settings.ssh.pickPrivateTitle": "Select SSH private key",

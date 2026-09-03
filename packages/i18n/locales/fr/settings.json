@@ -151,6 +151,7 @@
   "settings.github.patPlaceholder": "Saisir votre token PAT (Personal Access Token)",
   "settings.github.addPatButton": "Ajouter le token",
   "settings.github.patLabel": "Token PAT",
+  "settings.github.patScopeHint": "Sur un dépôt d'entreprise, préférez un token fine-grained limité à ce seul dépôt, avec les permissions Contents (lecture seule), Issues (lecture et écriture), Pull requests (lecture et écriture) et Checks (lecture seule) — contrairement au bouton « Connexion » ci-dessus, cela évite de demander l'accès complet à tous les dépôts privés visibles par le compte.",
   "settings.github.backToAuthOptions": "Retour aux options",
   "settings.github.openOnGitHub": "Ouvrir sur GitHub",
   "settings.ssh.pickPrivateTitle": "Sélectionner la clé privée SSH",
