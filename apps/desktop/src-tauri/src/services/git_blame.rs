@@ -179,9 +179,18 @@ pub fn file_history(
                 repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), Some(&mut opts))
                     .ok()
                     .and_then(|d| {
-                        d.deltas()
-                            .next()
-                            .map(|delta| delta_status_label(delta.status()))
+                        d.deltas().next().and_then(|delta| {
+                            // A delta whose blob id is unchanged (e.g. a `chmod` that only flips the
+                            // mode bit) isn't a real change to the file's content — counting it as
+                            // "the last commit that touched this file" would make the diff viewer's
+                            // unmodified-file fallback compare a commit against itself (see git-manager
+                            // issue: Diff tab showing identical content for an unmodified file).
+                            if delta.old_file().id() == delta.new_file().id() {
+                                None
+                            } else {
+                                Some(delta_status_label(delta.status()))
+                            }
+                        })
                     })
             } else {
                 None
@@ -215,8 +224,9 @@ pub fn file_history(
 
 #[cfg(test)]
 mod tests {
-    use super::{delta_status_label, summary_and_body};
-    use git2::Delta;
+    use super::{delta_status_label, file_history, summary_and_body};
+    use crate::utils::get_git_signature;
+    use git2::{Delta, Repository};
 
     #[test]
     fn maps_delta_statuses() {
@@ -247,5 +257,47 @@ mod tests {
         let (summary, body) = summary_and_body("");
         assert_eq!(summary, "");
         assert_eq!(body, "");
+    }
+
+    #[test]
+    fn mode_only_commit_is_not_counted_as_a_content_change() {
+        let dir = std::env::temp_dir().join(format!(
+            "gm-test-file-history-mode-only-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        let sig = get_git_signature(&repo).unwrap();
+
+        let blob = repo.blob(b"hello").unwrap();
+        let mut tb1 = repo.treebuilder(None).unwrap();
+        tb1.insert("a.txt", blob, 0o100644).unwrap();
+        let tree1 = repo.find_tree(tb1.write().unwrap()).unwrap();
+        let c1 = repo
+            .commit(Some("HEAD"), &sig, &sig, "add a.txt", &tree1, &[])
+            .unwrap();
+
+        // Same blob, mode flipped to executable: a real tree delta with no content change.
+        let mut tb2 = repo.treebuilder(None).unwrap();
+        tb2.insert("a.txt", blob, 0o100755).unwrap();
+        let tree2 = repo.find_tree(tb2.write().unwrap()).unwrap();
+        let parent1 = repo.find_commit(c1).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "chmod +x", &tree2, &[&parent1])
+            .unwrap();
+
+        let repo = Repository::open(&dir).unwrap();
+        let history = file_history(&repo, "a.txt", None).unwrap();
+        assert_eq!(
+            history.len(),
+            1,
+            "the mode-only commit must not appear in file history: {history:?}"
+        );
+        assert_eq!(history[0].oid, c1.to_string());
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
