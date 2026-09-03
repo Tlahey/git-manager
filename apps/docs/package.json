@@ -15,7 +15,7 @@
     "clean": "rm -rf .vitepress/dist .vitepress/cache .vitepress/sidebar.json .vitepress/landing-css.json docs/features public"
   },
   "devDependencies": {
-    "@cucumber/gherkin": "^42.0.0",
+    "@cucumber/gherkin": "^42.0.1",
     "@cucumber/messages": "^34.2.1",
     "@git-manager/config": "workspace:*",
     "@types/node": "catalog:",
