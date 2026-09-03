@@ -118,6 +118,9 @@ export function GithubLoginForm({
               <li>{t('settings.github.patScopeHintPullRequests')}</li>
               <li>{t('settings.github.patScopeHintCommitStatuses')}</li>
             </ul>
+            <p className="text-xs leading-relaxed text-muted-foreground/80 italic">
+              {t('settings.github.patScopeHintChecksGap')}
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">

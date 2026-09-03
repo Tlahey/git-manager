@@ -156,6 +156,7 @@
   "settings.github.patScopeHintIssues": "Issues — Read and write",
   "settings.github.patScopeHintPullRequests": "Pull requests — Read and write",
   "settings.github.patScopeHintCommitStatuses": "Commit statuses — Read-only",
+  "settings.github.patScopeHintChecksGap": "GitHub does not yet support the Checks API for fine-grained tokens at all, so GitHub Actions check runs won't show up with this token — the combined commit status still will. Use the \"Login\" button above if you need check runs too.",
   "settings.github.backToAuthOptions": "Back to options",
   "settings.github.openOnGitHub": "Open on GitHub",
   "settings.ssh.pickPrivateTitle": "Select SSH private key",

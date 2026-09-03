@@ -156,6 +156,7 @@
   "settings.github.patScopeHintIssues": "Issues — Lecture et écriture",
   "settings.github.patScopeHintPullRequests": "Pull requests — Lecture et écriture",
   "settings.github.patScopeHintCommitStatuses": "Commit statuses — Lecture seule",
+  "settings.github.patScopeHintChecksGap": "GitHub ne prend pas encore en charge l'API Checks pour les tokens fine-grained, quelle que soit la permission cochée : les check-runs GitHub Actions n'apparaîtront pas avec ce token — le statut combiné du commit, lui, restera visible. Utilisez le bouton « Connexion » ci-dessus si vous avez aussi besoin des check-runs.",
   "settings.github.backToAuthOptions": "Retour aux options",
   "settings.github.openOnGitHub": "Ouvrir sur GitHub",
   "settings.ssh.pickPrivateTitle": "Sélectionner la clé privée SSH",
