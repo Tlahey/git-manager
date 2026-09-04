@@ -68,9 +68,25 @@ export interface GhRequestOptions {
  */
 export async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T> {
   const { method = 'GET', body, accountId, accept } = opts
-  const res = await githubApiRequest({ accountId, url, method, body, accept })
+  // Rust *rejects* (rather than answering with `ok: false`) when it cannot even build the request —
+  // the "no credential is stored for this account" case being the one that matters, since the UI
+  // reads the account list from settings and so goes on showing the account as connected. Several
+  // callers turn a rejection into an empty list, so without this line that failure reaches the user
+  // as "you have no pull requests" and leaves nothing behind to contradict it.
+  let res
+  try {
+    res = await githubApiRequest({ accountId, url, method, body, accept })
+  } catch (e) {
+    console.error(
+      `[github] ${method} ${url} failed before reaching GitHub (account: ${accountId ?? 'anonymous'})`,
+      e
+    )
+    throw e
+  }
   if (!res.ok) {
-    throw new Error(`GitHub API ${res.status}${describeError(res.body)}`)
+    const message = `GitHub API ${res.status}${describeError(res.body)}`
+    console.warn(`[github] ${method} ${url} (account: ${accountId ?? 'anonymous'}) — ${message}`)
+    throw new Error(message)
   }
   return parseBody<T>(res.body)
 }

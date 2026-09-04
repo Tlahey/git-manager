@@ -55,30 +55,42 @@ describe('PrDetailCenter', () => {
     usePrDetailMock.mockReturnValue({
       pr: undefined,
       isLoading: true,
-      error: null,
+      failure: undefined,
       mutate: vi.fn(),
     })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
     expect(screen.getByText('pr.view.loading')).toBeInTheDocument()
   })
 
-  it('shows an error state with a retry button instead of hanging when the fetch fails', async () => {
+  it('shows the failure and its underlying cause instead of hanging when the fetch fails', async () => {
     const mutate = vi.fn()
     usePrDetailMock.mockReturnValue({
       pr: undefined,
       isLoading: false,
-      error: new Error('boom'),
+      failure: {
+        reason: 'fetch',
+        cause: new Error("No github credential is stored for 'octocat'."),
+      },
       mutate,
     })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
-    expect(screen.getByText('pr.view.error')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-detail-failure')).toBeInTheDocument()
     expect(screen.queryByText('pr.view.loading')).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByTestId('pr-detail-retry'))
+    // The cause is the whole answer to "why is this empty?" — it must reach the screen.
+    expect(screen.getByTestId('pr-detail-failure-detail')).toHaveTextContent(
+      "No github credential is stored for 'octocat'."
+    )
+    await userEvent.setup().click(screen.getByTestId('pr-detail-failure-retry'))
     expect(mutate).toHaveBeenCalled()
   })
 
   it('renders the PR title, meta, description and merge/comment blocks', () => {
-    usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false, error: null, mutate: vi.fn() })
+    usePrDetailMock.mockReturnValue({
+      pr: pr(),
+      isLoading: false,
+      failure: undefined,
+      mutate: vi.fn(),
+    })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
     expect(screen.getByTestId('pr-title')).toHaveTextContent('Add feature')
     expect(screen.getByText('Hello')).toBeInTheDocument()
@@ -90,7 +102,12 @@ describe('PrDetailCenter', () => {
 
   it('toggles the files panel from the header button', async () => {
     useRepoUIStore.setState({ prFilesVisible: true })
-    usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false, error: null, mutate: vi.fn() })
+    usePrDetailMock.mockReturnValue({
+      pr: pr(),
+      isLoading: false,
+      failure: undefined,
+      mutate: vi.fn(),
+    })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
     await userEvent.setup().click(screen.getByTestId('pr-toggle-files'))
     expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
@@ -101,7 +118,7 @@ describe('PrDetailCenter', () => {
     usePrDetailMock.mockReturnValue({
       pr: pr({ body: '' }),
       isLoading: false,
-      error: null,
+      failure: undefined,
       mutate: vi.fn(),
     })
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={onClose} />)
@@ -113,7 +130,7 @@ describe('PrDetailCenter', () => {
     usePrDetailMock.mockReturnValue({
       pr: pr({ html_url: 'https://github.com/owner/repo/pull/7' }),
       isLoading: false,
-      error: null,
+      failure: undefined,
       mutate: vi.fn(),
     })
     render(<PrDetailCenter repoPath="owner/repo" prNumber={7} onClose={vi.fn()} />)

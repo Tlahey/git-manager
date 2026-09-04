@@ -64,7 +64,12 @@ function issue(): MockIssue {
 }
 
 function mockDetail(issueRaw: GhRawIssue | undefined, isLoading = false) {
-  mockedDetail.mockReturnValue({ issue: issueRaw, isLoading, error: null, refresh: vi.fn() })
+  mockedDetail.mockReturnValue({
+    issue: issueRaw,
+    isLoading,
+    failure: undefined,
+    refresh: vi.fn(),
+  })
 }
 
 function renderCenter(onClose = vi.fn()) {
@@ -82,20 +87,40 @@ describe('IssueDetailCenter', () => {
     expect(screen.getByText('Loading issue…')).toBeInTheDocument()
   })
 
-  it('shows an error state with a retry button instead of hanging when the fetch fails', async () => {
+  it('shows the failure and its underlying cause instead of hanging when the fetch fails', async () => {
     const user = userEvent.setup()
     const refresh = vi.fn()
     mockedDetail.mockReturnValue({
       issue: undefined,
       isLoading: false,
-      error: new Error('boom'),
+      failure: {
+        reason: 'fetch',
+        cause: new Error("No github credential is stored for 'octocat'."),
+      },
       refresh,
     })
     renderCenter()
-    expect(screen.getByText("Couldn't load this issue.")).toBeInTheDocument()
+    expect(screen.getByText("Couldn't load this from GitHub.")).toBeInTheDocument()
     expect(screen.queryByText('Loading issue…')).not.toBeInTheDocument()
-    await user.click(screen.getByTestId('issue-detail-retry'))
+    // The cause is the whole answer to "why is this empty?" — it must reach the screen.
+    expect(screen.getByTestId('issue-detail-failure-detail')).toHaveTextContent(
+      "No github credential is stored for 'octocat'."
+    )
+    await user.click(screen.getByTestId('issue-detail-failure-retry'))
     expect(refresh).toHaveBeenCalled()
+  })
+
+  it('names the missing account rather than a generic failure when none is connected', () => {
+    mockedDetail.mockReturnValue({
+      issue: undefined,
+      isLoading: false,
+      failure: { reason: 'no-account' },
+      refresh: vi.fn(),
+    })
+    renderCenter()
+    expect(
+      screen.getByText('No GitHub account is connected. Connect one in Settings.')
+    ).toBeInTheDocument()
   })
 
   it('renders the title, body, state, the comment thread and the metadata sidebar', () => {
