@@ -1,5 +1,6 @@
-import { ChevronLeft, CircleDot, CircleCheck, ExternalLink, TriangleAlert } from 'lucide-react'
-import { Button, Spinner } from '@git-manager/ui'
+import { ChevronLeft, CircleDot, CircleCheck, ExternalLink } from 'lucide-react'
+import { Spinner } from '@git-manager/ui'
+import { GithubDetailFailureState } from '../GithubDetailFailureState'
 import { useTranslation } from '@git-manager/i18n'
 import { PrComments } from '../pr/PrComments'
 import { PrCommentBox } from '../pr/PrCommentBox'
@@ -34,7 +35,7 @@ export function IssueDetailCenter({
   onChanged,
 }: IssueDetailCenterProps) {
   const { t, i18n } = useTranslation('git')
-  const { issue: detail, isLoading, error, refresh } = useIssueDetail(repoPath, issueNumber)
+  const { issue: detail, isLoading, failure, refresh } = useIssueDetail(repoPath, issueNumber)
   const { ownerRepo } = useRepoGitHub(repoPath)
   const isOpen = detail?.state === 'open'
 
@@ -67,19 +68,12 @@ export function IssueDetailCenter({
         </button>
       </div>
 
-      {error && !detail ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <TriangleAlert className="h-4 w-4 text-tone-danger" />
-          <span className="text-xs text-muted-foreground">{t('issue.view.error')}</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => refresh()}
-            data-testid="issue-detail-retry"
-          >
-            {t('issue.view.retry')}
-          </Button>
-        </div>
+      {failure && !detail ? (
+        <GithubDetailFailureState
+          failure={failure}
+          onRetry={refresh}
+          testId="issue-detail-failure"
+        />
       ) : isLoading || !detail ? (
         <div className="flex flex-1 items-center justify-center gap-2">
           <Spinner className="h-4 w-4 text-muted-foreground" />

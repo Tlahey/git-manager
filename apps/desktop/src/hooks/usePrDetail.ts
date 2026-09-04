@@ -1,6 +1,7 @@
 import useSWR from 'swr'
 import { fetchGitHubPRDetails, type GhRawPR } from '../api/github.api'
 import { useRepoGitHub } from './useRepoGitHub'
+import { resolveGithubDetailState, type GithubDetailFailure } from './githubDetailState'
 
 /** Full details of one pull request (body, mergeable state, head SHA, counts…). Refetches on a
  * modest interval so CI/mergeability stay reasonably fresh while the PR view is open. */
@@ -10,10 +11,12 @@ export function usePrDetail(
 ): {
   pr: GhRawPR | undefined
   isLoading: boolean
-  error: unknown
+  /** Why there is nothing to show — see {@link resolveGithubDetailState}. */
+  failure: GithubDetailFailure | undefined
   mutate: () => void
 } {
-  const { ownerRepo, accountId, remotesError, isResolvingRemotes } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId, remotesError, isResolvingRemotes, retryRemotes } =
+    useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
     prNumber != null && ownerRepo && accountId
@@ -27,16 +30,25 @@ export function usePrDetail(
     { revalidateOnFocus: false, refreshInterval: 30_000 }
   )
 
-  // `ownerRepo` resolves asynchronously from the repo's remotes; once that lookup has settled with
-  // no GitHub remote found, the SWR key above stays `null` forever and this fetch never even starts
-  // — so without this, `isLoading`/`error` would both stay falsy and the caller spins indefinitely.
-  const noGitHubRemote = prNumber != null && !!accountId && !isResolvingRemotes && !ownerRepo
+  const { isLoading: gateLoading, failure } = resolveGithubDetailState({
+    enabled: prNumber != null,
+    accountId,
+    ownerRepo,
+    isResolvingRemotes,
+    remotesError,
+    isFetching: isLoading,
+    fetchError: error,
+  })
 
   return {
     pr: data,
-    isLoading: isLoading || (prNumber != null && !!accountId && isResolvingRemotes),
-    error:
-      remotesError ?? error ?? (noGitHubRemote ? new Error('No GitHub remote found') : undefined),
-    mutate: () => void mutate(),
+    isLoading: gateLoading,
+    failure,
+    // Retries the remotes lookup too: when that is what failed, the SWR key above is null and
+    // `mutate()` alone would revalidate nothing.
+    mutate: () => {
+      retryRemotes()
+      void mutate()
+    },
   }
 }

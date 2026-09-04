@@ -1,6 +1,7 @@
 import useSWR from 'swr'
 import { fetchIssueDetail, type GhRawIssue } from '../api/github.api'
 import { useRepoGitHub } from './useRepoGitHub'
+import { resolveGithubDetailState, type GithubDetailFailure } from './githubDetailState'
 
 /**
  * Full details of one issue (body, state, labels, assignees) for the in-app issue panel. Resolves
@@ -14,10 +15,12 @@ export function useIssueDetail(
 ): {
   issue: GhRawIssue | undefined
   isLoading: boolean
-  error: unknown
+  /** Why there is nothing to show — see {@link resolveGithubDetailState}. */
+  failure: GithubDetailFailure | undefined
   refresh: () => void
 } {
-  const { ownerRepo, accountId, remotesError, isResolvingRemotes } = useRepoGitHub(repoPath)
+  const { ownerRepo, accountId, remotesError, isResolvingRemotes, retryRemotes } =
+    useRepoGitHub(repoPath)
 
   const { data, isLoading, error, mutate } = useSWR(
     issueNumber != null && ownerRepo && accountId
@@ -33,16 +36,25 @@ export function useIssueDetail(
     { revalidateOnFocus: false, refreshInterval: 60_000 }
   )
 
-  // `ownerRepo` resolves asynchronously from the repo's remotes; once that lookup has settled with
-  // no GitHub remote found, the SWR key above stays `null` forever and this fetch never even starts
-  // — so without this, `isLoading`/`error` would both stay falsy and the caller spins indefinitely.
-  const noGitHubRemote = issueNumber != null && !!accountId && !isResolvingRemotes && !ownerRepo
+  const { isLoading: gateLoading, failure } = resolveGithubDetailState({
+    enabled: issueNumber != null,
+    accountId,
+    ownerRepo,
+    isResolvingRemotes,
+    remotesError,
+    isFetching: isLoading,
+    fetchError: error,
+  })
 
   return {
     issue: data,
-    isLoading: isLoading || (issueNumber != null && !!accountId && isResolvingRemotes),
-    error:
-      remotesError ?? error ?? (noGitHubRemote ? new Error('No GitHub remote found') : undefined),
-    refresh: () => void mutate(),
+    isLoading: gateLoading,
+    failure,
+    // Retries the remotes lookup too: when that is what failed, the SWR key above is null and
+    // `mutate()` alone would revalidate nothing.
+    refresh: () => {
+      retryRemotes()
+      void mutate()
+    },
   }
 }

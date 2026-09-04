@@ -35,6 +35,13 @@ export function useRepoGitHub(repoPath: string | null): {
   remotesError: unknown
   /** True while the remotes lookup itself is in flight (irrelevant when `override` is set). */
   isResolvingRemotes: boolean
+  /**
+   * Re-runs the remotes lookup. A consumer's own "retry" is otherwise a no-op in the case that
+   * needs it most: when resolution failed, `ownerRepo` is null, so the consumer's SWR key is null
+   * too, and `mutate()` on a null key revalidates nothing at all. `revalidateIfStale: false` above
+   * also means a cached failure would never be reconsidered on its own.
+   */
+  retryRemotes: () => void
 } {
   const override = useContext(RepoGitHubOverrideContext)
   const githubSettings = useSettingsStore((s) => s.settings.github)
@@ -46,6 +53,7 @@ export function useRepoGitHub(repoPath: string | null): {
     data: remotes,
     error: remotesError,
     isLoading: isResolvingRemotes,
+    mutate: revalidateRemotes,
   } = useSWR(
     !override && repoPath ? ['repo-remotes', repoPath] : null,
     () => apiGetRemotes(repoPath as string),
@@ -53,5 +61,11 @@ export function useRepoGitHub(repoPath: string | null): {
   )
 
   const ownerRepo = override ?? (remotes ? firstGitHubOwnerRepo(remotes.map((r) => r.url)) : null)
-  return { ownerRepo, accountId, remotesError, isResolvingRemotes }
+  return {
+    ownerRepo,
+    accountId,
+    remotesError,
+    isResolvingRemotes,
+    retryRemotes: () => void revalidateRemotes(),
+  }
 }

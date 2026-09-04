@@ -106,7 +106,10 @@ pub async fn request(
     guard_url(url)?;
     let effective_url = e2e_redirect(url);
 
-    let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
+    // Kept as its own `String` because the `Method` below is moved into the request builder, and
+    // every log line here still needs to name the verb.
+    let verb = method.to_uppercase();
+    let method = reqwest::Method::from_bytes(verb.as_bytes())
         .map_err(|_| AppError::InvalidInput(format!("Unsupported HTTP method: {method}")))?;
 
     let mut req = http_client(30)?
@@ -115,7 +118,10 @@ pub async fn request(
         .header("User-Agent", USER_AGENT);
 
     if let Some(id) = account_id.filter(|id| !id.is_empty()) {
-        let token = credential_store::require_secret(CredentialKind::GitHub, id)?;
+        let token =
+            credential_store::require_secret(CredentialKind::GitHub, id).inspect_err(|e| {
+                eprintln!("[GitHub API] {verb} {url} — no usable credential for '{id}': {e}")
+            })?;
         req = req.header("Authorization", format!("Bearer {token}"));
     }
 
@@ -123,9 +129,26 @@ pub async fn request(
         req = req.json(&payload);
     }
 
-    let res = req.send().await.map_err(AppError::Http)?;
+    let res = req
+        .send()
+        .await
+        .inspect_err(|e| eprintln!("[GitHub API] {verb} {url} — transport error: {e}"))
+        .map_err(AppError::Http)?;
     let status = res.status();
     let text = res.text().await.map_err(AppError::Http)?;
+
+    // A non-2xx is a legitimate answer here (a 404 from the releases endpoint means "no release"),
+    // so it is still returned rather than raised — but it is logged, because the frontend turns some
+    // of these into an empty list, and an unauthenticated 401 that reads as "nothing to show" is
+    // exactly the kind of failure that otherwise leaves no trace anywhere.
+    if !status.is_success() {
+        let anon = if account_id.is_some_and(|id| !id.is_empty()) {
+            ""
+        } else {
+            " (anonymous request)"
+        };
+        eprintln!("[GitHub API] {verb} {url} — HTTP {status}{anon}");
+    }
 
     Ok(GithubApiResponse {
         status: status.as_u16(),
