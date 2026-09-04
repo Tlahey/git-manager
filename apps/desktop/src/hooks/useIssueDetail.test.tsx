@@ -21,6 +21,14 @@ function wrapper({ children }: { children: ReactNode }) {
   )
 }
 
+const base = {
+  ownerRepo: { owner: 'org', repo: 'repo' } as { owner: string; repo: string } | null,
+  accountId: 'acct' as string | null,
+  remotesError: undefined as unknown,
+  isResolvingRemotes: false,
+  retryRemotes: () => {},
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocked.fetchIssueDetail.mockResolvedValue({ number: 7, body: 'hi' })
@@ -28,47 +36,51 @@ beforeEach(() => {
 
 describe('useIssueDetail', () => {
   it('fetches when owner/repo + accountId + number are known', async () => {
-    mocked.useRepoGitHub.mockReturnValue({
-      ownerRepo: { owner: 'org', repo: 'repo' },
-      accountId: 'acct',
-    })
+    mocked.useRepoGitHub.mockReturnValue({ ...base })
     const { result } = renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     await waitFor(() => expect(result.current.issue?.body).toBe('hi'))
     expect(mocked.fetchIssueDetail).toHaveBeenCalledWith('org', 'repo', 7, 'acct')
   })
 
   it('does not fetch without a accountId', () => {
-    mocked.useRepoGitHub.mockReturnValue({
-      ownerRepo: { owner: 'org', repo: 'repo' },
-      accountId: null,
-    })
+    mocked.useRepoGitHub.mockReturnValue({ ...base, accountId: null })
     renderHook(() => useIssueDetail('org/repo', 7), { wrapper })
     expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
   })
 
-  it('surfaces a remotes-resolution error instead of hanging with no signal', () => {
+  it('surfaces a remotes-resolution failure instead of hanging with no signal', () => {
     mocked.useRepoGitHub.mockReturnValue({
+      ...base,
       ownerRepo: null,
-      accountId: 'acct',
       remotesError: new Error('could not read remotes'),
-      isResolvingRemotes: false,
     })
     const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
     expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.failure).toEqual({ reason: 'remotes', cause: expect.any(Error) })
   })
 
-  it('reports a "no GitHub remote" error once resolution settles with nothing found', () => {
-    mocked.useRepoGitHub.mockReturnValue({
-      ownerRepo: null,
-      accountId: 'acct',
-      remotesError: undefined,
-      isResolvingRemotes: false,
-    })
+  it('reports a "no GitHub remote" failure once resolution settles with nothing found', () => {
+    mocked.useRepoGitHub.mockReturnValue({ ...base, ownerRepo: null })
     const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
     expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.failure).toEqual({ reason: 'no-github-remote' })
+  })
+
+  it('reports a "no account" failure rather than spinning when no account is connected', () => {
+    mocked.useRepoGitHub.mockReturnValue({ ...base, accountId: null })
+    const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
+    expect(mocked.fetchIssueDetail).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.failure).toEqual({ reason: 'no-account' })
+  })
+
+  it('retries the remotes lookup too, since a null SWR key makes mutate() a no-op', () => {
+    const retryRemotes = vi.fn()
+    mocked.useRepoGitHub.mockReturnValue({ ...base, ownerRepo: null, retryRemotes })
+    const { result } = renderHook(() => useIssueDetail('/repo', 7), { wrapper })
+    result.current.refresh()
+    expect(retryRemotes).toHaveBeenCalled()
   })
 })
