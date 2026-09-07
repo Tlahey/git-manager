@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
 import { useGithubAccount } from '../../../hooks/useGithubAccount'
+import { useGithubPollInterval } from '../../../hooks/useGithubPollInterval'
 import { fetchPullRequestsByQuery } from '../../../api/github.api'
 import { firstGitHubOwnerRepo } from '../../../lib/githubRemote'
 import type { PrFilter } from '../stores/prFilters.store'
@@ -86,6 +87,11 @@ export function useRepoPrFilters({
         ] as const)
       : null
 
+  // One `search/issues` call *per saved filter*, and search is the tight bucket (30 a minute, not
+  // 5000 an hour) — so this is the hook most likely to be throttled, and the one where throttling
+  // costs least: a saved filter is a list, not a live view.
+  const refreshInterval = useGithubPollInterval(60_000, resolvedAccountId, 'search')
+
   const { data, error, mutate } = useSWR<PrFilterGroup[], Error>(
     swrKey,
     async () => {
@@ -101,7 +107,7 @@ export function useRepoPrFilters({
         })
       )
     },
-    { refreshInterval: 60_000, dedupingInterval: 10_000 }
+    { refreshInterval, dedupingInterval: 10_000 }
   )
 
   const knownByNumber = useMemo(() => new Map(knownPrs.map((pr) => [pr.number, pr])), [knownPrs])

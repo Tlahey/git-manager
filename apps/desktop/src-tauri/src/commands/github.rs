@@ -11,6 +11,7 @@
 use crate::error::AppError;
 use crate::services::credential_store::{self, CredentialKind};
 use crate::services::github_api::{self, GitHubUserInfo, GithubApiResponse};
+use crate::services::github_etag_cache;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -152,9 +153,14 @@ pub async fn github_connect_token(token: String) -> Result<GitHubUserInfo, Strin
 
 /// Forgets an account's token. The account's public half is removed from the settings by the
 /// frontend; this is the half it cannot reach.
+///
+/// The conditional-request cache goes with it: its entries are response *bodies* fetched as this
+/// account, and leaving them behind would let a different token reconnected under the same login
+/// inherit them.
 #[tauri::command]
 pub fn github_disconnect_account(account_id: String) -> Result<(), String> {
     credential_store::delete_secret(CredentialKind::GitHub, &account_id)?;
+    github_etag_cache::forget_account(&account_id);
     Ok(())
 }
 

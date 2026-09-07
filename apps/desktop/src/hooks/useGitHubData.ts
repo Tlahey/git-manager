@@ -14,6 +14,7 @@ import {
   parsePRStatus,
 } from '../api/github.api'
 import { resolveCiStatus } from '../lib/ciStatus'
+import { useGithubPollInterval } from './useGithubPollInterval'
 
 interface GitHubData {
   prs: MockPR[]
@@ -55,6 +56,12 @@ export function useGitHubData(): GitHubData {
   )
 
   const swrKey = hasAccount ? ['github-data', accountId, username] : null
+
+  // The app's single biggest spender, and the only one mounted for the whole session (`App.tsx` →
+  // `useNotificationWatcher`): two searches, three REST calls per pull request and one GraphQL query
+  // every minute. All three buckets are named because a refusal on any of them stops the refresh at
+  // its first step.
+  const refreshInterval = useGithubPollInterval(60_000, accountId, ['search', 'core', 'graphql'])
 
   const { data, error, mutate, isValidating } = useSWR(
     swrKey,
@@ -147,7 +154,7 @@ export function useGitHubData(): GitHubData {
       }
     },
     {
-      refreshInterval: 60_000,
+      refreshInterval,
       revalidateOnFocus: false,
       dedupingInterval: 10_000,
     }

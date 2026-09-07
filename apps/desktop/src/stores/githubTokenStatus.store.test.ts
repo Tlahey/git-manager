@@ -10,7 +10,17 @@ const CHALLENGE: GithubSsoChallenge = {
 }
 
 function response(over: Partial<GithubApiResponse> = {}): GithubApiResponse {
-  return { status: 200, ok: true, body: '{}', sso: null, tokenExpiresAt: null, ...over }
+  return {
+    status: 200,
+    ok: true,
+    body: '{}',
+    sso: null,
+    tokenExpiresAt: null,
+    rateLimit: null,
+    retryAfterSecs: null,
+    fromCache: false,
+    ...over,
+  }
 }
 
 function connect(id: string, tokenExpiresAt: string | null = null) {

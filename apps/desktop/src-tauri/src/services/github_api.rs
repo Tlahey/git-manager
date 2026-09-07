@@ -16,6 +16,8 @@
 
 use crate::error::AppError;
 use crate::services::credential_store::{self, CredentialKind};
+use crate::services::github_etag_cache;
+use crate::services::github_rate_limit::{parse_rate_limit, parse_retry_after, GitHubRateLimit};
 use crate::services::github_token_status::{
     parse_sso_header, parse_token_expiration, GitHubSsoChallenge,
 };
@@ -37,6 +39,15 @@ const SSO_HEADER: &str = "x-github-sso";
 /// When the personal access token that signed this request expires.
 const TOKEN_EXPIRATION_HEADER: &str = "github-authentication-token-expiration";
 
+/// How much of the quota is left — see `github_rate_limit`.
+const RATE_LIMIT_HEADER: &str = "x-ratelimit-limit";
+const RATE_REMAINING_HEADER: &str = "x-ratelimit-remaining";
+const RATE_RESET_HEADER: &str = "x-ratelimit-reset";
+const RATE_RESOURCE_HEADER: &str = "x-ratelimit-resource";
+
+/// How long GitHub asks the app to wait after a secondary rate limit.
+const RETRY_AFTER_HEADER: &str = "retry-after";
+
 pub fn http_client(timeout_secs: u64) -> Result<Client, AppError> {
     Client::builder()
         .timeout(std::time::Duration::from_secs(timeout_secs))
@@ -57,12 +68,21 @@ pub struct GithubApiResponse {
     pub body: String,
     /// GitHub's SAML single-sign-on verdict on this request, when it gave one.
     ///
-    /// Two *named* headers are surfaced here, not the whole header map: a caller that could read any
+    /// *Named* headers are surfaced here, not the whole header map: a caller that could read any
     /// response header could read `Set-Cookie` too, and widening this to "the headers" would be a
-    /// decision made by accident rather than in a diff.
+    /// decision made by accident rather than in a diff. Adding one is a line in this struct.
     pub sso: Option<GitHubSsoChallenge>,
     /// RFC 3339 expiry of the token that signed this request — see `github_token_status`.
     pub token_expires_at: Option<String>,
+    /// How much of the quota this request's bucket has left — see `github_rate_limit`.
+    pub rate_limit: Option<GitHubRateLimit>,
+    /// Seconds GitHub asked the app to wait before retrying, on the responses that ask.
+    pub retry_after_secs: Option<u64>,
+    /// `true` when GitHub answered `304 Not Modified` and the body below came from
+    /// `github_etag_cache` rather than the wire. The data is identical either way — this says only
+    /// that the request cost nothing against the quota, which is what makes the saving observable
+    /// instead of a claim.
+    pub from_cache: bool,
 }
 
 /// Reads the two credential-status headers off a response — see `github_token_status`.
@@ -71,6 +91,20 @@ fn read_token_status(headers: &HeaderMap) -> (Option<GitHubSsoChallenge>, Option
     (
         header(SSO_HEADER).and_then(parse_sso_header),
         header(TOKEN_EXPIRATION_HEADER).and_then(parse_token_expiration),
+    )
+}
+
+/// Reads the quota headers off a response — see `github_rate_limit`.
+fn read_rate_limit(headers: &HeaderMap) -> (Option<GitHubRateLimit>, Option<u64>) {
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    (
+        parse_rate_limit(
+            header(RATE_LIMIT_HEADER),
+            header(RATE_REMAINING_HEADER),
+            header(RATE_RESET_HEADER),
+            header(RATE_RESOURCE_HEADER),
+        ),
+        header(RETRY_AFTER_HEADER).and_then(parse_retry_after),
     )
 }
 
@@ -123,6 +157,11 @@ fn e2e_redirect(url: &str) -> String {
 /// A non-2xx status is returned, not raised. GitHub answers perfectly ordinary questions with an
 /// error status — a 404 from the releases endpoint means "this tag has no release" — so judging the
 /// status is the caller's job, exactly as it was when the caller held a `Response`.
+///
+/// A `GET` is sent conditionally when the same request has been answered before: see
+/// `github_etag_cache` for why, and for the guarantee that one account's body is never replayed for
+/// another. A `304` never reaches the caller — it is turned back into the `200` and the body the
+/// caller expects, with `from_cache` set.
 pub async fn request(
     account_id: Option<&str>,
     url: &str,
@@ -139,10 +178,24 @@ pub async fn request(
     let method = reqwest::Method::from_bytes(verb.as_bytes())
         .map_err(|_| AppError::InvalidInput(format!("Unsupported HTTP method: {method}")))?;
 
+    let accept_header = accept.unwrap_or(DEFAULT_ACCEPT);
+    // Only a GET is ever cached — a write has no business being answered from memory, and GitHub
+    // does not tag one anyway.
+    let conditional = verb == "GET";
+
     let mut req = http_client(30)?
         .request(method, effective_url.as_str())
-        .header("Accept", accept.unwrap_or(DEFAULT_ACCEPT))
+        .header("Accept", accept_header)
         .header("User-Agent", USER_AGENT);
+
+    // Held for the whole call rather than fetched again when the `304` lands: see
+    // `github_etag_cache::lookup` for why the body travels with the etag.
+    let cached = conditional
+        .then(|| github_etag_cache::lookup(account_id, url, accept_header))
+        .flatten();
+    if let Some(hit) = &cached {
+        req = req.header("If-None-Match", hit.etag.as_str());
+    }
 
     if let Some(id) = account_id.filter(|id| !id.is_empty()) {
         let token =
@@ -163,7 +216,47 @@ pub async fn request(
         .map_err(AppError::Http)?;
     let status = res.status();
     let (sso, token_expires_at) = read_token_status(res.headers());
+    let (rate_limit, retry_after_secs) = read_rate_limit(res.headers());
+    let etag = res
+        .headers()
+        .get(reqwest::header::ETAG)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+
+    // The whole point of the conditional request: GitHub declined to resend an unchanged body, and
+    // did not bill the quota for it. The caller is handed the `200` it was expecting.
+    if status == reqwest::StatusCode::NOT_MODIFIED {
+        if let Some(hit) = cached {
+            return Ok(GithubApiResponse {
+                status: 200,
+                ok: true,
+                body: hit.body,
+                sso,
+                token_expires_at,
+                rate_limit,
+                retry_after_secs,
+                from_cache: true,
+            });
+        }
+        // A 304 we cannot honour means the app sent an `If-None-Match` it no longer has the body
+        // for, which `lookup` holding both is meant to make impossible. Returning the empty body
+        // would read as an empty list, so it is surfaced as the error it is.
+        eprintln!("[GitHub API] {verb} {url} — 304 with no cached body; treating as a failure");
+        return Err(AppError::Unknown(
+            "GitHub answered 304 for a response that is no longer cached".to_string(),
+        ));
+    }
+
     let text = res.text().await.map_err(AppError::Http)?;
+
+    // Only a successful GET is worth remembering. An error body must never be stored: a 404 carries
+    // an `ETag` of its own, and caching it would let a repository that later becomes visible go on
+    // answering "not found" from memory.
+    if conditional && status.is_success() {
+        if let Some(etag) = etag {
+            github_etag_cache::store(account_id, url, accept_header, &etag, &text);
+        }
+    }
 
     // A non-2xx is a legitimate answer here (a 404 from the releases endpoint means "no release"),
     // so it is still returned rather than raised — but it is logged, because the frontend turns some
@@ -181,7 +274,18 @@ pub async fn request(
             Some(c) if c.required => " — SAML SSO authorization required for this token",
             _ => "",
         };
-        eprintln!("[GitHub API] {verb} {url} — HTTP {status}{anon}{sso_note}");
+        // The quota is named on failures too: a spent allowance and a missing permission are both a
+        // 403, and this log line is the only place the difference is visible after the fact.
+        let quota_note = match &rate_limit {
+            Some(q) if q.remaining == 0 => {
+                format!(
+                    " — {} rate limit exhausted, resets at {}",
+                    q.resource, q.reset
+                )
+            }
+            _ => String::new(),
+        };
+        eprintln!("[GitHub API] {verb} {url} — HTTP {status}{anon}{sso_note}{quota_note}");
     }
 
     Ok(GithubApiResponse {
@@ -190,6 +294,9 @@ pub async fn request(
         body: text,
         sso,
         token_expires_at,
+        rate_limit,
+        retry_after_secs,
+        from_cache: false,
     })
 }
 

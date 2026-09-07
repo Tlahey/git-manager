@@ -25,6 +25,8 @@
 
 import { githubApiRequest } from '../../lib/tauri'
 import { useGithubTokenStatusStore } from '../../stores/githubTokenStatus.store'
+import { githubCooldownMs, useGithubRateLimitStore } from '../../stores/githubRateLimit.store'
+import { rateLimitResourceForUrl } from '../../lib/githubRateLimit'
 
 export interface GhUser {
   login: string
@@ -67,8 +69,42 @@ export interface GhRequestOptions {
  * a minute even when SWR asked to revalidate right after a merge. Requests leave from Rust now, so
  * the `cache: 'no-store'` that used to force each one through has nothing left to force.
  */
+export class GithubRateLimitedError extends Error {
+  constructor(
+    /** Milliseconds still to wait before GitHub will answer this bucket again. */
+    readonly waitMs: number,
+    message: string
+  ) {
+    super(message)
+    this.name = 'GithubRateLimitedError'
+  }
+}
+
+/**
+ * Refuses a request GitHub is currently rate-limiting, without sending it.
+ *
+ * Not an optimization: a request sent inside a secondary rate limit's `Retry-After` is what turns a
+ * short block into a longer one, and one sent against a spent allowance is a guaranteed `403` that
+ * several callers render as an empty list. Stopping here means the failure carries a *duration* the
+ * UI can state, instead of arriving as "you have no pull requests".
+ *
+ * Everything goes through the same gate, polls and clicks alike. A merge the user just clicked would
+ * be refused by GitHub anyway; refusing it here is the same answer, seconds sooner and legible.
+ */
+function assertNotRateLimited(url: string, accountId: string | null | undefined) {
+  const resource = rateLimitResourceForUrl(url)
+  const waitMs = githubCooldownMs(accountId, resource)
+  if (waitMs <= 0) return
+  const seconds = Math.ceil(waitMs / 1000)
+  throw new GithubRateLimitedError(
+    waitMs,
+    `GitHub rate limit reached (${resource}) — retrying in ${seconds}s`
+  )
+}
+
 export async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T> {
   const { method = 'GET', body, accountId, accept } = opts
+  assertNotRateLimited(url, accountId)
   // Rust *rejects* (rather than answering with `ok: false`) when it cannot even build the request —
   // the "no credential is stored for this account" case being the one that matters, since the UI
   // reads the account list from settings and so goes on showing the account as connected. Several
@@ -85,6 +121,7 @@ export async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Pr
     throw e
   }
   useGithubTokenStatusStore.getState().recordResponse(accountId, res)
+  useGithubRateLimitStore.getState().recordResponse(accountId, url, res)
   if (!res.ok) {
     const message = `GitHub API ${res.status}${describeError(res.body)}`
     console.warn(`[github] ${method} ${url} (account: ${accountId ?? 'anonymous'}) — ${message}`)
@@ -144,9 +181,11 @@ export async function ghGraphQL<T>(
   accountId: string,
   accept = 'application/json'
 ): Promise<T> {
+  const url = 'https://api.github.com/graphql'
+  assertNotRateLimited(url, accountId)
   const res = await githubApiRequest({
     accountId,
-    url: 'https://api.github.com/graphql',
+    url,
     method: 'POST',
     body: { query, variables },
     accept,
@@ -155,6 +194,9 @@ export async function ghGraphQL<T>(
   // riding along with a 200 that silently dropped an organization's data), so it is recorded here
   // too rather than only on the REST path.
   useGithubTokenStatusStore.getState().recordResponse(accountId, res)
+  // GraphQL has an allowance of its own, spent in *points* rather than requests — so it has to be
+  // tracked separately from `core`, which is exactly what the `graphql` bucket is.
+  useGithubRateLimitStore.getState().recordResponse(accountId, url, res)
   if (!res.ok) {
     throw new Error(`GitHub GraphQL ${res.status}`)
   }

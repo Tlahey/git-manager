@@ -1,6 +1,7 @@
 import useSWR from 'swr'
 import { fetchIssueDetail, type GhRawIssue } from '../api/github.api'
 import { useRepoGitHub } from './useRepoGitHub'
+import { useGithubPollInterval } from './useGithubPollInterval'
 import { resolveGithubDetailState, type GithubDetailFailure } from './githubDetailState'
 
 /**
@@ -22,6 +23,8 @@ export function useIssueDetail(
   const { ownerRepo, accountId, remotesError, isResolvingRemotes, retryRemotes } =
     useRepoGitHub(repoPath)
 
+  const refreshInterval = useGithubPollInterval(60_000, accountId, 'core')
+
   const { data, isLoading, error, mutate } = useSWR(
     issueNumber != null && ownerRepo && accountId
       ? ['issue-detail', ownerRepo.owner, ownerRepo.repo, issueNumber, accountId]
@@ -33,7 +36,7 @@ export function useIssueDetail(
         issueNumber as number,
         accountId as string
       ),
-    { revalidateOnFocus: false, refreshInterval: 60_000 }
+    { revalidateOnFocus: false, refreshInterval }
   )
 
   const { isLoading: gateLoading, failure } = resolveGithubDetailState({

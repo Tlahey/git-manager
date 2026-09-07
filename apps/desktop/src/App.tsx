@@ -39,6 +39,7 @@ import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { useAiStatusCheck } from './hooks/useAiStatusCheck'
 import { useAutoFetch } from './hooks/useAutoFetch'
 import { useGithubTokenExpiryWarning } from './hooks/useGithubTokenExpiryWarning'
+import { useGithubRateLimitWarning } from './hooks/useGithubRateLimitWarning'
 import { Footer } from './components/footer/Footer'
 import { AiStatusBanner } from './components/layout/AiStatusBanner'
 
@@ -86,6 +87,9 @@ export default function App() {
   // A GitHub token cannot be refreshed, so the warning is the whole remedy — and it has to reach a
   // user who never opens Settings, which is where the badge and the renew link live.
   useGithubTokenExpiryWarning()
+  // And says so when GitHub stops answering, because the app's own back-off is otherwise
+  // indistinguishable from a repository with nothing to show.
+  useGithubRateLimitWarning()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),
