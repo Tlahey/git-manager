@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { apiRevertCommit } from '../../api/git.api'
+import { refreshAfterHistoryChange } from '../../lib/repoRefresh'
 
 /** One parent of the commit being reverted, as offered in the mainline picker. */
 export interface RevertParent {
@@ -78,8 +79,7 @@ export function RevertDialog({
         noCommit,
         isMerge ? mainline : undefined
       )
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      refreshAfterHistoryChange(queryClient, repoPath)
       onSuccess(sha)
       onClose()
     } catch (err) {

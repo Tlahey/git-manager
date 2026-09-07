@@ -5,7 +5,7 @@ vi.mock('../api/repo.api', () => ({ apiOpenRepo: vi.fn() }))
 
 import { apiOpenRepo } from '../api/repo.api'
 import { useRepoDataStore } from '../stores/repoData.store'
-import { refreshAfterHeadMove } from './repoRefresh'
+import { refreshAfterHeadMove, refreshAfterHistoryChange } from './repoRefresh'
 
 const mockedOpen = apiOpenRepo as unknown as ReturnType<typeof vi.fn>
 
@@ -19,6 +19,41 @@ function summary(head: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoDataStore.setState({ repoCache: {} })
+})
+
+describe('refreshAfterHistoryChange', () => {
+  /**
+   * The branch list is the assertion that matters: `aheadCount`/`behindCount` live on it, and they
+   * are what the toolbar's Push and Pull badges draw. Every caller of this used to invalidate the
+   * log and the working tree only, which redrew the graph and left the Push button claiming there
+   * was nothing to push right after a commit.
+   */
+  it('invalidates the branch list, the log and the status of that repository', () => {
+    const queryClient = new QueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    refreshAfterHistoryChange(queryClient, '/repo')
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
+  })
+
+  it("leaves another repository's queries alone", () => {
+    const queryClient = new QueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    refreshAfterHistoryChange(queryClient, '/repo')
+
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['branches', '/other'] })
+  })
+
+  // It describes the repository, not the process: nothing here should re-read `open_repo` (that is
+  // `refreshAfterHeadMove`'s job, and it costs an IPC round trip per commit if it leaks in here).
+  it('does not re-read the repository summary', () => {
+    refreshAfterHistoryChange(new QueryClient(), '/repo')
+    expect(mockedOpen).not.toHaveBeenCalled()
+  })
 })
 
 describe('refreshAfterHeadMove', () => {

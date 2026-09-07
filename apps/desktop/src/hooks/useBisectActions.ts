@@ -13,6 +13,7 @@ import {
 } from '../api/git.api'
 import { bisectStateKey } from './useBisectState'
 import { useBisectUIStore } from '../stores/bisectUI.store'
+import { refreshAfterHistoryChange } from '../lib/repoRefresh'
 
 /** Message tagged on the stash git-manager creates for a bisect, so it's identifiable in the list. */
 const BISECT_STASH_MESSAGE = 'git-manager: bisect autostash'
@@ -29,8 +30,7 @@ export function useBisectActions(repoPath: string) {
   const [pending, setPending] = useState(false)
 
   function refreshGraph() {
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+    refreshAfterHistoryChange(queryClient, repoPath)
     mutate(['git-stashes', repoPath])
   }
 

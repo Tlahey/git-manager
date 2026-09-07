@@ -16,6 +16,7 @@ import {
 } from '../api/git.api'
 import { apiOpenTerminal } from '../api/shell.api'
 import { apiOpenInEditor } from '../api/repo.api'
+import { refreshAfterHistoryChange } from '../lib/repoRefresh'
 import { useGitStatus } from './useGitStatus'
 import { useGitStashes } from './useGitStashes'
 import { useBranches } from './useBranches'
@@ -89,9 +90,7 @@ export function useActionToolbar(t: TranslateFn) {
 
   function invalidateRepo() {
     if (!activeRepo) return
-    queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
+    refreshAfterHistoryChange(queryClient, activeRepo)
     mutate(['git-stashes', activeRepo])
   }
 

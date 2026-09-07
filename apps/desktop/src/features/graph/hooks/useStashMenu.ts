@@ -5,7 +5,7 @@ import { showNativeMenu } from '../../../api/nativeMenu.api'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../../api/git.api'
 import { buildStashMenuSpec } from '../../../lib/graphContextMenus'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -51,7 +51,7 @@ export function useStashMenu({
       try {
         await fn()
         mutate(['git-stashes', repoPath])
-        refreshLogAndStatus(queryClient, repoPath)
+        refreshAfterHistoryChange(queryClient, repoPath)
       } catch (err) {
         toast.error(String(err))
       }

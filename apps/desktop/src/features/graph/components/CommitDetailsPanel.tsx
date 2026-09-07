@@ -13,6 +13,7 @@ import { CommitFileList } from '../../../components/common/CommitFileList'
 import type { ProcessedFileItem } from '../../../components/common/CommitFileList'
 import { WipStagingPanel } from './WipStagingPanel'
 import { apiStageAll, apiUnstageAll } from '../../../api/git.api'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 
 interface CommitDetailsPanelProps {
   node: GitGraphNode
@@ -56,9 +57,15 @@ export function CommitDetailsPanel({
     return url
   }, [cachedRepo])
 
+  /**
+   * The refresh every action of this panel ends with — staging, committing, amending, stashing.
+   *
+   * It goes through `refreshAfterHistoryChange` rather than invalidating the log and the status by
+   * hand: committing from here is precisely what changes how many commits are waiting to be pushed,
+   * and that count lives on the branch query the toolbar's Push badge reads.
+   */
   function handleRefresh() {
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+    refreshAfterHistoryChange(queryClient, repoPath)
     mutate(['git-stashes', repoPath])
   }
 

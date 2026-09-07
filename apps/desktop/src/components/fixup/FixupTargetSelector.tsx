@@ -14,6 +14,7 @@ import {
 } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { apiCreateFixupCommit } from '../../api/git.api'
+import { refreshAfterHistoryChange } from '../../lib/repoRefresh'
 
 interface FixupTargetSelectorProps {
   repoPath: string
@@ -57,8 +58,7 @@ export function FixupTargetSelector({
     setError(null)
     try {
       await apiCreateFixupCommit(repoPath, selectedOid)
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      refreshAfterHistoryChange(queryClient, repoPath)
       onSelect(selectedOid, selectedSubject)
       onClose()
     } catch (err) {

@@ -15,6 +15,7 @@ import { EyeOff } from 'lucide-react'
 import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useState } from 'react'
+import { refreshAfterHistoryChange } from '../../lib/repoRefresh'
 
 interface AutosquashPreviewDialogProps {
   repoPath: string
@@ -49,8 +50,7 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
     setError(null)
     try {
       await apiRunAutosquash(repoPath, hiddenFixups)
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      refreshAfterHistoryChange(queryClient, repoPath)
       queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
 
