@@ -3,7 +3,7 @@ import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
 import { useGithubAccount } from '../../../hooks/useGithubAccount'
 import { useGithubPollInterval } from '../../../hooks/useGithubPollInterval'
-import { fetchPullRequestsByQuery } from '../../../api/github.api'
+import { fetchPullRequestGroups } from '../../../api/github.api'
 import { firstGitHubOwnerRepo } from '../../../lib/githubRemote'
 import type { PrFilter } from '../stores/prFilters.store'
 
@@ -87,25 +87,31 @@ export function useRepoPrFilters({
         ] as const)
       : null
 
-  // One `search/issues` call *per saved filter*, and search is the tight bucket (30 a minute, not
-  // 5000 an hour) — so this is the hook most likely to be throttled, and the one where throttling
-  // costs least: a saved filter is a list, not a live view.
-  const refreshInterval = useGithubPollInterval(60_000, resolvedAccountId, 'search')
+  // This used to be one `search/issues` call *per saved filter*, which made it the only GitHub call
+  // in the app whose count grows with what the user configures — five filters, five requests a
+  // minute, per open repository, forever. `fetchPullRequestGroups` bulks them into a single GraphQL
+  // request, which also moves the work off the `search` allowance (thirty a *minute*) and onto
+  // `graphql`, where it is a rounding error. Both buckets are still named below: the fallback path
+  // inside it is the old per-filter search, and a refusal there matters just as much.
+  const refreshInterval = useGithubPollInterval(60_000, resolvedAccountId, ['graphql', 'search'])
 
   const { data, error, mutate } = useSWR<PrFilterGroup[], Error>(
     swrKey,
     async () => {
       const { owner, repo } = ownerRepo as { owner: string; repo: string }
-      return Promise.all(
-        filters.map(async (filter) => {
-          try {
-            const prs = await fetchPullRequestsByQuery(owner, repo, filter.query, resolvedAccountId)
-            return { filter, prs, error: null }
-          } catch (err) {
-            return { filter, prs: [], error: String(err) }
-          }
-        })
+      const groups = await fetchPullRequestGroups(
+        owner,
+        repo,
+        filters.map((f) => f.query),
+        resolvedAccountId
       )
+      // Zipped back by position rather than matched on the query text, since two filters may
+      // legitimately hold the same query.
+      return filters.map((filter, i) => ({
+        filter,
+        prs: groups[i]?.prs ?? [],
+        error: groups[i]?.error ?? null,
+      }))
     },
     { refreshInterval, dedupingInterval: 10_000 }
   )

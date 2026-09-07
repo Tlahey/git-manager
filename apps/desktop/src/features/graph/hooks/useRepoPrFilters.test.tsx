@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import type { PullRequest } from '@git-manager/git-types'
 
-const { useSWRMock, fetchPullRequestsByQuery, useSettingsStoreMock } = vi.hoisted(() => ({
+const { useSWRMock, fetchPullRequestGroups, useSettingsStoreMock } = vi.hoisted(() => ({
   useSWRMock: vi.fn(),
-  fetchPullRequestsByQuery: vi.fn(),
+  fetchPullRequestGroups: vi.fn(),
   useSettingsStoreMock: vi.fn(),
 }))
 vi.mock('swr', () => ({ default: useSWRMock }))
-vi.mock('../../../api/github.api', () => ({ fetchPullRequestsByQuery }))
+vi.mock('../../../api/github.api', () => ({ fetchPullRequestGroups }))
 vi.mock('../../../stores/settings.store', () => ({
   useSettingsStore: (selector: (s: unknown) => unknown) => selector(useSettingsStoreMock()),
 }))
 
-import { useRepoPrFilters } from './useRepoPrFilters'
+import { useRepoPrFilters, type PrFilterGroup } from './useRepoPrFilters'
 import type { PrFilter } from '../stores/prFilters.store'
 
 const GITHUB_REMOTE = 'https://github.com/org/repo.git'
@@ -61,7 +61,7 @@ function render(options: Partial<Parameters<typeof useRepoPrFilters>[0]> = {}) {
 
 beforeEach(() => {
   useSWRMock.mockReset().mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
-  fetchPullRequestsByQuery.mockReset().mockResolvedValue([])
+  fetchPullRequestGroups.mockReset().mockResolvedValue([])
   useSettingsStoreMock.mockReturnValue({
     settings: { github: { accounts: [{ id: 'acct' }], activeAccountId: 'acct' } },
   })
@@ -98,19 +98,23 @@ describe('useRepoPrFilters — GitHub resolution', () => {
 })
 
 describe('useRepoPrFilters — fetching', () => {
-  it('asks GitHub for each filter query in turn', async () => {
+  it('asks for every filter query in one call, not one call per filter', async () => {
+    // This was one `search/issues` request per saved filter, against the thirty-a-minute search
+    // allowance — the only GitHub call in the app whose count grew with what the user configured.
     render()
     await runFetcher()
-    expect(fetchPullRequestsByQuery.mock.calls).toEqual([
-      ['org', 'repo', 'is:open', 'acct'],
-      ['org', 'repo', 'is:open author:@me', 'acct'],
+    expect(fetchPullRequestGroups.mock.calls).toEqual([
+      ['org', 'repo', ['is:open', 'is:open author:@me'], 'acct'],
     ])
   })
 
-  it('reports a rejected query on its own group and still returns the others', async () => {
-    fetchPullRequestsByQuery
-      .mockRejectedValueOnce(new Error('GitHub API 422: Validation Failed'))
-      .mockResolvedValueOnce([pr(2)])
+  it('reports a failed query on its own group and still returns the others', async () => {
+    // Bulking must not cost the per-filter error isolation: a saved filter is user-written text, so
+    // a query GitHub rejects is a normal state rather than an exceptional one.
+    fetchPullRequestGroups.mockResolvedValue([
+      { query: 'is:open', prs: [], error: 'GitHub API 422: Validation Failed' },
+      { query: 'is:open author:@me', prs: [pr(2)], error: null },
+    ])
 
     render()
     const groups = await runFetcher()
@@ -118,6 +122,26 @@ describe('useRepoPrFilters — fetching', () => {
     expect(groups[0].prs).toEqual([])
     expect(groups[0].error).toContain('Validation Failed')
     expect(groups[1].prs).toHaveLength(1)
+  })
+
+  it('zips the results back on by position, so duplicate queries stay distinct groups', async () => {
+    // Two filters may legitimately hold the same query under different names; matching on the text
+    // would collapse them onto one another.
+    fetchPullRequestGroups.mockResolvedValue([
+      { query: 'is:open', prs: [pr(1)], error: null },
+      { query: 'is:open', prs: [pr(2)], error: null },
+    ])
+
+    render({
+      filters: [
+        { id: 'f1', name: 'One', query: 'is:open' },
+        { id: 'f2', name: 'Two', query: 'is:open' },
+      ],
+    })
+    const groups = await runFetcher()
+
+    expect(groups.map((g: PrFilterGroup) => g.filter.id)).toEqual(['f1', 'f2'])
+    expect(groups.map((g: PrFilterGroup) => g.prs[0].number)).toEqual([1, 2])
   })
 })
 
