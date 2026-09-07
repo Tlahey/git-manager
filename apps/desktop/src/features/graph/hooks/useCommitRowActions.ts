@@ -14,7 +14,7 @@ import { apiAddWorktree } from '../../../api/worktree.api'
 import { shortOid } from '../../../lib/shortOid'
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
 import { pickFolder } from '../../../lib/pickFolder'
-import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -48,7 +48,7 @@ export function useCommitRowActions({
   t,
 }: UseCommitRowActionsParams) {
   const queryClient = useQueryClient()
-  const refresh = () => refreshLogAndStatus(queryClient, repoPath)
+  const refresh = () => refreshAfterHistoryChange(queryClient, repoPath)
 
   async function copySha(oid: string) {
     await apiCopyCommitSha(oid)

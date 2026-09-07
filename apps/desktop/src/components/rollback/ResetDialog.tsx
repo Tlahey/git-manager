@@ -15,6 +15,7 @@ import {
 } from '@git-manager/ui'
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
 import { isProtectedBranch } from '../../lib/protectedBranch'
+import { refreshAfterHistoryChange } from '../../lib/repoRefresh'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'
 
@@ -63,8 +64,7 @@ export function ResetDialog({
     setError(null)
     try {
       await apiResetToCommit(repoPath, targetOid, mode)
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      refreshAfterHistoryChange(queryClient, repoPath)
       onSuccess()
       onClose()
     } catch (err) {

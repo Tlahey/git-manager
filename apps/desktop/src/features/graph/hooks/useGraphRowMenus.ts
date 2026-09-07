@@ -19,7 +19,7 @@ import {
 } from '../../../lib/graphContextMenus'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { worktreeWipPath } from '../lib/syntheticRows'
-import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 import { useStashMenu } from './useStashMenu'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
@@ -73,7 +73,7 @@ export function useGraphRowMenus({
     t,
   })
 
-  const refresh = () => refreshLogAndStatus(queryClient, repoPath)
+  const refresh = () => refreshAfterHistoryChange(queryClient, repoPath)
 
   /** Opens the local WIP row's menu: stash / stage / unstage the work in progress. */
   function openWipMenu() {

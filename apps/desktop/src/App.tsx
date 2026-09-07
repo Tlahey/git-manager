@@ -53,6 +53,7 @@ import { useUndoHistoryStore } from './stores/undoHistory.store'
 import { useAppUpdaterStore } from './stores/appUpdater.store'
 import { listen } from '@tauri-apps/api/event'
 import { mutate } from 'swr'
+import { refreshAfterHistoryChange } from './lib/repoRefresh'
 
 export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
@@ -110,8 +111,7 @@ export default function App() {
         (event) => {
           const { repoPath } = event.payload
           queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          refreshAfterHistoryChange(queryClient, repoPath)
           mutate(['conflicted-files', repoPath])
         }
       )
@@ -128,8 +128,7 @@ export default function App() {
     const setupListener = async () => {
       unlisten = await listen<{ repoPath: string }>('fixup-committed', (event) => {
         const { repoPath } = event.payload
-        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+        refreshAfterHistoryChange(queryClient, repoPath)
         queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
         // Fixup / rebasing commits are created in dedicated Tauri windows, each with its own
         // Zustand store instance. Their undo entry is persisted to localStorage but this window's
@@ -155,8 +154,7 @@ export default function App() {
           store.start(repoPath, 'rebase')
         } else {
           store.clear(repoPath)
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          refreshAfterHistoryChange(queryClient, repoPath)
           queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
           queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
           mutate(['conflicted-files', repoPath])

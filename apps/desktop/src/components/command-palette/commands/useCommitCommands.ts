@@ -31,6 +31,7 @@ import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { useCommitTag } from '../../../hooks/useCommitTag'
 import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
 import type { PaletteCommand } from './types'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 
 /**
  * Commit-scoped palette commands, gated on a selected commit (`selectedCommitOid`) that isn't a
@@ -155,8 +156,7 @@ export function useCommitCommands(): PaletteCommand[] {
       run: () => {
         apiCherryPickCommit(activeRepo, selectedCommitOid)
           .then(() => {
-            queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
-            queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
+            refreshAfterHistoryChange(queryClient, activeRepo)
             toast.success(tGit('gitTree.contextMenu.cherryPicked'))
           })
           .catch((err) => toast.error(String(err)))

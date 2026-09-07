@@ -19,7 +19,7 @@ import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSetting
 import { pickSaveDestination } from '../../../lib/pickSaveDestination'
 import { isProtectedBranch } from '../../../lib/protectedBranch'
 import { descendantsOnCurrentBranch } from '../lib/descendantsOnCurrentBranch'
-import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 import { useCommitRowActions } from './useCommitRowActions'
 import { useGraphRowMenus } from './useGraphRowMenus'
 import { useBranchMenuActions } from './useBranchMenuActions'
@@ -186,7 +186,7 @@ export function useGitGraphActions({
         for (const target of selectedOldestFirst) {
           await apiCherryPickCommit(repoPath, target)
         }
-        refreshLogAndStatus(queryClient, repoPath)
+        refreshAfterHistoryChange(queryClient, repoPath)
         toast.success(t('gitTree.contextMenu.cherryPicked'))
       } catch (err) {
         toast.error(String(err))
@@ -209,7 +209,7 @@ export function useGitGraphActions({
     async function handleRebaseOntoCommit() {
       try {
         await apiRebaseOntoCommit(repoPath, oid)
-        refreshLogAndStatus(queryClient, repoPath)
+        refreshAfterHistoryChange(queryClient, repoPath)
         toast.success(t('gitTree.contextMenu.rebased'))
       } catch (err) {
         toast.error(String(err))

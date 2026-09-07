@@ -7,6 +7,8 @@ import {
   apiPushBranch,
   apiGetBranches,
 } from '../api/git.api'
+import { queryClient } from '../lib/queryClient'
+import { refreshAfterHistoryChange } from '../lib/repoRefresh'
 
 const BOARD_CONFIG_PATH = '.git-manager/board.json'
 const SYNC_COMMIT_MESSAGE = 'chore(board): sync board config'
@@ -30,6 +32,11 @@ async function syncIfDirty(repoPath: string) {
     if (hasUpstream) {
       await apiPushBranch(repoPath)
     }
+
+    // This wrote a commit — and possibly pushed it — while the user was looking at something else,
+    // so the graph and the Push badge both describe a repository that has moved. Same singleton
+    // client `useAutoFetch` uses: there is no component here to hold a `useQueryClient`.
+    refreshAfterHistoryChange(queryClient, repoPath)
   } catch {
     // Swallowed — see doc comment above.
   }

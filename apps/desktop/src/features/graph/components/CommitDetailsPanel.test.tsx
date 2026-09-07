@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
-
 const { useCommitDiff, useGitStatus, invalidateQueries, swrMutate } = vi.hoisted(() => ({
   useCommitDiff: vi.fn(),
   useGitStatus: vi.fn(),
@@ -206,6 +199,17 @@ describe('CommitDetailsPanel — refresh wiring', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
     expect(swrMutate).toHaveBeenCalledWith(['git-stashes', '/repo'])
   })
+
+  /**
+   * Committing happens from this panel, and how many commits are waiting to be pushed is read off
+   * the *branch* query — so leaving it out here is what left the toolbar's Push badge bare after a
+   * commit. Asserted by key rather than by call count: that is the one that went missing.
+   */
+  it('invalidates the branch list too, so the Push/Pull badges follow a commit', () => {
+    render(<CommitDetailsPanel node={node()} repoPath="/repo" />)
+    ;(lastHeaderProps.current!.onRefresh as () => void)()
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
+  })
 })
 
 describe('CommitDetailsPanel — non-WIP file list', () => {
@@ -268,10 +272,10 @@ describe('CommitDetailsPanel — WIP file lists', () => {
     })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
 
-    const staged = findFileList('workingTree.staged:{"count":1}')!
+    const staged = findFileList('Staged (1)')!
     expect(staged.processedFiles).toEqual([{ path: 'staged.ts', status: 'modified', staged: true }])
 
-    const unstaged = findFileList('workingTree.unstaged:{"count":2}')!
+    const unstaged = findFileList('Unstaged (2)')!
     expect(unstaged.processedFiles).toEqual([
       { path: 'unstaged.ts', status: 'modified', staged: false },
       { path: 'new.ts', status: 'untracked', staged: false },
@@ -281,14 +285,14 @@ describe('CommitDetailsPanel — WIP file lists', () => {
   it('only renders the unmerged file list when there are conflicted files', () => {
     useGitStatus.mockReturnValue({ data: gitStatus() })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
-    expect(findFileList(/workingTree\.unmerged/ as unknown as string)).toBeUndefined()
+    expect(findFileList('Unmerged (1)')).toBeUndefined()
     expect(fileListCalls.current).toHaveLength(2) // staged + unstaged, no unmerged
   })
 
   it('renders the unmerged list from gitStatus.conflicted when present', () => {
     useGitStatus.mockReturnValue({ data: gitStatus({ conflicted: ['conflict.ts'] }) })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
-    const unmerged = findFileList('workingTree.unmerged:{"count":1}')!
+    const unmerged = findFileList('Unmerged (1)')!
     expect(unmerged.processedFiles).toEqual([
       { path: 'conflict.ts', status: 'conflicted', staged: false },
     ])
@@ -306,10 +310,10 @@ describe('CommitDetailsPanel — WIP file lists', () => {
     })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
 
-    await (findFileList('workingTree.staged:{"count":1}')!.onBulkStage as () => Promise<void>)()
+    await (findFileList('Staged (1)')!.onBulkStage as () => Promise<void>)()
     expect(mockedUnstageAll).toHaveBeenCalledWith('/repo')
 
-    await (findFileList('workingTree.unstaged:{"count":1}')!.onBulkStage as () => Promise<void>)()
+    await (findFileList('Unstaged (1)')!.onBulkStage as () => Promise<void>)()
     expect(mockedStageAll).toHaveBeenCalledWith('/repo')
   })
 

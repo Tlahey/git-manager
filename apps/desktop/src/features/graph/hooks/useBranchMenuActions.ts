@@ -18,7 +18,7 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSwitchBranch } from '../../../hooks/useSwitchBranch'
 import { usePinnedBranchesStore } from '../../../stores/pinned-branches.store'
 import { useSoloModeStore } from '../../../stores/soloMode.store'
-import { refreshLogAndStatus } from '../lib/graphQueryRefresh'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 import type { PendingAction } from './pendingAction'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
@@ -81,8 +81,7 @@ export function useBranchMenuActions({
   async function run(fn: () => Promise<unknown>, successMsg?: string) {
     try {
       await fn()
-      refreshLogAndStatus(queryClient, repoPath)
-      queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
+      refreshAfterHistoryChange(queryClient, repoPath)
       if (successMsg) toast.success(successMsg)
     } catch (err) {
       toast.error(String(err))

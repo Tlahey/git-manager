@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import { apiRebaseAbort, apiRebaseContinue, apiRebaseSkip } from '../../../api/git.api'
+import { refreshAfterHistoryChange } from '../../../lib/repoRefresh'
 
 /** Which control is in flight, so callers can spin only the button that was pressed. */
 export type RebaseControl = 'continue' | 'abort' | 'skip'
@@ -31,8 +32,7 @@ export function useRebaseControls(repoPath: string, options: UseRebaseControlsOp
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+    refreshAfterHistoryChange(queryClient, repoPath)
     mutate(['conflicted-files', repoPath])
     mutate(['rebase-state', repoPath])
   }
