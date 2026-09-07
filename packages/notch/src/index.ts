@@ -39,6 +39,7 @@ export {
   NOTCH_ROW,
   NOTCH_ROW_PADDING_X,
   notchRowHeights,
+  resolveBandHeight,
   rewardConfettiOrigin,
   statusOutputHeight,
   withRule,

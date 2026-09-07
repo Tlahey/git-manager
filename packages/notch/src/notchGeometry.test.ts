@@ -6,12 +6,14 @@ import {
   hasActionRow,
   HALO_MARGIN,
   measureCardHeight,
+  NOTCH_BAND_HEIGHT,
   NOTCH_CARD_WIDTH,
   NOTCH_DEVICE_PRESETS,
   NOTCH_REWARD_MEDAL_SIZE,
   NOTCH_ROW,
   NOTCH_ROW_PADDING_X,
   notchRowHeights,
+  resolveBandHeight,
   rewardConfettiOrigin,
   statusOutputHeight,
   withRule,
@@ -144,6 +146,33 @@ describe('notchRowHeights', () => {
   it('falls back to NOTCH_BAND_HEIGHT when no override is given', () => {
     expect(notchRowHeights(progress)[0]).toBe(NOTCH_ROW.band)
   })
+
+  it('keeps a full band on a display that reports no safe area at all', () => {
+    // An external monitor reports `safeAreaInsets.top` of 0, and it travels to the card as a real
+    // 0 rather than as "no answer". Laying that out collapses the row that holds the ✕ — see
+    // `resolveBandHeight`.
+    expect(notchRowHeights(progress, 0)[0]).toBe(NOTCH_BAND_HEIGHT)
+    expect(measureCardHeight(progress, 0)).toBe(measureCardHeight(progress))
+  })
+})
+
+describe('resolveBandHeight', () => {
+  it('never returns a band shorter than the content the band holds', () => {
+    // 0 is what every notchless display reports; the negatives are only here to say the floor is a
+    // floor rather than a special case for one value.
+    for (const reported of [0, -10, NOTCH_BAND_HEIGHT - 1]) {
+      expect(resolveBandHeight(reported)).toBe(NOTCH_BAND_HEIGHT)
+    }
+  })
+
+  it('lets a machine that reserves more than 32pt have it', () => {
+    expect(resolveBandHeight(38)).toBe(38)
+  })
+
+  it('answers the default when there is nothing to go on', () => {
+    expect(resolveBandHeight()).toBe(NOTCH_BAND_HEIGHT)
+    expect(resolveBandHeight(undefined)).toBe(NOTCH_BAND_HEIGHT)
+  })
 })
 
 describe('rewardConfettiOrigin', () => {
@@ -152,6 +181,10 @@ describe('rewardConfettiOrigin', () => {
       x: NOTCH_ROW_PADDING_X + NOTCH_REWARD_MEDAL_SIZE / 2,
       y: withRule(NOTCH_ROW.band) + withRule(NOTCH_ROW.header) + NOTCH_ROW.rewardBody / 2,
     })
+  })
+
+  it('stays put on a display reporting no safe area, since the card is drawn the same there', () => {
+    expect(rewardConfettiOrigin(0)).toEqual(rewardConfettiOrigin())
   })
 
   it('moves down with a taller safe area, since the medal really is lower on that machine', () => {
