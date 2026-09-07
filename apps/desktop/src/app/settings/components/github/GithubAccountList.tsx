@@ -1,6 +1,8 @@
 import { Button, Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitHubAccount } from '@git-manager/git-types'
+import { buildClassicTokenUrl, describeTokenExpiry } from '../../../../lib/githubTokenExpiry'
+import { openUrl } from '../../../../lib/openUrl'
 
 interface GithubAccountListProps {
   accounts: GitHubAccount[]
@@ -29,6 +31,7 @@ export function GithubAccountList({
       <div className="space-y-2">
         {accounts.map((acc) => {
           const isActive = acc.id === activeAccountId
+          const expiry = describeTokenExpiry(acc.tokenExpiresAt)
           return (
             <div
               key={acc.id}
@@ -57,10 +60,36 @@ export function GithubAccountList({
                   <span className="truncate text-[10px] text-muted-foreground">
                     @{acc.user.login}
                   </span>
+                  {/* A personal access token cannot be refreshed, so the only thing the app can do
+                      about a 90-day expiry is show it before it lands. Nothing is shown for a token
+                      with no expiry date, which is a legitimate configuration and not a gap. */}
+                  {expiry && expiry.level !== 'ok' && (
+                    <Tag
+                      tone={expiry.level === 'expired' ? 'danger' : 'warning'}
+                      className="mt-1 w-fit rounded-full text-[8px] leading-none"
+                      data-testid={`github-account-token-expiry-${acc.id}`}
+                    >
+                      {expiry.level === 'expired'
+                        ? t('settings.github.token.expired')
+                        : t('settings.github.token.expiresInDays', { count: expiry.daysLeft })}
+                    </Tag>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
+                {expiry && expiry.level !== 'ok' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void openUrl(buildClassicTokenUrl())}
+                    data-testid={`github-account-renew-${acc.id}`}
+                    className="h-7 px-2 text-[10px]"
+                  >
+                    {t('settings.github.token.renew')}
+                  </Button>
+                )}
+
                 {!isActive && (
                   <Button
                     variant="ghost"

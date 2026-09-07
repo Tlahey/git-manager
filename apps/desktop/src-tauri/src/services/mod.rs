@@ -43,6 +43,7 @@ pub mod git_submodule;
 pub mod git_undo;
 pub mod git_worktree;
 pub mod github_api;
+pub mod github_token_status;
 pub mod native_notification;
 pub mod package_changelog;
 pub mod package_health;

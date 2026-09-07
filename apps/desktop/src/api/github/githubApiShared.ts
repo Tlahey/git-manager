@@ -24,6 +24,7 @@
 //     shape below still reads like a `Response` even though nothing here holds one.
 
 import { githubApiRequest } from '../../lib/tauri'
+import { useGithubTokenStatusStore } from '../../stores/githubTokenStatus.store'
 
 export interface GhUser {
   login: string
@@ -83,6 +84,7 @@ export async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Pr
     )
     throw e
   }
+  useGithubTokenStatusStore.getState().recordResponse(accountId, res)
   if (!res.ok) {
     const message = `GitHub API ${res.status}${describeError(res.body)}`
     console.warn(`[github] ${method} ${url} (account: ${accountId ?? 'anonymous'}) — ${message}`)
@@ -149,6 +151,10 @@ export async function ghGraphQL<T>(
     body: { query, variables },
     accept,
   })
+  // GraphQL is the one place the *non*-refusal form of the header shows up ("partial-results",
+  // riding along with a 200 that silently dropped an organization's data), so it is recorded here
+  // too rather than only on the REST path.
+  useGithubTokenStatusStore.getState().recordResponse(accountId, res)
   if (!res.ok) {
     throw new Error(`GitHub GraphQL ${res.status}`)
   }

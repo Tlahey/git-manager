@@ -40,6 +40,7 @@ describe('completeLoginWithToken', () => {
       name: 'The Octocat',
       email: 'octo@x.com',
       avatarUrl: 'a.png',
+      tokenExpiresAt: '2026-12-01T15:00:00+00:00',
     })
     const onLoginSuccess = vi.fn()
     const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess }))
@@ -50,13 +51,17 @@ describe('completeLoginWithToken', () => {
     })
 
     expect(success).toBe(true)
-    // The account, and nothing else: the token stayed in Rust.
-    expect(onLoginSuccess).toHaveBeenCalledWith({
-      login: 'octocat',
-      name: 'The Octocat',
-      email: 'octo@x.com',
-      avatarUrl: 'a.png',
-    })
+    // The account and its token's expiry date, and nothing else: the token stayed in Rust. The date
+    // rides alongside rather than on the user because it describes the *token*, not the person.
+    expect(onLoginSuccess).toHaveBeenCalledWith(
+      {
+        login: 'octocat',
+        name: 'The Octocat',
+        email: 'octo@x.com',
+        avatarUrl: 'a.png',
+      },
+      '2026-12-01T15:00:00+00:00'
+    )
     expect(result.current.connecting).toBe(false)
   })
 
@@ -65,7 +70,11 @@ describe('completeLoginWithToken', () => {
     const onLoginSuccess = vi.fn()
     const { result } = renderHook(() => useGithubDeviceFlow({ onLoginSuccess }))
     await act(async () => result.current.completeLoginWithToken('tok'))
-    expect(onLoginSuccess).toHaveBeenCalledWith(expect.objectContaining({ name: 'octocat' }))
+    expect(onLoginSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'octocat' }),
+      // A token set never to expire has no date, and that must arrive as `null` rather than absent.
+      null
+    )
   })
 
   it('sets an error and returns false on failure', async () => {
@@ -143,7 +152,7 @@ describe('startOAuthLogin', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(onLoginSuccess).toHaveBeenCalledWith(expect.objectContaining({ login: 'octocat' }))
+    expect(onLoginSuccess).toHaveBeenCalledWith(expect.objectContaining({ login: 'octocat' }), null)
     // Nothing re-validates the token afterwards: the account arrived already connected.
     expect(mockedConnect).not.toHaveBeenCalled()
     expect(result.current.deviceFlowData).toBeNull()

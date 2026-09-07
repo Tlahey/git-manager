@@ -38,6 +38,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { useAiStatusCheck } from './hooks/useAiStatusCheck'
 import { useAutoFetch } from './hooks/useAutoFetch'
+import { useGithubTokenExpiryWarning } from './hooks/useGithubTokenExpiryWarning'
 import { Footer } from './components/footer/Footer'
 import { AiStatusBanner } from './components/layout/AiStatusBanner'
 
@@ -82,6 +83,9 @@ export default function App() {
   useAppReadySplash()
   useAiStatusCheck()
   useAutoFetch()
+  // A GitHub token cannot be refreshed, so the warning is the whole remedy — and it has to reach a
+  // user who never opens Settings, which is where the badge and the renew link live.
+  useGithubTokenExpiryWarning()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),

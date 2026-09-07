@@ -939,6 +939,19 @@ export interface GitHubUser {
 export interface GitHubAccount {
   id: string
   user: GitHubUser
+  /**
+   * RFC 3339 expiry of the account's token, when GitHub declared one — absent for a token set never
+   * to expire, and for an account connected before this was recorded.
+   *
+   * A date, not a secret, so it belongs in `settings.json` next to the rest of the account's public
+   * half. It is here because a personal access token cannot be refreshed: the only thing the app can
+   * do about a 90-day expiry is say so before it lands, and this is what the warning reads.
+   *
+   * Refreshed from the live `github-authentication-token-expiration` header on every API call rather
+   * than trusted from connect time — see `services/github_token_status.rs` for why both this and the
+   * SSO state have to be re-read rather than remembered.
+   */
+  tokenExpiresAt?: string | null
 }
 
 export interface GitHubSettings {

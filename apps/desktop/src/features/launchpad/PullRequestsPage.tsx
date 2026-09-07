@@ -9,6 +9,7 @@ import { OpenIssueContext } from './components/OpenIssueContext'
 import { PrSidePanel } from './components/PrSidePanel'
 import { IssueSidePanel } from './components/IssueSidePanel'
 import { ConnectGithubBanner } from './components/ConnectGithubBanner'
+import { GithubSsoBanner } from '../../components/github/GithubSsoBanner'
 import { LaunchpadHeader } from './components/LaunchpadHeader'
 import { LaunchpadKpiBar } from './components/LaunchpadKpiBar'
 import { LaunchpadToolbar } from './components/LaunchpadToolbar'
@@ -120,6 +121,12 @@ export function PullRequestsPage({ onOpenSettings }: PullRequestsPageProps = {})
                 onDismiss={dismissConnectBanner}
               />
             )}
+
+            {/* Signed *in* and still empty: an organization with SAML SSO refuses an unauthorized
+                token with a 403 that the tabs below turn into empty lists, so without this the page
+                says "no pull requests" when it means "this token was refused". Renders nothing
+                unless GitHub actually said so. */}
+            <GithubSsoBanner accountId={username} className="mx-4 mt-3 shrink-0" />
 
             {/* Overview KPI Bar — every figure in it is the connected account's. */}
             {githubConnected && (

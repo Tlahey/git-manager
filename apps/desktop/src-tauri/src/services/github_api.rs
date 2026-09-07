@@ -16,6 +16,10 @@
 
 use crate::error::AppError;
 use crate::services::credential_store::{self, CredentialKind};
+use crate::services::github_token_status::{
+    parse_sso_header, parse_token_expiration, GitHubSsoChallenge,
+};
+use reqwest::header::HeaderMap;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +30,12 @@ const DEFAULT_ACCEPT: &str = "application/vnd.github.v3+json";
 
 /// The only origin a token is ever attached to — see the module comment.
 const API_ORIGIN: &str = "https://api.github.com/";
+
+/// Names an organization whose SAML single sign-on the token has not been authorized for.
+const SSO_HEADER: &str = "x-github-sso";
+
+/// When the personal access token that signed this request expires.
+const TOKEN_EXPIRATION_HEADER: &str = "github-authentication-token-expiration";
 
 pub fn http_client(timeout_secs: u64) -> Result<Client, AppError> {
     Client::builder()
@@ -45,6 +55,23 @@ pub struct GithubApiResponse {
     pub status: u16,
     pub ok: bool,
     pub body: String,
+    /// GitHub's SAML single-sign-on verdict on this request, when it gave one.
+    ///
+    /// Two *named* headers are surfaced here, not the whole header map: a caller that could read any
+    /// response header could read `Set-Cookie` too, and widening this to "the headers" would be a
+    /// decision made by accident rather than in a diff.
+    pub sso: Option<GitHubSsoChallenge>,
+    /// RFC 3339 expiry of the token that signed this request — see `github_token_status`.
+    pub token_expires_at: Option<String>,
+}
+
+/// Reads the two credential-status headers off a response — see `github_token_status`.
+fn read_token_status(headers: &HeaderMap) -> (Option<GitHubSsoChallenge>, Option<String>) {
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    (
+        header(SSO_HEADER).and_then(parse_sso_header),
+        header(TOKEN_EXPIRATION_HEADER).and_then(parse_token_expiration),
+    )
 }
 
 fn guard_url(url: &str) -> Result<(), AppError> {
@@ -135,6 +162,7 @@ pub async fn request(
         .inspect_err(|e| eprintln!("[GitHub API] {verb} {url} — transport error: {e}"))
         .map_err(AppError::Http)?;
     let status = res.status();
+    let (sso, token_expires_at) = read_token_status(res.headers());
     let text = res.text().await.map_err(AppError::Http)?;
 
     // A non-2xx is a legitimate answer here (a 404 from the releases endpoint means "no release"),
@@ -147,13 +175,21 @@ pub async fn request(
         } else {
             " (anonymous request)"
         };
-        eprintln!("[GitHub API] {verb} {url} — HTTP {status}{anon}");
+        // Naming the SSO case in the log too: a 403 on an organization repository is otherwise
+        // indistinguishable from a permissions problem, and it is the one with a one-click fix.
+        let sso_note = match &sso {
+            Some(c) if c.required => " — SAML SSO authorization required for this token",
+            _ => "",
+        };
+        eprintln!("[GitHub API] {verb} {url} — HTTP {status}{anon}{sso_note}");
     }
 
     Ok(GithubApiResponse {
         status: status.as_u16(),
         ok: status.is_success(),
         body: text,
+        sso,
+        token_expires_at,
     })
 }
 
@@ -166,6 +202,12 @@ pub struct GitHubUserInfo {
     pub name: Option<String>,
     pub email: Option<String>,
     pub avatar_url: String,
+    /// RFC 3339 expiry of the token just connected, when it has one.
+    ///
+    /// Read here rather than asked of the user: GitHub declares it on the very response that
+    /// validates the token, so connecting an account already knows when it will stop working. A
+    /// token with no expiry (a classic PAT set to never expire) simply leaves this `None`.
+    pub token_expires_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +242,7 @@ async fn fetch_user(token: &str) -> Result<GitHubUserInfo, AppError> {
         )));
     }
 
+    let (_, token_expires_at) = read_token_status(user_res.headers());
     let user_data: serde_json::Value = user_res.json().await.map_err(AppError::Http)?;
 
     let login = user_data["login"].as_str().unwrap_or_default().to_string();
@@ -245,6 +288,7 @@ async fn fetch_user(token: &str) -> Result<GitHubUserInfo, AppError> {
         name,
         email,
         avatar_url,
+        token_expires_at,
     })
 }
 

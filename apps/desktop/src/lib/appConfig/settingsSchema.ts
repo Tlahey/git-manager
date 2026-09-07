@@ -116,7 +116,16 @@ const githubUserSchema = z.object({
 // carries them — `validate.ts` keeps the *raw* value, so nothing is stripped here — and
 // `secretsMigration.ts` moves them across on the first launch that finds them.
 const githubSchema = z.object({
-  accounts: z.array(z.object({ id: z.string(), user: githubUserSchema })),
+  accounts: z.array(
+    z.object({
+      id: z.string(),
+      user: githubUserSchema,
+      // A date, not a credential — the token behind it stays in the keychain. Optional because a
+      // token can be set never to expire, and because accounts connected before this existed have
+      // no value to repair to.
+      tokenExpiresAt: z.string().nullable().optional(),
+    })
+  ),
   activeAccountId: z.string().nullable(),
 })
 

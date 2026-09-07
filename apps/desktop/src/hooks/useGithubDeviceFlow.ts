@@ -12,8 +12,12 @@ interface UseGithubDeviceFlowOptions {
    * Rust, which validates the token, stores it and answers with the profile. The caller's job is to
    * record who is connected, which is public information; it has no way to obtain the secret, and
    * that is deliberate (see `lib/tauri/credentials.ts`).
+   *
+   * `tokenExpiresAt` rides alongside rather than sitting on the user because it describes the
+   * *token*, not the person: the same account connected with a different token has a different
+   * date, and a token set never to expire has none (`null`).
    */
-  onLoginSuccess: (user: GitHubUser) => void
+  onLoginSuccess: (user: GitHubUser, tokenExpiresAt: string | null) => void
 }
 
 /** Extra delay GitHub asks for when we polled too fast, per RFC 8628 §3.5. */
@@ -76,13 +80,17 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
     name: string | null
     email: string | null
     avatarUrl: string
+    tokenExpiresAt?: string | null
   }) {
-    onLoginSuccess({
-      login: userData.login,
-      name: userData.name || userData.login,
-      email: userData.email,
-      avatarUrl: userData.avatarUrl,
-    })
+    onLoginSuccess(
+      {
+        login: userData.login,
+        name: userData.name || userData.login,
+        email: userData.email,
+        avatarUrl: userData.avatarUrl,
+      },
+      userData.tokenExpiresAt ?? null
+    )
   }
 
   /** Ends the flow with a message, leaving the card replaced by the error rather than a spinner. */
@@ -100,7 +108,10 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
     stopPolling()
 
     try {
-      const data = await apiGithubDeviceCode('repo read:user user:email')
+      // `read:org` is the one that is not obvious: without it an account whose work lives in an
+      // organization can authenticate perfectly and still see an empty list. Kept in step with
+      // `lib/githubTokenExpiry.ts`'s `CLASSIC_TOKEN_SCOPES`, so both ways in ask for the same thing.
+      const data = await apiGithubDeviceCode('repo read:org read:user user:email')
       setDeviceFlowData(data)
 
       let delayMs = (data.interval || DEFAULT_INTERVAL_SECONDS) * 1000
