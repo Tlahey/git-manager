@@ -1,7 +1,7 @@
 import { Bell, BellOff, MonitorSmartphone, Volume2, VolumeX } from 'lucide-react'
 import type { NotificationDisplayStyle, NotificationSettings } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
+import { Separator, Switch, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import {
   DEFAULT_DISPLAY_DURATION_MS,
@@ -10,69 +10,9 @@ import {
   DISPLAY_STYLE_OPTIONS,
   resolveDisplayStyle,
 } from '../../../lib/notifications/notificationDisplay'
+import { EVENT_TOGGLES } from './notificationEvents.config'
+import { NotificationEventRow } from './NotificationEventRow'
 import { FilterableSetting, Highlight } from './settingsSearch'
-
-/**
- * The per-event toggles, in the order a pull request goes through them (local git ops first, then
- * the PR lifecycle: opened → review → CI → queued → merged/closed). Module-level, so these hold
- * i18n *keys* rather than copy — resolved through `t()` at render.
- */
-const EVENT_TOGGLES: Array<{
-  key: keyof NotificationSettings
-  titleKey: string
-  descKey: string
-}> = [
-  {
-    key: 'notifyOnFetch',
-    titleKey: 'notifications.settings.fetchTitle',
-    descKey: 'notifications.settings.fetchDesc',
-  },
-  {
-    key: 'notifyOnPull',
-    titleKey: 'notifications.settings.pullTitle',
-    descKey: 'notifications.settings.pullDesc',
-  },
-  {
-    key: 'notifyOnPush',
-    titleKey: 'notifications.settings.pushTitle',
-    descKey: 'notifications.settings.pushDesc',
-  },
-  {
-    key: 'notifyOnTerminalFinished',
-    titleKey: 'notifications.settings.terminalFinishedTitle',
-    descKey: 'notifications.settings.terminalFinishedDesc',
-  },
-  {
-    key: 'notifyOnNewPr',
-    titleKey: 'notifications.settings.newPrTitle',
-    descKey: 'notifications.settings.newPrDesc',
-  },
-  {
-    key: 'notifyOnReviewRequested',
-    titleKey: 'notifications.settings.reviewRequestedTitle',
-    descKey: 'notifications.settings.reviewRequestedDesc',
-  },
-  {
-    key: 'notifyOnReviewStatusChanged',
-    titleKey: 'notifications.settings.reviewStatusTitle',
-    descKey: 'notifications.settings.reviewStatusDesc',
-  },
-  {
-    key: 'notifyOnCi',
-    titleKey: 'notifications.settings.ciTitle',
-    descKey: 'notifications.settings.ciDesc',
-  },
-  {
-    key: 'notifyOnPrQueued',
-    titleKey: 'notifications.settings.prQueuedTitle',
-    descKey: 'notifications.settings.prQueuedDesc',
-  },
-  {
-    key: 'notifyOnPrMerged',
-    titleKey: 'notifications.settings.prMergedTitle',
-    descKey: 'notifications.settings.prMergedDesc',
-  },
-]
 
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   enabled: true,
@@ -230,7 +170,7 @@ export function NotificationSection() {
           <FilterableSetting
             className="space-y-3"
             testId="setting-notif-events"
-            match={`${t('notifications.settings.eventsTitle')} ${EVENT_TOGGLES.map((e) => t(e.titleKey)).join(' ')} events événements push pull fetch pr review revue ci merge queue`}
+            match={`${t('notifications.settings.eventsTitle')} ${EVENT_TOGGLES.map((e) => t(e.titleKey)).join(' ')} ${t('notifications.settings.scopeLabel')} ${t('notifications.settings.scopeMine')} events événements push pull fetch pr review revue ci merge queue scope portée mine miennes`}
           >
             <Separator className="mb-3" />
             <h4 className="text-xs font-semibold text-foreground">
@@ -238,24 +178,13 @@ export function NotificationSection() {
             </h4>
 
             <div className="space-y-3 pl-1">
-              {EVENT_TOGGLES.map(({ key, titleKey, descKey }) => (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center justify-between"
-                  data-testid={`setting-${key}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-sans text-xs text-foreground">{t(titleKey)}</span>
-                    <span className="font-sans text-[10px] text-muted-foreground">
-                      {t(descKey)}
-                    </span>
-                  </div>
-                  <Checkbox
-                    checked={(notifications[key] as boolean | undefined) ?? true}
-                    onChange={(e) => updateNotifications({ [key]: e.target.checked })}
-                    aria-label={t(titleKey)}
-                  />
-                </label>
+              {EVENT_TOGGLES.map((toggle) => (
+                <NotificationEventRow
+                  key={toggle.key}
+                  toggle={toggle}
+                  notifications={notifications}
+                  onChange={updateNotifications}
+                />
               ))}
             </div>
           </FilterableSetting>

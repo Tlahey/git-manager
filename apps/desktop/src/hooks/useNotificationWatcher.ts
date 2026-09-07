@@ -5,6 +5,7 @@ import { useSettingsStore } from '../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
 import {
   NOTIFICATION_TYPES,
+  isNotificationInScope,
   isNotificationTypeEnabled,
   resolveTargetTab,
 } from '../lib/notifications/notificationRegistry'
@@ -49,7 +50,7 @@ export async function notifyUser(notif: AppNotification, t: TFunction) {
 }
 
 export function useNotificationWatcher() {
-  const { prs, loading } = useGitHubData()
+  const { prs, loading, username } = useGitHubData()
   const settings = useSettingsStore((s) => s.settings)
   const { t } = useTranslation('common')
 
@@ -106,6 +107,7 @@ export function useNotificationWatcher() {
       for (const def of NOTIFICATION_TYPES) {
         if (!notificationsEnabled) break
         if (!isNotificationTypeEnabled(def, settings.notifications)) continue
+        if (!isNotificationInScope(def, pr, settings.notifications, username)) continue
         if (!def.detect(pr, prev)) continue
 
         const newNotif = addNotification({
@@ -140,6 +142,7 @@ export function useNotificationWatcher() {
     notificationsEnabled,
     soundEnabled,
     settings.notifications,
+    username,
     t,
     addNotification,
     setPreviousPRs,

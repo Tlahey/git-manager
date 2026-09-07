@@ -4,6 +4,7 @@ import {
   getNotificationTypeDef,
   resolveTargetTab,
   isNotificationTypeEnabled,
+  isNotificationInScope,
   type PreviousPRSnapshot,
 } from './notificationRegistry'
 import type { MockPR } from '../github/types'
@@ -269,5 +270,76 @@ describe('detect — ci_success / ci_failed', () => {
     const detect = getNotificationTypeDef('ci_failed')!.detect
     expect(detect(pr({ ciStatus: 'failure' }), snapshot({ ciStatus: 'running' }))).toBe(true)
     expect(detect(pr({ ciStatus: 'failure' }), undefined)).toBe(false)
+  })
+})
+
+describe('isNotificationInScope', () => {
+  const notifications: NotificationSettings = {
+    enabled: true,
+    notifyOnFetch: true,
+    notifyOnPull: true,
+    notifyOnPush: true,
+    enableSound: false,
+  }
+
+  it('lets everything through by default, so an upgrade silences nothing', () => {
+    for (const def of NOTIFICATION_TYPES) {
+      expect(isNotificationInScope(def, pr({ author: 'hubot' }), notifications, 'octocat')).toBe(
+        true
+      )
+      expect(isNotificationInScope(def, pr({ author: 'hubot' }), undefined, 'octocat')).toBe(true)
+    }
+  })
+
+  it('drops another author’s PR once the event is scoped to mine', () => {
+    const def = getNotificationTypeDef('ci_failed')!
+    const scoped = { ...notifications, scopes: { notifyOnCi: 'mine' as const } }
+    expect(isNotificationInScope(def, pr({ author: 'hubot' }), scoped, 'octocat')).toBe(false)
+    expect(isNotificationInScope(def, pr({ author: 'OctoCat' }), scoped, 'octocat')).toBe(true)
+  })
+
+  it('scopes both CI outcomes and both terminal states behind their single key', () => {
+    const ciScoped = { ...notifications, scopes: { notifyOnCi: 'mine' as const } }
+    const otherPr = pr({ author: 'hubot' })
+    expect(
+      isNotificationInScope(getNotificationTypeDef('ci_success')!, otherPr, ciScoped, 'octocat')
+    ).toBe(false)
+    expect(
+      isNotificationInScope(getNotificationTypeDef('ci_failed')!, otherPr, ciScoped, 'octocat')
+    ).toBe(false)
+
+    const mergedScoped = { ...notifications, scopes: { notifyOnPrMerged: 'mine' as const } }
+    expect(
+      isNotificationInScope(getNotificationTypeDef('pr_merged')!, otherPr, mergedScoped, 'octocat')
+    ).toBe(false)
+    expect(
+      isNotificationInScope(getNotificationTypeDef('pr_closed')!, otherPr, mergedScoped, 'octocat')
+    ).toBe(false)
+  })
+
+  // A review is never requested on your own PR: a scope there would silence the type outright.
+  it('never scopes review requests, whatever the settings hold', () => {
+    const def = getNotificationTypeDef('review_requested')!
+    expect(def.scopeKey).toBeNull()
+    expect(
+      isNotificationInScope(
+        def,
+        pr({ author: 'hubot' }),
+        {
+          ...notifications,
+          scopes: { notifyOnCi: 'mine' },
+        },
+        'octocat'
+      )
+    ).toBe(true)
+  })
+
+  // Without a connected account there is no author to compare against; a filter that cannot be
+  // evaluated must not become one that drops everything.
+  it('lets everything through when the signed-in user is unknown', () => {
+    const def = getNotificationTypeDef('pr_merged')!
+    const scoped = { ...notifications, scopes: { notifyOnPrMerged: 'mine' as const } }
+    expect(isNotificationInScope(def, pr({ author: 'hubot' }), scoped, null)).toBe(true)
+    expect(isNotificationInScope(def, pr({ author: 'hubot' }), scoped, undefined)).toBe(true)
   })
 })
