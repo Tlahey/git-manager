@@ -77,6 +77,15 @@ Feature: Notifications
     request lifecycle from opened through review and CI to merged. One switch at
     the bottom plays a sound with whichever of them survive that list; it is off
     until you ask for it.
+
+    Each pull request event carries a second control, under its switch: whose pull
+    requests it is about. The app watches two sets — the ones you opened and the
+    ones you were asked to review — and every event fires on both by default. On a
+    busy team that is most of the volume, so any of them can be narrowed to the
+    pull requests you opened yourself, one event at a time: keep merges and review
+    requests from everywhere, hear about failing checks only when they are yours.
+    Review requests are the one event with no such control, because a review is
+    never requested on your own pull request.
     Given the app language is English
     And notifications are turned on
     When I open the settings
@@ -84,6 +93,7 @@ Feature: Notifications
     And the interface has settled
     Then the notification display options offer the notch card and the macOS banner
     And the notification settings offer a switch per event
+    And each pull request event can be narrowed to the PRs I opened
     When I turn off the "push" notification event
     Then the "push" notification event is off
     And a full-window screenshot is saved as "doc-notification-delivery"

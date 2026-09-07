@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import type { AiPresetId } from '@git-manager/ai'
-import type { AppIconId, AppSettings, NotificationDisplayStyle } from '@git-manager/git-types'
+import type {
+  AppIconId,
+  AppSettings,
+  NotificationDisplayStyle,
+  NotificationScope,
+} from '@git-manager/git-types'
 
 /**
  * The icon ids `appearance.appIcon` accepts, listed rather than derived because `z.enum` needs a
@@ -154,6 +159,10 @@ const notificationsSchema = z.object({
   notifyOnNewPr: z.boolean().optional(),
   notifyOnCi: z.boolean().optional(),
   notifyOnTerminalFinished: z.boolean().optional(),
+  // Values are any string, keys any key: `resolveNotificationScope` falls back to `all` for
+  // anything it doesn't recognize, and rejecting here would throw away every *other* notification
+  // setting over one stale entry.
+  scopes: z.record(z.string(), looseString<NotificationScope>()).optional(),
   // Any string: `migrateDisplayStyle` remaps the previous `'popover'` spelling on the way in.
   displayStyle: looseString<NotificationDisplayStyle>().optional(),
   displayDurationMs: z.number().optional(),

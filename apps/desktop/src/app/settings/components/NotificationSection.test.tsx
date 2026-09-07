@@ -84,6 +84,40 @@ describe('NotificationSection — event toggles', () => {
   })
 })
 
+describe('NotificationSection — per-event audience filter', () => {
+  it('writes the scope for one event without touching the others', async () => {
+    const user = userEvent.setup()
+    render(<NotificationSection />)
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'CI results — which pull requests' }),
+      'mine'
+    )
+    expect(useSettingsStore.getState().settings.notifications!.scopes).toEqual({
+      notifyOnCi: 'mine',
+    })
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Merged or closed PRs — which pull requests' }),
+      'mine'
+    )
+    expect(useSettingsStore.getState().settings.notifications!.scopes).toEqual({
+      notifyOnCi: 'mine',
+      notifyOnPrMerged: 'mine',
+    })
+  })
+
+  it('offers no filter for review requests or for the local git events', () => {
+    render(<NotificationSection />)
+    expect(
+      screen.queryByRole('combobox', { name: 'Review requests — which pull requests' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'Fetch — which pull requests' })
+    ).not.toBeInTheDocument()
+  })
+})
+
 describe('NotificationSection — sounds', () => {
   it('shows the sound-name picker only once sound is enabled', async () => {
     const user = userEvent.setup()

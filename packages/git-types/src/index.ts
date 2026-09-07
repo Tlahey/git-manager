@@ -1151,6 +1151,35 @@ export interface ExternalToolsSettings {
   agentLaunchCommand?: string
 }
 
+/**
+ * Whose pull requests an event is allowed to notify about.
+ *
+ * The app watches two sets of PRs — the ones you opened (`author:me`) and the ones you were asked
+ * to review (`review-requested:me`) — and every event below fires on both. On a busy team that is
+ * most of the noise: someone else's checks going green is not news the way your own are.
+ *
+ * `all` keeps the existing behaviour and is the default, so nothing goes quiet on upgrade.
+ */
+export type NotificationScope = 'all' | 'mine'
+
+/**
+ * The event toggles that also carry a {@link NotificationScope}.
+ *
+ * Keyed by the event's own `notifyOn*` flag rather than by notification type, so the scope always
+ * covers exactly what its checkbox covers — one entry gates both CI outcomes, one gates both
+ * terminal PR states.
+ *
+ * `notifyOnReviewRequested` is deliberately absent: a review is never requested on your own PR, so
+ * a "mine only" scope there would silence the event rather than narrow it. The local git events
+ * (fetch/pull/push, terminal) are absent for the opposite reason — they have no PR to belong to.
+ */
+export type NotificationScopeKey =
+  | 'notifyOnNewPr'
+  | 'notifyOnReviewStatusChanged'
+  | 'notifyOnCi'
+  | 'notifyOnPrQueued'
+  | 'notifyOnPrMerged'
+
 export interface NotificationSettings {
   enabled: boolean
   notifyOnFetch: boolean
@@ -1170,6 +1199,14 @@ export interface NotificationSettings {
   /** A command in the integrated terminal (e.g. a coding agent) finished running — see
    * `NotchTerminalActivity`. */
   notifyOnTerminalFinished?: boolean
+  /**
+   * Per-event audience filter, absent entries meaning `all` — see {@link NotificationScope}.
+   *
+   * A map rather than five more `scopeOn*` fields: the keys are the toggles' own, so a reader can
+   * see at a glance that a scope narrows an event that is already switched on, and adding a sixth
+   * scoped event costs no new settings field.
+   */
+  scopes?: Partial<Record<NotificationScopeKey, NotificationScope>>
   /**
    * How a notification is presented — and, as a consequence, *how many* the app raises.
    *

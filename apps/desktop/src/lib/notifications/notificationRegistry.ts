@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { AppNotification, PreviousPRSnapshot } from '../../stores/notification.store'
-import type { NotificationSettings } from '@git-manager/git-types'
+import type { NotificationScopeKey, NotificationSettings } from '@git-manager/git-types'
+import { isAuthoredByCurrentUser, resolveNotificationScope } from './notificationScope'
 import type { MockPR, PRStatus, ReviewStatus } from '../github/types'
 import {
   ReviewRequestedIcon,
@@ -43,6 +44,12 @@ export interface NotificationTypeDef {
   type: AppNotification['type']
   /** Settings key gating this type; null = no dedicated toggle, follows `enabled` only. */
   settingsKey: keyof NotificationSettings | null
+  /**
+   * Settings key carrying this type's audience filter; null = the type has no scope and always
+   * fires for every PR the app watches. See {@link NotificationScopeKey} for why
+   * `review_requested` is the one PR type that opts out.
+   */
+  scopeKey: NotificationScopeKey | null
   targetTab: AppNotification['targetTab'] | ((pr: MockPR) => AppNotification['targetTab'])
   nativePrefix: string
   icon: ComponentType
@@ -54,6 +61,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'new_pr',
     settingsKey: 'notifyOnNewPr',
+    scopeKey: 'notifyOnNewPr',
     targetTab: (pr) => (pr.needsMyReview ? 'waiting' : 'prs'),
     nativePrefix: '🆕 [New PR] ',
     icon: NewPrIcon,
@@ -64,6 +72,9 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'review_requested',
     settingsKey: 'notifyOnReviewRequested',
+    // No scope: a review is never requested on your own PR, so "mine only" would silence this
+    // type outright rather than narrow it.
+    scopeKey: null,
     targetTab: 'waiting',
     nativePrefix: '👀 [Review] ',
     icon: ReviewRequestedIcon,
@@ -73,6 +84,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'review_status_changed',
     settingsKey: 'notifyOnReviewStatusChanged',
+    scopeKey: 'notifyOnReviewStatusChanged',
     targetTab: 'prs',
     nativePrefix: '💬 [Review Update] ',
     icon: ReviewRequestedIcon,
@@ -86,6 +98,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'ci_success',
     settingsKey: 'notifyOnCi',
+    scopeKey: 'notifyOnCi',
     targetTab: 'prs',
     nativePrefix: '🟢 [CI Success] ',
     icon: PrGreenIcon,
@@ -98,6 +111,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'ci_failed',
     settingsKey: 'notifyOnCi',
+    scopeKey: 'notifyOnCi',
     targetTab: 'prs',
     nativePrefix: '🔴 [CI Failed] ',
     icon: PrRedIcon,
@@ -110,6 +124,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'pr_queued',
     settingsKey: 'notifyOnPrQueued',
+    scopeKey: 'notifyOnPrQueued',
     targetTab: 'prs',
     nativePrefix: '⏳ [Queued] ',
     icon: PrQueuedIcon,
@@ -121,6 +136,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   {
     type: 'pr_merged',
     settingsKey: 'notifyOnPrMerged',
+    scopeKey: 'notifyOnPrMerged',
     targetTab: 'prs',
     nativePrefix: '🎉 [Merged] ',
     icon: PrMergedIcon,
@@ -131,6 +147,7 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
     // Reuses the same toggle as pr_merged — matches the pre-registry behavior exactly (there's no
     // dedicated "notify on close" setting today).
     settingsKey: 'notifyOnPrMerged',
+    scopeKey: 'notifyOnPrMerged',
     targetTab: 'prs',
     nativePrefix: '🛑 [Closed] ',
     icon: PrClosedIcon,
@@ -157,4 +174,25 @@ export function isNotificationTypeEnabled(
 ): boolean {
   if (def.settingsKey === null) return true
   return (notifications?.[def.settingsKey] as boolean | undefined) ?? true
+}
+
+/**
+ * Whether this PR is in the audience the user chose for this type — the second gate, applied after
+ * {@link isNotificationTypeEnabled}: the checkbox says *whether*, the scope says *whose*.
+ *
+ * An unknown `currentUser` lets everything through rather than nothing. Without a connected
+ * account there is no author to compare against, and a filter that can't be evaluated must not
+ * become a filter that drops every notification — the failure would be silent, and the symptom
+ * ("notifications stopped") points nowhere near this line.
+ */
+export function isNotificationInScope(
+  def: NotificationTypeDef,
+  pr: MockPR,
+  notifications: NotificationSettings | undefined,
+  currentUser: string | null | undefined
+): boolean {
+  if (def.scopeKey === null) return true
+  if (resolveNotificationScope(def.scopeKey, notifications) === 'all') return true
+  if (!currentUser) return true
+  return isAuthoredByCurrentUser(pr.author, currentUser)
 }

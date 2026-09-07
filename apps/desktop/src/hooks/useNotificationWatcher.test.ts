@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import type { MockPR } from '../lib/github/types'
+import type { NotificationSettings } from '@git-manager/git-types'
 import { i18next, type TFunction } from '@git-manager/i18n'
 
 const useGitHubData = vi.fn()
@@ -56,8 +57,8 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
   }
 }
 
-function mockGitHubData(prs: MockPR[], loading = false) {
-  useGitHubData.mockReturnValue({ prs, loading })
+function mockGitHubData(prs: MockPR[], loading = false, username: string | null = null) {
+  useGitHubData.mockReturnValue({ prs, loading, username })
 }
 
 beforeEach(() => {
@@ -231,6 +232,73 @@ describe('useNotificationWatcher — PR change detection', () => {
 
     await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
     expect(useNotificationStore.getState().notifications[0].type).toBe('pr_queued')
+  })
+})
+
+describe('useNotificationWatcher — per-event audience filter', () => {
+  function withScope(scopes: NonNullable<NotificationSettings['scopes']>) {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        notifications: { ...DEFAULT_SETTINGS.notifications!, scopes },
+      },
+    })
+  }
+
+  it('drops another author’s event once the type is scoped to my own PRs', async () => {
+    withScope({ notifyOnPrMerged: 'mine' })
+    mockGitHubData([pr({ author: 'hubot', status: 'open' })], false, 'octocat')
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ author: 'hubot', status: 'merged' })], false, 'octocat')
+    rerender()
+
+    // The baseline still moves, so the change is not replayed once the scope is widened again.
+    await waitFor(() =>
+      expect(useNotificationStore.getState().previousPRs['pr-1'].status).toBe('merged')
+    )
+    expect(useNotificationStore.getState().notifications).toEqual([])
+  })
+
+  it('keeps my own PR’s event under the same scope', async () => {
+    withScope({ notifyOnPrMerged: 'mine' })
+    mockGitHubData([pr({ author: 'octocat', status: 'open' })], false, 'octocat')
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ author: 'octocat', status: 'merged' })], false, 'octocat')
+    rerender()
+
+    await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
+    expect(useNotificationStore.getState().notifications[0].type).toBe('pr_merged')
+  })
+
+  it('narrows only the scoped event, leaving the others alone', async () => {
+    withScope({ notifyOnCi: 'mine' })
+    mockGitHubData([pr({ author: 'hubot', status: 'open' })], false, 'octocat')
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ author: 'hubot', status: 'merged' })], false, 'octocat')
+    rerender()
+
+    await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
+    expect(useNotificationStore.getState().notifications[0].type).toBe('pr_merged')
+  })
+
+  // Without a connected account there is no author to compare against; the filter must not become
+  // a silent "notify about nothing".
+  it('notifies as before when the signed-in user is unknown', async () => {
+    withScope({ notifyOnPrMerged: 'mine' })
+    mockGitHubData([pr({ author: 'hubot', status: 'open' })], false, null)
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ author: 'hubot', status: 'merged' })], false, null)
+    rerender()
+
+    await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
   })
 })
 

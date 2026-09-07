@@ -157,6 +157,22 @@ Then(/^the notification settings offer a switch per event$/, async () => {
   expect(toggles.length).toBeGreaterThan(0)
 })
 
+// The audience filter's test id is `setting-scope-<key>`, deliberately not `setting-<key>-scope`,
+// so it stays out of the `setting-notifyOn` prefix the row query above counts.
+Then(/^each pull request event can be narrowed to the PRs I opened$/, async () => {
+  await $('[data-testid^="setting-scope-"]').waitForDisplayed({ timeout: 10000 })
+  const scopes = await browser.execute(() =>
+    Array.from(document.querySelectorAll('[data-testid^="setting-scope-"]')).map((select) => ({
+      key: (select as HTMLElement).dataset.testid,
+      values: Array.from(select.querySelectorAll('option')).map((o) => o.value),
+    }))
+  )
+  expect(scopes.length).toBeGreaterThan(0)
+  for (const scope of scopes) expect(scope.values).toEqual(['all', 'mine'])
+  // A review is never requested on your own PR, so that one event carries no filter.
+  expect(scopes.map((s) => s.key)).not.toContain('setting-scope-notifyOnReviewRequested')
+})
+
 /** "push" → `notifyOnPush`, "review-requested" → `notifyOnReviewRequested` — matches
  *  NotificationSection.tsx's `EVENT_TOGGLES` keys (`notifyOn<PascalCase event name>`). */
 function eventToggleTestId(event: string): string {
