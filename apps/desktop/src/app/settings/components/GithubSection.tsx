@@ -6,6 +6,8 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { apiGithubDisconnectAccount } from '../../../api/github.api'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
 import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
+import { useGithubTokenStatusStore } from '../../../stores/githubTokenStatus.store'
+import { GithubSsoBanner } from '../../../components/github/GithubSsoBanner'
 import { GithubDeviceFlowCard } from './github/GithubDeviceFlowCard'
 import { GithubLoginForm, type LoginMethod } from './github/GithubLoginForm'
 import { GithubAccountList } from './github/GithubAccountList'
@@ -22,6 +24,7 @@ import { GithubReposPanel } from './github/GithubReposPanel'
 export function GithubSection() {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
+  const forgetTokenStatus = useGithubTokenStatusStore((s) => s.forgetAccount)
   const github = settings.github || { accounts: [], activeAccountId: null }
 
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null)
@@ -35,11 +38,18 @@ export function GithubSection() {
     useGithubDeviceFlow({
       // The token is already in the keychain by the time this runs — Rust stored it. What is
       // recorded here is the account's public half, which is all `settings.json` holds now.
-      onLoginSuccess: (user: GitHubUser) => {
+      onLoginSuccess: (user: GitHubUser, tokenExpiresAt: string | null) => {
         // Logging in as someone already connected replaces that entry rather than adding a second:
         // the account id *is* the login, and it is the key the keychain entry is filed under.
         const updatedAccounts = github.accounts.filter((a) => a.id !== user.login)
-        updatedAccounts.push({ id: user.login, user })
+        // The expiry date arrives with the account: GitHub declares it on the very response that
+        // validated the token, so the warning is available before the first API call rather than
+        // after it.
+        updatedAccounts.push({ id: user.login, user, tokenExpiresAt })
+        // A reconnection is a *new* token, whose SSO authorization is unknown until it is used. The
+        // previous one's verdict would otherwise survive it — as a banner the user just fixed, or an
+        // all-clear that is no longer true.
+        forgetTokenStatus(user.login)
         updateSettings({
           github: { ...github, accounts: updatedAccounts, activeAccountId: user.login },
         })
@@ -72,6 +82,7 @@ export function GithubSection() {
     void apiGithubDisconnectAccount(id).catch((err) => {
       console.error('Failed to remove the stored GitHub token:', err)
     })
+    forgetTokenStatus(id)
     const updatedAccounts = github.accounts.filter((a) => a.id !== id)
     // Removing the active account promotes the first one left rather than leaving the app pointing
     // at an id that no longer exists.
@@ -113,6 +124,10 @@ export function GithubSection() {
                 onSubmitPat={handleAddPatToken}
               />
             )}
+
+            {/* Above the account list, because it is a verdict on the account the list shows as
+                perfectly connected — which is exactly the contradiction the user needs explained. */}
+            <GithubSsoBanner accountId={github.activeAccountId} />
 
             <GithubAccountList
               accounts={github.accounts}

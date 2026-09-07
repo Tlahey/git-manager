@@ -35,6 +35,21 @@ export interface GitHubUserInfo {
   name: string | null
   email: string | null
   avatarUrl: string
+  /** RFC 3339 expiry of the token just connected — `null` when it never expires. */
+  tokenExpiresAt: string | null
+}
+
+/**
+ * GitHub's `X-GitHub-SSO` header, parsed by Rust — see `services/github_token_status.rs`.
+ *
+ * `required` means the request was *refused* until the token is authorized for the organization,
+ * and `authorizeUrl` is the link that authorizes it. The other form (`partial-results`) rides along
+ * with a successful GraphQL response that quietly omitted an organization's data.
+ */
+export interface GithubSsoChallenge {
+  required: boolean
+  organizations: string[]
+  authorizeUrl: string | null
 }
 
 export const githubDeviceCode = (scope: string) =>
@@ -61,6 +76,10 @@ export interface GithubApiResponse {
   ok: boolean
   /** The raw body. Not parsed here: the contents API's `raw` media type returns file text. */
   body: string
+  /** GitHub's SAML SSO verdict on this request, when it gave one. */
+  sso: GithubSsoChallenge | null
+  /** RFC 3339 expiry of the token that signed this request, when it has one. */
+  tokenExpiresAt: string | null
 }
 
 /**
