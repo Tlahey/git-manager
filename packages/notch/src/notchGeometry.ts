@@ -22,13 +22,34 @@ import { STATUS_OUTPUT_MAX_LINES, type NotchModel } from './types'
 // and it degrades correctly on a notchless display — there the band is simply the strip that
 // overlaps the menu bar, which is just as unusable for anything you expect to be readable.
 
-/** Height of the reserved band at the top of the card. */
+/** Height of the reserved band at the top of the card, and the floor every other figure is
+ *  clamped to — see {@link resolveBandHeight}. */
 export const NOTCH_BAND_HEIGHT = 32
 /** Half the camera housing's width. The card is centred on screen, so the housing is centred on
  *  the card, and this is how far it reaches either side of the card's midpoint. */
 export const NOTCH_HOUSING_HALF_WIDTH = 100
 /** Breathing room between a band sliver's content and the housing it must not run under. */
 export const NOTCH_BAND_GUTTER = 20
+
+/**
+ * The band height to lay out with, whatever the machine reported — never shorter than
+ * {@link NOTCH_BAND_HEIGHT}.
+ *
+ * The floor is not a nicety, and this is the one thing to keep true here: the reserved band is not
+ * only a hole for the camera housing, it is also the row that **holds** the product name and the ✕.
+ * A display with no housing — every external monitor, and so every setup whose main display is one —
+ * reports `NSScreen.safeAreaInsets.top` as `0`, and taking that literally does not reserve less
+ * space, it collapses the row to its hairline. Its 20pt close button then overflows a 1pt row
+ * `items-center`, and the shell's `overflow-hidden` clips it through its own middle. That shipped:
+ * cards on an external display showed a ✕ sliced in half.
+ *
+ * So the measured inset may only ever make the band *taller* — for a machine that reserves more than
+ * 32pt — never shorter, which is also exactly how the card behaved before the per-machine metrics
+ * were read at all, and why the notchless case looked right then.
+ */
+export function resolveBandHeight(bandHeight?: number): number {
+  return Math.max(bandHeight ?? NOTCH_BAND_HEIGHT, NOTCH_BAND_HEIGHT)
+}
 
 /** The card's width. Fixed: a notification is a glance, not a document. */
 export const NOTCH_CARD_WIDTH = 440
@@ -88,15 +109,19 @@ export const NOTCH_REWARD_MEDAL_SIZE = 36
  *
  * Derived rather than tuned by eye, so a row height changing above the medal moves the burst with
  * it. Same `bandHeight` override as everything else here — on a machine reporting a taller safe
- * area, the medal really is further down the card.
+ * area, the medal really is further down the card — and the same {@link resolveBandHeight} floor,
+ * so the burst stays where the card is actually drawn.
  */
-export function rewardConfettiOrigin(bandHeight: number = NOTCH_BAND_HEIGHT): {
+export function rewardConfettiOrigin(bandHeight?: number): {
   x: number
   y: number
 } {
   return {
     x: NOTCH_ROW_PADDING_X + NOTCH_REWARD_MEDAL_SIZE / 2,
-    y: withRule(bandHeight) + withRule(NOTCH_ROW.header) + NOTCH_ROW.rewardBody / 2,
+    y:
+      withRule(resolveBandHeight(bandHeight)) +
+      withRule(NOTCH_ROW.header) +
+      NOTCH_ROW.rewardBody / 2,
   }
 }
 
@@ -131,17 +156,21 @@ export function statusOutputHeight(lineCount: number): number {
  * `bandHeight` defaults to {@link NOTCH_BAND_HEIGHT} — the figure every notched Mac happened to
  * report as of writing — but takes the real, per-machine `NSScreen.safeAreaInsets.top` when the
  * caller has one (see `get_notch_metrics` on the Rust side), so the reserved band matches the
- * actual camera housing instead of a guess that is merely usually right.
+ * actual camera housing instead of a guess that is merely usually right. Through
+ * {@link resolveBandHeight}, so a display reporting no safe area at all still gets a band the card's
+ * own content fits in.
  */
-export function notchRowHeights(
-  model: NotchModel,
-  bandHeight: number = NOTCH_BAND_HEIGHT
-): number[] {
+export function notchRowHeights(model: NotchModel, bandHeight?: number): number[] {
   // Three hairlines: under the band, under the header, above the actions. Each is a `border-*` on
   // the row above it, which `withRule` is what makes an honest point of height rather than a
   // pixel quietly eaten out of a padding-driven row (which is how the shipped card's 178 was one
   // point short of what it actually rendered).
-  const rows: number[] = [bandHeight, NOTCH_ROW.rule, NOTCH_ROW.header, NOTCH_ROW.rule]
+  const rows: number[] = [
+    resolveBandHeight(bandHeight),
+    NOTCH_ROW.rule,
+    NOTCH_ROW.header,
+    NOTCH_ROW.rule,
+  ]
 
   // A `switch` rather than a chain of `if`s: this is the second place a new kind has to be handled
   // (`NotchBody` is the other), and an exhaustive switch is what makes forgetting it a compile error

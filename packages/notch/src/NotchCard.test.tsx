@@ -59,6 +59,21 @@ describe('NotchCard', () => {
     expect(screen.getByTestId('notch-band')).toHaveStyle({ height: `${withRule(38)}px` })
   })
 
+  it('keeps a full band on a display reporting no safe area, so the ✕ is not cut in half', () => {
+    // An external monitor has no camera housing, so `NSScreen.safeAreaInsets.top` is 0 — and it
+    // reaches the card as a real 0, not as "no answer". Rendering that collapses the band to its
+    // hairline, and the 20pt close button it holds overflows a 1pt row `items-center` and gets
+    // sliced through its middle by the shell's `overflow-hidden`. That is the bug this pins.
+    render(
+      <NotchCard tone="info" visible bandHeight={0} bandEnd={<button>×</button>}>
+        <div />
+      </NotchCard>
+    )
+    expect(screen.getByTestId('notch-band')).toHaveStyle({
+      height: `${withRule(NOTCH_ROW.band)}px`,
+    })
+  })
+
   it('renders whatever the band slivers were given', () => {
     render(
       <NotchCard
