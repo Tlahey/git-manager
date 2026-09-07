@@ -53,8 +53,8 @@ use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
 use commands::github::{
-    get_pr_template, github_api_request, github_commit_avatars, github_connect_token,
-    github_device_code, github_disconnect_account, github_list_repos, github_poll_token,
+    get_pr_template, github_api_request, github_connect_token, github_device_code,
+    github_disconnect_account, github_list_repos, github_poll_token,
 };
 use commands::gitlab::{gitlab_device_code, gitlab_get_user, gitlab_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
@@ -420,7 +420,6 @@ pub fn run() {
             gitlab_get_user,
             bitbucket_get_user,
             github_list_repos,
-            github_commit_avatars,
             get_pr_template,
             // SSH
             generate_ssh_key,

@@ -188,14 +188,6 @@ export interface GitHubRepoInfo {
 export const githubListRepos = (accountId: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { accountId })
 
-/** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
-export const githubCommitAvatars = (
-  accountId: string,
-  owner: string,
-  repo: string,
-  shas: string[]
-) => invoke<Record<string, string>>('github_commit_avatars', { accountId, owner, repo, shas })
-
 /** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
 export const getPrTemplate = (path: string) =>
   invoke<PrTemplateDetection>('get_pr_template', { path })

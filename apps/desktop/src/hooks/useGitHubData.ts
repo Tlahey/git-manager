@@ -5,15 +5,7 @@ import { useNotificationStore } from '../stores/notification.store'
 import { useDevFlagsStore } from '../stores/devFlags.store'
 import type { MockPR, DayCommit } from '../lib/github/types'
 import { useDevFixtures } from './useDevFixtures'
-import {
-  fetchGitHubPRs,
-  fetchGitHubReviewRequestedPRs,
-  fetchGitHubPRDetails,
-  fetchGitHubCommitCiStatus,
-  fetchGitHubContributions,
-  parsePRStatus,
-} from '../api/github.api'
-import { resolveCiStatus } from '../lib/ciStatus'
+import { fetchDashboardPullRequests, fetchGitHubContributions } from '../api/github.api'
 import { useGithubPollInterval } from './useGithubPollInterval'
 
 interface GitHubData {
@@ -38,6 +30,30 @@ interface GitHubData {
  */
 const fallbackRefreshed = new Date()
 
+/**
+ * The contribution calendar, or a year of zeroes.
+ *
+ * The heatmap is a fixed grid of 365 cells: given nothing it would render as a gap in the layout
+ * rather than as an empty year, so the failure is padded rather than propagated. It is also the one
+ * part of this refresh that must not be able to fail the rest — a calendar the token cannot read
+ * (the `read:user` scope is optional) would otherwise take the pull-request list down with it.
+ */
+async function fetchContributionsOrEmptyYear(
+  username: string,
+  accountId: string
+): Promise<DayCommit[]> {
+  try {
+    return await fetchGitHubContributions(username, accountId)
+  } catch (e) {
+    console.warn('Failed to fetch contributions calendar, falling back to empty list', e)
+    return Array.from({ length: 365 }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (364 - i))
+      return { date: d.toISOString().slice(0, 10), commits: 0 }
+    })
+  }
+}
+
 export function useGitHubData(): GitHubData {
   const mockPRs = useNotificationStore((s) => s.mockPRs)
   const mockGitHub = useDevFlagsStore((s) => s.mockGitHub)
@@ -57,101 +73,27 @@ export function useGitHubData(): GitHubData {
 
   const swrKey = hasAccount ? ['github-data', accountId, username] : null
 
-  // The app's single biggest spender, and the only one mounted for the whole session (`App.tsx` →
-  // `useNotificationWatcher`): two searches, three REST calls per pull request and one GraphQL query
-  // every minute. All three buckets are named because a refusal on any of them stops the refresh at
-  // its first step.
+  // The app's biggest spender, and the only one mounted for the whole session (`App.tsx` →
+  // `useNotificationWatcher`): two searches, a REST call per pull request that has moved, two CI
+  // calls per pull request, and one GraphQL query. All three buckets are named because a refusal on
+  // any of them stops the refresh at its first step.
   const refreshInterval = useGithubPollInterval(60_000, accountId, ['search', 'core', 'graphql'])
 
   const { data, error, mutate, isValidating } = useSWR(
     swrKey,
     async ([, tok, user]) => {
-      // 1. Fetch lists
-      const [prSearch, reviewSearch] = await Promise.all([
-        fetchGitHubPRs(user, tok),
-        fetchGitHubReviewRequestedPRs(user, tok),
+      // The two halves are independent, and the calendar must not wait on twenty-five pull requests
+      // being enriched to appear. `fetchDashboardPullRequests` owns the enrichment — what it fetches,
+      // what it skips, and how much of it runs at once — because none of that is React; see
+      // `api/github/github-dashboard.api.ts`.
+      const [prs, yearDays] = await Promise.all([
+        fetchDashboardPullRequests(user, tok),
+        fetchContributionsOrEmptyYear(user, tok),
       ])
-
-      const prMap = new Map<string, MockPR>()
-      for (const pr of prSearch) {
-        prMap.set(pr.id, pr)
-      }
-      for (const pr of reviewSearch) {
-        pr.needsMyReview = true
-        prMap.set(pr.id, pr)
-      }
-
-      // 2. Enrich PRs with details and CI status
-      const enrichPromises = [...prMap.values()].map(async (pr) => {
-        try {
-          const ownerRepo = pr.fullName || pr.repoUrl.split('github.com/')[1] || ''
-          if (!ownerRepo) return pr
-
-          // Fetch full PR details (gives additions, deletions, changed files count, mergeable status, etc.)
-          const prApiUrl = `https://api.github.com/repos/${ownerRepo}/pulls/${pr.number}`
-          const full = await fetchGitHubPRDetails(prApiUrl, tok)
-
-          pr.additions = full.additions ?? 0
-          pr.deletions = full.deletions ?? 0
-          pr.filesChanged = full.changed_files ?? pr.filesChanged
-          pr.needsRebase = full.mergeable === false || full.mergeable_state === 'behind'
-          pr.headRef = full.head?.ref ?? pr.headRef
-          // The lists come from `search/issues`, whose items are issue-shaped and lag behind the
-          // real PR by up to a minute. This payload is the authoritative one — re-derive every
-          // lifecycle field from it, or a PR merged since the last poll stays labelled as merely
-          // closed (red "closed without merging" instead of the purple merge).
-          pr.status = parsePRStatus(full)
-          pr.isDraft = full.draft ?? pr.isDraft
-          pr.autoMerge = !!full.auto_merge
-
-          const sha = full.head?.sha
-          const parts = ownerRepo.split('/')
-          const owner = parts[0]
-          const repo = parts[1]
-
-          if (owner && repo && sha) {
-            // Fetch CI Check Runs & Commit Statuses
-            const { checkRunsRes, statusRes } = await fetchGitHubCommitCiStatus(
-              owner,
-              repo,
-              sha,
-              tok
-            )
-
-            const { overall, details } = resolveCiStatus(checkRunsRes, statusRes)
-            if (details.length > 0) {
-              pr.ciDetails = details
-            }
-            pr.ciStatus = overall
-          }
-        } catch (e) {
-          console.error('Failed to enrich PR details', pr.number, e)
-        }
-        return pr
-      })
-      await Promise.all(enrichPromises)
-
-      // 3. Fetch contributions
-      let yearDays: DayCommit[] = []
-      try {
-        yearDays = await fetchGitHubContributions(user, tok)
-      } catch (e) {
-        console.warn('Failed to fetch contributions calendar, falling back to empty list', e)
-        // Fill with zeros
-        yearDays = Array.from({ length: 365 }, (_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (364 - i))
-          return { date: d.toISOString().slice(0, 10), commits: 0 }
-        })
-      }
 
       setLastRefreshed(new Date())
 
-      return {
-        prs: [...prMap.values()],
-        yearDays,
-        commitDays: yearDays.slice(-14),
-      }
+      return { prs, yearDays, commitDays: yearDays.slice(-14) }
     },
     {
       refreshInterval,

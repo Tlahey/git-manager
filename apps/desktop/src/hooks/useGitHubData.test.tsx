@@ -3,14 +3,28 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/github.api', async () => ({
-  // `parsePRStatus` is pure and is what enrichment re-derives a PR's lifecycle state with — keep
-  // the real one, or every enrichment would throw and silently skip the CI resolution below it.
-  ...(await vi.importActual<typeof import('../api/github.api')>('../api/github.api')),
+// Mocked at the *domain* modules rather than at the `github.api` barrel, because the enrichment
+// they drive now lives in `api/github/github-dashboard.api.ts`, which imports its neighbours
+// directly — stubbing the barrel would leave the real functions in place behind it. The barrel
+// re-exports these same modules, so the imports below still resolve to the stubs.
+//
+// `parsePRStatus` and `rawToMockPR` are pure and are what enrichment re-derives a PR's lifecycle
+// state with, so the rest of each module stays real.
+vi.mock('../api/github/github-pulls.api', async () => ({
+  ...(await vi.importActual<typeof import('../api/github/github-pulls.api')>(
+    '../api/github/github-pulls.api'
+  )),
   fetchGitHubPRs: vi.fn(),
   fetchGitHubReviewRequestedPRs: vi.fn(),
   fetchGitHubPRDetails: vi.fn(),
+}))
+vi.mock('../api/github/github-checks.api', async () => ({
+  ...(await vi.importActual<typeof import('../api/github/github-checks.api')>(
+    '../api/github/github-checks.api'
+  )),
   fetchGitHubCommitCiStatus: vi.fn(),
+}))
+vi.mock('../api/github/github-contributions.api', () => ({
   fetchGitHubContributions: vi.fn(),
 }))
 
@@ -20,6 +34,7 @@ import {
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
+  clearDashboardCache,
 } from '../api/github.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
@@ -93,6 +108,7 @@ function withToken() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearDashboardCache()
   resetDevFixturesLoad()
   useDevFixturesStore.setState({ loaded: false, issues: [], contributions: [] })
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })

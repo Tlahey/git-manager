@@ -3,7 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea } from '@git-manager/ui'
 import type { GitHubUser } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { apiGithubDisconnectAccount } from '../../../api/github.api'
+import { apiGithubDisconnectAccount, clearDashboardCache } from '../../../api/github.api'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
 import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
 import { useGithubTokenStatusStore } from '../../../stores/githubTokenStatus.store'
@@ -89,6 +89,9 @@ export function GithubSection() {
     })
     forgetTokenStatus(id)
     forgetRateLimit(id)
+    // The dashboard's cached pull-request details were fetched as this account, and the next one may
+    // not be able to see the same repositories.
+    clearDashboardCache()
     const updatedAccounts = github.accounts.filter((a) => a.id !== id)
     // Removing the active account promotes the first one left rather than leaving the app pointing
     // at an id that no longer exists.
