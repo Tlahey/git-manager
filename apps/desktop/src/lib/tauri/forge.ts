@@ -70,16 +70,41 @@ export const githubConnectToken = (token: string) =>
 export const githubDisconnectAccount = (accountId: string) =>
   invoke<void>('github_disconnect_account', { accountId })
 
+/**
+ * GitHub's `x-ratelimit-*` headers, parsed by Rust — see `services/github_rate_limit.rs`.
+ *
+ * `resource` names which allowance was billed (`core`, `search`, `graphql`…). They are independent
+ * budgets, so anything throttling on these numbers must do it per resource: spending the tight
+ * `search` allowance on saved PR filters must not stop the app fetching a diff.
+ */
+export interface GithubRateLimit {
+  limit: number
+  remaining: number
+  /** Unix epoch **seconds** at which `remaining` returns to `limit`. */
+  reset: number
+  resource: string
+}
+
 /** One GitHub API response, as {@link githubApiRequest} returns it. */
 export interface GithubApiResponse {
   status: number
   ok: boolean
   /** The raw body. Not parsed here: the contents API's `raw` media type returns file text. */
   body: string
-  /** GitHub's SAML SSO verdict on this request, when it gave one. */
+  /** GitHub's SSO verdict on this request, when it gave one. */
   sso: GithubSsoChallenge | null
   /** RFC 3339 expiry of the token that signed this request, when it has one. */
   tokenExpiresAt: string | null
+  /** How much of this request's quota bucket is left, when GitHub said. */
+  rateLimit: GithubRateLimit | null
+  /** Seconds GitHub asked the app to wait before retrying — a secondary rate limit. */
+  retryAfterSecs: number | null
+  /**
+   * `true` when this body came from Rust's conditional-request cache, GitHub having answered
+   * `304 Not Modified` (see `services/github_etag_cache.rs`). The data is the same either way; the
+   * difference is that the request cost nothing against the quota.
+   */
+  fromCache: boolean
 }
 
 /**
@@ -162,14 +187,6 @@ export interface GitHubRepoInfo {
 
 export const githubListRepos = (accountId: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { accountId })
-
-/** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
-export const githubCommitAvatars = (
-  accountId: string,
-  owner: string,
-  repo: string,
-  shas: string[]
-) => invoke<Record<string, string>>('github_commit_avatars', { accountId, owner, repo, shas })
 
 /** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
 export const getPrTemplate = (path: string) =>

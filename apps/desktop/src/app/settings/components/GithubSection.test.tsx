@@ -12,6 +12,9 @@ const { useGitHubRepos, useGithubDeviceFlow, lastDeviceFlowOptions, apiGithubDis
     },
     apiGithubDisconnectAccount: vi.fn().mockResolvedValue(undefined),
   }))
+// Disconnecting also drops the dashboard's cached pull-request details, which were fetched as
+// this account — see `api/github/github-dashboard.api.ts`.
+const clearDashboardCache = vi.hoisted(() => vi.fn())
 vi.mock('../../../hooks/useGitHubRepos', () => ({ useGitHubRepos }))
 vi.mock('../../../hooks/useGithubDeviceFlow', () => ({
   useGithubDeviceFlow: (opts: { onLoginSuccess: (user: unknown) => void }) => {
@@ -19,7 +22,7 @@ vi.mock('../../../hooks/useGithubDeviceFlow', () => ({
     return useGithubDeviceFlow()
   },
 }))
-vi.mock('../../../api/github.api', () => ({ apiGithubDisconnectAccount }))
+vi.mock('../../../api/github.api', () => ({ apiGithubDisconnectAccount, clearDashboardCache }))
 
 import { GithubSection } from './GithubSection'
 import { useSettingsStore } from '../../../stores/settings.store'

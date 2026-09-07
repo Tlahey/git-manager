@@ -4,6 +4,7 @@ import type { PullRequest } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
 import { fetchClosedPullRequests, rawToPullRequest } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
+import { useGithubPollInterval } from './useGithubPollInterval'
 
 export interface UseMergedPrsByBranchOptions {
   remoteUrls: string[]
@@ -38,10 +39,12 @@ export function useMergedPrsByBranch({
       ? ['sidebar-closed-prs', ownerRepo.owner, ownerRepo.repo, accountId]
       : null
 
+  const refreshInterval = useGithubPollInterval(60_000, accountId, 'core')
+
   const { data } = useSWR(
     swrKey,
     ([, owner, repo, tok]) => fetchClosedPullRequests(owner, repo, tok),
-    { refreshInterval: 60_000, dedupingInterval: 10_000, revalidateOnFocus: false }
+    { refreshInterval, dedupingInterval: 10_000, revalidateOnFocus: false }
   )
 
   return useMemo(() => {

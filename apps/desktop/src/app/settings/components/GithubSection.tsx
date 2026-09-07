@@ -3,10 +3,11 @@ import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea } from '@git-manager/ui'
 import type { GitHubUser } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { apiGithubDisconnectAccount } from '../../../api/github.api'
+import { apiGithubDisconnectAccount, clearDashboardCache } from '../../../api/github.api'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
 import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
 import { useGithubTokenStatusStore } from '../../../stores/githubTokenStatus.store'
+import { useGithubRateLimitStore } from '../../../stores/githubRateLimit.store'
 import { GithubSsoBanner } from '../../../components/github/GithubSsoBanner'
 import { GithubDeviceFlowCard } from './github/GithubDeviceFlowCard'
 import { GithubLoginForm, type LoginMethod } from './github/GithubLoginForm'
@@ -25,6 +26,7 @@ export function GithubSection() {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
   const forgetTokenStatus = useGithubTokenStatusStore((s) => s.forgetAccount)
+  const forgetRateLimit = useGithubRateLimitStore((s) => s.forgetAccount)
   const github = settings.github || { accounts: [], activeAccountId: null }
 
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null)
@@ -50,6 +52,9 @@ export function GithubSection() {
         // previous one's verdict would otherwise survive it — as a banner the user just fixed, or an
         // all-clear that is no longer true.
         forgetTokenStatus(user.login)
+        // Same reasoning for the quota: a new token gets its own allowance, so a cooldown the old
+        // one earned must not carry over and silence the app's polling for an hour it has.
+        forgetRateLimit(user.login)
         updateSettings({
           github: { ...github, accounts: updatedAccounts, activeAccountId: user.login },
         })
@@ -83,6 +88,10 @@ export function GithubSection() {
       console.error('Failed to remove the stored GitHub token:', err)
     })
     forgetTokenStatus(id)
+    forgetRateLimit(id)
+    // The dashboard's cached pull-request details were fetched as this account, and the next one may
+    // not be able to see the same repositories.
+    clearDashboardCache()
     const updatedAccounts = github.accounts.filter((a) => a.id !== id)
     // Removing the active account promotes the first one left rather than leaving the app pointing
     // at an id that no longer exists.

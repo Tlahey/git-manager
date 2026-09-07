@@ -11,9 +11,9 @@
 use crate::error::AppError;
 use crate::services::credential_store::{self, CredentialKind};
 use crate::services::github_api::{self, GitHubUserInfo, GithubApiResponse};
+use crate::services::github_etag_cache;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 const GITHUB_CLIENT_ID: &str = "Ov23li6mKsqDplEY33m8";
 
@@ -152,9 +152,14 @@ pub async fn github_connect_token(token: String) -> Result<GitHubUserInfo, Strin
 
 /// Forgets an account's token. The account's public half is removed from the settings by the
 /// frontend; this is the half it cannot reach.
+///
+/// The conditional-request cache goes with it: its entries are response *bodies* fetched as this
+/// account, and leaving them behind would let a different token reconnected under the same login
+/// inherit them.
 #[tauri::command]
 pub fn github_disconnect_account(account_id: String) -> Result<(), String> {
     credential_store::delete_secret(CredentialKind::GitHub, &account_id)?;
+    github_etag_cache::forget_account(&account_id);
     Ok(())
 }
 
@@ -226,62 +231,6 @@ pub async fn github_list_repos(account_id: String) -> Result<Vec<GitHubRepoInfo>
         eprintln!("[GitHub API] Failed to parse repos response: {e}");
         AppError::Unknown(format!("Unreadable GitHub repositories response: {e}")).into()
     })
-}
-
-// ─── Commit Author Avatars ────────────────────────────────────────────────────
-
-/// Resolves the GitHub avatar URL for each commit SHA in `shas` (deduplicated) via
-/// `GET /repos/{owner}/{repo}/commits/{sha}`. Best-effort: SHAs whose author can't be resolved
-/// (404, non-GitHub author, request error) are simply absent from the returned map, and the
-/// frontend falls back to initials for those. Used by the diff viewer's blame gutter and history
-/// panel to show real author photos when the repo lives on GitHub and an account is connected.
-///
-/// Keeps its own loop rather than calling the proxy once per SHA: the token is read from the
-/// keychain once and one client serves every request, where the proxy would build both per call —
-/// and on macOS a keychain read is not free.
-#[tauri::command]
-pub async fn github_commit_avatars(
-    account_id: String,
-    owner: String,
-    repo: String,
-    shas: Vec<String>,
-) -> Result<HashMap<String, String>, String> {
-    let token = credential_store::require_secret(CredentialKind::GitHub, &account_id)?;
-    let client = github_api::http_client(15)?;
-
-    let mut avatars: HashMap<String, String> = HashMap::new();
-    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    for sha in shas {
-        if !seen.insert(sha.clone()) {
-            continue;
-        }
-
-        let url = format!("https://api.github.com/repos/{owner}/{repo}/commits/{sha}");
-        let res = client
-            .get(&url)
-            .header("Accept", "application/vnd.github.v3+json")
-            .header("Authorization", format!("Bearer {token}"))
-            .header("User-Agent", "git-manager-desktop")
-            .send()
-            .await;
-
-        let Ok(res) = res else { continue };
-        if !res.status().is_success() {
-            continue;
-        }
-        let Ok(data) = res.json::<serde_json::Value>().await else {
-            continue;
-        };
-
-        if let Some(avatar) = data["author"]["avatar_url"].as_str() {
-            if !avatar.is_empty() {
-                avatars.insert(sha, avatar.to_string());
-            }
-        }
-    }
-
-    Ok(avatars)
 }
 
 // ─── Pull-Request Template Detection ──────────────────────────────────────────

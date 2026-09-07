@@ -3,6 +3,7 @@ import type { PullRequest } from '@git-manager/git-types'
 import { useGithubAccount } from './useGithubAccount'
 import { fetchRepoPRs, rawToPullRequest } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
+import { useGithubPollInterval } from './useGithubPollInterval'
 
 export interface UsePullRequestsOptions {
   remoteUrls: string[]
@@ -51,6 +52,8 @@ export function usePullRequests({
       ? ['repo-pull-requests', ownerRepo.owner, ownerRepo.repo, resolvedAccountId]
       : null
 
+  const refreshInterval = useGithubPollInterval(60_000, resolvedAccountId, 'core')
+
   const { data, error } = useSWR<PullRequest[], Error>(
     swrKey,
     async ([, owner, repo, tok]) => {
@@ -58,7 +61,7 @@ export function usePullRequests({
       return raw.map(rawToPullRequest)
     },
     {
-      refreshInterval: 60_000,
+      refreshInterval,
       dedupingInterval: 10_000,
     }
   )
