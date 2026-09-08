@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ensureSyntaxTree } from '@codemirror/language'
+import { ensureSyntaxTree, syntaxTree, syntaxTreeAvailable } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { markdownDecorations } from './markdownDecorations'
@@ -15,26 +15,35 @@ import {
 /**
  * `cursor` defaults to the very start, so the assertions are about a line nobody is editing.
  *
- * The `ensureSyntaxTree` call is what makes these tests deterministic, and it must not be dropped.
- * `markdownDecorations` reads `syntaxTree(state)`, which returns *whatever the parser has finished
- * so far*: CodeMirror gives the initial parse of a fresh `EditorState` a time budget, and on a
- * contended runner it runs out and hands back a partial — sometimes empty — tree. Every assertion
- * here then fails on a document that parses perfectly, and which test draws the short straw changes
- * from run to run (`expected [] to include '## '` one CI run, a missing table widget the next).
- * `ensureSyntaxTree` parses synchronously up to a position, so the tree is complete before anything
- * is asserted. This replaced a `beforeAll` that pre-warmed the parser on a representative document:
- * that made an incomplete first parse *less likely* without making it impossible, and the flake
- * survived it. Nothing is wrong with the production path — a real editor keeps parsing across idle
- * callbacks and re-runs the decorations — so the fix belongs here, not in `markdownDecorations`.
+ * The two lines that force the parse are what make these tests deterministic, and **both** are
+ * load-bearing. `markdownDecorations` reads `syntaxTree(state)`, which hands back whatever the
+ * parser has finished so far: CodeMirror gives the initial parse of a fresh `EditorState` a time
+ * budget, and on a contended runner that budget buys a partial — sometimes empty — tree. Every
+ * assertion then fails on a document that parses perfectly, and which test draws the short straw
+ * moves from run to run (`expected [] to include '## '` one CI run, a missing table the next).
+ *
+ * `ensureSyntaxTree` alone does **not** fix it, which is the part worth remembering: it advances the
+ * language field's parse *context*, while `syntaxTree()` returns the tree the field last committed.
+ * Only a transaction folds one into the other. Measured on a 24,500-character document: raw gives a
+ * tree of length 3,020; `ensureSyntaxTree` alone still gives 3,020 (though `syntaxTreeAvailable`
+ * flips to true, which is what makes the omission easy to miss); `ensureSyntaxTree` followed by an
+ * empty `update` gives 24,500.
+ *
+ * This replaced a `beforeAll` that pre-warmed the parser on a representative document. That only
+ * made an incomplete parse less likely — and it warmed a *different* document than the one each test
+ * parses, so it never had much to give.
+ *
+ * Nothing is wrong with the production path: a real editor keeps parsing across idle callbacks and
+ * re-runs the decorations, so the fix belongs here rather than in `markdownDecorations`.
  */
 function state(doc: string, cursor = 0) {
-  const editorState = EditorState.create({
+  const created = EditorState.create({
     doc,
     extensions: [markdown({ base: markdownLanguage })],
     selection: { anchor: cursor },
   })
-  ensureSyntaxTree(editorState, editorState.doc.length, 30_000)
-  return editorState
+  ensureSyntaxTree(created, created.doc.length, 30_000)
+  return created.update({}).state
 }
 
 interface Decorated {
@@ -81,6 +90,19 @@ function classesOf(doc: string, text: string, cursor?: number): string[] {
 }
 
 describe('markdownDecorations', () => {
+  // Guards the helper above rather than the module under test: every assertion in this file is only
+  // as trustworthy as the tree it read, and a partial one produces *missing* decorations — which
+  // reads as a rule that failed to fire, not as a broken fixture. A document long enough that the
+  // initial parse cannot finish inside its budget turns that into a loud failure here instead of a
+  // flake somewhere below.
+  it('hands every test a fully parsed document', () => {
+    const long = '## Title\n\npara **strong** text\n\n- [x] a\n- [ ] b\n\n'.repeat(500)
+    const parsed = state(long)
+
+    expect(syntaxTree(parsed).length).toBe(parsed.doc.length)
+    expect(syntaxTreeAvailable(parsed, parsed.doc.length)).toBe(true)
+  })
+
   it('styles a heading and hides its marker', () => {
     const { hidden } = decorated('para\n\n## Title')
 
