@@ -760,6 +760,126 @@ describe('fetchPrMergeability', () => {
   })
 })
 
+describe('fetchPrMergeability — stale runs', () => {
+  function checkRun(
+    name: string,
+    conclusion: string | null,
+    run?: { id: number; workflow: string },
+    extra: Record<string, unknown> = {}
+  ) {
+    return {
+      __typename: 'CheckRun',
+      name,
+      status: conclusion ? 'COMPLETED' : 'IN_PROGRESS',
+      conclusion,
+      checkSuite: {
+        app: { name: 'GitHub Actions' },
+        workflowRun: run ? { databaseId: run.id, workflow: { name: run.workflow } } : null,
+      },
+      ...extra,
+    }
+  }
+
+  function stubRollup(nodes: unknown[]) {
+    stubGithub(
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                commits: {
+                  nodes: [{ commit: { statusCheckRollup: { contexts: { nodes } } } }],
+                },
+              },
+            },
+          },
+        })
+      )
+    )
+  }
+
+  // The rollup lists every check run on the head commit, so a workflow that ran twice over the same
+  // commit reports each of its jobs twice — and the merge box would count the stale half as extra
+  // successes.
+  it('keeps only the newest workflow run of each workflow', async () => {
+    stubRollup([
+      checkRun('build', 'FAILURE', { id: 1, workflow: 'CI' }),
+      checkRun('test', 'FAILURE', { id: 1, workflow: 'CI' }),
+      checkRun('build', 'SUCCESS', { id: 2, workflow: 'CI' }),
+      checkRun('test', 'SUCCESS', { id: 2, workflow: 'CI' }),
+    ])
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
+
+    expect(result.checks).toEqual([
+      expect.objectContaining({ name: 'build', category: 'success' }),
+      expect.objectContaining({ name: 'test', category: 'success' }),
+    ])
+  })
+
+  it('keeps a job of the same name in another workflow', async () => {
+    stubRollup([
+      checkRun('build', 'SUCCESS', { id: 2, workflow: 'CI' }),
+      checkRun('build', 'SUCCESS', { id: 1, workflow: 'Release' }),
+    ])
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
+
+    expect(result.checks).toHaveLength(2)
+  })
+
+  it('keeps every job of the newest run, including two with the same name', async () => {
+    stubRollup([
+      checkRun('test (18)', 'SUCCESS', { id: 3, workflow: 'CI' }),
+      checkRun('test (20)', 'SUCCESS', { id: 3, workflow: 'CI' }),
+    ])
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
+
+    expect(result.checks.map((c) => c.name)).toEqual(['test (18)', 'test (20)'])
+  })
+
+  // An app posting a check run directly (Vercel, Codecov…) has no workflow run to compare, so the
+  // newest start wins instead.
+  it('keeps the newest of two runless checks with the same name', async () => {
+    stubRollup([
+      checkRun('vercel', 'FAILURE', undefined, { startedAt: '2024-01-01T00:00:00Z' }),
+      checkRun('vercel', 'SUCCESS', undefined, { startedAt: '2024-01-02T00:00:00Z' }),
+    ])
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
+
+    expect(result.checks).toEqual([
+      expect.objectContaining({ name: 'vercel', category: 'success' }),
+    ])
+  })
+
+  it('keeps the newest of two status contexts with the same name', async () => {
+    stubRollup([
+      {
+        __typename: 'StatusContext',
+        context: 'ci/circleci',
+        state: 'PENDING',
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        __typename: 'StatusContext',
+        context: 'ci/circleci',
+        state: 'SUCCESS',
+        createdAt: '2024-01-02T00:00:00Z',
+      },
+    ])
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'acct')
+
+    expect(result.checks).toEqual([
+      expect.objectContaining({ name: 'ci/circleci', category: 'success' }),
+    ])
+  })
+})
+
 describe('rawToPullRequest — participants', () => {
   it('maps assignees, requested reviewers and labels', () => {
     const pr = rawToPullRequest(
