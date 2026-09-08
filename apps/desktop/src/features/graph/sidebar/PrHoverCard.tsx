@@ -1,20 +1,18 @@
 import {
   ArrowRight,
-  Check,
   CircleDot,
-  Clock,
-  MessageSquare,
-  X,
   CheckCircle2,
   XCircle,
   Loader2,
+  type LucideIcon,
 } from 'lucide-react'
 import { Avatar, Spinner } from '@git-manager/ui'
 import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
-import type { PrReviewSummary, PrReviewer } from '../../../api/github.api'
+import type { PrReviewSummary } from '../../../api/github.api'
 import { formatExactDate, formatRelativeTime } from '../../../lib/relativeDate'
 import { derivePrTagStatus, PR_STATE_LABEL_KEY } from '../../../components/common/prTagStatus'
+import { REVIEWER_STATE_STYLES } from '../../../components/common/reviewerState.config'
 
 interface PrHoverCardProps {
   pr: PullRequest
@@ -22,33 +20,7 @@ interface PrHoverCardProps {
   isLoading: boolean
 }
 
-const REVIEWER_STATE_STYLES: Record<
-  PrReviewer['state'],
-  { Icon: typeof Check; className: string; labelKey: string }
-> = {
-  APPROVED: {
-    Icon: Check,
-    className: 'text-green-400',
-    labelKey: 'sidebar.prCard.review.approved',
-  },
-  CHANGES_REQUESTED: {
-    Icon: X,
-    className: 'text-red-400',
-    labelKey: 'sidebar.prCard.review.changesRequested',
-  },
-  COMMENTED: {
-    Icon: MessageSquare,
-    className: 'text-muted-foreground',
-    labelKey: 'sidebar.prCard.review.commented',
-  },
-  PENDING: {
-    Icon: Clock,
-    className: 'text-amber-400',
-    labelKey: 'sidebar.prCard.review.pending',
-  },
-}
-
-const CHECKS_STYLES: Record<string, { Icon: typeof Check; className: string; labelKey: string }> = {
+const CHECKS_STYLES: Record<string, { Icon: LucideIcon; className: string; labelKey: string }> = {
   SUCCESS: {
     Icon: CheckCircle2,
     className: 'text-green-400',

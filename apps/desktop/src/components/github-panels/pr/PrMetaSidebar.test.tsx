@@ -3,26 +3,34 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GhRawPR } from '../../../api/github.api'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
-const { usePrDetailMock, usePrCommentsMock, actions, useAssignableUsersMock, useRepoLabelsMock } =
-  vi.hoisted(() => ({
-    usePrDetailMock: vi.fn(),
-    usePrCommentsMock: vi.fn(),
-    actions: {
-      requestReviewer: vi.fn(),
-      unrequestReviewer: vi.fn(),
-      assign: vi.fn(),
-      unassign: vi.fn(),
-      addLabel: vi.fn(),
-      deleteLabel: vi.fn(),
-      pending: false,
-    },
-    useAssignableUsersMock: vi.fn(),
-    useRepoLabelsMock: vi.fn(),
-  }))
+const {
+  usePrDetailMock,
+  usePrCommentsMock,
+  usePrReviewSummaryMock,
+  actions,
+  useAssignableUsersMock,
+  useRepoLabelsMock,
+} = vi.hoisted(() => ({
+  usePrDetailMock: vi.fn(),
+  usePrCommentsMock: vi.fn(),
+  usePrReviewSummaryMock: vi.fn(),
+  actions: {
+    requestReviewer: vi.fn(),
+    unrequestReviewer: vi.fn(),
+    assign: vi.fn(),
+    unassign: vi.fn(),
+    addLabel: vi.fn(),
+    deleteLabel: vi.fn(),
+    pending: false,
+  },
+  useAssignableUsersMock: vi.fn(),
+  useRepoLabelsMock: vi.fn(),
+}))
 vi.mock('../../../hooks/usePrDetail', () => ({ usePrDetail: usePrDetailMock }))
 vi.mock('../../../hooks/usePrComments', () => ({ usePrComments: usePrCommentsMock }))
+vi.mock('../../../hooks/usePrReviewSummary', () => ({
+  usePrReviewSummary: (...a: unknown[]) => usePrReviewSummaryMock(...a),
+}))
 vi.mock('../../../hooks/usePrActions', () => ({ usePrActions: () => actions }))
 vi.mock('../../../hooks/usePrEditCandidates', () => ({
   useAssignableUsers: (...a: unknown[]) => useAssignableUsersMock(...a),
@@ -62,6 +70,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   actions.pending = false
   usePrCommentsMock.mockReturnValue({ comments: [], isLoading: false, refresh: vi.fn() })
+  usePrReviewSummaryMock.mockReturnValue({ summary: undefined, isLoading: false, error: undefined })
   useAssignableUsersMock.mockReturnValue({
     users: [
       { login: 'rev1', avatar_url: '' },
@@ -87,7 +96,7 @@ describe('PrMetaSidebar', () => {
     usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false })
     render(<PrMetaSidebar repoPath="/repo" prNumber={7} />)
     expect(
-      within(screen.getByTestId('pr-reviewers')).getByTestId('pr-user-rev1')
+      within(screen.getByTestId('pr-reviewers')).getByTestId('pr-reviewer-rev1')
     ).toBeInTheDocument()
     expect(
       within(screen.getByTestId('pr-assignees')).getByTestId('pr-user-assignee1')
@@ -95,6 +104,36 @@ describe('PrMetaSidebar', () => {
     expect(screen.getByTestId('pr-label-bug')).toBeInTheDocument()
     expect(screen.getByTestId('pr-branch')).toHaveTextContent('feat/x')
     expect(screen.getByTestId('stub-state-actions')).toBeInTheDocument()
+  })
+
+  // The regression this section was rewritten for: GitHub empties `requested_reviewers` as soon as
+  // a reviewer submits, so a reviewed PR showed an empty Reviewers section.
+  it('lists reviewers who already reviewed, with their verdict', () => {
+    usePrReviewSummaryMock.mockReturnValue({
+      summary: {
+        reviewDecision: 'APPROVED',
+        checksState: null,
+        reviewers: [
+          { login: 'alice', avatarUrl: '', state: 'APPROVED' },
+          { login: 'bob', avatarUrl: '', state: 'COMMENTED' },
+        ],
+      },
+      isLoading: false,
+      error: undefined,
+    })
+    usePrDetailMock.mockReturnValue({ pr: pr({ requested_reviewers: [] }), isLoading: false })
+
+    render(<PrMetaSidebar repoPath="/repo" prNumber={7} />)
+
+    const section = within(screen.getByTestId('pr-reviewers'))
+    expect(section.getByTestId('pr-reviewer-alice')).toHaveTextContent('Approved')
+    expect(section.getByTestId('pr-reviewer-bob')).toHaveTextContent('Commented')
+  })
+
+  it('polls the review summary while the panel is open', () => {
+    usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false })
+    render(<PrMetaSidebar repoPath="/repo" prNumber={7} />)
+    expect(usePrReviewSummaryMock).toHaveBeenCalledWith('/repo', 7, true, 60_000)
   })
 
   it('derives participants from author, reviewers, assignees and commenters', () => {

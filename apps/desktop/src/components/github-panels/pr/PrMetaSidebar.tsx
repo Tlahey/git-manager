@@ -6,12 +6,15 @@ import type { GhUser } from '../../../api/github.api'
 import { usePrDetail } from '../../../hooks/usePrDetail'
 import { usePrComments } from '../../../hooks/usePrComments'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { usePrReviewSummary } from '../../../hooks/usePrReviewSummary'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
 import { useAssignableUsers, useRepoLabels } from '../../../hooks/usePrEditCandidates'
 import { resolveGithubUrl } from '../../../lib/githubUrls'
+import { resolvePrReviewers } from '../../../lib/prReviewers'
 import { PrReviewComposer } from './PrReviewComposer'
 import { PrCodeSuggestions } from './PrCodeSuggestions'
 import { PrSidebarSection } from './PrSidebarSection'
+import { PrReviewerList } from './PrReviewerList'
 import { PrUserList } from './PrUserList'
 import { PrStateActions } from './PrStateActions'
 import { PrEditPopover, type PrEditOption } from './PrEditPopover'
@@ -34,6 +37,9 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
   const { requestReviewer, unrequestReviewer, assign, unassign, addLabel, deleteLabel, pending } =
     usePrActions(repoPath, prNumber)
   const { ownerRepo } = useRepoGitHub(repoPath)
+  // The panel stays open while the PR is read, so unlike the sidebar's hover card this one polls:
+  // an approval landing meanwhile is the single most interesting thing that can happen here.
+  const { summary } = usePrReviewSummary(repoPath, prNumber, true, 60_000)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [editing, setEditing] = useState<EditTarget>(null)
 
@@ -55,7 +61,13 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
     [repoLabels]
   )
 
-  // Participants ≈ everyone visibly involved: author + requested reviewers + assignees + commenters.
+  // Every reviewer with their standing, not just the ones still awaited — see resolvePrReviewers.
+  const reviewers = useMemo(
+    () => resolvePrReviewers(summary, pr?.requested_reviewers),
+    [summary, pr?.requested_reviewers]
+  )
+
+  // Participants ≈ everyone visibly involved: author + reviewers + assignees + commenters.
   // GitHub has no direct participants endpoint, so we derive a de-duplicated set.
   const participants = useMemo<GhUser[]>(() => {
     const byLogin = new Map<string, GhUser>()
@@ -63,11 +75,11 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
       if (u?.login && !byLogin.has(u.login)) byLogin.set(u.login, u)
     }
     add(pr?.user)
-    pr?.requested_reviewers?.forEach(add)
+    reviewers.forEach((r) => add({ login: r.login, avatar_url: r.avatarUrl }))
     pr?.assignees?.forEach(add)
     comments.forEach((c) => add(c.user))
     return [...byLogin.values()]
-  }, [pr, comments])
+  }, [pr, reviewers, comments])
 
   if (isLoading || !pr) {
     return (
@@ -80,6 +92,9 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
   const head = pr.head?.ref ?? '—'
   const base = pr.base?.ref ?? '—'
   const chip = 'rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground'
+  // The editor's "selected" set is the *requested* reviewers, not everyone listed above: only an
+  // outstanding request can be withdrawn, and someone who already reviewed is offered as an add —
+  // which is GitHub's own re-request-a-review, the right action for them.
   const reviewerKeys = (pr.requested_reviewers ?? []).map((u) => u.login)
   const assigneeKeys = (pr.assignees ?? []).map((u) => u.login)
   const labelKeys = (pr.labels ?? []).map((l) => l.name)
@@ -110,7 +125,7 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
         onEdit={() => toggle('reviewers')}
         editTitle={t('pr.side.editReviewers')}
       >
-        <PrUserList users={pr.requested_reviewers ?? []} emptyLabel="pr.side.noReviewers" />
+        <PrReviewerList reviewers={reviewers} emptyLabel="pr.side.noReviewers" />
         {editing === 'reviewers' && (
           <PrEditPopover
             title={t('pr.side.editReviewers')}
