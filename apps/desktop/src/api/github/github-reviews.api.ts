@@ -218,6 +218,69 @@ export async function fetchPrComments(
   )
 }
 
+/** The verdict a submitted review carries, as GitHub's REST reviews endpoint reports it. */
+export type PrReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING'
+
+/** One submitted review, reduced to what the conversation timeline shows. */
+export interface GhReviewComment extends GhComment {
+  state: PrReviewState
+}
+
+interface RawPrReview {
+  id: number
+  body?: string | null
+  html_url?: string
+  submitted_at?: string | null
+  state?: string
+  user?: GhUser | null
+}
+
+/**
+ * The **submitted reviews** that carry a body — the half of a PR conversation that
+ * `/issues/:n/comments` never returns.
+ *
+ * A review summary ("Copilot reviewed 12 files…", or a human's paragraph attached to an Approve) is
+ * a *review*, not an issue comment, so a conversation built from issue comments alone silently drops
+ * it — which is why a bot reviewer's report used to be invisible in this app while being the first
+ * thing on github.com. Bodiless reviews (a bare Approve, or the container of inline-only comments)
+ * are filtered out: they'd render as empty cards, and their inline comments are shown by
+ * {@link fetchPrReviewThreads}. `PENDING` reviews are the viewer's own unsubmitted draft and are
+ * dropped for the same reason github.com hides them from everyone else.
+ */
+export async function fetchPrReviewComments(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  accountId: string
+): Promise<GhReviewComment[]> {
+  const reviews = await ghFetch<RawPrReview[]>(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100`,
+    accountId
+  )
+  const states: PrReviewState[] = [
+    'APPROVED',
+    'CHANGES_REQUESTED',
+    'COMMENTED',
+    'DISMISSED',
+    'PENDING',
+  ]
+  return (reviews ?? [])
+    .filter((r) => (r.body ?? '').trim() !== '' && r.state !== 'PENDING')
+    .map((r) => {
+      const state = states.find((s) => s === r.state) ?? 'COMMENTED'
+      const submitted = r.submitted_at ?? ''
+      return {
+        id: r.id,
+        body: r.body ?? '',
+        html_url: r.html_url ?? '',
+        created_at: submitted,
+        updated_at: submitted,
+        user: r.user ?? undefined,
+        state,
+      }
+    })
+}
+
 // ─── unresolved review threads ("code suggestions") ────────────────────────────
 
 export interface PrReviewThread {

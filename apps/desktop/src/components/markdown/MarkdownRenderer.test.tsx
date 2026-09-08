@@ -256,6 +256,41 @@ describe('MarkdownRenderer — sanitization of untrusted HTML', () => {
 })
 
 /**
+ * A bot's status comment (Sonar, Copilot) is a paragraph of hard-broken lines, each an icon followed
+ * by a link. It used to collapse onto one row because `markdown.css` laid out every paragraph
+ * containing an image as a flex container, where a `<br>` is a zero-size item that breaks nothing.
+ * Only a paragraph made of badges alone gets that layout now — see isBadgeParagraph.ts.
+ */
+describe('MarkdownRenderer — badge rows vs. prose', () => {
+  const BOT_COMMENT = [
+    'Issues',
+    "![](https://cdn/passed.png '') [0 New issues](https://sonar/i)",
+    "![](https://cdn/accepted.png '') [0 Accepted issues](https://sonar/j)",
+  ].join('  \n')
+
+  it('keeps a hard line break in a paragraph that mixes prose with images', () => {
+    const { container } = render(<MarkdownRenderer content={BOT_COMMENT} />)
+
+    const paragraph = container.querySelector('p')
+    expect(paragraph).not.toBeNull()
+    expect(paragraph).not.toHaveClass('markdown-badge-row')
+    expect(paragraph!.querySelectorAll('br')).toHaveLength(2)
+  })
+
+  it('lays a paragraph of nothing but linked badges out as a badge row', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={
+          '[![CI](https://cdn/ci.svg)](https://ci) [![npm](https://cdn/npm.svg)](https://npm)'
+        }
+      />
+    )
+
+    expect(container.querySelector('p')).toHaveClass('markdown-badge-row')
+  })
+})
+
+/**
  * Ticking a checkbox is a rewrite of the source line it was rendered from, so these pin down the
  * one thing that can silently break: the line a checkbox reports. It travels from remark through
  * `rehype-raw` and the sanitizer on the *list item* — the `input` itself is synthesised and has no

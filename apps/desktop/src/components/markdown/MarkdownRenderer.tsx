@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type ComponentPropsWithoutRef, type CSSProperties } from 'react'
 import ReactMarkdown, { type ExtraProps } from 'react-markdown'
+import { cn } from '@git-manager/ui'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -7,6 +8,7 @@ import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
 import { all as allHighlightLanguages } from 'lowlight'
 import { authoredMarkdownSanitizeSchema, markdownSanitizeSchema } from './sanitizeSchema'
+import { isBadgeParagraph } from './isBadgeParagraph'
 import { CodeBlock } from './components/CodeBlock'
 import { MarkdownLink } from './components/MarkdownLink'
 import { MarkdownTable, MarkdownTableCell, MarkdownTableHead } from './components/MarkdownTable'
@@ -159,8 +161,18 @@ export function MarkdownRenderer({
               {children}
             </h4>
           ),
-          p: ({ children }) => (
-            <p className="my-1.5 text-xs leading-relaxed text-muted-foreground">{children}</p>
+          // `markdown-badge-row` opts a paragraph into markdown.css's flex layout, and only a
+          // paragraph that is nothing but badges gets it — see isBadgeParagraph for why prose mixed
+          // with an image must stay in normal block flow.
+          p: ({ node, children }) => (
+            <p
+              className={cn(
+                'my-1.5 text-xs leading-relaxed text-muted-foreground',
+                isBadgeParagraph(node) && 'markdown-badge-row'
+              )}
+            >
+              {children}
+            </p>
           ),
           ul: ({ children }) => (
             <ul className="my-1.5 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
