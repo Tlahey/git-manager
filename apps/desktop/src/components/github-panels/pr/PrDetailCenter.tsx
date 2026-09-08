@@ -101,7 +101,7 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
               body={pr.body ?? ''}
               prUrl={prUrl}
             />
-            <PrComments repoPath={repoPath} prNumber={prNumber} />
+            <PrComments repoPath={repoPath} prNumber={prNumber} withReviews />
             <PrMergePanel repoPath={repoPath} prNumber={prNumber} pr={pr} />
             <PrCommentBox repoPath={repoPath} prNumber={prNumber} targetUrl={prUrl} />
           </div>
