@@ -15,7 +15,7 @@ import { Tooltip } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
 import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
-import { usePrReviewSummary } from '../hooks/usePrReviewSummary'
+import { usePrReviewSummary } from '../../../hooks/usePrReviewSummary'
 import { PrHoverCard } from './PrHoverCard'
 import {
   derivePrTagStatus,

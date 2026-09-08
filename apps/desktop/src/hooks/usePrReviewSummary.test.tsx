@@ -1,20 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-const { useSWRMock, fetchPrReviewSummary, useRepoGitHub } = vi.hoisted(() => ({
-  useSWRMock: vi.fn(),
-  fetchPrReviewSummary: vi.fn(),
-  useRepoGitHub: vi.fn(),
-}))
+const { useSWRMock, fetchPrReviewSummary, useRepoGitHub, useGithubPollInterval } = vi.hoisted(
+  () => ({
+    useSWRMock: vi.fn(),
+    fetchPrReviewSummary: vi.fn(),
+    useRepoGitHub: vi.fn(),
+    useGithubPollInterval: vi.fn(),
+  })
+)
 vi.mock('swr', () => ({ default: useSWRMock }))
-vi.mock('../../../api/github.api', () => ({ fetchPrReviewSummary }))
-vi.mock('../../../hooks/useRepoGitHub', () => ({ useRepoGitHub }))
+vi.mock('../api/github.api', () => ({ fetchPrReviewSummary }))
+vi.mock('./useRepoGitHub', () => ({ useRepoGitHub }))
+vi.mock('./useGithubPollInterval', () => ({ useGithubPollInterval }))
 
 import { usePrReviewSummary } from './usePrReviewSummary'
 
 /** The SWR key the hook computed on the last render — `null` means "don't fetch". */
 function lastKey() {
   return useSWRMock.mock.calls.at(-1)![0]
+}
+
+/** The SWR options the hook passed on the last render. */
+function lastOptions() {
+  return useSWRMock.mock.calls.at(-1)![2]
 }
 
 beforeEach(() => {
@@ -25,6 +34,7 @@ beforeEach(() => {
     checksState: null,
   })
   useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: 'acct' })
+  useGithubPollInterval.mockReset().mockImplementation((base: number) => base)
 })
 
 describe('usePrReviewSummary — lazy gating', () => {
@@ -55,6 +65,23 @@ describe('usePrReviewSummary — lazy gating', () => {
     useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'org', repo: 'repo' }, accountId: null })
     renderHook(() => usePrReviewSummary('/repo', 42, true))
     expect(lastKey()).toBeNull()
+  })
+})
+
+describe('usePrReviewSummary — polling', () => {
+  // The hover card is on screen only while the pointer rests on a row, so it must not re-poll;
+  // a long-lived surface (the PR detail panel) opts in by passing an interval.
+  it('does not poll by default', () => {
+    renderHook(() => usePrReviewSummary('/repo', 42, true))
+    expect(useGithubPollInterval).toHaveBeenCalledWith(0, 'acct', 'graphql')
+    expect(lastOptions().refreshInterval).toBe(0)
+  })
+
+  it('polls on the requested interval, throttled by the GitHub quota', () => {
+    useGithubPollInterval.mockReturnValue(120_000)
+    renderHook(() => usePrReviewSummary('/repo', 42, true, 60_000))
+    expect(useGithubPollInterval).toHaveBeenCalledWith(60_000, 'acct', 'graphql')
+    expect(lastOptions().refreshInterval).toBe(120_000)
   })
 })
 
