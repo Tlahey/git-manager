@@ -83,8 +83,76 @@ interface RawCheckContext {
   context?: string
   state?: string
   targetUrl?: string | null
+  createdAt?: string | null
   isRequired?: boolean
-  checkSuite?: { app?: { name?: string } | null } | null
+  checkSuite?: {
+    app?: { name?: string } | null
+    workflowRun?: { databaseId?: number | null; workflow?: { name?: string } | null } | null
+  } | null
+}
+
+/**
+ * Who produced a check: the workflow when GitHub Actions ran it, the app otherwise. The check's own
+ * name won't do as an identity — two different workflows routinely have a job called `build`, and
+ * collapsing them would hide one of them.
+ */
+function checkProducer(c: RawCheckContext): string {
+  return c.checkSuite?.workflowRun?.workflow?.name ?? c.checkSuite?.app?.name ?? ''
+}
+
+function checkContextName(c: RawCheckContext): string {
+  return c.__typename === 'StatusContext' ? (c.context ?? '') : (c.name ?? '')
+}
+
+function checkContextTime(c: RawCheckContext): number {
+  const at = c.startedAt ?? c.createdAt
+  const parsed = at ? Date.parse(at) : Number.NaN
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+/**
+ * Keep only the newest run of each producer.
+ *
+ * `statusCheckRollup.contexts` lists *every* check run recorded against the head commit, and a
+ * workflow can run over the same commit more than once — re-triggered by hand, fired by two events,
+ * or restarted after its check suite was recreated. Each of those is a fresh workflow run whose
+ * check runs pile up next to the previous ones, so the merge box ends up reporting "6 successful
+ * checks" for a three-job workflow, half of them stale. (A plain re-run of the *same* run is
+ * already collapsed by GitHub — it's a new attempt of one run, not a new run.)
+ *
+ * Workflow run ids increase over time, so the largest id per workflow is its latest run and
+ * everything else is history. Check runs with no workflow behind them (Vercel, Codecov and other
+ * apps posting directly) have no run id to compare, so they're deduplicated by name instead,
+ * newest start first — as are status contexts.
+ */
+export function keepLatestCheckRuns(contexts: RawCheckContext[]): RawCheckContext[] {
+  const newestRun = new Map<string, number>()
+  for (const c of contexts) {
+    const runId = c.checkSuite?.workflowRun?.databaseId
+    if (runId == null) continue
+    const producer = checkProducer(c)
+    const known = newestRun.get(producer)
+    if (known === undefined || runId > known) newestRun.set(producer, runId)
+  }
+
+  const kept: RawCheckContext[] = []
+  const indexByName = new Map<string, number>()
+  for (const c of contexts) {
+    const runId = c.checkSuite?.workflowRun?.databaseId
+    if (runId != null) {
+      // Every job of the latest run belongs on screen, so no per-name pass here.
+      if (newestRun.get(checkProducer(c)) === runId) kept.push(c)
+      continue
+    }
+    const key = JSON.stringify([checkProducer(c), checkContextName(c)])
+    const seen = indexByName.get(key)
+    if (seen === undefined) {
+      indexByName.set(key, kept.push(c) - 1)
+    } else if (checkContextTime(c) > checkContextTime(kept[seen])) {
+      kept[seen] = c
+    }
+  }
+  return kept
 }
 
 function checkRunCategory(status?: string, conclusion?: string | null): PrCheckCategory {
@@ -155,8 +223,8 @@ export async function fetchPrMergeability(
         viewerCanMergeAsAdmin
         commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{
           __typename
-          ... on CheckRun{name status conclusion startedAt detailsUrl isRequired(pullRequestNumber:$number) checkSuite{app{name}}}
-          ... on StatusContext{context state targetUrl isRequired(pullRequestNumber:$number)}
+          ... on CheckRun{name status conclusion startedAt detailsUrl isRequired(pullRequestNumber:$number) checkSuite{app{name} workflowRun{databaseId workflow{name}}}}
+          ... on StatusContext{context state targetUrl createdAt isRequired(pullRequestNumber:$number)}
         }}}}}}
       }
     }
@@ -188,7 +256,7 @@ export async function fetchPrMergeability(
     mergeable: prNode?.mergeable ?? 'UNKNOWN',
     mergeStateStatus: prNode?.mergeStateStatus ?? 'UNKNOWN',
     reviewDecision: prNode?.reviewDecision ?? null,
-    checks: contexts.map(normalizeCheckContext),
+    checks: keepLatestCheckRuns(contexts).map(normalizeCheckContext),
     viewerCanMergeAsAdmin: prNode?.viewerCanMergeAsAdmin ?? false,
   }
 }
