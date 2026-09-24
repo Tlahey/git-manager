@@ -6,8 +6,16 @@ import { PushButton } from './PushButton'
 function setup(overrides: Partial<Parameters<typeof PushButton>[0]> = {}) {
   const onPush = vi.fn()
   const onPushSkippingHooks = vi.fn()
-  render(<PushButton onPush={onPush} onPushSkippingHooks={onPushSkippingHooks} {...overrides} />)
-  return { onPush, onPushSkippingHooks }
+  const onForcePushWithLease = vi.fn()
+  render(
+    <PushButton
+      onPush={onPush}
+      onPushSkippingHooks={onPushSkippingHooks}
+      onForcePushWithLease={onForcePushWithLease}
+      {...overrides}
+    />
+  )
+  return { onPush, onPushSkippingHooks, onForcePushWithLease }
 }
 
 describe('PushButton', () => {
@@ -39,6 +47,44 @@ describe('PushButton', () => {
   it('shows how many commits are waiting', () => {
     setup({ aheadCount: 3 })
     expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+  it('offers a force push with lease behind the caret', async () => {
+    const user = userEvent.setup()
+    const { onPush, onForcePushWithLease } = setup()
+
+    await user.click(screen.getByTestId('toolbar-push-menu-button'))
+    expect(
+      await screen.findByText('Refused if someone pushed since your last fetch')
+    ).toBeInTheDocument()
+    await user.click(screen.getByText('Force push (with lease)'))
+
+    expect(onForcePushWithLease).toHaveBeenCalledTimes(1)
+    expect(onPush).not.toHaveBeenCalled()
+  })
+
+  it('says the force push is needed once the branch has diverged', async () => {
+    const user = userEvent.setup()
+    setup({ diverged: true })
+
+    await user.click(screen.getByTestId('toolbar-push-menu-button'))
+
+    expect(
+      await screen.findByText('Needed: your branch and the remote have diverged')
+    ).toBeInTheDocument()
+  })
+
+  it('refuses the force push on a protected branch', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    const { onForcePushWithLease } = setup({ forceDisabled: true, diverged: true })
+
+    await user.click(screen.getByTestId('toolbar-push-menu-button'))
+    const item = await screen.findByTestId('toolbar-push-force-with-lease')
+
+    expect(item).toHaveAttribute('data-disabled')
+    expect(screen.getByText('Unavailable on a protected branch')).toBeInTheDocument()
+    await user.click(item)
+    expect(onForcePushWithLease).not.toHaveBeenCalled()
   })
 
   it('disables both segments while a push is in flight', () => {

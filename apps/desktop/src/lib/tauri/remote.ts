@@ -83,8 +83,13 @@ export const pullBranch = (path: string, remote?: string, strategy?: PullStrateg
  * any kind, so a repository's `pre-push` was silently skipped for every push made from this app
  * while the same push from a terminal ran it.
  */
-export const pushBranch = (path: string, remote?: string, force?: boolean, skipHooks?: boolean) =>
-  invoke<void>('push_branch', { path, remote, force, skipHooks })
+export const pushBranch = (
+  path: string,
+  remote?: string,
+  force?: boolean,
+  skipHooks?: boolean,
+  forceWithLease?: boolean
+) => invoke<void>('push_branch', { path, remote, force, skipHooks, forceWithLease })
 
 export const pushBranchTo = (
   path: string,

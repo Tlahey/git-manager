@@ -52,6 +52,10 @@ pub enum AppError {
     /// with git; this reports what the user's own tooling decided.
     #[error("The {name} hook stopped the operation")]
     HookFailed { name: String, output: Vec<String> },
+    /// A `--force-with-lease` push refused because the remote branch no longer points where this
+    /// repository last saw it — someone pushed since the last fetch, and forcing would erase it.
+    #[error("The remote branch '{0}' changed since the last fetch; fetch and review it before force-pushing")]
+    PushLeaseRejected(String),
     #[error("AI provider error: {0}")]
     AiProvider(String),
     /// The provider accepted the request and then took longer than the configured budget.
@@ -106,6 +110,7 @@ impl From<AppError> for String {
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::NotificationFailed(_) => ("NOTIFICATION_FAILED", e.to_string()),
             AppError::HookFailed { .. } => ("HOOK_FAILED", e.to_string()),
+            AppError::PushLeaseRejected(_) => ("PUSH_LEASE_REJECTED", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),
         };
         // The hook's own output travels in `detail`, which is the field the frontend already

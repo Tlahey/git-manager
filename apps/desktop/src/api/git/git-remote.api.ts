@@ -120,14 +120,15 @@ export async function apiPullBranch(path: string, remote?: string, strategy?: Pu
 }
 
 /** `skipHooks` is `git push --no-verify` — the escape hatch for a `pre-push` hook that hangs or
- *  misfires. */
+ *  misfires. `forceWithLease` is `git push --force-with-lease`. */
 export async function apiPushBranch(
   path: string,
   remote?: string,
   force?: boolean,
-  skipHooks?: boolean
+  skipHooks?: boolean,
+  forceWithLease?: boolean
 ) {
   return trackTransfer(path, 'push', () =>
-    runActivity('git.push', () => pushBranch(path, remote, force, skipHooks))
+    runActivity('git.push', () => pushBranch(path, remote, force, skipHooks, forceWithLease))
   )
 }

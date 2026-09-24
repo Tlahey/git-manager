@@ -30,6 +30,7 @@ const APP_ERROR_CODES = [
   'HTTP_ERROR',
   'NOTIFICATION_FAILED',
   'HOOK_FAILED',
+  'PUSH_LEASE_REJECTED',
   'UNKNOWN',
 ] as const
 
@@ -58,6 +59,7 @@ describe('classifyError', () => {
     expect(classifyError('PROTECTED_BRANCH', 'operation').verdict).toBe('expected')
     expect(classifyError('HOOK_FAILED', 'operation').verdict).toBe('expected')
     expect(classifyError('BOARD_CONFLICT', 'operation').verdict).toBe('expected')
+    expect(classifyError('PUSH_LEASE_REJECTED', 'operation').verdict).toBe('expected')
   })
 
   it('does not treat the environment failing as a defect', () => {

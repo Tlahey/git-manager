@@ -17,9 +17,11 @@ import {
 import { apiOpenTerminal } from '../api/shell.api'
 import { apiOpenInEditor } from '../api/repo.api'
 import { refreshAfterHistoryChange } from '../lib/repoRefresh'
+import { isProtectedBranch } from '../lib/protectedBranch'
 import { useGitStatus } from './useGitStatus'
 import { useGitStashes } from './useGitStashes'
 import { useBranches } from './useBranches'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -61,6 +63,9 @@ export function useActionToolbar(t: TranslateFn) {
   const headBranch = branches?.find((b) => b.isHead && !b.isRemote)
   const aheadCount = headBranch?.aheadCount ?? 0
   const behindCount = headBranch?.behindCount ?? 0
+  // Force-pushing a protected branch is refused outright, like a hard reset on one.
+  const { protectedBranches } = useEffectiveRepoSettings(activeRepo || null)
+  const isOnProtectedBranch = isProtectedBranch(headBranch?.shortName, protectedBranches)
 
   const hasChanges = gitStatus
     ? gitStatus.staged.length > 0 || gitStatus.unstaged.length > 0 || gitStatus.untracked.length > 0
@@ -146,9 +151,15 @@ export function useActionToolbar(t: TranslateFn) {
     })
 
   /** `skipHooks` is `git push --no-verify` — see `handleCommitWip` for why it is not a setting. */
-  const handlePush = (options: { skipHooks?: boolean } = {}) =>
+  const handlePush = (options: { skipHooks?: boolean; forceWithLease?: boolean } = {}) =>
     runAction('push', async () => {
-      await apiPushBranch(activeRepo!, undefined, undefined, options.skipHooks)
+      await apiPushBranch(
+        activeRepo!,
+        undefined,
+        undefined,
+        options.skipHooks,
+        options.forceWithLease
+      )
       toast.success(t('remote.pushSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
@@ -207,6 +218,7 @@ export function useActionToolbar(t: TranslateFn) {
     hasStashes,
     aheadCount,
     behindCount,
+    isOnProtectedBranch,
     canUndo,
     canRedo,
     undoLabel,

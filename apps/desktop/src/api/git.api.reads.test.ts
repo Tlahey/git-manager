@@ -155,7 +155,7 @@ describe('read-only pass-throughs', () => {
     ['apiListRebaseCommits', 'listRebaseCommits', [PATH, 'baseOid']],
     ['apiFetchRemote', 'fetchRemote', [PATH, 'origin', true]],
     ['apiPullBranch', 'pullBranch', [PATH, 'origin', true]],
-    ['apiPushBranch', 'pushBranch', [PATH, 'origin', false, true]],
+    ['apiPushBranch', 'pushBranch', [PATH, 'origin', false, true, true]],
   ] as const)(
     '%s delegates to tauri.%s with the same arguments and returns its result',
     async (apiName, tauriName, args) => {
