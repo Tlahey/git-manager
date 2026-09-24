@@ -5,6 +5,7 @@ import type { GitRepo, GitHubAccount } from '@git-manager/git-types'
 
 const { apiGetAppVersion } = vi.hoisted(() => ({ apiGetAppVersion: vi.fn() }))
 vi.mock('../../api/updater.api', () => ({ apiGetAppVersion }))
+vi.mock('../../hooks/useBranches', () => ({ useBranches: () => ({ data: undefined }) }))
 
 import { Footer } from './Footer'
 import { useRepoDataStore } from '../../stores/repoData.store'
