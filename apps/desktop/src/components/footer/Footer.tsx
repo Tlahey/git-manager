@@ -39,6 +39,7 @@ import {
 import { CopyToClipboard } from '../common/CopyToClipboard'
 import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
+import { FooterSyncStatus } from './FooterSyncStatus'
 import { DebugMenu } from './DebugMenu'
 import { openActionJournalWindow } from '../../lib/actionJournalWindow'
 import type { LevelFilter } from '../../app/activity-logs/ActivityLogsPage'
@@ -201,6 +202,8 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
               <GitBranch className="h-3.5 w-3.5 text-emerald-500/80" />
               <span className="font-semibold">{currentRepo?.head || '...'}</span>
             </CopyToClipboard>
+
+            <FooterSyncStatus repoPath={activeTab} />
 
             {currentRepo && currentRepo.remotes.length > 0 && (
               <>

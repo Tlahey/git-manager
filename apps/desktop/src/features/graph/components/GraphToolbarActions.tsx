@@ -51,6 +51,7 @@ export function GraphToolbarActions() {
     hasStashes,
     aheadCount,
     behindCount,
+    isOnProtectedBranch,
     canUndo,
     canRedo,
     undoLabel,
@@ -136,8 +137,11 @@ export function GraphToolbarActions() {
         loading={loading.push}
         disabled={disabled}
         aheadCount={aheadCount}
+        diverged={aheadCount > 0 && behindCount > 0}
+        forceDisabled={isOnProtectedBranch}
         onPush={() => handlePush()}
         onPushSkippingHooks={() => handlePush({ skipHooks: true })}
+        onForcePushWithLease={() => handlePush({ forceWithLease: true })}
       />
 
       <div className="mx-1 h-6 w-px shrink-0 bg-border" />

@@ -267,6 +267,8 @@
   "notifications.runSim": "Run Sim",
   "notifications.popover.openInApp": "Open in Git Manager",
   "footer.remotes": "Remotes",
+  "footer.sync.noUpstream": "Not published",
+  "footer.sync.noUpstreamTitle": "This branch has no upstream: push it to publish it and track commits to pull and push",
   "commandPalette.placeholder": "Type a command or search…",
   "commandPalette.placeholderFiles": "Search files by name…",
   "commandPalette.empty": "No results found.",

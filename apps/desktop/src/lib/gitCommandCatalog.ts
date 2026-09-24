@@ -338,7 +338,11 @@ const CATALOG: Record<string, GitCommandSpec> = {
   push_branch: {
     titleKey: 'gitCommand.push',
     family: 'remote',
-    render: (a) => [`git push${flag(a, 'force') ? ' --force' : ''} ${remote(a)}`],
+    render: (a) => [
+      `git push${
+        flag(a, 'forceWithLease') ? ' --force-with-lease' : flag(a, 'force') ? ' --force' : ''
+      } ${remote(a)}`,
+    ],
   },
   push_branch_to: {
     titleKey: 'gitCommand.pushTo',

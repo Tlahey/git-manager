@@ -140,8 +140,17 @@ pub async fn push_branch(
     force: Option<bool>,
     // `git push --no-verify` — the escape hatch for a `pre-push` hook that hangs or misfires.
     skip_hooks: Option<bool>,
+    // `git push --force-with-lease`; takes precedence over `force` when both are set.
+    force_with_lease: Option<bool>,
 ) -> Result<(), String> {
     let repo_path = path.clone();
+    let force = if force_with_lease.unwrap_or(false) {
+        git_remote::PushForce::WithLease
+    } else if force.unwrap_or(false) {
+        git_remote::PushForce::Force
+    } else {
+        git_remote::PushForce::No
+    };
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
         // On the thread the hook is waited on, not around the spawn — the observer is
@@ -150,7 +159,7 @@ pub async fn push_branch(
         git_remote::push(
             &repo,
             remote,
-            force.unwrap_or(false),
+            force,
             skip_hooks.unwrap_or(false),
             progress_emitter(app, repo_path, RemoteOperation::Push),
         )

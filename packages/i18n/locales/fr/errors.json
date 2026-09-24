@@ -38,6 +38,7 @@
   "report.reason.protectedBranch": "La branche est protégée : l'application a refusé l'opération volontairement.",
   "report.reason.hookFailed": "Un hook du dépôt a interrompu l'opération. Sa sortie est le message d'erreur.",
   "report.reason.concurrentWrite": "Quelque chose a modifié la donnée avant vous ; l'écriture a été refusée pour ne rien perdre.",
+  "report.reason.staleLease": "Quelqu'un a poussé sur la branche distante depuis votre dernier fetch ; le push forcé a été refusé pour ne pas effacer son travail.",
   "report.reason.alreadyExists": "Un élément portant ce nom existe déjà.",
   "report.reason.branchCheckedOutElsewhere": "La branche est déjà extraite dans un autre arbre de travail (worktree) de ce dépôt.",
   "report.reason.invalidInput": "La valeur fournie a été refusée comme invalide.",

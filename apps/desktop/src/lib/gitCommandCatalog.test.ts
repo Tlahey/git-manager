@@ -82,6 +82,9 @@ describe('describeGitCommand', () => {
       'git fetch upstream --prune',
     ])
     expect(lines('push_branch', { force: true })).toEqual(['git push --force origin'])
+    expect(lines('push_branch', { force: true, forceWithLease: true })).toEqual([
+      'git push --force-with-lease origin',
+    ])
   })
 
   it('defaults the remote the way the backend does', () => {

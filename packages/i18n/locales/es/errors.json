@@ -38,6 +38,7 @@
   "report.reason.protectedBranch": "La rama está protegida: la aplicación rechazó la operación a propósito.",
   "report.reason.hookFailed": "Un hook del repositorio detuvo la operación. Su salida es el mensaje de error.",
   "report.reason.concurrentWrite": "Algo modificó los datos antes y la escritura se rechazó para no perder nada.",
+  "report.reason.staleLease": "Alguien hizo push a la rama remota desde tu último fetch, así que el push forzado se rechazó para no borrar su trabajo.",
   "report.reason.alreadyExists": "Ya existe algo con ese nombre.",
   "report.reason.branchCheckedOutElsewhere": "La rama ya está registrada en otro árbol de trabajo (worktree) de este repositorio.",
   "report.reason.invalidInput": "El valor indicado se rechazó por no ser válido.",

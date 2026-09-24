@@ -267,6 +267,8 @@
   "notifications.runSim": "Lancer la sim",
   "notifications.popover.openInApp": "Ouvrir dans Git Manager",
   "footer.remotes": "Remotes",
+  "footer.sync.noUpstream": "Non publiée",
+  "footer.sync.noUpstreamTitle": "Cette branche n’a pas d’upstream : poussez-la pour la publier et suivre les commits à récupérer et à pousser",
   "commandPalette.placeholder": "Tapez une commande ou recherchez…",
   "commandPalette.placeholderFiles": "Rechercher un fichier par son nom…",
   "commandPalette.empty": "Aucun résultat.",

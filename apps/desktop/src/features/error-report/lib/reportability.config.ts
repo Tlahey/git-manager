@@ -48,6 +48,8 @@ const CLASSIFICATION: Record<string, Classification> = {
   HOOK_FAILED: { verdict: 'expected', reasonKey: 'report.reason.hookFailed' },
   // Concurrent write detected and rejected — the guard doing its job.
   BOARD_CONFLICT: { verdict: 'expected', reasonKey: 'report.reason.concurrentWrite' },
+  // `--force-with-lease` refusing to erase a push we never fetched — the lease doing its job.
+  PUSH_LEASE_REJECTED: { verdict: 'expected', reasonKey: 'report.reason.staleLease' },
   TAG_ALREADY_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },
   WORKTREE_PATH_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },
   BOARD_ALREADY_EXISTS: { verdict: 'expected', reasonKey: 'report.reason.alreadyExists' },

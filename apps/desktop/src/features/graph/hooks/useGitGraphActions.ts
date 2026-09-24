@@ -246,6 +246,9 @@ export function useGitGraphActions({
           primaryShortOid: clickedNode?.commit.shortOid ?? '',
           descendantCount: descendantsOnCurrentBranch(nodes, oid, currentBranchTip?.commit.oid),
           isOnProtectedBranch: isProtectedBranch(currentBranch, protectedBranches),
+          hasWorkingChanges:
+            !!status &&
+            (status.staged.length > 0 || status.unstaged.length > 0 || status.untracked.length > 0),
         },
         {
           onCheckout: () => commitActions.checkoutDetached(oid),
@@ -273,6 +276,7 @@ export function useGitGraphActions({
           // dialog re-states what will be rewritten and only then writes anything.
           onRecomposeCommit: (includeChildren) =>
             setPendingAction({ kind: 'recompose', includeChildren }),
+          onFixup: () => void openFixupWindow(oid).catch(console.error),
           onExplainCommit: () => {
             if (!clickedNode) return
             const { commit } = clickedNode
@@ -296,7 +300,7 @@ export function useGitGraphActions({
   // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
   // currently selected commit. Dialog-based actions forward into `setPendingAction` (which opens
   // the matching dialog against `primaryOid`); `fixup` instead opens the dedicated "Commit
-  // Changes" window directly (same as the native menu's `onFixup`), since there's no in-page
+  // Changes" window directly (same as the commit menu's `onFixup`), since there's no in-page
   // dialog to route it through. Either way, we clear the pending action once handled.
   useEffect(() => {
     if (pendingGraphAction && primaryOid) {

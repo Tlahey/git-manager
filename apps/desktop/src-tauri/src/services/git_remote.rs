@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::services::git_hooks;
 use crate::utils::{get_git_signature, short_oid};
-use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
+use git2::{Cred, Direction, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
@@ -664,13 +664,30 @@ fn run_pre_push_hook(
     Ok(())
 }
 
+/// How a push treats a remote branch that is not an ancestor of what is being pushed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PushForce {
+    /// Plain `git push`: a non-fast-forward is rejected by the remote.
+    #[default]
+    No,
+    /// `git push --force`: overwrites whatever the remote has.
+    Force,
+    /// `git push --force-with-lease`: overwrites only if the remote branch is still where our
+    /// remote-tracking ref says it is.
+    WithLease,
+}
+
 /// Push to the remote, reporting transfer progress as it goes.
 ///
 /// Same contract as [`fetch`]: `on_progress` is rate-limited, and `|_| {}` is a valid caller.
+///
+/// The lease is checked on the *same* connection the push then goes through: libgit2 sends the
+/// advertised oid as the update's old value, so the server itself refuses a push racing ours
+/// between the check and the upload — the check is not merely advisory.
 pub fn push<F: FnMut(RemoteProgress)>(
     repo: &Repository,
     remote: Option<String>,
-    force: bool,
+    force: PushForce,
     skip_hooks: bool,
     mut on_progress: F,
 ) -> Result<(), AppError> {
@@ -701,8 +718,9 @@ pub fn push<F: FnMut(RemoteProgress)>(
         )?;
     }
 
-    let prefix = if force { "+" } else { "" };
-    let refspec = format!("{prefix}refs/heads/{branch_name}:refs/heads/{branch_name}");
+    let prefix = if force == PushForce::No { "" } else { "+" };
+    let remote_ref = format!("refs/heads/{branch_name}");
+    let refspec = format!("{prefix}refs/heads/{branch_name}:{remote_ref}");
 
     let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
 
@@ -725,9 +743,29 @@ pub fn push<F: FnMut(RemoteProgress)>(
     let mut push_opts = PushOptions::new();
     push_opts.remote_callbacks(callbacks);
 
-    remote_obj
-        .push(&[refspec.as_str()], Some(&mut push_opts))
-        .map_err(AppError::Git)?;
+    if force == PushForce::WithLease {
+        let expected = last_known_remote_branch_oid(repo, &remote_name, &branch_name);
+        let mut connection = remote_obj
+            .connect_auth(Direction::Push, Some(make_auth_callbacks()), None)
+            .map_err(AppError::Git)?;
+        let actual = connection
+            .list()
+            .map_err(AppError::Git)?
+            .iter()
+            .find(|head| head.name() == remote_ref)
+            .map(|head| head.oid());
+        if actual != expected {
+            return Err(AppError::PushLeaseRejected(branch_name));
+        }
+        connection
+            .remote()
+            .push(&[refspec.as_str()], Some(&mut push_opts))
+            .map_err(AppError::Git)?;
+    } else {
+        remote_obj
+            .push(&[refspec.as_str()], Some(&mut push_opts))
+            .map_err(AppError::Git)?;
+    }
 
     set_upstream_if_unset(repo, &remote_name, &branch_name)?;
 
@@ -1373,7 +1411,7 @@ mod tests {
         f.local.branch("feature", &head_commit, false).unwrap();
         f.local.set_head("refs/heads/feature").unwrap();
 
-        push(&f.local, None, false, true, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1408,7 +1446,7 @@ mod tests {
             .set_upstream(Some(&format!("origin/{initial_branch}")))
             .unwrap();
 
-        push(&f.local, None, false, true, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1425,6 +1463,80 @@ mod tests {
                 .find_reference("refs/heads/feature")
                 .is_ok(),
             "the push itself must still have gone through"
+        );
+    }
+
+    // ─── force-with-lease ─────────────────────────────────────────────────────
+
+    #[test]
+    fn force_with_lease_overwrites_a_remote_branch_we_have_seen() {
+        let f = push_fixture("lease-ok");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let base = f.local.head().unwrap().peel_to_commit().unwrap();
+        commit(&f.local, &f.local_dir, "work.txt", "first take");
+        push(&f.local, None, PushForce::No, true, |_| {}).unwrap();
+
+        // Rewritten, as a fixup/autosquash would.
+        f.local
+            .reset(base.as_object(), git2::ResetType::Hard, None)
+            .unwrap();
+        let rewritten = commit(&f.local, &f.local_dir, "work.txt", "second take");
+
+        assert!(
+            push(&f.local, None, PushForce::No, true, |_| {}).is_err(),
+            "a plain push of rewritten history must be rejected"
+        );
+        push(&f.local, None, PushForce::WithLease, true, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(rewritten));
+    }
+
+    #[test]
+    fn force_with_lease_refuses_to_erase_a_push_we_have_not_fetched() {
+        let f = push_fixture("lease-stale");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+
+        // A teammate pushes from their own clone; this repository never fetches it.
+        let teammate_dir = temp_dir("lease-stale-teammate");
+        let teammate = git2::build::RepoBuilder::new()
+            .clone(&format!("file://{}", f.origin_dir.display()), &teammate_dir)
+            .unwrap();
+        commit(&teammate, &teammate_dir, "theirs.txt", "teammate work");
+        push_ref(
+            &teammate,
+            "origin",
+            &format!("refs/heads/{branch}:refs/heads/{branch}"),
+        );
+        let teammate_head = remote_head(&f.origin_dir, &branch);
+
+        commit(&f.local, &f.local_dir, "work.txt", "ours");
+        let err = push(&f.local, None, PushForce::WithLease, true, |_| {}).unwrap_err();
+
+        assert!(matches!(err, AppError::PushLeaseRejected(ref b) if b == &branch));
+        assert_eq!(
+            remote_head(&f.origin_dir, &branch),
+            teammate_head,
+            "the teammate's commit must survive"
+        );
+
+        // What the lease exists to prevent: a plain force erases it.
+        push(&f.local, None, PushForce::Force, true, |_| {}).unwrap();
+        assert_ne!(remote_head(&f.origin_dir, &branch), teammate_head);
+        fs::remove_dir_all(&teammate_dir).ok();
+    }
+
+    #[test]
+    fn force_with_lease_publishes_a_branch_the_remote_has_never_seen() {
+        let f = push_fixture("lease-new-branch");
+        let head_commit = f.local.head().unwrap().peel_to_commit().unwrap();
+        f.local.branch("feature", &head_commit, false).unwrap();
+        f.local.set_head("refs/heads/feature").unwrap();
+
+        push(&f.local, None, PushForce::WithLease, true, |_| {}).unwrap();
+
+        assert_eq!(
+            remote_head(&f.origin_dir, "feature"),
+            Some(head_commit.id())
         );
     }
 
@@ -1461,7 +1573,7 @@ mod tests {
         let before = remote_head(&f.origin_dir, &branch);
         write_hook(&f.local, "pre-push", "echo 'blocked by ci' >&2\nexit 1");
 
-        let err = push(&f.local, None, false, false, |_| {}).unwrap_err();
+        let err = push(&f.local, None, PushForce::No, false, |_| {}).unwrap_err();
 
         match err {
             AppError::HookFailed { name, output } => {
@@ -1485,7 +1597,7 @@ mod tests {
         let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
         write_hook(&f.local, "pre-push", "exit 0");
 
-        push(&f.local, None, false, false, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, false, |_| {}).unwrap();
 
         assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
     }
@@ -1499,7 +1611,7 @@ mod tests {
         let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
         write_hook(&f.local, "pre-push", "exit 1");
 
-        push(&f.local, None, false, true, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, true, |_| {}).unwrap();
 
         assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
     }
@@ -1517,7 +1629,7 @@ mod tests {
             "cat > \"$(dirname \"$0\")/received-stdin\"",
         );
 
-        push(&f.local, None, false, false, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, false, |_| {}).unwrap();
 
         let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
         assert_eq!(
@@ -1541,7 +1653,7 @@ mod tests {
             "cat > \"$(dirname \"$0\")/received-stdin\"",
         );
 
-        push(&f.local, None, false, false, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, false, |_| {}).unwrap();
 
         let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
         assert!(
@@ -1561,7 +1673,7 @@ mod tests {
             "echo \"$1 $2\" > \"$(dirname \"$0\")/received-args\"",
         );
 
-        push(&f.local, None, false, false, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, false, |_| {}).unwrap();
 
         let received = fs::read_to_string(f.local.path().join("hooks/received-args")).unwrap();
         assert_eq!(
@@ -1576,7 +1688,7 @@ mod tests {
         let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
         let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
 
-        push(&f.local, None, false, false, |_| {}).unwrap();
+        push(&f.local, None, PushForce::No, false, |_| {}).unwrap();
 
         assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
     }

@@ -676,12 +676,11 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     expect(mocked.apiCreateTag).not.toHaveBeenCalled()
   })
 
-  it('no longer offers the retired rebase-onto/undo/fixup/compare items', async () => {
+  it('no longer offers the retired rebase-onto/undo/compare items', async () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     expect(findItem('gitTree.contextMenu.rebaseOnto')).toBeUndefined()
     expect(findItem('gitTree.contextMenu.undoCommit')).toBeUndefined()
-    expect(findItem('gitTree.contextMenu.fixup')).toBeUndefined()
     expect(findItem('gitTree.contextMenu.compareToWorkdir')).toBeUndefined()
   })
 
@@ -1094,8 +1093,25 @@ describe('useGitGraphActions — copy web link', () => {
 })
 
 describe('useGitGraphActions — fixup window', () => {
-  // The fixup item left the context menu; the window remains reachable through the command
-  // palette bridge, which calls `openFixupWindow` directly.
+  it('disables the fixup entry when the working tree is clean', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ status: status() })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    expect(findItem('gitTree.contextMenu.fixup')?.enabled).toBe(false)
+  })
+
+  it('enables the fixup entry with WIP and opens the fixup window on click', async () => {
+    webviewGetByLabel.mockResolvedValue(null)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ untracked: ['new.ts'] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    const fixup = findItem('gitTree.contextMenu.fixup')
+    expect(fixup?.enabled).not.toBe(false)
+    act(() => fixup!.action!())
+    await waitFor(() => expect(WebviewWindowCtor).toHaveBeenCalledOnce())
+  })
+
   it('focuses an existing fixup window instead of creating a new one', async () => {
     const show = vi.fn().mockResolvedValue(undefined)
     const setFocus = vi.fn().mockResolvedValue(undefined)

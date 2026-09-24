@@ -267,6 +267,8 @@
   "notifications.runSim": "Ejecutar simulación",
   "notifications.popover.openInApp": "Abrir en Git Manager",
   "footer.remotes": "Remotos",
+  "footer.sync.noUpstream": "No publicada",
+  "footer.sync.noUpstreamTitle": "Esta rama no tiene upstream: haz push para publicarla y seguir los commits por recibir y por enviar",
   "commandPalette.placeholder": "Escribe un comando o busca…",
   "commandPalette.placeholderFiles": "Buscar archivos por nombre…",
   "commandPalette.empty": "No se encontraron resultados.",

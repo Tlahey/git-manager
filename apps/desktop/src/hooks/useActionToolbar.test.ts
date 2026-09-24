@@ -294,6 +294,43 @@ describe('useActionToolbar — fetch/pull/push', () => {
     expect(toastSuccess).toHaveBeenCalledWith('remote.pushSuccess')
   })
 
+  it('handlePush forwards the no-verify and force-with-lease options', async () => {
+    mocked.apiPushBranch.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useActionToolbar(t))
+    await act(async () => result.current.handlePush({ forceWithLease: true }))
+    expect(mocked.apiPushBranch).toHaveBeenLastCalledWith(
+      '/repo',
+      undefined,
+      undefined,
+      undefined,
+      true
+    )
+    await act(async () => result.current.handlePush({ skipHooks: true }))
+    expect(mocked.apiPushBranch).toHaveBeenLastCalledWith(
+      '/repo',
+      undefined,
+      undefined,
+      true,
+      undefined
+    )
+  })
+
+  it('flags a checked-out protected branch so force-pushing it can be refused', () => {
+    useBranchesMock.mockReturnValue({
+      data: [{ shortName: 'main', isHead: true, isRemote: false, aheadCount: 1, behindCount: 1 }],
+    })
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.isOnProtectedBranch).toBe(true)
+  })
+
+  it('does not flag an unprotected branch', () => {
+    useBranchesMock.mockReturnValue({
+      data: [{ shortName: 'feat/x', isHead: true, isRemote: false, aheadCount: 1, behindCount: 1 }],
+    })
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.isOnProtectedBranch).toBe(false)
+  })
+
   it('toasts an error and clears the loading flag when an action rejects', async () => {
     mocked.apiFetchRemote.mockRejectedValue(new Error('network down'))
     const { result } = renderHook(() => useActionToolbar(t))
