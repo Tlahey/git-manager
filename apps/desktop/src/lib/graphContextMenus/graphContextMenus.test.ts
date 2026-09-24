@@ -58,6 +58,7 @@ function ctx(overrides: Partial<GraphCommitMenuContext> = {}): GraphCommitMenuCo
     primaryShortOid: 'abc1234',
     descendantCount: 0,
     isOnProtectedBranch: false,
+    hasWorkingChanges: false,
     ...overrides,
   }
 }
@@ -88,6 +89,7 @@ const commitActions = (): CommitMenuActions => ({
   onCreateWorktree: vi.fn(),
   onCreateBranch: vi.fn(),
   onRecomposeCommit: vi.fn(),
+  onFixup: vi.fn(),
   onCherryPick: vi.fn(),
   onReset: vi.fn(),
   onRevert: vi.fn(),
@@ -1064,6 +1066,7 @@ describe('buildCommitMenuSpec', () => {
       'Cherry-pick this commit',
       '▸ Reset main to this commit',
       'Revert this commit',
+      'Fixup from changes',
       '— separator',
       'Explain this commit (LLM)',
       '— separator',
@@ -1097,6 +1100,7 @@ describe('buildCommitMenuSpec', () => {
       'Cherry-pick this commit',
       '▸ Reset main to this commit',
       'Revert this commit',
+      'Fixup from changes',
       '— separator',
       'Compare feat with…',
       '— separator',
@@ -1396,6 +1400,28 @@ describe('buildCommitMenuSpec — recompose', () => {
     expect(actions.onRecomposeCommit).toHaveBeenCalledWith(false)
     item(spec, 'Rewrite abc1234 and its 2 descendants (LLM)')?.action?.()
     expect(actions.onRecomposeCommit).toHaveBeenCalledWith(true)
+  })
+})
+
+describe('buildCommitMenuSpec — fixup', () => {
+  const label = 'Fixup from changes'
+
+  it('is disabled without working changes', () => {
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ hasWorkingChanges: false }), commitActions(), branchActions(), t)
+    )
+    expect(item(spec, label)?.enabled).toBe(false)
+  })
+
+  it('is enabled with working changes and wires the action', () => {
+    const actions = commitActions()
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ hasWorkingChanges: true }), actions, branchActions(), t)
+    )
+    const fixup = item(spec, label)
+    expect(fixup?.enabled).not.toBe(false)
+    fixup?.action?.()
+    expect(actions.onFixup).toHaveBeenCalledOnce()
   })
 })
 

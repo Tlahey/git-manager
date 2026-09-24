@@ -307,6 +307,7 @@ export function useSidebarBranchMenu(repoPath: string) {
       primaryShortOid: '',
       descendantCount: 0,
       isOnProtectedBranch: false,
+      hasWorkingChanges: false,
     }
   }
 

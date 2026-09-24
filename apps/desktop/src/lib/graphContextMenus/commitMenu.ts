@@ -92,6 +92,22 @@ export function mergeCompareSection(
   )
 }
 
+/** "Fixup from changes" — disabled rather than hidden without WIP, so it stays discoverable. */
+export function commitFixupSection(
+  ctx: GraphCommitMenuContext,
+  actions: CommitMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({
+      text: t('gitTree.contextMenu.fixup'),
+      icon: 'fixup',
+      enabled: ctx.isSingle && ctx.hasWorkingChanges,
+      action: actions.onFixup,
+    }),
+  ]
+}
+
 /**
  * The AI explanation of the clicked commit. Its own section so it can sit directly beside the branch
  * explanation (`prAndExplainSection`) with no separator between them: the two answer neighbouring
@@ -221,6 +237,7 @@ export function buildFlatSingleBranchMenuSpec(
     // Directly under the (relabelled) revert entry, no separator: on a merge the two are the same
     // subject — which side of the merge is being talked about.
     ...mergeCompareSection(ctx, actions, t),
+    ...commitFixupSection(ctx, actions, t),
     menuSeparator(),
     ...comparisonSection(b, branchActions, t),
     menuSeparator(),
@@ -281,6 +298,7 @@ export function buildCommitMenuSpec(
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
     ...mergeCompareSection(ctx, actions, t),
+    ...commitFixupSection(ctx, actions, t),
     menuSeparator(),
     ...commitExplanationSection(ctx, actions, t),
     menuSeparator(),

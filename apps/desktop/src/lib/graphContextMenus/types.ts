@@ -45,6 +45,8 @@ export interface GraphCommitMenuContext {
   descendantCount: number
   /** True when HEAD's branch is in the repo's protected list — history rewriting is refused. */
   isOnProtectedBranch: boolean
+  /** Whether the working tree has staged, unstaged or untracked changes — gates the fixup entry. */
+  hasWorkingChanges: boolean
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -86,6 +88,8 @@ export interface CommitMenuActions extends BranchTipCommitActions {
    * commit descending from it on the current branch. Both open the same review dialog — nothing is
    * written until the user confirms. */
   onRecomposeCommit: (includeChildren: boolean) => void
+  /** Opens the "Commit Changes" window to turn the pending changes into a `fixup!` of the commit. */
+  onFixup: () => void
   // ── Multi-selection only ──
   /** Cherry-pick every selected commit (oldest→newest). */
   onCherryPickSelection: () => void
