@@ -24,7 +24,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "clean": "turbo clean",
-    "clean:rust": "pnpm --filter @git-manager/desktop clean",
+    "clean:rust": "pnpm --filter @git-manager/desktop run clean",
     "clean:deps": "turbo clean && pnpm --filter @git-manager/desktop clean:deps",
     "prepare": "husky"
   },
